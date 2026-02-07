@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import {
   Button,
   Input,
@@ -12,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue
-} from '@/components/ui'
+} from '@/components/ui';
 
 
 export const MobileVehicleBooking: React.FC = () => {
@@ -20,6 +22,11 @@ export const MobileVehicleBooking: React.FC = () => {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [vehicles, setVehicles] = useState<SysVehicle[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // 启用键盘自动滚动
+  useKeyboardAwareScroll();
   const [formData, setFormData] = useState({
     vehicleId: '',
     startTime: '',
@@ -31,29 +38,109 @@ export const MobileVehicleBooking: React.FC = () => {
   });
 
   useEffect(() => {
-    getAvailableVehicles().then(res => {
-      setVehicles(res);
-    });
+    const fetchVehicles = async () => {
+      setLoading(true);
+      try {
+        const res = await getAvailableVehicles();
+        setVehicles(res);
+      } catch (error: any) {
+        toast.error(error.message || '获取车辆列表失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVehicles();
   }, []);
 
+  const validateForm = (): string | null => {
+    if (!formData.vehicleId) return '请选择车辆';
+    if (!formData.startTime) return '请选择开始时间';
+    if (!formData.endTime) return '请选择结束时间';
+    
+    const startTime = new Date(formData.startTime);
+    const endTime = new Date(formData.endTime);
+    const now = new Date();
+    
+    if (startTime < now) return '开始时间不能早于当前时间';
+    if (endTime <= startTime) return '结束时间必须晚于开始时间';
+    if (!formData.destination || formData.destination.trim().length < 2) return '请输入有效的目的地（至少2个字符）';
+    if (!formData.reason || formData.reason.trim().length < 2) return '请输入有效的用车事由（至少2个字符）';
+    if (formData.passengerCount < 1 || formData.passengerCount > 50) return '人数必须在1-50之间';
+    
+    return null;
+  };
+
   const handleSubmit = async () => {
-     if (!user) return;
-     try {
-       await submitUsage({
-         vehicleId: parseInt(formData.vehicleId),
-         applicantId: parseInt(user.id),
-         startTime: formData.startTime.replace('T', ' ') + ':00',
-         endTime: formData.endTime.replace('T', ' ') + ':00',
-         destination: formData.destination,
-         reason: formData.reason,
-         passengerCount: formData.passengerCount,
-         passengers: formData.passengers,
-       });
-       alert('申请成功');
-       navigate('/dashboard');
-     } catch (e) {
-       alert('提交失败');
-     }
+    if (!user) {
+      toast.error('用户信息不存在，请重新登录');
+      return;
+    }
+
+    const validationError = validateForm();
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await submitUsage({
+        vehicleId: parseInt(formData.vehicleId),
+        applicantId: parseInt(user.id),
+        startTime: formData.startTime.replace('T', ' ') + ':00',
+        endTime: formData.endTime.replace('T', ' ') + ':00',
+        destination: formData.destination.trim(),
+        reason: formData.reason.trim(),
+        passengerCount: formData.passengerCount,
+        passengers: formData.passengers.trim(),
+      });
+      toast.success('申请提交成功！');
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast.error(error.message || '提交失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleNextStep = () => {
+    if (step === 1) {
+      if (!formData.vehicleId) {
+        toast.error('请选择车辆');
+        return;
+      }
+      if (!formData.startTime) {
+        toast.error('请选择开始时间');
+        return;
+      }
+      if (!formData.endTime) {
+        toast.error('请选择结束时间');
+        return;
+      }
+      
+      const startTime = new Date(formData.startTime);
+      const endTime = new Date(formData.endTime);
+      const now = new Date();
+      
+      if (startTime < now) {
+        toast.error('开始时间不能早于当前时间');
+        return;
+      }
+      if (endTime <= startTime) {
+        toast.error('结束时间必须晚于开始时间');
+        return;
+      }
+    } else if (step === 2) {
+      if (!formData.destination || formData.destination.trim().length < 2) {
+        toast.error('请输入有效的目的地');
+        return;
+      }
+      if (!formData.reason || formData.reason.trim().length < 2) {
+        toast.error('请输入有效的用车事由');
+        return;
+      }
+    }
+    setStep(step + 1);
   };
 
   return (
@@ -77,34 +164,64 @@ export const MobileVehicleBooking: React.FC = () => {
         {step === 1 && (
           <div className="space-y-6 animate-fade-in">
             <h2 className="text-xl font-bold">选择车辆与时间</h2>
-            <div className="space-y-4">
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="animate-spin text-indigo-600" size={32} />
+              </div>
+            ) : (
+              <div className="space-y-4">
               <div>
-                <Label>车辆</Label>
+                <Label htmlFor="vehicle-select">车辆</Label>
                 <Select value={formData.vehicleId} onValueChange={(v) => setFormData({...formData, vehicleId: v})}>
                   <SelectTrigger className="mt-2 w-full h-12 text-base">
                     <SelectValue placeholder="请选择车辆" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {vehicles.map(v => (
-                      <SelectItem key={v.vehicleId} value={String(v.vehicleId)}>
-                        {v.licensePlate} ({v.brand})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectContent>
+                      {vehicles.length === 0 ? (
+                        <div className="p-4 text-center text-slate-500">暂无可用车辆</div>
+                      ) : (
+                        vehicles.map(v => (
+                          <SelectItem key={v.vehicleId} value={String(v.vehicleId)}>
+                            {v.licensePlate} ({v.brand})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              <div>
+                <Label htmlFor="start-time">开始时间</Label>
+                <Input 
+                  id="start-time"
+                  type="datetime-local" 
+                  className="mt-2 h-12 text-base"
+                  value={formData.startTime} 
+                  onChange={e => setFormData({...formData, startTime: e.target.value})}
+                  aria-label="选择开始时间"
+                  aria-required="true"
+                />
               </div>
               <div>
-                <Label>开始时间</Label>
-                <Input type="datetime-local" className="mt-2 h-12 text-base"
-                  value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
+                <Label htmlFor="end-time">结束时间</Label>
+                <Input 
+                  id="end-time"
+                  type="datetime-local" 
+                  className="mt-2 h-12 text-base"
+                  value={formData.endTime} 
+                  onChange={e => setFormData({...formData, endTime: e.target.value})}
+                  aria-label="选择结束时间"
+                  aria-required="true"
+                />
               </div>
-              <div>
-                <Label>结束时间</Label>
-                <Input type="datetime-local" className="mt-2 h-12 text-base"
-                  value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
               </div>
-            </div>
-            <Button className="w-full h-12 text-lg mt-8" onClick={() => setStep(2)}>下一步</Button>
+            )}
+            <Button 
+              className="w-full h-12 text-lg mt-8" 
+              onClick={handleNextStep}
+              disabled={loading}
+            >
+              下一步
+            </Button>
           </div>
         )}
 
@@ -113,19 +230,33 @@ export const MobileVehicleBooking: React.FC = () => {
             <h2 className="text-xl font-bold">行程信息</h2>
             <div className="space-y-4">
               <div>
-                <Label>目的地</Label>
-                <Input className="mt-2 h-12 text-base" placeholder="请输入目的地"
-                  value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} />
+                <Label htmlFor="destination">目的地</Label>
+                <Input 
+                  id="destination"
+                  className="mt-2 h-12 text-base" 
+                  placeholder="请输入目的地"
+                  value={formData.destination} 
+                  onChange={e => setFormData({...formData, destination: e.target.value})}
+                  aria-label="输入目的地"
+                  aria-required="true"
+                />
               </div>
               <div>
-                <Label>用车事由</Label>
-                <Input className="mt-2 h-12 text-base" placeholder="外出开会、接待等"
-                  value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} />
+                <Label htmlFor="reason">用车事由</Label>
+                <Input 
+                  id="reason"
+                  className="mt-2 h-12 text-base" 
+                  placeholder="外出开会、接待等"
+                  value={formData.reason} 
+                  onChange={e => setFormData({...formData, reason: e.target.value})}
+                  aria-label="输入用车事由"
+                  aria-required="true"
+                />
               </div>
             </div>
             <div className="flex gap-4 mt-8">
               <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(1)}>上一步</Button>
-              <Button className="flex-1 h-12" onClick={() => setStep(3)}>下一步</Button>
+              <Button className="flex-1 h-12" onClick={handleNextStep}>下一步</Button>
             </div>
           </div>
         )}
@@ -135,19 +266,49 @@ export const MobileVehicleBooking: React.FC = () => {
             <h2 className="text-xl font-bold">随行人员</h2>
             <div className="space-y-4">
               <div>
-                <Label>人数</Label>
-                <Input type="number" className="mt-2 h-12 text-base"
-                  value={formData.passengerCount} onChange={e => setFormData({...formData, passengerCount: parseInt(e.target.value)})} />
+                <Label htmlFor="passenger-count">人数</Label>
+                <Input 
+                  id="passenger-count"
+                  type="number" 
+                  className="mt-2 h-12 text-base"
+                  value={formData.passengerCount} 
+                  onChange={e => setFormData({...formData, passengerCount: parseInt(e.target.value)})}
+                  aria-label="输入随行人数"
+                  aria-required="true"
+                  min="1"
+                  max="50"
+                />
               </div>
               <div>
-                <Label>名单 (选填)</Label>
-                <Input className="mt-2 h-12 text-base" placeholder="张三, 李四"
-                  value={formData.passengers} onChange={e => setFormData({...formData, passengers: e.target.value})} />
+                <Label htmlFor="passengers">名单 (选填)</Label>
+                <Input 
+                  id="passengers"
+                  className="mt-2 h-12 text-base" 
+                  placeholder="张三, 李四"
+                  value={formData.passengers} 
+                  onChange={e => setFormData({...formData, passengers: e.target.value})}
+                  aria-label="输入随行人员名单"
+                />
               </div>
             </div>
             <div className="flex gap-4 mt-8">
-              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(2)}>上一步</Button>
-              <Button className="flex-1 h-12 bg-indigo-600" onClick={handleSubmit}>提交申请</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(2)} disabled={submitting}>
+                上一步
+              </Button>
+              <Button 
+                className="flex-1 h-12 bg-indigo-600" 
+                onClick={handleSubmit}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={20} />
+                    提交中...
+                  </>
+                ) : (
+                  '提交申请'
+                )}
+              </Button>
             </div>
           </div>
         )}

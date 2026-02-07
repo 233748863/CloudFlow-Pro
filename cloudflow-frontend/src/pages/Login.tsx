@@ -117,8 +117,10 @@ export const Login = () => {
                 没有账号？立即注册
             </Link>
         </div>
-        <p>默认账号: admin, li, wang, zhao, zhang</p>
-        <p className="mt-1">系统环境: React 18 + Spring Cloud Alibaba | 当前版本: 2.1.0 (Dev)</p>
+        {process.env.NODE_ENV === 'development' && (
+          <p className="mb-2 text-slate-600">开发环境 - 默认账号: admin, li, wang, zhao, zhang</p>
+        )}
+        <p>系统环境: React 18 + Spring Cloud Alibaba | 当前版本: 2.1.0 (Dev)</p>
       </div>
     </div>
 

@@ -7,8 +7,14 @@ import { Register } from '@/pages/Register';
 import { isMobileDevice } from '@/utils/device';
 import { logger } from '@/utils/logger';
 import { MobileLayout } from '@/mobile/layouts/MobileLayout';
-import { MobileDashboard } from '@/mobile/pages/MobileDashboard';
-import { MobileVehicleBooking } from '@/mobile/pages/vehicle/MobileVehicleBooking';
+
+// Lazy load Mobile pages for better performance
+const MobileDashboard = React.lazy(() => import('@/mobile/pages/MobileDashboard').then(module => ({ default: module.MobileDashboard })));
+const MobileVehicleBooking = React.lazy(() => import('@/mobile/pages/vehicle/MobileVehicleBooking').then(module => ({ default: module.MobileVehicleBooking })));
+const MobileProfile = React.lazy(() => import('@/mobile/pages/MobileProfile').then(module => ({ default: module.MobileProfile })));
+const MobileMessages = React.lazy(() => import('@/mobile/pages/MobileMessages').then(module => ({ default: module.MobileMessages })));
+const MobileTasks = React.lazy(() => import('@/mobile/pages/MobileTasks').then(module => ({ default: module.MobileTasks })));
+const MobileSchedule = React.lazy(() => import('@/mobile/pages/MobileSchedule').then(module => ({ default: module.MobileSchedule })));
 
 // Lazy load Desktop pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -162,15 +168,31 @@ const mobileRoutes = [
         children: [
           {
             path: '/',
-            element: <MobileDashboard />,
+            element: <Suspense fallback={<Loading />}><MobileDashboard /></Suspense>,
           },
           {
             path: '/dashboard',
-            element: <MobileDashboard />,
+            element: <Suspense fallback={<Loading />}><MobileDashboard /></Suspense>,
           },
           {
             path: '/vehicle/booking',
-            element: <MobileVehicleBooking />,
+            element: <Suspense fallback={<Loading />}><MobileVehicleBooking /></Suspense>,
+          },
+          {
+            path: '/profile',
+            element: <Suspense fallback={<Loading />}><MobileProfile /></Suspense>,
+          },
+          {
+            path: '/messages',
+            element: <Suspense fallback={<Loading />}><MobileMessages /></Suspense>,
+          },
+          {
+            path: '/tasks',
+            element: <Suspense fallback={<Loading />}><MobileTasks /></Suspense>,
+          },
+          {
+            path: '/schedule',
+            element: <Suspense fallback={<Loading />}><MobileSchedule /></Suspense>,
           },
           // Fallback for not-yet-implemented mobile pages
           {

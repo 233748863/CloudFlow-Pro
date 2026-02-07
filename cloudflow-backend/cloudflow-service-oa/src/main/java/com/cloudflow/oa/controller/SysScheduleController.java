@@ -6,6 +6,8 @@ import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.service.ISysScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
@@ -19,6 +21,15 @@ public class SysScheduleController {
     public R<List<SysScheduleEvent>> getMyEvents(@RequestParam(required = false) String start, 
                                                @RequestParam(required = false) String end) {
         return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), start, end));
+    }
+
+    /**
+     * 获取今日日程
+     */
+    @GetMapping("/today")
+    public R<List<SysScheduleEvent>> getTodaySchedule() {
+        String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), today, today));
     }
 
     @PostMapping

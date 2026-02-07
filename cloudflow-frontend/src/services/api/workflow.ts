@@ -64,3 +64,10 @@ export const readTask = (taskId: string) => {
 export const urgeTask = (taskId: string, reason: string) => {
   return request.post('/workflow/task/urge', { taskId, reason });
 };
+
+/**
+ * 获取任务统计
+ */
+export const getTasksCount = (): Promise<{ pending: number; completed: number; myApplications: number }> => {
+  return request.get('/workflow/tasks/count') as Promise<any>;
+};

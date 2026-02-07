@@ -31,4 +31,21 @@ public class SysNoticeController {
     public R<Long> getUnreadCount() {
         return R.ok(noticeService.getUnreadCount(UserContext.getUserId()));
     }
+
+    /**
+     * 获取消息详情
+     */
+    @GetMapping("/{noticeId}")
+    public R<SysNotice> getNoticeDetail(@PathVariable Long noticeId) {
+        return R.ok(noticeService.getNoticeById(noticeId));
+    }
+
+    /**
+     * 删除消息
+     */
+    @DeleteMapping("/{noticeId}")
+    public R<?> deleteNotice(@PathVariable Long noticeId) {
+        noticeService.deleteNotice(noticeId);
+        return R.ok();
+    }
 }

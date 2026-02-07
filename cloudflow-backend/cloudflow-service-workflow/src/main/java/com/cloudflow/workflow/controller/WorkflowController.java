@@ -139,4 +139,14 @@ public class WorkflowController {
         String reason = body.get("reason");
         return workflowService.urgeTask(taskId, reason);
     }
+
+    /**
+     * 获取任务统计
+     * 返回待办任务数量、已办任务数量、发起的流程数量
+     */
+    @GetMapping("/tasks/count")
+    public R<Map<String, Integer>> getTasksCount() {
+        Long userId = UserContext.getUserId();
+        return R.ok(workflowService.getTasksCount(userId));
+    }
 }
