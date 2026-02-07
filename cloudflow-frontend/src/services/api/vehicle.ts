@@ -57,51 +57,51 @@ export interface VehicleExpense {
 
 // Vehicle Management
 export const getVehicleList = (query: any) => {
-  return request.get('/vehicle/list', { params: query }) as Promise<PageResult<SysVehicle>>;
+  return request.get('/oa/vehicle/list', { params: query }) as Promise<PageResult<SysVehicle>>;
 };
 
 export const getAvailableVehicles = () => {
-  return request.get('/vehicle/available') as Promise<SysVehicle[]>;
+  return request.get('/oa/vehicle/available') as Promise<SysVehicle[]>;
 };
 
 export const getVehicleInfo = (id: number) => {
-  return request.get(`/vehicle/${id}`) as Promise<SysVehicle>;
+  return request.get(`/oa/vehicle/${id}`) as Promise<SysVehicle>;
 };
 
 export const addVehicle = (data: SysVehicle) => {
-  return request.post('/vehicle', data) as Promise<void>;
+  return request.post('/oa/vehicle', data) as Promise<void>;
 };
 
 export const updateVehicle = (data: SysVehicle) => {
-  return request.put('/vehicle', data) as Promise<void>;
+  return request.put('/oa/vehicle', data) as Promise<void>;
 };
 
 export const deleteVehicle = (ids: number[]) => {
-  return request.delete(`/vehicle/${ids.join(',')}`) as Promise<void>;
+  return request.delete(`/oa/vehicle/${ids.join(',')}`) as Promise<void>;
 };
 
 // Vehicle Usage
 export const getUsageList = (query: any) => {
-  return request.get('/vehicle/usage/list', { params: query }) as Promise<PageResult<VehicleUsage>>;
+  return request.get('/oa/vehicle/usage/list', { params: query }) as Promise<PageResult<VehicleUsage>>;
 };
 
 export const submitUsage = (data: VehicleUsage) => {
-  return request.post('/vehicle/usage', data) as Promise<void>;
+  return request.post('/oa/vehicle/usage', data) as Promise<void>;
 };
 
 export const getUsageInfo = (id: number) => {
-  return request.get(`/vehicle/usage/${id}`) as Promise<VehicleUsage>;
+  return request.get(`/oa/vehicle/usage/${id}`) as Promise<VehicleUsage>;
 };
 
 // Vehicle Expense
 export const getExpenseList = (query: any) => {
-  return request.get('/vehicle/expense/list', { params: query }) as Promise<PageResult<VehicleExpense>>;
+  return request.get('/oa/vehicle/expense/list', { params: query }) as Promise<PageResult<VehicleExpense>>;
 };
 
 export const addExpense = (data: VehicleExpense) => {
-  return request.post('/vehicle/expense', data) as Promise<void>;
+  return request.post('/oa/vehicle/expense', data) as Promise<void>;
 };
 
 export const getExpenseStats = (startDate?: string, endDate?: string) => {
-  return request.get('/vehicle/expense/stats', { params: { startDate, endDate } }) as Promise<any>;
+  return request.get('/oa/vehicle/expense/stats', { params: { startDate, endDate } }) as Promise<any>;
 };

@@ -14,6 +14,7 @@
         <module>cloudflow-gateway</module>
         <module>cloudflow-auth</module>
         <module>cloudflow-service-workflow</module>
+        <module>cloudflow-service-oa</module>
     </modules>
 
     <properties>

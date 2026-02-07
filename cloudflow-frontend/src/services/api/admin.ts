@@ -28,12 +28,12 @@ export interface AttendanceRule {
 
 // 打卡
 export const checkIn = (data: AttendanceRecord) => {
-  return request.post<boolean>('/workflow/attendance/checkin', data);
+  return request.post<boolean>('/oa/attendance/checkin', data);
 };
 
 // 获取当前规则
 export const getAttendanceRule = () => {
-  return request.get<AttendanceRule>('/workflow/attendance/rule');
+  return request.get<AttendanceRule>('/oa/attendance/rule');
 };
 
 // ================= 资产管理 =================
@@ -54,17 +54,17 @@ export interface Asset {
 
 // 获取资产列表
 export const getAssetList = () => {
-  return request.get<Asset[]>('/workflow/asset/list');
+  return request.get<Asset[]>('/oa/asset/list');
 };
 
 // 新增资产
 export const addAsset = (data: Asset) => {
-  return request.post<boolean>('/workflow/asset', data);
+  return request.post<boolean>('/oa/asset', data);
 };
 
 // 获取二维码 (直接返回图片流 URL)
 export const getAssetQrCodeUrl = (id: number) => {
   // 注意：这里返回的是 URL，需要在 img src 中使用
   // 需要根据后端 BaseURL 拼接，或者在组件中直接拼接
-  return `/dev-api/workflow/asset/${id}/qrcode`; 
+  return `/dev-api/oa/asset/${id}/qrcode`; 
 };

@@ -1,0 +1,71 @@
+﻿package com.cloudflow.oa.domain;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Data;
+import java.util.Date;
+
+/**
+ * 系统公告实体类
+ */
+@Data
+@TableName("sys_announcement")
+public class SysAnnouncement {
+    
+    @TableId(type = IdType.AUTO)
+    private Long announcementId;
+    
+    private String title;
+    
+    private String content;
+    
+    /**
+     * 1:通知, 2:公告, 3:紧急
+     */
+    private String type;
+    
+    /**
+     * ALL, DEPT, ROLE
+     */
+    private String scopeType;
+    
+    /**
+     * 范围值 (部门ID或角色ID)
+     */
+    private String scopeValue;
+    
+    /**
+     * 0:草稿, 1:已发布, 2:已撤销
+     */
+    private String status;
+    
+    /**
+     * L:低, M:中, H:高
+     */
+    private String priority;
+    
+    private Long senderId;
+    
+    private String createBy;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date createTime;
+    
+    private String updateBy;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date updateTime;
+    
+    @TableLogic
+    private String delFlag;
+    
+    /**
+     * 是否已读 (非数据库字段)
+     */
+    @TableField(exist = false)
+    private boolean isRead;
+}

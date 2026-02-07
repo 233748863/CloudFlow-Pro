@@ -1,0 +1,45 @@
+# CloudFlow Gateway路由配置
+# 此配置文件应上传到Nacos配置中心
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        # 认证服务路由
+        - id: cloudflow-auth
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=1
+        
+        # 工作流服务路由
+        - id: cloudflow-workflow
+          uri: lb://cloudflow-workflow
+          predicates:
+            - Path=/workflow/**
+          filters:
+            - StripPrefix=1
+        
+        # OA服务路由
+        - id: cloudflow-oa
+          uri: lb://cloudflow-oa
+          predicates:
+            - Path=/oa/**
+          filters:
+            - StripPrefix=1
+      
+      # 全局CORS配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: "*"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600

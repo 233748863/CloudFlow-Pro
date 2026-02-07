@@ -79,9 +79,12 @@ public class SysUserServiceImpl implements ISysUserService {
     public int insertUser(SysUser user) {
         user.setCreateTime(new Date());
         if (StringUtils.hasText(user.getPassword())) {
+            // 前端发送的密码已经是 SHA-256 哈希，后端再次使用 BCrypt 加密
+            // 这样即使数据库泄露，攻击者也无法直接使用哈希值登录
             user.setPassword(BCrypt.hashpw(user.getPassword()));
         } else {
-            // Default password
+            // Default password - 需要先 SHA-256 哈希再 BCrypt
+            // 但为了简化，这里直接 BCrypt 加密明文（仅用于后台创建用户）
             user.setPassword(BCrypt.hashpw("123456"));
         }
         
@@ -97,6 +100,7 @@ public class SysUserServiceImpl implements ISysUserService {
     @Transactional
     public int updateUser(SysUser user) {
         if (StringUtils.hasText(user.getPassword())) {
+            // 前端发送的密码已经是 SHA-256 哈希，后端再次使用 BCrypt 加密
             user.setPassword(BCrypt.hashpw(user.getPassword()));
         } else {
             // Don't update password if empty

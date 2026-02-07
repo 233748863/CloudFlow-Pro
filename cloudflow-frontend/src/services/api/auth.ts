@@ -1,10 +1,19 @@
 import request from './request';
+import { hashPassword } from '../../utils/crypto';
 
-export const login = (username: string, password?: string, captchaToken?: string) => {
-  return request.post('/auth/login', { username, password: password || '123456', captchaToken }) as Promise<any>;
+export const login = async (username: string, password?: string, captchaToken?: string) => {
+  const hashedPassword = password ? await hashPassword(password) : await hashPassword('123456');
+  return request.post('/auth/login', { username, password: hashedPassword, captchaToken }) as Promise<any>;
 };
 
-export const register = (data: any) => {
+export const register = async (data: any) => {
+  // Hash password before sending
+  if (data.password) {
+    data.password = await hashPassword(data.password);
+  }
+  if (data.confirmPassword) {
+    data.confirmPassword = await hashPassword(data.confirmPassword);
+  }
   return request.post('/auth/register', data) as Promise<any>;
 };
 

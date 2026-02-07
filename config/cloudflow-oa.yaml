@@ -1,0 +1,80 @@
+# CloudFlow OA服务配置文件
+# 此配置文件应上传到Nacos配置中心
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/cloudflow_pro?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+# OA模块业务配置
+cloudflow:
+  oa:
+    # 公告配置
+    announcement:
+      default-expire-days: 30
+      max-attachment-size: 10
+      allow-anonymous-read: false
+    
+    # 资产配置
+    asset:
+      enable-qr-code: true
+      qr-code-prefix: "ASSET-"
+      qr-code-size: 200
+      depreciation-method: "STRAIGHT_LINE"
+    
+    # 车辆配置
+    vehicle:
+      max-booking-days: 7
+      advance-booking-hours: 2
+      allow-concurrent-booking: false
+      fuel-price-update-cron: "0 0 2 * * ?"
+    
+    # 考勤配置
+    attendance:
+      work-start-time: "09:00"
+      work-end-time: "18:00"
+      late-threshold-minutes: 15
+      early-leave-threshold-minutes: 15
+      overtime-threshold-minutes: 30
+      check-in-radius-meters: 500
+    
+    # 会议室配置
+    meeting-room:
+      max-booking-hours: 4
+      advance-booking-hours: 1
+      allow-concurrent-booking: false
+      auto-release-minutes: 15
+
+# Feign配置
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 10000
+  hystrix:
+    enabled: true
+
+# Hystrix配置
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 10000

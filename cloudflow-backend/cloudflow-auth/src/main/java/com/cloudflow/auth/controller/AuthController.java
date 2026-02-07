@@ -65,7 +65,9 @@ public class AuthController {
             return R.fail("用户不存在");
         }
 
-        // 使用 BCrypt 校验密码
+        // 前端发送的是 SHA-256 哈希后的密码，后端需要对其再次 BCrypt 加密后比对
+        // 由于前端每次哈希结果相同，我们需要对前端哈希进行 BCrypt 加密后存储
+        // 登录时：前端发送 SHA-256(password)，后端用 BCrypt.checkpw(SHA-256(password), stored_bcrypt_hash)
         if (!BCrypt.checkpw(form.getPassword(), user.getPassword())) {
             return R.fail("密码错误");
         }
