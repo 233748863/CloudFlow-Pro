@@ -591,6 +591,11 @@ INSERT INTO config_info (data_id, group_id, content, tenant_id, type, gmt_create
 spring:
   application:
     name: cloudflow-gateway
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
   cloud:
     nacos:
       discovery:
@@ -606,12 +611,22 @@ spring:
             - Path=/auth/**
           filters:
             - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@ipKeyResolver}"
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
         - id: cloudflow-workflow
           uri: lb://cloudflow-workflow
           predicates:
             - Path=/workflow/**
           filters:
             - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userKeyResolver}"
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
 ignore:
   whites:
     - /auth/login

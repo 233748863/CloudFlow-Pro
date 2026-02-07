@@ -63,6 +63,11 @@ cloudflow:
 -- 2. cloudflow-gateway-dev.yaml
 INSERT INTO config_info (data_id, group_id, content, md5, gmt_create, gmt_modified, src_user, src_ip, app_name, tenant_id, c_desc, c_use, effect, type, c_schema) 
 VALUES ('cloudflow-gateway-dev.yaml', 'DEFAULT_GROUP', 'spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
   cloud:
     gateway:
       discovery:
@@ -73,10 +78,24 @@ VALUES ('cloudflow-gateway-dev.yaml', 'DEFAULT_GROUP', 'spring:
           uri: lb://cloudflow-auth
           predicates:
             - Path=/auth/**, /system/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@ipKeyResolver}"
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
         - id: workflow-service
           uri: lb://cloudflow-service-workflow
           predicates:
             - Path=/workflow/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userKeyResolver}"
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
       globalcors:
         cors-configurations:
           ''[/**]'':
@@ -84,6 +103,11 @@ VALUES ('cloudflow-gateway-dev.yaml', 'DEFAULT_GROUP', 'spring:
             allowedMethods: "*"
             allowedHeaders: "*"
 ', MD5('spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
   cloud:
     gateway:
       discovery:
@@ -94,10 +118,24 @@ VALUES ('cloudflow-gateway-dev.yaml', 'DEFAULT_GROUP', 'spring:
           uri: lb://cloudflow-auth
           predicates:
             - Path=/auth/**, /system/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@ipKeyResolver}"
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
         - id: workflow-service
           uri: lb://cloudflow-service-workflow
           predicates:
             - Path=/workflow/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userKeyResolver}"
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
       globalcors:
         cors-configurations:
           ''[/**]'':
