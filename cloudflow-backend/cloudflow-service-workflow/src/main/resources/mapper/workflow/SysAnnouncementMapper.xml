@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.SysAnnouncementMapper">
+
+    <select id="getMyAnnouncements" resultType="com.cloudflow.workflow.domain.SysAnnouncement">
+        SELECT a.*, 
+        CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END as is_read 
+        FROM sys_announcement a 
+        LEFT JOIN sys_announcement_read r ON a.announcement_id = r.announcement_id AND r.user_id = #{userId} 
+        WHERE a.del_flag = '0' AND a.status = '1' 
+        AND (
+           a.scope_type = 'ALL' 
+           OR (a.scope_type = 'DEPT' AND a.scope_value = #{deptId}) 
+           OR (a.scope_type = 'ROLE' AND 
+               <if test='roleIds != null and !roleIds.isEmpty()'>
+                   a.scope_value IN 
+                   <foreach item='role' collection='roleIds' open='(' separator=',' close=')'>
+                       #{role}
+                   </foreach>
+               </if>
+               <if test='roleIds == null or roleIds.isEmpty()'>
+                   1 = 0
+               </if>
+           ) 
+        ) 
+        ORDER BY a.priority DESC, a.create_time DESC
+    </select>
+    
+</mapper>

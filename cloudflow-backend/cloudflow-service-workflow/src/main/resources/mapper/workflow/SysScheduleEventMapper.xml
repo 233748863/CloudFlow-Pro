@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.SysScheduleEventMapper">
+
+    <select id="checkConflict" resultType="com.cloudflow.workflow.domain.SysScheduleEvent">
+        SELECT * FROM sys_schedule_event 
+        WHERE del_flag = '0' 
+        AND room_id = #{roomId} 
+        AND start_time &lt; #{endTime} AND end_time &gt; #{startTime}
+    </select>
+    
+    <select id="getMyEvents" resultType="com.cloudflow.workflow.domain.SysScheduleEvent">
+        SELECT * FROM sys_schedule_event 
+        WHERE del_flag = '0' 
+        AND (start_time &gt;= #{startDate} AND end_time &lt;= #{endDate}) 
+        AND (
+           creator_id = #{userId} 
+           OR attendees LIKE CONCAT('%', #{userId}, '%') 
+        ) 
+        ORDER BY start_time ASC
+    </select>
+    
+</mapper>

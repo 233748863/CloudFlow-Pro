@@ -1,0 +1,195 @@
+package com.cloudflow.auth.controller;
+
+import cn.hutool.crypto.digest.BCrypt;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.auth.domain.LoginBody;
+import com.cloudflow.auth.domain.RegisterBody;
+import com.cloudflow.auth.domain.SysRole;
+import com.cloudflow.auth.domain.SysUser;
+import com.cloudflow.auth.domain.SysUserRole;
+import com.cloudflow.auth.mapper.SysRoleMapper;
+import com.cloudflow.auth.mapper.SysUserMapper;
+import com.cloudflow.auth.mapper.SysUserRoleMapper;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.auth.service.ISysMenuService;
+import com.cloudflow.common.core.utils.TokenService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    @Autowired
+    private TokenService tokenService;
+    
+    @Autowired
+    private SysUserMapper sysUserMapper;
+    
+    @Autowired
+    private SysRoleMapper sysRoleMapper;
+    
+    @Autowired
+    private SysUserRoleMapper sysUserRoleMapper;
+    
+    @Autowired
+    private ISysMenuService menuService;
+
+    @Autowired
+    private com.cloudflow.auth.service.ISysUserService sysUserService;
+
+    @Autowired
+    private com.cloudflow.auth.service.CaptchaService captchaService;
+
+    @PostMapping("/login")
+    public R<?> login(@RequestBody @Validated LoginBody form) {
+        // Verify Captcha
+        if (!captchaService.validatePassToken(form.getCaptchaToken())) {
+             return R.fail("验证码失效或错误，请重新验证");
+        }
+
+        // 查询数据库
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getUserName, form.getUsername());
+        SysUser user = sysUserMapper.selectOne(queryWrapper);
+
+        if (user == null) {
+            return R.fail("用户不存在");
+        }
+
+        // 使用 BCrypt 校验密码
+        if (!BCrypt.checkpw(form.getPassword(), user.getPassword())) {
+            return R.fail("密码错误");
+        }
+        
+        // 查询角色
+        LambdaQueryWrapper<SysUserRole> urWrapper = new LambdaQueryWrapper<>();
+        urWrapper.eq(SysUserRole::getUserId, user.getUserId());
+        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(urWrapper);
+        
+        Set<String> roles = new HashSet<>();
+        if (userRoles != null && !userRoles.isEmpty()) {
+            for (SysUserRole ur : userRoles) {
+                SysRole role = sysRoleMapper.selectById(ur.getRoleId());
+                if (role != null) {
+                    roles.add(role.getRoleKey());
+                }
+            }
+        }
+        
+        // 查询权限
+        Set<String> permissions = menuService.selectMenuPermsByUserId(user.getUserId());
+        
+        // 创建 Token 并存入 Redis
+        Map<String, Object> loginUser = new HashMap<>();
+        loginUser.put("userId", user.getUserId());
+        loginUser.put("username", user.getUserName());
+        loginUser.put("nickName", user.getNickName());
+        loginUser.put("deptId", user.getDeptId());
+        loginUser.put("avatar", user.getAvatar()); // Cache avatar
+        loginUser.put("roles", roles); // Cache roles
+        loginUser.put("permissions", permissions); // Cache permissions
+        
+        String token = tokenService.createToken(loginUser);
+        
+        Map<String, String> result = new HashMap<>();
+        result.put("token", token);
+        return R.ok(result);
+    }
+    
+    @PostMapping("/register")
+    public R<?> register(@RequestBody @Validated RegisterBody registerBody) {
+        // Verify Captcha
+        if (!captchaService.validatePassToken(registerBody.getCaptchaToken())) {
+             return R.fail("验证码失效或错误，请重新验证");
+        }
+        
+        if (!registerBody.getPassword().equals(registerBody.getConfirmPassword())) {
+            return R.fail("两次输入的密码不一致");
+        }
+        
+        // Check if username exists
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getUserName, registerBody.getUsername());
+        if (sysUserMapper.selectCount(queryWrapper) > 0) {
+            return R.fail("用户 '" + registerBody.getUsername() + "' 已存在");
+        }
+        
+        SysUser user = new SysUser();
+        user.setUserName(registerBody.getUsername());
+        user.setNickName(registerBody.getUsername());
+        user.setPassword(registerBody.getPassword());
+        user.setEmail(registerBody.getEmail());
+        user.setStatus("0"); // Normal status
+        user.setDelFlag("0");
+        
+        // Use service to insert (handles password encryption)
+        sysUserService.insertUser(user);
+        
+        return R.ok("注册成功");
+    }
+
+    @GetMapping("/info")
+    public R<?> info(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        
+        Map<String, Object> userMap = tokenService.verifyToken(token);
+        if (userMap == null) {
+            return R.fail(401, "Token已过期或无效");
+        }
+        
+        // 优先从缓存构建返回对象，减少 DB 查询
+        SysUser user = new SysUser();
+        // Handle Integer/Long conversion from JSON
+        Object userIdObj = userMap.get("userId");
+        if (userIdObj instanceof Integer) {
+             user.setUserId(((Integer) userIdObj).longValue());
+        } else {
+             user.setUserId((Long) userIdObj);
+        }
+        
+        user.setUserName((String) userMap.get("username"));
+        user.setNickName((String) userMap.get("nickName"));
+        user.setAvatar((String) userMap.get("avatar"));
+        
+        if (user.getAvatar() == null) {
+             user.setAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.getUserName());
+        }
+
+        // Roles
+        Object rolesObj = userMap.get("roles");
+        if (rolesObj instanceof List) {
+            List<String> rolesList = (List<String>) rolesObj;
+            if (!rolesList.isEmpty()) {
+                user.setRole(rolesList.get(0).toUpperCase()); // Simple single role for frontend
+            } else {
+                user.setRole("USER");
+            }
+        } else {
+            user.setRole("USER");
+        }
+        
+        // Return permissions in a separate field or extend SysUser?
+        // Since SysUser is a DB entity, maybe better to return a Map or DTO
+        // For now, let's just return SysUser and frontend can get permissions from separate API if needed
+        // OR extend R return.
+        // Let's modify return type to Map to include permissions
+        Map<String, Object> data = new HashMap<>();
+        data.put("user", user);
+        data.put("roles", userMap.get("roles"));
+        data.put("permissions", userMap.get("permissions"));
+        
+        return R.ok(data);
+    }
+}

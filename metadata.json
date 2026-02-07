@@ -1,0 +1,4 @@
+{
+  "name": "CloudFlow Pro V2 (React)",
+  "description": "基于 Spring Cloud 微服务架构的企业级中台 V2.0。采用现代化 React UI 设计，包含动态工作流引擎、RBAC 权限管理及后端代码生成器。"
+}

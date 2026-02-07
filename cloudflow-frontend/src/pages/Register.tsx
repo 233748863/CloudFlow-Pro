@@ -1,0 +1,173 @@
+import React, { useState } from 'react';
+import { UserCheck, Lock, Mail, Loader2, X } from 'lucide-react';
+import { register as apiRegister } from '../services/api/auth';
+import { useNavigate, Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { SliderCaptcha } from '../components/SliderCaptcha';
+
+export const Register = () => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
+  });
+  const [showCaptchaModal, setShowCaptchaModal] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData({
+          ...formData,
+          [e.target.id]: e.target.value
+      });
+  };
+
+  const handleRegisterClick = (e: React.FormEvent) => {
+      e.preventDefault();
+      setError('');
+
+      if (formData.password !== formData.confirmPassword) {
+          setError('两次输入的密码不一致');
+          return;
+      }
+
+      // Open Captcha Modal
+      setShowCaptchaModal(true);
+  };
+
+  const handleCaptchaVerify = async (token: string) => {
+      setShowCaptchaModal(false);
+      setLoading(true);
+
+      try {
+        await apiRegister({
+            ...formData,
+            captchaToken: token
+        });
+        toast.success('注册成功，请登录');
+        navigate('/login');
+      } catch (e: any) {
+        console.error("Register error:", e);
+        setError(e.message || '注册失败，请稍后重试');
+      } finally {
+        setLoading(false);
+      }
+  };
+
+  return (
+  <div className="min-h-screen w-full bg-[#0f172a] relative overflow-hidden flex items-center justify-center font-[Inter]">
+    <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/30 rounded-full blur-[120px]" />
+       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/30 rounded-full blur-[120px]" />
+    </div>
+    <div className="relative z-10 w-full max-w-md p-8 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl">
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-bold text-white mb-2">注册账户</h1>
+        <p className="text-slate-400">加入 CloudFlow Pro 开启高效工作流</p>
+      </div>
+      
+      <form onSubmit={handleRegisterClick} className="space-y-6">
+        <div>
+            <label className="block text-slate-300 text-sm font-bold mb-2" htmlFor="username">用户名</label>
+            <div className="relative">
+                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                    id="username"
+                    type="text" 
+                    value={formData.username}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    placeholder="请输入用户名"
+                    required
+                />
+            </div>
+        </div>
+
+        <div>
+            <label className="block text-slate-300 text-sm font-bold mb-2" htmlFor="email">邮箱</label>
+            <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                    id="email"
+                    type="email" 
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    placeholder="请输入邮箱"
+                />
+            </div>
+        </div>
+
+        <div>
+            <label className="block text-slate-300 text-sm font-bold mb-2" htmlFor="password">密码</label>
+            <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                    id="password"
+                    type="password" 
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    placeholder="设置密码"
+                    required
+                />
+            </div>
+        </div>
+
+        <div>
+            <label className="block text-slate-300 text-sm font-bold mb-2" htmlFor="confirmPassword">确认密码</label>
+            <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                    id="confirmPassword"
+                    type="password" 
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    placeholder="再次输入密码"
+                    required
+                />
+            </div>
+        </div>
+
+        {error && <div className="text-red-400 text-sm text-center bg-red-500/10 p-2 rounded-lg">{error}</div>}
+
+        <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+            {loading ? <Loader2 className="animate-spin" size={20}/> : '立即注册'}
+        </button>
+        
+        <div className="text-center mt-4">
+            <Link to="/login" className="text-slate-400 hover:text-white text-sm transition-colors">
+                已有账号？去登录
+            </Link>
+        </div>
+      </form>
+    </div>
+
+    {/* Captcha Modal */}
+    {showCaptchaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 animate-[fadeIn_0.3s_ease-out]">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-[340px] relative animate-[zoomIn_0.3s_ease-out]">
+                <button 
+                  onClick={() => setShowCaptchaModal(false)}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+                <h3 className="text-lg font-bold text-slate-800 mb-1 text-center">安全验证</h3>
+                <p className="text-xs text-slate-500 mb-4 text-center">请完成下方拼图验证以继续注册</p>
+                <div className="flex justify-center">
+                    <SliderCaptcha onVerify={handleCaptchaVerify} width={290} />
+                </div>
+            </div>
+        </div>
+    )}
+  </div>
+  );
+};
