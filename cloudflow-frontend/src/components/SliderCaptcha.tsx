@@ -1,15 +1,41 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
-import { getCaptcha, checkCaptcha } from '../services/api/auth';
+import { toast } from 'sonner';
+import { getCaptcha, checkCaptcha } from '@/services/api/auth';
 import { useMount } from '@/hooks/useMount';
+import { SLIDER_WIDTH, SLIDER_DEFAULT_WIDTH, SLIDER_DEFAULT_HEIGHT, SLIDER_KEYBOARD_STEP } from '@/constants/ui';
+import { logger } from '@/utils/logger';
 
+/**
+ * 滑块验证码组件属性
+ */
 interface SliderCaptchaProps {
+  /** 验证成功回调，返回验证 token */
   onVerify: (token: string) => void;
+  /** 验证码宽度，默认 300px */
   width?: number;
+  /** 验证码高度，默认 150px */
   height?: number;
 }
 
-export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ onVerify, width = 300, height = 150 }) => {
+/**
+ * 滑块验证码组件
+ * 支持鼠标、触摸和键盘操作
+ * 
+ * @example
+ * ```tsx
+ * <SliderCaptcha 
+ *   onVerify={(token) => console.log(token)}
+ *   width={300}
+ *   height={150}
+ * />
+ * ```
+ */
+export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ 
+  onVerify, 
+  width = SLIDER_DEFAULT_WIDTH, 
+  height = SLIDER_DEFAULT_HEIGHT 
+}) => {
   const [loading, setLoading] = useState(true);
   const [captchaData, setCaptchaData] = useState<any>(null);
   const [sliderLeft, setSliderLeft] = useState(0);
@@ -29,7 +55,8 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ onVerify, width = 
         setCaptchaData(res);
       }
     } catch (e) {
-      console.error(e);
+      logger.error('Failed to fetch captcha:', e);
+      toast.error('验证码加载失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -49,7 +76,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ onVerify, width = 
     if (!isDragging || !containerRef.current) return;
     const diff = clientX - startX;
     // Limit range
-    const max = width - 50; // 50 is slider width
+    const max = width - SLIDER_WIDTH;
     let newLeft = Math.max(0, Math.min(max, diff));
     setSliderLeft(newLeft);
   };
@@ -71,12 +98,15 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ onVerify, width = 
         onVerify(res.passToken);
       } else {
         setStatus('fail');
+        toast.error('验证失败，请重试');
         setTimeout(() => {
           fetchCaptcha();
         }, 1000);
       }
     } catch (e) {
+      logger.error('Captcha verification failed:', e);
       setStatus('fail');
+      toast.error('验证失败，请重试');
       setTimeout(() => {
         fetchCaptcha();
       }, 1000);
@@ -93,6 +123,40 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ onVerify, width = 
   const onTouchStart = (e: React.TouchEvent) => handleStart(e.touches[0].clientX);
   const onTouchMove = (e: React.TouchEvent) => handleMove(e.touches[0].clientX);
   const onTouchEnd = () => handleEnd();
+
+  // Keyboard Events
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (status === 'success' || status === 'verifying') return;
+    
+    const max = width - SLIDER_WIDTH;
+    
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        setSliderLeft(prev => Math.max(0, prev - SLIDER_KEYBOARD_STEP));
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        setSliderLeft(prev => Math.min(max, prev + SLIDER_KEYBOARD_STEP));
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (sliderLeft > 0) {
+          setIsDragging(true);
+          handleEnd();
+        }
+        break;
+      case 'Home':
+        e.preventDefault();
+        setSliderLeft(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        setSliderLeft(max);
+        break;
+    }
+  };
 
   return (
     <div className="w-full select-none" style={{ width }} onMouseLeave={onMouseLeave}>
@@ -157,17 +221,24 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ onVerify, width = 
         onMouseUp={onMouseUp}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="slider"
+        aria-valuemin={0}
+        aria-valuemax={width - SLIDER_WIDTH}
+        aria-valuenow={sliderLeft}
+        aria-label="拖动滑块完成验证，也可使用方向键操作"
       >
         <div className="text-xs text-slate-400 w-full text-center select-none">向右拖动滑块填充拼图</div>
         
         {/* Slider Button */}
         <div 
-          className={`absolute top-0 h-10 w-[50px] flex items-center justify-center cursor-pointer shadow-sm border border-slate-200 transition-colors z-20
+          className={`absolute top-0 h-10 flex items-center justify-center cursor-pointer shadow-sm border border-slate-200 transition-colors z-20
             ${isDragging ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white hover:bg-slate-50 text-slate-500'}
             ${status === 'success' ? '!bg-emerald-500 !border-emerald-500 !text-white' : ''}
             ${status === 'fail' ? '!bg-red-500 !border-red-500 !text-white' : ''}
           `}
-          style={{ left: sliderLeft }}
+          style={{ left: sliderLeft, width: SLIDER_WIDTH }}
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
         >

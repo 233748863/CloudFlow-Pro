@@ -1,5 +1,3 @@
-import bcrypt from 'bcryptjs';
-
 /**
  * 前端密码加密工具
  * 使用 SHA-256 进行简单哈希，后端会再次使用 BCrypt 加密

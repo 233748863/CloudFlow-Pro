@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { UserCheck, Lock, Loader2, X } from 'lucide-react';
-import { login as apiLogin } from '../services/api/auth'; // Rename to avoid conflict
-import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner';
+import { login as apiLogin } from '@/services/api/auth';
+import { useAuth } from '@/context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { SliderCaptcha } from '../components/SliderCaptcha';
+import { SliderCaptcha } from '@/components/SliderCaptcha';
+import { logger } from '@/utils/logger';
 
 export const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -37,13 +39,17 @@ export const Login = () => {
         if (res && res.token) {
           // Login in context (stores token and fetches user info)
           await login(res.token);
+          toast.success('登录成功');
           navigate('/');
         } else {
            setError('登录失败: 无效的凭证');
+           toast.error('登录失败: 无效的凭证');
         }
       } catch (e: any) {
-        console.error("Login error:", e);
-        setError(e.message || '登录失败，请检查账号密码');
+        logger.error("Login error:", e);
+        const errorMsg = e.message || '登录失败，请检查账号密码';
+        setError(errorMsg);
+        toast.error(errorMsg);
       } finally {
         setLoading(false);
       }

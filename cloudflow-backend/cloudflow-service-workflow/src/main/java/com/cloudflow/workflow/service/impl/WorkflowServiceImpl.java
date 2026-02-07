@@ -40,7 +40,7 @@ import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.domain.system.SysDept;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 import com.cloudflow.common.core.utils.RedisCache;
 
@@ -203,7 +203,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
         try {
             instance.setVariables(objectMapper.writeValueAsString(variables));
         } catch (Exception e) {
-            // 忽略序列化错误
+            System.err.println("Failed to serialize variables: " + e.getMessage());
+            instance.setVariables("{}");
         }
 
         processInstanceMapper.insert(instance);
@@ -248,7 +249,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
     // 递归/链式方法执行节点
     // 增加了深度检查以防止循环流程中的堆栈溢出
     private void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth) {
-        if (depth > 100) {
+        if (depth > 500) {
             throw new RuntimeException("流程深度超出限制（可能检测到循环）");
         }
         
@@ -280,18 +281,35 @@ public class WorkflowServiceImpl implements IWorkflowService {
                  if (gateway != null) {
                      // 此节点是 'gateway' 的汇聚节点
                      String joinKey = "sys:wf:join:" + instance.getInstanceId() + ":" + gateway.getId();
-                     long count = redisCache.increment(joinKey);
-                     // 设置过期时间以避免垃圾数据
-                     redisCache.expire(joinKey, 24, java.util.concurrent.TimeUnit.HOURS);
+                     RLock joinLock = redissonClient.getLock("lock:join:" + gateway.getId());
                      
-                     int totalBranches = gateway.getBranches() != null ? gateway.getBranches().size() : 0;
-                     
-                     if (count < totalBranches) {
-                         // 等待其他分支
-                         return;
+                     try {
+                         if (joinLock.tryLock(5, 10, TimeUnit.SECONDS)) {
+                             long count = redisCache.increment(joinKey);
+                             // 设置过期时间以避免垃圾数据（仅在第一次时设置）
+                             if (count == 1) {
+                                 redisCache.expire(joinKey, 1, TimeUnit.HOURS);
+                             }
+                             
+                             int totalBranches = gateway.getBranches() != null ? gateway.getBranches().size() : 0;
+                             
+                             if (count < totalBranches) {
+                                 // 等待其他分支
+                                 return;
+                             }
+                             // 所有分支已到达，继续（并清除 key）
+                             redisCache.deleteObject(joinKey);
+                         } else {
+                             throw new RuntimeException("获取并行网关锁超时");
+                         }
+                     } catch (InterruptedException e) {
+                         Thread.currentThread().interrupt();
+                         throw new RuntimeException("并行网关处理被中断");
+                     } finally {
+                         if (joinLock.isHeldByCurrentThread()) {
+                             joinLock.unlock();
+                         }
                      }
-                     // 所有分支已到达，继续（并清除 key）
-                     redisCache.deleteObject(joinKey);
                  }
             }
         } catch (Exception e) {
@@ -432,16 +450,16 @@ public class WorkflowServiceImpl implements IWorkflowService {
             return true; // No condition means always true (or default path)
         }
         try {
-            StandardEvaluationContext context = new StandardEvaluationContext();
-            context.setVariables(variables);
-            // Add variables as root object properties as well for easier access "amount > 100" instead of "#amount > 100"
+            // Use SimpleEvaluationContext to prevent SpEL injection attacks
+            SimpleEvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
+            
+            // Add variables to context
             if (variables != null) {
                 variables.forEach(context::setVariable);
             }
             
-            // Support simple expressions like "amount > 5000"
-            // Note: variables in SpEL are accessed via #variableName usually, 
-            // but we can try to parse standard java expressions
+            // Support simple expressions like "#amount > 5000"
+            // Note: With SimpleEvaluationContext, variables must be accessed via #variableName
             Boolean result = parser.parseExpression(condition).getValue(context, Boolean.class);
             return result != null && result;
         } catch (Exception e) {
@@ -472,7 +490,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 // 校验权限
                 Long currentUserId = UserContext.getUserId();
                 if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId)) {
-                    // return R.fail("无权处理此任务"); 
+                    return R.fail("无权处理此任务");
                 }
 
                 // 2. 保存历史记录
@@ -891,4 +909,3 @@ public class WorkflowServiceImpl implements IWorkflowService {
         return R.ok();
     }
 }
-

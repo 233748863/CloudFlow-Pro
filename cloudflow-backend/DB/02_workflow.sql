@@ -150,9 +150,24 @@ CREATE TABLE sys_notice (
 -- 性能优化索引
 -- =========================================================
 
+-- 任务表索引
 CREATE INDEX idx_wf_task_assignee ON wf_task(assignee);
-CREATE INDEX idx_wf_inst_start_user ON wf_process_instance(start_user_id);
 CREATE INDEX idx_wf_task_instance_id ON wf_task(instance_id);
+CREATE INDEX idx_wf_task_status ON wf_task(status);
+CREATE INDEX idx_wf_task_create_time ON wf_task(create_time);
+CREATE INDEX idx_wf_task_composite ON wf_task(assignee, status, create_time);
+
+-- 流程实例表索引
+CREATE INDEX idx_wf_inst_start_user ON wf_process_instance(start_user_id);
+CREATE INDEX idx_wf_inst_status ON wf_process_instance(status);
+CREATE INDEX idx_wf_inst_start_time ON wf_process_instance(start_time);
+CREATE INDEX idx_wf_inst_composite ON wf_process_instance(start_user_id, status, start_time);
+
+-- 任务历史表索引
+CREATE INDEX idx_wf_hist_instance_id ON wf_task_history(instance_id);
+CREATE INDEX idx_wf_hist_operator_id ON wf_task_history(operator_id);
+CREATE INDEX idx_wf_hist_create_time ON wf_task_history(create_time);
+CREATE INDEX idx_wf_hist_composite ON wf_task_history(instance_id, create_time);
 
 -- =========================================================
 -- 初始化数据 - 表单定义

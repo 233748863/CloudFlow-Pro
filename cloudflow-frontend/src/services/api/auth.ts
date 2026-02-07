@@ -1,32 +1,70 @@
-import request from './request';
-import { hashPassword } from '../../utils/crypto';
+import request from '@/services/api/request';
+import { hashPassword } from '@/utils/crypto';
+import { Role } from '@/types';
 
-export const login = async (username: string, password?: string, captchaToken?: string) => {
+// API Response Types
+export interface LoginResponse {
+  token: string;
+  expiresIn?: number;
+}
+
+export interface UserInfo {
+  userId: number;
+  userName: string;
+  nickName: string;
+  email: string;
+  role: Role;
+  avatar: string;
+  deptId?: string;
+  position?: string;
+}
+
+export interface CaptchaResponse {
+  uuid: string;
+  bgImage: string;
+  sliderImage: string;
+  y: number;
+}
+
+export interface CaptchaCheckResponse {
+  passToken: string;
+}
+
+export interface RegisterData {
+  username: string;
+  password: string;
+  confirmPassword: string;
+  email?: string;
+  nickName?: string;
+}
+
+export const login = async (username: string, password?: string, captchaToken?: string): Promise<LoginResponse> => {
   const hashedPassword = password ? await hashPassword(password) : await hashPassword('123456');
-  return request.post('/auth/login', { username, password: hashedPassword, captchaToken }) as Promise<any>;
+  return request.post('/auth/login', { username, password: hashedPassword, captchaToken });
 };
 
-export const register = async (data: any) => {
+export const register = async (data: RegisterData): Promise<void> => {
   // Hash password before sending
-  if (data.password) {
-    data.password = await hashPassword(data.password);
+  const registerData = { ...data };
+  if (registerData.password) {
+    registerData.password = await hashPassword(registerData.password);
   }
-  if (data.confirmPassword) {
-    data.confirmPassword = await hashPassword(data.confirmPassword);
+  if (registerData.confirmPassword) {
+    registerData.confirmPassword = await hashPassword(registerData.confirmPassword);
   }
-  return request.post('/auth/register', data) as Promise<any>;
+  return request.post('/auth/register', registerData);
 };
 
-export const getCaptcha = () => {
-  return request.get('/auth/captcha/slider') as Promise<any>;
+export const getCaptcha = (): Promise<CaptchaResponse> => {
+  return request.get('/auth/captcha/slider');
 };
 
-export const checkCaptcha = (data: { uuid: string, x: number }) => {
-  return request.post('/auth/captcha/check', data) as Promise<any>;
+export const checkCaptcha = (data: { uuid: string, x: number }): Promise<CaptchaCheckResponse> => {
+  return request.post('/auth/captcha/check', data);
 };
 
-export const getInfo = () => {
-    return request.get('/auth/info') as Promise<any>;
+export const getInfo = (): Promise<UserInfo> => {
+  return request.get('/auth/info');
 }
 
 export const getDeptTree = () => {

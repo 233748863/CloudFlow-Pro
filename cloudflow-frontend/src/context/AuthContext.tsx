@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
-import { getInfo } from '../services/api/auth';
+import { toast } from 'sonner';
+import { User } from '@/types';
+import { getInfo } from '@/services/api/auth';
+import { logger } from '@/utils/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -32,7 +34,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
           }
         } catch (e) {
+          logger.error('Failed to get user info:', e);
           localStorage.removeItem('token');
+          toast.error('登录状态已过期，请重新登录');
         }
       }
       setLoading(false);

@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
-import { MainLayout } from './layouts/MainLayout';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { isMobileDevice } from './utils/device';
-import { MobileLayout } from './mobile/layouts/MobileLayout';
-import { MobileDashboard } from './mobile/pages/MobileDashboard';
-import { MobileVehicleBooking } from './mobile/pages/vehicle/MobileVehicleBooking';
+import { MainLayout } from '@/layouts/MainLayout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Login } from '@/pages/Login';
+import { Register } from '@/pages/Register';
+import { isMobileDevice } from '@/utils/device';
+import { logger } from '@/utils/logger';
+import { MobileLayout } from '@/mobile/layouts/MobileLayout';
+import { MobileDashboard } from '@/mobile/pages/MobileDashboard';
+import { MobileVehicleBooking } from '@/mobile/pages/vehicle/MobileVehicleBooking';
 
 // Lazy load Desktop pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -28,7 +29,7 @@ const AttendanceCheckIn = React.lazy(() => import('./pages/admin/attendance/Atte
 const AttendanceRulePage = React.lazy(() => import('./pages/admin/attendance/AttendanceRule'));
 const AssetList = React.lazy(() => import('./pages/admin/asset/AssetList'));
 const VehicleList = React.lazy(() => import('./pages/admin/vehicle/VehicleList'));
-const VehicleBooking = React.lazy(() => import('./pages/admin/vehicle/VehicleBooking'));
+const VehicleBooking = React.lazy(() => import('@/pages/admin/vehicle/VehicleBooking').then(m => ({ default: m.VehicleBooking })));
 const VehicleUsageList = React.lazy(() => import('./pages/admin/vehicle/VehicleUsageList'));
 
 const Loading = () => (
@@ -185,6 +186,6 @@ const mobileRoutes = [
 // --- Router Factory ---
 // Determine which router to use based on device type
 const isMobile = isMobileDevice();
-console.log('Device Detection:', isMobile ? 'Mobile' : 'Desktop');
+logger.log('Device Detection:', isMobile ? 'Mobile' : 'Desktop');
 
 export const router = createBrowserRouter(isMobile ? mobileRoutes : desktopRoutes);

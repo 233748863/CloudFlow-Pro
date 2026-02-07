@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Button,
   Card,
@@ -16,12 +18,12 @@ import {
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useMount } from '@/hooks/useMount';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
-const VehicleBooking: React.FC = () => {
+export const VehicleBooking: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [vehicles, setVehicles] = useState<SysVehicle[]>([]);
+  const { data: vehicles, loading, error } = useAsyncData<SysVehicle[]>(() => getAvailableVehicles());
   const [formData, setFormData] = useState({
     vehicleId: '',
     startTime: '',
@@ -31,37 +33,67 @@ const VehicleBooking: React.FC = () => {
     passengerCount: 1,
     passengers: '',
   });
-
-  useMount(() => {
-    const loadVehicles = async () => {
-      const res = await getAvailableVehicles();
-      setVehicles(res);
-    };
-    loadVehicles();
-  });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
+    setSubmitting(true);
     try {
       await submitUsage({
         vehicleId: parseInt(formData.vehicleId),
         applicantId: parseInt(user.id),
-        startTime: formData.startTime.replace('T', ' ') + ':00', // Format adjustment
+        startTime: formData.startTime.replace('T', ' ') + ':00',
         endTime: formData.endTime.replace('T', ' ') + ':00',
         destination: formData.destination,
         reason: formData.reason,
         passengerCount: formData.passengerCount,
         passengers: formData.passengers,
       });
-      alert('申请已提交，请等待审批');
-      navigate('/admin/vehicle/usage'); // Redirect to history
+      toast.success('申请已提交，请等待审批');
+      navigate('/admin/vehicle/usage');
     } catch (error) {
-      console.error('Submission failed', error);
-      alert('提交失败，请检查冲突或网络');
+      toast.error('提交失败，请检查冲突或网络');
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="animate-spin mr-2" />
+        <span>加载中...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-red-500 text-center">
+              <p>加载失败: {error.message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!vehicles || vehicles.length === 0) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-gray-500 text-center">暂无可用车辆</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -149,12 +181,19 @@ const VehicleBooking: React.FC = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full">提交申请</Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="animate-spin mr-2" size={16} />
+                  提交中...
+                </>
+              ) : (
+                '提交申请'
+              )}
+            </Button>
           </form>
         </CardContent>
       </Card>
     </div>
   );
 };
-
-export default VehicleBooking;
