@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, Wifi, Clock, AlertCircle } from 'lucide-react';
 import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { format } from 'date-fns';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
+import { useMount } from '@/hooks/useMount';
+
 
 const AttendanceCheckIn: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -20,12 +21,12 @@ const AttendanceCheckIn: React.FC = () => {
   }, []);
 
   // 获取规则
-  useEffect(() => {
+  useMount(() => {
     getAttendanceRule().then(res => {
         // @ts-ignore
         setRule(res.data || res);
     });
-  }, []);
+  });
 
   // 获取位置
   const getLocation = () => {
@@ -52,9 +53,9 @@ const AttendanceCheckIn: React.FC = () => {
     );
   };
 
-  useEffect(() => {
+  useMount(() => {
     getLocation();
-  }, []);
+  });
 
   const handleCheckIn = async (type: '1' | '2') => {
     if (!location) {

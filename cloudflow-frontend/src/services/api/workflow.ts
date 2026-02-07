@@ -22,11 +22,11 @@ export const completeTask = (data: any) => {
 };
 
 export const getProcessInstance = (instanceId: string) => {
-  return request.get(`/workflow/instance/${instanceId}`);
+  return request.get(`/workflow/instance/${instanceId}`) as Promise<any>;
 };
 
 export const getProcessTrace = (instanceId: string) => {
-  return request.get(`/workflow/instance/${instanceId}/trace`);
+  return request.get(`/workflow/instance/${instanceId}/trace`) as Promise<any>;
 };
 
 export const getProcessDefinitions = () => {

@@ -4,6 +4,7 @@ import { WorkflowDefinition, NodeType, FormDefinition, User } from '../types';
 import { getProcessDefinitions, saveProcessDefinition, getFormDefinitions } from '../services/api/workflow';
 import { getRoleList, getUserList } from '../services/api/auth';
 import { mapBackendUserToFrontend } from '../utils/mappers';
+import { useMount } from '../hooks/useMount';
 
 export const WorkflowDesign = () => {
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
@@ -11,7 +12,7 @@ export const WorkflowDesign = () => {
   const [availableRoles, setAvailableRoles] = useState<any[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
 
-  useEffect(() => {
+  useMount(() => {
     // Fetch initial workflow list to select one (or create new)
     // For simplicity, let's just fetch and if empty show create new. 
     // If not empty, select the first one. (This can be improved with a list view later)
@@ -56,7 +57,7 @@ export const WorkflowDesign = () => {
     getUserList().then(res => {
         if (Array.isArray(res)) setAvailableUsers(res.map(mapBackendUserToFrontend));
     });
-  }, []);
+  });
 
   const handleSaveWorkflow = async (wf: WorkflowDefinition) => {
     try {

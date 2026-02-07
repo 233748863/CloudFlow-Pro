@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserList, addUser, updateUser, deleteUser, getRoleList } from '../../services/api/auth';
+import { useMount } from '../../hooks/useMount';
 
 export const UserList = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -22,10 +23,10 @@ export const UserList = () => {
     status: '0'
   });
 
-  useEffect(() => {
+  useMount(() => {
     fetchUsers();
     fetchRoles();
-  }, []);
+  });
 
   const fetchUsers = async () => {
     setLoading(true);

@@ -4,8 +4,12 @@ import { MainLayout } from './layouts/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { isMobileDevice } from './utils/device';
+import { MobileLayout } from './mobile/layouts/MobileLayout';
+import { MobileDashboard } from './mobile/pages/MobileDashboard';
+import { MobileVehicleBooking } from './mobile/pages/vehicle/MobileVehicleBooking';
 
-// Lazy load pages
+// Lazy load Desktop pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
 const Workplace = React.lazy(() => import('./pages/Workplace').then(module => ({ default: module.Workplace })));
 const TaskListPage = React.lazy(() => import('./pages/TaskListPage').then(module => ({ default: module.TaskListPage })));
@@ -23,6 +27,9 @@ const MeetingRoomPage = React.lazy(() => import('./pages/MeetingRoomPage').then(
 const AttendanceCheckIn = React.lazy(() => import('./pages/admin/attendance/AttendanceCheckIn'));
 const AttendanceRulePage = React.lazy(() => import('./pages/admin/attendance/AttendanceRule'));
 const AssetList = React.lazy(() => import('./pages/admin/asset/AssetList'));
+const VehicleList = React.lazy(() => import('./pages/admin/vehicle/VehicleList'));
+const VehicleBooking = React.lazy(() => import('./pages/admin/vehicle/VehicleBooking'));
+const VehicleUsageList = React.lazy(() => import('./pages/admin/vehicle/VehicleUsageList'));
 
 const Loading = () => (
   <div className="flex items-center justify-center h-full w-full min-h-[400px]">
@@ -30,7 +37,8 @@ const Loading = () => (
   </div>
 );
 
-export const router = createBrowserRouter([
+// --- Desktop Routes (Unchanged) ---
+const desktopRoutes = [
   {
     path: '/login',
     element: <Login />,
@@ -47,6 +55,10 @@ export const router = createBrowserRouter([
         children: [
           {
             path: '/',
+            element: <Suspense fallback={<Loading />}><Dashboard /></Suspense>,
+          },
+          {
+            path: '/dashboard', // Alias
             element: <Suspense fallback={<Loading />}><Dashboard /></Suspense>,
           },
           {
@@ -117,8 +129,62 @@ export const router = createBrowserRouter([
             path: '/admin/asset',
             element: <Suspense fallback={<Loading />}><AssetList /></Suspense>,
           },
+          {
+            path: '/admin/vehicle/list',
+            element: <Suspense fallback={<Loading />}><VehicleList /></Suspense>,
+          },
+          {
+            path: '/admin/vehicle/booking',
+            element: <Suspense fallback={<Loading />}><VehicleBooking /></Suspense>,
+          },
+          {
+            path: '/admin/vehicle/usage',
+            element: <Suspense fallback={<Loading />}><VehicleUsageList /></Suspense>,
+          },
         ],
       },
     ],
   },
-]);
+];
+
+// --- Mobile Routes (New) ---
+const mobileRoutes = [
+  {
+    path: '/login',
+    element: <Login />, // Can be replaced with MobileLogin if needed
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <MobileLayout />,
+        children: [
+          {
+            path: '/',
+            element: <MobileDashboard />,
+          },
+          {
+            path: '/dashboard',
+            element: <MobileDashboard />,
+          },
+          {
+            path: '/vehicle/booking',
+            element: <MobileVehicleBooking />,
+          },
+          // Fallback for not-yet-implemented mobile pages
+          {
+            path: '*',
+            element: <div className="p-4 text-center text-gray-500 mt-20">此功能暂不支持移动端，请在电脑访问。</div>
+          }
+        ],
+      },
+    ],
+  },
+];
+
+// --- Router Factory ---
+// Determine which router to use based on device type
+const isMobile = isMobileDevice();
+console.log('Device Detection:', isMobile ? 'Mobile' : 'Desktop');
+
+export const router = createBrowserRouter(isMobile ? mobileRoutes : desktopRoutes);

@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { getAttendanceRule, AttendanceRule } from '@/services/api/admin';
+import { useMount } from '@/hooks/useMount';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label
+} from '@/components/ui'
+
 
 const AttendanceRulePage: React.FC = () => {
   const [rule, setRule] = useState<AttendanceRule | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  useMount(() => {
     setLoading(true);
     getAttendanceRule().then(res => {
         // @ts-ignore
         setRule(res.data || res);
         setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  });
 
   if (loading) return <div>Loading...</div>;
 

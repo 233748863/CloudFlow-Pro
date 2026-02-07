@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Department, User } from '../types';
 import { Users, ChevronRight, ChevronDown, User as UserIcon, Building2, Loader2 } from 'lucide-react';
 import { getDeptTree } from '../services/api/auth';
+import { useMount } from '@/hooks/useMount';
 
 const mapBackendDeptToFrontend = (d: any): Department => ({
   id: String(d.deptId),
@@ -44,14 +45,14 @@ export const OrgStructure = () => {
   const [deptTree, setDeptTree] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useMount(() => {
     getDeptTree().then((res: any) => {
         if(Array.isArray(res)) {
             setDeptTree(res.map(mapBackendDeptToFrontend));
         }
     }).catch(err => console.error("Failed to load dept tree", err))
       .finally(() => setLoading(false));
-  }, []);
+  });
 
   return (
     <div className="flex h-full gap-6">

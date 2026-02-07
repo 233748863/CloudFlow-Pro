@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui'
 import { Plus, QrCode, Printer } from 'lucide-react';
 import { getAssetList, getAssetQrCodeUrl, Asset } from '@/services/api/admin';
 import AssetForm from './AssetForm';
+import { useMount } from '@/hooks/useMount';
 
 const AssetList: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -24,9 +34,9 @@ const AssetList: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+  useMount(() => {
     loadData();
-  }, []);
+  });
 
   const handleAddSuccess = () => {
     setIsFormOpen(false);

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Settings, Trash2, ChevronRight, AlertCircle, 
   GitBranch, GitMerge, FileText, CheckCircle2, 
-  ArrowRight, MoreHorizontal, Copy, PlayCircle,
+  ArrowRight, ArrowDown, MoreHorizontal, Copy, PlayCircle,
   Undo2, Redo2, Save, UploadCloud
 } from 'lucide-react';
 import { WorkflowNode, NodeType } from '../types';

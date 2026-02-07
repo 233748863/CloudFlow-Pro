@@ -60,7 +60,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
   );
 };
 
-export const SelectItem = ({ children, value, className = '' }: { children: React.ReactNode; value: string; className?: string }) => {
+export const SelectItem: React.FC<{ children: React.ReactNode; value: string; className?: string }> = ({ children, value, className = '' }) => {
   const { onValueChange, setOpen, registerLabel } = React.useContext(SelectContext);
   
   useEffect(() => {

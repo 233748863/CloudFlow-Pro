@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import { getCaptcha, checkCaptcha } from '../services/api/auth';
+import { useMount } from '@/hooks/useMount';
 
 interface SliderCaptchaProps {
   onVerify: (token: string) => void;
@@ -34,9 +35,9 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ onVerify, width = 
     }
   };
 
-  useEffect(() => {
+  useMount(() => {
     fetchCaptcha();
-  }, []);
+  });
 
   const handleStart = (clientX: number) => {
     if (status === 'success' || status === 'verifying') return;

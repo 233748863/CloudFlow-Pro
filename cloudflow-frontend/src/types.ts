@@ -253,3 +253,22 @@ export interface SysScheduleEvent {
   creatorId: string;
   attendees?: string; // JSON String of IDs
 }
+
+// --- Common API Types ---
+export interface PageQuery {
+  pageNum: number;
+  pageSize: number;
+  [key: string]: any;
+}
+
+export interface PageResult<T> {
+  total: number;
+  rows: T[];
+  records?: T[]; // For compatibility if backend uses records
+}
+
+export interface R<T = any> {
+  code: number;
+  msg: string;
+  data: T;
+}

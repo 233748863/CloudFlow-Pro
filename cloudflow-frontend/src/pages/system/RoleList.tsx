@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Shield, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList } from '../../services/api/auth';
+import { useMount } from '../../hooks/useMount';
 
 // Helper to build tree
 const buildTree = (items: any[], parentId: number = 0): any[] => {
@@ -34,10 +35,10 @@ export const RoleList = () => {
   // Tree expand state in modal
   const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
 
-  useEffect(() => {
+  useMount(() => {
     fetchRoles();
     fetchMenus();
-  }, []);
+  });
 
   const fetchRoles = async () => {
     setLoading(true);
