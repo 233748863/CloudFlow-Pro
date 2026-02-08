@@ -15,6 +15,9 @@ const MobileProfile = React.lazy(() => import('@/mobile/pages/MobileProfile').th
 const MobileMessages = React.lazy(() => import('@/mobile/pages/MobileMessages').then(module => ({ default: module.MobileMessages })));
 const MobileTasks = React.lazy(() => import('@/mobile/pages/MobileTasks').then(module => ({ default: module.MobileTasks })));
 const MobileSchedule = React.lazy(() => import('@/mobile/pages/MobileSchedule').then(module => ({ default: module.MobileSchedule })));
+const MobileMeetingRoom = React.lazy(() => import('@/mobile/pages/MobileMeetingRoom').then(module => ({ default: module.MobileMeetingRoom })));
+const MobileLeaveRequest = React.lazy(() => import('@/mobile/pages/MobileLeaveRequest').then(module => ({ default: module.MobileLeaveRequest })));
+const MobileReimbursement = React.lazy(() => import('@/mobile/pages/MobileReimbursement').then(module => ({ default: module.MobileReimbursement })));
 
 // Lazy load Desktop pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -193,6 +196,18 @@ const mobileRoutes = [
           {
             path: '/schedule',
             element: <Suspense fallback={<Loading />}><MobileSchedule /></Suspense>,
+          },
+          {
+            path: '/meeting-room',
+            element: <Suspense fallback={<Loading />}><MobileMeetingRoom /></Suspense>,
+          },
+          {
+            path: '/leave/request',
+            element: <Suspense fallback={<Loading />}><MobileLeaveRequest /></Suspense>,
+          },
+          {
+            path: '/reimbursement/request',
+            element: <Suspense fallback={<Loading />}><MobileReimbursement /></Suspense>,
           },
           // Fallback for not-yet-implemented mobile pages
           {
