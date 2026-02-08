@@ -61,6 +61,20 @@ public class WfTask implements Serializable {
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private java.util.Map<String, Object> variables;
 
+    /** 8.C: 是否已读 (不存储在数据库，由getTodoTasks填充) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Boolean isRead;
+
+    /** 8.C: 已读时间 (不存储在数据库，由getTodoTasks填充) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Date readTime;
+
+    public Boolean getIsRead() { return isRead; }
+    public void setIsRead(Boolean isRead) { this.isRead = isRead; }
+
+    public Date getReadTime() { return readTime; }
+    public void setReadTime(Date readTime) { this.readTime = readTime; }
+
     public String getProcessDefKey() { return processDefKey; }
     public void setProcessDefKey(String processDefKey) { this.processDefKey = processDefKey; }
 

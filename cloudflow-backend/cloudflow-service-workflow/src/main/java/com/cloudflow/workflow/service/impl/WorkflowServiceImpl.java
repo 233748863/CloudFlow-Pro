@@ -327,7 +327,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
 
             WfNodeConfig rootNode = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
             WfNodeConfig nextNode = rootNode.getNext();
-            runNode(instance, nextNode, variables, 0);
+            // 4.K: 将根节点作为参数传递，避免 runNode 中重复加载定义
+            runNode(instance, nextNode, variables, 0, rootNode);
             
         } catch (WorkflowException e) {
             // P0-3: 事务一致性 - WorkflowException 会触发事务回滚
@@ -429,7 +430,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
 
     // 递归/链式方法执行节点
     // 增加了深度检查以防止循环流程中的堆栈溢出
-    private void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth) {
+    // 4.K: 增加 rootNode 参数，避免每次递归都重新查询数据库
+    private void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
         if (depth > 500) {
             throw new RuntimeException("流程深度超出限制（可能检测到循环）");
         }
@@ -440,24 +442,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
             return;
         }
 
-        // 检查并行汇聚
-        // 我们需要知道 'node' 是否是一个并行网关的 'next'。
-        // 这需要完整的定义。由于我们没有在这里传递它，我们可能需要加载它或传递它。
-        // 为了优化，我们应该只加载一次定义。
-        // 但在这里我们可以尝试从实例 -> 定义 -> json 加载它。
-        // 理想情况下 'runNode' 应该以 'root' 作为上下文。
-        // 目前，如果我们怀疑是汇聚，就加载它，或者总是加载它（MyBatis L1 缓存）。
-        
+        // 4.K: 使用传入的 rootNode 参数，不再重复查询数据库
         try {
-            WfProcessDefinition def = processDefinitionMapper.selectOne(
-                new LambdaQueryWrapper<WfProcessDefinition>()
-                    .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                    .orderByDesc(WfProcessDefinition::getVersion)
-                    .last("LIMIT 1")
-            );
-            if (def != null && StringUtils.hasText(def.getModelJson())) {
-                 WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
-                 WfNodeConfig gateway = findParentGateway(root, node.getId());
+            if (rootNode != null) {
+                 WfNodeConfig gateway = findParentGateway(rootNode, node.getId());
                  
                  if (gateway != null) {
                      // 此节点是 'gateway' 的汇聚节点
@@ -494,7 +482,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
                  }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warn("[runNode] 并行汇聚检查异常: {}", e.getMessage());
         }
 
         if ("APPROVAL".equals(node.getType())) {
@@ -549,7 +537,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             if (branches != null && !branches.isEmpty()) {
                 for (WfNodeConfig branch : branches) {
                     if (evaluateCondition(branch.getCondition(), variables)) {
-                        runNode(instance, branch, variables, depth + 1);
+                        runNode(instance, branch, variables, depth + 1, rootNode);
                         branchTaken = true;
                         return; // 只走一条路径
                     }
@@ -558,7 +546,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             // 如果没有分支匹配，如果有 next 则继续，或者报错？
             // 惯例：如果没有条件匹配，查找“默认”流或继续 next
             if (!branchTaken) {
-                runNode(instance, node.getNext(), variables, depth + 1);
+                runNode(instance, node.getNext(), variables, depth + 1, rootNode);
             }
             
         } else if ("PARALLEL".equals(node.getType())) {
@@ -569,7 +557,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
                  for (WfNodeConfig branch : branches) {
                      // 为简单起见在同一线程中分叉，但递归执行
                      // 注意：这个简单的引擎尚未正确处理“汇聚”
-                     runNode(instance, branch, variables, depth + 1);
+                     runNode(instance, branch, variables, depth + 1, rootNode);
                  }
              }
              // 并行通常不会立即继续 'next'，它等待汇聚
@@ -579,7 +567,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
              completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
         } else {
             // 未知或开始节点，直接继续
-            runNode(instance, node.getNext(), variables, depth + 1);
+            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
         }
     }
 
@@ -740,7 +728,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
                         
                         if (nextNode != null) {
                             // 5.G: 使用合并后的变量继续流转
-                            runNode(instance, nextNode, mergedVariables, 0);
+                            // 4.K: 传递 rootNode 参数
+                            runNode(instance, nextNode, mergedVariables, 0, root);
                         } else {
                             completeInstance(instance, WfProcessStatus.COMPLETED.getCode()); 
                         }
@@ -929,7 +918,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 throw WorkflowException.validationError("目标节点不存在: " + targetNodeKey);
             }
             
-            runNode(instance, targetNode, null, 0);
+            // 4.K: 传递 rootNode 参数
+            runNode(instance, targetNode, null, 0, root);
             
         } catch (WorkflowException e) {
             throw e;
@@ -1031,6 +1021,23 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 defMap.putIfAbsent(def.getProcessKey(), def);
             }
             
+            // 8.C: 批量查询已读状态
+            List<String> taskIds = tasks.stream()
+                .map(WfTask::getTaskId)
+                .collect(java.util.stream.Collectors.toList());
+            
+            List<com.cloudflow.workflow.domain.WfTaskRead> readRecords = taskReadMapper.selectList(
+                new LambdaQueryWrapper<com.cloudflow.workflow.domain.WfTaskRead>()
+                    .in(com.cloudflow.workflow.domain.WfTaskRead::getTaskId, taskIds)
+                    .eq(com.cloudflow.workflow.domain.WfTaskRead::getUserId, userId)
+            );
+            
+            Map<String, com.cloudflow.workflow.domain.WfTaskRead> readMap = readRecords.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    com.cloudflow.workflow.domain.WfTaskRead::getTaskId, 
+                    r -> r
+                ));
+            
             // P0-1: 填充任务数据
             for (WfTask task : tasks) {
                 WfProcessInstance instance = instanceMap.get(task.getInstanceId());
@@ -1054,6 +1061,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
                             log.warn("[getTodoTasks] 变量反序列化失败: {}", e.getMessage());
                         }
                     }
+                }
+                
+                // 8.C: 设置已读状态
+                com.cloudflow.workflow.domain.WfTaskRead readRecord = readMap.get(task.getTaskId());
+                if (readRecord != null) {
+                    task.setIsRead(true);
+                    task.setReadTime(readRecord.getReadTime());
+                } else {
+                    task.setIsRead(false);
                 }
             }
         }
