@@ -42,6 +42,9 @@ public class WfTaskHistory implements Serializable {
 
     /** 操作时间 */
     private Date createTime;
+    
+    /** 本次修改的变量 (JSON格式) */
+    private String variablesChanged;
 
     public String getHistoryId() {
         return historyId;
@@ -121,5 +124,13 @@ public class WfTaskHistory implements Serializable {
 
     public void setCreateTime(Date createTime) {
         this.createTime = createTime;
+    }
+
+    public String getVariablesChanged() {
+        return variablesChanged;
+    }
+
+    public void setVariablesChanged(String variablesChanged) {
+        this.variablesChanged = variablesChanged;
     }
 }

@@ -25,10 +25,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.cloudflow.workflow.mapper.system.SysDeptMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
@@ -240,11 +243,21 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.validationError("流程定义Key不能为空");
         }
         if (variables == null) {
-            variables = new java.util.HashMap<>();
+            variables = new HashMap<>();
         }
         
         // P0-5: 限流检查
         rateLimiterService.checkStartProcessLimit(userId != null ? userId : 0L);
+        
+        // 4.F: 流程实例去重（幂等Key防重）
+        String idempotentKey = (String) variables.get("_idempotentKey");
+        if (StringUtils.hasText(idempotentKey)) {
+            String existingInstanceId = redisCache.getCacheObject("sys:wf:idempotent:" + idempotentKey);
+            if (existingInstanceId != null) {
+                log.info("[startProcess] 幂等Key命中, 返回已存在的实例, idempotentKey={}, instanceId={}", idempotentKey, existingInstanceId);
+                return R.ok(existingInstanceId);
+            }
+        }
         
         // P0-4: 变量大小限制（防止超大 payload）
         try {
@@ -269,6 +282,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
         if (def == null) {
             throw WorkflowException.processNotFound(processDefKey);
         }
+        
+        // 4.C: 启动权限校验（按角色/部门限制）
+        checkStartPermission(userId, def);
 
         // 2. 创建流程实例
         WfProcessInstance instance = new WfProcessInstance();
@@ -313,8 +329,74 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw new WorkflowException("PROCESS_START_FAILED", "启动流程失败: " + e.getMessage(), e);
         }
 
+        // 4.F: 注册幂等Key
+        if (StringUtils.hasText(idempotentKey)) {
+            try {
+                redisCache.setCacheObject("sys:wf:idempotent:" + idempotentKey, instance.getInstanceId(), 5, TimeUnit.MINUTES);
+            } catch (Exception e) {
+                log.warn("[startProcess] 注册幂等Key失败: {}", e.getMessage());
+            }
+        }
+
         log.info("[startProcess] 流程启动成功, instanceId={}", instance.getInstanceId());
         return R.ok(instance.getInstanceId());
+    }
+    
+    /**
+     * 4.C: 检查用户是否有权限启动指定流程
+     * 支持 ALL（所有人）、ROLE（按角色）、DEPT（按部门）、USER（按用户）
+     */
+    private void checkStartPermission(Long userId, WfProcessDefinition def) {
+        String permType = def.getStartPermissionType();
+        String permValue = def.getStartPermissionValue();
+        
+        // 默认 ALL 或空值表示所有人可启动
+        if (!StringUtils.hasText(permType) || "ALL".equals(permType)) {
+            return;
+        }
+        
+        // 管理员跳过权限检查
+        if (permissionService.isAdmin(userId)) {
+            return;
+        }
+        
+        if (!StringUtils.hasText(permValue)) {
+            return; // 没有配置权限值，默认允许
+        }
+        
+        try {
+            List<String> allowedValues = objectMapper.readValue(permValue, List.class);
+            
+            switch (permType) {
+                case "USER":
+                    if (!allowedValues.contains(String.valueOf(userId))) {
+                        throw new com.cloudflow.workflow.exception.PermissionDeniedException("您没有权限启动此流程");
+                    }
+                    break;
+                case "ROLE":
+                    // 查询用户角色
+                    List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                        new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
+                    boolean hasRole = userRoles.stream()
+                        .anyMatch(ur -> allowedValues.contains(String.valueOf(ur.getRoleId())));
+                    if (!hasRole) {
+                        throw new com.cloudflow.workflow.exception.PermissionDeniedException("您的角色没有权限启动此流程");
+                    }
+                    break;
+                case "DEPT":
+                    SysUser user = sysUserMapper.selectById(userId);
+                    if (user == null || !allowedValues.contains(String.valueOf(user.getDeptId()))) {
+                        throw new com.cloudflow.workflow.exception.PermissionDeniedException("您的部门没有权限启动此流程");
+                    }
+                    break;
+                default:
+                    break;
+            }
+        } catch (com.cloudflow.workflow.exception.PermissionDeniedException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("[checkStartPermission] 解析启动权限配置失败: {}", e.getMessage());
+        }
     }
     
     private R<?> startLegacyProcess(WfProcessInstance instance, Map<String, Object> variables) {
@@ -614,7 +696,22 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 if ("REJECT".equalsIgnoreCase(action)) {
                     completeInstance(instance, WfProcessStatus.REJECTED.getCode());
                     log.info("[completeTask] 流程被拒绝, instanceId={}", instance.getInstanceId());
+                    // 5.F: 通知发起人流程被拒绝
+                    notifyInitiator(instance, task.getNodeName(), action, comment);
                     return R.ok();
+                }
+                
+                // 5.G: 变量合并逻辑 - 将审批时传入的变量与实例变量合并
+                Map<String, Object> mergedVariables = mergeVariables(instance, variables);
+                
+                // 记录变量变更到历史
+                if (variables != null && !variables.isEmpty()) {
+                    try {
+                        history.setVariablesChanged(objectMapper.writeValueAsString(variables));
+                        taskHistoryMapper.updateById(history);
+                    } catch (Exception e) {
+                        log.warn("[completeTask] 记录变量变更失败: {}", e.getMessage());
+                    }
                 }
 
                 // 查找流程定义和当前节点
@@ -631,7 +728,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
                         WfNodeConfig nextNode = findNextNode(root, task.getNodeKey());
                         
                         if (nextNode != null) {
-                            runNode(instance, nextNode, variables, 0);
+                            // 5.G: 使用合并后的变量继续流转
+                            runNode(instance, nextNode, mergedVariables, 0);
                         } else {
                             completeInstance(instance, WfProcessStatus.COMPLETED.getCode()); 
                         }
@@ -644,6 +742,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
                     log.error("[completeTask] 流程流转失败, taskId={}, error={}", taskId, e.getMessage(), e);
                     throw new WorkflowException("TASK_FLOW_FAILED", "流程流转失败: " + e.getMessage(), e);
                 }
+                
+                // 5.F: 通知发起人审批进度
+                notifyInitiator(instance, task.getNodeName(), action, comment);
 
                 return R.ok();
             } else {
@@ -773,6 +874,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
         
         // P0-2: 权限校验
         permissionService.checkRejectPermission(task);
+        
+        // 6.B: 目标节点合法性校验 - 只允许驳回到之前的审批节点
+        validateRejectTarget(task.getInstanceId(), task.getNodeKey(), targetNodeKey);
         
         // 1. Save History
         WfTaskHistory history = new WfTaskHistory();
@@ -941,20 +1045,158 @@ public class WorkflowServiceImpl implements IWorkflowService {
         return new PageResult<>(tasks, resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
     }
 
+    /**
+     * 5.G: 合并审批变量与实例变量
+     */
+    private Map<String, Object> mergeVariables(WfProcessInstance instance, Map<String, Object> newVariables) {
+        Map<String, Object> instanceVars = new HashMap<>();
+        if (StringUtils.hasText(instance.getVariables())) {
+            try {
+                instanceVars = objectMapper.readValue(instance.getVariables(), Map.class);
+            } catch (Exception e) {
+                log.warn("[mergeVariables] 反序列化实例变量失败: {}", e.getMessage());
+            }
+        }
+        
+        if (newVariables != null && !newVariables.isEmpty()) {
+            // 过滤掉内部变量（以_开头的）
+            newVariables.entrySet().stream()
+                .filter(entry -> !entry.getKey().startsWith("_"))
+                .forEach(entry -> instanceVars.put(entry.getKey(), entry.getValue()));
+            
+            // 更新实例变量
+            try {
+                instance.setVariables(objectMapper.writeValueAsString(instanceVars));
+                processInstanceMapper.updateById(instance);
+                log.info("[mergeVariables] 变量合并成功, instanceId={}, 新增/更新 {} 个变量", 
+                    instance.getInstanceId(), newVariables.size());
+            } catch (Exception e) {
+                log.warn("[mergeVariables] 更新实例变量失败: {}", e.getMessage());
+            }
+        }
+        
+        return instanceVars;
+    }
+    
+    /**
+     * 5.F: 通知发起人审批进度
+     */
+    private void notifyInitiator(WfProcessInstance instance, String nodeName, String action, String comment) {
+        try {
+            Long initiatorId = instance.getStartUserId();
+            Long currentUserId = UserContext.getUserId();
+            
+            // 不通知自己
+            if (initiatorId != null && !initiatorId.equals(currentUserId)) {
+                String actionText;
+                switch (action != null ? action.toUpperCase() : "") {
+                    case "APPROVE": actionText = "已通过"; break;
+                    case "REJECT": actionText = "已拒绝"; break;
+                    case "DELEGATE": actionText = "已转办"; break;
+                    default: actionText = "已处理"; break;
+                }
+                
+                String content = String.format("您发起的流程「%s」在节点「%s」%s", 
+                    instance.getTitle(), nodeName, actionText);
+                if (StringUtils.hasText(comment)) {
+                    content += "，意见：" + comment;
+                }
+                
+                sysNoticeService.sendNotice(
+                    initiatorId,
+                    "审批进度通知",
+                    content,
+                    "1",
+                    currentUserId,
+                    UserContext.getUserName()
+                );
+            }
+        } catch (Exception e) {
+            log.warn("[notifyInitiator] 通知发起人失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 6.B: 校验驳回目标节点合法性
+     * 只允许驳回到当前节点之前已经执行过的审批节点
+     */
+    private void validateRejectTarget(String instanceId, String currentNodeKey, String targetNodeKey) {
+        // 查询历史记录，获取当前节点之前的所有已执行节点
+        List<WfTaskHistory> histories = taskHistoryMapper.selectList(
+            new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getInstanceId, instanceId)
+                .orderByAsc(WfTaskHistory::getCreateTime)
+        );
+        
+        List<String> previousNodeKeys = new ArrayList<>();
+        for (WfTaskHistory h : histories) {
+            String nodeKey = h.getNodeKey();
+            if (nodeKey != null && nodeKey.equals(currentNodeKey)) {
+                break; // 到达当前节点，停止收集
+            }
+            if (nodeKey != null && !previousNodeKeys.contains(nodeKey)) {
+                previousNodeKeys.add(nodeKey);
+            }
+        }
+        
+        if (!previousNodeKeys.contains(targetNodeKey)) {
+            log.warn("[validateRejectTarget] 非法驳回目标: targetNodeKey={}, 允许的节点={}", 
+                targetNodeKey, previousNodeKeys);
+            throw WorkflowException.validationError(
+                "只能驳回到之前已执行过的节点，允许的目标节点: " + String.join(", ", previousNodeKeys));
+        }
+        
+        log.info("[validateRejectTarget] 驳回目标校验通过, targetNodeKey={}", targetNodeKey);
+    }
+
     @Override
     public WfProcessInstance getProcessInstance(String instanceId) {
         log.info("[getProcessInstance] 查询流程实例, instanceId={}", instanceId);
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
         if (instance == null) {
             log.warn("[getProcessInstance] 流程实例不存在, instanceId={}", instanceId);
+            return null;
         }
+        
+        // 9.A: 查看实例权限控制
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId != null && !permissionService.isAdmin(currentUserId)) {
+            // 检查是否为发起人
+            boolean isInitiator = currentUserId.equals(instance.getStartUserId());
+            // 检查是否为当前处理人
+            boolean isAssignee = false;
+            if (!isInitiator) {
+                Long count = taskMapper.selectCount(
+                    new LambdaQueryWrapper<WfTask>()
+                        .eq(WfTask::getInstanceId, instanceId)
+                        .eq(WfTask::getAssignee, currentUserId)
+                );
+                isAssignee = count != null && count > 0;
+            }
+            // 检查是否为历史参与人
+            boolean isParticipant = false;
+            if (!isInitiator && !isAssignee) {
+                Long histCount = taskHistoryMapper.selectCount(
+                    new LambdaQueryWrapper<WfTaskHistory>()
+                        .eq(WfTaskHistory::getInstanceId, instanceId)
+                        .eq(WfTaskHistory::getOperatorId, currentUserId)
+                );
+                isParticipant = histCount != null && histCount > 0;
+            }
+            
+            if (!isInitiator && !isAssignee && !isParticipant) {
+                log.warn("[getProcessInstance] 用户无权查看此实例, userId={}, instanceId={}", currentUserId, instanceId);
+                throw new com.cloudflow.workflow.exception.PermissionDeniedException("您没有权限查看此流程实例");
+            }
+        }
+        
         return instance;
     }
 
     @Override
     public Map<String, Object> getProcessTrace(String instanceId) {
         log.info("[getProcessTrace] 查询流程轨迹, instanceId={}", instanceId);
-        // Finished nodes from history
+        // 10.A: 返回完整的历史记录（包含处理人、时间、意见等详细信息）
         LambdaQueryWrapper<WfTaskHistory> historyWrapper = new LambdaQueryWrapper<>();
         historyWrapper.eq(WfTaskHistory::getInstanceId, instanceId);
         historyWrapper.orderByAsc(WfTaskHistory::getCreateTime);
@@ -964,7 +1206,23 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .map(WfTaskHistory::getNodeKey)
                 .filter(StringUtils::hasText)
                 .distinct()
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
+        
+        // 10.A: 构建详细的历史记录列表
+        List<Map<String, Object>> historyDetails = new ArrayList<>();
+        for (WfTaskHistory h : histories) {
+            Map<String, Object> detail = new HashMap<>();
+            detail.put("historyId", h.getHistoryId());
+            detail.put("taskId", h.getTaskId());
+            detail.put("nodeKey", h.getNodeKey());
+            detail.put("nodeName", h.getNodeName());
+            detail.put("operatorId", h.getOperatorId());
+            detail.put("operatorName", h.getOperatorName());
+            detail.put("action", h.getAction());
+            detail.put("comment", h.getComment());
+            detail.put("createTime", h.getCreateTime());
+            historyDetails.add(detail);
+        }
 
         // Active nodes from tasks
         LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
@@ -975,12 +1233,35 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .map(WfTask::getNodeKey)
                 .filter(StringUtils::hasText)
                 .distinct()
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
+        
+        // 10.A: 构建活动任务详情
+        List<Map<String, Object>> activeDetails = new ArrayList<>();
+        for (WfTask t : tasks) {
+            Map<String, Object> detail = new HashMap<>();
+            detail.put("taskId", t.getTaskId());
+            detail.put("nodeKey", t.getNodeKey());
+            detail.put("nodeName", t.getNodeName());
+            detail.put("assignee", t.getAssignee());
+            detail.put("status", t.getStatus());
+            detail.put("createTime", t.getCreateTime());
+            // 查询处理人名称
+            if (t.getAssignee() != null) {
+                SysUser assigneeUser = sysUserMapper.selectById(t.getAssignee());
+                if (assigneeUser != null) {
+                    detail.put("assigneeName", assigneeUser.getNickName() != null ? assigneeUser.getNickName() : assigneeUser.getUserName());
+                }
+            }
+            activeDetails.add(detail);
+        }
 
-        Map<String, Object> result = new java.util.HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("finished", finished);
         result.put("active", active);
-        log.info("[getProcessTrace] 查询完成, finished={}, active={}", finished.size(), active.size());
+        result.put("historyDetails", historyDetails);  // 10.A: 完整历史记录
+        result.put("activeDetails", activeDetails);      // 10.A: 活动任务详情
+        log.info("[getProcessTrace] 查询完成, finished={}, active={}, historyDetails={}", 
+            finished.size(), active.size(), historyDetails.size());
         return result;
     }
 

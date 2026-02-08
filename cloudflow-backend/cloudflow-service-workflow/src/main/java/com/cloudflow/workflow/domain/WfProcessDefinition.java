@@ -36,6 +36,12 @@ public class WfProcessDefinition implements Serializable {
 
     /** 创建时间 */
     private Date createTime;
+    
+    /** 启动权限类型 (ALL/ROLE/DEPT/USER) */
+    private String startPermissionType;
+    
+    /** 启动权限值 (JSON格式) */
+    private String startPermissionValue;
 
     public String getDefinitionId() {
         return definitionId;
@@ -99,5 +105,21 @@ public class WfProcessDefinition implements Serializable {
 
     public void setCreateTime(Date createTime) {
         this.createTime = createTime;
+    }
+
+    public String getStartPermissionType() {
+        return startPermissionType;
+    }
+
+    public void setStartPermissionType(String startPermissionType) {
+        this.startPermissionType = startPermissionType;
+    }
+
+    public String getStartPermissionValue() {
+        return startPermissionValue;
+    }
+
+    public void setStartPermissionValue(String startPermissionValue) {
+        this.startPermissionValue = startPermissionValue;
     }
 }
