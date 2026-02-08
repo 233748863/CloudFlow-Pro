@@ -32,3 +32,8 @@ target/
 
 # Trae
 .trae/
+
+# Environment variables
+.env
+.env.local
+.env.*.local

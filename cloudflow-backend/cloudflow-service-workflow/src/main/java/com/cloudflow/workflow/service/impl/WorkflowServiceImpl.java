@@ -58,9 +58,19 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.cloudflow.workflow.service.RateLimiterService;
 import com.cloudflow.workflow.service.WorkflowAuditService;
+import com.cloudflow.workflow.service.IReplayAttackPreventionService;
+import com.cloudflow.workflow.service.IWorkflowSagaService;
+import com.cloudflow.workflow.service.IWorkflowHealthCheckService;
+import com.cloudflow.workflow.service.ICountersignService;
+import com.cloudflow.workflow.validator.JsonSchemaValidator;
+import com.cloudflow.workflow.security.WorkflowSecurityUtils;
+import com.cloudflow.workflow.domain.WfProcessSnapshot;
+import com.cloudflow.workflow.mapper.WfProcessSnapshotMapper;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.retry.annotation.Backoff;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,6 +134,34 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private WorkflowAuditService auditService;
 
+    /** P3: JSON Schema 验证器 */
+    @Autowired
+    private JsonSchemaValidator jsonSchemaValidator;
+
+    /** P3: 安全工具类 */
+    @Autowired
+    private WorkflowSecurityUtils securityUtils;
+
+    /** S.4: 防重放攻击服务 */
+    @Autowired
+    private IReplayAttackPreventionService replayAttackPrevention;
+
+    /** G.2: Saga 补偿服务 */
+    @Autowired
+    private IWorkflowSagaService sagaService;
+
+    /** R.5: 健康检查服务 */
+    @Autowired
+    private IWorkflowHealthCheckService healthCheckService;
+
+    /** 9.C: 流程实例快照 Mapper */
+    @Autowired
+    private WfProcessSnapshotMapper snapshotMapper;
+
+    /** 5.I: 会签服务 */
+    @Autowired
+    private ICountersignService countersignService;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -142,6 +180,14 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.validationError("流程名称不能为空");
         }
         
+        // S.6: XSS 防护 - 清理用户输入
+        definition.setProcessName(securityUtils.sanitizeXss(definition.getProcessName()));
+        
+        // 1.A: 流程定义 JSON 结构校验
+        if (StringUtils.hasText(definition.getModelJson())) {
+            jsonSchemaValidator.validateProcessDefinitionJson(definition.getModelJson());
+        }
+        
         // P0-2: 权限校验 - 仅管理员可操作流程定义
         permissionService.checkDefinitionPermission("保存");
         
@@ -153,13 +199,25 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .last("LIMIT 1")
         );
 
+        // 1.B: 并发编辑冲突检测（乐观锁）
+        if (lastDef != null && definition.getVersionLock() != null) {
+            if (!definition.getVersionLock().equals(lastDef.getVersionLock())) {
+                throw WorkflowException.invalidState("流程定义已被其他用户修改，请刷新后重试");
+            }
+        }
+
         int version = 1;
         if (lastDef != null) {
             version = lastDef.getVersion() + 1;
+            // 12.A: 将旧版本标记为非最新
+            lastDef.setIsLatest(0);
+            processDefinitionMapper.updateById(lastDef);
         }
 
         definition.setDefinitionId(UUID.randomUUID().toString());
         definition.setVersion(version);
+        definition.setVersionLock(0); // 1.B: 初始化乐观锁版本号
+        definition.setIsLatest(1); // 12.A: 标记为最新版本
         definition.setStatus("DRAFT"); // 默认为草稿状态
         definition.setCreateTime(new Date());
         
@@ -189,11 +247,19 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.invalidState("流程定义已发布，无需重复发布");
         }
         
+        // 2.C: 发布前完整性检查 - 验证流程定义 JSON 结构
+        if (StringUtils.hasText(def.getModelJson())) {
+            jsonSchemaValidator.validateProcessDefinitionJson(def.getModelJson());
+        } else {
+            throw WorkflowException.validationError("流程定义模型为空，无法发布");
+        }
+        
         // Update status to PUBLISHED
         def.setStatus("PUBLISHED");
+        def.setVersionLock(def.getVersionLock() != null ? def.getVersionLock() + 1 : 1); // 1.B: 更新乐观锁
         processDefinitionMapper.updateById(def);
         
-        // 将同 processKey 的旧版本归档
+        // 2.A: 旧版本处理策略 - 将同 processKey 的旧版本归档
         processDefinitionMapper.update(null,
             new LambdaQueryWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getProcessKey, def.getProcessKey())
@@ -205,6 +271,51 @@ public class WorkflowServiceImpl implements IWorkflowService {
         log.info("[deployProcessDefinition] 流程定义发布成功, definitionId={}, processKey={}", definitionId, def.getProcessKey());
         auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DEPLOY, definitionId, 
             "processKey=" + def.getProcessKey());
+        return R.ok();
+    }
+    
+    /**
+     * 1.F: 流程定义删除保护
+     * 检查流程定义是否被引用，已使用的流程不能删除
+     */
+    public R<?> deleteProcessDefinition(String definitionId) {
+        log.info("[deleteProcessDefinition] 开始删除流程定义, definitionId={}", definitionId);
+        
+        permissionService.checkDefinitionPermission("删除");
+        
+        WfProcessDefinition def = processDefinitionMapper.selectById(definitionId);
+        if (def == null) {
+            throw WorkflowException.processNotFound(definitionId);
+        }
+        
+        // 1.F: 检查是否有运行中的实例引用此流程定义
+        Long runningCount = processInstanceMapper.selectCount(
+            new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey())
+                .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode())
+        );
+        
+        if (runningCount != null && runningCount > 0) {
+            throw WorkflowException.invalidState("该流程定义有 " + runningCount + " 个运行中的实例，无法删除");
+        }
+        
+        // 检查是否有历史实例
+        Long totalCount = processInstanceMapper.selectCount(
+            new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey())
+        );
+        
+        if (totalCount != null && totalCount > 0) {
+            // 有历史实例，只能归档不能删除
+            def.setStatus("ARCHIVED");
+            processDefinitionMapper.updateById(def);
+            log.info("[deleteProcessDefinition] 流程定义已归档（有历史实例）, definitionId={}", definitionId);
+            return R.ok("流程定义已归档（存在历史实例，无法物理删除）");
+        }
+        
+        processDefinitionMapper.deleteById(definitionId);
+        log.info("[deleteProcessDefinition] 流程定义已删除, definitionId={}", definitionId);
+        auditService.log(WorkflowAuditService.AuditAction.DEFINITION_CREATE, definitionId, "DELETE");
         return R.ok();
     }
 
@@ -222,17 +333,34 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.validationError("表单名称不能为空");
         }
         
+        // S.6: XSS 防护
+        definition.setFormName(securityUtils.sanitizeXss(definition.getFormName()));
+        
+        // 3.A/3.B: 表单 Schema 验证和字段 ID 唯一性检查
+        if (StringUtils.hasText(definition.getFormSchema())) {
+            jsonSchemaValidator.validateFormSchema(definition.getFormSchema());
+        }
+        
         if (!StringUtils.hasText(definition.getFormId())) {
             definition.setFormId(UUID.randomUUID().toString());
         }
         
         WfFormDefinition exist = formDefinitionMapper.selectById(definition.getFormId());
         if (exist != null) {
+            // 3.E: 并发编辑冲突检测（乐观锁）
+            if (definition.getVersionLock() != null && !definition.getVersionLock().equals(exist.getVersionLock())) {
+                throw WorkflowException.invalidState("表单定义已被其他用户修改，请刷新后重试");
+            }
+            
             definition.setVersion(exist.getVersion() + 1);
+            definition.setVersionLock(exist.getVersionLock() != null ? exist.getVersionLock() + 1 : 1);
+            definition.setIsLatest(1); // 14.C: 标记为最新版本
             formDefinitionMapper.updateById(definition);
             log.info("[saveFormDefinition] 表单定义更新成功, formId={}, version={}", definition.getFormId(), definition.getVersion());
         } else {
             definition.setVersion(1);
+            definition.setVersionLock(0);
+            definition.setIsLatest(1); // 14.C: 标记为最新版本
             definition.setCreateTime(new Date());
             formDefinitionMapper.insert(definition);
             log.info("[saveFormDefinition] 表单定义创建成功, formId={}", definition.getFormId());
@@ -258,6 +386,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
         // P0-5: 限流检查
         rateLimiterService.checkStartProcessLimit(userId != null ? userId : 0L);
         
+        // S.4: 防重放攻击
+        String nonce = (String) variables.get("_nonce");
+        if (StringUtils.hasText(nonce) && !replayAttackPrevention.checkAndRegisterNonce(nonce)) {
+            throw WorkflowException.validationError("检测到重复提交，请勿重复操作");
+        }
+        
+        // S.6: XSS 过滤用户输入变量
+        variables = securityUtils.sanitizeMapXss(variables);
+        
         // 4.F: 流程实例去重（幂等Key防重）
         String idempotentKey = (String) variables.get("_idempotentKey");
         if (StringUtils.hasText(idempotentKey)) {
@@ -280,16 +417,29 @@ public class WorkflowServiceImpl implements IWorkflowService {
             log.warn("[startProcess] 变量序列化检查失败: {}", e.getMessage());
         }
         
-        // 1. 查询流程定义
+        // 1. 查询流程定义（优先查已发布的最新版本）
         WfProcessDefinition def = processDefinitionMapper.selectOne(
             new LambdaQueryWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getProcessKey, processDefKey)
+                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
                 .orderByDesc(WfProcessDefinition::getVersion)
                 .last("LIMIT 1")
         );
 
         if (def == null) {
             throw WorkflowException.processNotFound(processDefKey);
+        }
+        
+        // 4.D: businessKey 唯一性约束检查
+        if (StringUtils.hasText(businessKey)) {
+            Long existCount = processInstanceMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessInstance>()
+                    .eq(WfProcessInstance::getProcessDefKey, processDefKey)
+                    .eq(WfProcessInstance::getBusinessKey, businessKey)
+            );
+            if (existCount != null && existCount > 0) {
+                throw WorkflowException.validationError("该业务已存在流程实例，不能重复启动");
+            }
         }
         
         // 4.C: 启动权限校验（按角色/部门限制）
@@ -299,6 +449,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         WfProcessInstance instance = new WfProcessInstance();
         instance.setInstanceId(UUID.randomUUID().toString());
         instance.setProcessDefKey(processDefKey);
+        instance.setDefinitionId(def.getDefinitionId()); // 4.I: 流程定义版本锁定
         instance.setBusinessKey(businessKey);
         instance.setTitle((String) variables.getOrDefault("title", def.getProcessName()));
         
@@ -331,10 +482,12 @@ public class WorkflowServiceImpl implements IWorkflowService {
             runNode(instance, nextNode, variables, 0, rootNode);
             
         } catch (WorkflowException e) {
-            // P0-3: 事务一致性 - WorkflowException 会触发事务回滚
+            // G.2: Saga 补偿 - 流程启动失败时回滚
+            sagaService.compensate(instance.getInstanceId(), e.getMessage());
             throw e;
         } catch (Exception e) {
-            // P0-3: 事务一致性 - 将异常包装为 RuntimeException 触发回滚
+            // G.2: Saga 补偿
+            sagaService.compensate(instance.getInstanceId(), e.getMessage());
             log.error("[startProcess] 启动流程失败, instanceId={}, error={}", instance.getInstanceId(), e.getMessage(), e);
             throw new WorkflowException("PROCESS_START_FAILED", "启动流程失败: " + e.getMessage(), e);
         }
@@ -486,7 +639,46 @@ public class WorkflowServiceImpl implements IWorkflowService {
         }
 
         if ("APPROVAL".equals(node.getType())) {
-            // 创建用户任务
+            // 5.I: 检查是否为会签节点
+            String signType = node.getSignType(); // ALL / ANY / PERCENT
+            if (signType != null && !signType.isEmpty()) {
+                // 会签模式：为多个审批人创建会签任务
+                List<Long> assigneeIds = resolveMultipleAssignees(node, instance);
+                if (assigneeIds == null || assigneeIds.isEmpty()) {
+                    // 回退到单人审批
+                    assigneeIds = new ArrayList<>();
+                    Long singleAssignee = resolveAssignee(node, instance);
+                    assigneeIds.add(singleAssignee != null ? singleAssignee : 1L);
+                }
+                
+                Integer passPercent = node.getPassPercent();
+                countersignService.createCountersignTask(
+                    instance.getInstanceId(),
+                    node.getId(),
+                    node.getTitle(),
+                    signType,
+                    passPercent,
+                    assigneeIds
+                );
+                
+                // 为每个参与人发送通知
+                for (Long assigneeId : assigneeIds) {
+                    sysNoticeService.sendNotice(
+                        assigneeId,
+                        "会签任务通知",
+                        "您有一个新的会签任务: " + node.getTitle() + " (流程: " + instance.getTitle() + ")",
+                        "1",
+                        UserContext.getUserId(),
+                        UserContext.getUserName()
+                    );
+                }
+                
+                log.info("[runNode] 会签任务已创建, nodeKey={}, signType={}, assignees={}", 
+                    node.getId(), signType, assigneeIds.size());
+                return;
+            }
+            
+            // 普通审批模式：创建单个用户任务
             WfTask task = new WfTask();
             task.setTaskId(UUID.randomUUID().toString());
             task.setInstanceId(instance.getInstanceId());
@@ -521,9 +713,6 @@ public class WorkflowServiceImpl implements IWorkflowService {
             if (node.getSlaHours() != null && node.getSlaHours() > 0) {
                 long expireTime = System.currentTimeMillis() + node.getSlaHours() * 3600 * 1000L;
                 redisCache.setCacheZSet("sys:task:timeouts", task.getTaskId(), (double) expireTime);
-                
-                // 如果需要，存储动作，目前我们假设为 AUTO_PASS 或稍后查找
-                // redisCache.setCacheObject("sys:task:sla_action:" + task.getTaskId(), node.getSlaAction());
             }
             
             // 停止在此处，等待用户操作
@@ -619,6 +808,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
             return true; // No condition means always true (or default path)
         }
         try {
+            // 4.N: 条件表达式安全性验证
+            securityUtils.validateSpelExpression(condition);
+            
             // Use SimpleEvaluationContext to prevent SpEL injection attacks
             SimpleEvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
             
@@ -671,6 +863,16 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 // P0-2: 使用权限服务校验
                 permissionService.checkTaskPermission(task);
 
+                // S.6: XSS 过滤审批意见
+                if (StringUtils.hasText(comment)) {
+                    comment = securityUtils.sanitizeXss(comment);
+                }
+                
+                // 5.I: 会签任务处理
+                if (countersignService.isCountersignTask(task)) {
+                    return handleCountersignVote(task, taskId, action, comment, variables);
+                }
+                
                 // 2. 保存历史记录
                 WfTaskHistory history = new WfTaskHistory();
                 history.setHistoryId(UUID.randomUUID().toString());
@@ -683,14 +885,27 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 history.setComment(comment);
                 history.setAction(action);
                 history.setCreateTime(new Date());
+                
+                // 5.H: 计算审批耗时
+                if (task.getCreateTime() != null) {
+                    long durationSeconds = (System.currentTimeMillis() - task.getCreateTime().getTime()) / 1000;
+                    history.setDurationSeconds((int) durationSeconds);
+                }
+                
                 taskHistoryMapper.insert(history);
 
                 // 3. 删除当前任务
                 taskMapper.deleteById(taskId);
                 log.info("[completeTask] 任务已完成, taskId={}, action={}", taskId, action);
+                
+                // 15.D: 清理已读数据
+                cleanupTaskReadData(taskId);
 
                 // 4. 流程流转
                 WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+                
+                // 9.C: 保存实例快照
+                saveProcessSnapshot(instance, task.getNodeKey(), task.getNodeName());
                 
                 if ("REJECT".equalsIgnoreCase(action)) {
                     completeInstance(instance, WfProcessStatus.REJECTED.getCode());
@@ -1183,6 +1398,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
     }
 
     @Override
+    @Retryable(value = Exception.class, maxAttempts = 3, backoff = @Backoff(delay = 500))
     public WfProcessInstance getProcessInstance(String instanceId) {
         log.info("[getProcessInstance] 查询流程实例, instanceId={}", instanceId);
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
@@ -1217,11 +1433,28 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 isParticipant = histCount != null && histCount > 0;
             }
             
-            if (!isInitiator && !isAssignee && !isParticipant) {
+        if (!isInitiator && !isAssignee && !isParticipant) {
                 log.warn("[getProcessInstance] 用户无权查看此实例, userId={}, instanceId={}", currentUserId, instanceId);
                 throw new com.cloudflow.workflow.exception.PermissionDeniedException("您没有权限查看此流程实例");
             }
         }
+        
+        // 9.B/S.2: 敏感信息脱敏
+        if (StringUtils.hasText(instance.getVariables())) {
+            try {
+                Map<String, Object> vars = objectMapper.readValue(instance.getVariables(), Map.class);
+                vars = securityUtils.maskSensitiveData(vars);
+                instance.setVariables(objectMapper.writeValueAsString(vars));
+            } catch (Exception e) {
+                log.warn("[getProcessInstance] 变量脱敏失败: {}", e.getMessage());
+            }
+        }
+        
+        // 9.D: 返回数据完整性 - 增加关联信息
+        enrichInstanceData(instance);
+        
+        // 11.C: 当前节点信息
+        enrichCurrentNodeInfo(instance);
         
         return instance;
     }
@@ -1431,5 +1664,253 @@ public class WorkflowServiceImpl implements IWorkflowService {
         
         log.info("[urgeTask] 催办成功, taskId={}, recipientId={}", taskId, task.getAssignee());
         return R.ok();
+    }
+    
+    /**
+     * 5.I: 处理会签投票
+     * 使用分布式锁保证并发安全
+     */
+    private R<?> handleCountersignVote(WfTask task, String taskId, String action, String comment, Map<String, Object> variables) {
+        Long currentUserId = UserContext.getUserId();
+        String userName = UserContext.getUserName();
+        
+        // 将 action 转换为投票结果
+        String voteResult;
+        if ("APPROVE".equalsIgnoreCase(action)) {
+            voteResult = "APPROVE";
+        } else if ("REJECT".equalsIgnoreCase(action)) {
+            voteResult = "REJECT";
+        } else {
+            voteResult = "APPROVE"; // 默认同意
+        }
+        
+        // 执行投票（内部使用分布式锁保证并发安全）
+        String countersignResult = countersignService.vote(taskId, currentUserId, userName, voteResult, comment);
+        
+        // 保存历史记录
+        WfTaskHistory history = new WfTaskHistory();
+        history.setHistoryId(UUID.randomUUID().toString());
+        history.setTaskId(taskId);
+        history.setInstanceId(task.getInstanceId());
+        history.setNodeName(task.getNodeName());
+        history.setNodeKey(task.getNodeKey());
+        history.setOperatorId(currentUserId);
+        history.setOperatorName(userName);
+        history.setComment(comment);
+        history.setAction("COUNTERSIGN_" + voteResult);
+        history.setCreateTime(new Date());
+        
+        // 5.H: 计算审批耗时
+        if (task.getCreateTime() != null) {
+            long durationSeconds = (System.currentTimeMillis() - task.getCreateTime().getTime()) / 1000;
+            history.setDurationSeconds((int) durationSeconds);
+        }
+        taskHistoryMapper.insert(history);
+        
+        log.info("[handleCountersignVote] 会签投票完成, taskId={}, voteResult={}, countersignResult={}", 
+            taskId, voteResult, countersignResult);
+        
+        // 如果会签已结束，继续流程流转
+        if ("PASSED".equals(countersignResult) || "REJECTED".equals(countersignResult)) {
+            WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+            
+            // 9.C: 保存实例快照
+            saveProcessSnapshot(instance, task.getNodeKey(), task.getNodeName());
+            
+            if ("REJECTED".equals(countersignResult)) {
+                completeInstance(instance, WfProcessStatus.REJECTED.getCode());
+                log.info("[handleCountersignVote] 会签被拒绝, instanceId={}", instance.getInstanceId());
+                notifyInitiator(instance, task.getNodeName(), "REJECT", "会签未通过");
+            } else {
+                // 会签通过，继续流转到下一个节点
+                Map<String, Object> mergedVariables = mergeVariables(instance, variables);
+                
+                WfProcessDefinition def = processDefinitionMapper.selectOne(
+                    new LambdaQueryWrapper<WfProcessDefinition>()
+                        .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                        .orderByDesc(WfProcessDefinition::getVersion)
+                        .last("LIMIT 1")
+                );
+                
+                try {
+                    if (def != null && StringUtils.hasText(def.getModelJson())) {
+                        WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                        WfNodeConfig nextNode = findNextNode(root, task.getNodeKey());
+                        
+                        if (nextNode != null) {
+                            runNode(instance, nextNode, mergedVariables, 0, root);
+                        } else {
+                            completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+                        }
+                    } else {
+                        completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+                    }
+                } catch (Exception e) {
+                    log.error("[handleCountersignVote] 流程流转失败: {}", e.getMessage(), e);
+                    throw new WorkflowException("COUNTERSIGN_FLOW_FAILED", "会签后流程流转失败: " + e.getMessage(), e);
+                }
+                
+                notifyInitiator(instance, task.getNodeName(), "APPROVE", "会签已通过");
+            }
+            
+            auditService.log(WorkflowAuditService.AuditAction.TASK_COMPLETE, taskId,
+                "countersign_" + countersignResult + ", nodeName=" + task.getNodeName());
+        }
+        
+        return R.ok(countersignResult);
+    }
+    
+    /**
+     * 5.I: 解析多个审批人（用于会签场景）
+     * 支持 ROLE 类型返回该角色下的所有用户
+     */
+    private List<Long> resolveMultipleAssignees(WfNodeConfig node, WfProcessInstance instance) {
+        String type = node.getApproverType();
+        String value = node.getApproverValue();
+        List<Long> assigneeIds = new ArrayList<>();
+        
+        if ("USERS".equals(type) || "USER_LIST".equals(type)) {
+            // 直接指定多个用户ID，逗号分隔
+            if (StringUtils.hasText(value)) {
+                String[] ids = value.split(",");
+                for (String id : ids) {
+                    try {
+                        assigneeIds.add(Long.valueOf(id.trim()));
+                    } catch (NumberFormatException e) {
+                        log.warn("[resolveMultipleAssignees] 无效的用户ID: {}", id);
+                    }
+                }
+            }
+        } else if ("ROLE".equals(type)) {
+            // 查找该角色下的所有用户
+            SysRole role = sysRoleMapper.selectOne(
+                new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, value));
+            if (role != null) {
+                List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                    new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
+                if (userRoles != null) {
+                    for (SysUserRole ur : userRoles) {
+                        assigneeIds.add(ur.getUserId());
+                    }
+                }
+            }
+        } else if ("DEPT".equals(type)) {
+            // 查找该部门下的所有用户
+            if (StringUtils.hasText(value)) {
+                List<SysUser> deptUsers = sysUserMapper.selectList(
+                    new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeptId, Long.valueOf(value)));
+                if (deptUsers != null) {
+                    for (SysUser u : deptUsers) {
+                        assigneeIds.add(u.getUserId());
+                    }
+                }
+            }
+        }
+        
+        return assigneeIds;
+    }
+
+    /**
+     * 9.C: 保存流程实例快照
+     */
+    private void saveProcessSnapshot(WfProcessInstance instance, String nodeKey, String nodeName) {
+        try {
+            WfProcessSnapshot snapshot = new WfProcessSnapshot();
+            snapshot.setSnapshotId(UUID.randomUUID().toString());
+            snapshot.setInstanceId(instance.getInstanceId());
+            snapshot.setNodeKey(nodeKey);
+            snapshot.setNodeName(nodeName);
+            snapshot.setStatus(instance.getStatus());
+            snapshot.setVariables(instance.getVariables());
+            
+            // 获取当前活动任务
+            List<WfTask> activeTasks = taskMapper.selectList(
+                new LambdaQueryWrapper<WfTask>().eq(WfTask::getInstanceId, instance.getInstanceId())
+            );
+            snapshot.setActiveTasks(objectMapper.writeValueAsString(activeTasks));
+            snapshot.setCreateTime(new Date());
+            
+            snapshotMapper.insert(snapshot);
+            log.debug("[saveProcessSnapshot] 快照保存成功, instanceId={}, nodeKey={}", instance.getInstanceId(), nodeKey);
+        } catch (Exception e) {
+            log.warn("[saveProcessSnapshot] 快照保存失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 15.D: 清理已读数据
+     */
+    private void cleanupTaskReadData(String taskId) {
+        try {
+            taskReadMapper.delete(
+                new LambdaQueryWrapper<com.cloudflow.workflow.domain.WfTaskRead>()
+                    .eq(com.cloudflow.workflow.domain.WfTaskRead::getTaskId, taskId)
+            );
+            log.debug("[cleanupTaskReadData] 已读数据清理成功, taskId={}", taskId);
+        } catch (Exception e) {
+            log.warn("[cleanupTaskReadData] 已读数据清理失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 9.D: 返回数据完整性 - 增加关联信息
+     */
+    private void enrichInstanceData(WfProcessInstance instance) {
+        try {
+            // 查询流程定义信息
+            WfProcessDefinition def = processDefinitionMapper.selectOne(
+                new LambdaQueryWrapper<WfProcessDefinition>()
+                    .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                    .orderByDesc(WfProcessDefinition::getVersion)
+                    .last("LIMIT 1")
+            );
+            if (def != null) {
+                instance.setFormId(def.getFormId());
+            }
+        } catch (Exception e) {
+            log.warn("[enrichInstanceData] 数据增强失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 11.C: 当前节点信息
+     */
+    private void enrichCurrentNodeInfo(WfProcessInstance instance) {
+        try {
+            // 查询当前活动任务
+            List<WfTask> activeTasks = taskMapper.selectList(
+                new LambdaQueryWrapper<WfTask>()
+                    .eq(WfTask::getInstanceId, instance.getInstanceId())
+                    .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            );
+            
+            if (activeTasks != null && !activeTasks.isEmpty()) {
+                // 将当前节点信息添加到实例的扩展字段中
+                List<Map<String, Object>> currentNodes = new ArrayList<>();
+                for (WfTask task : activeTasks) {
+                    Map<String, Object> nodeInfo = new HashMap<>();
+                    nodeInfo.put("nodeKey", task.getNodeKey());
+                    nodeInfo.put("nodeName", task.getNodeName());
+                    nodeInfo.put("assignee", task.getAssignee());
+                    nodeInfo.put("createTime", task.getCreateTime());
+                    
+                    // 查询处理人名称
+                    if (task.getAssignee() != null) {
+                        SysUser assigneeUser = sysUserMapper.selectById(task.getAssignee());
+                        if (assigneeUser != null) {
+                            nodeInfo.put("assigneeName", assigneeUser.getNickName() != null ? 
+                                assigneeUser.getNickName() : assigneeUser.getUserName());
+                        }
+                    }
+                    currentNodes.add(nodeInfo);
+                }
+                
+                // 将当前节点信息序列化后存储（或通过其他方式返回）
+                // 这里简化处理，实际可以添加到实例的扩展字段中
+                log.debug("[enrichCurrentNodeInfo] 当前节点信息: {}", currentNodes);
+            }
+        } catch (Exception e) {
+            log.warn("[enrichCurrentNodeInfo] 当前节点信息获取失败: {}", e.getMessage());
+        }
     }
 }

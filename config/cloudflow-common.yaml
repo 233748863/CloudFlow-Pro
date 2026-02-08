@@ -1,0 +1,81 @@
+# ============================================================
+# CloudFlow Pro - Nacos 共享配置
+# ============================================================
+# 此配置文件应上传到 Nacos 配置中心
+# Data ID: cloudflow-common.yaml
+# Group: DEFAULT_GROUP
+# ============================================================
+# 使用说明：
+# 1. 登录 Nacos 控制台 (http://localhost:8848/nacos)
+# 2. 进入"配置管理" -> "配置列表"
+# 3. 点击"+"创建配置
+# 4. Data ID: cloudflow-common.yaml
+# 5. Group: DEFAULT_GROUP
+# 6. 配置格式: YAML
+# 7. 将下面的内容复制粘贴到配置内容中
+# 8. 根据实际环境修改敏感信息（数据库密码、Redis密码等）
+# ============================================================
+
+# 数据库配置（生产环境）
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://your-prod-mysql-host:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: cloudflow_prod_user
+    password: YOUR_SECURE_DATABASE_PASSWORD_HERE  # ⚠️ 请修改为实际密码
+    hikari:
+      pool-name: CloudFlowHikariCP
+      minimum-idle: 10
+      maximum-pool-size: 50
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+      auto-commit: true
+      leak-detection-threshold: 60000
+
+  # Redis 配置（生产环境）
+  data:
+    redis:
+      host: your-prod-redis-host
+      port: 6379
+      password: YOUR_SECURE_REDIS_PASSWORD_HERE  # ⚠️ 请修改为实际密码
+      database: 0
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 10
+          max-wait: 3000
+        shutdown-timeout: 100
+
+# MyBatis Plus 配置
+mybatis-plus:
+  configuration:
+    # 生产环境关闭 SQL 日志输出
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.cloudflow: INFO
+    com.cloudflow.workflow.mapper: WARN
+    com.cloudflow.oa.mapper: WARN
+
+# JWT 配置（如果使用）
+jwt:
+  secret: YOUR_JWT_SECRET_KEY_HERE  # ⚠️ 请修改为实际密钥（至少32位）
+  expiration: 86400  # 24小时
+
+# 文件上传配置
+file:
+  upload:
+    path: /data/cloudflow/uploads
+    max-size: 10485760  # 10MB
+
+# ============================================================
+# 开发环境配置示例（可选）
+# 如需为开发环境创建单独配置，可创建 cloudflow-common-dev.yaml
+# ============================================================

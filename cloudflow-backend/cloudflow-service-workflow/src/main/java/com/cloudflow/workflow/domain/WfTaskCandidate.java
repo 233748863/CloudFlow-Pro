@@ -1,0 +1,26 @@
+package com.cloudflow.workflow.domain;
+
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+import java.util.Date;
+
+/**
+ * P4.6: 候选人记录
+ */
+@Data
+@TableName("wf_task_candidate")
+public class WfTaskCandidate {
+    @TableId
+    private String candidateId;
+    private String taskId;
+    private String instanceId;
+    private Long userId;
+    private String userName;
+    /** 候选类型: USER, ROLE, DEPT */
+    private String candidateType;
+    /** 状态: PENDING, CLAIMED, CANCELLED */
+    private String status;
+    private Date createTime;
+    private Date claimTime;
+}

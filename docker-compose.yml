@@ -1,76 +1,327 @@
 version: '3.8'
 
 services:
-  # Infrastructure
+  # ============================================================
+  # 基础设施层 (Infrastructure Layer)
+  # ============================================================
+  
+  # MySQL 数据库
   mysql:
     image: mysql:8.0
+    container_name: cloudflow-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: cloudflow
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
+      MYSQL_DATABASE: cloud_flow_db
+      TZ: Asia/Shanghai
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./cloudflow-backend/DB/cloudflow_pro_init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-cloudflow_2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cloudflow-network
 
+  # Redis 缓存
   redis:
-    image: redis:6.2
+    image: redis:7.2-alpine
+    container_name: cloudflow-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-cloudflow_redis_2026} --appendonly yes
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cloudflow-network
 
-  # Backend Services
-  gateway:
+  # ============================================================
+  # 配置中心 & 服务注册中心 (Nacos)
+  # ============================================================
+  
+  nacos:
     build:
-      context: .
-      dockerfile: docker/gateway/Dockerfile
+      context: ./docker/nacos
+      dockerfile: Dockerfile
+    container_name: cloudflow-nacos
+    environment:
+      MODE: standalone
+      PREFER_HOST_MODE: hostname
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql
+      MYSQL_SERVICE_PORT: 3306
+      MYSQL_SERVICE_DB_NAME: cloud_flow_db
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
+      NACOS_AUTH_ENABLE: true
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:-SecretKey012345678901234567890123456789012345678901234567890123456789}
+      NACOS_AUTH_IDENTITY_KEY: nacos
+      NACOS_AUTH_IDENTITY_VALUE: nacos
+      JVM_XMS: 512m
+      JVM_XMX: 512m
+      JVM_XMN: 256m
     ports:
-      - "8080:8080"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512M
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+    volumes:
+      - nacos_logs:/home/nacos/logs
+      - nacos_data:/home/nacos/data
     depends_on:
-      - mysql
-      - redis
-
-  auth:
-    build:
-      context: .
-      dockerfile: docker/auth/Dockerfile
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512M
-    depends_on:
-      - mysql
-      - redis
-
-  workflow:
-    build:
-      context: .
-      dockerfile: docker/workflow/Dockerfile
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - cloudflow-network
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 1G
-    depends_on:
-      - mysql
-      - redis
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
-  # Frontend
+  # ============================================================
+  # 微服务层 (Microservices Layer)
+  # ============================================================
+  
+  # API 网关
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway/Dockerfile
+    container_name: cloudflow-gateway
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      NACOS_SERVER: nacos:8848
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
+    ports:
+      - "9000:9000"
+    depends_on:
+      nacos:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # 认证服务
+  auth:
+    build:
+      context: .
+      dockerfile: docker/auth/Dockerfile
+    container_name: cloudflow-auth
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      NACOS_SERVER: nacos:8848
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # 工作流服务
+  workflow:
+    build:
+      context: .
+      dockerfile: docker/workflow/Dockerfile
+    container_name: cloudflow-workflow
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      NACOS_SERVER: nacos:8848
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # OA 服务
+  oa:
+    build:
+      context: .
+      dockerfile: docker/oa/Dockerfile
+    container_name: cloudflow-oa
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      NACOS_SERVER: nacos:8848
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9003/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
+  # ============================================================
+  # 前端层 (Frontend Layer)
+  # ============================================================
+  
   frontend:
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
+    container_name: cloudflow-frontend
     ports:
       - "80:80"
+      - "443:443"
+    depends_on:
+      - gateway
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cloudflow-network
     deploy:
       resources:
         limits:
           cpus: '0.25'
           memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
+# ============================================================
+# 网络配置
+# ============================================================
+networks:
+  cloudflow-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================================
+# 数据卷
+# ============================================================
 volumes:
   mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  nacos_logs:
+    driver: local
+  nacos_data:
+    driver: local
