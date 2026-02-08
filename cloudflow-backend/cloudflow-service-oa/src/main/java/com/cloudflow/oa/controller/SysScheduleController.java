@@ -40,12 +40,29 @@ public class SysScheduleController {
     
     @PutMapping
     public R<Boolean> edit(@RequestBody SysScheduleEvent event) {
-        // TODO: Add permission check (only creator can edit?)
+        // 权限检查：只有创建者可以编辑日程
+        Long currentUserId = UserContext.getUserId();
+        SysScheduleEvent existing = scheduleService.getById(event.getEventId());
+        if (existing == null) {
+            return R.fail("日程不存在");
+        }
+        if (!currentUserId.equals(existing.getCreatorId())) {
+            return R.fail("无权编辑此日程，只有创建者可以编辑");
+        }
         return R.ok(scheduleService.updateById(event));
     }
 
     @DeleteMapping("/{id}")
     public R<Boolean> remove(@PathVariable Long id) {
+        // 权限检查：只有创建者可以删除日程
+        Long currentUserId = UserContext.getUserId();
+        SysScheduleEvent existing = scheduleService.getById(id);
+        if (existing == null) {
+            return R.fail("日程不存在");
+        }
+        if (!currentUserId.equals(existing.getCreatorId())) {
+            return R.fail("无权删除此日程，只有创建者可以删除");
+        }
         return R.ok(scheduleService.removeById(id));
     }
 }
