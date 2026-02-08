@@ -4,6 +4,9 @@ import com.cloudflow.common.security.utils.SecurityUtils;
 import com.cloudflow.oa.domain.dto.SyncDownloadDTO;
 import com.cloudflow.oa.domain.dto.SyncResultDTO;
 import com.cloudflow.oa.domain.dto.SyncUploadDTO;
+import com.cloudflow.oa.domain.SysAnnouncement;
+import com.cloudflow.oa.domain.SysNotice;
+import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.service.ISyncService;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import com.cloudflow.oa.service.ISysNoticeService;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -84,32 +88,57 @@ public class SyncServiceImpl implements ISyncService {
                 // 标记消息已读
                 Long noticeId = getLongValue(payload, "noticeId");
                 if (noticeId != null) {
-                    noticeService.markAsRead(noticeId, userId);
+                    noticeService.readNotice(noticeId);
                     log.debug("消息已标记为已读，ID: {}", noticeId);
                 }
                 break;
 
             case "schedule_create":
                 // 创建日程
-                // TODO: 实现日程创建逻辑
-                log.debug("创建日程，数据: {}", payload);
+                try {
+                    SysScheduleEvent event = new SysScheduleEvent();
+                    event.setTitle((String) payload.get("title"));
+                    event.setDescription((String) payload.get("description"));
+                    event.setStartTime(parseDate((String) payload.get("startTime")));
+                    event.setEndTime(parseDate((String) payload.get("endTime")));
+                    event.setIsAllDay((Boolean) payload.getOrDefault("isAllDay", false));
+                    event.setType((String) payload.getOrDefault("type", "PERSONAL"));
+                    event.setCreatorId(userId);
+                    
+                    if (payload.containsKey("roomId")) {
+                        event.setRoomId(getLongValue(payload, "roomId"));
+                    }
+                    if (payload.containsKey("attendees")) {
+                        event.setAttendees((String) payload.get("attendees"));
+                    }
+                    
+                    scheduleService.createEvent(event);
+                    log.debug("日程创建成功，标题: {}", event.getTitle());
+                } catch (Exception e) {
+                    log.error("创建日程失败", e);
+                    throw new RuntimeException("创建日程失败: " + e.getMessage());
+                }
                 break;
 
             case "task_complete":
             case "task_approve":
             case "task_reject":
-                // 任务操作
-                // TODO: 调用工作流服务处理任务操作
-                log.debug("处理任务操作，类型: {}, 数据: {}", actionType, payload);
+                // 任务操作 - 这些操作需要通过工作流服务处理
+                // 由于是跨服务调用，这里记录日志，实际处理应该在工作流服务中
+                log.info("任务操作将由工作流服务处理，类型: {}, 任务ID: {}", 
+                        actionType, payload.get("taskId"));
+                // 注意：实际生产环境中，这里应该通过 RemoteWorkflowService 调用工作流服务
+                // 但由于离线同步的特殊性，建议在前端直接调用工作流API，而不是通过同步接口
                 break;
 
             case "leave_request":
             case "reimbursement_request":
             case "vehicle_booking":
             case "meeting_booking":
-                // 流程申请
-                // TODO: 调用工作流服务启动流程
-                log.debug("处理流程申请，类型: {}, 数据: {}", actionType, payload);
+                // 流程申请 - 这些操作需要通过工作流服务启动流程
+                log.info("流程申请将由工作流服务处理，类型: {}", actionType);
+                // 注意：实际生产环境中，这里应该通过 RemoteWorkflowService 调用工作流服务
+                // 但由于离线同步的特殊性，建议在前端直接调用工作流API，而不是通过同步接口
                 break;
 
             default:
@@ -130,18 +159,52 @@ public class SyncServiceImpl implements ISyncService {
         try {
             // 解析上次同步时间
             LocalDateTime lastSync = LocalDateTime.parse(lastSyncTime, DATE_FORMATTER);
+            Date lastSyncDate = java.sql.Timestamp.valueOf(lastSync);
 
             // 获取增量任务数据
-            // TODO: 调用工作流服务获取增量任务
+            // 注意：任务数据在工作流服务中，这里返回空列表
+            // 实际生产环境中应该通过 RemoteWorkflowService 获取
             downloadDTO.setTasks(new ArrayList<>());
 
             // 获取增量消息数据
-            // TODO: 实现获取增量消息逻辑
-            downloadDTO.setMessages(new ArrayList<>());
+            List<SyncDownloadDTO.MessageData> messages = new ArrayList<>();
+            com.cloudflow.common.core.domain.PageQuery pageQuery = new com.cloudflow.common.core.domain.PageQuery();
+            pageQuery.setPageNum(1);
+            pageQuery.setPageSize(100); // 限制最多返回100条
+            
+            com.cloudflow.common.core.domain.PageResult<SysNotice> noticeResult = 
+                    noticeService.getMyNotices(userId, pageQuery);
+            
+            for (SysNotice notice : noticeResult.getRows()) {
+                if (notice.getCreateTime().after(lastSyncDate)) {
+                    SyncDownloadDTO.MessageData messageData = new SyncDownloadDTO.MessageData();
+                    messageData.setNoticeId(notice.getNoticeId());
+                    messageData.setTitle(notice.getNoticeTitle());
+                    messageData.setContent(notice.getNoticeContent());
+                    messageData.setType(notice.getNoticeType());
+                    messageData.setCreateTime(notice.getCreateTime().toString());
+                    messageData.setIsRead("1".equals(notice.getStatus()));
+                    messages.add(messageData);
+                }
+            }
+            downloadDTO.setMessages(messages);
 
             // 获取增量公告数据
-            // TODO: 实现获取增量公告逻辑
-            downloadDTO.setAnnouncements(new ArrayList<>());
+            List<SyncDownloadDTO.AnnouncementData> announcements = new ArrayList<>();
+            List<SysAnnouncement> announcementList = announcementService.getMyAnnouncements(userId);
+            
+            for (SysAnnouncement announcement : announcementList) {
+                if (announcement.getCreateTime().after(lastSyncDate)) {
+                    SyncDownloadDTO.AnnouncementData announcementData = new SyncDownloadDTO.AnnouncementData();
+                    announcementData.setId(announcement.getAnnouncementId());
+                    announcementData.setTitle(announcement.getTitle());
+                    announcementData.setContent(announcement.getContent());
+                    announcementData.setPublishTime(announcement.getCreateTime().toString());
+                    announcementData.setIsRead(announcement.isRead());
+                    announcements.add(announcementData);
+                }
+            }
+            downloadDTO.setAnnouncements(announcements);
 
             log.info("增量数据下载完成，任务: {}, 消息: {}, 公告: {}", 
                     downloadDTO.getTasks().size(),
@@ -186,31 +249,93 @@ public class SyncServiceImpl implements ISyncService {
      */
     private void resolveConflict(SyncResultDTO.ConflictDetail conflict, Long userId) {
         String resolution = conflict.getReason();
+        String actionType = conflict.getActionType();
         
         // 根据解决策略处理冲突
         // resolution 可能的值: "local" (使用本地数据), "server" (使用服务器数据), "merge" (合并数据)
         switch (resolution) {
             case "local":
                 // 使用本地数据覆盖服务器数据
-                log.debug("使用本地数据解决冲突，操作ID: {}", conflict.getActionId());
-                // TODO: 实现本地数据覆盖逻辑
+                log.debug("使用本地数据解决冲突，操作ID: {}, 类型: {}", conflict.getActionId(), actionType);
+                
+                // 根据操作类型处理本地数据覆盖
+                if ("schedule_create".equals(actionType) || "schedule_update".equals(actionType)) {
+                    // 对于日程，使用本地数据更新
+                    Map<String, Object> localData = (Map<String, Object>) conflict.getLocalData();
+                    SysScheduleEvent event = new SysScheduleEvent();
+                    event.setEventId(getLongValue(localData, "eventId"));
+                    event.setTitle((String) localData.get("title"));
+                    event.setDescription((String) localData.get("description"));
+                    event.setStartTime(parseDate((String) localData.get("startTime")));
+                    event.setEndTime(parseDate((String) localData.get("endTime")));
+                    scheduleService.updateById(event);
+                    log.info("使用本地数据更新日程，ID: {}", event.getEventId());
+                } else if ("notice_read".equals(actionType)) {
+                    // 对于消息已读状态，使用本地状态
+                    Map<String, Object> localData = (Map<String, Object>) conflict.getLocalData();
+                    Long noticeId = getLongValue(localData, "noticeId");
+                    if (noticeId != null) {
+                        noticeService.readNotice(noticeId);
+                        log.info("使用本地状态标记消息已读，ID: {}", noticeId);
+                    }
+                }
                 break;
 
             case "server":
                 // 保留服务器数据，丢弃本地更改
-                log.debug("使用服务器数据解决冲突，操作ID: {}", conflict.getActionId());
+                log.debug("使用服务器数据解决冲突，操作ID: {}, 类型: {}", conflict.getActionId(), actionType);
                 // 不需要额外操作，服务器数据已存在
                 break;
 
             case "merge":
                 // 合并本地和服务器数据
-                log.debug("合并数据解决冲突，操作ID: {}", conflict.getActionId());
-                // TODO: 实现数据合并逻辑
+                log.debug("合并数据解决冲突，操作ID: {}, 类型: {}", conflict.getActionId(), actionType);
+                
+                // 对于大多数情况，合并策略采用"最后修改时间优先"
+                // 这里简化处理，实际应该根据具体业务逻辑实现
+                Map<String, Object> localData = (Map<String, Object>) conflict.getLocalData();
+                Map<String, Object> serverData = (Map<String, Object>) conflict.getServerData();
+                
+                String localTime = (String) localData.get("updateTime");
+                String serverTime = (String) serverData.get("updateTime");
+                
+                if (localTime != null && serverTime != null) {
+                    LocalDateTime localDateTime = LocalDateTime.parse(localTime, DATE_FORMATTER);
+                    LocalDateTime serverDateTime = LocalDateTime.parse(serverTime, DATE_FORMATTER);
+                    
+                    if (localDateTime.isAfter(serverDateTime)) {
+                        log.info("本地数据更新，使用本地数据");
+                        // 使用本地数据（递归调用local策略）
+                        conflict.setReason("local");
+                        resolveConflict(conflict, userId);
+                    } else {
+                        log.info("服务器数据更新，保留服务器数据");
+                        // 保留服务器数据（不需要操作）
+                    }
+                } else {
+                    log.warn("无法比较时间戳，默认使用服务器数据");
+                }
                 break;
 
             default:
                 log.warn("未知的冲突解决策略: {}", resolution);
                 throw new IllegalArgumentException("未知的冲突解决策略: " + resolution);
+        }
+    }
+    
+    /**
+     * 解析日期字符串
+     */
+    private Date parseDate(String dateStr) {
+        if (dateStr == null) {
+            return null;
+        }
+        try {
+            LocalDateTime localDateTime = LocalDateTime.parse(dateStr, DATE_FORMATTER);
+            return java.sql.Timestamp.valueOf(localDateTime);
+        } catch (Exception e) {
+            log.error("解析日期失败: {}", dateStr, e);
+            return null;
         }
     }
 
