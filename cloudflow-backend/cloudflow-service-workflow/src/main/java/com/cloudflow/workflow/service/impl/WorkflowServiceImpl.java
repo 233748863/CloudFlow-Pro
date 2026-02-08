@@ -57,6 +57,7 @@ import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.cloudflow.workflow.service.RateLimiterService;
+import com.cloudflow.workflow.service.WorkflowAuditService;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -119,6 +120,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private RateLimiterService rateLimiterService;
 
+    /** S.3: 审计日志服务 */
+    @Autowired
+    private WorkflowAuditService auditService;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -160,6 +165,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
         
         processDefinitionMapper.insert(definition);
         log.info("[saveProcessDefinition] 流程定义保存成功, definitionId={}, version={}", definition.getDefinitionId(), version);
+        auditService.log(WorkflowAuditService.AuditAction.DEFINITION_CREATE, definition.getDefinitionId(), 
+            "processKey=" + definition.getProcessKey() + ", version=" + version);
         return R.ok(definition.getDefinitionId());
     }
 
@@ -196,6 +203,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
         );
         
         log.info("[deployProcessDefinition] 流程定义发布成功, definitionId={}, processKey={}", definitionId, def.getProcessKey());
+        auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DEPLOY, definitionId, 
+            "processKey=" + def.getProcessKey());
         return R.ok();
     }
 
@@ -339,6 +348,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
         }
 
         log.info("[startProcess] 流程启动成功, instanceId={}", instance.getInstanceId());
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_START, instance.getInstanceId(),
+            "processDefKey=" + processDefKey + ", businessKey=" + businessKey);
         return R.ok(instance.getInstanceId());
     }
     
@@ -745,6 +756,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 
                 // 5.F: 通知发起人审批进度
                 notifyInitiator(instance, task.getNodeName(), action, comment);
+                
+                auditService.log(WorkflowAuditService.AuditAction.TASK_COMPLETE, taskId,
+                    "action=" + action + ", nodeName=" + task.getNodeName());
 
                 return R.ok();
             } else {
@@ -925,6 +939,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
         }
         
         log.info("[rejectTask] 驳回成功, taskId={}, targetNodeKey={}", taskId, targetNodeKey);
+        auditService.log(WorkflowAuditService.AuditAction.TASK_REJECT, taskId,
+            "targetNodeKey=" + targetNodeKey);
         return R.ok();
     }
 
@@ -968,6 +984,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         processInstanceMapper.updateById(instance);
         
         log.info("[recallProcess] 流程撤回成功, instanceId={}", instanceId);
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId);
         return R.ok();
     }
 
