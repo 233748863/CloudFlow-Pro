@@ -41,7 +41,7 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
             workflowService.completeTask(taskId, "PASS", "系统 SLA 自动通过 (Stream)", Collections.emptyMap());
 
             // 手动确认
-            redisStreamUtil.ack(workflowProperties.getKey(), workflowProperties.getGroup(), msgId);
+            redisStreamUtil.ack(workflowProperties.getStream().getKey(), workflowProperties.getStream().getGroup(), msgId);
             log.info("任务超时处理成功并ACK: {}", taskId);
 
         } catch (Exception e) {

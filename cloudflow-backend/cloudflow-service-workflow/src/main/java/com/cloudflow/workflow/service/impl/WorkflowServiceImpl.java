@@ -166,6 +166,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private com.cloudflow.workflow.service.AsyncWorkflowService asyncWorkflowService;
 
+    /** 4.G: 工作流配置属性 */
+    @Autowired
+    private com.cloudflow.workflow.config.properties.WorkflowProperties workflowProperties;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -601,8 +605,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     // 增加了深度检查以防止循环流程中的堆栈溢出
     // 4.K: 增加 rootNode 参数，避免每次递归都重新查询数据库
     private void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
-        if (depth > 500) {
-            throw new RuntimeException("流程深度超出限制（可能检测到循环）");
+        // 4.G: 使用配置化的深度限制（支持通过 cloudflow.workflow.engine.max-depth 动态调整）
+        int maxDepth = workflowProperties.getEngine().getMaxDepth();
+        if (depth > maxDepth) {
+            throw new RuntimeException("流程深度超出限制（最大 " + maxDepth + "，可能检测到循环）");
         }
         
         if (node == null) {
@@ -1112,7 +1118,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         // 6.B: 目标节点合法性校验 - 只允许驳回到之前的审批节点
         validateRejectTarget(task.getInstanceId(), task.getNodeKey(), targetNodeKey);
         
-        // 1. Save History
+        // 6.F: 结构化驳回历史记录 - 包含源节点、目标节点、驳回原因等完整信息
         WfTaskHistory history = new WfTaskHistory();
         history.setHistoryId(UUID.randomUUID().toString());
         history.setTaskId(task.getTaskId());
@@ -1124,6 +1130,29 @@ public class WorkflowServiceImpl implements IWorkflowService {
         history.setComment(comment);
         history.setAction("REJECT_TO_" + targetNodeKey);
         history.setCreateTime(new Date());
+        
+        // 6.F: 记录驳回详情到变量变更字段（结构化存储）
+        try {
+            Map<String, Object> rejectDetail = new HashMap<>();
+            rejectDetail.put("type", "REJECT");
+            rejectDetail.put("sourceNodeKey", task.getNodeKey());
+            rejectDetail.put("sourceNodeName", task.getNodeName());
+            rejectDetail.put("targetNodeKey", targetNodeKey);
+            rejectDetail.put("reason", comment);
+            rejectDetail.put("operatorId", UserContext.getUserId());
+            rejectDetail.put("operatorName", UserContext.getUserName());
+            rejectDetail.put("rejectTime", new Date());
+            history.setVariablesChanged(objectMapper.writeValueAsString(rejectDetail));
+        } catch (Exception e) {
+            log.warn("[rejectTask] 序列化驳回详情失败: {}", e.getMessage());
+        }
+        
+        // 5.H: 计算审批耗时
+        if (task.getCreateTime() != null) {
+            long durationSeconds = (System.currentTimeMillis() - task.getCreateTime().getTime()) / 1000;
+            history.setDurationSeconds((int) durationSeconds);
+        }
+        
         taskHistoryMapper.insert(history);
         
         // 2. Delete current task
@@ -1184,8 +1213,60 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.invalidState("流程已结束，无法撤回");
         }
         
+        // 7.A: 撤回时机限制 - 检查是否在允许的时间窗口内
+        int timeoutHours = workflowProperties.getRecall().getTimeoutHours();
+        if (timeoutHours > 0 && instance.getStartTime() != null) {
+            long elapsedHours = (System.currentTimeMillis() - instance.getStartTime().getTime()) / (1000 * 60 * 60);
+            if (elapsedHours > timeoutHours) {
+                throw WorkflowException.invalidState(
+                    "流程已启动超过 " + timeoutHours + " 小时，无法撤回。如需撤回请联系管理员。");
+            }
+        }
+        
+        // 7.A: 检查是否有任务已被处理（已有审批记录则不允许撤回）
+        Long completedTaskCount = taskHistoryMapper.selectCount(
+            new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getInstanceId, instanceId)
+                .ne(WfTaskHistory::getAction, "RECALL") // 排除撤回记录本身
+        );
+        if (completedTaskCount != null && completedTaskCount > 0) {
+            throw WorkflowException.invalidState("流程已有审批记录，无法撤回。请使用驳回功能。");
+        }
+        
         // P0-2: 使用权限服务校验
         permissionService.checkRecallPermission(instance);
+        
+        // 7.D: 记录撤回历史 - 保存撤回操作到历史记录
+        WfTaskHistory recallHistory = new WfTaskHistory();
+        recallHistory.setHistoryId(UUID.randomUUID().toString());
+        recallHistory.setInstanceId(instanceId);
+        recallHistory.setNodeName("流程撤回");
+        recallHistory.setNodeKey("SYSTEM_RECALL");
+        recallHistory.setOperatorId(UserContext.getUserId());
+        recallHistory.setOperatorName(UserContext.getUserName());
+        recallHistory.setComment("发起人撤回了流程");
+        recallHistory.setAction("RECALL");
+        recallHistory.setCreateTime(new Date());
+        
+        // 7.D: 记录撤回时的活动任务信息
+        List<WfTask> activeTasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>().eq(WfTask::getInstanceId, instanceId));
+        try {
+            Map<String, Object> recallDetail = new HashMap<>();
+            recallDetail.put("type", "RECALL");
+            recallDetail.put("activeTaskCount", activeTasks.size());
+            recallDetail.put("recallTime", new Date());
+            if (!activeTasks.isEmpty()) {
+                List<String> activeNodeNames = activeTasks.stream()
+                    .map(WfTask::getNodeName)
+                    .collect(Collectors.toList());
+                recallDetail.put("activeNodes", activeNodeNames);
+            }
+            recallHistory.setVariablesChanged(objectMapper.writeValueAsString(recallDetail));
+        } catch (Exception e) {
+            log.warn("[recallProcess] 序列化撤回详情失败: {}", e.getMessage());
+        }
+        taskHistoryMapper.insert(recallHistory);
         
         // Delete all active tasks
         LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
@@ -1786,6 +1867,20 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Transactional(rollbackFor = Exception.class)
     public void readTask(String taskId, Long userId) {
         log.info("[readTask] 标记任务已读, taskId={}, userId={}", taskId, userId);
+        
+        // 15.C: 已读权限校验 - 只有任务的处理人才能标记已读
+        WfTask task = taskMapper.selectById(taskId);
+        if (task == null) {
+            throw WorkflowException.taskNotFound(taskId);
+        }
+        if (task.getAssignee() != null && !task.getAssignee().equals(userId)) {
+            // 非任务处理人，检查是否为管理员
+            if (!permissionService.isAdmin(userId)) {
+                log.warn("[readTask] 用户无权标记此任务已读, userId={}, taskId={}, assignee={}", userId, taskId, task.getAssignee());
+                throw new com.cloudflow.workflow.exception.PermissionDeniedException("您不是此任务的处理人，无法标记已读");
+            }
+        }
+        
         // Check duplication
         Long count = taskReadMapper.selectCount(new LambdaQueryWrapper<com.cloudflow.workflow.domain.WfTaskRead>()
                 .eq(com.cloudflow.workflow.domain.WfTaskRead::getTaskId, taskId)

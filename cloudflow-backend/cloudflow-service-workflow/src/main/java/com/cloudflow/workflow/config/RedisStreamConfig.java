@@ -29,7 +29,7 @@ public class RedisStreamConfig {
     @Bean
     public Subscription subscription(RedisConnectionFactory factory, WorkflowStreamConsumer listener) {
         // 1. 确保 Group 存在
-        redisStreamUtil.createGroup(workflowProperties.getKey(), workflowProperties.getGroup());
+        redisStreamUtil.createGroup(workflowProperties.getStream().getKey(), workflowProperties.getStream().getGroup());
 
         // 2. 配置监听容器
         StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options =
@@ -46,8 +46,8 @@ public class RedisStreamConfig {
         String consumerName = "consumer-" + UUID.randomUUID().toString().substring(0, 8);
         
         Subscription subscription = container.receive(
-                Consumer.from(workflowProperties.getGroup(), consumerName),
-                StreamOffset.create(workflowProperties.getKey(), ReadOffset.lastConsumed()),
+                Consumer.from(workflowProperties.getStream().getGroup(), consumerName),
+                StreamOffset.create(workflowProperties.getStream().getKey(), ReadOffset.lastConsumed()),
                 listener
         );
 
