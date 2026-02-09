@@ -162,6 +162,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private ICountersignService countersignService;
 
+    /** P1-6: 异步流程启动服务 */
+    @Autowired
+    private com.cloudflow.workflow.service.AsyncWorkflowService asyncWorkflowService;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -470,16 +474,28 @@ public class WorkflowServiceImpl implements IWorkflowService {
         log.info("[startProcess] 流程实例创建成功, instanceId={}", instance.getInstanceId());
 
         // 3. 解析模型并启动
+        // P1-6: 支持异步启动模式
+        boolean asyncMode = variables.containsKey("_async") && Boolean.TRUE.equals(variables.get("_async"));
+        
         try {
             if (!StringUtils.hasText(def.getModelJson())) {
                 log.info("[startProcess] 使用 Legacy 模式启动流程");
                 return startLegacyProcess(instance, variables);
             }
 
-            WfNodeConfig rootNode = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
-            WfNodeConfig nextNode = rootNode.getNext();
-            // 4.K: 将根节点作为参数传递，避免 runNode 中重复加载定义
-            runNode(instance, nextNode, variables, 0, rootNode);
+            if (asyncMode) {
+                // P1-6: 异步模式 - 同步返回实例ID，异步执行节点解析和任务创建
+                final Map<String, Object> finalVars = variables;
+                asyncWorkflowService.asyncStartProcessNodes(instance, def, finalVars,
+                    (inst, node, vars, depth, root) -> runNode(inst, node, vars, depth, root));
+                log.info("[startProcess] 异步启动模式, instanceId={}", instance.getInstanceId());
+            } else {
+                // 同步模式 - 原有逻辑
+                WfNodeConfig rootNode = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                WfNodeConfig nextNode = rootNode.getNext();
+                // 4.K: 将根节点作为参数传递，避免 runNode 中重复加载定义
+                runNode(instance, nextNode, variables, 0, rootNode);
+            }
             
         } catch (WorkflowException e) {
             // G.2: Saga 补偿 - 流程启动失败时回滚
