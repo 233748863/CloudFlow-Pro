@@ -2,8 +2,8 @@
  * API 常量配置
  */
 
-// API 超时时间
-export const API_TIMEOUT = 10000;
+// API 超时时间（30秒）
+export const API_TIMEOUT = 30000;
 
 // API 成功状态码
 export const API_SUCCESS_CODE = 200;

@@ -23,23 +23,48 @@ export const FormRenderer = ({
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
+    // 统一使用 field.id 作为键
     formDef.fields.forEach(field => {
-      const val = formData[field.label]; // Storing by Label for readability in this demo
-      if (field.required && !val) {
-        newErrors[field.label] = '此项必填';
+      const val = formData[field.id];
+      
+      // 必填校验
+      if (field.required && (!val || String(val).trim() === '')) {
+        newErrors[field.id] = '此项必填';
         isValid = false;
-      } else if (val && field.regex) {
+      } 
+      // 正则校验
+      else if (val && field.regex) {
         try {
-          if (!new RegExp(field.regex).test(String(val))) {
-            newErrors[field.label] = field.errorMsg || '格式不正确';
+          const regex = new RegExp(field.regex);
+          if (!regex.test(String(val))) {
+            newErrors[field.id] = field.errorMsg || '格式不正确';
             isValid = false;
           }
-        } catch(e) {}
+        } catch(e) {
+          console.error('正则表达式错误:', field.regex, e);
+        }
+      }
+      // 数字类型校验
+      else if (val && field.type === 'NUMBER') {
+        const num = Number(val);
+        if (isNaN(num)) {
+          newErrors[field.id] = '请输入有效的数字';
+          isValid = false;
+        }
       }
     });
 
-    if (isValid) onSubmit(formData);
-    else setErrors(newErrors);
+    if (isValid) {
+      onSubmit(formData);
+    } else {
+      setErrors(newErrors);
+      // 滚动到第一个错误字段
+      const firstErrorField = formDef.fields.find(f => newErrors[f.id]);
+      if (firstErrorField) {
+        const element = document.getElementById(`field-${firstErrorField.id}`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
   };
 
   return (
@@ -53,20 +78,25 @@ export const FormRenderer = ({
       </div>
       <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
         {formDef.fields.map(field => (
-          <div key={field.id} className="space-y-1">
+          <div key={field.id} id={`field-${field.id}`} className="space-y-1">
             <label className="block text-sm font-bold text-slate-700">
               {field.label} {field.required && <span className="text-red-500">*</span>}
             </label>
             {field.type === 'TEXTAREA' ? (
               <textarea
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${
+                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                }`}
                 rows={3}
-                onChange={e => handleChange(field.label, e.target.value)}
+                placeholder={field.placeholder}
+                onChange={e => handleChange(field.id, e.target.value)}
               />
             ) : field.type === 'SELECT' ? (
               <select 
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white"
-                onChange={e => handleChange(field.label, e.target.value)}
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white ${
+                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                }`}
+                onChange={e => handleChange(field.id, e.target.value)}
                 defaultValue=""
               >
                 <option value="" disabled>请选择</option>
@@ -75,11 +105,18 @@ export const FormRenderer = ({
             ) : (
               <input
                 type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                onChange={e => handleChange(field.label, e.target.value)}
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${
+                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                }`}
+                placeholder={field.placeholder}
+                onChange={e => handleChange(field.id, e.target.value)}
               />
             )}
-            {errors[field.label] && <p className="text-xs text-red-500 flex items-center gap-1"><AlertTriangle size={10}/> {errors[field.label]}</p>}
+            {errors[field.id] && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertTriangle size={10}/> {errors[field.id]}
+              </p>
+            )}
           </div>
         ))}
       </div>

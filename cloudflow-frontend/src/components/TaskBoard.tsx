@@ -58,13 +58,29 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
 
             {/* Task List */}
             <div className="p-3 space-y-3 overflow-y-auto flex-1">
-              {colTasks.map(task => (
+              {colTasks.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  <svg className="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                  <p>暂无任务</p>
+                  <p className="text-xs mt-1">拖拽任务到此处</p>
+                </div>
+              ) : (
+                colTasks.map(task => (
                 <div
                   key={task.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, task.id)}
+                  draggable={task.type !== 'PROCESS'}
+                  onDragStart={(e) => {
+                    if (task.type === 'PROCESS') {
+                      e.preventDefault();
+                      return;
+                    }
+                    handleDragStart(e, task.id);
+                  }}
                   onClick={() => onTaskClick(task)}
-                  className={`bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all
+                  className={`bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all
+                    ${task.type === 'PROCESS' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
                     ${draggedTaskId === task.id ? 'opacity-50' : 'opacity-100'}
                   `}
                 >
@@ -99,7 +115,8 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                     )}
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
         );

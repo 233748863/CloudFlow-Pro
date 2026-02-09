@@ -1462,6 +1462,41 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Override
     public Map<String, Object> getProcessTrace(String instanceId) {
         log.info("[getProcessTrace] 查询流程轨迹, instanceId={}", instanceId);
+        
+        // 10.C: 流程轨迹权限控制 - 只有发起人、参与人、管理员可查看
+        WfProcessInstance traceInstance = processInstanceMapper.selectById(instanceId);
+        if (traceInstance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId != null && !permissionService.isAdmin(currentUserId)) {
+            boolean isInitiator = currentUserId.equals(traceInstance.getStartUserId());
+            boolean isParticipant = false;
+            if (!isInitiator) {
+                // 检查是否为当前处理人
+                Long taskCount = taskMapper.selectCount(
+                    new LambdaQueryWrapper<WfTask>()
+                        .eq(WfTask::getInstanceId, instanceId)
+                        .eq(WfTask::getAssignee, currentUserId)
+                );
+                if (taskCount != null && taskCount > 0) {
+                    isParticipant = true;
+                }
+            }
+            if (!isInitiator && !isParticipant) {
+                // 检查是否为历史参与人
+                Long histCount = taskHistoryMapper.selectCount(
+                    new LambdaQueryWrapper<WfTaskHistory>()
+                        .eq(WfTaskHistory::getInstanceId, instanceId)
+                        .eq(WfTaskHistory::getOperatorId, currentUserId)
+                );
+                if (histCount == null || histCount == 0) {
+                    log.warn("[getProcessTrace] 用户无权查看流程轨迹, userId={}, instanceId={}", currentUserId, instanceId);
+                    throw new com.cloudflow.workflow.exception.PermissionDeniedException("您没有权限查看此流程轨迹");
+                }
+            }
+        }
+        
         // 10.A: 返回完整的历史记录（包含处理人、时间、意见等详细信息）
         LambdaQueryWrapper<WfTaskHistory> historyWrapper = new LambdaQueryWrapper<>();
         historyWrapper.eq(WfTaskHistory::getInstanceId, instanceId);
@@ -1521,13 +1556,31 @@ public class WorkflowServiceImpl implements IWorkflowService {
             activeDetails.add(detail);
         }
 
+        // 10.B: 并行分支展示 - 解析流程定义，标识并行分支节点
+        List<Map<String, Object>> parallelBranches = new ArrayList<>();
+        try {
+            WfProcessDefinition traceDef = processDefinitionMapper.selectOne(
+                new LambdaQueryWrapper<WfProcessDefinition>()
+                    .eq(WfProcessDefinition::getProcessKey, traceInstance.getProcessDefKey())
+                    .orderByDesc(WfProcessDefinition::getVersion)
+                    .last("LIMIT 1")
+            );
+            if (traceDef != null && StringUtils.hasText(traceDef.getModelJson())) {
+                WfNodeConfig traceRoot = objectMapper.readValue(traceDef.getModelJson(), WfNodeConfig.class);
+                collectParallelBranches(traceRoot, parallelBranches);
+            }
+        } catch (Exception e) {
+            log.warn("[getProcessTrace] 解析并行分支失败: {}", e.getMessage());
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("finished", finished);
         result.put("active", active);
         result.put("historyDetails", historyDetails);  // 10.A: 完整历史记录
         result.put("activeDetails", activeDetails);      // 10.A: 活动任务详情
-        log.info("[getProcessTrace] 查询完成, finished={}, active={}, historyDetails={}", 
-            finished.size(), active.size(), historyDetails.size());
+        result.put("parallelBranches", parallelBranches); // 10.B: 并行分支信息
+        log.info("[getProcessTrace] 查询完成, finished={}, active={}, historyDetails={}, parallelBranches={}", 
+            finished.size(), active.size(), historyDetails.size(), parallelBranches.size());
         return result;
     }
 
@@ -1538,6 +1591,38 @@ public class WorkflowServiceImpl implements IWorkflowService {
         Page<WfProcessInstance> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfProcessInstance::getStartUserId, userId);
+        
+        // 11.D: 筛选条件 - 支持按状态、流程类型、时间范围筛选
+        String status = (String) pageQuery.getParams().get("status");
+        if (StringUtils.hasText(status)) {
+            queryWrapper.eq(WfProcessInstance::getStatus, status);
+        }
+        
+        String processDefKey = (String) pageQuery.getParams().get("processDefKey");
+        if (StringUtils.hasText(processDefKey)) {
+            queryWrapper.eq(WfProcessInstance::getProcessDefKey, processDefKey);
+        }
+        
+        String startTimeFrom = (String) pageQuery.getParams().get("startTimeFrom");
+        if (StringUtils.hasText(startTimeFrom)) {
+            try {
+                Date fromDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(startTimeFrom);
+                queryWrapper.ge(WfProcessInstance::getStartTime, fromDate);
+            } catch (Exception e) {
+                log.warn("[getMyInstances] 解析开始时间失败: {}", e.getMessage());
+            }
+        }
+        
+        String startTimeTo = (String) pageQuery.getParams().get("startTimeTo");
+        if (StringUtils.hasText(startTimeTo)) {
+            try {
+                Date toDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(startTimeTo);
+                queryWrapper.le(WfProcessInstance::getStartTime, toDate);
+            } catch (Exception e) {
+                log.warn("[getMyInstances] 解析结束时间失败: {}", e.getMessage());
+            }
+        }
+        
         queryWrapper.orderByDesc(WfProcessInstance::getStartTime);
         
         Page<WfProcessInstance> resultPage = processInstanceMapper.selectPage(page, queryWrapper);
@@ -1579,8 +1664,29 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Override
     public PageResult<WfProcessDefinition> listProcessDefinitions(PageQuery pageQuery) {
         log.info("[listProcessDefinitions] 查询流程定义列表, pageNum={}, pageSize={}", pageQuery.getPageNum(), pageQuery.getPageSize());
+        
         Page<WfProcessDefinition> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        Page<WfProcessDefinition> resultPage = processDefinitionMapper.selectPage(page, null);
+        LambdaQueryWrapper<WfProcessDefinition> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 12.B: 筛选条件 - 支持按状态筛选
+        String status = (String) pageQuery.getParams().get("status");
+        if (StringUtils.hasText(status)) {
+            queryWrapper.eq(WfProcessDefinition::getStatus, status);
+        }
+        
+        // 12.C: 搜索功能 - 支持按流程名称和Key模糊搜索
+        String keyword = (String) pageQuery.getParams().get("keyword");
+        if (StringUtils.hasText(keyword)) {
+            queryWrapper.and(w -> w
+                .like(WfProcessDefinition::getProcessName, keyword)
+                .or()
+                .like(WfProcessDefinition::getProcessKey, keyword)
+            );
+        }
+        
+        queryWrapper.orderByDesc(WfProcessDefinition::getCreateTime);
+        
+        Page<WfProcessDefinition> resultPage = processDefinitionMapper.selectPage(page, queryWrapper);
         return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
     }
 
@@ -1588,14 +1694,75 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Cacheable(value = "formDefinition", key = "#formId", unless = "#result == null")
     public WfFormDefinition getFormDefinition(String formId) {
         log.info("[getFormDefinition] 查询表单定义(缓存未命中), formId={}", formId);
-        return formDefinitionMapper.selectById(formId);
+        
+        // 13.D: 表单权限控制 - 验证用户是否有权访问
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId != null && !permissionService.isAdmin(currentUserId)) {
+            // 检查用户是否有关联的流程实例使用了此表单
+            // 查找使用此表单的流程定义
+            List<WfProcessDefinition> relatedDefs = processDefinitionMapper.selectList(
+                new LambdaQueryWrapper<WfProcessDefinition>()
+                    .eq(WfProcessDefinition::getFormId, formId)
+            );
+            
+            if (relatedDefs != null && !relatedDefs.isEmpty()) {
+                List<String> processKeys = relatedDefs.stream()
+                    .map(WfProcessDefinition::getProcessKey)
+                    .distinct()
+                    .collect(Collectors.toList());
+                
+                // 检查用户是否参与过这些流程
+                Long instanceCount = processInstanceMapper.selectCount(
+                    new LambdaQueryWrapper<WfProcessInstance>()
+                        .in(WfProcessInstance::getProcessDefKey, processKeys)
+                        .and(w -> w
+                            .eq(WfProcessInstance::getStartUserId, currentUserId)
+                        )
+                );
+                
+                Long taskCount = taskMapper.selectCount(
+                    new LambdaQueryWrapper<WfTask>()
+                        .eq(WfTask::getAssignee, currentUserId)
+                );
+                
+                if ((instanceCount == null || instanceCount == 0) && (taskCount == null || taskCount == 0)) {
+                    log.warn("[getFormDefinition] 用户无权访问此表单, userId={}, formId={}", currentUserId, formId);
+                    throw new com.cloudflow.workflow.exception.PermissionDeniedException("您没有权限访问此表单定义");
+                }
+            }
+            // 如果表单未关联任何流程定义，允许访问（公共表单）
+        }
+        
+        // 13.C: 表单不存在友好提示
+        WfFormDefinition form = formDefinitionMapper.selectById(formId);
+        if (form == null) {
+            throw WorkflowException.validationError("表单定义不存在: " + formId);
+        }
+        return form;
     }
 
     @Override
     public PageResult<WfFormDefinition> listFormDefinitions(PageQuery pageQuery) {
         log.info("[listFormDefinitions] 查询表单定义列表, pageNum={}, pageSize={}", pageQuery.getPageNum(), pageQuery.getPageSize());
+        
         Page<WfFormDefinition> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        Page<WfFormDefinition> resultPage = formDefinitionMapper.selectPage(page, null);
+        LambdaQueryWrapper<WfFormDefinition> queryWrapper = new LambdaQueryWrapper<>();
+        
+        // 14.A: 筛选条件 - 支持按状态筛选
+        String status = (String) pageQuery.getParams().get("status");
+        if (StringUtils.hasText(status)) {
+            queryWrapper.eq(WfFormDefinition::getStatus, status);
+        }
+        
+        // 14.B: 搜索功能 - 支持按表单名称模糊搜索
+        String keyword = (String) pageQuery.getParams().get("keyword");
+        if (StringUtils.hasText(keyword)) {
+            queryWrapper.like(WfFormDefinition::getFormName, keyword);
+        }
+        
+        queryWrapper.orderByDesc(WfFormDefinition::getCreateTime);
+        
+        Page<WfFormDefinition> resultPage = formDefinitionMapper.selectPage(page, queryWrapper);
         return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
     }
 
@@ -1808,6 +1975,78 @@ public class WorkflowServiceImpl implements IWorkflowService {
         }
         
         return assigneeIds;
+    }
+
+    /**
+     * 10.B: 递归收集并行分支信息
+     * 遍历流程定义树，找到所有 PARALLEL 类型的网关节点，提取分支信息
+     */
+    private void collectParallelBranches(WfNodeConfig node, List<Map<String, Object>> parallelBranches) {
+        if (node == null) return;
+        
+        if ("PARALLEL".equals(node.getType())) {
+            Map<String, Object> gateway = new HashMap<>();
+            gateway.put("gatewayId", node.getId());
+            gateway.put("gatewayName", node.getTitle());
+            gateway.put("type", "PARALLEL");
+            
+            List<Map<String, Object>> branches = new ArrayList<>();
+            if (node.getBranches() != null) {
+                for (int i = 0; i < node.getBranches().size(); i++) {
+                    WfNodeConfig branch = node.getBranches().get(i);
+                    Map<String, Object> branchInfo = new HashMap<>();
+                    branchInfo.put("branchIndex", i);
+                    branchInfo.put("branchId", branch.getId());
+                    branchInfo.put("branchName", branch.getTitle() != null ? branch.getTitle() : "分支 " + (i + 1));
+                    
+                    // 收集分支中的所有节点Key
+                    List<String> branchNodeKeys = new ArrayList<>();
+                    collectBranchNodeKeys(branch, branchNodeKeys);
+                    branchInfo.put("nodeKeys", branchNodeKeys);
+                    
+                    branches.add(branchInfo);
+                    
+                    // 递归检查分支内部是否有嵌套的并行网关
+                    collectParallelBranches(branch, parallelBranches);
+                }
+            }
+            gateway.put("branches", branches);
+            gateway.put("branchCount", branches.size());
+            
+            // 汇聚节点
+            if (node.getNext() != null) {
+                gateway.put("joinNodeId", node.getNext().getId());
+                gateway.put("joinNodeName", node.getNext().getTitle());
+            }
+            
+            parallelBranches.add(gateway);
+        }
+        
+        // 递归检查 next 节点
+        collectParallelBranches(node.getNext(), parallelBranches);
+        
+        // 递归检查条件分支
+        if (node.getBranches() != null && !"PARALLEL".equals(node.getType())) {
+            for (WfNodeConfig branch : node.getBranches()) {
+                collectParallelBranches(branch, parallelBranches);
+            }
+        }
+    }
+    
+    /**
+     * 10.B: 收集分支中所有节点的Key
+     */
+    private void collectBranchNodeKeys(WfNodeConfig node, List<String> nodeKeys) {
+        if (node == null) return;
+        if (node.getId() != null) {
+            nodeKeys.add(node.getId());
+        }
+        collectBranchNodeKeys(node.getNext(), nodeKeys);
+        if (node.getBranches() != null) {
+            for (WfNodeConfig branch : node.getBranches()) {
+                collectBranchNodeKeys(branch, nodeKeys);
+            }
+        }
     }
 
     /**

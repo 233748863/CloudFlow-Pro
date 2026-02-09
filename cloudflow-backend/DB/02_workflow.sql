@@ -157,17 +157,30 @@ CREATE INDEX idx_wf_task_status ON wf_task(status);
 CREATE INDEX idx_wf_task_create_time ON wf_task(create_time);
 CREATE INDEX idx_wf_task_composite ON wf_task(assignee, status, create_time);
 
+-- P2: 任务表复合索引优化
+CREATE INDEX idx_assignee_status ON wf_task(assignee, status);
+CREATE INDEX idx_instance_status ON wf_task(instance_id, status);
+
 -- 流程实例表索引
 CREATE INDEX idx_wf_inst_start_user ON wf_process_instance(start_user_id);
 CREATE INDEX idx_wf_inst_status ON wf_process_instance(status);
 CREATE INDEX idx_wf_inst_start_time ON wf_process_instance(start_time);
 CREATE INDEX idx_wf_inst_composite ON wf_process_instance(start_user_id, status, start_time);
 
+-- P2: 流程实例表复合索引优化
+CREATE INDEX idx_start_user_status ON wf_process_instance(start_user_id, status);
+CREATE INDEX idx_process_key_status ON wf_process_instance(process_def_key, status);
+CREATE INDEX idx_start_time ON wf_process_instance(start_time);
+
 -- 任务历史表索引
 CREATE INDEX idx_wf_hist_instance_id ON wf_task_history(instance_id);
 CREATE INDEX idx_wf_hist_operator_id ON wf_task_history(operator_id);
 CREATE INDEX idx_wf_hist_create_time ON wf_task_history(create_time);
 CREATE INDEX idx_wf_hist_composite ON wf_task_history(instance_id, create_time);
+
+-- P2: 任务历史表复合索引优化
+CREATE INDEX idx_instance_create_time ON wf_task_history(instance_id, create_time);
+CREATE INDEX idx_operator_create_time ON wf_task_history(operator_id, create_time);
 
 -- =========================================================
 -- 初始化数据 - 表单定义

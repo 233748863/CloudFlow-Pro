@@ -14,15 +14,26 @@ export interface ApiResponse<T = any> {
 const request = axios.create({
   // 在生产环境使用环境变量 VITE_API_BASE_URL，在开发环境使用 /api (走代理)
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: API_TIMEOUT,
+  timeout: API_TIMEOUT, // 30秒超时
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
+// 检测网络状态
+let isOnline = navigator.onLine;
+window.addEventListener('online', () => { isOnline = true; });
+window.addEventListener('offline', () => { isOnline = false; });
+
 // 请求拦截器
 request.interceptors.request.use(
   config => {
+    // 检查网络状态
+    if (!isOnline) {
+      toast.error('网络连接已断开，请检查网络设置');
+      return Promise.reject(new Error('网络连接已断开'));
+    }
+
     // 从 localStorage 获取 token
     const token = localStorage.getItem('token');
     if (token) {
@@ -48,20 +59,34 @@ request.interceptors.response.use(
     return res.data;
   },
   (error: AxiosError<ApiResponse>) => {
+    // 处理超时错误
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      toast.error('请求超时，请稍后重试');
+      return Promise.reject(new Error('请求超时'));
+    }
+
+    // 处理网络错误
+    if (error.message === 'Network Error' || !isOnline) {
+      toast.error('网络连接失败，请检查网络设置');
+      return Promise.reject(new Error('网络连接失败'));
+    }
+
     // 全局处理 401 未授权
     if (error.response && error.response.status === 401) {
        toast.error('登录已过期，请重新登录');
        // 清除 token 并跳转登录页
        localStorage.removeItem('token');
        // 使用 window.location.href 强制跳转，确保状态重置
-       // 也可以通过 EventBus 通知 AuthContext 登出
        if (window.location.pathname !== '/login') {
            window.location.href = '/login';
        }
-    } else {
+    } else if (error.response) {
        // 通用错误提示
-       const msg = error.response?.data?.msg || error.message || '网络请求失败';
+       const msg = error.response.data?.msg || error.message || '网络请求失败';
        toast.error(msg);
+    } else {
+       // 其他错误
+       toast.error('请求失败，请稍后重试');
     }
     
     return Promise.reject(error);

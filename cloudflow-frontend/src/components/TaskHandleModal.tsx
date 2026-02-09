@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, FormDefinition, User, Role } from '../types';
-import { Briefcase, X, GitMerge } from 'lucide-react';
+import { Briefcase, X, GitMerge, AlertTriangle } from 'lucide-react';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { getUserList } from '../services/api/auth';
 import { completeTask, readTask } from '../services/api/workflow';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { ProcessTrace } from './ProcessTrace';
+import { toast } from 'sonner';
 
 export const TaskHandleModal = ({ 
   task, 
@@ -28,6 +29,8 @@ export const TaskHandleModal = ({
   const [delegationMode, setDelegationMode] = useState(false);
   const [delegateUser, setDelegateUser] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'APPROVED' | 'REJECTED' | null>(null);
 
   useEffect(() => {
     if (isOpen && task && task.assigneeId === currentUser.id) {
@@ -65,49 +68,67 @@ export const TaskHandleModal = ({
     ? availableForms.find(f => f.id === task.formId) 
     : null;
 
-  const handleAction = (action: 'APPROVED' | 'REJECTED' | 'DELEGATED' | 'RETURNED' | 'REVOKE_DELEGATION') => {
+  const handleAction = async (action: 'APPROVED' | 'REJECTED' | 'DELEGATED' | 'RETURNED' | 'REVOKE_DELEGATION') => {
     if (action === 'DELEGATED' && !delegateUser) {
-      alert("请选择受托人");
+      toast.error('请选择受托人');
       return;
     }
     
-    // Simple mock logic for next status
-    let newStatus = TaskStatus.APPROVED;
-    if (action === 'REJECTED') newStatus = TaskStatus.REJECTED;
-    if (action === 'DELEGATED') newStatus = TaskStatus.DELEGATED;
-    if (action === 'RETURNED') newStatus = TaskStatus.RETURNED;
-    if (action === 'REVOKE_DELEGATION') newStatus = TaskStatus.PENDING;
+    setSubmitting(true);
+    setConfirmAction(null);
 
-    const log = {
-      operator: currentUser.name,
-      action: action === 'APPROVED' && modifiedAmount !== task.amount ? '修改金额' : (action === 'APPROVED' ? '同意' : (action === 'REJECTED' ? '拒绝' : '其他')),
-      comment: comment || (action === 'DELEGATED' ? '转办任务' : '处理完毕'),
-      time: new Date().toLocaleString()
-    };
+    // Map action to API action type
+    const apiAction = action === 'APPROVED' ? 'APPROVE' 
+      : action === 'REJECTED' ? 'REJECT' 
+      : action === 'DELEGATED' ? 'DELEGATE' 
+      : 'RETURN';
 
-    // Call Backend API
     try {
-       completeTask({
-          taskId: task.id, 
-          action: action === 'APPROVED' ? 'APPROVE' : 'REJECT',
-          comment: comment,
-          variables: { amount: modifiedAmount }
-       }).then(() => {
-         console.log("后端任务处理完成");
-       }).catch(err => console.warn("后端任务处理失败 (使用模拟模式)", err));
-    } catch(e) {}
+      await completeTask({
+        taskId: task.id, 
+        action: apiAction,
+        comment: comment || undefined,
+        delegateUserId: action === 'DELEGATED' ? delegateUser : undefined,
+      });
 
-    onComplete({
-      ...task,
-      status: newStatus,
-      approvedAmount: modifiedAmount,
-      assigneeId: action === 'DELEGATED' ? delegateUser : task.assigneeId, 
-      logs: [...(task.logs || []), log as any]
-    });
-    
-    onClose();
-    setDelegationMode(false);
-    setComment('');
+      // Map to frontend status
+      let newStatus = TaskStatus.APPROVED;
+      if (action === 'REJECTED') newStatus = TaskStatus.REJECTED;
+      if (action === 'DELEGATED') newStatus = TaskStatus.DELEGATED;
+      if (action === 'RETURNED') newStatus = TaskStatus.RETURNED;
+      if (action === 'REVOKE_DELEGATION') newStatus = TaskStatus.PENDING;
+
+      const actionLabel = action === 'APPROVED' ? '同意' 
+        : action === 'REJECTED' ? '拒绝' 
+        : action === 'DELEGATED' ? '转办' 
+        : action === 'RETURNED' ? '退回' 
+        : '撤回转办';
+
+      const log = {
+        operator: currentUser.name,
+        action: actionLabel,
+        comment: comment || '处理完毕',
+        time: new Date().toLocaleString()
+      };
+
+      toast.success(`任务${actionLabel}成功`);
+
+      onComplete({
+        ...task,
+        status: newStatus,
+        assigneeId: action === 'DELEGATED' ? delegateUser : task.assigneeId, 
+        logs: [...(task.logs || []), log as any]
+      });
+      
+      onClose();
+      setDelegationMode(false);
+      setComment('');
+    } catch (err) {
+      console.error('任务处理失败:', err);
+      toast.error(err instanceof Error ? err.message : '任务处理失败，请重试');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -198,10 +219,32 @@ export const TaskHandleModal = ({
                             onChange={e => setComment(e.target.value)}
                             />
                             <div className="flex gap-2 justify-end">
-                            <button onClick={() => setDelegationMode(true)} className="px-3 py-1.5 border rounded text-xs">转办</button>
-                            <button onClick={() => handleAction('REJECTED')} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs">拒绝</button>
-                            <button onClick={() => handleAction('APPROVED')} className="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs shadow">同意</button>
+                            <button onClick={() => setDelegationMode(true)} disabled={submitting} className="px-3 py-1.5 border rounded text-xs disabled:opacity-50">转办</button>
+                            <button onClick={() => setConfirmAction('REJECTED')} disabled={submitting} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs disabled:opacity-50">拒绝</button>
+                            <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs shadow disabled:opacity-50">
+                              {submitting ? '处理中...' : '同意'}
+                            </button>
                             </div>
+
+                            {/* 操作确认弹窗 */}
+                            {confirmAction && (
+                              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className="flex items-center gap-2 text-amber-700 text-sm font-medium mb-2">
+                                  <AlertTriangle size={16} />
+                                  确认{confirmAction === 'APPROVED' ? '同意' : '拒绝'}此任务？
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                  <button onClick={() => setConfirmAction(null)} className="px-3 py-1 text-xs text-slate-500 border rounded">取消</button>
+                                  <button 
+                                    onClick={() => handleAction(confirmAction)} 
+                                    disabled={submitting}
+                                    className={`px-3 py-1 text-xs text-white rounded disabled:opacity-50 ${confirmAction === 'APPROVED' ? 'bg-indigo-600' : 'bg-red-600'}`}
+                                  >
+                                    {submitting ? '处理中...' : '确认'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                         </div>
                     )}
                     {!canAct && task.status === TaskStatus.PENDING && (

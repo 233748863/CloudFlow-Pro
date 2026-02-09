@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Plus, Settings, Trash2, ChevronRight, AlertCircle, 
   GitBranch, GitMerge, FileText, CheckCircle2, 
   ArrowRight, ArrowDown, MoreHorizontal, Copy, PlayCircle,
-  Undo2, Redo2, Save, UploadCloud
+  Undo2, Redo2, Save, UploadCloud, ZoomIn, ZoomOut, Maximize2
 } from 'lucide-react';
-import { WorkflowNode, NodeType } from '../types';
+import { WorkflowNode, NodeType, WorkflowDefinition, FormDefinition, User } from '../types';
 import { useHistory } from '../hooks/useHistory';
 import { saveProcessDefinition, deployProcessDefinition } from '../services/api/workflow';
 import { toast } from 'sonner';
@@ -390,8 +390,63 @@ const FlowNode = ({
   );
 };
 
-export const WorkflowBuilder = () => {
-  const initialRoot: WorkflowNode = {
+interface WorkflowBuilderProps {
+  workflow?: WorkflowDefinition;
+  onChange?: (wf: WorkflowDefinition) => void;
+  onSave?: (wf: WorkflowDefinition) => void;
+  availableForms?: FormDefinition[];
+  availableRoles?: any[];
+  availableUsers?: User[];
+}
+
+/**
+ * 校验流程定义的合法性
+ */
+function validateWorkflow(root: WorkflowNode): string[] {
+  const errors: string[] = [];
+  
+  // 检查是否有结束节点
+  let hasEnd = false;
+  const checkEnd = (node: WorkflowNode) => {
+    if (node.type === NodeType.END) hasEnd = true;
+    if (node.next) checkEnd(node.next);
+    if (node.branches) node.branches.forEach(checkEnd);
+  };
+  checkEnd(root);
+  if (!hasEnd) errors.push('流程缺少结束节点');
+
+  // 检查审批节点是否配置了审批人
+  const checkApprover = (node: WorkflowNode) => {
+    if (node.type === NodeType.APPROVAL && !node.approverType && !node.approverValue) {
+      errors.push(`审批节点"${node.title}"未配置审批人`);
+    }
+    if (node.next) checkApprover(node.next);
+    if (node.branches) node.branches.forEach(checkApprover);
+  };
+  checkApprover(root);
+
+  // 检查节点标题是否为空
+  const checkTitle = (node: WorkflowNode) => {
+    if (!node.title || node.title.trim() === '') {
+      errors.push(`节点 ${node.id} 缺少标题`);
+    }
+    if (node.next) checkTitle(node.next);
+    if (node.branches) node.branches.forEach(checkTitle);
+  };
+  checkTitle(root);
+
+  return errors;
+}
+
+export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ 
+  workflow, 
+  onChange, 
+  onSave,
+  availableForms,
+  availableRoles,
+  availableUsers 
+}) => {
+  const defaultRoot: WorkflowNode = {
      id: 'node_start',
      type: NodeType.START,
      title: '发起申请',
@@ -408,9 +463,68 @@ export const WorkflowBuilder = () => {
      }
   };
 
-  const { state: root, set: setRoot, undo, redo, canUndo, canRedo } = useHistory<WorkflowNode>(initialRoot);
+  const { state: root, set: setRoot, undo, redo, canUndo, canRedo } = useHistory<WorkflowNode>(
+    workflow?.nodes || defaultRoot
+  );
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
   const [saving, setSaving] = useState(false);
+  const [workflowName, setWorkflowName] = useState(workflow?.name || '未命名流程');
+  const [workflowKey, setWorkflowKey] = useState(workflow?.key || 'new_process');
+  const [zoom, setZoom] = useState(1);
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // 同步根节点变更到父组件
+  useEffect(() => {
+    if (onChange && workflow) {
+      onChange({ ...workflow, nodes: root, name: workflowName, key: workflowKey });
+    }
+  }, [root, workflowName, workflowKey]);
+
+  // --- Zoom Actions ---
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(z + 0.1, 2));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => Math.max(z - 0.1, 0.3));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1);
+  }, []);
+
+  // --- Copy Node ---
+  const handleCopyNode = useCallback((nodeId: string) => {
+    const node = findNodeById(root, nodeId);
+    if (!node) return;
+    if (node.type === NodeType.START || node.type === NodeType.END) {
+      toast.error('起始/结束节点不可复制');
+      return;
+    }
+
+    const copiedNode: WorkflowNode = {
+      ...node,
+      id: `node_${Date.now()}`,
+      title: `${node.title} (副本)`,
+      next: undefined,
+      branches: node.branches
+        ? node.branches.map((b, i) => ({
+            ...b,
+            id: `branch_${Date.now()}_${i}`,
+            next: undefined,
+          }))
+        : undefined,
+    };
+
+    // Insert after the original node
+    setRoot(
+      updateNodeInTree(root, nodeId, (n) => ({
+        ...n,
+        next: n.next ? { ...copiedNode, next: n.next } : copiedNode,
+      }))
+    );
+    toast.success('节点已复制');
+  }, [root]);
 
   // --- Actions ---
 
@@ -454,13 +568,19 @@ export const WorkflowBuilder = () => {
 
   const handleDeleteNode = (id: string) => {
       if (id === root.id) {
-          alert("根节点不可删除");
+          toast.error('起始节点不可删除');
+          return;
+      }
+      const node = findNodeById(root, id);
+      if (node?.type === NodeType.END) {
+          toast.error('结束节点不可删除');
           return;
       }
       const newRoot = deleteNodeInTree(root, id);
       if (newRoot) {
           setRoot(newRoot);
           setSelectedNode(null);
+          toast.success('节点已删除');
       }
   };
 
@@ -537,68 +657,79 @@ export const WorkflowBuilder = () => {
   };
   
   const handleSave = async () => {
+      // 流程校验
+      const errors = validateWorkflow(root);
+      if (errors.length > 0) {
+          errors.forEach(err => toast.error(err));
+          return;
+      }
+
+      if (!workflowName || workflowName.trim() === '') {
+          toast.error('请输入流程名称');
+          return;
+      }
+
+      // 如果父组件提供了 onSave，使用父组件的保存逻辑
+      if (onSave && workflow) {
+          setSaving(true);
+          try {
+              await onSave({ ...workflow, nodes: root, name: workflowName, key: workflowKey });
+          } finally {
+              setSaving(false);
+          }
+          return;
+      }
+
+      // 否则使用内部保存逻辑
       try {
           setSaving(true);
           const definition = {
-              processName: "未命名流程_" + new Date().getTime(),
-              processKey: "process_" + new Date().getTime(),
-              modelJson: JSON.stringify(root)
+              name: workflowName,
+              key: workflowKey,
+              nodes: root
           };
           
           await saveProcessDefinition(definition);
-          toast.success("流程已保存");
+          toast.success('流程已保存');
       } catch (e) {
           console.error(e);
-          // Toast handled by interceptor
-          // Toast 由拦截器处理
+          toast.error('保存失败');
       } finally {
           setSaving(false);
       }
   };
 
   const handleDeploy = async () => {
+      // 先保存
+      const errors = validateWorkflow(root);
+      if (errors.length > 0) {
+          errors.forEach(err => toast.error(err));
+          return;
+      }
+
       try {
-          // Ideally, we should get the ID from the saved definition or current context
-          // For now, let's assume we save first, then deploy using the key/version logic or returned ID
-          // But wait, saveProcessDefinition returns ID. We need to store it.
-          // Let's modify save to return ID and store it in state.
-          
-          // Quick fix: Save first to get ID (if new) or use existing ID if we had it.
-          // Since we generate ID on backend for new ones, we need to capture it.
-          // Let's just call save and use the result.
-          // 理想情况下，我们应该从已保存的定义或当前上下文中获取 ID
-          // 目前，我们假设先保存，然后使用 key/version 逻辑或返回的 ID 进行发布
-          // 但是等等，saveProcessDefinition 返回 ID。我们需要存储它。
-          // 让我们修改 save 以返回 ID 并将其存储在状态中。
-          
-          // 快速修复：先保存以获取 ID（如果是新的）或使用现有 ID（如果我们有）。
-          // 因为我们在后端为新的生成 ID，我们需要捕获它。
-          // 让我们只调用 save 并使用结果。
-          
           setSaving(true);
+          
+          // 先保存获取 ID
           const definition = {
-              processName: "未命名流程_" + new Date().getTime(),
-              processKey: "process_" + new Date().getTime(),
-              modelJson: JSON.stringify(root)
+              id: workflow?.id?.startsWith('new_') ? undefined : workflow?.id,
+              name: workflowName,
+              key: workflowKey,
+              nodes: root
           };
           
           const saveRes = await saveProcessDefinition(definition);
-          // Assuming saveRes is the ID string based on backend implementation
-          // backend returns R.ok(definitionId)
-          // 假设 saveRes 是基于后端实现的 ID 字符串
-          // 后端返回 R.ok(definitionId)
-          
-          const definitionId = saveRes as unknown as string;
+          const definitionId = (saveRes as any)?.id || saveRes;
           
           if (definitionId) {
-              await deployProcessDefinition(definitionId);
-              toast.success("流程已发布并上线！");
+              await deployProcessDefinition(String(definitionId));
+              toast.success('流程已发布并上线！');
           } else {
-              toast.error("发布失败：无法获取流程ID");
+              toast.error('发布失败：无法获取流程ID');
           }
-          
       } catch (e) {
           console.error(e);
+          toast.error('发布失败');
       } finally {
           setSaving(false);
       }
@@ -608,9 +739,14 @@ export const WorkflowBuilder = () => {
     <div className="h-full flex flex-col bg-slate-100 overflow-hidden relative">
        {/* Toolbar */}
        <div className="h-12 bg-white border-b px-4 flex items-center justify-between shadow-sm z-20">
-          <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
+          <div className="flex items-center gap-3">
               <GitMerge size={16} className="text-indigo-600"/>
-              工作流设计器
+              <input
+                value={workflowName}
+                onChange={(e) => setWorkflowName(e.target.value)}
+                className="text-sm font-bold text-slate-700 bg-transparent border-none focus:ring-0 focus:outline-none hover:bg-slate-50 px-2 py-1 rounded transition-colors"
+                placeholder="请输入流程名称"
+              />
           </div>
           
           <div className="flex items-center gap-4">
@@ -657,8 +793,23 @@ export const WorkflowBuilder = () => {
        </div>
 
        {/* Canvas */}
-       <div className="flex-1 overflow-auto p-10 flex justify-center custom-scrollbar cursor-grab active:cursor-grabbing bg-grid-slate-100">
-          <div className="min-w-[800px] flex justify-center pb-40">
+       <div ref={canvasRef} className="flex-1 overflow-auto p-10 flex justify-center custom-scrollbar cursor-grab active:cursor-grabbing bg-grid-slate-100 relative">
+          {/* Zoom Controls */}
+          <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
+            <button onClick={handleZoomOut} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="缩小">
+              <ZoomOut size={16} />
+            </button>
+            <span className="text-xs text-slate-500 min-w-[40px] text-center font-mono">{Math.round(zoom * 100)}%</span>
+            <button onClick={handleZoomIn} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="放大">
+              <ZoomIn size={16} />
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-0.5" />
+            <button onClick={handleZoomReset} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="重置缩放">
+              <Maximize2 size={16} />
+            </button>
+          </div>
+
+          <div className="min-w-[800px] flex justify-center pb-40 transition-transform origin-top" style={{ transform: `scale(${zoom})` }}>
              <FlowNode 
                 node={root} 
                 onAddNext={handleAddNext} 

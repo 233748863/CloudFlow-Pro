@@ -18,6 +18,7 @@ const MobileSchedule = React.lazy(() => import('@/mobile/pages/MobileSchedule').
 const MobileMeetingRoom = React.lazy(() => import('@/mobile/pages/MobileMeetingRoom').then(module => ({ default: module.MobileMeetingRoom })));
 const MobileLeaveRequest = React.lazy(() => import('@/mobile/pages/MobileLeaveRequest').then(module => ({ default: module.MobileLeaveRequest })));
 const MobileReimbursement = React.lazy(() => import('@/mobile/pages/MobileReimbursement').then(module => ({ default: module.MobileReimbursement })));
+const MobileWorkflowMonitor = React.lazy(() => import('@/mobile/pages/MobileWorkflowMonitor').then(module => ({ default: module.MobileWorkflowMonitor })));
 
 // Lazy load Desktop pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -40,6 +41,7 @@ const AssetList = React.lazy(() => import('./pages/admin/asset/AssetList'));
 const VehicleList = React.lazy(() => import('./pages/admin/vehicle/VehicleList'));
 const VehicleBooking = React.lazy(() => import('@/pages/admin/vehicle/VehicleBooking').then(m => ({ default: m.VehicleBooking })));
 const VehicleUsageList = React.lazy(() => import('./pages/admin/vehicle/VehicleUsageList'));
+const WorkflowMonitor = React.lazy(() => import('./pages/WorkflowMonitor').then(module => ({ default: module.default })));
 
 const Loading = () => (
   <div className="flex items-center justify-center h-full w-full min-h-[400px]">
@@ -98,6 +100,10 @@ const desktopRoutes = [
           {
             path: '/workflow',
             element: <Suspense fallback={<Loading />}><WorkflowDesign /></Suspense>,
+          },
+          {
+            path: '/workflow/monitor',
+            element: <Suspense fallback={<Loading />}><WorkflowMonitor /></Suspense>,
           },
           {
             path: '/forms',
@@ -208,6 +214,10 @@ const mobileRoutes = [
           {
             path: '/reimbursement/request',
             element: <Suspense fallback={<Loading />}><MobileReimbursement /></Suspense>,
+          },
+          {
+            path: '/workflow/monitor',
+            element: <Suspense fallback={<Loading />}><MobileWorkflowMonitor /></Suspense>,
           },
           // Fallback for not-yet-implemented mobile pages
           {

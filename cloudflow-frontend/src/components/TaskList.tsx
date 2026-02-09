@@ -64,13 +64,34 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
     }
   };
 
+  if (!tasks || tasks.length === 0) {
+    return (
+      <div className="text-center py-16 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+        <svg className="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        <p className="text-slate-400 text-sm">暂无任务</p>
+      </div>
+    );
+  }
+
+  // 检查任务是否超时
+  const isOverdue = (task: Task) => {
+    if (!task.dueDate) return false;
+    return new Date(task.dueDate) < new Date() && task.status === TaskStatus.PENDING;
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {tasks.map((task) => (
         <div 
           key={task.id}
           onClick={() => onTaskClick?.(task)}
-          className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-lg hover:border-indigo-500/30 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+          className={`bg-white border rounded-xl p-5 hover:shadow-lg transition-all duration-300 cursor-pointer group relative overflow-hidden ${
+            isOverdue(task) 
+              ? 'border-red-300 hover:border-red-400 ring-1 ring-red-100' 
+              : 'border-slate-200 hover:border-indigo-500/30'
+          }`}
         >
           <div className="absolute top-0 right-0 w-16 h-16 bg-slate-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
           

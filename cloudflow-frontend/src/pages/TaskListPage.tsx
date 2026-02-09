@@ -7,7 +7,12 @@ import { getTodoTasks, getMyInstances, getFormDefinitions } from '../services/ap
 import { getWorkTasks, updateWorkTaskStatus } from '../services/api/workTask';
 import { useAuth } from '../context/AuthContext';
 import { mapBackendTaskToFrontend, mapBackendInstanceToTask, mapTaskToUnified, mapWorkTaskToUnified } from '../utils/mappers';
-import { LayoutList, Kanban, Plus } from 'lucide-react';
+import { LayoutList, Kanban, Plus, RefreshCw } from 'lucide-react';
+import { SkeletonCard } from '../components/ui/Skeleton';
+import { EmptyTasks, EmptyError } from '../components/ui/EmptyState';
+import { toast } from 'sonner';
+import { usePolling } from '../hooks/usePolling';
+import { logTask } from '../lib/logger';
 
 export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => {
   const { user } = useAuth();
@@ -19,13 +24,19 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
   
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [filterType, setFilterType] = useState<'all' | 'process' | 'work'>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (showLoading = true) => {
     if (!user) return;
     try {
+        if (showLoading) setLoading(true);
+        setError(null);
+        
         const promises: Promise<any>[] = [
-            getTodoTasks(user.id),
-            getMyInstances(user.id)
+            getTodoTasks(),
+            getMyInstances()
         ];
         
         // Only fetch work tasks if looking at pending (todo) list
@@ -69,9 +80,26 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
         setTasks(unified);
     } catch (e) {
-        console.error("Fetch tasks failed", e);
+        logTask.error("Fetch tasks failed", e);
+        const errMsg = e instanceof Error ? e.message : '加载任务失败';
+        setError(errMsg);
+        toast.error(errMsg);
+    } finally {
+        setLoading(false);
+        setRefreshing(false);
     }
   };
+
+  // 定时刷新任务列表（30秒间隔）
+  const { refresh: pollingRefresh } = usePolling(
+    () => fetchTasks(false),
+    {
+      interval: 30000,
+      immediate: false,
+      enabled: !!user && !loading,
+      onError: (err) => logTask.error('任务列表定时刷新失败:', err),
+    }
+  );
 
   useEffect(() => {
     fetchTasks();
@@ -92,17 +120,25 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
       setIsModalOpen(false);
   };
 
+  const handleRefresh = () => {
+      setRefreshing(true);
+      fetchTasks(false);
+  };
+
   const handleTaskMove = async (taskId: string, newStatus: string) => {
-      // Find task type
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
 
       if (task.type === 'WORK') {
-          await updateWorkTaskStatus(taskId, newStatus);
-          fetchTasks(); // Refresh
+          try {
+              await updateWorkTaskStatus(taskId, newStatus);
+              toast.success('任务状态已更新');
+              fetchTasks(false);
+          } catch (e) {
+              toast.error('更新任务状态失败');
+          }
       } else {
-          // Process tasks cannot be moved via drag and drop easily (need form submission)
-          alert("流程任务请点击进入详情进行处理");
+          toast.info('流程任务请点击进入详情进行处理');
       }
   };
 
@@ -113,6 +149,34 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
   });
 
   if (!user) return null;
+
+  // Loading 状态
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-slate-800">{type === 'pending' ? '任务中心' : '我的申请'}</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Error 状态
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-slate-800">{type === 'pending' ? '任务中心' : '我的申请'}</h2>
+        </div>
+        <EmptyError onRetry={() => fetchTasks()} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 h-full flex flex-col">
@@ -150,9 +214,13 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         <option value="work">协作待办</option>
                      </select>
                      
-                     <button className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-1">
-                        <Plus size={16} />
-                        新建任务
+                     <button 
+                        onClick={handleRefresh}
+                        disabled={refreshing}
+                        className="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-1"
+                     >
+                        <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+                        刷新
                      </button>
                 </div>
             )}
@@ -161,9 +229,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
         <div className="flex-1 overflow-hidden min-h-[400px]">
             {viewMode === 'list' ? (
                  rawTasks.length === 0 && filteredUnifiedTasks.filter(t=>t.type==='WORK').length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        <p className="text-slate-400">暂无相关数据</p>
-                    </div>
+                    <EmptyTasks />
                 ) : (
                     <div className="space-y-8">
                          {/* Process Tasks */}
@@ -208,8 +274,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             setSelectedTask(task.sourceData as Task);
                             setIsModalOpen(true);
                         } else {
-                            // Open WorkTask edit modal (todo)
-                            console.log("Edit work task", task);
+                            logTask.debug("Edit work task", task);
                         }
                     }}
                 />

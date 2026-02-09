@@ -1,17 +1,84 @@
 import React from 'react';
-import { FormDefinition } from '../types';
+import { FormDefinition, FormField } from '../types';
+
+/**
+ * 格式化字段值
+ */
+function formatFieldValue(field: FormField, value: any): string {
+  if (value === null || value === undefined || value === '') return '';
+
+  switch (field.type) {
+    case 'DATE':
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        }
+      } catch { /* ignore */ }
+      return String(value);
+
+    case 'NUMBER':
+      const num = Number(value);
+      if (!isNaN(num)) {
+        return num.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
+      return String(value);
+
+    case 'SELECT':
+      return String(value);
+
+    default:
+      return String(value);
+  }
+}
+
+/**
+ * 从数据中获取字段值
+ * 统一使用 field.id 作为主键匹配，field.label 作为回退
+ */
+function getFieldValue(field: FormField, data: Record<string, any>): any {
+  // 优先使用 field.id 匹配
+  if (field.id in data) return data[field.id];
+  // 回退使用 field.label 匹配
+  if (field.label in data) return data[field.label];
+  // 尝试不区分大小写匹配
+  const lowerLabel = field.label.toLowerCase();
+  const lowerId = field.id.toLowerCase();
+  for (const key of Object.keys(data)) {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === lowerId || lowerKey === lowerLabel) return data[key];
+  }
+  return undefined;
+}
 
 export const DynamicFormViewer = ({ formDef, data }: { formDef: FormDefinition, data: Record<string, any> }) => {
+  if (!formDef || !formDef.fields || formDef.fields.length === 0) {
+    return (
+      <div className="text-center py-4 text-sm text-slate-400">
+        暂无表单字段
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-4">
-      {formDef.fields.map(field => (
-        <div key={field.id} className={field.type === 'TEXTAREA' ? 'col-span-2' : ''}>
-          <label className="text-xs font-bold text-slate-500 block mb-1">{field.label}</label>
-          <div className="p-2 bg-slate-100 rounded text-sm text-slate-800 border border-slate-200 min-h-[38px]">
-            {data[field.label] || data[field.id] || <span className="text-slate-400 italic">空</span>}
+      {formDef.fields.map(field => {
+        const rawValue = getFieldValue(field, data);
+        const displayValue = formatFieldValue(field, rawValue);
+        const isEmpty = rawValue === null || rawValue === undefined || rawValue === '';
+
+        return (
+          <div key={field.id} className={field.type === 'TEXTAREA' ? 'col-span-2' : ''}>
+            <label className="text-xs font-bold text-slate-500 block mb-1">{field.label}</label>
+            <div className="p-2 bg-slate-100 rounded text-sm text-slate-800 border border-slate-200 min-h-[38px]">
+              {isEmpty 
+                ? <span className="text-slate-400 italic">未填写</span>
+                : displayValue
+              }
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

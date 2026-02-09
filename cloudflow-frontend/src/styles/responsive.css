@@ -1,0 +1,436 @@
+/**
+ * 移动端响应式优化样式
+ * 统一管理移动端适配和响应式布局
+ */
+
+/* ============================================================
+   移动端基础样式
+   ============================================================ */
+
+/* 移动端容器 */
+@media (max-width: 768px) {
+  /* 页面容器 */
+  .page-container {
+    padding: 12px;
+  }
+
+  /* 卡片容器 */
+  .card-container {
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  /* 表单容器 */
+  .form-container {
+    padding: 16px;
+  }
+
+  /* 模态框容器 */
+  .modal-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    max-height: 90vh;
+  }
+}
+
+/* ============================================================
+   触摸优化
+   ============================================================ */
+
+/* 增大触摸目标 */
+@media (max-width: 768px) {
+  /* 按钮 */
+  button,
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+
+  /* 输入框 */
+  input,
+  textarea,
+  select {
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+
+  /* 链接 */
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* 复选框和单选框 */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 24px;
+    min-height: 24px;
+  }
+}
+
+/* 触摸反馈 */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  .btn:active {
+    transform: scale(0.98);
+    opacity: 0.8;
+  }
+
+  a:active {
+    opacity: 0.7;
+  }
+}
+
+/* ============================================================
+   布局优化
+   ============================================================ */
+
+/* 移动端网格布局 */
+@media (max-width: 768px) {
+  /* 单列布局 */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr;
+  }
+
+  /* 弹性布局 */
+  .flex-row {
+    flex-direction: column;
+  }
+
+  /* 侧边栏 */
+  .sidebar {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open {
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   文字优化
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* 标题 */
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  h3 {
+    font-size: 18px;
+  }
+
+  h4 {
+    font-size: 16px;
+  }
+
+  /* 正文 */
+  body,
+  p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* 小字 */
+  small,
+  .text-sm {
+    font-size: 12px;
+  }
+}
+
+/* ============================================================
+   导航优化
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* 顶部导航 */
+  .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 底部导航 */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: white;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* 汉堡菜单 */
+  .hamburger-menu {
+    display: block;
+  }
+
+  /* 桌面菜单 */
+  .desktop-menu {
+    display: none;
+  }
+}
+
+/* ============================================================
+   表单优化
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* 表单字段 */
+  .form-field {
+    margin-bottom: 16px;
+  }
+
+  /* 表单标签 */
+  .form-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  /* 表单按钮组 */
+  .form-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   表格优化
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* 响应式表格 */
+  .responsive-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 卡片式表格 */
+  .table-card {
+    display: block;
+  }
+
+  .table-card thead {
+    display: none;
+  }
+
+  .table-card tbody {
+    display: block;
+  }
+
+  .table-card tr {
+    display: block;
+    margin-bottom: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .table-card td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .table-card td:last-child {
+    border-bottom: none;
+  }
+
+  .table-card td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    margin-right: 12px;
+  }
+}
+
+/* ============================================================
+   模态框优化
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* 全屏模态框 */
+  .modal-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  /* 底部抽屉 */
+  .modal-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 80vh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ============================================================
+   安全区域适配
+   ============================================================ */
+
+/* iOS 安全区域 */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ============================================================
+   滚动优化
+   ============================================================ */
+
+/* 平滑滚动 */
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* 滚动容器 */
+  .scroll-container {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* 隐藏滚动条 */
+  .scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scroll-container {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ============================================================
+   手势优化
+   ============================================================ */
+
+/* 禁用双击缩放 */
+@media (max-width: 768px) {
+  * {
+    touch-action: manipulation;
+  }
+
+  /* 允许滚动 */
+  .scroll-container {
+    touch-action: pan-y;
+  }
+
+  /* 允许缩放 */
+  .pinch-zoom {
+    touch-action: pinch-zoom;
+  }
+}
+
+/* ============================================================
+   性能优化
+   ============================================================ */
+
+/* 硬件加速 */
+@media (max-width: 768px) {
+  .hardware-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* 动画优化 */
+  .animated {
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+}
+
+/* ============================================================
+   工具类
+   ============================================================ */
+
+/* 仅移动端显示 */
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block;
+  }
+}
+
+/* 仅桌面端显示 */
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none;
+  }
+}
+
+/* 移动端隐藏 */
+@media (max-width: 768px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+}
+
+/* 桌面端隐藏 */
+@media (min-width: 769px) {
+  .desktop-hidden {
+    display: none !important;
+  }
+}

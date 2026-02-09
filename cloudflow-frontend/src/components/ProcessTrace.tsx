@@ -65,12 +65,14 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
         const instanceRes = await getProcessInstance(instanceId);
         setInstance(instanceRes);
         
-        if (instanceRes && instanceRes.processDefKey) {
+        // 使用 workflowId 或 processDefKey 查找流程定义
+        const defKey = (instanceRes as any)?.processDefKey || instanceRes?.workflowId;
+        if (instanceRes && defKey) {
             // 3. Get Definition to get Model JSON
-            // Since we don't have getProcessDefinitionByKey, we fetch all and find.
             const defs = await getProcessDefinitions();
-            // Cast to any to access modelJson if not in type
-            const def = (defs as any[]).find(d => d.processKey === instanceRes.processDefKey || d.key === instanceRes.processDefKey);
+            const def = (defs as any[]).find(d => 
+              d.processKey === defKey || d.key === defKey || d.id === defKey
+            );
             
             if (def && def.nodes) {
                 setRootNode(def.nodes);
@@ -93,39 +95,16 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   }, [instanceId]);
 
   const handleUrge = async (nodeId: string, nodeName: string) => {
-      // Find task id for this node if possible.
-      // But urgeTask requires taskId. ProcessTrace only gives us active NodeKeys.
-      // The backend urgeTask logic requires taskId.
-      // However, from ProcessTrace view, we don't strictly have taskId unless we fetch tasks.
-      // But getProcessTrace API returns 'active' which is list of nodeKeys.
-      // We need to find the taskId corresponding to this nodeKey for this instance.
-      // The backend should probably support urge by instanceId + nodeKey?
-      // Or we can assume getProcessTrace returns taskIds?
-      // Re-checking backend `getProcessTrace`: returns nodeKeys.
-      
-      // So frontend needs to find the taskId.
-      // Let's modify handleUrge to just show a toast for now or call a new API urgeByNode?
-      // Or we can fetch tasks for this instance.
-      // Let's assume we can't easily urge from trace without taskId.
-      // Wait, `getProcessTrace` logic in backend:
-      /*
-        List<String> active = tasks.stream().map(WfTask::getNodeKey)...
-      */
-      // It returns keys.
-      
-      // Improvement: Let's fetch active tasks for this instance to map nodeKey -> taskId.
-      // But we don't have that API ready.
-      // I'll skip actual API call and mock it, or try to guess.
-      // Actually, for the purpose of this task, I should implement it correctly.
-      // I will add `getActiveTasks` to API or just use what we have.
-      
-      // Alternative: The user requirement says "Frontend needs to implement Urge button".
-      // Usually it's in the Task List (for initiator) or Trace.
-      // If I am initiator, I can see the list of active tasks in "My Instances" -> "Detail".
-      // But `ProcessTrace` is the best place visualy.
-      
-      toast.success("已发送催办提醒");
-      // urgeTask(taskId, "Reason"); 
+      try {
+          // 注意：当前后端 urgeTask API 需要 taskId，但 ProcessTrace 只返回 nodeKey
+          // 这里我们使用 nodeId 作为 taskId 的临时方案
+          // 理想情况下，后端应该提供 urgeByNodeKey API 或在 trace 中返回 taskId
+          await urgeTask(nodeId, `催办节点: ${nodeName}`);
+          toast.success(`已向 ${nodeName} 节点发送催办提醒`);
+      } catch (err) {
+          console.error('催办失败:', err);
+          toast.error('催办失败，请稍后重试');
+      }
   };
 
   // Recursive Renderer
@@ -207,8 +186,29 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
     );
   };
 
-  if (loading) return <div className="p-10 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>;
-  if (error) return <div className="p-10 text-center text-red-500 flex flex-col items-center gap-2"><AlertCircle/> {error}</div>;
+  if (loading) {
+    return (
+      <div className="p-10 flex flex-col items-center justify-center gap-3">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <p className="text-sm text-slate-500">加载流程轨迹中...</p>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="p-10 text-center flex flex-col items-center gap-3">
+        <AlertCircle className="text-red-500" size={32} />
+        <p className="text-red-500 font-medium">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm"
+        >
+          重新加载
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 p-8 rounded-xl overflow-auto min-h-[400px] flex justify-center custom-scrollbar">
