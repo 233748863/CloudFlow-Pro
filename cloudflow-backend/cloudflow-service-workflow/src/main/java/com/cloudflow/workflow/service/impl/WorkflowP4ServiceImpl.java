@@ -385,6 +385,131 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         return R.ok(r);
     }
 
+    // ==================== P1-5.3: 减签 ====================
+
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> removeSign(String taskId, List<Long> userIds, String reason) {
+        log.info("[removeSign] taskId={}, userIds={}", taskId, userIds);
+        WfTask originalTask = taskMapper.selectById(taskId);
+        if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
+        if (CollectionUtils.isEmpty(userIds)) { throw WorkflowException.validationError("减签用户不能为空"); }
+
+        // 查找加签创建的任务
+        List<WfTask> addSignTasks = taskMapper.selectList(new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, originalTask.getInstanceId())
+                .like(WfTask::getNodeKey, originalTask.getNodeKey() + "_addsign")
+                .eq(WfTask::getStatus, "TODO")
+                .in(WfTask::getAssignee, userIds));
+
+        int removed = 0;
+        for (WfTask t : addSignTasks) {
+            // 记录历史
+            WfTaskHistory h = new WfTaskHistory();
+            h.setHistoryId(UUID.randomUUID().toString());
+            h.setTaskId(t.getTaskId());
+            h.setInstanceId(t.getInstanceId());
+            h.setNodeKey(t.getNodeKey());
+            h.setNodeName(t.getNodeName());
+            h.setOperatorId(originalTask.getAssignee());
+            h.setOperatorName(originalTask.getAssigneeName());
+            h.setAction("REMOVE_SIGN");
+            h.setComment("减签: " + (reason != null ? reason : ""));
+            h.setCreateTime(new Date());
+            taskHistoryMapper.insert(h);
+
+            taskMapper.deleteById(t.getTaskId());
+            removed++;
+
+            // 通知被减签的用户
+            sendNotification("TASK_REMOVE_SIGN", t.getAssignee(), "减签通知",
+                    "您的加签任务 [" + t.getNodeName() + "] 已被取消");
+        }
+
+        log.info("[removeSign] 减签完成, 移除{}个任务", removed);
+        return R.ok(removed);
+    }
+
+    // ==================== P1-4.3: 子流程调用 ====================
+
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> startSubProcess(String parentInstanceId, String parentNodeKey, String subProcessDefKey,
+                                Map<String, Object> variables) {
+        log.info("[startSubProcess] parentInstanceId={}, subProcessDefKey={}", parentInstanceId, subProcessDefKey);
+
+        WfProcessInstance parentInstance = processInstanceMapper.selectById(parentInstanceId);
+        if (parentInstance == null) { throw WorkflowException.instanceNotFound(parentInstanceId); }
+
+        // 创建子流程实例
+        WfProcessDefinition subDef = processDefinitionMapper.selectOne(new LambdaQueryWrapper<WfProcessDefinition>()
+                .eq(WfProcessDefinition::getProcessKey, subProcessDefKey)
+                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+                .orderByDesc(WfProcessDefinition::getVersion)
+                .last("LIMIT 1"));
+        if (subDef == null) { throw WorkflowException.processNotFound(subProcessDefKey); }
+
+        WfProcessInstance subInstance = new WfProcessInstance();
+        subInstance.setInstanceId(UUID.randomUUID().toString());
+        subInstance.setProcessDefKey(subProcessDefKey);
+        subInstance.setDefinitionId(subDef.getDefinitionId());
+        subInstance.setBusinessKey(parentInstanceId + ":" + parentNodeKey); // 关联父流程
+        subInstance.setTitle("[子流程] " + subDef.getProcessName());
+        subInstance.setStartUserId(parentInstance.getStartUserId());
+        subInstance.setStartUserName(parentInstance.getStartUserName());
+        subInstance.setStatus("RUNNING");
+        subInstance.setStartTime(new Date());
+        subInstance.setPriority(parentInstance.getPriority()); // 继承父流程优先级
+
+        if (variables != null) {
+            try {
+                subInstance.setVariables(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(variables));
+            } catch (Exception e) {
+                subInstance.setVariables("{}");
+            }
+        }
+
+        processInstanceMapper.insert(subInstance);
+        log.info("[startSubProcess] 子流程创建成功, subInstanceId={}", subInstance.getInstanceId());
+
+        return R.ok(subInstance.getInstanceId());
+    }
+
+    // ==================== P1-5.8: 条件审批 ====================
+
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> conditionalApprove(String taskId, Long operatorId, String operatorName,
+                                    String action, String comment, String selectedPath) {
+        log.info("[conditionalApprove] taskId={}, selectedPath={}", taskId, selectedPath);
+        WfTask task = taskMapper.selectById(taskId);
+        if (task == null) { throw WorkflowException.taskNotFound(taskId); }
+        if (!task.getAssignee().equals(operatorId)) { throw WorkflowException.validationError("您不是此任务的处理人"); }
+
+        // 记录历史（包含选择的路径）
+        WfTaskHistory h = new WfTaskHistory();
+        h.setHistoryId(UUID.randomUUID().toString());
+        h.setTaskId(taskId);
+        h.setInstanceId(task.getInstanceId());
+        h.setNodeKey(task.getNodeKey());
+        h.setNodeName(task.getNodeName());
+        h.setOperatorId(operatorId);
+        h.setOperatorName(operatorName);
+        h.setAction(action);
+        h.setComment(comment);
+        h.setCreateTime(new Date());
+
+        // 记录选择的路径到变量变更
+        try {
+            Map<String, Object> detail = new HashMap<>();
+            detail.put("selectedPath", selectedPath);
+            detail.put("action", action);
+            h.setVariablesChanged(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(detail));
+        } catch (Exception e) { /* ignore */ }
+
+        taskHistoryMapper.insert(h);
+        taskMapper.deleteById(taskId);
+
+        return R.ok();
+    }
+
     // ==================== P4.11: 任务优先级 ====================
 
     @Transactional(rollbackFor = Exception.class)
@@ -554,7 +679,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         record.setDeployerName(deployerName);
         record.setDeployNote(deployNote);
         record.setChangeLog(changeLog);
-        record.setDeployTime(new Date());
+        record.setDeployTimeFromDate(new Date());
         deployRecordMapper.insert(record);
     }
 

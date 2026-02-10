@@ -16,7 +16,7 @@ public class CaptchaProperties {
     /**
      * 滑块容错值 (像素)
      */
-    private Integer tolerance = 5;
+    private Integer tolerance = 8;
 
     /**
      * 验证码有效期 (秒)

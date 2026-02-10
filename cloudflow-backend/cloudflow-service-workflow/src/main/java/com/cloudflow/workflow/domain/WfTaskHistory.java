@@ -16,6 +16,9 @@ public class WfTaskHistory implements Serializable {
     @TableId
     private String historyId;
 
+    /** 租户ID */
+    private Long tenantId;
+
     /** 任务ID */
     private String taskId;
 
@@ -43,6 +46,9 @@ public class WfTaskHistory implements Serializable {
     /** 操作时间 */
     private Date createTime;
     
+    /** 审批耗时(秒) */
+    private Integer durationSeconds;
+
     /** 本次修改的变量 (JSON格式) */
     private String variablesChanged;
 
@@ -126,11 +132,27 @@ public class WfTaskHistory implements Serializable {
         this.createTime = createTime;
     }
 
+    public Integer getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(Integer durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+
     public String getVariablesChanged() {
         return variablesChanged;
     }
 
     public void setVariablesChanged(String variablesChanged) {
         this.variablesChanged = variablesChanged;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
     }
 }

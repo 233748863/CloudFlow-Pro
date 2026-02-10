@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/workflow")
 public class WorkflowController {
 
     @Autowired
@@ -59,7 +58,7 @@ public class WorkflowController {
      * 查询实例详情
      */
     @GetMapping("/instance/{instanceId}")
-    public R<WfProcessInstance> getProcessInstance(@PathVariable String instanceId) {
+    public R<WfProcessInstance> getProcessInstance(@PathVariable("instanceId") String instanceId) {
         return R.ok(workflowService.getProcessInstance(instanceId));
     }
 
@@ -67,7 +66,7 @@ public class WorkflowController {
      * 查询流程追踪
      */
     @GetMapping("/instance/{instanceId}/trace")
-    public R<Map<String, Object>> getProcessTrace(@PathVariable String instanceId) {
+    public R<Map<String, Object>> getProcessTrace(@PathVariable("instanceId") String instanceId) {
         return R.ok(workflowService.getProcessTrace(instanceId));
     }
 
@@ -83,7 +82,7 @@ public class WorkflowController {
      * 查询表单定义
      */
     @GetMapping("/form/{formId}")
-    public R<com.cloudflow.workflow.domain.WfFormDefinition> getFormDefinition(@PathVariable String formId) {
+    public R<com.cloudflow.workflow.domain.WfFormDefinition> getFormDefinition(@PathVariable("formId") String formId) {
         return R.ok(workflowService.getFormDefinition(formId));
     }
 
@@ -109,7 +108,7 @@ public class WorkflowController {
      */
     @PostMapping("/definition/deploy/{definitionId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<?> deployProcessDefinition(@PathVariable String definitionId) {
+    public R<?> deployProcessDefinition(@PathVariable("definitionId") String definitionId) {
         return workflowService.deployProcessDefinition(definitionId);
     }
 
@@ -125,7 +124,7 @@ public class WorkflowController {
      * 任务已读
      */
     @PostMapping("/task/read/{taskId}")
-    public R<?> readTask(@PathVariable String taskId) {
+    public R<?> readTask(@PathVariable("taskId") String taskId) {
         workflowService.readTask(taskId, UserContext.getUserId());
         return R.ok();
     }

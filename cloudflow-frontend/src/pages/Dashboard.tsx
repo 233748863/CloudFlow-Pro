@@ -3,7 +3,20 @@ import { Card } from '../components/ui/card';
 import { CheckCircle2, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getTodoTasks, getMyInstances } from '../services/api/workflow';
+import request from '../services/api/request';
+
+/**
+ * 提取列表数据，兼容 PageResult 和数组格式
+ */
+function extractList<T = any>(res: unknown): T[] {
+  if (res && typeof res === 'object') {
+    const obj = res as Record<string, unknown>;
+    if (Array.isArray(obj.records)) return obj.records as T[];
+    if (Array.isArray(obj.rows)) return obj.rows as T[];
+  }
+  if (Array.isArray(res)) return res as T[];
+  return [];
+}
 
 export const Dashboard = () => {
   const { user } = useAuth();
@@ -13,11 +26,18 @@ export const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-        getTodoTasks(user.id).then(res => {
-            if (Array.isArray(res)) setPendingCount(res.length);
+        // 使用 silent 模式调用工作流 API，避免服务不可用时弹出错误提示
+        request.get('/workflow/todo', { silent: true }).then(res => {
+            const list = extractList(res);
+            setPendingCount(list.length);
+        }).catch(() => {
+            setPendingCount(0);
         });
-        getMyInstances(user.id).then(res => {
-            if (Array.isArray(res)) setMyAppsCount(res.length);
+        request.get('/workflow/my-instances', { silent: true }).then(res => {
+            const list = extractList(res);
+            setMyAppsCount(list.length);
+        }).catch(() => {
+            setMyAppsCount(0);
         });
     }
   }, [user]);

@@ -111,7 +111,7 @@ public class WorkflowPermissionService {
      * 判断用户是否是管理员
      * 简化实现：userId=1 为管理员，实际应查询角色表
      */
-    private boolean isAdmin(Long userId) {
+    public boolean isAdmin(Long userId) {
         // TODO: 实际应查询 sys_user_role 表判断是否有管理员角色
         return userId != null && userId == 1L;
     }

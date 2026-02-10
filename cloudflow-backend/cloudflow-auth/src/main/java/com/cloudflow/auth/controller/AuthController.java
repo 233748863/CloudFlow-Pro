@@ -18,6 +18,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 
 @RestController
-@RequestMapping("/auth")
 public class AuthController {
 
     @Autowired
@@ -50,7 +50,7 @@ public class AuthController {
     private com.cloudflow.auth.service.CaptchaService captchaService;
 
     @PostMapping("/login")
-    public R<?> login(@RequestBody @Validated LoginBody form) {
+    public R<?> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
         // Verify Captcha
         if (!captchaService.validatePassToken(form.getCaptchaToken())) {
              return R.fail("验证码失效或错误，请重新验证");
@@ -72,6 +72,12 @@ public class AuthController {
             return R.fail("密码错误");
         }
         
+        // 记录登录IP和登录时间
+        String loginIp = getClientIp(request);
+        user.setLoginIp(loginIp);
+        user.setLoginDate(new Date());
+        sysUserMapper.updateById(user);
+
         // 查询角色
         LambdaQueryWrapper<SysUserRole> urWrapper = new LambdaQueryWrapper<>();
         urWrapper.eq(SysUserRole::getUserId, user.getUserId());
@@ -137,6 +143,30 @@ public class AuthController {
         sysUserService.insertUser(user);
         
         return R.ok("注册成功");
+    }
+
+    /**
+     * 获取客户端真实IP地址
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // 多个代理时取第一个IP
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 
     @GetMapping("/info")

@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/workflow/announcement")
+@RequestMapping("/announcement")
 public class SysAnnouncementController {
 
     @Autowired
@@ -27,7 +27,7 @@ public class SysAnnouncementController {
      * 标记已读
      */
     @PostMapping("/read/{id}")
-    public R<Boolean> read(@PathVariable Long id) {
+    public R<Boolean> read(@PathVariable("id") Long id) {
         return R.ok(announcementService.readAnnouncement(id, UserContext.getUserId()));
     }
 

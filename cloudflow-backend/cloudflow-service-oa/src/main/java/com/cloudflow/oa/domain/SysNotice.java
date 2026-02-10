@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.domain;
+package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -39,4 +39,7 @@ public class SysNotice {
     private Date updateTime;
     
     private String remark;
+    
+    /** 租户ID */
+    private Long tenantId;
 }

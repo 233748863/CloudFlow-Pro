@@ -13,6 +13,8 @@ import java.util.Date;
 public class WfTaskCandidate {
     @TableId
     private String candidateId;
+    /** 租户ID */
+    private Long tenantId;
     private String taskId;
     private String instanceId;
     private Long userId;

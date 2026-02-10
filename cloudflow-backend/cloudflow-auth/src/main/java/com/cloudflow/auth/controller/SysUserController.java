@@ -3,6 +3,8 @@ package com.cloudflow.auth.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.common.core.domain.R;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,7 +53,7 @@ public class SysUserController {
      * 删除用户
      */
     @DeleteMapping("/{userIds}")
-    public R<?> remove(@PathVariable Long[] userIds) {
+    public R<?> remove(@PathVariable("userIds") Long[] userIds) {
         return R.ok(userService.deleteUserByIds(userIds));
     }
 }

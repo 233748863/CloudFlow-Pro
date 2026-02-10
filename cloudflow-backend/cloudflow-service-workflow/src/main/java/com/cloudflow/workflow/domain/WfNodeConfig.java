@@ -26,6 +26,10 @@ public class WfNodeConfig implements Serializable {
     private Map<String, Object> props;
     private Map<String, Object> retry; // Retry Config
 
+    // Countersign fields (会签)
+    private String signType; // ALL / ANY / PERCENT
+    private Integer passPercent; // 通过百分比 (signType=PERCENT时使用)
+
     // SLA fields
     private Integer slaHours;
     private String slaAction; // AUTO_PASS, AUTO_REJECT
@@ -156,6 +160,22 @@ public class WfNodeConfig implements Serializable {
 
     public void setProps(Map<String, Object> props) {
         this.props = props;
+    }
+
+    public String getSignType() {
+        return signType;
+    }
+
+    public void setSignType(String signType) {
+        this.signType = signType;
+    }
+
+    public Integer getPassPercent() {
+        return passPercent;
+    }
+
+    public void setPassPercent(Integer passPercent) {
+        this.passPercent = passPercent;
     }
 
     public Map<String, Object> getRetry() {

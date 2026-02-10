@@ -46,6 +46,8 @@ public class CaptchaService {
         result.put("bgImage", data.getBgImage());
         result.put("sliderImage", data.getSliderImage());
         result.put("y", data.getY());
+        result.put("sliderWidth", data.getSliderWidth());
+        result.put("sliderHeight", data.getSliderHeight());
         return result;
     }
 

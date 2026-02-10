@@ -1,10 +1,10 @@
-﻿package com.cloudflow.oa.service.impl;
+package com.cloudflow.oa.service.impl;
 
 import cn.hutool.extra.qrcode.QrCodeUtil;
 import cn.hutool.extra.qrcode.QrConfig;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.exception.ServiceException;
-import com.cloudflow.common.security.utils.SecurityUtils;
+import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.SysAsset;
 import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.mapper.SysAssetMapper;

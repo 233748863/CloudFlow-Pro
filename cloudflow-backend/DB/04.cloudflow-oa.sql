@@ -1,6 +1,8 @@
 -- =========================================================
--- CloudFlow Pro - OA办公模块数据库初始化脚本
--- 包含：公告、日程、会议室、任务协作、考勤、资产、车辆管理
+-- CloudFlow Pro - OA办公模块数据库脚本
+-- 模块：公告、日程、会议室、任务协作、考勤、资产、车辆管理
+-- 版本：v1.0
+-- 创建日期：2026-02-09
 -- =========================================================
 
 SET NAMES utf8mb4;
@@ -10,9 +12,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 一、公告与通知模块
 -- =========================================================
 
--- ----------------------------
 -- 1. 系统公告表
--- ----------------------------
 DROP TABLE IF EXISTS sys_announcement;
 CREATE TABLE sys_announcement (
   announcement_id   BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '公告ID',
@@ -33,9 +33,7 @@ CREATE TABLE sys_announcement (
   PRIMARY KEY (announcement_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='系统公告表';
 
--- ----------------------------
 -- 2. 公告阅读记录表
--- ----------------------------
 DROP TABLE IF EXISTS sys_announcement_read;
 CREATE TABLE sys_announcement_read (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -51,9 +49,7 @@ CREATE TABLE sys_announcement_read (
 -- 二、日程与会议室模块
 -- =========================================================
 
--- ----------------------------
 -- 3. 会议室资源表
--- ----------------------------
 DROP TABLE IF EXISTS sys_meeting_room;
 CREATE TABLE sys_meeting_room (
   room_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '会议室ID',
@@ -71,9 +67,7 @@ CREATE TABLE sys_meeting_room (
   PRIMARY KEY (room_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COMMENT='会议室资源表';
 
--- ----------------------------
 -- 4. 日程事件表
--- ----------------------------
 DROP TABLE IF EXISTS sys_schedule_event;
 CREATE TABLE sys_schedule_event (
   event_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '事件ID',
@@ -100,9 +94,7 @@ CREATE TABLE sys_schedule_event (
 -- 三、任务协作模块
 -- =========================================================
 
--- ----------------------------
 -- 5. 协作任务表
--- ----------------------------
 DROP TABLE IF EXISTS sys_work_task;
 CREATE TABLE sys_work_task (
   task_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '任务ID',
@@ -131,9 +123,7 @@ CREATE TABLE sys_work_task (
 -- 四、考勤管理模块
 -- =========================================================
 
--- ----------------------------
 -- 6. 考勤打卡记录表
--- ----------------------------
 DROP TABLE IF EXISTS sys_attendance_record;
 CREATE TABLE sys_attendance_record (
   record_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '记录ID',
@@ -155,9 +145,7 @@ CREATE TABLE sys_attendance_record (
   KEY idx_att_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考勤打卡记录表';
 
--- ----------------------------
 -- 7. 考勤规则表
--- ----------------------------
 DROP TABLE IF EXISTS sys_attendance_rule;
 CREATE TABLE sys_attendance_rule (
   rule_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '规则ID',
@@ -181,9 +169,7 @@ CREATE TABLE sys_attendance_rule (
 -- 五、资产管理模块
 -- =========================================================
 
--- ----------------------------
 -- 8. 固定资产表
--- ----------------------------
 DROP TABLE IF EXISTS sys_asset;
 CREATE TABLE sys_asset (
   asset_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '资产ID',
@@ -207,9 +193,7 @@ CREATE TABLE sys_asset (
   UNIQUE KEY uk_asset_code_tenant (asset_code, tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='固定资产表';
 
--- ----------------------------
 -- 9. 耗材库存表
--- ----------------------------
 DROP TABLE IF EXISTS sys_consumable;
 CREATE TABLE sys_consumable (
   consumable_id     BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '耗材ID',
@@ -227,9 +211,7 @@ CREATE TABLE sys_consumable (
   PRIMARY KEY (consumable_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='耗材库存表';
 
--- ----------------------------
 -- 10. 资产变动日志表
--- ----------------------------
 DROP TABLE IF EXISTS sys_asset_log;
 CREATE TABLE sys_asset_log (
   log_id            BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '日志ID',
@@ -250,12 +232,11 @@ CREATE TABLE sys_asset_log (
 -- 六、车辆管理模块
 -- =========================================================
 
--- ----------------------------
 -- 11. 车辆信息表
--- ----------------------------
 DROP TABLE IF EXISTS sys_vehicle;
 CREATE TABLE sys_vehicle (
   vehicle_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '车辆ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   license_plate     VARCHAR(20)     NOT NULL COMMENT '车牌号',
   brand             VARCHAR(50)     DEFAULT NULL COMMENT '品牌',
   model             VARCHAR(50)     DEFAULT NULL COMMENT '型号',
@@ -272,15 +253,15 @@ CREATE TABLE sys_vehicle (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (vehicle_id)
+  PRIMARY KEY (vehicle_id),
+  KEY idx_vehicle_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆信息表';
 
--- ----------------------------
 -- 12. 用车申请与记录表
--- ----------------------------
 DROP TABLE IF EXISTS sys_vehicle_usage;
 CREATE TABLE sys_vehicle_usage (
   usage_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '用车记录ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
   applicant_id      BIGINT(20)      NOT NULL COMMENT '申请人ID',
   driver_id         BIGINT(20)      DEFAULT NULL COMMENT '司机ID',
@@ -301,15 +282,15 @@ CREATE TABLE sys_vehicle_usage (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (usage_id)
+  PRIMARY KEY (usage_id),
+  KEY idx_vehicle_usage_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='用车申请与记录表';
 
--- ----------------------------
 -- 13. 车辆费用记录表
--- ----------------------------
 DROP TABLE IF EXISTS sys_vehicle_expense;
 CREATE TABLE sys_vehicle_expense (
   expense_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '费用ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
   usage_id          BIGINT(20)      DEFAULT NULL COMMENT '关联用车记录ID',
   expense_type      VARCHAR(20)     NOT NULL COMMENT '费用类型（1油费 2过路费 3停车费 4维修保养 5保险 6其他）',
@@ -319,16 +300,15 @@ CREATE TABLE sys_vehicle_expense (
   receipt_url       VARCHAR(255)    DEFAULT NULL COMMENT '票据图片URL',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
-  PRIMARY KEY (expense_id)
+  PRIMARY KEY (expense_id),
+  KEY idx_vehicle_expense_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆费用记录表';
 
 -- =========================================================
 -- 七、业务表（与工作流关联）
 -- =========================================================
 
--- ----------------------------
 -- 14. 请假业务表
--- ----------------------------
 DROP TABLE IF EXISTS biz_leave;
 CREATE TABLE biz_leave (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT,
@@ -376,3 +356,7 @@ INSERT INTO sys_attendance_rule (rule_name, check_in_time, check_out_time, elast
 VALUES ('默认考勤组', '09:00:00', '18:00:00', 30, 100000, NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- =========================================================
+-- 脚本执行完成
+-- =========================================================

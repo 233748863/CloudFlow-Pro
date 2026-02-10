@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/auth/captcha")
+@RequestMapping("/captcha")
 public class CaptchaController {
 
     @Autowired

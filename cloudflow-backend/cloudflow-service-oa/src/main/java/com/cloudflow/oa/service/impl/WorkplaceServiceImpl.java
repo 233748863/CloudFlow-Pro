@@ -1,6 +1,6 @@
 package com.cloudflow.oa.service.impl;
 
-import com.cloudflow.common.security.utils.SecurityUtils;
+import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.dto.WorkplaceSummaryDTO;

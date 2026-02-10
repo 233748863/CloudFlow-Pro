@@ -3,6 +3,8 @@ package com.cloudflow.auth.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.service.ISysRoleService;
+import com.cloudflow.common.core.domain.R;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +22,7 @@ public class SysRoleController {
     }
     
     @GetMapping("/{roleId}")
-    public R<SysRole> getInfo(@PathVariable Long roleId) {
+    public R<SysRole> getInfo(@PathVariable("roleId") Long roleId) {
         return R.ok(roleService.selectRoleById(roleId));
     }
     
@@ -35,7 +37,7 @@ public class SysRoleController {
     }
     
     @DeleteMapping("/{roleIds}")
-    public R<?> remove(@PathVariable Long[] roleIds) {
+    public R<?> remove(@PathVariable("roleIds") Long[] roleIds) {
         return R.ok(roleService.deleteRoleByIds(roleIds));
     }
 }

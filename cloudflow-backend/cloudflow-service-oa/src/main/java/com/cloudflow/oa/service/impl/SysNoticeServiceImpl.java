@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.service.impl;
+package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -77,5 +77,15 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
         return noticeMapper.selectCount(new LambdaQueryWrapper<SysNotice>()
                 .eq(SysNotice::getRecipientId, userId)
                 .eq(SysNotice::getStatus, "0"));
+    }
+
+    @Override
+    public SysNotice getNoticeById(Long noticeId) {
+        return noticeMapper.selectById(noticeId);
+    }
+
+    @Override
+    public void deleteNotice(Long noticeId) {
+        noticeMapper.deleteById(noticeId);
     }
 }

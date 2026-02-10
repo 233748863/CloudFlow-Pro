@@ -1,10 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Loader2, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCaptcha, checkCaptcha } from '@/services/api/auth';
 import { useMount } from '@/hooks/useMount';
-import { SLIDER_WIDTH, SLIDER_DEFAULT_WIDTH, SLIDER_DEFAULT_HEIGHT, SLIDER_KEYBOARD_STEP } from '@/constants/ui';
+import { SLIDER_KEYBOARD_STEP } from '@/constants/ui';
 import { logger } from '@/utils/logger';
+
+/** 后端生成的背景图原始尺寸 */
+const BG_ORIGIN_WIDTH = 300;
+const BG_ORIGIN_HEIGHT = 150;
+
+/** 滑块按钮宽度 */
+const SLIDER_BTN_WIDTH = 40;
 
 /**
  * 滑块验证码组件属性
@@ -12,29 +19,20 @@ import { logger } from '@/utils/logger';
 interface SliderCaptchaProps {
   /** 验证成功回调，返回验证 token */
   onVerify: (token: string) => void;
-  /** 验证码宽度，默认 300px */
+  /** 验证码显示宽度，默认 300px */
   width?: number;
-  /** 验证码高度，默认 150px */
+  /** 验证码显示高度，默认 150px */
   height?: number;
 }
 
 /**
  * 滑块验证码组件
  * 支持鼠标、触摸和键盘操作
- * 
- * @example
- * ```tsx
- * <SliderCaptcha 
- *   onVerify={(token) => console.log(token)}
- *   width={300}
- *   height={150}
- * />
- * ```
  */
 export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ 
   onVerify, 
-  width = SLIDER_DEFAULT_WIDTH, 
-  height = SLIDER_DEFAULT_HEIGHT 
+  width = 300, 
+  height = 150 
 }) => {
   const [loading, setLoading] = useState(true);
   const [captchaData, setCaptchaData] = useState<any>(null);
@@ -44,6 +42,11 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'fail'>('idle');
   
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  /** 前端显示宽度与后端原始图片宽度的缩放比例 */
+  const scaleX = width / BG_ORIGIN_WIDTH;
+  const scaleY = height / BG_ORIGIN_HEIGHT;
 
   const fetchCaptcha = async () => {
     setLoading(true);
@@ -72,25 +75,31 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
     setStartX(clientX);
   };
 
-  const handleMove = (clientX: number) => {
+  const handleMove = useCallback((clientX: number) => {
     if (!isDragging || !containerRef.current) return;
     const diff = clientX - startX;
-    // Limit range
-    const max = width - SLIDER_WIDTH;
-    let newLeft = Math.max(0, Math.min(max, diff));
+    const max = width - SLIDER_BTN_WIDTH;
+    const newLeft = Math.max(0, Math.min(max, diff));
     setSliderLeft(newLeft);
-  };
+  }, [isDragging, startX, width]);
 
   const handleEnd = async () => {
     if (!isDragging) return;
     setIsDragging(false);
     
-    // Verify
+    if (sliderLeft < 5) return; // 忽略微小移动
+    
     setStatus('verifying');
     try {
+      // 将前端滑块位置转换为后端坐标系
+      // 前端滑块范围: [0, width - SLIDER_BTN_WIDTH]
+      // 后端 X 坐标范围: [0, BG_ORIGIN_WIDTH - SLIDER_BTN_WIDTH/scaleX]
+      // 简化：直接用 sliderLeft / scaleX 转换
+      const backendX = Math.round(sliderLeft / scaleX);
+      
       const res = await checkCaptcha({
         uuid: captchaData.uuid,
-        x: Math.round(sliderLeft)
+        x: backendX
       });
       
       if (res && res.passToken) {
@@ -117,7 +126,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
   const onMouseDown = (e: React.MouseEvent) => handleStart(e.clientX);
   const onMouseMove = (e: React.MouseEvent) => handleMove(e.clientX);
   const onMouseUp = () => handleEnd();
-  const onMouseLeave = () => handleEnd();
+  const onMouseLeave = () => { if (isDragging) handleEnd(); };
 
   // Touch Events
   const onTouchStart = (e: React.TouchEvent) => handleStart(e.touches[0].clientX);
@@ -128,7 +137,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (status === 'success' || status === 'verifying') return;
     
-    const max = width - SLIDER_WIDTH;
+    const max = width - SLIDER_BTN_WIDTH;
     
     switch (e.key) {
       case 'ArrowLeft':
@@ -158,10 +167,34 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
     }
   };
 
+  // 计算滑块图片在前端的显示尺寸和位置
+  const getSliderStyle = (): React.CSSProperties => {
+    if (!captchaData) return {};
+    
+    const sliderW = (captchaData.sliderWidth || 52) * scaleX;
+    const sliderH = (captchaData.sliderHeight || 52) * scaleY;
+    const sliderY = (captchaData.y || 0) * scaleY;
+    
+    return {
+      position: 'absolute',
+      top: sliderY,
+      left: sliderLeft,
+      width: sliderW,
+      height: sliderH,
+      zIndex: 10,
+      filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.5))',
+      pointerEvents: 'none' as const,
+    };
+  };
+
   return (
     <div className="w-full select-none" style={{ width }} onMouseLeave={onMouseLeave}>
       {/* Image Area */}
-      <div className="relative overflow-hidden rounded-t-lg bg-slate-100 border border-slate-200" style={{ height }}>
+      <div 
+        ref={imageContainerRef}
+        className="relative overflow-hidden rounded-t-lg bg-slate-100" 
+        style={{ width, height }}
+      >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-20">
             <Loader2 className="animate-spin text-slate-400" />
@@ -193,20 +226,24 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
 
         {captchaData && (
           <>
+            {/* 背景图：使用精确尺寸，不使用 object-cover 避免缩放偏移 */}
             <img 
               src={captchaData.bgImage} 
               alt="bg" 
-              className="absolute top-0 left-0 w-full h-full object-cover" 
+              style={{ 
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: width,
+                height: height,
+              }}
               draggable={false}
             />
+            {/* 滑块拼图图片 */}
             <img 
               src={captchaData.sliderImage} 
               alt="slider" 
-              className="absolute w-[50px] h-[50px] z-10 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
-              style={{ 
-                top: captchaData.y, 
-                left: sliderLeft 
-              }} 
+              style={getSliderStyle()}
               draggable={false}
             />
           </>
@@ -216,7 +253,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
       {/* Track Area */}
       <div 
         ref={containerRef}
-        className="relative h-10 bg-slate-100 rounded-b-lg border-x border-b border-slate-200 mt-[-1px] flex items-center px-2"
+        className="relative h-10 bg-slate-100 rounded-b-lg border border-slate-200 flex items-center px-2"
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onTouchMove={onTouchMove}
@@ -225,7 +262,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
         tabIndex={0}
         role="slider"
         aria-valuemin={0}
-        aria-valuemax={width - SLIDER_WIDTH}
+        aria-valuemax={width - SLIDER_BTN_WIDTH}
         aria-valuenow={sliderLeft}
         aria-label="拖动滑块完成验证，也可使用方向键操作"
       >
@@ -233,12 +270,12 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
         
         {/* Slider Button */}
         <div 
-          className={`absolute top-0 h-10 flex items-center justify-center cursor-pointer shadow-sm border border-slate-200 transition-colors z-20
+          className={`absolute top-0 h-10 flex items-center justify-center cursor-pointer shadow-sm border border-slate-200 transition-colors z-20 rounded-sm
             ${isDragging ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white hover:bg-slate-50 text-slate-500'}
             ${status === 'success' ? '!bg-emerald-500 !border-emerald-500 !text-white' : ''}
             ${status === 'fail' ? '!bg-red-500 !border-red-500 !text-white' : ''}
           `}
-          style={{ left: sliderLeft, width: SLIDER_WIDTH }}
+          style={{ left: sliderLeft, width: SLIDER_BTN_WIDTH }}
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
         >

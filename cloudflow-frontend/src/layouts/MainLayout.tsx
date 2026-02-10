@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, GitMerge, FileText, Settings, LogOut, Bell, CheckCircle2, 
   Users, PlayCircle, ShieldCheck, ChevronRight, FormInput, Code, Megaphone,
-  Calendar, Monitor
+  Calendar, Monitor, Rocket
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -28,6 +28,8 @@ export const MainLayout = () => {
     
     if (user && [Role.ADMIN, Role.MANAGER, Role.HR].includes(user.role)) {
        base.push({ id: '/workflow', label: '流程设计', icon: GitMerge });
+       base.push({ id: '/workflow/monitor', label: '流程监控', icon: Monitor });
+       base.push({ id: '/workflow/deploy', label: '发布管理', icon: Rocket });
        base.push({ id: '/forms', label: '表单设计', icon: FormInput });
        base.push({ id: '/users', label: '组织架构', icon: Users });
     }

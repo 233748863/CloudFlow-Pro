@@ -31,33 +31,33 @@ export interface PageResult<T> {
  * 获取消息列表（分页）
  */
 export const getNoticeList = async (params?: NoticePageQuery): Promise<PageResult<Notice>> => {
-  return request.get('/workflow/notice/list', { params }) as Promise<PageResult<Notice>>;
+  return request.get('/oa/notice/list', { params }) as Promise<PageResult<Notice>>;
 };
 
 /**
  * 获取消息详情
  */
 export const getNoticeDetail = async (noticeId: number): Promise<Notice> => {
-  return request.get(`/workflow/notice/${noticeId}`) as Promise<Notice>;
+  return request.get(`/oa/notice/${noticeId}`) as Promise<Notice>;
 };
 
 /**
  * 标记消息已读
  */
 export const markNoticeRead = async (noticeId: number): Promise<boolean> => {
-  return request.post(`/workflow/notice/read/${noticeId}`) as Promise<boolean>;
+  return request.post(`/oa/notice/read/${noticeId}`) as Promise<boolean>;
 };
 
 /**
  * 删除消息
  */
 export const deleteNotice = async (noticeId: number): Promise<boolean> => {
-  return request.delete(`/workflow/notice/${noticeId}`) as Promise<boolean>;
+  return request.delete(`/oa/notice/${noticeId}`) as Promise<boolean>;
 };
 
 /**
  * 获取未读消息数量
  */
 export const getUnreadCount = async (): Promise<number> => {
-  return request.get('/workflow/notice/unread-count') as Promise<number>;
+  return request.get('/oa/notice/unread-count') as Promise<number>;
 };

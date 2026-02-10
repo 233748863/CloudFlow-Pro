@@ -203,7 +203,7 @@ public class DeadlockDetectionService {
         Map<String, Set<String>> graph = new HashMap<>();
 
         // 从 Redis 读取所有等待记录
-        Set<String> waiterKeys = redisCache.keys(LOCK_WAITER_PREFIX + "*");
+        Collection<String> waiterKeys = redisCache.keys(LOCK_WAITER_PREFIX + "*");
         
         for (String key : waiterKeys) {
             String lockKey = key.substring(LOCK_WAITER_PREFIX.length());

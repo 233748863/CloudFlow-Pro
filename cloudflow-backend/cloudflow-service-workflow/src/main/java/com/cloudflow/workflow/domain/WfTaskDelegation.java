@@ -14,6 +14,9 @@ public class WfTaskDelegation {
     @TableId
     private String delegationId;
     
+    /** 租户ID */
+    private Long tenantId;
+    
     /** 原任务ID */
     private String taskId;
     

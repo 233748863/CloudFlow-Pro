@@ -27,6 +27,6 @@ export const deleteEvent = async (id: string): Promise<boolean> => {
  * 获取今日日程
  */
 export const getTodaySchedule = async (): Promise<SysScheduleEvent[]> => {
-  const res = await request.get('/workflow/schedule/today');
+  const res = await request.get('/oa/schedule/today');
   return res.data;
 };

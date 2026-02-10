@@ -42,6 +42,7 @@ const VehicleList = React.lazy(() => import('./pages/admin/vehicle/VehicleList')
 const VehicleBooking = React.lazy(() => import('@/pages/admin/vehicle/VehicleBooking').then(m => ({ default: m.VehicleBooking })));
 const VehicleUsageList = React.lazy(() => import('./pages/admin/vehicle/VehicleUsageList'));
 const WorkflowMonitor = React.lazy(() => import('./pages/WorkflowMonitor').then(module => ({ default: module.default })));
+const DeployManagement = React.lazy(() => import('./pages/DeployManagement').then(module => ({ default: module.DeployManagement })));
 
 const Loading = () => (
   <div className="flex items-center justify-center h-full w-full min-h-[400px]">
@@ -104,6 +105,10 @@ const desktopRoutes = [
           {
             path: '/workflow/monitor',
             element: <Suspense fallback={<Loading />}><WorkflowMonitor /></Suspense>,
+          },
+          {
+            path: '/workflow/deploy',
+            element: <Suspense fallback={<Loading />}><DeployManagement /></Suspense>,
           },
           {
             path: '/forms',

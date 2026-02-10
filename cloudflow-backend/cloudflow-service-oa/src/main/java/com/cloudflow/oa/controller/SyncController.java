@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/sync")
+@RequestMapping("/sync")
 public class SyncController {
 
     @Autowired
@@ -52,8 +52,8 @@ public class SyncController {
      */
     @GetMapping("/download")
     public R<SyncDownloadDTO> downloadIncrementalData(
-            @RequestParam String lastSyncTime,
-            @RequestParam String deviceId) {
+            @RequestParam("lastSyncTime") String lastSyncTime,
+            @RequestParam("deviceId") String deviceId) {
         log.info("接收增量数据下载请求，设备ID: {}, 上次同步时间: {}", deviceId, lastSyncTime);
         
         try {

@@ -17,6 +17,9 @@ public class WfCountersignTask {
     @TableId
     private String countersignId;
     
+    /** 租户ID */
+    private Long tenantId;
+    
     /** 流程实例ID */
     private String instanceId;
     

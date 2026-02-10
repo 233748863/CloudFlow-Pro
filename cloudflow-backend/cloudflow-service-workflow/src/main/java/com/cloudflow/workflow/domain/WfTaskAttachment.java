@@ -13,6 +13,8 @@ import java.util.Date;
 public class WfTaskAttachment {
     @TableId
     private String attachmentId;
+    /** 租户ID */
+    private Long tenantId;
     private String taskId;
     private String instanceId;
     private String fileName;

@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.SysAsset;
@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/workflow/asset")
+@RequestMapping("/asset")
 public class AssetController {
 
     @Autowired
@@ -35,7 +35,7 @@ public class AssetController {
      * 生成二维码
      */
     @GetMapping("/{id}/qrcode")
-    public void getQrCode(@PathVariable Long id, HttpServletResponse response) throws IOException {
+    public void getQrCode(@PathVariable("id") Long id, HttpServletResponse response) throws IOException {
         response.setContentType("image/png");
         assetService.generateQrCode(id, response.getOutputStream());
     }

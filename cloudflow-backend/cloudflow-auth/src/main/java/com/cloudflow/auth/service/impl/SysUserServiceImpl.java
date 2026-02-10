@@ -122,8 +122,9 @@ public class SysUserServiceImpl implements ISysUserService {
         if (StringUtils.hasText(user.getPassword())) {
             user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
         } else {
-            // 默认密码
-            user.setPassword(BCrypt.hashpw("123456", BCrypt.gensalt()));
+            // 默认密码: SHA-256("123456") 再 BCrypt 加密，与前端加密流程保持一致
+            String defaultPwdSha256 = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
+            user.setPassword(BCrypt.hashpw(defaultPwdSha256, BCrypt.gensalt()));
         }
         
         int result = sysUserMapper.insert(user);

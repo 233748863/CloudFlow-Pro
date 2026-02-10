@@ -31,7 +31,7 @@ public class SysMenuController {
      * 获取菜单详情
      */
     @GetMapping("/{menuId}")
-    public R<SysMenu> getInfo(@PathVariable Long menuId) {
+    public R<SysMenu> getInfo(@PathVariable("menuId") Long menuId) {
         return R.ok(menuService.selectMenuById(menuId));
     }
     
@@ -68,7 +68,7 @@ public class SysMenuController {
      * 删除菜单
      */
     @DeleteMapping("/{menuId}")
-    public R<?> remove(@PathVariable Long menuId) {
+    public R<?> remove(@PathVariable("menuId") Long menuId) {
         return R.ok(menuService.deleteMenuById(menuId));
     }
 }

@@ -20,9 +20,9 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://your-prod-mysql-host:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
-    username: cloudflow_prod_user
-    password: YOUR_SECURE_DATABASE_PASSWORD_HERE  # ⚠️ 请修改为实际密码
+    url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: root
+    password: Juwangkeji@2025
     hikari:
       pool-name: CloudFlowHikariCP
       minimum-idle: 10
@@ -34,12 +34,12 @@ spring:
       auto-commit: true
       leak-detection-threshold: 60000
 
-  # Redis 配置（生产环境）
+  # Redis 配置（开发环境）
   data:
     redis:
-      host: your-prod-redis-host
+      host: 192.168.1.173
       port: 6379
-      password: YOUR_SECURE_REDIS_PASSWORD_HERE  # ⚠️ 请修改为实际密码
+      password: Juwangkeji@2025
       database: 0
       timeout: 5000
       lettuce:
@@ -64,9 +64,18 @@ logging:
     com.cloudflow.workflow.mapper: WARN
     com.cloudflow.oa.mapper: WARN
 
-# JWT 配置（如果使用）
+# JWT 安全配置（SecurityProperties 使用 cloudflow.security 前缀）
+cloudflow:
+  security:
+    jwt:
+      secret: cloudflow-jwt-secret-key-change-in-production-environment-min-32-chars
+    token:
+      expiration: 1440  # 令牌有效期（分钟）= 24小时
+      refresh-time: 20   # 令牌刷新时间（分钟）
+
+# 兼容旧配置路径
 jwt:
-  secret: YOUR_JWT_SECRET_KEY_HERE  # ⚠️ 请修改为实际密钥（至少32位）
+  secret: cloudflow-jwt-secret-key-change-in-production-environment-min-32-chars
   expiration: 86400  # 24小时
 
 # 文件上传配置

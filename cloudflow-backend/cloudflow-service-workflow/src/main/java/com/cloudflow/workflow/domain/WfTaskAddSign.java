@@ -14,6 +14,9 @@ public class WfTaskAddSign {
     @TableId
     private String addSignId;
     
+    /** 租户ID */
+    private Long tenantId;
+    
     /** 原任务ID */
     private String taskId;
     

@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
@@ -15,7 +15,7 @@ import java.util.Map;
  * 协作任务控制器
  */
 @RestController
-@RequestMapping("/workflow/work-task")
+@RequestMapping("/work-task")
 public class WorkTaskController {
 
     @Autowired
@@ -25,7 +25,7 @@ public class WorkTaskController {
      * 获取我的任务列表
      */
     @GetMapping("/list")
-    public R<List<WorkTask>> list(@RequestParam(required = false) String status) {
+    public R<List<WorkTask>> list(@RequestParam(value = "status", required = false) String status) {
         Long userId = UserContext.getUserId();
         return R.ok(workTaskService.getMyTasks(userId, status));
     }
@@ -34,7 +34,7 @@ public class WorkTaskController {
      * 获取任务详情
      */
     @GetMapping("/{taskId}")
-    public R<WorkTask> getInfo(@PathVariable Long taskId) {
+    public R<WorkTask> getInfo(@PathVariable("taskId") Long taskId) {
         return R.ok(workTaskService.getById(taskId));
     }
 
@@ -80,7 +80,7 @@ public class WorkTaskController {
      * 删除任务
      */
     @DeleteMapping("/{taskId}")
-    public R<Boolean> remove(@PathVariable Long taskId) {
+    public R<Boolean> remove(@PathVariable("taskId") Long taskId) {
         return R.ok(workTaskService.removeById(taskId));
     }
 }

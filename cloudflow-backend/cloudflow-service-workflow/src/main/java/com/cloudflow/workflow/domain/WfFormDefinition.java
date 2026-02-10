@@ -2,12 +2,14 @@ package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 import java.io.Serializable;
 import java.util.Date;
 
 /**
  * 表单定义实体类
  */
+@Data
 @TableName("wf_form_definition")
 public class WfFormDefinition implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -16,55 +18,33 @@ public class WfFormDefinition implements Serializable {
     @TableId
     private String formId;
 
+    /** 租户ID */
+    private Long tenantId;
+
+    /** 表单Key */
+    private String formKey;
+
     /** 表单名称 */
     private String formName;
 
     /** 表单字段JSON */
     private String fieldsJson;
 
+    /** 表单Schema JSON */
+    private String formSchema;
+
     /** 版本 */
     private Integer version;
 
+    /** 乐观锁版本号 */
+    private Integer versionLock;
+
+    /** 是否最新版本 (1=是, 0=否) */
+    private Integer isLatest;
+
+    /** 状态 (DRAFT, PUBLISHED, ARCHIVED) */
+    private String status;
+
     /** 创建时间 */
     private Date createTime;
-
-    public String getFormId() {
-        return formId;
-    }
-
-    public void setFormId(String formId) {
-        this.formId = formId;
-    }
-
-    public String getFormName() {
-        return formName;
-    }
-
-    public void setFormName(String formName) {
-        this.formName = formName;
-    }
-
-    public String getFieldsJson() {
-        return fieldsJson;
-    }
-
-    public void setFieldsJson(String fieldsJson) {
-        this.fieldsJson = fieldsJson;
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
-
-    public Date getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
-    }
 }

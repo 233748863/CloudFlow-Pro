@@ -16,6 +16,9 @@ public class WfTask implements Serializable {
     @TableId
     private String taskId;
 
+    /** 租户ID */
+    private Long tenantId;
+
     /** 流程实例ID */
     private String instanceId;
 
@@ -39,6 +42,18 @@ public class WfTask implements Serializable {
 
     /** 截止时间 */
     private Date dueTime;
+
+    /** 4.1/P4.11: 任务优先级 (URGENT/HIGH/NORMAL/LOW) */
+    private String priority;
+
+    /** P4.1: 处理人姓名 */
+    private String assigneeName;
+
+    /** P4.5: 代理人用户ID */
+    private Long proxyUserId;
+
+    /** P4.13: 是否超时 (0-否, 1-是) */
+    private Integer isTimeout;
 
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String processDefKey;
@@ -166,5 +181,45 @@ public class WfTask implements Serializable {
 
     public void setDueTime(Date dueTime) {
         this.dueTime = dueTime;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getAssigneeName() {
+        return assigneeName;
+    }
+
+    public void setAssigneeName(String assigneeName) {
+        this.assigneeName = assigneeName;
+    }
+
+    public Long getProxyUserId() {
+        return proxyUserId;
+    }
+
+    public void setProxyUserId(Long proxyUserId) {
+        this.proxyUserId = proxyUserId;
+    }
+
+    public Integer getIsTimeout() {
+        return isTimeout;
+    }
+
+    public void setIsTimeout(Integer isTimeout) {
+        this.isTimeout = isTimeout;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
     }
 }

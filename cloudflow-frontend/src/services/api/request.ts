@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
 
@@ -8,6 +8,14 @@ export interface ApiResponse<T = any> {
   code: number;
   msg: string;
   data: T;
+}
+
+// Extend AxiosRequestConfig to support silent mode
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** 静默模式：不显示错误 toast 提示 */
+    silent?: boolean;
+  }
 }
 
 // 创建 axios 实例
@@ -50,10 +58,18 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     const res = response.data;
+    const isSilent = response.config?.silent;
     // 假设后端返回格式为 { code: 200, msg: 'success', data: ... }
     if (res.code !== API_SUCCESS_CODE) {
+      // 503 服务不可用 - 微服务未启动，始终静默处理
+      if (res.code === 503) {
+        console.warn(`[API] 服务暂时不可用: ${res.msg}`);
+        return Promise.reject(new Error(res.msg || '服务暂时不可用'));
+      }
       // 处理特定业务错误
-      toast.error(res.msg || '操作失败');
+      if (!isSilent) {
+        toast.error(res.msg || '操作失败');
+      }
       return Promise.reject(new Error(res.msg || '错误'));
     }
     return res.data;
@@ -71,7 +87,9 @@ request.interceptors.response.use(
       return Promise.reject(new Error('网络连接失败'));
     }
 
-    // 全局处理 401 未授权
+    const isSilent = error.config?.silent;
+
+    // 全局处理 401 未授权 (always show)
     if (error.response && error.response.status === 401) {
        toast.error('登录已过期，请重新登录');
        // 清除 token 并跳转登录页
@@ -80,13 +98,20 @@ request.interceptors.response.use(
        if (window.location.pathname !== '/login') {
            window.location.href = '/login';
        }
+    } else if (error.response && error.response.status === 503) {
+       // 服务不可用 - 微服务未启动，静默处理不弹 toast
+       console.warn(`[API] 服务暂时不可用: ${error.config?.url}`);
     } else if (error.response) {
        // 通用错误提示
-       const msg = error.response.data?.msg || error.message || '网络请求失败';
-       toast.error(msg);
+       if (!isSilent) {
+         const msg = error.response.data?.msg || error.message || '网络请求失败';
+         toast.error(msg);
+       }
     } else {
        // 其他错误
-       toast.error('请求失败，请稍后重试');
+       if (!isSilent) {
+         toast.error('请求失败，请稍后重试');
+       }
     }
     
     return Promise.reject(error);

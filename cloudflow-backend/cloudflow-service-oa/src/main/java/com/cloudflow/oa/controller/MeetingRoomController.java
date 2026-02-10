@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.MeetingRoom;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/workflow/meeting-room")
+@RequestMapping("/meeting-room")
 public class MeetingRoomController {
 
     @Autowired
@@ -30,7 +30,7 @@ public class MeetingRoomController {
     }
 
     @DeleteMapping("/{id}")
-    public R<Boolean> remove(@PathVariable Long id) {
+    public R<Boolean> remove(@PathVariable("id") Long id) {
         return R.ok(meetingRoomService.removeById(id));
     }
 }

@@ -15,7 +15,7 @@ import java.util.List;
  * 提供工作台概览和最近任务等聚合数据
  */
 @RestController
-@RequestMapping("/workflow/workplace")
+@RequestMapping("/workplace")
 public class WorkplaceController {
 
     @Autowired
@@ -36,7 +36,7 @@ public class WorkplaceController {
      * 返回用户最近操作的任务列表
      */
     @GetMapping("/recent-tasks")
-    public R<List<RecentTaskDTO>> getRecentTasks(@RequestParam(defaultValue = "10") Integer limit) {
+    public R<List<RecentTaskDTO>> getRecentTasks(@RequestParam(value = "limit", defaultValue = "10") Integer limit) {
         Long userId = UserContext.getUserId();
         return R.ok(workplaceService.getRecentTasks(userId, limit));
     }

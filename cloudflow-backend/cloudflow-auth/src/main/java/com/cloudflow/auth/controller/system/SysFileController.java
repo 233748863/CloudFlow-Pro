@@ -42,7 +42,7 @@ public class SysFileController {
      * 删除文件
      */
     @DeleteMapping("/{fileIds}")
-    public R<?> remove(@PathVariable Long[] fileIds) {
+    public R<?> remove(@PathVariable("fileIds") Long[] fileIds) {
         sysFileService.deleteFileByIds(fileIds);
         return R.ok();
     }

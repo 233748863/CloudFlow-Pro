@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.service;
+package com.cloudflow.oa.service;
 
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
@@ -25,4 +25,14 @@ public interface ISysNoticeService {
      * Get unread count
      */
     long getUnreadCount(Long userId);
+
+    /**
+     * Get notice by ID
+     */
+    SysNotice getNoticeById(Long noticeId);
+
+    /**
+     * Delete notice
+     */
+    void deleteNotice(Long noticeId);
 }

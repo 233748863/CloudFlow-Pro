@@ -10,7 +10,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
  * 
  * @author CloudFlow
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.cloudflow")
 @EnableDiscoveryClient
 @EnableFeignClients
 public class OaApplication {

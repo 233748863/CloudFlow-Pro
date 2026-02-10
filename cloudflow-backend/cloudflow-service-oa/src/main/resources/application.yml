@@ -4,6 +4,35 @@ server:
 spring:
   application:
     name: cloudflow-oa
+  config:
+    import:
+      - optional:nacos:cloudflow-oa.yaml?refresh=true
+      - optional:nacos:cloudflow-common.yaml?refresh=true
+  cloud:
+    nacos:
+      server-addr: 192.168.1.173:8848
+      username: nacos
+      password: nacos
+      config:
+        namespace: 886292cd-bfe3-4651-a67a-7604d2f4f3b9
+        file-extension: yaml
+      discovery:
+        namespace: 886292cd-bfe3-4651-a67a-7604d2f4f3b9
+        group: DEFAULT_GROUP
+  # 本地数据源配置（Nacos不可用时的后备配置）
+  datasource:
+    url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: root
+    password: Juwangkeji@2025
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  # 本地Redis配置（Nacos不可用时的后备配置）
+  data:
+    redis:
+      host: 192.168.1.173
+      port: 6379
+      password: Juwangkeji@2025
+      database: 0
+      timeout: 3000ms
 
 # MyBatis Plus配置
 mybatis-plus:

@@ -15,7 +15,7 @@ spring:
         
         # 工作流服务路由
         - id: cloudflow-workflow
-          uri: lb://cloudflow-workflow
+          uri: lb://cloudflow-service-workflow
           predicates:
             - Path=/workflow/**
           filters:
@@ -33,7 +33,7 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowed-origins: "*"
+            allowed-origin-patterns: "*"
             allowed-methods:
               - GET
               - POST

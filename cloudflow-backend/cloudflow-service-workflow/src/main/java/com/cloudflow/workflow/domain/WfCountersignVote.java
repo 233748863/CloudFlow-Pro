@@ -17,6 +17,9 @@ public class WfCountersignVote {
     @TableId
     private String voteId;
     
+    /** 租户ID */
+    private Long tenantId;
+    
     /** 会签任务ID */
     private String countersignId;
     

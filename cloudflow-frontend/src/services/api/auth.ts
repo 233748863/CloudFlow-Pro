@@ -24,6 +24,8 @@ export interface CaptchaResponse {
   bgImage: string;
   sliderImage: string;
   y: number;
+  sliderWidth: number;
+  sliderHeight: number;
 }
 
 export interface CaptchaCheckResponse {
@@ -63,8 +65,21 @@ export const checkCaptcha = (data: { uuid: string, x: number }): Promise<Captcha
   return request.post('/auth/captcha/check', data);
 };
 
-export const getInfo = (): Promise<UserInfo> => {
-  return request.get('/auth/info');
+export const getInfo = async (): Promise<UserInfo> => {
+  const data: any = await request.get('/auth/info');
+  // Backend returns { user: {...}, roles: [...], permissions: [...] }
+  // We need to flatten it into UserInfo format
+  const user = data?.user || data;
+  return {
+    userId: user.userId,
+    userName: user.userName,
+    nickName: user.nickName,
+    email: user.email,
+    role: user.role || (Array.isArray(data?.roles) && data.roles.length > 0 ? data.roles[0].toUpperCase() : 'USER'),
+    avatar: user.avatar,
+    deptId: user.deptId,
+    position: user.position,
+  } as UserInfo;
 }
 
 export const getDeptTree = () => {

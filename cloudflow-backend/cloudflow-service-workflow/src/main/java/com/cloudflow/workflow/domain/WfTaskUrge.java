@@ -12,6 +12,9 @@ public class WfTaskUrge {
     @TableId(type = IdType.AUTO)
     private Long id;
     
+    /** 租户ID */
+    private Long tenantId;
+    
     private String taskId;
     
     private Long senderId;

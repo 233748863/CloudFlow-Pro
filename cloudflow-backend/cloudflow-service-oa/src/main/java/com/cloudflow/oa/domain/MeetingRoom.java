@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.domain;
+package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -46,4 +46,7 @@ public class MeetingRoom {
     
     @TableLogic
     private String delFlag;
+    
+    /** 租户ID */
+    private Long tenantId;
 }

@@ -34,6 +34,13 @@ public class R<T> implements Serializable {
         return restResult(null, code, msg);
     }
 
+    /**
+     * 根据布尔值返回成功或失败结果
+     */
+    public static R<Void> result(boolean flag) {
+        return flag ? ok() : fail();
+    }
+
     private static <T> R<T> restResult(T data, int code, String msg) {
         R<T> apiResult = new R<>();
         apiResult.setCode(code);

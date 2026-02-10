@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -196,6 +197,25 @@ public class WorkflowServiceImpl implements IWorkflowService {
             jsonSchemaValidator.validateProcessDefinitionJson(definition.getModelJson());
         }
         
+        // 1.1: 流程模型合法性验证 - 校验节点连接完整性
+        if (StringUtils.hasText(definition.getModelJson())) {
+            validateModelIntegrity(definition.getModelJson());
+        }
+        
+        // 1.6: 流程名称唯一性校验 - processKey 全局唯一（新建时）
+        if (StringUtils.hasText(definition.getProcessKey())) {
+            WfProcessDefinition existDef = processDefinitionMapper.selectOne(
+                new LambdaQueryWrapper<WfProcessDefinition>()
+                    .eq(WfProcessDefinition::getProcessKey, definition.getProcessKey())
+                    .orderByDesc(WfProcessDefinition::getVersion)
+                    .last("LIMIT 1")
+            );
+            // 如果已存在同Key的定义，检查是否为同一流程的新版本
+            if (existDef != null && !existDef.getProcessKey().equals(definition.getProcessKey())) {
+                throw WorkflowException.validationError("流程Key已存在: " + definition.getProcessKey());
+            }
+        }
+        
         // P0-2: 权限校验 - 仅管理员可操作流程定义
         permissionService.checkDefinitionPermission("保存");
         
@@ -269,7 +289,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         
         // 2.A: 旧版本处理策略 - 将同 processKey 的旧版本归档
         processDefinitionMapper.update(null,
-            new LambdaQueryWrapper<WfProcessDefinition>()
+            new LambdaUpdateWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getProcessKey, def.getProcessKey())
                 .ne(WfProcessDefinition::getDefinitionId, definitionId)
                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
@@ -490,8 +510,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
             if (asyncMode) {
                 // P1-6: 异步模式 - 同步返回实例ID，异步执行节点解析和任务创建
                 final Map<String, Object> finalVars = variables;
-                asyncWorkflowService.asyncStartProcessNodes(instance, def, finalVars,
-                    (inst, node, vars, depth, root) -> runNode(inst, node, vars, depth, root));
+                com.cloudflow.workflow.service.AsyncWorkflowService.NodeRunner nodeRunner = (inst, node, vars, depth, root) -> runNode(inst, node, vars, depth, root);
+                asyncWorkflowService.asyncStartProcessNodes(instance, def, finalVars, nodeRunner);
                 log.info("[startProcess] 异步启动模式, instanceId={}", instance.getInstanceId());
             } else {
                 // 同步模式 - 原有逻辑
@@ -1107,6 +1127,11 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.validationError("目标节点Key不能为空");
         }
         
+        // 6.3: 驳回原因必填 - 强制填写驳回理由
+        if (!StringUtils.hasText(comment)) {
+            throw WorkflowException.validationError("驳回原因不能为空，请填写驳回理由");
+        }
+        
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
@@ -1285,6 +1310,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
         instance.setEndTime(new Date());
         processInstanceMapper.updateById(instance);
         
+        // 7.3: 撤回通知 - 通知所有相关人员
+        notifyRecallToParticipants(instance, activeTasks);
+        
         log.info("[recallProcess] 流程撤回成功, instanceId={}", instanceId);
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId);
         return R.ok();
@@ -1405,9 +1433,11 @@ public class WorkflowServiceImpl implements IWorkflowService {
         
         if (newVariables != null && !newVariables.isEmpty()) {
             // 过滤掉内部变量（以_开头的）
-            newVariables.entrySet().stream()
-                .filter(entry -> !entry.getKey().startsWith("_"))
-                .forEach(entry -> instanceVars.put(entry.getKey(), entry.getValue()));
+            for (Map.Entry<String, Object> entry : newVariables.entrySet()) {
+                if (!entry.getKey().startsWith("_")) {
+                    instanceVars.put(entry.getKey(), entry.getValue());
+                }
+            }
             
             // 更新实例变量
             try {
@@ -1779,6 +1809,18 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .or()
                 .like(WfProcessDefinition::getProcessKey, keyword)
             );
+        }
+        
+        // 12.1: 默认只显示最新版本
+        String showLatestOnly = (String) pageQuery.getParams().get("latestOnly");
+        if (!"false".equals(showLatestOnly)) {
+            queryWrapper.eq(WfProcessDefinition::getIsLatest, 1);
+        }
+        
+        // 1.4: 流程分类筛选
+        String category = (String) pageQuery.getParams().get("category");
+        if (StringUtils.hasText(category)) {
+            queryWrapper.eq(WfProcessDefinition::getCategory, category);
         }
         
         queryWrapper.orderByDesc(WfProcessDefinition::getCreateTime);
@@ -2199,6 +2241,310 @@ public class WorkflowServiceImpl implements IWorkflowService {
             log.debug("[cleanupTaskReadData] 已读数据清理成功, taskId={}", taskId);
         } catch (Exception e) {
             log.warn("[cleanupTaskReadData] 已读数据清理失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 1.1: 流程模型合法性验证 - 校验节点连接完整性、循环检测
+     */
+    private void validateModelIntegrity(String modelJson) {
+        try {
+            WfNodeConfig root = objectMapper.readValue(modelJson, WfNodeConfig.class);
+            if (root == null) {
+                throw WorkflowException.validationError("流程模型为空");
+            }
+            // 校验节点连接完整性
+            java.util.Set<String> visitedNodes = new java.util.HashSet<>();
+            validateNodeConnections(root, visitedNodes, 0);
+            log.debug("[validateModelIntegrity] 流程模型校验通过, 节点数={}", visitedNodes.size());
+        } catch (WorkflowException e) {
+            throw e;
+        } catch (Exception e) {
+            throw WorkflowException.validationError("流程模型解析失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 1.1: 递归校验节点连接和循环检测
+     */
+    private void validateNodeConnections(WfNodeConfig node, java.util.Set<String> visited, int depth) {
+        if (node == null) return;
+        if (depth > 200) {
+            throw WorkflowException.validationError("流程模型深度超限，可能存在循环引用");
+        }
+        if (node.getId() != null) {
+            if (visited.contains(node.getId())) {
+                throw WorkflowException.validationError("检测到循环引用，节点ID: " + node.getId());
+            }
+            visited.add(node.getId());
+        }
+        // 审批节点必须有审批人配置
+        if ("APPROVAL".equals(node.getType())) {
+            if (!StringUtils.hasText(node.getApproverType())) {
+                throw WorkflowException.validationError("审批节点 [" + node.getTitle() + "] 未配置审批人");
+            }
+        }
+        // 递归校验
+        validateNodeConnections(node.getNext(), visited, depth + 1);
+        if (node.getBranches() != null) {
+            for (WfNodeConfig branch : node.getBranches()) {
+                validateNodeConnections(branch, visited, depth + 1);
+            }
+        }
+    }
+    
+    /**
+     * 7.3: 撤回通知 - 通知所有相关人员
+     */
+    private void notifyRecallToParticipants(WfProcessInstance instance, List<WfTask> activeTasks) {
+        try {
+            Long currentUserId = UserContext.getUserId();
+            String currentUserName = UserContext.getUserName();
+            
+            // 通知所有活动任务的处理人
+            for (WfTask task : activeTasks) {
+                if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId)) {
+                    sysNoticeService.sendNotice(
+                        task.getAssignee(),
+                        "流程撤回通知",
+                        String.format("流程「%s」已被发起人 %s 撤回，您的待办任务「%s」已取消",
+                            instance.getTitle(), currentUserName, task.getNodeName()),
+                        "1",
+                        currentUserId,
+                        currentUserName
+                    );
+                }
+            }
+            
+            // 通知历史参与人
+            List<WfTaskHistory> histories = taskHistoryMapper.selectList(
+                new LambdaQueryWrapper<WfTaskHistory>()
+                    .eq(WfTaskHistory::getInstanceId, instance.getInstanceId())
+                    .ne(WfTaskHistory::getAction, "RECALL")
+            );
+            java.util.Set<Long> notifiedUsers = new java.util.HashSet<>();
+            for (WfTask t : activeTasks) {
+                if (t.getAssignee() != null) notifiedUsers.add(t.getAssignee());
+            }
+            if (currentUserId != null) notifiedUsers.add(currentUserId);
+            
+            for (WfTaskHistory h : histories) {
+                if (h.getOperatorId() != null && !notifiedUsers.contains(h.getOperatorId())) {
+                    notifiedUsers.add(h.getOperatorId());
+                    sysNoticeService.sendNotice(
+                        h.getOperatorId(),
+                        "流程撤回通知",
+                        String.format("您参与审批的流程「%s」已被发起人撤回", instance.getTitle()),
+                        "1",
+                        currentUserId,
+                        currentUserName
+                    );
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[notifyRecallToParticipants] 撤回通知发送失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 4.2: 流程暂停
+     */
+    public R<?> pauseProcess(String instanceId) {
+        log.info("[pauseProcess] 暂停流程, instanceId={}", instanceId);
+        permissionService.checkDefinitionPermission("暂停流程");
+        
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+            throw WorkflowException.invalidState("只有运行中的流程才能暂停");
+        }
+        
+        instance.setStatus("SUSPENDED");
+        processInstanceMapper.updateById(instance);
+        
+        // 暂停所有活动任务
+        List<WfTask> activeTasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, instanceId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+        for (WfTask task : activeTasks) {
+            task.setStatus("SUSPENDED");
+            taskMapper.updateById(task);
+        }
+        
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId, "PAUSE");
+        return R.ok();
+    }
+    
+    /**
+     * 4.2: 流程恢复
+     */
+    public R<?> resumeProcess(String instanceId) {
+        log.info("[resumeProcess] 恢复流程, instanceId={}", instanceId);
+        permissionService.checkDefinitionPermission("恢复流程");
+        
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+        if (!"SUSPENDED".equals(instance.getStatus())) {
+            throw WorkflowException.invalidState("只有暂停中的流程才能恢复");
+        }
+        
+        instance.setStatus(WfProcessStatus.RUNNING.getCode());
+        processInstanceMapper.updateById(instance);
+        
+        // 恢复所有暂停的任务
+        List<WfTask> suspendedTasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, instanceId)
+                .eq(WfTask::getStatus, "SUSPENDED")
+        );
+        for (WfTask task : suspendedTasks) {
+            task.setStatus(WfTaskStatus.TODO.getCode());
+            taskMapper.updateById(task);
+        }
+        
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId, "RESUME");
+        return R.ok();
+    }
+    
+    /**
+     * 8.5: 任务统计 - 返回各类任务数量
+     */
+    public Map<String, Object> getTaskStatistics(Long userId) {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 待办总数
+        Long todoCount = taskMapper.selectCount(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+        stats.put("todoCount", todoCount != null ? todoCount : 0);
+        
+        // 紧急任务数
+        Long urgentCount = taskMapper.selectCount(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+                .eq(WfTask::getPriority, "URGENT")
+        );
+        stats.put("urgentCount", urgentCount != null ? urgentCount : 0);
+        
+        // 超时任务数
+        Long timeoutCount = taskMapper.selectCount(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+                .eq(WfTask::getIsTimeout, 1)
+        );
+        stats.put("timeoutCount", timeoutCount != null ? timeoutCount : 0);
+        
+        // 已办总数
+        Long doneCount = taskHistoryMapper.selectCount(
+            new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getOperatorId, userId)
+        );
+        stats.put("doneCount", doneCount != null ? doneCount : 0);
+        
+        // 我发起的流程数
+        Long myInstanceCount = processInstanceMapper.selectCount(
+            new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getStartUserId, userId)
+        );
+        stats.put("myInstanceCount", myInstanceCount != null ? myInstanceCount : 0);
+        
+        return stats;
+    }
+    
+    /**
+     * 8.4: 任务分组 - 按流程类型分组返回待办任务数量
+     */
+    public Map<String, Object> getTaskGroups(Long userId) {
+        Map<String, Object> groups = new HashMap<>();
+        
+        List<WfTask> tasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+        
+        // 收集实例ID
+        List<String> instanceIds = tasks.stream()
+            .map(WfTask::getInstanceId)
+            .distinct()
+            .collect(Collectors.toList());
+        
+        if (!instanceIds.isEmpty()) {
+            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+            Map<String, String> instanceDefKeyMap = instances.stream()
+                .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
+            
+            // 按流程类型分组计数
+            Map<String, Long> groupCounts = new HashMap<>();
+            for (WfTask task : tasks) {
+                String defKey = instanceDefKeyMap.getOrDefault(task.getInstanceId(), "unknown");
+                groupCounts.merge(defKey, 1L, Long::sum);
+            }
+            groups.put("groups", groupCounts);
+        }
+        
+        groups.put("total", tasks.size());
+        return groups;
+    }
+    
+    /**
+     * 获取用户任务统计数量
+     */
+    @Override
+    public Map<String, Integer> getTasksCount(Long userId) {
+        Map<String, Integer> counts = new HashMap<>();
+        
+        // 待办总数
+        Long todoCount = taskMapper.selectCount(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+        counts.put("todoCount", todoCount != null ? todoCount.intValue() : 0);
+        
+        // 已办总数
+        Long doneCount = taskHistoryMapper.selectCount(
+            new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getOperatorId, userId)
+        );
+        counts.put("doneCount", doneCount != null ? doneCount.intValue() : 0);
+        
+        // 我发起的流程数
+        Long myInstanceCount = processInstanceMapper.selectCount(
+            new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getStartUserId, userId)
+        );
+        counts.put("myInstanceCount", myInstanceCount != null ? myInstanceCount.intValue() : 0);
+        
+        return counts;
+    }
+
+    /**
+     * 5.9: 审批前置校验 - 审批前检查业务数据
+     */
+    private void preCheckBeforeApproval(WfTask task, String action, Map<String, Object> variables) {
+        // 检查流程实例是否仍在运行
+        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(task.getInstanceId());
+        }
+        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+            throw WorkflowException.invalidState("流程实例状态异常（" + instance.getStatus() + "），无法审批");
+        }
+        
+        // 检查任务是否已被处理
+        if (!WfTaskStatus.TODO.getCode().equals(task.getStatus())) {
+            throw WorkflowException.invalidState("任务已被处理，请勿重复操作");
         }
     }
     

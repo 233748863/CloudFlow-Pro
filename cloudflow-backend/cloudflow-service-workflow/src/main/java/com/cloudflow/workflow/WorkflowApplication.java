@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.mybatis.spring.annotation.MapperScan;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.cloudflow")
 @EnableAsync
 @MapperScan("com.cloudflow.workflow.mapper")
 public class WorkflowApplication {

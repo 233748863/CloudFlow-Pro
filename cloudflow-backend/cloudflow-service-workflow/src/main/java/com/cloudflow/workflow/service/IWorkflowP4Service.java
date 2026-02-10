@@ -54,6 +54,17 @@ public interface IWorkflowP4Service {
     /** P4.10: 批量审批 */
     R<?> batchApprove(List<String> taskIds, Long operatorId, String operatorName, String action, String comment);
 
+    /** P1-5.3: 减签 - 动态减少审批人 */
+    R<?> removeSign(String taskId, List<Long> userIds, String reason);
+
+    /** P1-4.3: 子流程调用 - 嵌套调用其他流程定义 */
+    R<?> startSubProcess(String parentInstanceId, String parentNodeKey, String subProcessDefKey,
+                         java.util.Map<String, Object> variables);
+
+    /** P1-5.8: 条件审批 - 选择不同流转路径 */
+    R<?> conditionalApprove(String taskId, Long operatorId, String operatorName,
+                            String action, String comment, String selectedPath);
+
     // ==================== 任务管理增强 ====================
 
     /** P4.11: 设置任务优先级 */

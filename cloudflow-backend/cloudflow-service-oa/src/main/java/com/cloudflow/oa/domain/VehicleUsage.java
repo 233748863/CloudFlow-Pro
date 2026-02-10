@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.domain;
+package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -67,6 +67,9 @@ public class VehicleUsage {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date updateTime;
+    
+    /** 租户ID */
+    private Long tenantId;
     
     // 关联字段，非数据库字段
     @TableField(exist = false)

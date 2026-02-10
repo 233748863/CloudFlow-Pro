@@ -156,7 +156,7 @@ class SyncManager {
     const deviceId = getDeviceId();
 
     try {
-      const response = await request.post('/api/sync/upload', {
+      const response = await request.post('/oa/sync/upload', {
         deviceId,
         timestamp: new Date().toISOString(),
         data: actions.map(action => ({
@@ -218,12 +218,12 @@ class SyncManager {
       task_complete: { method: 'POST', url: `/workflow/task/complete` },
       task_approve: { method: 'POST', url: `/workflow/task/complete` },
       task_reject: { method: 'POST', url: `/workflow/task/complete` },
-      notice_read: { method: 'POST', url: `/workflow/notice/read/${action.payload.noticeId}` },
-      schedule_create: { method: 'POST', url: `/workflow/schedule` },
+      notice_read: { method: 'POST', url: `/oa/notice/read/${action.payload.noticeId}` },
+      schedule_create: { method: 'POST', url: `/oa/schedule` },
       leave_request: { method: 'POST', url: `/workflow/process/start` },
       reimbursement_request: { method: 'POST', url: `/workflow/process/start` },
       vehicle_booking: { method: 'POST', url: `/workflow/process/start` },
-      meeting_booking: { method: 'POST', url: `/workflow/meeting-room` },
+      meeting_booking: { method: 'POST', url: `/oa/meeting-room` },
     };
 
     const endpoint = endpointMap[action.type];
@@ -249,7 +249,7 @@ class SyncManager {
       const lastSyncTime = syncMeta?.lastSyncTime || '1970-01-01T00:00:00Z';
       const deviceId = getDeviceId();
 
-      const response = await request.get('/api/sync/download', {
+      const response = await request.get('/oa/sync/download', {
         params: { lastSyncTime, deviceId },
       }) as any;
 
@@ -282,7 +282,7 @@ class SyncManager {
    */
   async resolveConflicts(conflicts: ConflictItem[]): Promise<void> {
     try {
-      await request.post('/api/sync/resolve-conflicts', {
+      await request.post('/oa/sync/resolve-conflicts', {
         conflicts: conflicts.map(c => ({
           id: c.id,
           type: c.type,

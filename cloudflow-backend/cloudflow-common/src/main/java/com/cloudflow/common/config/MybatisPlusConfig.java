@@ -17,13 +17,13 @@ import java.util.List;
 @Configuration
 public class MybatisPlusConfig {
     
-    // 需要忽略多租户的表
+    // 真正跨租户共享的表（不需要租户隔离）
     private static final List<String> IGNORE_TENANT_TABLES = Arrays.asList(
-            "sys_tenant", 
-            "sys_menu", 
-            "sys_dict_type", 
-            "sys_dict_data",
-            "sys_config"
+            "sys_tenant",       // 租户表本身
+            "sys_menu",         // 菜单权限（全局共享）
+            "sys_dict_type",    // 字典类型（全局共享）
+            "sys_dict_data",    // 字典数据（全局共享）
+            "sys_config"        // 系统配置（全局共享）
     );
 
     /**

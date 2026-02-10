@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/workflow/notice")
+@RequestMapping("/notice")
 public class SysNoticeController {
 
     @Autowired
@@ -22,7 +22,7 @@ public class SysNoticeController {
     }
 
     @PostMapping("/read/{noticeId}")
-    public R<?> read(@PathVariable Long noticeId) {
+    public R<?> read(@PathVariable("noticeId") Long noticeId) {
         noticeService.readNotice(noticeId);
         return R.ok();
     }
@@ -36,7 +36,7 @@ public class SysNoticeController {
      * 获取消息详情
      */
     @GetMapping("/{noticeId}")
-    public R<SysNotice> getNoticeDetail(@PathVariable Long noticeId) {
+    public R<SysNotice> getNoticeDetail(@PathVariable("noticeId") Long noticeId) {
         return R.ok(noticeService.getNoticeById(noticeId));
     }
 
@@ -44,7 +44,7 @@ public class SysNoticeController {
      * 删除消息
      */
     @DeleteMapping("/{noticeId}")
-    public R<?> deleteNotice(@PathVariable Long noticeId) {
+    public R<?> deleteNotice(@PathVariable("noticeId") Long noticeId) {
         noticeService.deleteNotice(noticeId);
         return R.ok();
     }

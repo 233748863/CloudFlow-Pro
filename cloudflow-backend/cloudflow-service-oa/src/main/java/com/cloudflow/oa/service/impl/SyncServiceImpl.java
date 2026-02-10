@@ -1,6 +1,6 @@
 package com.cloudflow.oa.service.impl;
 
-import com.cloudflow.common.security.utils.SecurityUtils;
+import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.dto.SyncDownloadDTO;
 import com.cloudflow.oa.domain.dto.SyncResultDTO;
 import com.cloudflow.oa.domain.dto.SyncUploadDTO;

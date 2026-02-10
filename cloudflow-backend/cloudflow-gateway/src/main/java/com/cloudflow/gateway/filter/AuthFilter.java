@@ -31,7 +31,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
     // 白名单
     private final List<String> whiteList = Arrays.asList(
             "/auth/login",
-            "/auth/register"
+            "/auth/register",
+            "/auth/captcha/**"
     );
 
     @Override

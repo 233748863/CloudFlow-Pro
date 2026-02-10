@@ -5,12 +5,33 @@
 # 本地开发时可通过环境变量覆盖，或在 Nacos 中配置 cloudflow-common.yaml
 # ============================================================
 
+server:
+  port: 9002
+
 spring:
+  application:
+    name: cloudflow-service-workflow
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  config:
+    import:
+      - optional:nacos:cloudflow-service-workflow.yaml
+      - optional:nacos:cloudflow-common.yaml?refresh=true
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER:192.168.1.173:8848}
+      username: nacos
+      password: nacos
+      config:
+        namespace: ${NACOS_NAMESPACE:886292cd-bfe3-4651-a67a-7604d2f4f3b9}
+        file-extension: yaml
+      discovery:
+        namespace: ${NACOS_NAMESPACE:886292cd-bfe3-4651-a67a-7604d2f4f3b9}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://localhost:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true}
+    url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    password: ${DB_PASSWORD:Juwangkeji@2025}
     # HikariCP 连接池配置
     hikari:
       pool-name: CloudFlowHikariCP
@@ -22,12 +43,13 @@ spring:
       connection-test-query: SELECT 1
       auto-commit: true
       leak-detection-threshold: 60000
-
+      validation-timeout: 5000
+      register-mbeans: true
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:192.168.1.173}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:Juwangkeji@2025}
       database: ${REDIS_DB:0}
       timeout: 5000
       lettuce:
@@ -45,6 +67,22 @@ mybatis-plus:
     map-underscore-to-camel-case: true
     # 生产环境使用 SLF4J 日志，开发环境可切换为 StdOutImpl
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
 
 # 日志配置
 logging:

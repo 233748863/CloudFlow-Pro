@@ -3,6 +3,7 @@ package com.cloudflow.common.core.exception;
 import com.cloudflow.common.core.domain.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -10,8 +11,10 @@ import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 全局异常处理器
+ * 仅在 Servlet 环境下生效（排除 WebFlux 网关等响应式应用）
  */
 @RestControllerAdvice
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 

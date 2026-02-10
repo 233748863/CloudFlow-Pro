@@ -16,6 +16,9 @@ public class WfProcessDefinition implements Serializable {
     @TableId
     private String definitionId;
 
+    /** 租户ID */
+    private Long tenantId;
+
     /** 流程名称 */
     private String processName;
 
@@ -43,12 +46,35 @@ public class WfProcessDefinition implements Serializable {
     /** 启动权限值 (JSON格式) */
     private String startPermissionValue;
 
+    /** 1.4: 流程分类 */
+    private String category;
+
+    /** 1.4: 流程标签 (JSON数组) */
+    private String tags;
+
+    /** 1.B: 乐观锁版本号 */
+    private Integer versionLock;
+
+    /** 12.A: 是否最新版本 (0-否, 1-是) */
+    private Integer isLatest;
+
+    /** 流程描述 */
+    private String description;
+
     public String getDefinitionId() {
         return definitionId;
     }
 
     public void setDefinitionId(String definitionId) {
         this.definitionId = definitionId;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getProcessName() {
@@ -121,5 +147,59 @@ public class WfProcessDefinition implements Serializable {
 
     public void setStartPermissionValue(String startPermissionValue) {
         this.startPermissionValue = startPermissionValue;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    public Integer getVersionLock() {
+        return versionLock;
+    }
+
+    public void setVersionLock(Integer versionLock) {
+        this.versionLock = versionLock;
+    }
+
+    public Integer getIsLatest() {
+        return isLatest;
+    }
+
+    public void setIsLatest(Integer isLatest) {
+        this.isLatest = isLatest;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    /** Alias for processName used by P4 compareVersions */
+    public String getName() {
+        return processName;
+    }
+
+    /** Alias for modelJson - used by DeployEnhancementServiceImpl */
+    public String getModelContent() {
+        return modelJson;
+    }
+
+    public void setModelContent(String modelContent) {
+        this.modelJson = modelContent;
     }
 }

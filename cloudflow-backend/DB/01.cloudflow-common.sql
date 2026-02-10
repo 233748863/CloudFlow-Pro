@@ -1,40 +1,43 @@
 -- =========================================================
--- CloudFlow Pro - 公共模块数据库初始化脚本
--- 包含：用户管理、角色权限、部门组织、菜单、多租户
+-- CloudFlow Pro - 公共基础模块数据库脚本
+-- 模块：用户管理、角色权限、部门组织、菜单、多租户、文件管理
+-- 版本：v1.0
+-- 创建日期：2026-02-09
 -- =========================================================
+
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS cloud_flow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE cloud_flow_db;
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- ----------------------------
--- 1. 用户表 (User)
--- ----------------------------
-DROP TABLE IF EXISTS sys_user;
-CREATE TABLE sys_user (
-  user_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '用户ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
-  user_name         VARCHAR(30)     NOT NULL COMMENT '用户账号',
-  nick_name         VARCHAR(30)     NOT NULL COMMENT '用户昵称',
-  email             VARCHAR(50)     DEFAULT '' COMMENT '用户邮箱',
-  phonenumber       VARCHAR(11)     DEFAULT '' COMMENT '手机号码',
-  sex               CHAR(1)         DEFAULT '0' COMMENT '用户性别（0男 1女 2未知）',
-  password          VARCHAR(100)    DEFAULT '' COMMENT '密码',
-  status            CHAR(1)         DEFAULT '0' COMMENT '帐号状态（0正常 1停用）',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
-  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
-  create_time       DATETIME        COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
-  update_time       DATETIME        COMMENT '更新时间',
-  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (user_id),
-  KEY idx_user_tenant (tenant_id),
-  UNIQUE KEY uk_user_name_tenant (user_name, tenant_id)
-) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='用户信息表';
+-- =========================================================
+-- 一、租户管理
+-- =========================================================
 
--- ----------------------------
--- 2. 部门表 (Department)
--- ----------------------------
+-- 1. 租户表
+DROP TABLE IF EXISTS sys_tenant;
+CREATE TABLE sys_tenant (
+  tenant_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '租户ID',
+  tenant_name       VARCHAR(50)     NOT NULL COMMENT '租户名称',
+  domain            VARCHAR(100)    DEFAULT NULL COMMENT '域名(可选)',
+  contact           VARCHAR(50)     DEFAULT NULL COMMENT '联系人',
+  phone             VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
+  status            CHAR(1)         DEFAULT '0' COMMENT '状态（0正常 1停用）',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4 COMMENT='租户表';
+
+-- =========================================================
+-- 二、组织架构管理
+-- =========================================================
+
+-- 2. 部门表
 DROP TABLE IF EXISTS sys_dept;
 CREATE TABLE sys_dept (
   dept_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '部门id',
@@ -56,9 +59,37 @@ CREATE TABLE sys_dept (
   KEY idx_dept_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=200 DEFAULT CHARSET=utf8mb4 COMMENT='部门表';
 
--- ----------------------------
--- 3. 角色表 (Role)
--- ----------------------------
+-- 3. 用户表
+DROP TABLE IF EXISTS sys_user;
+CREATE TABLE sys_user (
+  user_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  user_name         VARCHAR(30)     NOT NULL COMMENT '用户账号',
+  nick_name         VARCHAR(30)     NOT NULL COMMENT '用户昵称',
+  email             VARCHAR(50)     DEFAULT '' COMMENT '用户邮箱',
+  phonenumber       VARCHAR(11)     DEFAULT '' COMMENT '手机号码',
+  sex               CHAR(1)         DEFAULT '0' COMMENT '用户性别（0男 1女 2未知）',
+  password          VARCHAR(100)    DEFAULT '' COMMENT '密码',
+  status            CHAR(1)         DEFAULT '0' COMMENT '帐号状态（0正常 1停用）',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  login_ip          VARCHAR(128)    DEFAULT '' COMMENT '最后登录IP',
+  login_date        DATETIME        DEFAULT NULL COMMENT '最后登录时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        COMMENT '更新时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (user_id),
+  KEY idx_user_tenant (tenant_id),
+  UNIQUE KEY uk_user_name_tenant (user_name, tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='用户信息表';
+
+-- =========================================================
+-- 三、权限管理
+-- =========================================================
+
+-- 4. 角色表
 DROP TABLE IF EXISTS sys_role;
 CREATE TABLE sys_role (
   role_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '角色ID',
@@ -79,9 +110,7 @@ CREATE TABLE sys_role (
   UNIQUE KEY uk_role_key_tenant (role_key, tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='角色信息表';
 
--- ----------------------------
--- 4. 菜单权限表 (Menu)
--- ----------------------------
+-- 5. 菜单权限表
 DROP TABLE IF EXISTS sys_menu;
 CREATE TABLE sys_menu (
   menu_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '菜单ID',
@@ -105,9 +134,7 @@ CREATE TABLE sys_menu (
   PRIMARY KEY (menu_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=2000 DEFAULT CHARSET=utf8mb4 COMMENT='菜单权限表';
 
--- ----------------------------
--- 5. 用户和角色关联表 (User-Role)
--- ----------------------------
+-- 6. 用户和角色关联表
 DROP TABLE IF EXISTS sys_user_role;
 CREATE TABLE sys_user_role (
   user_id   BIGINT(20) NOT NULL COMMENT '用户ID',
@@ -116,9 +143,7 @@ CREATE TABLE sys_user_role (
   PRIMARY KEY (user_id, role_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户和角色关联表';
 
--- ----------------------------
--- 6. 角色和菜单关联表 (Role-Menu)
--- ----------------------------
+-- 7. 角色和菜单关联表
 DROP TABLE IF EXISTS sys_role_menu;
 CREATE TABLE sys_role_menu (
   role_id   BIGINT(20) NOT NULL COMMENT '角色ID',
@@ -127,31 +152,15 @@ CREATE TABLE sys_role_menu (
   PRIMARY KEY (role_id, menu_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色和菜单关联表';
 
--- ----------------------------
--- 7. 租户表
--- ----------------------------
-DROP TABLE IF EXISTS sys_tenant;
-CREATE TABLE sys_tenant (
-  tenant_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '租户ID',
-  tenant_name       VARCHAR(50)     NOT NULL COMMENT '租户名称',
-  domain            VARCHAR(100)    DEFAULT NULL COMMENT '域名(可选)',
-  contact           VARCHAR(50)     DEFAULT NULL COMMENT '联系人',
-  phone             VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
-  status            CHAR(1)         DEFAULT '0' COMMENT '状态（0正常 1停用）',
-  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
-  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
-  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (tenant_id)
-) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4 COMMENT='租户表';
+-- =========================================================
+-- 四、文件管理
+-- =========================================================
 
--- ----------------------------
 -- 8. 文件管理表
--- ----------------------------
 DROP TABLE IF EXISTS sys_file;
 CREATE TABLE sys_file (
   file_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '文件ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   file_name         VARCHAR(255)    DEFAULT '' COMMENT '原始文件名',
   file_path         VARCHAR(255)    DEFAULT '' COMMENT '存储路径',
   url               VARCHAR(500)    DEFAULT '' COMMENT '访问地址',
@@ -161,7 +170,8 @@ CREATE TABLE sys_file (
   create_time       DATETIME        COMMENT '上传时间',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
   remark            VARCHAR(255)    DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (file_id)
+  PRIMARY KEY (file_id),
+  KEY idx_file_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='文件管理表';
 
 -- =========================================================
@@ -186,14 +196,14 @@ INSERT INTO sys_role VALUES(3, 100000, 'FINANCE', 'finance',  3, '3', '0', '0', 
 INSERT INTO sys_role VALUES(4, 100000, 'HR',      'hr',       4, '3', '0', '0', 'admin', sysdate(), '', null, '人事专员，负责人员相关审批');
 INSERT INTO sys_role VALUES(5, 100000, 'EMPLOYEE','employee', 5, '2', '0', '0', 'admin', sysdate(), '', null, '普通员工，仅能发起申请');
 
--- 4. 初始化用户数据 (密码统一为: 123456)
-INSERT INTO sys_user VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$7JB720yubVSZv5W8vNGkxOW4Q.WBFGvMay.k.e3nA.YJ.Libn.qK', '0', '0', 'admin', sysdate(), '', null, '超级管理员');
-INSERT INTO sys_user VALUES(2,  100000, 101, 'li', '李经理', 'li@cloudflow.com', '15888888888', '1', '$2a$10$7JB720yubVSZv5W8vNGkxOW4Q.WBFGvMay.k.e3nA.YJ.Libn.qK', '0', '0', 'admin', sysdate(), '', null, '研发部经理');
-INSERT INTO sys_user VALUES(3,  100000, 102, 'wang', '王财务', 'wang@cloudflow.com', '15888888888', '1', '$2a$10$7JB720yubVSZv5W8vNGkxOW4Q.WBFGvMay.k.e3nA.YJ.Libn.qK', '0', '0', 'admin', sysdate(), '', null, '财务专员');
-INSERT INTO sys_user VALUES(4,  100000, 103, 'zhao', '赵HR', 'zhao@cloudflow.com', '15888888888', '1', '$2a$10$7JB720yubVSZv5W8vNGkxOW4Q.WBFGvMay.k.e3nA.YJ.Libn.qK', '0', '0', 'admin', sysdate(), '', null, 'HR经理');
-INSERT INTO sys_user VALUES(5,  100000, 101, 'zhang', '张三', 'zhang@cloudflow.com', '15888888888', '1', '$2a$10$7JB720yubVSZv5W8vNGkxOW4Q.WBFGvMay.k.e3nA.YJ.Libn.qK', '0', '0', 'admin', sysdate(), '', null, '研发工程师');
-INSERT INTO sys_user VALUES(6,  100000, 104, 'liu', '刘法务', 'liu@cloudflow.com', '15888888888', '1', '$2a$10$7JB720yubVSZv5W8vNGkxOW4Q.WBFGvMay.k.e3nA.YJ.Libn.qK', '0', '0', 'admin', sysdate(), '', null, '法务总监');
-INSERT INTO sys_user VALUES(7,  100000, 105, 'chen', '陈IT', 'chen@cloudflow.com', '15888888888', '1', '$2a$10$7JB720yubVSZv5W8vNGkxOW4Q.WBFGvMay.k.e3nA.YJ.Libn.qK', '0', '0', 'admin', sysdate(), '', null, '系统管理员');
+-- 4. 初始化用户数据 (密码统一为: 123456, 存储格式为 BCrypt(SHA256(明文密码)))
+INSERT INTO sys_user VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '超级管理员');
+INSERT INTO sys_user VALUES(2,  100000, 101, 'li', '李经理', 'li@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '研发部经理');
+INSERT INTO sys_user VALUES(3,  100000, 102, 'wang', '王财务', 'wang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '财务专员');
+INSERT INTO sys_user VALUES(4,  100000, 103, 'zhao', '赵HR', 'zhao@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, 'HR经理');
+INSERT INTO sys_user VALUES(5,  100000, 101, 'zhang', '张三', 'zhang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '研发工程师');
+INSERT INTO sys_user VALUES(6,  100000, 104, 'liu', '刘法务', 'liu@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '法务总监');
+INSERT INTO sys_user VALUES(7,  100000, 105, 'chen', '陈IT', 'chen@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '系统管理员');
 
 -- 5. 初始化用户角色关联
 INSERT INTO sys_user_role VALUES(1, 1, 100000);
@@ -224,3 +234,7 @@ INSERT INTO sys_role_menu VALUES(5, 2, 100000);
 INSERT INTO sys_role_menu VALUES(5, 200, 100000);
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- =========================================================
+-- 脚本执行完成
+-- =========================================================

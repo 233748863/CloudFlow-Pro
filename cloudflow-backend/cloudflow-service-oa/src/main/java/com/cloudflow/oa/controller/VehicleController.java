@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
@@ -55,7 +55,7 @@ public class VehicleController {
     }
 
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@PathVariable List<Long> ids) {
+    public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         return R.result(vehicleService.removeBatchByIds(ids));
     }
 
@@ -89,8 +89,8 @@ public class VehicleController {
     }
 
     @GetMapping("/expense/stats")
-    public R<Map<String, Object>> getExpenseStats(@RequestParam(required = false) String startDate, 
-                                                 @RequestParam(required = false) String endDate) {
+    public R<Map<String, Object>> getExpenseStats(@RequestParam(value = "startDate", required = false) String startDate, 
+                                                 @RequestParam(value = "endDate", required = false) String endDate) {
         return R.ok(expenseService.getExpenseStats(startDate, endDate));
     }
 }

@@ -35,7 +35,6 @@ public class RedisStreamConfig {
         StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options =
                 StreamMessageListenerContainer.StreamMessageListenerContainerOptions.builder()
                         .pollTimeout(Duration.ofSeconds(1))
-                        .targetType(String.class) // Key type
                         .build();
 
         StreamMessageListenerContainer<String, MapRecord<String, String, String>> container =

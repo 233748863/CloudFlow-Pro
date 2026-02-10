@@ -1,8 +1,45 @@
+server:
+  port: 9001
+
 spring:
+  application:
+    name: cloudflow-auth
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:cloudflow-auth.yaml
+      - optional:nacos:cloudflow-common.yaml?refresh=true
+  cloud:
+    nacos:
+      server-addr: 192.168.1.173:8848
+      username: nacos
+      password: nacos
+      config:
+        namespace: 886292cd-bfe3-4651-a67a-7604d2f4f3b9
+        file-extension: yaml
+      discovery:
+        namespace: 886292cd-bfe3-4651-a67a-7604d2f4f3b9
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 20MB
+  data:
+    redis:
+      host: 192.168.1.173
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      database: 0
+
+# JWT 安全配置（本地后备，Nacos 配置优先）
+cloudflow:
+  security:
+    jwt:
+      secret: cloudflow-jwt-secret-key-change-in-production-environment-min-32-chars
+    token:
+      expiration: 1440
+      refresh-time: 20
+
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*Mapper.xml
   type-aliases-package: com.cloudflow.auth.domain

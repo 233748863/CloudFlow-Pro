@@ -5,6 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Component;
+import java.util.Collection;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -15,8 +17,9 @@ public class RedisCache {
     // 需要忽略租户隔离的 Key 前缀 (如验证码、登录Token等)
     private static final String[] GLOBAL_PREFIXES = {
         "CAPTCHA:", 
-        "LOGIN_TOKEN:", 
-        "sys:config:" // 系统配置通常全局共享? 暂定
+        "login_tokens:",   // CacheConstants.LOGIN_TOKEN_KEY
+        "user_tokens:",    // CacheConstants.USER_TOKENS_KEY
+        "sys:config:"      // 系统配置通常全局共享
     };
 
     /**
@@ -67,11 +70,11 @@ public class RedisCache {
      * 设置有效时间
      *
      * @param key     Redis键
-     * @param timeout 超时时间
+     * @param timeout 超时时间（秒）
      * @return true=设置成功；false=设置失败
      */
     public boolean expire(final String key, final long timeout) {
-        return expire(getTenantKey(key), timeout, TimeUnit.SECONDS);
+        return redisTemplate.expire(getTenantKey(key), timeout, TimeUnit.SECONDS);
     }
 
     /**
@@ -172,5 +175,75 @@ public class RedisCache {
      */
     public long removeCacheZSet(final String key, final Object... values) {
         return redisTemplate.opsForZSet().remove(getTenantKey(key), values);
+    }
+
+    /**
+     * 缓存基本对象（仅当Key不存在时设置）
+     *
+     * @param key      缓存的键值
+     * @param value    缓存的值
+     * @param timeout  时间
+     * @param timeUnit 时间颗粒度
+     * @return true=设置成功（key不存在）；false=设置失败（key已存在）
+     */
+    public <T> boolean setCacheObjectIfAbsent(final String key, final T value, final Integer timeout, final TimeUnit timeUnit) {
+        Boolean result = redisTemplate.opsForValue().setIfAbsent(getTenantKey(key), value, timeout, timeUnit);
+        return result != null && result;
+    }
+
+    /**
+     * 获取ZSet大小
+     */
+    public long getCacheZSetSize(final String key) {
+        Long size = redisTemplate.opsForZSet().zCard(getTenantKey(key));
+        return size == null ? 0 : size;
+    }
+
+    /**
+     * 按分数范围移除ZSet元素
+     */
+    public long removeRangeByScore(final String key, final double min, final double max) {
+        Long count = redisTemplate.opsForZSet().removeRangeByScore(getTenantKey(key), min, max);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * 按分数范围获取ZSet元素
+     */
+    public Set<Object> getCacheZSetByScoreRange(final String key, final double min, final double max) {
+        return redisTemplate.opsForZSet().rangeByScore(getTenantKey(key), min, max);
+    }
+
+    /**
+     * 按分数范围移除ZSet元素（别名）
+     */
+    public long removeCacheZSetByScoreRange(final String key, final double min, final double max) {
+        return removeRangeByScore(key, min, max);
+    }
+
+    /**
+     * 获取匹配模式的所有Key
+     *
+     * @param pattern 匹配模式
+     * @return key集合
+     */
+    public Collection<String> keys(final String pattern) {
+        return redisTemplate.keys(getTenantKey(pattern));
+    }
+
+    /**
+     * 检查Key是否存在
+     */
+    public boolean hasKey(final String key) {
+        Boolean result = redisTemplate.hasKey(getTenantKey(key));
+        return result != null && result;
+    }
+
+    /**
+     * 获取Key的过期时间
+     */
+    public long getExpire(final String key) {
+        Long expire = redisTemplate.getExpire(getTenantKey(key));
+        return expire == null ? -1 : expire;
     }
 }

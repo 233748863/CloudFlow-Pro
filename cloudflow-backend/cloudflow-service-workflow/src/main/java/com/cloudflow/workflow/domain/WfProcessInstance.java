@@ -16,6 +16,9 @@ public class WfProcessInstance implements Serializable {
     @TableId
     private String instanceId;
 
+    /** 租户ID */
+    private Long tenantId;
+
     /** 流程定义Key (如 purchase_request) */
     private String processDefKey;
 
@@ -43,6 +46,15 @@ public class WfProcessInstance implements Serializable {
     /** 流程变量 (JSON) */
     private String variables;
 
+    /** 4.1: 流程实例优先级 (URGENT/HIGH/NORMAL/LOW) */
+    private String priority;
+
+    /** 4.9: 流程编号 (自动生成的业务编号) */
+    private String processNo;
+
+    /** 流程定义ID (版本锁定) */
+    private String definitionId;
+
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String formId;
 
@@ -60,6 +72,30 @@ public class WfProcessInstance implements Serializable {
 
     public void setFormId(String formId) {
         this.formId = formId;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getProcessNo() {
+        return processNo;
+    }
+
+    public void setProcessNo(String processNo) {
+        this.processNo = processNo;
+    }
+
+    public String getDefinitionId() {
+        return definitionId;
+    }
+
+    public void setDefinitionId(String definitionId) {
+        this.definitionId = definitionId;
     }
 
     public String getInstanceId() {
@@ -132,5 +168,22 @@ public class WfProcessInstance implements Serializable {
 
     public void setEndTime(Date endTime) {
         this.endTime = endTime;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    /** Alias for definitionId - used by DeployEnhancementServiceImpl */
+    public String getProcessDefId() {
+        return definitionId;
+    }
+
+    public void setProcessDefId(String processDefId) {
+        this.definitionId = processDefId;
     }
 }

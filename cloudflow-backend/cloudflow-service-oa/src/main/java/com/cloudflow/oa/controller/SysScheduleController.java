@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
@@ -11,15 +11,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
-@RequestMapping("/workflow/schedule")
+@RequestMapping("/schedule")
 public class SysScheduleController {
 
     @Autowired
     private ISysScheduleService scheduleService;
 
     @GetMapping("/my-events")
-    public R<List<SysScheduleEvent>> getMyEvents(@RequestParam(required = false) String start, 
-                                               @RequestParam(required = false) String end) {
+    public R<List<SysScheduleEvent>> getMyEvents(@RequestParam(value = "start", required = false) String start,
+                                               @RequestParam(value = "end", required = false) String end) {
         return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), start, end));
     }
 
@@ -53,7 +53,7 @@ public class SysScheduleController {
     }
 
     @DeleteMapping("/{id}")
-    public R<Boolean> remove(@PathVariable Long id) {
+    public R<Boolean> remove(@PathVariable("id") Long id) {
         // 权限检查：只有创建者可以删除日程
         Long currentUserId = UserContext.getUserId();
         SysScheduleEvent existing = scheduleService.getById(id);

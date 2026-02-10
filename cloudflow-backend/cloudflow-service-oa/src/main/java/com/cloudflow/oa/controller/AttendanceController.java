@@ -1,4 +1,4 @@
-﻿package com.cloudflow.oa.controller;
+package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.SysAttendanceRecord;
@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/workflow/attendance")
+@RequestMapping("/attendance")
 public class AttendanceController {
 
     @Autowired

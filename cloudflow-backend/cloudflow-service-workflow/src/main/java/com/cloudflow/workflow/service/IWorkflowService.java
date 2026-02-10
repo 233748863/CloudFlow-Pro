@@ -7,6 +7,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 
 import java.util.Map;
+import java.util.List;
 
 public interface IWorkflowService {
 
@@ -128,4 +129,11 @@ public interface IWorkflowService {
      * Urge task
      */
     R<?> urgeTask(String taskId, String reason);
+
+    /**
+     * 获取用户任务统计数量
+     * @param userId 用户ID
+     * @return 包含 todoCount, doneCount, myInstanceCount 等统计信息
+     */
+    Map<String, Integer> getTasksCount(Long userId);
 }
