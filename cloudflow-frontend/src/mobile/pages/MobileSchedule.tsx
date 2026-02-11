@@ -5,7 +5,8 @@ import { getTodaySchedule, getMyEvents } from '@/services/api/schedule';
 import type { SysScheduleEvent } from '@/types';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
-import { format, startOfWeek, endOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addDays, isSameDay } from 'date-fns';
+import { parseBackendDate } from '@/utils/dateFormat';
 import { zhCN } from 'date-fns/locale';
 
 type ViewType = 'day' | 'week';
@@ -60,7 +61,8 @@ export const MobileSchedule: React.FC = () => {
   // 格式化时间
   const formatTime = (timeStr: string) => {
     try {
-      const date = parseISO(timeStr);
+      const date = parseBackendDate(timeStr);
+      if (isNaN(date.getTime())) return '--:--';
       return format(date, 'HH:mm');
     } catch {
       return '--:--';
@@ -100,7 +102,7 @@ export const MobileSchedule: React.FC = () => {
     const grouped: { [key: string]: SysScheduleEvent[] } = {};
     events.forEach(event => {
       try {
-        const date = format(parseISO(event.startTime), 'yyyy-MM-dd');
+        const date = format(parseBackendDate(event.startTime), 'yyyy-MM-dd');
         if (!grouped[date]) {
           grouped[date] = [];
         }

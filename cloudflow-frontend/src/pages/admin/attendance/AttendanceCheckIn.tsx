@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Wifi, Clock, AlertCircle } from 'lucide-react';
+import { MapPin, Wifi, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { format } from 'date-fns';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
@@ -59,9 +59,8 @@ const AttendanceCheckIn: React.FC = () => {
 
   const handleCheckIn = async (type: '1' | '2') => {
     if (!location) {
-        // 尝试重新获取
-        getLocation();
-        if(!location) return;
+      setResult({ success: false, msg: '请先获取定位信息' });
+      return;
     }
 
     setLoading(true);
@@ -104,16 +103,29 @@ const AttendanceCheckIn: React.FC = () => {
           )}
 
           {/* 定位状态 */}
-          <div className="flex flex-col items-center space-y-2">
+          <div className="flex flex-col items-center space-y-2 w-full">
             {location ? (
               <div className="flex items-center text-green-600">
                 <MapPin className="w-5 h-5 mr-1" />
                 <span>已定位: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</span>
               </div>
             ) : (
-              <div className="flex items-center text-red-500">
-                <AlertCircle className="w-5 h-5 mr-1" />
-                <span>{locationError || "正在定位..."}</span>
+              <div className="flex flex-col items-center space-y-3 w-full">
+                <div className="flex items-center text-red-500">
+                  <AlertCircle className="w-5 h-5 mr-1" />
+                  <span>{locationError || "正在定位..."}</span>
+                </div>
+                {locationError && (
+                  <Button
+                    onClick={getLocation}
+                    disabled={loading}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    重新获取定位
+                  </Button>
+                )}
               </div>
             )}
             

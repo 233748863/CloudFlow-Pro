@@ -56,11 +56,29 @@ export const WorkflowDesign = () => {
 
       // 处理表单定义
       if (Array.isArray(forms)) {
-        const mapped = forms.map((f: any) => ({
-          id: f.id || f.formId,
-          name: f.name || f.formName,
-          fields: typeof f.fieldsJson === 'string' ? JSON.parse(f.fieldsJson) : (f.fields || f.fieldsJson || [])
-        }));
+        const mapped = forms.map((f: any) => {
+          let fields = [];
+          try {
+            if (typeof f.fieldsJson === 'string') {
+              // Clean up any escaped characters before parsing
+              const cleanJson = f.fieldsJson.replace(/\\/g, '');
+              fields = JSON.parse(cleanJson);
+            } else if (typeof f.formSchema === 'string') {
+              const cleanJson = f.formSchema.replace(/\\/g, '');
+              fields = JSON.parse(cleanJson);
+            } else {
+              fields = f.fields || f.fieldsJson || [];
+            }
+          } catch (parseError) {
+            logWorkflow.error('解析表单字段失败:', parseError);
+            fields = [];
+          }
+          return {
+            id: f.id || f.formId,
+            name: f.name || f.formName,
+            fields
+          };
+        });
         setSavedForms(mapped);
       }
 
@@ -83,13 +101,18 @@ export const WorkflowDesign = () => {
 
   const handleSaveWorkflow = async (wf: WorkflowDefinition) => {
     try {
+      // 验证必填字段
+      if (!wf.key || wf.key === 'new_process') {
+        throw new Error('流程Key不能为空或使用默认值，请设置有效的流程Key');
+      }
+      
       // 统一 ID 生成策略：新流程不传 ID，由后端生成
       const payload = {
         id: wf.id.startsWith('new_') ? undefined : wf.id,
-        name: wf.name,
-        key: wf.key,
+        processName: wf.name,
+        processKey: wf.key,
         formId: wf.formId,
-        nodes: wf.nodes
+        modelJson: JSON.stringify(wf.nodes)
       };
       
       logWorkflow.info('保存流程:', payload.name);
@@ -109,16 +132,23 @@ export const WorkflowDesign = () => {
   };
 
   // 自动保存功能（3秒防抖）
+  // 只有当流程不是新建的，且有有效的 key 时才启用自动保存
   useAutoSave(
     workflow,
     async (wf) => {
-      if (wf && wf.name && wf.name !== '新流程') {
+      // 严格验证：必须有有效的 key 且不是默认值
+      if (wf && wf.name && wf.name !== '新流程' && wf.key && wf.key !== 'new_process' && wf.key.trim() !== '') {
         await handleSaveWorkflow(wf);
       }
     },
     {
       delay: 3000,
-      enabled: !!workflow && !workflow.id.startsWith('new_'),
+      // 更严格的启用条件
+      enabled: !!workflow && 
+               !workflow.id.startsWith('new_') && 
+               !!workflow.key && 
+               workflow.key !== 'new_process' && 
+               workflow.key.trim() !== '',
       onSuccess: () => logWorkflow.info('流程自动保存成功'),
       onError: (err) => logWorkflow.error('流程自动保存失败:', err),
     }

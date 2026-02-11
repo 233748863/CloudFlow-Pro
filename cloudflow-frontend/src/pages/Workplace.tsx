@@ -32,11 +32,30 @@ export const Workplace = () => {
 
     getFormDefinitions().then(res => {
         if(Array.isArray(res)) {
-            const mapped = res.map((f: any) => ({
-                id: f.formId,
-                name: f.formName,
-                fields: typeof f.fieldsJson === 'string' ? JSON.parse(f.fieldsJson) : (f.fieldsJson || [])
-            }));
+            const mapped = res.map((f: any) => {
+                let fields = [];
+                try {
+                    if (typeof f.fieldsJson === 'string') {
+                        // 清理转义字符
+                        const cleanedJson = f.fieldsJson.replace(/\\/g, '');
+                        fields = JSON.parse(cleanedJson);
+                    } else if (typeof f.formSchema === 'string') {
+                        const cleanedJson = f.formSchema.replace(/\\/g, '');
+                        fields = JSON.parse(cleanedJson);
+                    } else {
+                        fields = f.fields || f.fieldsJson || [];
+                    }
+                } catch (parseError) {
+                    console.error('解析表单字段失败:', parseError);
+                    fields = [];
+                }
+                
+                return {
+                    id: f.formId,
+                    name: f.formName,
+                    fields: fields
+                };
+            });
             setSavedForms(mapped);
         }
     });

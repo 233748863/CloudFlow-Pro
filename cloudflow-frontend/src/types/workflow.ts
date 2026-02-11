@@ -191,8 +191,11 @@ export interface FormDefinitionListItem {
  * 启动流程请求
  */
 export interface StartProcessRequest {
-  workflowId: string;
-  formData?: Record<string, any>;
+  processDefKey: string;
+  businessKey?: string;
+  title?: string;
+  startUserId?: string;
+  startUserName?: string;
   variables?: Record<string, any>;
 }
 
@@ -212,19 +215,19 @@ export interface CompleteTaskRequest {
  */
 export interface SaveProcessDefinitionRequest {
   id?: string;
-  name: string;
-  key: string;
+  processName: string;
+  processKey: string;
   formId?: string;
-  nodes: WorkflowNode;
+  modelJson: string;
 }
 
 /**
  * 保存表单定义请求
  */
 export interface SaveFormDefinitionRequest {
-  id?: string;
-  name: string;
-  fields: FormDefinition['fields'];
+  formId?: string;
+  formName: string;
+  fieldsJson: string; // JSON 字符串，而不是数组
 }
 
 /**

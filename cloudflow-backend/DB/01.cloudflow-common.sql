@@ -119,6 +119,7 @@ CREATE TABLE sys_menu (
   order_num         INT(4)          DEFAULT 0 COMMENT '显示顺序',
   path              VARCHAR(200)    DEFAULT '' COMMENT '路由地址',
   component         VARCHAR(255)    DEFAULT NULL COMMENT '组件路径',
+  query             VARCHAR(255)    DEFAULT NULL COMMENT '路由参数',
   is_frame          INT(1)          DEFAULT 0 COMMENT '是否为外链（0是 1否）',
   is_cache          INT(1)          DEFAULT 0 COMMENT '是否缓存（0缓存 1不缓存）',
   menu_type         CHAR(1)         DEFAULT '' COMMENT '菜单类型（M目录 C菜单 F按钮）',
@@ -153,10 +154,41 @@ CREATE TABLE sys_role_menu (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色和菜单关联表';
 
 -- =========================================================
--- 四、文件管理
+-- 四、岗位管理
 -- =========================================================
 
--- 8. 文件管理表
+-- 8. 岗位信息表
+DROP TABLE IF EXISTS sys_post;
+CREATE TABLE sys_post (
+  post_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '岗位ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  post_code         VARCHAR(64)     NOT NULL COMMENT '岗位编码',
+  post_name         VARCHAR(50)     NOT NULL COMMENT '岗位名称',
+  post_sort         INT(4)          NOT NULL COMMENT '显示顺序',
+  status            CHAR(1)         DEFAULT '0' COMMENT '状态（0正常 1停用）',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        COMMENT '更新时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (post_id),
+  KEY idx_post_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='岗位信息表';
+
+-- 9. 用户与岗位关联表
+DROP TABLE IF EXISTS sys_user_post;
+CREATE TABLE sys_user_post (
+  user_id   BIGINT(20) NOT NULL COMMENT '用户ID',
+  post_id   BIGINT(20) NOT NULL COMMENT '岗位ID',
+  tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
+  PRIMARY KEY (user_id, post_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户与岗位关联表';
+
+-- =========================================================
+-- 五、文件管理
+-- =========================================================
+
+-- 10. 文件管理表
 DROP TABLE IF EXISTS sys_file;
 CREATE TABLE sys_file (
   file_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '文件ID',
@@ -214,24 +246,153 @@ INSERT INTO sys_user_role VALUES(5, 5, 100000);
 INSERT INTO sys_user_role VALUES(6, 1, 100000);
 INSERT INTO sys_user_role VALUES(7, 1, 100000);
 
--- 6. 初始化菜单权限
-INSERT INTO sys_menu VALUES(1, '系统管理', 0, 1, 'system', NULL, 0, 0, 'M', '0', '0', '', '#', 'admin', sysdate(), '', null, '系统管理目录');
-INSERT INTO sys_menu VALUES(100, '用户管理', 1, 1, 'user', 'system/user/index', 0, 0, 'C', '0', '0', 'system:user:list', '#', 'admin', sysdate(), '', null, '用户管理菜单');
-INSERT INTO sys_menu VALUES(101, '角色管理', 1, 2, 'role', 'system/role/index', 0, 0, 'C', '0', '0', 'system:role:list', '#', 'admin', sysdate(), '', null, '角色管理菜单');
+-- 6. 初始化菜单权限（二级菜单结构）
+-- ═══════════════════════════════════════════════════
+-- 一级目录（M类型）
+-- ═══════════════════════════════════════════════════
+INSERT INTO sys_menu VALUES(1,   '工作台',     0, 1, 'workspace',     NULL, NULL, 0, 0, 'M', '0', '0', '', 'LayoutDashboard', 'admin', sysdate(), '', null, '工作台目录');
+INSERT INTO sys_menu VALUES(2,   '办公协同',   0, 2, 'office',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'Briefcase',       'admin', sysdate(), '', null, '办公协同目录');
+INSERT INTO sys_menu VALUES(3,   '流程中心',   0, 3, 'process',       NULL, NULL, 0, 0, 'M', '0', '0', '', 'GitMerge',        'admin', sysdate(), '', null, '流程中心目录');
+INSERT INTO sys_menu VALUES(4,   '流程管理',   0, 4, 'workflow-mgmt', NULL, NULL, 0, 0, 'M', '0', '0', '', 'Settings',        'admin', sysdate(), '', null, '流程管理目录');
+INSERT INTO sys_menu VALUES(5,   '行政管理',   0, 5, 'admin-mgmt',    NULL, NULL, 0, 0, 'M', '0', '0', '', 'Building2',       'admin', sysdate(), '', null, '行政管理目录');
+INSERT INTO sys_menu VALUES(6,   '系统管理',   0, 6, 'system',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'Wrench',          'admin', sysdate(), '', null, '系统管理目录');
 
-INSERT INTO sys_menu VALUES(2, '工作流', 0, 2, 'workflow', NULL, 0, 0, 'M', '0', '0', '', '#', 'admin', sysdate(), '', null, '工作流目录');
-INSERT INTO sys_menu VALUES(200, '我的待办', 2, 1, 'task', 'workflow/task/index', 0, 0, 'C', '0', '0', 'workflow:task:list', '#', 'admin', sysdate(), '', null, '我的待办');
-INSERT INTO sys_menu VALUES(201, '流程设计', 2, 2, 'model', 'workflow/model/index', 0, 0, 'C', '0', '0', 'workflow:model:list', '#', 'admin', sysdate(), '', null, '流程设计');
+-- ═══════════════════════════════════════════════════
+-- 二级菜单（C类型）
+-- ═══════════════════════════════════════════════════
 
--- 7. 初始化角色菜单关联
+-- 工作台 (parent_id=1)
+INSERT INTO sys_menu VALUES(100, '仪表盘',     1, 1, '/',                    'pages/Dashboard',              NULL, 0, 0, 'C', '0', '0', 'workspace:dashboard',       'LayoutDashboard', 'admin', sysdate(), '', null, '仪表盘');
+INSERT INTO sys_menu VALUES(101, '我的日程',   1, 2, '/schedule',            'pages/SchedulePage',           NULL, 0, 0, 'C', '0', '0', 'workspace:schedule',        'Calendar',        'admin', sysdate(), '', null, '我的日程');
+
+-- 办公协同 (parent_id=2)
+INSERT INTO sys_menu VALUES(200, '会议室',     2, 1, '/meeting-room',        'pages/MeetingRoomPage',        NULL, 0, 0, 'C', '0', '0', 'office:meeting',            'Monitor',         'admin', sysdate(), '', null, '会议室管理');
+INSERT INTO sys_menu VALUES(201, '公告中心',   2, 2, '/announcement',        'pages/AnnouncementPage',       NULL, 0, 0, 'C', '0', '0', 'office:announcement',       'Megaphone',       'admin', sysdate(), '', null, '公告中心');
+INSERT INTO sys_menu VALUES(202, '考勤打卡',   2, 3, '/admin/attendance/checkin', 'pages/admin/attendance/AttendanceCheckIn', NULL, 0, 0, 'C', '0', '0', 'office:attendance:checkin', 'ClipboardCheck', 'admin', sysdate(), '', null, '考勤打卡');
+
+-- 流程中心 (parent_id=3)
+INSERT INTO sys_menu VALUES(300, '发起流程',   3, 1, '/workplace',           'pages/Workplace',              NULL, 0, 0, 'C', '0', '0', 'process:start',             'PlayCircle',      'admin', sysdate(), '', null, '发起流程');
+INSERT INTO sys_menu VALUES(301, '我的申请',   3, 2, '/my-apps',             'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'process:myapps',            'FileText',        'admin', sysdate(), '', null, '我的申请');
+INSERT INTO sys_menu VALUES(302, '审批待办',   3, 3, '/tasks',               'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'process:tasks',             'CheckCircle2',    'admin', sysdate(), '', null, '审批待办');
+
+-- 流程管理 (parent_id=4)
+INSERT INTO sys_menu VALUES(400, '流程设计',   4, 1, '/workflow',            'pages/WorkflowDesign',         NULL, 0, 0, 'C', '0', '0', 'workflow:model:list',        'GitMerge',        'admin', sysdate(), '', null, '流程设计');
+INSERT INTO sys_menu VALUES(401, '流程监控',   4, 2, '/workflow/monitor',    'pages/WorkflowMonitor',        NULL, 0, 0, 'C', '0', '0', 'workflow:monitor:list',      'Monitor',         'admin', sysdate(), '', null, '流程监控');
+INSERT INTO sys_menu VALUES(402, '发布管理',   4, 3, '/workflow/deploy',     'pages/DeployManagement',       NULL, 0, 0, 'C', '0', '0', 'workflow:deploy:list',       'Rocket',          'admin', sysdate(), '', null, '发布管理');
+INSERT INTO sys_menu VALUES(403, '表单设计',   4, 4, '/forms',              'pages/FormDesign',             NULL, 0, 0, 'C', '0', '0', 'workflow:form:list',         'FormInput',       'admin', sysdate(), '', null, '表单设计');
+
+-- 行政管理 (parent_id=5)
+INSERT INTO sys_menu VALUES(500, '组织架构',   5, 1, '/users',              'pages/OrgStructurePage',       NULL, 0, 0, 'C', '0', '0', 'admin:org:list',             'Users',           'admin', sysdate(), '', null, '组织架构');
+INSERT INTO sys_menu VALUES(501, '资产管理',   5, 2, '/admin/asset',        'pages/admin/asset/AssetList',  NULL, 0, 0, 'C', '0', '0', 'admin:asset:list',           'Package',         'admin', sysdate(), '', null, '资产管理');
+INSERT INTO sys_menu VALUES(502, '车辆管理',   5, 3, '/admin/vehicle/list', 'pages/admin/vehicle/VehicleList', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:list',      'Car',             'admin', sysdate(), '', null, '车辆管理');
+INSERT INTO sys_menu VALUES(503, '用车申请',   5, 4, '/admin/vehicle/booking', 'pages/admin/vehicle/VehicleBooking', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:booking', 'Car',          'admin', sysdate(), '', null, '用车申请');
+INSERT INTO sys_menu VALUES(504, '用车记录',   5, 5, '/admin/vehicle/usage', 'pages/admin/vehicle/VehicleUsageList', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:usage',   'Car',             'admin', sysdate(), '', null, '用车记录');
+INSERT INTO sys_menu VALUES(505, '考勤规则',   5, 6, '/admin/attendance/rule', 'pages/admin/attendance/AttendanceRule', NULL, 0, 0, 'C', '0', '0', 'admin:attendance:rule', 'ClipboardCheck', 'admin', sysdate(), '', null, '考勤规则设置');
+
+-- 系统管理 (parent_id=6)
+INSERT INTO sys_menu VALUES(600, '用户管理',   6, 1, '/system/users',       'pages/system/UserList',        NULL, 0, 0, 'C', '0', '0', 'system:user:list',           'Users',           'admin', sysdate(), '', null, '用户管理');
+INSERT INTO sys_menu VALUES(601, '角色管理',   6, 2, '/system/roles',       'pages/system/RoleList',        NULL, 0, 0, 'C', '0', '0', 'system:role:list',           'ShieldCheck',     'admin', sysdate(), '', null, '角色管理');
+INSERT INTO sys_menu VALUES(602, '菜单管理',   6, 3, '/system/menus',       'pages/system/MenuList',        NULL, 0, 0, 'C', '0', '0', 'system:menu:list',           'LayoutDashboard', 'admin', sysdate(), '', null, '菜单管理');
+INSERT INTO sys_menu VALUES(603, '文件管理',   6, 4, '/system/files',       'pages/system/FileList',        NULL, 0, 0, 'C', '0', '0', 'system:file:list',           'FileArchive',     'admin', sysdate(), '', null, '文件管理');
+INSERT INTO sys_menu VALUES(604, '源码生成',   6, 5, '/code',               'pages/CodeGeneration',         NULL, 0, 0, 'C', '0', '0', 'system:code:list',           'Code',            'admin', sysdate(), '', null, '源码生成');
+
+-- 7. 初始化岗位数据
+INSERT INTO sys_post VALUES(1, 100000, 'ceo',      '董事长',     1, '0', 'admin', sysdate(), '', null, '公司最高管理者');
+INSERT INTO sys_post VALUES(2, 100000, 'manager',   '部门经理',   2, '0', 'admin', sysdate(), '', null, '部门负责人');
+INSERT INTO sys_post VALUES(3, 100000, 'director',  '总监',       3, '0', 'admin', sysdate(), '', null, '业务线总监');
+INSERT INTO sys_post VALUES(4, 100000, 'staff',     '普通员工',   4, '0', 'admin', sysdate(), '', null, '普通岗位');
+
+-- 8. 初始化用户岗位关联
+INSERT INTO sys_user_post VALUES(1, 1, 100000);  -- admin → 董事长
+INSERT INTO sys_user_post VALUES(2, 2, 100000);  -- 李经理 → 部门经理
+INSERT INTO sys_user_post VALUES(3, 2, 100000);  -- 王财务 → 部门经理（财务主管）
+INSERT INTO sys_user_post VALUES(4, 2, 100000);  -- 赵HR → 部门经理（人事经理）
+INSERT INTO sys_user_post VALUES(5, 4, 100000);  -- 张三 → 普通员工
+INSERT INTO sys_user_post VALUES(6, 3, 100000);  -- 刘法务 → 总监
+INSERT INTO sys_user_post VALUES(7, 4, 100000);  -- 陈IT → 普通员工
+
+-- 9. 初始化角色菜单关联（新二级菜单结构）
+-- ═══════════════════════════════════════════════════
+-- ADMIN (role_id=1): 拥有所有菜单（不需要配置，代码中 isAdmin 直接返回全部）
+-- ═══════════════════════════════════════════════════
+
+-- MANAGER (role_id=2): 工作台 + 办公协同 + 流程中心 + 流程管理 + 行政管理
+-- 一级目录
+INSERT INTO sys_role_menu VALUES(2, 1, 100000);
 INSERT INTO sys_role_menu VALUES(2, 2, 100000);
+INSERT INTO sys_role_menu VALUES(2, 3, 100000);
+INSERT INTO sys_role_menu VALUES(2, 4, 100000);
+INSERT INTO sys_role_menu VALUES(2, 5, 100000);
+-- 工作台子菜单
+INSERT INTO sys_role_menu VALUES(2, 100, 100000);
+INSERT INTO sys_role_menu VALUES(2, 101, 100000);
+-- 办公协同子菜单
 INSERT INTO sys_role_menu VALUES(2, 200, 100000);
+INSERT INTO sys_role_menu VALUES(2, 201, 100000);
+INSERT INTO sys_role_menu VALUES(2, 202, 100000);
+-- 流程中心子菜单
+INSERT INTO sys_role_menu VALUES(2, 300, 100000);
+INSERT INTO sys_role_menu VALUES(2, 301, 100000);
+INSERT INTO sys_role_menu VALUES(2, 302, 100000);
+-- 流程管理子菜单
+INSERT INTO sys_role_menu VALUES(2, 400, 100000);
+INSERT INTO sys_role_menu VALUES(2, 401, 100000);
+INSERT INTO sys_role_menu VALUES(2, 402, 100000);
+INSERT INTO sys_role_menu VALUES(2, 403, 100000);
+-- 行政管理子菜单
+INSERT INTO sys_role_menu VALUES(2, 500, 100000);
+INSERT INTO sys_role_menu VALUES(2, 501, 100000);
+INSERT INTO sys_role_menu VALUES(2, 502, 100000);
+INSERT INTO sys_role_menu VALUES(2, 503, 100000);
+INSERT INTO sys_role_menu VALUES(2, 504, 100000);
+INSERT INTO sys_role_menu VALUES(2, 505, 100000);
+
+-- FINANCE (role_id=3): 工作台 + 办公协同 + 流程中心
+INSERT INTO sys_role_menu VALUES(3, 1, 100000);
 INSERT INTO sys_role_menu VALUES(3, 2, 100000);
+INSERT INTO sys_role_menu VALUES(3, 3, 100000);
+INSERT INTO sys_role_menu VALUES(3, 100, 100000);
+INSERT INTO sys_role_menu VALUES(3, 101, 100000);
 INSERT INTO sys_role_menu VALUES(3, 200, 100000);
+INSERT INTO sys_role_menu VALUES(3, 201, 100000);
+INSERT INTO sys_role_menu VALUES(3, 202, 100000);
+INSERT INTO sys_role_menu VALUES(3, 300, 100000);
+INSERT INTO sys_role_menu VALUES(3, 301, 100000);
+INSERT INTO sys_role_menu VALUES(3, 302, 100000);
+
+-- HR (role_id=4): 工作台 + 办公协同 + 流程中心 + 流程管理 + 行政管理
+INSERT INTO sys_role_menu VALUES(4, 1, 100000);
 INSERT INTO sys_role_menu VALUES(4, 2, 100000);
+INSERT INTO sys_role_menu VALUES(4, 3, 100000);
+INSERT INTO sys_role_menu VALUES(4, 4, 100000);
+INSERT INTO sys_role_menu VALUES(4, 5, 100000);
+INSERT INTO sys_role_menu VALUES(4, 100, 100000);
+INSERT INTO sys_role_menu VALUES(4, 101, 100000);
 INSERT INTO sys_role_menu VALUES(4, 200, 100000);
+INSERT INTO sys_role_menu VALUES(4, 201, 100000);
+INSERT INTO sys_role_menu VALUES(4, 202, 100000);
+INSERT INTO sys_role_menu VALUES(4, 300, 100000);
+INSERT INTO sys_role_menu VALUES(4, 301, 100000);
+INSERT INTO sys_role_menu VALUES(4, 302, 100000);
+INSERT INTO sys_role_menu VALUES(4, 400, 100000);
+INSERT INTO sys_role_menu VALUES(4, 401, 100000);
+INSERT INTO sys_role_menu VALUES(4, 402, 100000);
+INSERT INTO sys_role_menu VALUES(4, 403, 100000);
+INSERT INTO sys_role_menu VALUES(4, 500, 100000);
+INSERT INTO sys_role_menu VALUES(4, 505, 100000);
+
+-- EMPLOYEE (role_id=5): 工作台 + 办公协同 + 流程中心（仅基础功能）
+INSERT INTO sys_role_menu VALUES(5, 1, 100000);
 INSERT INTO sys_role_menu VALUES(5, 2, 100000);
+INSERT INTO sys_role_menu VALUES(5, 3, 100000);
+INSERT INTO sys_role_menu VALUES(5, 100, 100000);
+INSERT INTO sys_role_menu VALUES(5, 101, 100000);
 INSERT INTO sys_role_menu VALUES(5, 200, 100000);
+INSERT INTO sys_role_menu VALUES(5, 201, 100000);
+INSERT INTO sys_role_menu VALUES(5, 202, 100000);
+INSERT INTO sys_role_menu VALUES(5, 300, 100000);
+INSERT INTO sys_role_menu VALUES(5, 301, 100000);
+INSERT INTO sys_role_menu VALUES(5, 302, 100000);
 
 SET FOREIGN_KEY_CHECKS = 1;
 

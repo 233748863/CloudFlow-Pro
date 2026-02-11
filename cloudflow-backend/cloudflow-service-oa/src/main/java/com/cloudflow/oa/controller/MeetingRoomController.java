@@ -19,6 +19,11 @@ public class MeetingRoomController {
         return R.ok(meetingRoomService.list());
     }
 
+    @GetMapping("/{id}")
+    public R<MeetingRoom> getById(@PathVariable("id") Long id) {
+        return R.ok(meetingRoomService.getById(id));
+    }
+
     @PostMapping
     public R<Boolean> add(@RequestBody MeetingRoom meetingRoom) {
         return R.ok(meetingRoomService.save(meetingRoom));

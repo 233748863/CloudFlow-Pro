@@ -13,7 +13,7 @@ import {
   Zap,
   FileText,
 } from 'lucide-react';
-import axios from 'axios';
+import request from '@/services/api/request';
 
 interface MetricsData {
   totalInstances: number;
@@ -34,10 +34,10 @@ interface MetricsData {
 }
 
 interface AnalysisData {
-  byProcessType: Record<string, number>;
+  byProcessKey: Record<string, number>;
   byStatus: Record<string, number>;
-  avgDuration: number;
-  completionRate: number;
+  avgDurationHours: number;
+  approvalRate?: number;
 }
 
 // 简单的进度条组件
@@ -121,15 +121,15 @@ const WorkflowMonitor: React.FC = () => {
     try {
       setError(null);
       const [metricsRes, analysisRes] = await Promise.all([
-        axios.get('/api/workflow/statistics/metrics').catch(() => ({ data: { code: 500 } })),
-        axios.get('/api/workflow/statistics/analysis').catch(() => ({ data: { code: 500 } })),
+        request.get('/workflow/statistics/metrics', { silent: true }).catch(() => null),
+        request.get('/workflow/statistics/analysis', { silent: true }).catch(() => null),
       ]);
 
-      if (metricsRes.data.code === 200) {
-        setMetrics(metricsRes.data.data);
+      if (metricsRes) {
+        setMetrics(metricsRes);
       }
-      if (analysisRes.data.code === 200) {
-        setAnalysis(analysisRes.data.data);
+      if (analysisRes) {
+        setAnalysis(analysisRes);
       }
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
@@ -196,13 +196,14 @@ const WorkflowMonitor: React.FC = () => {
   };
 
   const a = analysis || {
-    byProcessType: {},
+    byProcessKey: {},
     byStatus: {},
-    avgDuration: 0,
-    completionRate: 0,
+    avgDurationHours: 0,
+    approvalRate: 0,
   };
 
-  const maxProcessTypeCount = Math.max(...Object.values(a.byProcessType), 1);
+  const maxProcessTypeCount = Math.max(...Object.values(a.byProcessKey || {}), 1);
+  const completionRate = a.approvalRate || 0;
 
   return (
     <div className="space-y-6">
@@ -325,14 +326,14 @@ const WorkflowMonitor: React.FC = () => {
           <div className="mt-6 pt-4 border-t border-gray-100">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500">完成率</span>
-              <span className={`text-2xl font-bold ${a.completionRate > 80 ? 'text-green-600' : 'text-yellow-600'}`}>
-                {a.completionRate.toFixed(1)}%
+              <span className={`text-2xl font-bold ${completionRate > 80 ? 'text-green-600' : 'text-yellow-600'}`}>
+                {completionRate.toFixed(1)}%
               </span>
             </div>
             <ProgressBar
-              value={a.completionRate}
+              value={completionRate}
               max={100}
-              color={a.completionRate > 80 ? 'bg-green-500' : 'bg-yellow-500'}
+              color={completionRate > 80 ? 'bg-green-500' : 'bg-yellow-500'}
             />
           </div>
         </div>
@@ -343,9 +344,9 @@ const WorkflowMonitor: React.FC = () => {
             <BarChart3 className="w-5 h-5 text-gray-500" />
             <h2 className="text-lg font-semibold text-gray-700">流程类型统计</h2>
           </div>
-          {Object.keys(a.byProcessType).length > 0 ? (
+          {Object.keys(a.byProcessKey || {}).length > 0 ? (
             <div className="space-y-4">
-              {Object.entries(a.byProcessType).map(([type, count]) => (
+              {Object.entries(a.byProcessKey || {}).map(([type, count]) => (
                 <div key={type}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-600 truncate max-w-[200px]" title={type}>
@@ -368,7 +369,7 @@ const WorkflowMonitor: React.FC = () => {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500">平均处理时长</span>
               <span className="text-2xl font-bold text-blue-600">
-                {a.avgDuration.toFixed(1)} <span className="text-sm font-normal text-gray-400">小时</span>
+                {a.avgDurationHours.toFixed(1)} <span className="text-sm font-normal text-gray-400">小时</span>
               </span>
             </div>
           </div>

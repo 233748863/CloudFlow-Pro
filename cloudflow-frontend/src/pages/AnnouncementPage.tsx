@@ -24,13 +24,14 @@ export const AnnouncementPage = () => {
       try {
           if (activeTab === 'manage') {
               const list = await getAnnouncementList();
-              setAnnouncements(list);
+              setAnnouncements(Array.isArray(list) ? list : []);
           } else {
               const list = await getMyAnnouncements();
-              setAnnouncements(list);
+              setAnnouncements(Array.isArray(list) ? list : []);
           }
       } catch (e) {
           console.error("Fetch announcements failed", e);
+          setAnnouncements([]);
       }
   };
 

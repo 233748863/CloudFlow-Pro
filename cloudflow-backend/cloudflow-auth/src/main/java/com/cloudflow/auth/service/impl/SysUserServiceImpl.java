@@ -2,14 +2,16 @@ package com.cloudflow.auth.service.impl;
 
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.SysUserRole;
 import com.cloudflow.auth.domain.SysUserPost;
+import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.auth.mapper.SysRoleMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
-import com.cloudflow.auth.mapper.SysUserRoleMapper;
 import com.cloudflow.auth.mapper.SysUserPostMapper;
+import com.cloudflow.auth.mapper.SysUserRoleMapper;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.common.core.context.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,9 @@ public class SysUserServiceImpl implements ISysUserService {
     @Autowired
     private SysRoleMapper sysRoleMapper;
 
+    @Autowired
+    private SysDeptMapper sysDeptMapper;
+
     @Override
     public List<SysUser> selectUserList(SysUser user) {
         // 多租户隔离：添加租户ID过滤
@@ -47,6 +52,9 @@ public class SysUserServiceImpl implements ISysUserService {
             wrapper.eq(SysUser::getTenantId, tenantId);
         }
         
+        if (user.getDeptId() != null && user.getDeptId() > 0) {
+            wrapper.eq(SysUser::getDeptId, user.getDeptId());
+        }
         if (StringUtils.hasText(user.getUserName())) {
             wrapper.like(SysUser::getUserName, user.getUserName());
         }
@@ -57,7 +65,25 @@ public class SysUserServiceImpl implements ISysUserService {
             wrapper.eq(SysUser::getStatus, user.getStatus());
         }
         
-        return sysUserMapper.selectList(wrapper);
+        List<SysUser> users = sysUserMapper.selectList(wrapper);
+        
+        // 为每个用户填充角色和部门名称信息
+        for (SysUser u : users) {
+            List<SysRole> roles = selectRolesByUserId(u.getUserId());
+            if (!roles.isEmpty()) {
+                u.setRole(roles.get(0).getRoleName());
+                u.setRoleIds(roles.stream().map(SysRole::getRoleId).toArray(Long[]::new));
+            }
+            // 填充部门名称
+            if (u.getDeptId() != null && u.getDeptId() > 0) {
+                SysDept dept = sysDeptMapper.selectById(u.getDeptId());
+                if (dept != null) {
+                    u.setDeptName(dept.getDeptName());
+                }
+            }
+        }
+        
+        return users;
     }
 
     @Override

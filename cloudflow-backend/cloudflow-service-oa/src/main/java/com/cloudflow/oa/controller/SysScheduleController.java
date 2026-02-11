@@ -32,6 +32,18 @@ public class SysScheduleController {
         return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), today, today));
     }
 
+    /**
+     * 查询指定会议室的日程（所有人可见）
+     * @param roomId 会议室ID
+     * @param date 查询日期（可选，默认今天）
+     */
+    @GetMapping("/room/{roomId}")
+    public R<List<SysScheduleEvent>> getRoomEvents(@PathVariable("roomId") Long roomId,
+                                                   @RequestParam(value = "date", required = false) String date) {
+        String queryDate = (date != null && !date.isEmpty()) ? date : LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        return R.ok(scheduleService.getRoomEvents(roomId, queryDate));
+    }
+
     @PostMapping
     public R<Boolean> add(@RequestBody SysScheduleEvent event) {
         event.setCreatorId(UserContext.getUserId());

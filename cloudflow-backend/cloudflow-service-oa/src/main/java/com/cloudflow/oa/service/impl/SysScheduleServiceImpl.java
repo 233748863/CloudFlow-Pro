@@ -40,7 +40,16 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
     @Override
     public List<SysScheduleEvent> getMyEvents(Long userId, String startDateStr, String endDateStr) {
         Date start = StringUtils.hasText(startDateStr) ? parseDate(startDateStr) : new Date();
-        Date end = StringUtils.hasText(endDateStr) ? parseDate(endDateStr) : new Date(System.currentTimeMillis() + 86400000L * 30);
+        Date end;
+        if (StringUtils.hasText(endDateStr)) {
+            end = parseDate(endDateStr);
+            // 如果传入的是纯日期格式（没有时间部分），将结束时间设为当天结束（即下一天00:00:00）
+            if (!endDateStr.contains("T") && !endDateStr.contains(" ")) {
+                end = new Date(end.getTime() + 86400000L);
+            }
+        } else {
+            end = new Date(System.currentTimeMillis() + 86400000L * 30);
+        }
         return baseMapper.getMyEvents(userId, start, end);
     }
 
@@ -68,6 +77,14 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
         } catch (DateTimeParseException e) {
             throw new ServiceException("日期格式错误，支持的格式: ISO 8601, yyyy-MM-dd HH:mm:ss, yyyy-MM-dd");
         }
+    }
+
+    @Override
+    public List<SysScheduleEvent> getRoomEvents(Long roomId, String date) {
+        Date dayStart = parseDate(date);
+        // 当天结束时间 = 当天开始 + 24小时
+        Date dayEnd = new Date(dayStart.getTime() + 86400000L);
+        return baseMapper.getRoomEvents(roomId, dayStart, dayEnd);
     }
 
     @Override

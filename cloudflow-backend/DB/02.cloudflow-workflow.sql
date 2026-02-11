@@ -26,8 +26,10 @@ CREATE TABLE wf_process_definition (
   version_lock      INT             DEFAULT 0 COMMENT '乐观锁版本号',
   is_latest         TINYINT(1)      DEFAULT 1 COMMENT '是否最新版本',
   category          VARCHAR(64)     DEFAULT NULL COMMENT '流程分类',
+  tags              VARCHAR(500)    DEFAULT NULL COMMENT '流程标签(JSON数组)',
   start_permission_type VARCHAR(20) DEFAULT 'ALL' COMMENT '启动权限类型 (ALL, USER, ROLE, DEPT)',
   start_permission_value TEXT       COMMENT '启动权限值 (JSON数组)',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '流程描述',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (definition_id),
   KEY idx_process_key (process_key),
@@ -73,6 +75,8 @@ CREATE TABLE wf_process_instance (
   start_time        DATETIME        DEFAULT NULL COMMENT '开始时间',
   end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
   variables         JSON            DEFAULT NULL COMMENT '流程变量(表单数据)',
+  priority          VARCHAR(20)     DEFAULT 'NORMAL' COMMENT '优先级',
+  process_no        VARCHAR(64)     DEFAULT NULL COMMENT '流程编号',
   PRIMARY KEY (instance_id),
   KEY idx_start_user (start_user_id),
   KEY idx_business_key (business_key),
@@ -91,6 +95,8 @@ CREATE TABLE wf_task (
   node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key',
   node_name         VARCHAR(64)     NOT NULL COMMENT '节点名称',
   assignee          BIGINT(20)      DEFAULT NULL COMMENT '处理人ID',
+  assignee_name     VARCHAR(64)     DEFAULT NULL COMMENT '处理人姓名',
+  proxy_user_id     BIGINT(20)      DEFAULT NULL COMMENT '代理人ID',
   candidate_roles   VARCHAR(255)    DEFAULT NULL COMMENT '候选角色',
   status            VARCHAR(20)     DEFAULT 'TODO' COMMENT '状态 (TODO, DONE, SUSPENDED)',
   priority          VARCHAR(20)     DEFAULT 'NORMAL' COMMENT '优先级 (NORMAL, URGENT, HIGH)',
@@ -428,9 +434,121 @@ INSERT INTO wf_process_definition (definition_id, process_name, process_key, ver
 ('wf_leave', '员工请假流程', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"id": "root", "type": "START", "title": "提交请假", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "gw_leave", "type": "CONDITION", "title": "天数校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "HR备案", "icon": "file-box", "approverType": "ROLE", "approverValue": "HR", "condition": "days <= 3"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "condition": "days > 3"}], "next": {"id": "end", "type": "END", "title": "归档"}}}}', sysdate());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
-('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"id": "root", "type": "START", "title": "起草合同", "next": {"id": "n1", "type": "PARALLEL", "title": "会签", "branches": [{"id": "b1", "type": "APPROVAL", "title": "法务审核", "icon": "scale", "approverType": "ROLE", "approverValue": "ADMIN"}, {"id": "b2", "type": "APPROVAL", "title": "财务审核", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE"}], "next": {"id": "n2", "type": "APPROVAL", "title": "总经理签发", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "next": {"id": "end", "type": "END", "title": "盖章归档"}}}}', sysdate());
+('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"id": "root", "type": "START", "title": "起草合同", "next": {"id": "n1", "type": "PARALLEL", "title": "会签", "branchStrategy": "PARALLEL", "branches": [{"id": "b1", "type": "APPROVAL", "title": "法务审核", "icon": "scale", "approverType": "ROLE", "approverValue": "ADMIN"}, {"id": "b2", "type": "APPROVAL", "title": "财务审核", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE"}], "next": {"id": "n2", "type": "APPROVAL", "title": "总经理签发", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "next": {"id": "end", "type": "END", "title": "盖章归档"}}}}', sysdate());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
+('wf_recruit', '人员招聘流程', 'biz_recruit', 1, 'PUBLISHED', 1, 'form_recruit', '{"id": "root", "type": "START", "title": "提交招聘需求", "next": {"id": "n1", "type": "APPROVAL", "title": "部门总监审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR审核", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "n3", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "next": {"id": "end", "type": "END", "title": "开始招聘"}}}}}', sysdate());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
+('wf_payment', '对公付款流程', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"id": "root", "type": "START", "title": "提交付款申请", "next": {"id": "n1", "type": "APPROVAL", "title": "财务主管审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务总监审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "condition": "amount < 50000"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "condition": "amount >= 50000"}], "next": {"id": "end", "type": "END", "title": "财务打款"}}}}', sysdate());
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- =========================================================
+-- 测试数据
+-- 用于开发和测试环境
+-- =========================================================
+
+-- 插入测试流程实例
+INSERT INTO wf_process_instance (
+  instance_id, tenant_id, process_def_key, definition_id, business_key, 
+  title, start_user_id, start_user_name, status, start_time, variables, priority
+) VALUES 
+('test_inst_001', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_001',
+ '张三的差旅费报销', 1, '张三', 'RUNNING', NOW(),
+ '{"f1": "差旅费", "f2": 1500, "f3": "2026-02-08", "f4": "北京出差往返机票及住宿费用"}', 'NORMAL'),
+
+('test_inst_002', 100000, 'biz_leave', 'wf_leave', 'BIZ_002',
+ '李四的年假申请', 2, '李四', 'RUNNING', NOW(),
+ '{"l1": "年假", "l2": "2026-02-15", "l3": "2026-02-20", "l4": 5, "l5": "春节后休假"}', 'NORMAL'),
+
+('test_inst_003', 100000, 'biz_contract', 'wf_contract', 'BIZ_003',
+ '王五的销售合同审批', 3, '王五', 'RUNNING', NOW(),
+ '{"c1": "XX公司软件采购合同", "c2": "XX科技有限公司", "c3": 50000, "c4": "销售合同", "c5": "软件授权及技术支持服务"}', 'HIGH'),
+
+('test_inst_004', 100000, 'biz_payment', 'wf_payment', 'BIZ_004',
+ '赵六的对公付款申请', 4, '赵六', 'RUNNING', NOW(),
+ '{"p1": "供应商A公司", "p2": "1234567890123456", "p3": 30000, "p4": "HT-2026-001"}', 'NORMAL'),
+
+('test_inst_005', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_005',
+ '张三的办公费报销', 1, '张三', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY),
+ '{"f1": "办公费", "f2": 500, "f3": "2026-02-05", "f4": "购买办公用品"}', 'NORMAL'),
+
+('test_inst_006', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_006',
+ '孙七的招待费报销', 2, '孙七', 'RUNNING', NOW(),
+ '{"f1": "招待费", "f2": 2500, "f3": "2026-02-09", "f4": "客户商务宴请"}', 'URGENT'),
+
+('test_inst_007', 100000, 'biz_leave', 'wf_leave', 'BIZ_007',
+ '周八的病假申请', 3, '周八', 'RUNNING', NOW(),
+ '{"l1": "病假", "l2": "2026-02-11", "l3": "2026-02-13", "l4": 2, "l5": "感冒发烧需要休息"}', 'URGENT'),
+
+('test_inst_008', 100000, 'biz_recruit', 'wf_recruit', 'BIZ_008',
+ '吴九的招聘需求', 1, '吴九', 'RUNNING', NOW(),
+ '{"r1": "高级Java开发工程师", "r2": 2, "r3": "P7", "r4": "负责核心业务系统开发", "r5": 35}', 'HIGH'),
+
+('test_inst_009', 100000, 'biz_contract', 'wf_contract', 'BIZ_009',
+ '郑十的采购合同审批', 4, '郑十', 'RUNNING', NOW(),
+ '{"c1": "办公设备采购合同", "c2": "YY科技有限公司", "c3": 80000, "c4": "采购合同", "c5": "采购办公电脑、打印机等设备"}', 'NORMAL'),
+
+('test_inst_010', 100000, 'biz_leave', 'wf_leave', 'BIZ_010',
+ '钱十一的婚假申请', 2, '钱十一', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY),
+ '{"l1": "婚假", "l2": "2026-02-01", "l3": "2026-02-05", "l4": 5, "l5": "结婚度蜜月"}', 'NORMAL');
+
+-- 更新已完成流程的结束时间
+UPDATE wf_process_instance SET end_time = DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE instance_id = 'test_inst_005';
+UPDATE wf_process_instance SET end_time = DATE_SUB(NOW(), INTERVAL 3 DAY) WHERE instance_id = 'test_inst_010';
+
+-- 插入测试待办任务
+INSERT INTO wf_task (
+  task_id, tenant_id, instance_id, node_key, node_name,
+  assignee, assignee_name, status, priority, create_time, due_time
+) VALUES 
+('test_task_001', 100000, 'test_inst_001', 'n1', '直属上级审批',
+ 1, '管理员', 'TODO', 'NORMAL', NOW(), DATE_ADD(NOW(), INTERVAL 2 DAY)),
+
+('test_task_002', 100000, 'test_inst_002', 'n1', '部门经理审批',
+ 1, '管理员', 'TODO', 'URGENT', NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY)),
+
+('test_task_003', 100000, 'test_inst_003', 'b1', '法务审核',
+ 1, '管理员', 'TODO', 'HIGH', NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY)),
+
+('test_task_004', 100000, 'test_inst_003', 'b2', '财务审核',
+ 1, '管理员', 'TODO', 'HIGH', NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY)),
+
+('test_task_005', 100000, 'test_inst_004', 'n1', '财务主管审批',
+ 1, '管理员', 'TODO', 'NORMAL', NOW(), DATE_ADD(NOW(), INTERVAL 2 DAY)),
+
+('test_task_006', 100000, 'test_inst_006', 'n1', '直属上级审批',
+ 1, '管理员', 'TODO', 'URGENT', NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY)),
+
+('test_task_007', 100000, 'test_inst_007', 'n1', '部门经理审批',
+ 1, '管理员', 'TODO', 'URGENT', NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY)),
+
+('test_task_008', 100000, 'test_inst_008', 'n1', '部门总监审批',
+ 1, '管理员', 'TODO', 'HIGH', NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY)),
+
+('test_task_009', 100000, 'test_inst_009', 'b1', '法务审核',
+ 1, '管理员', 'TODO', 'NORMAL', NOW(), DATE_ADD(NOW(), INTERVAL 4 DAY)),
+
+('test_task_010', 100000, 'test_inst_009', 'b2', '财务审核',
+ 1, '管理员', 'TODO', 'NORMAL', NOW(), DATE_ADD(NOW(), INTERVAL 4 DAY));
+
+-- 插入任务历史记录
+INSERT INTO wf_task_history (
+  history_id, tenant_id, task_id, instance_id, node_name, node_key,
+  operator_id, operator_name, action, comment, duration_seconds, create_time
+) VALUES 
+('test_hist_001', 100000, 'test_task_completed_001', 'test_inst_005', '直属上级审批', 'n1',
+ 1, '管理员', 'APPROVE', '同意报销', 300, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+
+('test_hist_002', 100000, 'test_task_completed_002', 'test_inst_005', '财务主管审批', 'n2',
+ 1, '管理员', 'APPROVE', '已打款', 600, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+
+('test_hist_003', 100000, 'test_task_completed_003', 'test_inst_010', '部门经理审批', 'n1',
+ 1, '管理员', 'APPROVE', '同意请假', 180, DATE_SUB(NOW(), INTERVAL 4 DAY)),
+
+('test_hist_004', 100000, 'test_task_completed_004', 'test_inst_010', 'HR备案', 'b1',
+ 1, '管理员', 'APPROVE', '已备案', 120, DATE_SUB(NOW(), INTERVAL 3 DAY));
 
 -- =========================================================
 -- 脚本执行完成

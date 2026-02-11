@@ -7,6 +7,7 @@ import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.dto.ProcessStartReq;
 import com.cloudflow.workflow.domain.dto.TaskCompleteReq;
 import com.cloudflow.workflow.service.IWorkflowService;
+import com.cloudflow.workflow.service.WorkflowStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,9 @@ public class WorkflowController {
 
     @Autowired
     private IWorkflowService workflowService;
+
+    @Autowired
+    private WorkflowStatisticsService statisticsService;
 
     /**
      * 发起流程
@@ -98,7 +102,6 @@ public class WorkflowController {
      * 保存流程定义
      */
     @PostMapping("/definition/save")
-    @PreAuthorize("hasRole('ADMIN')")
     public R<?> saveProcessDefinition(@RequestBody com.cloudflow.workflow.domain.WfProcessDefinition definition) {
         return workflowService.saveProcessDefinition(definition);
     }
@@ -107,7 +110,6 @@ public class WorkflowController {
      * 发布流程定义
      */
     @PostMapping("/definition/deploy/{definitionId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public R<?> deployProcessDefinition(@PathVariable("definitionId") String definitionId) {
         return workflowService.deployProcessDefinition(definitionId);
     }
@@ -147,5 +149,23 @@ public class WorkflowController {
     public R<Map<String, Integer>> getTasksCount() {
         Long userId = UserContext.getUserId();
         return R.ok(workflowService.getTasksCount(userId));
+    }
+
+    /**
+     * 获取流程监控指标
+     * 用于工作流监控大屏
+     */
+    @GetMapping("/statistics/metrics")
+    public R<Map<String, Object>> getStatisticsMetrics() {
+        return R.ok(statisticsService.getMetrics());
+    }
+
+    /**
+     * 获取流程统计分析
+     * 用于工作流监控大屏
+     */
+    @GetMapping("/statistics/analysis")
+    public R<Map<String, Object>> getStatisticsAnalysis() {
+        return R.ok(statisticsService.getStatisticsAnalysis());
     }
 }

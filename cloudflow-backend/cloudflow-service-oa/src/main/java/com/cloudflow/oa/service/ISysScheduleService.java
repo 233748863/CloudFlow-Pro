@@ -6,6 +6,11 @@ import java.util.List;
 import java.util.Date;
 
 public interface ISysScheduleService extends IService<SysScheduleEvent> {
+
+    /**
+     * 查询指定会议室某天的所有日程（所有人可见）
+     */
+    List<SysScheduleEvent> getRoomEvents(Long roomId, String date);
     
     /**
      * 创建日程 (包含冲突检测)

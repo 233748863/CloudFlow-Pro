@@ -5,9 +5,7 @@ import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -87,5 +85,65 @@ public class SysDeptController {
      */
     private boolean hasChild(List<SysDept> list, SysDept t) {
         return getChildList(list, t).size() > 0;
+    }
+
+    /**
+     * 获取部门详情
+     */
+    @GetMapping("/{deptId}")
+    public R<SysDept> getById(@PathVariable Long deptId) {
+        return R.ok(sysDeptMapper.selectById(deptId));
+    }
+
+    /**
+     * 新增部门
+     */
+    @PostMapping
+    public R<Boolean> add(@RequestBody SysDept dept) {
+        // 设置ancestors
+        if (dept.getParentId() != null && dept.getParentId() > 0) {
+            SysDept parent = sysDeptMapper.selectById(dept.getParentId());
+            if (parent != null) {
+                dept.setAncestors(parent.getAncestors() + "," + dept.getParentId());
+            }
+        } else {
+            dept.setAncestors("0");
+            dept.setParentId(0L);
+        }
+        if (dept.getStatus() == null) {
+            dept.setStatus("0");
+        }
+        return R.ok(sysDeptMapper.insert(dept) > 0);
+    }
+
+    /**
+     * 修改部门
+     */
+    @PutMapping
+    public R<Boolean> edit(@RequestBody SysDept dept) {
+        // 更新ancestors
+        if (dept.getParentId() != null && dept.getParentId() > 0) {
+            SysDept parent = sysDeptMapper.selectById(dept.getParentId());
+            if (parent != null) {
+                dept.setAncestors(parent.getAncestors() + "," + dept.getParentId());
+            }
+        } else {
+            dept.setAncestors("0");
+        }
+        return R.ok(sysDeptMapper.updateById(dept) > 0);
+    }
+
+    /**
+     * 删除部门
+     */
+    @DeleteMapping("/{deptId}")
+    public R<Boolean> remove(@PathVariable Long deptId) {
+        // 检查是否有子部门
+        Long childCount = sysDeptMapper.selectCount(new LambdaQueryWrapper<SysDept>()
+                .eq(SysDept::getParentId, deptId));
+        if (childCount > 0) {
+            return R.fail("存在子部门，不允许删除");
+        }
+        return R.ok(sysDeptMapper.deleteById(deptId) > 0);
     }
 }

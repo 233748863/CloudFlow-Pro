@@ -18,11 +18,26 @@ function extractList<T = any>(res: unknown): T[] {
   return [];
 }
 
+/**
+ * 根据当前时间返回问候语
+ */
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return '夜深了';
+  if (hour < 9) return '早上好';
+  if (hour < 12) return '上午好';
+  if (hour < 14) return '中午好';
+  if (hour < 18) return '下午好';
+  if (hour < 22) return '晚上好';
+  return '夜深了';
+}
+
 export const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState(0);
   const [myAppsCount, setMyAppsCount] = useState(0);
+  const [greeting, setGreeting] = useState(getGreeting());
 
   useEffect(() => {
     if (user) {
@@ -40,6 +55,13 @@ export const Dashboard = () => {
             setMyAppsCount(0);
         });
     }
+
+    // 每分钟更新一次问候语
+    const greetingInterval = setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60000); // 60秒
+
+    return () => clearInterval(greetingInterval);
   }, [user]);
 
   if (!user) return null;
@@ -47,7 +69,7 @@ export const Dashboard = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in">
     <Card className="p-6 md:col-span-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-none shadow-lg shadow-indigo-200">
-        <h2 className="text-2xl font-bold mb-2">早安, {user.name}</h2>
+        <h2 className="text-2xl font-bold mb-2">{greeting}, {user.name}</h2>
         <p className="text-indigo-100 text-sm opacity-90">
         您有 {pendingCount} 个审批任务待处理，系统运行正常。
         </p>

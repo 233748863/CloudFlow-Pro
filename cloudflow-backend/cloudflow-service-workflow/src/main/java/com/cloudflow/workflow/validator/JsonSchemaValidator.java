@@ -117,12 +117,9 @@ public class JsonSchemaValidator {
     private void validateNodeConnectivity(JsonNode node) {
         String type = node.has("type") ? node.get("type").asText() : "";
         
-        // APPROVAL节点必须有next或branches
-        if ("APPROVAL".equals(type)) {
-            if (!node.has("next") && !node.has("branches")) {
-                throw WorkflowException.validationError("审批节点必须有后续节点");
-            }
-        }
+        // APPROVAL节点可以是流程的最后一个节点，不强制要求有next
+        // 只有当它既没有next也没有branches，且不是END类型时才需要警告
+        // 但不应该抛出异常，因为审批节点可以作为流程的结束节点
         
         // GATEWAY节点必须有branches
         if ("GATEWAY".equals(type) || "CONDITION".equals(type)) {

@@ -3,9 +3,11 @@ package com.cloudflow.workflow.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.WfTaskHistory;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
+import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
 import org.slf4j.Logger;
@@ -34,6 +36,9 @@ public class WorkflowStatisticsService {
 
     @Autowired
     private WfTaskHistoryMapper taskHistoryMapper;
+
+    @Autowired
+    private WfProcessDefinitionMapper processDefinitionMapper;
 
     @Autowired
     private RedisCache redisCache;
@@ -111,11 +116,31 @@ public class WorkflowStatisticsService {
         Map<String, Object> analysis = new HashMap<>();
 
         try {
-            // 1. 按流程类型统计
+            // 1. 按流程类型统计 - 转换为中文名称
             List<WfProcessInstance> allInstances = processInstanceMapper.selectList(null);
+            
+            // 查询所有流程定义，建立 processKey -> processName 的映射
+            List<WfProcessDefinition> allDefinitions = processDefinitionMapper.selectList(null);
+            Map<String, String> keyToNameMap = allDefinitions.stream()
+                .collect(Collectors.toMap(
+                    WfProcessDefinition::getProcessKey,
+                    WfProcessDefinition::getProcessName,
+                    (existing, replacement) -> existing // 如果有重复key，保留第一个
+                ));
+            
+            // 按 processKey 分组统计，然后转换为中文名称
             Map<String, Long> byProcessKey = allInstances.stream()
                 .collect(Collectors.groupingBy(WfProcessInstance::getProcessDefKey, Collectors.counting()));
-            analysis.put("byProcessKey", byProcessKey);
+            
+            // 将英文 key 转换为中文名称
+            Map<String, Long> byProcessName = new HashMap<>();
+            for (Map.Entry<String, Long> entry : byProcessKey.entrySet()) {
+                String processKey = entry.getKey();
+                String processName = keyToNameMap.getOrDefault(processKey, processKey); // 如果找不到中文名，使用原key
+                byProcessName.put(processName, entry.getValue());
+            }
+            
+            analysis.put("byProcessKey", byProcessName);
 
             // 2. 按状态统计
             Map<String, Long> byStatus = allInstances.stream()

@@ -12,7 +12,7 @@ import {
   Zap,
   FileText,
 } from 'lucide-react';
-import axios from 'axios';
+import request from '@/services/api/request';
 
 interface MetricsData {
   totalInstances: number;
@@ -33,10 +33,10 @@ interface MetricsData {
 }
 
 interface AnalysisData {
-  byProcessType: Record<string, number>;
+  byProcessKey: Record<string, number>;
   byStatus: Record<string, number>;
-  avgDuration: number;
-  completionRate: number;
+  avgDurationHours: number;
+  approvalRate?: number;
 }
 
 // 移动端统计卡片
@@ -103,15 +103,15 @@ export const MobileWorkflowMonitor: React.FC = () => {
     try {
       setError(null);
       const [metricsRes, analysisRes] = await Promise.all([
-        axios.get('/api/workflow/statistics/metrics').catch(() => ({ data: { code: 500 } })),
-        axios.get('/api/workflow/statistics/analysis').catch(() => ({ data: { code: 500 } })),
+        request.get('/workflow/statistics/metrics', { silent: true }).catch(() => null),
+        request.get('/workflow/statistics/analysis', { silent: true }).catch(() => null),
       ]);
 
-      if (metricsRes.data.code === 200) {
-        setMetrics(metricsRes.data.data);
+      if (metricsRes) {
+        setMetrics(metricsRes);
       }
-      if (analysisRes.data.code === 200) {
-        setAnalysis(analysisRes.data.data);
+      if (analysisRes) {
+        setAnalysis(analysisRes);
       }
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
@@ -177,11 +177,13 @@ export const MobileWorkflowMonitor: React.FC = () => {
   };
 
   const a = analysis || {
-    byProcessType: {},
+    byProcessKey: {},
     byStatus: {},
-    avgDuration: 0,
-    completionRate: 0,
+    avgDurationHours: 0,
+    approvalRate: 0,
   };
+
+  const completionRate = a.approvalRate || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -290,29 +292,29 @@ export const MobileWorkflowMonitor: React.FC = () => {
           />
           <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
             <span className="text-xs text-gray-500">完成率</span>
-            <span className={`text-lg font-bold ${a.completionRate > 80 ? 'text-green-600' : 'text-yellow-600'}`}>
-              {a.completionRate.toFixed(1)}%
+            <span className={`text-lg font-bold ${completionRate > 80 ? 'text-green-600' : 'text-yellow-600'}`}>
+              {completionRate.toFixed(1)}%
             </span>
           </div>
         </div>
 
         {/* 流程类型统计 */}
-        {Object.keys(a.byProcessType).length > 0 && (
+        {Object.keys(a.byProcessKey || {}).length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">流程类型统计</h2>
-            {Object.entries(a.byProcessType).map(([type, count]) => (
+            {Object.entries(a.byProcessKey || {}).map(([type, count]) => (
               <MobileProgressBar
                 key={type}
                 label={type}
                 value={count}
-                max={Math.max(...Object.values(a.byProcessType))}
+                max={Math.max(...Object.values(a.byProcessKey || {}), 1)}
                 color="text-blue-600"
               />
             ))}
             <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
               <span className="text-xs text-gray-500">平均处理时长</span>
               <span className="text-lg font-bold text-blue-600">
-                {a.avgDuration.toFixed(1)} <span className="text-xs font-normal text-gray-400">小时</span>
+                {a.avgDurationHours.toFixed(1)} <span className="text-xs font-normal text-gray-400">小时</span>
               </span>
             </div>
           </div>

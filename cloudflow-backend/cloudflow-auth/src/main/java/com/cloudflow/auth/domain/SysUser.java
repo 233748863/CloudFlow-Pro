@@ -1,5 +1,6 @@
 package com.cloudflow.auth.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -9,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("sys_user")
 public class SysUser {
-    @TableId
+    @TableId(type = IdType.AUTO)
     private Long userId;
     private Long deptId;
     private String userName;
@@ -36,4 +37,7 @@ public class SysUser {
 
     @TableField(exist = false)
     private String avatar;
+
+    @TableField(exist = false)
+    private String deptName;
 }

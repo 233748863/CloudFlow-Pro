@@ -105,13 +105,41 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
     fetchTasks();
     getFormDefinitions().then(res => {
         if(Array.isArray(res)) {
-            const mapped = res.map((f: any) => ({
-                id: f.formId,
-                name: f.formName,
-                fields: typeof f.fieldsJson === 'string' ? JSON.parse(f.fieldsJson) : (f.fieldsJson || [])
-            }));
+            const mapped = res.map((f: any) => {
+                let fields = [];
+                try {
+                    if (typeof f.fieldsJson === 'string') {
+                        // 尝试清理可能存在的转义问题
+                        let cleanedJson = f.fieldsJson;
+                        
+                        // 修复常见的转义问题
+                        // 1. 替换错误的反斜杠转义
+                        cleanedJson = cleanedJson.replace(/\\/g, '\\\\');
+                        
+                        // 2. 如果上面的修复导致双重转义，尝试原始字符串
+                        try {
+                            fields = JSON.parse(cleanedJson);
+                        } catch {
+                            // 如果清理后的版本失败，尝试原始版本
+                            fields = JSON.parse(f.fieldsJson);
+                        }
+                    } else {
+                        fields = f.fieldsJson || [];
+                    }
+                } catch (e) {
+                    console.warn(`无法解析表单 "${f.formName}" 的 fieldsJson，使用空数组`, e);
+                    fields = [];
+                }
+                return {
+                    id: f.formId,
+                    name: f.formName,
+                    fields
+                };
+            });
             setSavedForms(mapped);
         }
+    }).catch(err => {
+        console.error('Failed to fetch form definitions:', err);
     });
   }, [user, type]);
 

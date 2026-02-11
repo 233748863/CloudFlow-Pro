@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { useAuth } from '../context/AuthContext';
-import { SysScheduleEvent } from '../types';
-import { getMyEvents, createEvent, deleteEvent } from '../services/api/schedule';
-import { Calendar, Plus, MapPin, Clock } from 'lucide-react';
+import { SysScheduleEvent, MeetingRoom } from '../types';
+import { getMyEvents, createEvent, deleteEvent, getMeetingRooms } from '../services/api/schedule';
+import { Calendar, Plus, MapPin, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { toBackendDateString, toLocalDatetimeString, toQueryDateString } from '../utils/dateFormat';
 
 export const SchedulePage = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
+  const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<{start: Date, end: Date} | null>(null);
+  // 保存当前日历视图的完整日期范围，用于刷新
+  const currentViewRange = useRef<{start: Date, end: Date} | null>(null);
   
   // New Event Form
   const [form, setForm] = useState<Partial<SysScheduleEvent>>({
@@ -22,23 +26,56 @@ export const SchedulePage = () => {
       isAllDay: false
   });
 
+  // Fetch meeting rooms on mount
+  useEffect(() => {
+      const loadRooms = async () => {
+          try {
+              const rooms = await getMeetingRooms();
+              setMeetingRooms(rooms);
+          } catch (e) {
+              console.error("Failed to load meeting rooms", e);
+          }
+      };
+      loadRooms();
+  }, []);
+
+  // Helper function to get room name by ID
+  const getRoomName = (roomId?: string) => {
+      if (!roomId) return null;
+      // Handle both string and number comparison
+      const room = meetingRooms.find(r => String(r.roomId) === String(roomId));
+      return room?.name || `会议室 ${roomId}`;
+  };
+
   const fetchEvents = async (start: Date, end: Date) => {
       try {
-          const res = await getMyEvents(start.toISOString(), end.toISOString());
-          const calendarEvents = res.map(e => ({
-              id: e.eventId,
-              title: e.title,
-              start: e.startTime,
-              end: e.endTime,
-              allDay: e.isAllDay,
-              backgroundColor: getEventColor(e.type),
-              borderColor: getEventColor(e.type),
-              extendedProps: {
-                  description: e.description,
-                  type: e.type,
-                  roomId: e.roomId
+          const res = await getMyEvents(toQueryDateString(start), toQueryDateString(end));
+          const eventList = Array.isArray(res) ? res : [];
+          const calendarEvents = eventList.map(e => {
+              const roomName = getRoomName(e.roomId);
+              // Build a more descriptive title
+              let displayTitle = e.title;
+              if (roomName) {
+                  displayTitle = `${e.title} @ ${roomName}`;
               }
-          }));
+              
+              return {
+                  id: e.eventId,
+                  title: displayTitle,
+                  start: e.startTime,
+                  end: e.endTime,
+                  allDay: e.isAllDay,
+                  backgroundColor: getEventColor(e.type),
+                  borderColor: getEventColor(e.type),
+                  extendedProps: {
+                      originalTitle: e.title,
+                      description: e.description,
+                      type: e.type,
+                      roomId: e.roomId,
+                      roomName: roomName
+                  }
+              };
+          });
           setEvents(calendarEvents);
       } catch (e) {
           console.error("Fetch events failed", e);
@@ -59,8 +96,8 @@ export const SchedulePage = () => {
           title: '',
           type: 'PERSONAL',
           isAllDay: selectInfo.allDay,
-          startTime: selectInfo.startStr,
-          endTime: selectInfo.endStr
+          startTime: toBackendDateString(selectInfo.start),
+          endTime: toBackendDateString(selectInfo.end)
       });
       setSelectedDate({ start: selectInfo.start, end: selectInfo.end });
       setIsModalOpen(true);
@@ -87,9 +124,10 @@ export const SchedulePage = () => {
           await createEvent(form);
           toast.success("创建成功");
           setIsModalOpen(false);
-          // Refresh events
-          if (selectedDate) fetchEvents(selectedDate.start, selectedDate.end); // Simplified refresh
-          // Better: Refetch current view range
+          // 使用当前日历视图的完整日期范围刷新事件
+          if (currentViewRange.current) {
+              fetchEvents(currentViewRange.current.start, currentViewRange.current.end);
+          }
       } catch (e) {
           toast.error("创建失败，可能是时间冲突");
       }
@@ -112,7 +150,7 @@ export const SchedulePage = () => {
                 </div>
                 <button 
                     onClick={() => {
-                        setForm({ title: '', type: 'PERSONAL', isAllDay: false, startTime: new Date().toISOString(), endTime: new Date().toISOString() });
+                        setForm({ title: '', type: 'PERSONAL', isAllDay: false, startTime: toBackendDateString(new Date()), endTime: toBackendDateString(new Date()) });
                         setIsModalOpen(true);
                     }}
                     className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-1"
@@ -124,6 +162,21 @@ export const SchedulePage = () => {
         </div>
 
         <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <style>{`
+                /* Style for event items in the "more" popup */
+                .fc-popover .fc-event {
+                    border-radius: 4px;
+                    padding: 2px 4px;
+                    margin: 2px 0;
+                }
+                .fc-popover .fc-event-title {
+                    font-weight: 500;
+                }
+                .fc-popover .fc-event-time {
+                    font-size: 0.75rem;
+                    opacity: 0.9;
+                }
+            `}</style>
             <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 headerToolbar={{
@@ -138,9 +191,41 @@ export const SchedulePage = () => {
                 dayMaxEvents={true}
                 weekends={true}
                 events={events}
-                datesSet={(dateInfo) => fetchEvents(dateInfo.start, dateInfo.end)}
+                datesSet={(dateInfo) => {
+                    currentViewRange.current = { start: dateInfo.start, end: dateInfo.end };
+                    fetchEvents(dateInfo.start, dateInfo.end);
+                }}
                 select={handleDateSelect}
                 eventClick={handleEventClick}
+                eventContent={(eventInfo) => {
+                    const { event } = eventInfo;
+                    const props = event.extendedProps;
+                    
+                    return (
+                        <div className="fc-event-main-frame p-1">
+                            <div className="fc-event-time text-xs opacity-90">
+                                {eventInfo.timeText}
+                            </div>
+                            <div className="fc-event-title-container">
+                                <div className="fc-event-title fc-sticky font-medium">
+                                    {props.originalTitle || event.title}
+                                </div>
+                                {props.roomName && (
+                                    <div className="text-xs opacity-75 flex items-center gap-1 mt-0.5">
+                                        <MapPin size={10} />
+                                        {props.roomName}
+                                    </div>
+                                )}
+                                {props.description && (
+                                    <div className="text-xs opacity-75 flex items-center gap-1 mt-0.5 truncate">
+                                        <FileText size={10} />
+                                        {props.description}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }}
                 height="100%"
                 locale="zh-cn"
                 buttonText={{
@@ -202,8 +287,8 @@ export const SchedulePage = () => {
                                     <input 
                                         type="datetime-local"
                                         className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                                        value={form.startTime ? new Date(form.startTime).toISOString().slice(0, 16) : ''}
-                                        onChange={e => setForm({...form, startTime: new Date(e.target.value).toISOString()})}
+                                        value={form.startTime ? toLocalDatetimeString(form.startTime) : ''}
+                                        onChange={e => setForm({...form, startTime: toBackendDateString(e.target.value)})}
                                     />
                                 </div>
                                 <div>
@@ -211,8 +296,8 @@ export const SchedulePage = () => {
                                     <input 
                                         type="datetime-local"
                                         className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                                        value={form.endTime ? new Date(form.endTime).toISOString().slice(0, 16) : ''}
-                                        onChange={e => setForm({...form, endTime: new Date(e.target.value).toISOString()})}
+                                        value={form.endTime ? toLocalDatetimeString(form.endTime) : ''}
+                                        onChange={e => setForm({...form, endTime: toBackendDateString(e.target.value)})}
                                     />
                                 </div>
                             </div>

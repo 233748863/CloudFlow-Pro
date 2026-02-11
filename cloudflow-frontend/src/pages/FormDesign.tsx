@@ -57,10 +57,11 @@ export const FormDesign = () => {
   const handleSaveForm = async (form: FormDefinition) => {
     try {
       // 统一 ID 生成策略：新表单不传 ID，由后端生成
+      // 重要：将 fields 数组序列化为 JSON 字符串，匹配后端的 fieldsJson 字段
       const payload = {
-        id: form.id.startsWith('new_') ? undefined : form.id,
-        name: form.name,
-        fields: form.fields
+        formId: form.id.startsWith('new_') ? undefined : form.id,
+        formName: form.name,
+        fieldsJson: JSON.stringify(form.fields) // 序列化为 JSON 字符串
       };
       
       const result = await saveFormDefinition(payload);

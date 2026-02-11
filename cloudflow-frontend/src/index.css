@@ -26,17 +26,6 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes zoomIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* 优化动画性能 */
-@keyframes fadeIn {
   from { 
     opacity: 0;
     will-change: opacity;
@@ -56,6 +45,48 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Toast 通知滑入动画 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* Toast 通知样式优化 */
+.toast-notification {
+  animation: slideIn 0.3s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(10px);
+}
+
+/* Toast 退出动画 */
+[data-sonner-toast][data-removed="true"] {
+  animation: slideOut 0.2s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
+/* Toast 悬停效果 */
+[data-sonner-toast]:hover {
+  transform: scale(1.02);
+  transition: transform 0.2s ease;
 }
 
 /* 移动端触摸优化 */

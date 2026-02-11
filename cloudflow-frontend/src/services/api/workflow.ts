@@ -204,18 +204,20 @@ export async function saveFormDefinition(data: SaveFormDefinitionRequest): Promi
 
 /**
  * 获取用户列表（用于选择审批人等）
+ * Gateway route: /auth/** → cloudflow-auth (StripPrefix=1)
  */
 export async function getUsers(): Promise<UserBrief[]> {
-  logApiCall('GET', '/system/users');
-  return request.get('/system/users').then(extractList);
+  logApiCall('GET', '/auth/system/user/list');
+  return request.get('/auth/system/user/list').then(extractList);
 }
 
 /**
  * 获取角色列表
+ * Gateway route: /auth/** → cloudflow-auth (StripPrefix=1)
  */
 export async function getRoles(): Promise<RoleInfo[]> {
-  logApiCall('GET', '/system/roles');
-  return request.get('/system/roles').then(extractList);
+  logApiCall('GET', '/auth/system/role/list');
+  return request.get('/auth/system/role/list').then(extractList);
 }
 
 // ==================== 导出所有 API ====================

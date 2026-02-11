@@ -7,12 +7,37 @@ export const FormRenderer = ({
   onSubmit, 
   onCancel 
 }: { 
-  formDef: FormDefinition, 
+  formDef: FormDefinition | undefined, 
   onSubmit: (data: Record<string, any>) => void,
   onCancel: () => void
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // 如果没有表单定义，显示错误状态
+  if (!formDef || !formDef.fields || formDef.fields.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden max-w-2xl mx-auto">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <AlertTriangle size={18} className="text-amber-600"/>
+            表单加载失败
+          </h3>
+          <button onClick={onCancel}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+        </div>
+        <div className="p-8 text-center">
+          <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4"/>
+          <p className="text-slate-600 mb-4">未找到表单定义或表单字段为空</p>
+          <button 
+            onClick={onCancel}
+            className="px-6 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleChange = (id: string, value: any) => {
     setFormData(prev => ({ ...prev, [id]: value }));
@@ -20,6 +45,8 @@ export const FormRenderer = ({
   };
 
   const handleSubmit = () => {
+    if (!formDef || !formDef.fields) return;
+    
     const newErrors: Record<string, string> = {};
     let isValid = true;
 

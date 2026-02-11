@@ -1,52 +1,159 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, GitMerge, FileText, Settings, LogOut, Bell, CheckCircle2, 
-  Users, PlayCircle, ShieldCheck, ChevronRight, FormInput, Code, Megaphone,
-  Calendar, Monitor, Rocket
+  Users, PlayCircle, ShieldCheck, ChevronRight, ChevronDown, FormInput, Code, Megaphone,
+  Calendar, Monitor, Rocket, Briefcase, Building2, Wrench, FolderOpen, Car, 
+  ClipboardCheck, Package, FileArchive
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { Role } from '../types';
+
+// Types for menu structure
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  path?: string; // If it's a leaf menu with a route
+  children?: MenuItem[];
+  roles?: Role[]; // If specified, only these roles can see it
+}
 
 export const MainLayout = () => {
   const { user, logout } = useAuth();
   useWebSocket(); // Activate Global WebSocket Listener
   const navigate = useNavigate();
   const location = useLocation();
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
-  const menuItems = useMemo(() => {
-    const base = [
-      { id: '/', label: '仪表盘', icon: LayoutDashboard },
-      { id: '/schedule', label: '我的日程', icon: Calendar },
-      { id: '/meeting-room', label: '会议室', icon: Monitor },
-      { id: '/workplace', label: '发起流程', icon: PlayCircle },
-      { id: '/announcement', label: '公告中心', icon: Megaphone },
-      { id: '/my-apps', label: '我的申请', icon: FileText },
-      { id: '/tasks', label: '审批待办', icon: CheckCircle2 },
+  // Two-level menu structure
+  const menuTree = useMemo(() => {
+    const allMenus: MenuItem[] = [
+      // ── 工作台 ──
+      {
+        id: 'workspace',
+        label: '工作台',
+        icon: LayoutDashboard,
+        children: [
+          { id: '/', label: '仪表盘', icon: LayoutDashboard, path: '/' },
+          { id: '/schedule', label: '我的日程', icon: Calendar, path: '/schedule' },
+        ],
+      },
+      // ── 办公协同 ──
+      {
+        id: 'office',
+        label: '办公协同',
+        icon: Briefcase,
+        children: [
+          { id: '/meeting-room', label: '会议室', icon: Monitor, path: '/meeting-room' },
+          { id: '/announcement', label: '公告中心', icon: Megaphone, path: '/announcement' },
+          { id: '/admin/attendance/checkin', label: '考勤打卡', icon: ClipboardCheck, path: '/admin/attendance/checkin' },
+        ],
+      },
+      // ── 流程中心 ──
+      {
+        id: 'process',
+        label: '流程中心',
+        icon: GitMerge,
+        children: [
+          { id: '/workplace', label: '发起流程', icon: PlayCircle, path: '/workplace' },
+          { id: '/my-apps', label: '我的申请', icon: FileText, path: '/my-apps' },
+          { id: '/tasks', label: '审批待办', icon: CheckCircle2, path: '/tasks' },
+        ],
+      },
+      // ── 流程管理 (ADMIN/MANAGER/HR) ──
+      {
+        id: 'workflow-mgmt',
+        label: '流程管理',
+        icon: Settings,
+        roles: [Role.ADMIN, Role.MANAGER, Role.HR],
+        children: [
+          { id: '/workflow', label: '流程设计', icon: GitMerge, path: '/workflow' },
+          { id: '/workflow/monitor', label: '流程监控', icon: Monitor, path: '/workflow/monitor' },
+          { id: '/workflow/deploy', label: '发布管理', icon: Rocket, path: '/workflow/deploy' },
+          { id: '/forms', label: '表单设计', icon: FormInput, path: '/forms' },
+        ],
+      },
+      // ── 行政管理 (ADMIN/MANAGER/HR) ──
+      {
+        id: 'admin-mgmt',
+        label: '行政管理',
+        icon: Building2,
+        roles: [Role.ADMIN, Role.MANAGER, Role.HR],
+        children: [
+          { id: '/users', label: '组织架构', icon: Users, path: '/users' },
+          { id: '/admin/asset', label: '资产管理', icon: Package, path: '/admin/asset' },
+          { id: '/admin/vehicle/list', label: '车辆管理', icon: Car, path: '/admin/vehicle/list' },
+          { id: '/admin/vehicle/booking', label: '用车申请', icon: Car, path: '/admin/vehicle/booking' },
+          { id: '/admin/vehicle/usage', label: '用车记录', icon: Car, path: '/admin/vehicle/usage' },
+          { id: '/admin/attendance/rule', label: '考勤规则', icon: ClipboardCheck, path: '/admin/attendance/rule' },
+        ],
+      },
+      // ── 系统管理 (ADMIN only) ──
+      {
+        id: 'system',
+        label: '系统管理',
+        icon: Wrench,
+        roles: [Role.ADMIN],
+        children: [
+          { id: '/system/users', label: '用户管理', icon: Users, path: '/system/users' },
+          { id: '/system/roles', label: '角色管理', icon: ShieldCheck, path: '/system/roles' },
+          { id: '/system/menus', label: '菜单管理', icon: LayoutDashboard, path: '/system/menus' },
+          { id: '/system/files', label: '文件管理', icon: FileArchive, path: '/system/files' },
+          { id: '/code', label: '源码生成', icon: Code, path: '/code' },
+        ],
+      },
     ];
-    
-    if (user && [Role.ADMIN, Role.MANAGER, Role.HR].includes(user.role)) {
-       base.push({ id: '/workflow', label: '流程设计', icon: GitMerge });
-       base.push({ id: '/workflow/monitor', label: '流程监控', icon: Monitor });
-       base.push({ id: '/workflow/deploy', label: '发布管理', icon: Rocket });
-       base.push({ id: '/forms', label: '表单设计', icon: FormInput });
-       base.push({ id: '/users', label: '组织架构', icon: Users });
-    }
-    
-    if (user?.role === Role.ADMIN) {
-       base.push({ id: '/code', label: '源码生成', icon: Code });
-       base.push({ id: '/system/users', label: '用户管理', icon: Settings });
-       base.push({ id: '/system/roles', label: '角色管理', icon: ShieldCheck });
-       base.push({ id: '/system/menus', label: '菜单管理', icon: LayoutDashboard }); // Reusing icon for now
-    }
 
-    return base;
+    // Filter by role
+    return allMenus.filter(group => {
+      if (!group.roles) return true;
+      return user && group.roles.includes(user.role);
+    });
   }, [user]);
 
-  if (!user) return null; // Should redirect in ProtectedRoute
+  // Auto-expand the group that contains the current route
+  useMemo(() => {
+    for (const group of menuTree) {
+      if (group.children) {
+        const match = group.children.find(child => {
+          if (child.path === '/') return location.pathname === '/';
+          return child.path && location.pathname.startsWith(child.path);
+        });
+        if (match && !expandedGroups.includes(group.id)) {
+          setExpandedGroups(prev => [...prev, group.id]);
+        }
+      }
+    }
+  }, [location.pathname, menuTree]);
 
-  const activeMenu = menuItems.find(item => item.id === location.pathname) || menuItems[0];
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev =>
+      prev.includes(groupId)
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
+  };
+
+  const isActive = (path?: string) => {
+    if (!path) return false;
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path;
+  };
+
+  // Find active menu label for breadcrumb
+  const activeLabel = useMemo(() => {
+    for (const group of menuTree) {
+      if (group.children) {
+        const child = group.children.find(c => isActive(c.path));
+        if (child) return { group: group.label, item: child.label };
+      }
+    }
+    return { group: '工作台', item: '仪表盘' };
+  }, [location.pathname, menuTree]);
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-[Inter]">
@@ -60,7 +167,7 @@ export const MainLayout = () => {
         </div>
         
         {/* User Profile Mini */}
-        <div className="px-6 py-6 border-b border-slate-50">
+        <div className="px-6 py-4 border-b border-slate-50">
            <div className="flex items-center gap-3">
               <img src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.name} className="w-10 h-10 rounded-full border border-slate-200" alt=""/>
               <div>
@@ -70,22 +177,58 @@ export const MainLayout = () => {
            </div>
         </div>
 
-        <nav className="p-4 space-y-1 flex-1 overflow-y-auto">
-          {menuItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => navigate(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                ${location.pathname === item.id 
-                  ? 'bg-indigo-50 text-indigo-700' 
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
-              `}
-            >
-              <div className="flex items-center gap-3">
-                <item.icon size={18} className={location.pathname === item.id ? 'text-indigo-600' : 'text-slate-400'} />
-                {item.label}
+        {/* Two-level Navigation */}
+        <nav className="p-3 flex-1 overflow-y-auto custom-scrollbar">
+          {menuTree.map(group => (
+            <div key={group.id} className="mb-1">
+              {/* Group Header (一级菜单) */}
+              <button
+                onClick={() => toggleGroup(group.id)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold transition-all
+                  ${expandedGroups.includes(group.id)
+                    ? 'text-slate-800 bg-slate-50'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}
+                `}
+              >
+                <div className="flex items-center gap-2.5">
+                  <group.icon size={17} className={expandedGroups.includes(group.id) ? 'text-indigo-500' : 'text-slate-400'} />
+                  <span>{group.label}</span>
+                </div>
+                <ChevronRight
+                  size={14}
+                  className={`text-slate-400 transition-transform duration-200 ${
+                    expandedGroups.includes(group.id) ? 'rotate-90' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Children (二级菜单) */}
+              <div
+                className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                  expandedGroups.includes(group.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="ml-3 pl-3 border-l border-slate-100 mt-0.5 mb-1">
+                  {group.children?.map(child => (
+                    <button
+                      key={child.id}
+                      onClick={() => child.path && navigate(child.path)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all
+                        ${isActive(child.path)
+                          ? 'bg-indigo-50 text-indigo-700'
+                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}
+                      `}
+                    >
+                      <child.icon
+                        size={15}
+                        className={isActive(child.path) ? 'text-indigo-500' : 'text-slate-400'}
+                      />
+                      {child.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </button>
+            </div>
           ))}
         </nav>
         
@@ -100,10 +243,10 @@ export const MainLayout = () => {
       <div className="flex-1 ml-64 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10 bg-white/80 backdrop-blur-md">
           <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="text-slate-400">工作台</span>
+            <span className="text-slate-400">{activeLabel.group}</span>
             <ChevronRight size={14}/>
             <span className="font-bold text-slate-800">
-              {activeMenu?.label}
+              {activeLabel.item}
             </span>
           </div>
           <div className="flex items-center gap-4">

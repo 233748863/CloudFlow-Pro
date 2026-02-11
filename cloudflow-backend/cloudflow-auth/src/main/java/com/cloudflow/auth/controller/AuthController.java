@@ -199,18 +199,21 @@ public class AuthController {
              user.setAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.getUserName());
         }
 
-        // Roles
+        // Roles - handle both List and Set (HashSet stored during login, may deserialize as List or Set)
         Object rolesObj = userMap.get("roles");
-        if (rolesObj instanceof List) {
-            List<String> rolesList = (List<String>) rolesObj;
-            if (!rolesList.isEmpty()) {
-                user.setRole(rolesList.get(0).toUpperCase()); // Simple single role for frontend
-            } else {
-                user.setRole("USER");
+        String resolvedRole = "USER";
+        if (rolesObj instanceof java.util.Collection) {
+            java.util.Collection<?> rolesCollection = (java.util.Collection<?>) rolesObj;
+            if (!rolesCollection.isEmpty()) {
+                Object firstRole = rolesCollection.iterator().next();
+                if (firstRole != null) {
+                    resolvedRole = firstRole.toString().toUpperCase();
+                }
             }
-        } else {
-            user.setRole("USER");
+        } else if (rolesObj instanceof String) {
+            resolvedRole = ((String) rolesObj).toUpperCase();
         }
+        user.setRole(resolvedRole);
         
         // Return permissions in a separate field or extend SysUser?
         // Since SysUser is a DB entity, maybe better to return a Map or DTO

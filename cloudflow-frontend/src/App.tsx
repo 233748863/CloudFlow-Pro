@@ -11,7 +11,19 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <RouterProvider router={router} />
-        <Toaster position="top-right" richColors />
+        <Toaster 
+          position="top-right" 
+          richColors 
+          expand={true}
+          duration={3000}
+          closeButton
+          toastOptions={{
+            style: {
+              animation: 'slideIn 0.3s ease-out',
+            },
+            className: 'toast-notification',
+          }}
+        />
       </AuthProvider>
     </ErrorBoundary>
   );

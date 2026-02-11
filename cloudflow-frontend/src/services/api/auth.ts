@@ -82,72 +82,88 @@ export const getInfo = async (): Promise<UserInfo> => {
   } as UserInfo;
 }
 
+// All /system/** endpoints are served by cloudflow-auth service.
+// Gateway route: /auth/** → cloudflow-auth (StripPrefix=1)
+// So we prefix all system management calls with /auth to match the gateway route.
+
 export const getDeptTree = () => {
-  return request.get('/system/dept/tree');
+  return request.get('/auth/system/dept/tree');
+};
+
+export const getDept = (deptId: number) => {
+  return request.get(`/auth/system/dept/${deptId}`);
+};
+
+export const addDept = (data: any) => {
+  return request.post('/auth/system/dept', data);
+};
+
+export const updateDept = (data: any) => {
+  return request.put('/auth/system/dept', data);
+};
+
+export const deleteDept = (deptId: number) => {
+  return request.delete(`/auth/system/dept/${deptId}`);
 };
 
 export const getUserList = (params?: any) => {
-  return request.get('/system/user/list', { params });
+  return request.get('/auth/system/user/list', { params });
 };
 
 export const getUser = (userId: number) => {
-  return request.get(`/system/user/${userId}`);
+  return request.get(`/auth/system/user/${userId}`);
 };
 
 export const addUser = (data: any) => {
-  return request.post('/system/user', data);
+  return request.post('/auth/system/user', data);
 };
 
 export const updateUser = (data: any) => {
-  return request.put('/system/user', data);
+  return request.put('/auth/system/user', data);
 };
 
 export const deleteUser = (userIds: number[]) => {
-  return request.delete(`/system/user/${userIds.join(',')}`);
+  return request.delete(`/auth/system/user/${userIds.join(',')}`);
 };
 
 export const getRoleList = (params?: any) => {
-  return request.get('/system/role/list', { params });
+  return request.get('/auth/system/role/list', { params });
 };
 
 export const addRole = (data: any) => {
-  return request.post('/system/role', data);
+  return request.post('/auth/system/role', data);
 };
 
 export const updateRole = (data: any) => {
-  return request.put('/system/role', data);
+  return request.put('/auth/system/role', data);
 };
 
 export const deleteRole = (roleIds: number[]) => {
-  return request.delete(`/system/role/${roleIds.join(',')}`);
+  return request.delete(`/auth/system/role/${roleIds.join(',')}`);
 };
 
 // Menu APIs
 export const getMenuList = (params?: any) => {
-  return request.get('/system/menu/list', { params });
+  return request.get('/auth/system/menu/list', { params });
 };
 
 export const getMenu = (menuId: number) => {
-  return request.get(`/system/menu/${menuId}`);
+  return request.get(`/auth/system/menu/${menuId}`);
 };
 
 export const addMenu = (data: any) => {
-  return request.post('/system/menu', data);
+  return request.post('/auth/system/menu', data);
 };
 
 export const updateMenu = (data: any) => {
-  return request.put('/system/menu', data);
+  return request.put('/auth/system/menu', data);
 };
 
 export const deleteMenu = (menuId: number) => {
-  return request.delete(`/system/menu/${menuId}`);
+  return request.delete(`/auth/system/menu/${menuId}`);
 };
 
 // Tree Select
 export const getMenuTreeSelect = () => {
-    // Backend API might need adjustment to return proper tree structure or we build it on frontend
-    // Currently list returns flat list, let's use list and build tree in frontend for now if needed,
-    // or use a specific tree API.
-    // Let's assume list API is enough for now.
-    return request.get('/system/menu/list');
+    return request.get('/auth/system/menu/list');
 };

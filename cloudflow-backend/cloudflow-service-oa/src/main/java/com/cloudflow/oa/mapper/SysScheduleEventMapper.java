@@ -24,4 +24,11 @@ public interface SysScheduleEventMapper extends BaseMapper<SysScheduleEvent> {
     List<SysScheduleEvent> getMyEvents(@Param("userId") Long userId, 
                                      @Param("startDate") Date startDate, 
                                      @Param("endDate") Date endDate);
+
+    /**
+     * 查询指定会议室在时间段内的所有日程（所有人可见）
+     */
+    List<SysScheduleEvent> getRoomEvents(@Param("roomId") Long roomId,
+                                        @Param("dayStart") Date dayStart,
+                                        @Param("dayEnd") Date dayEnd);
 }
