@@ -1,6 +1,7 @@
 package com.cloudflow.auth.service;
 
 import com.cloudflow.auth.domain.SysUser;
+import com.cloudflow.auth.domain.dto.UserInfo;
 import java.util.List;
 
 public interface ISysUserService {
@@ -15,4 +16,15 @@ public interface ISysUserService {
     String checkPhoneUnique(SysUser user);
     String checkEmailUnique(SysUser user);
     String selectUserRoleGroup(String userName);
+
+    /**
+     * 获取用户完整信息（含角色+权限），带 Spring Cache 缓存
+     * 参考 Poco 的 findUserInfo 模式
+     */
+    UserInfo findUserInfo(String username);
+
+    /**
+     * 清除指定用户的缓存
+     */
+    void evictUserCache(String username);
 }

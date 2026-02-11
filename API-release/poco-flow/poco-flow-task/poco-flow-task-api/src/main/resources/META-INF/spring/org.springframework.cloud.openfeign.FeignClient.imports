@@ -1,0 +1,3 @@
+cn.joywon.poco.flow.task.api.feign.RemoteFlowTaskService
+cn.joywon.poco.flow.task.api.feign.RemoteFlowEngineService
+cn.joywon.poco.flow.task.api.feign.RemoteFlowApiFlowService

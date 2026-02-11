@@ -20,5 +20,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE m.menu_type IN ('M', 'C') AND m.status = '0' AND r.status = '0' AND ur.user_id = #{userId}
         ORDER BY m.parent_id, m.order_num
     </select>
-    
+
+    <select id="selectMenusByRoleId" resultType="com.cloudflow.auth.domain.SysMenu">
+        SELECT DISTINCT m.* FROM sys_menu m
+        LEFT JOIN sys_role_menu rm ON m.menu_id = rm.menu_id
+        WHERE m.status = '0' AND rm.role_id = #{roleId}
+        ORDER BY m.parent_id, m.order_num
+    </select>
+
+    <select id="selectMenuPermsByRoleId" resultType="String">
+        SELECT DISTINCT m.perms FROM sys_menu m
+        LEFT JOIN sys_role_menu rm ON m.menu_id = rm.menu_id
+        WHERE m.status = '0' AND rm.role_id = #{roleId}
+    </select>
+
 </mapper>

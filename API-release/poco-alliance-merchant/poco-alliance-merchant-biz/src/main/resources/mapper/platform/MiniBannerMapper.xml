@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.PlatformModule.mapper.MiniBannerMapper">
+
+
+    <!--  删除轮播图
+          int deleteBanner(String id)  -->
+    <update id="deleteBanner">
+
+        UPDATE mini_banner
+        SET is_enable    = 0,
+            is_deleted   = 1,
+            deleted_time = NOW()
+        WHERE id = #{id}
+
+    </update>
+
+
+    <!--  查询轮播图分页列表
+          Page<BannerListVO> queryBanner(Page<> page, BannerQueryDTO dto)  -->
+    <select id="queryBanner"
+            resultType="cn.joywon.poco.merchant.PlatformModule.vo.BannerListVO"
+            parameterType="cn.joywon.poco.merchant.PlatformModule.dto.BannerQueryDTO">
+
+        SELECT id,
+        bg_color,
+        image_url,
+        target_id,
+        image_name,
+        route_path,
+        sort_weight,
+        target_type,
+        created_time,
+        show_end_time,
+        show_start_time,
+        is_enable AS enable
+
+        FROM mini_banner
+        <where>
+            AND is_deleted = 0
+
+            <if test="dto.imageName != null and dto.imageName != ''">
+                AND image_name LIKE CONCAT(#{dto.imageName}, '%')
+            </if>
+
+            <if test="dto.targetTypes != null and dto.targetTypes.size() > 0">
+                AND target_type IN
+                <foreach collection="dto.targetTypes" item="type" open="(" close=")" separator=",">
+                    #{type}
+                </foreach>
+            </if>
+
+            <if test="dto.enable != null">
+                AND is_enable = #{dto.enable}
+            </if>
+
+            <if test="dto.startDate != null">
+                AND created_time &gt;= #{dto.startDate}
+            </if>
+
+            <if test="dto.endDate != null">
+                AND created_time &lt;= #{dto.endDate}
+            </if>
+        </where>
+
+        <if test="dto.orderByWeight != null or dto.orderByCreatedTime != null">
+            ORDER BY
+            <if test="dto.orderByWeight != null">
+                sort_weight ${dto.orderByWeight ? 'ASC' : 'DESC'}
+            </if>
+            <if test="dto.orderByWeight != null and dto.orderByCreatedTime != null">,</if>
+            <if test="dto.orderByCreatedTime != null">
+                created_time ${dto.orderByCreatedTime ? 'ASC' : 'DESC'}
+            </if>
+        </if>
+
+    </select>
+
+
+</mapper>

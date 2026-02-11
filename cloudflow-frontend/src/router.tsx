@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Login } from '@/pages/Login';
@@ -32,6 +32,7 @@ const UserList = React.lazy(() => import('./pages/system/UserList').then(module 
 const RoleList = React.lazy(() => import('./pages/system/RoleList').then(module => ({ default: module.RoleList })));
 const MenuList = React.lazy(() => import('./pages/system/MenuList').then(module => ({ default: module.MenuList })));
 const FileList = React.lazy(() => import('./pages/system/FileList').then(module => ({ default: module.FileList })));
+const TenantList = React.lazy(() => import('./pages/system/TenantList').then(module => ({ default: module.TenantList })));
 const AnnouncementPage = React.lazy(() => import('./pages/AnnouncementPage').then(module => ({ default: module.AnnouncementPage })));
 const SchedulePage = React.lazy(() => import('./pages/SchedulePage').then(module => ({ default: module.SchedulePage })));
 const MeetingRoomPage = React.lazy(() => import('./pages/MeetingRoomPage').then(module => ({ default: module.MeetingRoomPage })));
@@ -43,6 +44,7 @@ const VehicleBooking = React.lazy(() => import('@/pages/admin/vehicle/VehicleBoo
 const VehicleUsageList = React.lazy(() => import('./pages/admin/vehicle/VehicleUsageList'));
 const WorkflowMonitor = React.lazy(() => import('./pages/WorkflowMonitor').then(module => ({ default: module.default })));
 const DeployManagement = React.lazy(() => import('./pages/DeployManagement').then(module => ({ default: module.DeployManagement })));
+
 
 const Loading = () => (
   <div className="flex items-center justify-center h-full w-full min-h-[400px]">
@@ -139,6 +141,10 @@ const desktopRoutes = [
             element: <Suspense fallback={<Loading />}><FileList /></Suspense>,
           },
           {
+            path: '/system/tenant',
+            element: <Suspense fallback={<Loading />}><TenantList /></Suspense>,
+          },
+          {
             path: '/admin/attendance/checkin',
             element: <Suspense fallback={<Loading />}><AttendanceCheckIn /></Suspense>,
           },
@@ -149,6 +155,10 @@ const desktopRoutes = [
           {
             path: '/admin/asset',
             element: <Suspense fallback={<Loading />}><AssetList /></Suspense>,
+          },
+          {
+            path: '/admin/vehicle',
+            element: <Navigate to="/admin/vehicle/list" replace />,
           },
           {
             path: '/admin/vehicle/list',

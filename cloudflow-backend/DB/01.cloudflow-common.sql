@@ -21,16 +21,24 @@ DROP TABLE IF EXISTS sys_tenant;
 CREATE TABLE sys_tenant (
   tenant_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '租户ID',
   tenant_name       VARCHAR(50)     NOT NULL COMMENT '租户名称',
+  contact_name      VARCHAR(50)     DEFAULT NULL COMMENT '联系人',
+  contact_phone     VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
+  contact_email     VARCHAR(50)     DEFAULT NULL COMMENT '联系邮箱',
   domain            VARCHAR(100)    DEFAULT NULL COMMENT '域名(可选)',
-  contact           VARCHAR(50)     DEFAULT NULL COMMENT '联系人',
-  phone             VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
   status            CHAR(1)         DEFAULT '0' COMMENT '状态（0正常 1停用）',
+  expire_time       DATETIME        DEFAULT NULL COMMENT '过期时间',
+  user_limit        INT(11)         DEFAULT 100 COMMENT '用户数量限制',
+  storage_limit     BIGINT(20)      DEFAULT 10240 COMMENT '存储空间限制(MB)',
+  storage_used      BIGINT(20)      DEFAULT 0 COMMENT '已使用存储空间(MB)',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (tenant_id)
+  PRIMARY KEY (tenant_id),
+  KEY idx_tenant_status (status),
+  KEY idx_tenant_del_flag (del_flag)
 ) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4 COMMENT='租户表';
 
 -- =========================================================
@@ -211,7 +219,8 @@ CREATE TABLE sys_file (
 -- =========================================================
 
 -- 1. 初始化租户
-INSERT INTO sys_tenant (tenant_id, tenant_name, status, create_time) VALUES (100000, '默认租户', '0', NOW());
+INSERT INTO sys_tenant (tenant_id, tenant_name, status, user_limit, storage_limit, storage_used, del_flag, expire_time, create_time) 
+VALUES (100000, '默认租户', '0', 100, 10240, 0, '0', DATE_ADD(NOW(), INTERVAL 1 YEAR), NOW());
 
 -- 2. 初始化部门数据
 INSERT INTO sys_dept VALUES(100,  100000, 0,   '0',          'CloudFlow 科技',   0, 'admin', '15888888888', 'admin@cloudflow.com', '0', '0', 'admin', sysdate(), '', null);
@@ -295,6 +304,7 @@ INSERT INTO sys_menu VALUES(601, '角色管理',   6, 2, '/system/roles',       
 INSERT INTO sys_menu VALUES(602, '菜单管理',   6, 3, '/system/menus',       'pages/system/MenuList',        NULL, 0, 0, 'C', '0', '0', 'system:menu:list',           'LayoutDashboard', 'admin', sysdate(), '', null, '菜单管理');
 INSERT INTO sys_menu VALUES(603, '文件管理',   6, 4, '/system/files',       'pages/system/FileList',        NULL, 0, 0, 'C', '0', '0', 'system:file:list',           'FileArchive',     'admin', sysdate(), '', null, '文件管理');
 INSERT INTO sys_menu VALUES(604, '源码生成',   6, 5, '/code',               'pages/CodeGeneration',         NULL, 0, 0, 'C', '0', '0', 'system:code:list',           'Code',            'admin', sysdate(), '', null, '源码生成');
+INSERT INTO sys_menu VALUES(605, '租户管理',   6, 6, '/system/tenant',      'pages/system/TenantList',      NULL, 0, 0, 'C', '0', '0', 'system:tenant:list',         'Building2',       'admin', sysdate(), '', null, '租户管理');
 
 -- 7. 初始化岗位数据
 INSERT INTO sys_post VALUES(1, 100000, 'ceo',      '董事长',     1, '0', 'admin', sysdate(), '', null, '公司最高管理者');

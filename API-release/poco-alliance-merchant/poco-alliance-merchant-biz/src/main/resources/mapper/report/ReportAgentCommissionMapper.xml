@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.ReportModule.mapper.ReportAgentCommissionMapper">
+
+    <resultMap id="BaseResultMap" type="cn.joywon.poco.merchant.ReportModule.entity.ReportAgentCommission">
+        <id column="id" property="id" />
+        <result column="stat_date" property="statDate" />
+        <result column="agent_id" property="agentId" />
+        <result column="agent_name" property="agentName" />
+        <result column="region_code" property="regionCode" />
+        <result column="region_name" property="regionName" />
+        <result column="total_commission" property="totalCommission" />
+        <result column="settled_amount" property="settledAmount" />
+        <result column="pending_amount" property="pendingAmount" />
+        <result column="withdrawn_amount" property="withdrawnAmount" />
+        <result column="order_count" property="orderCount" />
+        <result column="merchant_count" property="merchantCount" />
+        <result column="rank_by_commission" property="rankByCommission" />
+        <result column="rank_by_orders" property="rankByOrders" />
+        <result column="created_by" property="createdBy" />
+        <result column="created_time" property="createdTime" />
+        <result column="updated_by" property="updatedBy" />
+        <result column="updated_time" property="updatedTime" />
+        <result column="is_deleted" property="isDeleted" />
+        <result column="deleted_time" property="deletedTime" />
+    </resultMap>
+
+</mapper>

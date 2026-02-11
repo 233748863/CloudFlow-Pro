@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.ReportModule.mapper.ReportPlatformOverviewMapper">
+
+    <resultMap id="BaseResultMap" type="cn.joywon.poco.merchant.ReportModule.entity.ReportPlatformOverview">
+        <id column="id" property="id" />
+        <result column="stat_date" property="statDate" />
+        <result column="total_gmv" property="totalGmv" />
+        <result column="total_orders" property="totalOrders" />
+        <result column="active_merchants" property="activeMerchants" />
+        <result column="active_users" property="activeUsers" />
+        <result column="commission_income" property="commissionIncome" />
+        <result column="share_expenditure" property="shareExpenditure" />
+        <result column="net_income" property="netIncome" />
+        <result column="gmv_yoy" property="gmvYoy" />
+        <result column="gmv_mom" property="gmvMom" />
+        <result column="orders_yoy" property="ordersYoy" />
+        <result column="orders_mom" property="ordersMom" />
+        <result column="created_time" property="createdTime" />
+        <result column="updated_time" property="updatedTime" />
+    </resultMap>
+
+</mapper>

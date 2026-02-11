@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+    cn.joywon.poco.common.log.init.ApplicationLoggerInitializer

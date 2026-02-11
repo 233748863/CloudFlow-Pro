@@ -4,8 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysMenu;
 import com.cloudflow.auth.mapper.SysMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
+import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -13,18 +16,50 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+/**
+ * 菜单服务实现
+ * 参考 Poco 的缓存架构：
+ * - findMenuByRoleId: 按 roleId 缓存菜单列表（@Cacheable）
+ * - findPermsByRoleId: 按 roleId 缓存权限标识（@Cacheable）
+ * - 菜单增删改时自动清除缓存（@CacheEvict allEntries）
+ */
 @Service
 public class SysMenuServiceImpl implements ISysMenuService {
 
     @Autowired
     private SysMenuMapper menuMapper;
 
+    // ==================== 带缓存的核心方法（参考 Poco） ====================
+
+    @Override
+    @Cacheable(value = CacheConstants.MENU_DETAILS, key = "#roleId", unless = "#result.isEmpty()")
+    public List<SysMenu> findMenuByRoleId(Long roleId) {
+        return menuMapper.selectMenusByRoleId(roleId);
+    }
+
+    @Override
+    @Cacheable(value = CacheConstants.MENU_DETAILS, key = "'perms:' + #roleId", unless = "#result.isEmpty()")
+    public List<String> findPermsByRoleId(Long roleId) {
+        return menuMapper.selectMenuPermsByRoleId(roleId);
+    }
+
+    @Override
+    @CacheEvict(value = CacheConstants.MENU_DETAILS, allEntries = true)
+    public void clearMenuCache() {
+        // 仅清除缓存，方法体为空
+    }
+
+    @Override
+    @CacheEvict(value = CacheConstants.USER_MENUS, key = "#userId")
+    public void evictUserMenuCache(Long userId) {
+        // 仅清除指定用户的菜单树缓存
+    }
+
+    // ==================== 原有方法 ====================
+
     @Override
     public List<SysMenu> selectMenuList(SysMenu menu, Long userId) {
-        // For Admin, show all. For others, show based on role?
-        // Simplified: Admin shows all.
         LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(menu.getMenuName())) {
             wrapper.like(SysMenu::getMenuName, menu.getMenuName());
@@ -37,21 +72,18 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     @Override
+    @Cacheable(value = CacheConstants.USER_MENUS, key = "#userId", unless = "#result.isEmpty()")
     public List<SysMenu> selectMenuTreeByUserId(Long userId) {
-        // If admin, select all M/C
-        // Simplified logic: select all for now or perms
-        // Let's implement full role check later.
-        // But for admin (id=1), select all.
         if (SecurityUtils.isAdmin(userId)) {
-             LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
-             wrapper.in(SysMenu::getMenuType, "M", "C");
-             wrapper.eq(SysMenu::getStatus, "0");
-             wrapper.orderByAsc(SysMenu::getParentId, SysMenu::getOrderNum);
-             return getChildPerms(menuMapper.selectList(wrapper), 0);
+            LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
+            wrapper.in(SysMenu::getMenuType, "M", "C");
+            wrapper.eq(SysMenu::getStatus, "0");
+            wrapper.orderByAsc(SysMenu::getParentId, SysMenu::getOrderNum);
+            return getChildPerms(menuMapper.selectList(wrapper), 0);
         }
         return getChildPerms(menuMapper.selectMenuTreeByUserId(userId), 0);
     }
-    
+
     @Override
     public Set<String> selectMenuPermsByUserId(Long userId) {
         List<String> perms = menuMapper.selectMenuPermsByUserId(userId);
@@ -70,18 +102,20 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     @Override
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int insertMenu(SysMenu menu) {
         return menuMapper.insert(menu);
     }
 
     @Override
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int updateMenu(SysMenu menu) {
         return menuMapper.updateById(menu);
     }
 
     @Override
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int deleteMenuById(Long menuId) {
-        // Check if has children
         LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysMenu::getParentId, menuId);
         if (menuMapper.selectCount(wrapper) > 0) {
@@ -89,14 +123,12 @@ public class SysMenuServiceImpl implements ISysMenuService {
         }
         return menuMapper.deleteById(menuId);
     }
-    
-    /**
-     * Build Tree
-     */
+
+    // ==================== 树构建工具方法 ====================
+
     public List<SysMenu> getChildPerms(List<SysMenu> list, int parentId) {
         List<SysMenu> returnList = new ArrayList<>();
         for (SysMenu t : list) {
-            // One level
             if (t.getParentId() == parentId) {
                 recursionFn(list, t);
                 returnList.add(t);
@@ -126,6 +158,6 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     private boolean hasChild(List<SysMenu> list, SysMenu t) {
-        return getChildList(list, t).size() > 0;
+        return !getChildList(list, t).isEmpty();
     }
 }

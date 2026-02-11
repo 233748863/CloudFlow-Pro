@@ -19,6 +19,7 @@ public class RedisCache {
         "CAPTCHA:", 
         "login_tokens:",   // CacheConstants.LOGIN_TOKEN_KEY
         "user_tokens:",    // CacheConstants.USER_TOKENS_KEY
+        "user_menus:",     // 用户菜单树缓存
         "sys:config:"      // 系统配置通常全局共享
     };
 

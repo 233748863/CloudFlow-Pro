@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.ReportModule.mapper.ReportUserConsumptionMapper">
+
+    <resultMap id="BaseResultMap" type="cn.joywon.poco.merchant.ReportModule.entity.ReportUserConsumption">
+        <id column="id" property="id" />
+        <result column="stat_date" property="statDate" />
+        <result column="merchant_id" property="merchantId" />
+        <result column="store_id" property="storeId" />
+        <result column="new_user_count" property="newUserCount" />
+        <result column="active_user_count" property="activeUserCount" />
+        <result column="repurchase_user_count" property="repurchaseUserCount" />
+        <result column="repurchase_rate" property="repurchaseRate" />
+        <result column="amount_0_50" property="amount0To50" />
+        <result column="amount_50_100" property="amount50To100" />
+        <result column="amount_100_200" property="amount100To200" />
+        <result column="amount_200_plus" property="amount200Plus" />
+        <result column="avg_purchase_cycle" property="avgPurchaseCycle" />
+        <result column="created_by" property="createdBy" />
+        <result column="created_time" property="createdTime" />
+        <result column="updated_by" property="updatedBy" />
+        <result column="updated_time" property="updatedTime" />
+        <result column="is_deleted" property="isDeleted" />
+        <result column="deleted_time" property="deletedTime" />
+    </resultMap>
+
+</mapper>

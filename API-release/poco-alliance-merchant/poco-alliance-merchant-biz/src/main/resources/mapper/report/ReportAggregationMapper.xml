@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.merchant.ReportModule.mapper.ReportAggregationMapper">
+
+    <!-- ==================== 营销数据聚合SQL ==================== -->
+
+    <!-- 聚合优惠券发放数据 -->
+    <select id="aggregateCouponIssued" resultType="cn.joywon.poco.merchant.ReportModule.dto.CouponAnalysisAggDTO">
+        SELECT 
+            ct.merchant_id AS merchantId,
+            ct.type AS couponType,
+            CASE WHEN ct.merchant_id = 0 THEN 'PLATFORM' ELSE 'SELF' END AS couponSource,
+            COUNT(*) AS issuedCount,
+            0 AS usedCount,
+            0 AS discountAmount
+        FROM user_coupons uc
+        INNER JOIN coupon_templates ct ON uc.template_id = ct.id
+        WHERE DATE(uc.created_time) = #{statDate}
+          AND uc.is_deleted = 0
+        GROUP BY ct.merchant_id, ct.type
+    </select>
+
+    <!-- 聚合优惠券核销数据 -->
+    <select id="aggregateCouponUsed" resultType="cn.joywon.poco.merchant.ReportModule.dto.CouponAnalysisAggDTO">
+        SELECT 
+            crl.merchant_id AS merchantId,
+            ct.type AS couponType,
+            CASE WHEN ct.merchant_id = 0 THEN 'PLATFORM' ELSE 'SELF' END AS couponSource,
+            0 AS issuedCount,
+            COUNT(*) AS usedCount,
+            SUM(crl.redeem_amount) AS discountAmount
+        FROM coupon_redeem_logs crl
+        INNER JOIN coupon_templates ct ON crl.template_id = ct.id
+        WHERE DATE(crl.redeem_time) = #{statDate}
+          AND crl.is_deleted = 0
+        GROUP BY crl.merchant_id, ct.type, ct.merchant_id
+    </select>
+
+    <!-- 聚合积分流水数据 -->
+    <select id="aggregatePointsFlow" resultType="cn.joywon.poco.merchant.ReportModule.dto.PointsFlowAggDTO">
+        SELECT 
+            pf.owner_id AS merchantId,
+            pf.change_type AS sourceType,
+            SUM(CASE WHEN pf.change_points > 0 THEN pf.change_points ELSE 0 END) AS earnedPoints,
+            SUM(CASE WHEN pf.change_points &lt; 0 THEN ABS(pf.change_points) ELSE 0 END) AS consumedPoints,
+            SUM(CASE WHEN pf.change_type = 'EXPIRED_DEDUCT' THEN ABS(pf.change_points) ELSE 0 END) AS expiredPoints
+        FROM points_flow pf
+        WHERE DATE(pf.created_time) = #{statDate}
+          AND pf.owner_type = 'MERCHANT'
+          AND pf.is_deleted = 0
+        GROUP BY pf.owner_id, pf.change_type
+    </select>
+
+    <!-- 聚合联合营销效果数据 -->
+    <select id="aggregateJointMarketing" resultType="cn.joywon.poco.merchant.ReportModule.dto.JointMarketingAggDTO">
+        SELECT 
+            jml.plan_id AS planId,
+            jmp.merchant_id AS merchantId,
+            CASE WHEN jmp.role = 'INITIATOR' THEN 'INITIATOR' ELSE 'PARTICIPANT' END AS roleType,
+            COUNT(*) AS triggerCount,
+            SUM(COALESCE(JSON_LENGTH(jml.rewards_snapshot), 0)) AS couponIssued,
+            0 AS shareAmount
+        FROM joint_marketing_log jml
+        INNER JOIN joint_marketing_participant jmp ON jml.plan_id = jmp.plan_id
+        WHERE DATE(jml.created_time) = #{statDate}
+          AND jml.is_deleted = 0
+        GROUP BY jml.plan_id, jmp.merchant_id, jmp.role
+    </select>
+
+    <!-- ==================== 平台数据聚合SQL ==================== -->
+
+    <!-- 聚合代理佣金数据 -->
+    <select id="aggregateAgentCommission" resultType="cn.joywon.poco.merchant.ReportModule.dto.AgentCommissionAggDTO">
+        SELECT 
+            racl.agent_user_id AS agentId,
+            a.name AS agentName,
+            a.responsible_region_code AS regionCode,
+            SUM(racl.commission_amount) AS totalCommission,
+            SUM(CASE WHEN racl.status = 'PAID' THEN racl.commission_amount ELSE 0 END) AS settledAmount,
+            SUM(CASE WHEN racl.status IN ('ESTIMATED', 'CONFIRMED') THEN racl.commission_amount ELSE 0 END) AS pendingAmount,
+            COUNT(DISTINCT racl.order_id) AS orderCount,
+            COUNT(DISTINCT racl.store_id) AS merchantCount,
+            0 AS withdrawnAmount
+        FROM regional_agent_commission_logs racl
+        LEFT JOIN agents a ON racl.agent_user_id = a.id
+        WHERE DATE(racl.created_time) = #{statDate}
+          AND racl.is_deleted = 0
+        GROUP BY racl.agent_user_id, a.name, a.responsible_region_code
+    </select>
+
+    <!-- 聚合平台运营概览数据 -->
+    <select id="aggregatePlatformOverview" resultType="cn.joywon.poco.merchant.ReportModule.dto.PlatformOverviewAggDTO">
+        SELECT 
+            COALESCE(SUM(o.final_paid_price), 0) AS totalGmv,
+            COUNT(*) AS totalOrders,
+            COUNT(DISTINCT o.merchant_id) AS activeMerchants,
+            COUNT(DISTINCT o.user_id) AS activeUsers,
+            COALESCE(SUM(o.final_paid_price * 0.05), 0) AS commissionIncome
+        FROM orders o
+        WHERE DATE(o.created_time) = #{statDate}
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+    </select>
+
+    <!-- ==================== 实时数据查询SQL ==================== -->
+
+    <!-- 门店当日实时统计 -->
+    <select id="realtimeStoreDailyStats" resultType="cn.joywon.poco.merchant.ReportModule.vo.StoreDailyStatsVO">
+        SELECT 
+            CURDATE() AS statDate,
+            o.store_id AS storeId,
+            s.name AS storeName,
+            COUNT(*) AS totalOrderCount,
+            COUNT(CASE WHEN o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED') THEN 1 END) AS paidOrderCount,
+            COALESCE(SUM(o.total_product_price), 0) AS totalSalesAmount,
+            COALESCE(SUM(CASE WHEN o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED') THEN o.final_paid_price ELSE 0 END), 0) AS realPayAmount,
+            COUNT(CASE WHEN o.status IN ('REFUNDING', 'REFUNDED', 'CANCELLED') THEN 1 END) AS refundOrderCount,
+            COALESCE(SUM(CASE WHEN o.status = 'REFUNDED' THEN o.final_paid_price ELSE 0 END), 0) AS refundAmount,
+            0 AS visitorCount,
+            0 AS pageViewCount,
+            CASE 
+                WHEN COUNT(CASE WHEN o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED') THEN 1 END) > 0 
+                THEN ROUND(
+                    COALESCE(SUM(CASE WHEN o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED') THEN o.final_paid_price ELSE 0 END), 0) 
+                    / COUNT(CASE WHEN o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED') THEN 1 END), 2)
+                ELSE 0 
+            END AS avgOrderValue
+        FROM orders o
+        LEFT JOIN stores s ON o.store_id = s.id
+        WHERE DATE(o.created_time) = CURDATE()
+          AND o.is_deleted = 0
+          <if test="storeId != null">
+              AND o.store_id = #{storeId}
+          </if>
+          <if test="merchantId != null">
+              AND o.merchant_id = #{merchantId}
+          </if>
+        GROUP BY o.store_id, s.name
+    </select>
+
+    <!-- 商品销售实时排行 -->
+    <select id="realtimeGoodsSalesRank" resultType="cn.joywon.poco.merchant.ReportModule.vo.GoodsSalesRankVO">
+        SELECT 
+            oi.product_sku_id AS skuId,
+            oi.product_id AS productId,
+            oi.product_name AS productName,
+            oi.sku_name AS skuSpec,
+            SUM(oi.quantity) AS salesQuantity,
+            SUM(oi.final_price) AS salesAmount,
+            RANK() OVER (ORDER BY SUM(oi.final_price) DESC) AS `rank`
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        WHERE DATE(o.created_time) = CURDATE()
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+          AND oi.is_deleted = 0
+          <if test="storeId != null">
+              AND o.store_id = #{storeId}
+          </if>
+          <if test="merchantId != null">
+              AND o.merchant_id = #{merchantId}
+          </if>
+        GROUP BY oi.product_sku_id, oi.product_id, oi.product_name, oi.sku_name
+        <if test="topN != null">
+            ORDER BY salesAmount DESC
+            LIMIT #{topN}
+        </if>
+    </select>
+
+    <!-- 平台当日实时概览 -->
+    <select id="realtimePlatformOverview" resultType="cn.joywon.poco.merchant.ReportModule.vo.PlatformRealtimeOverviewVO">
+        SELECT 
+            CURDATE() AS statDate,
+            COALESCE(SUM(o.final_paid_price), 0) AS todayGmv,
+            COUNT(*) AS todayOrders,
+            COUNT(DISTINCT o.merchant_id) AS todayActiveMerchants,
+            COUNT(DISTINCT o.user_id) AS todayActiveUsers,
+            NULL AS gmvChangeRate,
+            NULL AS ordersChangeRate,
+            NULL AS merchantsChangeRate,
+            NULL AS usersChangeRate,
+            NULL AS gmvTrend,
+            NULL AS ordersTrend,
+            NULL AS merchantsTrend,
+            NULL AS usersTrend
+        FROM orders o
+        WHERE DATE(o.created_time) = CURDATE()
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+          AND TIME(o.created_time) &lt;= CURTIME()
+    </select>
+
+    <!-- 昨日同时段统计（用于对比） -->
+    <select id="yesterdaySameTimeStats" resultType="cn.joywon.poco.merchant.ReportModule.vo.PlatformRealtimeOverviewVO">
+        SELECT 
+            DATE_SUB(CURDATE(), INTERVAL 1 DAY) AS statDate,
+            COALESCE(SUM(o.final_paid_price), 0) AS todayGmv,
+            COUNT(*) AS todayOrders,
+            COUNT(DISTINCT o.merchant_id) AS todayActiveMerchants,
+            COUNT(DISTINCT o.user_id) AS todayActiveUsers,
+            NULL AS gmvChangeRate,
+            NULL AS ordersChangeRate,
+            NULL AS merchantsChangeRate,
+            NULL AS usersChangeRate,
+            NULL AS gmvTrend,
+            NULL AS ordersTrend,
+            NULL AS merchantsTrend,
+            NULL AS usersTrend
+        FROM orders o
+        WHERE DATE(o.created_time) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+          AND TIME(o.created_time) &lt;= CURTIME()
+    </select>
+
+    <!-- ==================== 趋势数据查询SQL ==================== -->
+
+    <!-- 门店经营趋势（含周同比、月同比） -->
+    <select id="selectStoreTrend" resultType="cn.joywon.poco.merchant.ReportModule.vo.StoreTrendVO">
+        SELECT 
+            r.stat_date AS statDate,
+            r.store_id AS storeId,
+            r.store_name AS storeName,
+            r.paid_order_count AS orderCount,
+            r.real_pay_amount AS gmv,
+            r.avg_order_value AS avgOrderValue,
+            <!-- 周同比计算 -->
+            CASE 
+                WHEN rw.paid_order_count IS NOT NULL AND rw.paid_order_count > 0 
+                THEN ROUND((r.paid_order_count - rw.paid_order_count) / rw.paid_order_count * 100, 2)
+                ELSE NULL 
+            END AS orderCountWow,
+            CASE 
+                WHEN rw.real_pay_amount IS NOT NULL AND rw.real_pay_amount > 0 
+                THEN ROUND((r.real_pay_amount - rw.real_pay_amount) / rw.real_pay_amount * 100, 2)
+                ELSE NULL 
+            END AS gmvWow,
+            CASE 
+                WHEN rw.avg_order_value IS NOT NULL AND rw.avg_order_value > 0 
+                THEN ROUND((r.avg_order_value - rw.avg_order_value) / rw.avg_order_value * 100, 2)
+                ELSE NULL 
+            END AS avgOrderValueWow,
+            <!-- 月同比计算 -->
+            CASE 
+                WHEN rm.paid_order_count IS NOT NULL AND rm.paid_order_count > 0 
+                THEN ROUND((r.paid_order_count - rm.paid_order_count) / rm.paid_order_count * 100, 2)
+                ELSE NULL 
+            END AS orderCountMom,
+            CASE 
+                WHEN rm.real_pay_amount IS NOT NULL AND rm.real_pay_amount > 0 
+                THEN ROUND((r.real_pay_amount - rm.real_pay_amount) / rm.real_pay_amount * 100, 2)
+                ELSE NULL 
+            END AS gmvMom,
+            CASE 
+                WHEN rm.avg_order_value IS NOT NULL AND rm.avg_order_value > 0 
+                THEN ROUND((r.avg_order_value - rm.avg_order_value) / rm.avg_order_value * 100, 2)
+                ELSE NULL 
+            END AS avgOrderValueMom,
+            <!-- 趋势标识 -->
+            CASE 
+                WHEN rw.real_pay_amount IS NULL THEN 'FLAT'
+                WHEN r.real_pay_amount > rw.real_pay_amount THEN 'UP'
+                WHEN r.real_pay_amount &lt; rw.real_pay_amount THEN 'DOWN'
+                ELSE 'FLAT'
+            END AS gmvTrend
+        FROM report_store_daily_stats r
+        LEFT JOIN report_store_daily_stats rw 
+            ON r.store_id = rw.store_id 
+            AND rw.stat_date = DATE_SUB(r.stat_date, INTERVAL 7 DAY)
+        LEFT JOIN report_store_daily_stats rm 
+            ON r.store_id = rm.store_id 
+            AND rm.stat_date = DATE_SUB(r.stat_date, INTERVAL 1 MONTH)
+        WHERE r.stat_date BETWEEN #{startDate} AND #{endDate}
+          AND r.is_deleted = 0
+          <if test="storeId != null">
+              AND r.store_id = #{storeId}
+          </if>
+          <if test="merchantId != null">
+              AND r.merchant_id = #{merchantId}
+          </if>
+        ORDER BY r.stat_date DESC, r.store_id
+    </select>
+
+    <!-- 商品销售趋势 -->
+    <select id="selectGoodsSalesTrend" resultType="cn.joywon.poco.merchant.ReportModule.vo.GoodsSalesTrendVO">
+        SELECT 
+            g.sku_id AS skuId,
+            g.product_name AS productName,
+            g.sku_spec AS skuSpec,
+            g.category_id AS categoryId,
+            c.name AS categoryName,
+            <!-- 当期数据（查询日期范围内汇总） -->
+            SUM(g.sales_quantity) AS currentSalesQty,
+            SUM(g.sales_amount) AS currentSalesAmount,
+            <!-- 上周同期数据 -->
+            COALESCE(lw.lastWeekSalesQty, 0) AS lastWeekSalesQty,
+            COALESCE(lw.lastWeekSalesAmount, 0) AS lastWeekSalesAmount,
+            <!-- 变化率计算 -->
+            CASE 
+                WHEN COALESCE(lw.lastWeekSalesQty, 0) > 0 
+                THEN ROUND((SUM(g.sales_quantity) - lw.lastWeekSalesQty) / lw.lastWeekSalesQty * 100, 2)
+                ELSE NULL 
+            END AS salesQtyChangeRate,
+            CASE 
+                WHEN COALESCE(lw.lastWeekSalesAmount, 0) > 0 
+                THEN ROUND((SUM(g.sales_amount) - lw.lastWeekSalesAmount) / lw.lastWeekSalesAmount * 100, 2)
+                ELSE NULL 
+            END AS salesAmountChangeRate,
+            <!-- 趋势标识 -->
+            CASE 
+                WHEN lw.lastWeekSalesQty IS NULL THEN 'FLAT'
+                WHEN SUM(g.sales_quantity) > lw.lastWeekSalesQty THEN 'UP'
+                WHEN SUM(g.sales_quantity) &lt; lw.lastWeekSalesQty THEN 'DOWN'
+                ELSE 'FLAT'
+            END AS trend
+        FROM report_goods_sales_daily g
+        LEFT JOIN product_categories c ON g.category_id = c.id
+        LEFT JOIN (
+            SELECT 
+                sku_id,
+                SUM(sales_quantity) AS lastWeekSalesQty,
+                SUM(sales_amount) AS lastWeekSalesAmount
+            FROM report_goods_sales_daily
+            WHERE stat_date BETWEEN DATE_SUB(#{startDate}, INTERVAL 7 DAY) AND DATE_SUB(#{endDate}, INTERVAL 7 DAY)
+              AND is_deleted = 0
+              <if test="storeId != null">
+                  AND store_id = #{storeId}
+              </if>
+              <if test="merchantId != null">
+                  AND merchant_id = #{merchantId}
+              </if>
+            GROUP BY sku_id
+        ) lw ON g.sku_id = lw.sku_id
+        WHERE g.stat_date BETWEEN #{startDate} AND #{endDate}
+          AND g.is_deleted = 0
+          <if test="storeId != null">
+              AND g.store_id = #{storeId}
+          </if>
+          <if test="merchantId != null">
+              AND g.merchant_id = #{merchantId}
+          </if>
+          <if test="categoryId != null">
+              AND g.category_id = #{categoryId}
+          </if>
+        GROUP BY g.sku_id, g.product_name, g.sku_spec, g.category_id, c.name, 
+                 lw.lastWeekSalesQty, lw.lastWeekSalesAmount
+        ORDER BY currentSalesAmount DESC
+    </select>
+
+    <!-- 用户消费趋势 -->
+    <select id="selectUserConsumptionTrend" resultType="cn.joywon.poco.merchant.ReportModule.vo.UserConsumptionTrendVO">
+        SELECT 
+            u.stat_date AS statDate,
+            u.store_id AS storeId,
+            u.merchant_id AS merchantId,
+            u.new_user_count AS newUserCount,
+            u.active_user_count AS activeUserCount,
+            u.repurchase_rate AS repurchaseRate,
+            <!-- 周同比 -->
+            CASE 
+                WHEN uw.new_user_count IS NOT NULL AND uw.new_user_count > 0 
+                THEN ROUND((u.new_user_count - uw.new_user_count) / uw.new_user_count * 100, 2)
+                ELSE NULL 
+            END AS newUserWow,
+            CASE 
+                WHEN uw.active_user_count IS NOT NULL AND uw.active_user_count > 0 
+                THEN ROUND((u.active_user_count - uw.active_user_count) / uw.active_user_count * 100, 2)
+                ELSE NULL 
+            END AS activeUserWow,
+            CASE 
+                WHEN uw.repurchase_rate IS NOT NULL 
+                THEN ROUND(u.repurchase_rate - uw.repurchase_rate, 2)
+                ELSE NULL 
+            END AS repurchaseRateWow,
+            <!-- 月同比 -->
+            CASE 
+                WHEN um.new_user_count IS NOT NULL AND um.new_user_count > 0 
+                THEN ROUND((u.new_user_count - um.new_user_count) / um.new_user_count * 100, 2)
+                ELSE NULL 
+            END AS newUserMom,
+            CASE 
+                WHEN um.active_user_count IS NOT NULL AND um.active_user_count > 0 
+                THEN ROUND((u.active_user_count - um.active_user_count) / um.active_user_count * 100, 2)
+                ELSE NULL 
+            END AS activeUserMom,
+            CASE 
+                WHEN um.repurchase_rate IS NOT NULL 
+                THEN ROUND(u.repurchase_rate - um.repurchase_rate, 2)
+                ELSE NULL 
+            END AS repurchaseRateMom
+        FROM report_user_consumption u
+        LEFT JOIN report_user_consumption uw 
+            ON u.store_id = uw.store_id 
+            AND u.merchant_id = uw.merchant_id
+            AND uw.stat_date = DATE_SUB(u.stat_date, INTERVAL 7 DAY)
+        LEFT JOIN report_user_consumption um 
+            ON u.store_id = um.store_id 
+            AND u.merchant_id = um.merchant_id
+            AND um.stat_date = DATE_SUB(u.stat_date, INTERVAL 1 MONTH)
+        WHERE u.stat_date BETWEEN #{startDate} AND #{endDate}
+          AND u.is_deleted = 0
+          <if test="storeId != null">
+              AND u.store_id = #{storeId}
+          </if>
+          <if test="merchantId != null">
+              AND u.merchant_id = #{merchantId}
+          </if>
+        ORDER BY u.stat_date DESC
+    </select>
+
+    <!-- 平台GMV趋势（最近N天） -->
+    <select id="selectPlatformGmvTrend" resultType="cn.joywon.poco.merchant.ReportModule.vo.DailyTrendPoint">
+        SELECT 
+            p.stat_date AS date,
+            COALESCE(p.total_gmv, 0) AS value
+        FROM report_platform_overview p
+        WHERE p.stat_date >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND p.stat_date &lt; CURDATE()
+          AND p.is_deleted = 0
+        ORDER BY p.stat_date ASC
+    </select>
+
+    <!-- 平台订单数趋势 -->
+    <select id="selectPlatformOrdersTrend" resultType="cn.joywon.poco.merchant.ReportModule.vo.DailyTrendPoint">
+        SELECT 
+            p.stat_date AS date,
+            COALESCE(p.total_orders, 0) AS value
+        FROM report_platform_overview p
+        WHERE p.stat_date >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND p.stat_date &lt; CURDATE()
+          AND p.is_deleted = 0
+        ORDER BY p.stat_date ASC
+    </select>
+
+    <!-- 平台活跃商家趋势 -->
+    <select id="selectPlatformMerchantsTrend" resultType="cn.joywon.poco.merchant.ReportModule.vo.DailyTrendPoint">
+        SELECT 
+            p.stat_date AS date,
+            COALESCE(p.active_merchants, 0) AS value
+        FROM report_platform_overview p
+        WHERE p.stat_date >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND p.stat_date &lt; CURDATE()
+          AND p.is_deleted = 0
+        ORDER BY p.stat_date ASC
+    </select>
+
+    <!-- 平台活跃用户趋势 -->
+    <select id="selectPlatformUsersTrend" resultType="cn.joywon.poco.merchant.ReportModule.vo.DailyTrendPoint">
+        SELECT 
+            p.stat_date AS date,
+            COALESCE(p.active_users, 0) AS value
+        FROM report_platform_overview p
+        WHERE p.stat_date >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND p.stat_date &lt; CURDATE()
+          AND p.is_deleted = 0
+        ORDER BY p.stat_date ASC
+    </select>
+
+</mapper>

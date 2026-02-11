@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.PlatformModule.mapper.StoreAuditMapper">
+
+    <!--  查询门店审核列表
+          Page<StoreAuditListVO> queryAuditList(Page<> page, StoreAuditQueryDTO dto)  -->
+    <select id="queryAuditList"
+            resultType="cn.joywon.poco.merchant.MerchantModule.vo.StoreAuditListVO"
+            parameterType="cn.joywon.poco.merchant.MerchantModule.dto.StoreAuditQueryDTO">
+
+        SELECT sa.id AS auditId,
+        sa.name AS storeName,
+        m.name AS merchantName,
+        i.name AS industryName,
+        CONCAT(sa.location, sa.address_detail) AS addressDetail,
+        sa.logo_url,
+        sa.audit_status,
+        sa.audit_type,
+        sa.created_time
+
+        FROM store_audit AS sa
+        JOIN stores AS s ON s.audit_id = sa.id
+        JOIN merchants AS m ON sa.merchant_id = m.id
+        LEFT JOIN industries AS i ON sa.industry_id = i.id
+
+        <where>
+            <if test="dto.merchantId != null">
+                AND sa.merchant_id = #{dto.merchantId}
+            </if>
+
+            <if test="dto.name != null and dto.name != ''">
+                AND sa.name LIKE CONCAT(#{dto.name}, '%') OR s.name LIKE CONCAT(#{dto.name}, '%')
+            </if>
+
+            <if test="dto.industryIds != null and dto.industryIds.size() > 0">
+                AND i.id IN
+                <foreach collection="dto.industryIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+
+            <if test="dto.auditTypes != null and dto.auditTypes.size() > 0">
+                AND sa.audit_type IN
+                <foreach collection="dto.auditTypes" item="type" open="(" separator="," close=")">
+                    #{type}
+                </foreach>
+            </if>
+
+            <if test="dto.auditStatuses != null and dto.auditStatuses.size() > 0">
+                AND sa.audit_status IN
+                <foreach collection="dto.auditStatuses" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+
+            <if test="dto.startDate != null">
+                AND sa.created_time &gt;= #{dto.startDate}
+            </if>
+
+            <if test="dto.endDate != null">
+                AND sa.created_time &lt;= DATE_ADD(#{dto.endDate}, INTERVAL 1 DAY)
+            </if>
+        </where>
+
+        <if test="dto.orderByCreateTime != null">
+            ORDER BY sa.created_time ${dto.orderByCreateTime ? 'ASC' : 'DESC'}
+        </if>
+
+    </select>
+
+
+    <!--  查询门店审核历史列表
+          List<AuditStatusVO> getAuditHistoryList(Long storeId, Boolean sortDesc)  -->
+    <select id="getAuditHistoryList"
+            resultType="cn.joywon.poco.merchant.MerchantModule.vo.AuditStatusVO"
+            parameterType="cn.joywon.poco.merchant.MerchantModule.dto.StoreAuditQueryDTO">
+
+        SELECT id AS auditId,
+        audit_type,
+        audit_status,
+        created_time,
+        audit_time,
+        audit_remark,
+        modify_reason
+        FROM store_audit WHERE store_id = #{storeId}
+        <if test="sortDesc != null">
+            ORDER BY created_time ${sortDesc ? 'DESC' : 'ASC'}
+        </if>
+
+    </select>
+
+
+</mapper>

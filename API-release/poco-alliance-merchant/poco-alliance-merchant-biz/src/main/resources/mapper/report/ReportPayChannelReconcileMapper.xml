@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.ReportModule.mapper.ReportPayChannelReconcileMapper">
+
+    <resultMap id="BaseResultMap" type="cn.joywon.poco.merchant.ReportModule.entity.ReportPayChannelReconcile">
+        <id column="id" property="id" />
+        <result column="stat_date" property="statDate" />
+        <result column="merchant_id" property="merchantId" />
+        <result column="pay_channel" property="payChannel" />
+        <result column="transaction_count" property="transactionCount" />
+        <result column="transaction_amount" property="transactionAmount" />
+        <result column="refund_count" property="refundCount" />
+        <result column="refund_amount" property="refundAmount" />
+        <result column="net_amount" property="netAmount" />
+        <result column="channel_fee" property="channelFee" />
+        <result column="fee_rate" property="feeRate" />
+        <result column="reconcile_status" property="reconcileStatus" />
+        <result column="diff_amount" property="diffAmount" />
+        <result column="created_by" property="createdBy" />
+        <result column="created_time" property="createdTime" />
+        <result column="updated_by" property="updatedBy" />
+        <result column="updated_time" property="updatedTime" />
+        <result column="is_deleted" property="isDeleted" />
+        <result column="deleted_time" property="deletedTime" />
+    </resultMap>
+
+</mapper>

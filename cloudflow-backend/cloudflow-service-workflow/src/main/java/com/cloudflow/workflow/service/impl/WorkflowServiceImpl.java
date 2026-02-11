@@ -801,12 +801,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
         } else if ("NOTIFICATION".equals(node.getType())) {
             // 通知节点：发送通知消息后自动继续
             handleNotificationNode(node, instance, variables);
-            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            // 自动节点完成后，先检查 branches（条件分支）再走 next
+            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
             
         } else if ("SCRIPT".equals(node.getType())) {
             // 脚本节点：执行自动化脚本或API调用
             handleScriptNode(node, instance, variables);
-            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            // 自动节点完成后，先检查 branches（条件分支）再走 next
+            // 支持前端模板中 SCRIPT 节点同时拥有 branches 和 next 的场景（如 IT故障处理模板）
+            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
             
         } else if ("TIMER".equals(node.getType())) {
             // 定时节点：延迟或定时触发
@@ -817,7 +820,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
         } else if ("SUBPROCESS".equals(node.getType())) {
             // 子流程节点：调用其他工作流
             handleSubprocessNode(node, instance, variables);
-            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            // 自动节点完成后，先检查 branches（条件分支）再走 next
+            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
             
         } else if ("MANUAL".equals(node.getType())) {
             // 人工任务节点：需要人工处理但不是审批
@@ -1046,15 +1050,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 try {
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
                         WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
-                        WfNodeConfig nextNode = findNextNode(root, task.getNodeKey());
-                        
-                        if (nextNode != null) {
-                            // 5.G: 使用合并后的变量继续流转
-                            // 4.K: 传递 rootNode 参数
-                            runNode(instance, nextNode, mergedVariables, 0, root);
-                        } else {
-                            completeInstance(instance, WfProcessStatus.COMPLETED.getCode()); 
-                        }
+                        // 先找到当前节点，检查是否有条件分支需要评估
+                        WfNodeConfig currentNode = findNode(root, task.getNodeKey());
+                        advanceAfterNode(instance, currentNode, task.getNodeKey(), mergedVariables, 0, root);
                     } else {
                          completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
                     }
@@ -1161,6 +1159,69 @@ public class WorkflowServiceImpl implements IWorkflowService {
         }
         
         return null;
+    }
+
+    /**
+     * 节点完成后的流转逻辑：
+     * 1. 如果当前节点有 branches（条件分支），先评估分支条件
+     *    - EXCLUSIVE 策略：走第一个匹配的分支，分支执行完后继续 next
+     *    - PARALLEL 策略：并行执行所有分支
+     * 2. 如果没有分支或分支都不匹配，直接走 next
+     * 3. 如果 next 也没有，向上查找父节点的 next
+     * 
+     * 这解决了前端数据模型中 APPROVAL/MANUAL 等节点同时拥有 branches 和 next 的场景，
+     * 例如采购审批中"部门经理审批"节点既有条件分支（金额判断）又有后续节点。
+     */
+    private void advanceAfterNode(WfProcessInstance instance, WfNodeConfig currentNode, String currentNodeKey, 
+                                   Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
+        if (currentNode != null && currentNode.getBranches() != null && !currentNode.getBranches().isEmpty()) {
+            // 当前节点有条件分支，需要评估
+            String strategy = currentNode.getBranchStrategy();
+            List<WfNodeConfig> branches = currentNode.getBranches();
+            
+            if ("PARALLEL".equals(strategy)) {
+                // 并行策略：执行所有分支
+                for (WfNodeConfig branch : branches) {
+                    runNode(instance, branch, variables, depth + 1, rootNode);
+                }
+                // 并行分支执行后，等待汇聚，不立即走 next
+                return;
+            } else {
+                // EXCLUSIVE 或默认策略：走第一个匹配的分支
+                boolean branchTaken = false;
+                for (WfNodeConfig branch : branches) {
+                    if (evaluateCondition(branch.getCondition(), variables)) {
+                        // 执行匹配的分支（分支内的 next 链）
+                        if (branch.getNext() != null) {
+                            runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
+                        }
+                        branchTaken = true;
+                        break; // 排他网关只走一条路径
+                    }
+                }
+                
+                if (branchTaken) {
+                    // 分支已执行，分支内的节点链执行完后会通过 findNextNode 回到当前节点的 next
+                    // 但如果分支内没有阻塞节点（如全是自动节点），需要继续走 next
+                    // 这里不需要额外处理，因为分支内的最后一个节点完成后会通过 findNextNode 找到 next
+                    return;
+                }
+                // 没有分支匹配，走默认路径（next）
+            }
+        }
+        
+        // 没有分支或分支都不匹配，走 next
+        if (currentNode != null && currentNode.getNext() != null) {
+            runNode(instance, currentNode.getNext(), variables, depth + 1, rootNode);
+        } else {
+            // 当前节点没有 next，向上查找
+            WfNodeConfig nextNode = findNextNode(rootNode, currentNodeKey);
+            if (nextNode != null) {
+                runNode(instance, nextNode, variables, depth + 1, rootNode);
+            } else {
+                completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+            }
+        }
     }
 
     private WfNodeConfig findNode(WfNodeConfig root, String nodeId) {
@@ -2344,10 +2405,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
             }
             visited.add(node.getId());
         }
-        // 审批节点必须有审批人配置
+        // 审批节点和人工任务节点必须有审批人/处理人配置
         if ("APPROVAL".equals(node.getType())) {
             if (!StringUtils.hasText(node.getApproverType())) {
                 throw WorkflowException.validationError("审批节点 [" + node.getTitle() + "] 未配置审批人");
+            }
+        }
+        if ("MANUAL".equals(node.getType())) {
+            if (!StringUtils.hasText(node.getApproverType())) {
+                throw WorkflowException.validationError("人工任务节点 [" + node.getTitle() + "] 未配置处理人");
             }
         }
         // 递归校验
@@ -2690,8 +2756,11 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 return;
             }
             
-            String noticeTitle = (String) props.getOrDefault("noticeTitle", node.getTitle());
-            String noticeContent = (String) props.getOrDefault("noticeContent", "流程通知");
+            // 兼容前端两种字段名: notificationTitle/noticeTitle, notificationContent/noticeContent
+            String noticeTitle = (String) props.getOrDefault("notificationTitle", 
+                (String) props.getOrDefault("noticeTitle", node.getTitle()));
+            String noticeContent = (String) props.getOrDefault("notificationContent", 
+                (String) props.getOrDefault("noticeContent", "流程通知"));
             String noticeType = (String) props.getOrDefault("noticeType", "1"); // 1-通知 2-公告
             String recipientType = (String) props.getOrDefault("recipientType", "INITIATOR"); // INITIATOR/ROLE/USER/DEPT
             
@@ -2967,7 +3036,11 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 return;
             }
             
-            String subProcessKey = (String) props.get("subProcessKey");
+            // 兼容前端两种字段名: subprocessId/subProcessKey
+            String subProcessKey = (String) props.get("subprocessId");
+            if (!StringUtils.hasText(subProcessKey)) {
+                subProcessKey = (String) props.get("subProcessKey");
+            }
             if (!StringUtils.hasText(subProcessKey)) {
                 log.warn("[handleSubprocessNode] 子流程Key未配置, nodeKey={}", node.getId());
                 return;

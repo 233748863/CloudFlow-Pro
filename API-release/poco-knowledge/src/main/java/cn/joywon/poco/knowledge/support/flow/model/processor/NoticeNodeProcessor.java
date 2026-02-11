@@ -1,0 +1,53 @@
+package cn.joywon.poco.knowledge.support.flow.model.processor;
+
+import cn.hutool.core.lang.Dict;
+import cn.hutool.extra.template.TemplateConfig;
+import cn.hutool.extra.template.TemplateEngine;
+import cn.hutool.extra.template.TemplateUtil;
+import cn.joywon.poco.admin.api.dto.MessageHookDTO;
+import cn.joywon.poco.admin.api.feign.RemoteMessageService;
+import cn.joywon.poco.knowledge.support.flow.constants.FlowConstant;
+import cn.joywon.poco.knowledge.support.flow.constants.NodeTypeConstants;
+import cn.joywon.poco.knowledge.support.flow.core.FlowContextHolder;
+import cn.joywon.poco.knowledge.support.flow.core.FlowException;
+import cn.joywon.poco.knowledge.support.flow.model.AiNodeDefinition;
+import cn.joywon.poco.knowledge.support.flow.model.nodes.AiNoticeNode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+/**
+ * 消息节点处理器
+ */
+@Component(NodeTypeConstants.NOTICE)
+@RequiredArgsConstructor
+public class NoticeNodeProcessor extends AbstractNodeProcessor {
+    public static final TemplateEngine engine = TemplateUtil.createEngine(new TemplateConfig());
+
+    private final RemoteMessageService remoteMessageService;
+
+    @Override
+    protected Dict doExecute(AiNodeDefinition node, FlowContextHolder context) {
+        try {
+            // 节点配置判断
+            AiNoticeNode config = node.getNoticeParams();
+            if (config == null || config.getTemplateCode() == null) {
+                throw FlowException.invalidParam("消息节点配置无效");
+            }
+            // 获取输入参数
+            Dict variables = getInputVariables(node, context);
+
+            MessageHookDTO messageHookDTO = new MessageHookDTO();
+            messageHookDTO.setBizCode(config.getTemplateId());
+
+            String render = engine.getTemplate(config.getTemplateCode()).render(variables);
+            messageHookDTO.setMessageContent(render);
+            messageHookDTO.setMessageType("text");
+            remoteMessageService.sendHook(messageHookDTO);
+            // 设置结果
+            return Dict.create().set(FlowConstant.RESULT, true)
+                    .set(FlowConstant.TIMESTAMP, System.currentTimeMillis());
+        } catch (Exception e) {
+            throw FlowException.nodeError(node.getId(), "[消息节点] -> " + e.getMessage());
+        }
+    }
+}

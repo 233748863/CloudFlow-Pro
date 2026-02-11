@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.merchant.CouponModule.mapper.JointMarketingRebateRecordMapper">
+
+    <!--  获取联合营销计划分润明细  -->
+    <select id="getMerchantProfitDetails"
+            parameterType="cn.joywon.poco.merchant.ReportModule.dto.JointMarketingProfitReportDTO"
+            resultType="cn.joywon.poco.merchant.ReportModule.vo.JointMarketingProfitReportVO$MerchantProfitDetail">
+
+        SELECT
+        t.merchant_id,
+        t.role,
+        SUM(IF(t.role = 'PAYER', t.amount, 0)) as payout_amount,
+        SUM(IF(t.role = 'PAYEE', t.amount, 0)) as receive_amount,
+        SUM(IF(t.role = 'PAYEE', t.amount, 0)) - SUM(IF(t.role = 'PAYER', t.amount, 0)) as net_profit,
+        COUNT(t.id) as record_count,
+        m.merchant_name
+        FROM (
+        <!-- 支付方记录 -->
+        <if test="dto.roleType == null or dto.roleType == 'PAYER'">
+            SELECT
+            id,
+            payer_merchant_id as merchant_id,
+            'PAYER' as role,
+            amount,
+            status,
+            created_time
+            FROM joint_marketing_rebate_record
+            WHERE plan_id = #{dto.planId}
+            AND created_time BETWEEN #{dto.startDate} AND #{dto.endDate}
+            <if test="dto.merchantId != null">
+                AND payer_merchant_id = #{dto.merchantId}
+            </if>
+        </if>
+
+        <!-- 只有在需要合并数据时才加 UNION ALL -->
+        <if test="dto.roleType == null or dto.roleType == 'PAYEE'">
+            <if test="dto.roleType == null">
+                UNION ALL
+            </if>
+
+            SELECT
+            id,
+            payee_merchant_id as merchant_id,
+            'PAYEE' as role,
+            amount,
+            status,
+            created_time
+            FROM joint_marketing_rebate_record
+            WHERE plan_id = #{dto.planId}
+            AND created_time BETWEEN #{dto.startDate} AND #{dto.endDate}
+            <if test="dto.merchantId != null">
+                AND payee_merchant_id = #{dto.merchantId}
+            </if>
+        </if>
+        ) t
+        LEFT JOIN merchant m ON t.merchant_id = m.id
+        GROUP BY t.merchant_id, t.role, m.merchant_name
+        ORDER BY net_profit DESC, record_count DESC
+
+    </select>
+
+    <!--  获取联合营销时间维度统计  -->
+    <select id="getTimeDimensionStats"
+            parameterType="cn.joywon.poco.merchant.ReportModule.dto.JointMarketingProfitReportDTO"
+            resultType="cn.joywon.poco.merchant.ReportModule.vo.JointMarketingProfitReportVO$TimeDimensionStat">
+
+        SELECT
+        <choose>
+            <when test="dto.dimension == 'DAY'">
+                DATE_FORMAT(created_time, '%Y-%m-%d') as time_label,
+            </when>
+            <when test="dto.dimension == 'WEEK'">
+                CONCAT(YEAR(created_time), '-W', WEEK(created_time)) as time_label,
+            </when>
+            <when test="dto.dimension == 'MONTH'">
+                DATE_FORMAT(created_time, '%Y-%m') as time_label,
+            </when>
+            <otherwise>
+                DATE_FORMAT(created_time, '%Y-%m-%d') as time_label,
+            </otherwise>
+        </choose>
+        SUM(amount) as rebate_amount,
+        SUM(IF(status = 'SUCCESS', amount, 0)) as settled_amount,
+        COUNT(id) as record_count
+        FROM joint_marketing_rebate_record
+        WHERE plan_id = #{dto.planId}
+        AND created_time BETWEEN #{dto.startDate} AND #{dto.endDate}
+        <if test="dto.merchantId != null">
+            AND (payer_merchant_id = #{dto.merchantId} OR payee_merchant_id = #{dto.merchantId})
+        </if>
+        GROUP BY time_label
+        ORDER BY time_label
+
+    </select>
+
+    <!--  获取联合营销计划分润趋势  -->
+    <select id="getProfitTrendData"
+            resultType="cn.joywon.poco.merchant.ReportModule.vo.JointMarketingProfitTrendVO"
+            parameterType="cn.joywon.poco.merchant.ReportModule.dto.JointMarketingProfitTrendDTO">
+
+        SELECT
+        <choose>
+            <when test="dto.timeGranularity == 'DAILY'">
+                DATE_FORMAT(created_time, '%Y-%m-%d') as time_period,
+            </when>
+            <when test="dto.timeGranularity == 'WEEKLY'">
+                CONCAT(YEAR(created_time), '年第', WEEK(created_time), '周') as time_period,
+            </when>
+            <when test="dto.timeGranularity == 'MONTHLY'">
+                DATE_FORMAT(created_time, '%Y-%m') as time_period,
+            </when>
+            <when test="dto.timeGranularity == 'QUARTERLY'">
+                CONCAT(YEAR(created_time), '年Q', QUARTER(created_time)) as time_period,
+            </when>
+            <otherwise>
+                DATE_FORMAT(created_time, '%Y-%m-%d') as time_period,
+            </otherwise>
+        </choose>
+        COUNT(id) as total_records,
+        SUM(amount) as total_amount,
+        SUM(IF(status = 'SUCCESS', amount, 0)) as success_amount,
+        SUM(IF(status = 'FAILED', amount, 0)) as failed_amount,
+        SUM(IF(status = 'SUCCESS', 1, 0)) as success_records,
+        SUM(IF(status = 'FAILED', 1, 0)) as failed_records,
+        ROUND(SUM(IF(status = 'SUCCESS', 1, 0)) * 100.0 / COUNT(id), 2) as success_rate,
+        -- 环比增长率计算
+        LAG(SUM(amount)) OVER (ORDER BY
+        <choose>
+            <when test="dto.timeGranularity == 'DAILY'">
+                DATE_FORMAT(created_time, '%Y-%m-%d')
+            </when>
+            <when test="dto.timeGranularity == 'WEEKLY'">
+                CONCAT(YEAR(created_time), WEEK(created_time))
+            </when>
+            <when test="dto.timeGranularity == 'MONTHLY'">
+                DATE_FORMAT(created_time, '%Y-%m')
+            </when>
+            <when test="dto.timeGranularity == 'QUARTERLY'">
+                CONCAT(YEAR(created_time), QUARTER(created_time))
+            </when>
+        </choose>
+        ) as previous_period_amount,
+        IF(LAG(SUM(amount)) OVER (ORDER BY
+        <choose>
+            <when test="dto.timeGranularity == 'DAILY'">
+                DATE_FORMAT(created_time, '%Y-%m-%d')
+            </when>
+            <when test="dto.timeGranularity == 'WEEKLY'">
+                CONCAT(YEAR(created_time), WEEK(created_time))
+            </when>
+            <when test="dto.timeGranularity == 'MONTHLY'">
+                DATE_FORMAT(created_time, '%Y-%m')
+            </when>
+            <when test="dto.timeGranularity == 'QUARTERLY'">
+                CONCAT(YEAR(created_time), QUARTER(created_time))
+            </when>
+        </choose>
+        ) > 0, ROUND((SUM(amount) - LAG(SUM(amount)) OVER (ORDER BY
+        <choose>
+            <when test="dto.timeGranularity == 'DAILY'">
+                DATE_FORMAT(created_time, '%Y-%m-%d')
+            </when>
+            <when test="dto.timeGranularity == 'WEEKLY'">
+                CONCAT(YEAR(created_time), WEEK(created_time))
+            </when>
+            <when test="dto.timeGranularity == 'MONTHLY'">
+                DATE_FORMAT(created_time, '%Y-%m')
+            </when>
+            <when test="dto.timeGranularity == 'QUARTERLY'">
+                CONCAT(YEAR(created_time), QUARTER(created_time))
+            </when>
+        </choose>
+        )) * 100.0 / LAG(SUM(amount)) OVER (ORDER BY
+        <choose>
+            <when test="dto.timeGranularity == 'DAILY'">
+                DATE_FORMAT(created_time, '%Y-%m-%d')
+            </when>
+            <when test="dto.timeGranularity == 'WEEKLY'">
+                CONCAT(YEAR(created_time), WEEK(created_time))
+            </when>
+            <when test="dto.timeGranularity == 'MONTHLY'">
+                DATE_FORMAT(created_time, '%Y-%m')
+            </when>
+            <when test="dto.timeGranularity == 'QUARTERLY'">
+                CONCAT(YEAR(created_time), QUARTER(created_time))
+            </when>
+        </choose>
+        ), 2), 0) as growth_rate
+        FROM joint_marketing_rebate_record
+        WHERE created_time BETWEEN #{dto.startDate} AND #{dto.endDate}
+        <if test="dto.planId != null">
+            AND plan_id = #{dto.planId}
+        </if>
+        <if test="dto.merchantId != null">
+            AND (payer_merchant_id = #{dto.merchantId} OR payee_merchant_id = #{dto.merchantId})
+        </if>
+        <if test="dto.status != null">
+            AND status = #{dto.status}
+        </if>
+        GROUP BY time_period
+        ORDER BY time_period ASC
+
+    </select>
+
+    <!--  获取联合营销商家分润排名  -->
+    <select id="getMerchantProfitRanking"
+            parameterType="cn.joywon.poco.merchant.ReportModule.dto.JointMarketingProfitRankDTO"
+            resultType="cn.joywon.poco.merchant.ReportModule.vo.JointMarketingMerchantProfitRankVO">
+
+        WITH merchant_profit AS (
+        SELECT
+        m.id as merchantId,
+        m.name AS merchantName,
+        m.logo_url AS merchantLogo,
+        m.industry_id,
+        m.region_code,
+        -- 总收益 = 接收总额 - 支付总额
+        SUM(IF(jmrr.payee_merchant_id = m.id, jmrr.amount, 0)) -
+        SUM(IF(jmrr.payer_merchant_id = m.id, jmrr.amount, 0)) as total_profit,
+        -- 支付总额
+        SUM(IF(jmrr.payer_merchant_id = m.id, jmrr.amount, 0)) as total_payout,
+        -- 接收总额
+        SUM(IF(jmrr.payee_merchant_id = m.id, jmrr.amount, 0)) as total_receive,
+        -- 交易次数
+        COUNT(jmrr.id) as transaction_count,
+        -- 成功率
+        ROUND(SUM(IF(jmrr.status = 'SUCCESS', 1, 0)) * 100.0 / COUNT(jmrr.id), 2) as success_rate,
+        -- 平均交易金额
+        ROUND(AVG(jmrr.amount), 2) as avg_amount
+        FROM merchant m
+        LEFT JOIN joint_marketing_rebate_record jmrr ON
+        (jmrr.payer_merchant_id = m.id OR jmrr.payee_merchant_id = m.id)
+        AND jmrr.created_time BETWEEN #{dto.startDate} AND #{dto.endDate}
+        AND jmrr.status = 'SUCCESS'
+        <if test="dto.planId != null">
+            AND jmrr.plan_id = #{dto.planId}
+        </if>
+        WHERE m.status = 'OPERATING'
+        <if test="dto.industryId != null">
+            AND m.industry_id = #{dto.industryId}
+        </if>
+        <if test="dto.region != null">
+            AND JSON_OVERLAPS(m.region_code -> '$[*]', CAST(#{dto.region} AS JSON))
+        </if>
+        GROUP BY merchantId, merchantName, industry_id
+        )
+        SELECT
+        merchantId,
+        merchantName,
+        merchantLogo,
+        total_profit,
+        total_payout,
+        total_receive,
+        transaction_count,
+        success_rate,
+        avg_amount
+        FROM merchant_profit
+        WHERE 1=1
+        <choose>
+            <when test="dto.includeZeroProfit">
+                <!-- 包含零收益商家 -->
+            </when>
+            <otherwise>
+                AND total_profit > 0
+            </otherwise>
+        </choose>
+        ORDER BY total_profit DESC
+        <if test="dto.limit != null">
+            LIMIT #{dto.limit}
+        </if>
+
+    </select>
+
+</mapper>

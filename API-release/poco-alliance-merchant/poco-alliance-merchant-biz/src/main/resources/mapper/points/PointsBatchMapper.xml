@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.PointsModule.mapper.PointsBatchMapper">
+
+    <!--  查找过期的积分批次
+          List<PointsBatchBO> selectExpiredBatchesForUpdate(Long ownerId, String ownerType)  -->
+    <select id="selectExpiredBatchesForUpdate"
+            resultType="cn.joywon.poco.merchant.PointsModule.bo.PointsBatchBO">
+
+        SELECT id AS batchId,
+               remaining_points,
+               batch_detail,
+               created_time
+
+        FROM points_batch
+
+        WHERE owner_id = #{ownerId}
+          AND owner_type = #{ownerType}
+          AND first_expire_date &lt; NOW()
+          AND remaining_points &gt; 0
+          AND EXISTS(SELECT 1
+                     FROM JSON_TABLE(batch_detail, '$[*]' COLUMNS (
+                         expire_date DATE PATH '$.expire_date',
+                         remaining INT UNSIGNED PATH '$.remaining'
+                         )) AS bd
+                     WHERE bd.expire_date &lt; NOW()
+                       AND bd.remaining &gt; 0)
+
+        ORDER BY first_expire_date
+            FOR
+        UPDATE
+
+    </select>
+
+
+    <!--  查询FIFO可用积分批次
+          List<PointsBatchBO> selectFIFOBatches(Long ownerId, String ownerType, int dedPoints)  -->
+    <select id="selectFIFOBatches"
+            resultType="cn.joywon.poco.merchant.PointsModule.bo.PointsBatchBO">
+
+        SELECT id               AS batchId,
+               remaining_points AS remainingPoints,
+               batch_detail     AS batchDetail,
+               used_points      AS usedPoints,
+               created_time     AS createdTime,
+               cumulative_remain
+
+        FROM (SELECT id,
+                     remaining_points,
+                     batch_detail,
+                     used_points,
+                     created_time,
+                     SUM(remaining_points) OVER (ORDER BY created_time) AS cumulative_remain
+
+              FROM points_batch
+
+              WHERE owner_id = #{ownerId}
+                AND owner_type = #{ownerType}
+                AND first_expire_date &gt; NOW()
+                AND remaining_points &gt; 0) AS t
+
+        WHERE t.cumulative_remain &lt; (SELECT MIN(cumulative_remain)
+                                        FROM (SELECT SUM(remaining_points) OVER (ORDER BY created_time) AS cumulative_remain
+                                              FROM points_batch
+                                              WHERE owner_id = #{ownerId}
+                                                AND owner_type = #{ownerType}
+                                                AND first_expire_date &gt; NOW()
+                                                AND remaining_points &gt; 0) AS t2
+                                        WHERE t2.cumulative_remain &gt;= #{dedPoints})
+
+        ORDER BY created_time
+            FOR
+        UPDATE
+
+    </select>
+
+
+    <!--  获取指定时间范围内到期的积分数量
+          Integer getNearExpiryTotalPoints(Long ownerId, String ownerType, LocalDateTime startDate, LocalDateTime endDate)  -->
+    <select id="getNearExpiryTotalPoints" resultType="java.lang.Integer">
+
+        SELECT COALESCE(SUM(bd.remaining), 0)
+
+        FROM points_batch AS pb,
+             JSON_TABLE(
+                     pb.batch_detail,
+                     '$[*]' COLUMNS (
+                         expire_date DATE PATH '$.expire_date',
+                         remaining INT UNSIGNED PATH '$.remaining'
+                         )
+             ) AS bd
+
+        WHERE pb.is_deleted = 0
+          AND pb.remaining_points &gt; 0
+          AND pb.owner_id = #{ownerId}
+          AND pb.owner_type = #{ownerType}
+          AND pb.first_expire_date BETWEEN #{startTime} AND #{endTime}
+          AND bd.remaining &gt; 0
+          AND bd.expire_date BETWEEN #{startTime} AND #{endTime}
+
+    </select>
+
+
+</mapper>

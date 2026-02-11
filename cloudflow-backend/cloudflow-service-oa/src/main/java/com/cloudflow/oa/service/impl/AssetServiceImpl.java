@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import cn.hutool.extra.qrcode.QrCodeUtil;
 import cn.hutool.extra.qrcode.QrConfig;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.utils.SecurityUtils;
@@ -16,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.OutputStream;
-import java.util.Date;
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -32,13 +35,11 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
             throw new ServiceException("资产不存在");
         }
         
-        // 二维码内容：JSON格式或URL
-        // 这里使用简单的JSON格式，包含关键信息
+        // 二维码内容：JSON格式，包含关键信息
         String content = String.format("{\"id\":%d,\"code\":\"%s\",\"name\":\"%s\"}", 
             asset.getAssetId(), asset.getAssetCode(), asset.getName());
             
         QrConfig config = new QrConfig(300, 300);
-        // 设置边距，既白边
         config.setMargin(2);
         QrCodeUtil.generate(content, config, "png", outputStream);
     }
@@ -51,7 +52,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
             throw new ServiceException("资产不存在");
         }
         if (!"1".equals(asset.getStatus())) {
-            throw new ServiceException("该资产当前不可领用");
+            throw new ServiceException("该资产当前不可领用，当前状态不是闲置");
         }
         
         asset.setStatus("2"); // 在用
@@ -59,22 +60,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
         updateById(asset);
         
         // 记录资产领用日志
-        try {
-            SysAssetLog assetLog = new SysAssetLog();
-            assetLog.setRefId(assetId);
-            assetLog.setRefType("1"); // 1:固定资产
-            assetLog.setType("领用");
-            assetLog.setQuantityChange(0); // 固定资产数量不变
-            assetLog.setOperatorId(SecurityUtils.getUserId());
-            assetLog.setTargetId(userId);
-            assetLog.setRemark("资产领用：" + asset.getName());
-            assetLog.setCreateTime(new Date());
-            assetLogMapper.insert(assetLog);
-            log.debug("资产领用日志记录成功，资产ID: {}, 领用人ID: {}", assetId, userId);
-        } catch (Exception e) {
-            log.error("记录资产领用日志失败", e);
-            // 日志记录失败不影响主流程
-        }
+        saveAssetLog(assetId, "领用", userId, "资产领用：" + asset.getName());
     }
 
     @Override
@@ -84,6 +70,9 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
         if (asset == null) {
             throw new ServiceException("资产不存在");
         }
+        if (!"2".equals(asset.getStatus())) {
+            throw new ServiceException("该资产当前不在使用中，无法归还");
+        }
         
         Long previousOwnerId = asset.getOwnerId();
         
@@ -92,20 +81,128 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
         updateById(asset);
         
         // 记录资产归还日志
+        saveAssetLog(assetId, "归还", previousOwnerId, "资产归还：" + asset.getName());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void repairAsset(Long assetId, String remark) {
+        SysAsset asset = getById(assetId);
+        if (asset == null) {
+            throw new ServiceException("资产不存在");
+        }
+        if ("4".equals(asset.getStatus())) {
+            throw new ServiceException("已报废的资产不能送修");
+        }
+        
+        String previousStatus = asset.getStatus();
+        asset.setStatus("3"); // 维修
+        updateById(asset);
+        
+        // 记录送修日志
+        String logRemark = "资产送修：" + asset.getName();
+        if (remark != null && !remark.isEmpty()) {
+            logRemark += "，原因：" + remark;
+        }
+        saveAssetLog(assetId, "送修", asset.getOwnerId(), logRemark);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void scrapAsset(Long assetId, String remark) {
+        SysAsset asset = getById(assetId);
+        if (asset == null) {
+            throw new ServiceException("资产不存在");
+        }
+        if ("4".equals(asset.getStatus())) {
+            throw new ServiceException("该资产已经报废");
+        }
+        
+        asset.setStatus("4"); // 报废
+        asset.setOwnerId(null);
+        updateById(asset);
+        
+        // 记录报废日志
+        String logRemark = "资产报废：" + asset.getName();
+        if (remark != null && !remark.isEmpty()) {
+            logRemark += "，原因：" + remark;
+        }
+        saveAssetLog(assetId, "报废", null, logRemark);
+    }
+
+    @Override
+    public Map<String, Object> getStatistics() {
+        List<SysAsset> allAssets = list();
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 总数
+        stats.put("total", allAssets.size());
+        
+        // 按状态统计数量
+        Map<String, Long> statusCount = new HashMap<>();
+        statusCount.put("idle", allAssets.stream().filter(a -> "1".equals(a.getStatus())).count());      // 闲置
+        statusCount.put("inUse", allAssets.stream().filter(a -> "2".equals(a.getStatus())).count());     // 在用
+        statusCount.put("repair", allAssets.stream().filter(a -> "3".equals(a.getStatus())).count());    // 维修
+        statusCount.put("scrapped", allAssets.stream().filter(a -> "4".equals(a.getStatus())).count());  // 报废
+        stats.put("statusCount", statusCount);
+        
+        // 按分类统计数量
+        Map<String, Long> categoryCount = allAssets.stream()
+            .filter(a -> a.getCategory() != null && !a.getCategory().isEmpty())
+            .collect(Collectors.groupingBy(SysAsset::getCategory, Collectors.counting()));
+        stats.put("categoryCount", categoryCount);
+        
+        // 总价值（排除报废资产）
+        BigDecimal totalValue = allAssets.stream()
+            .filter(a -> !"4".equals(a.getStatus()) && a.getPrice() != null)
+            .map(SysAsset::getPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        stats.put("totalValue", totalValue);
+        
+        // 按分类统计价值
+        Map<String, BigDecimal> categoryValue = allAssets.stream()
+            .filter(a -> a.getCategory() != null && !a.getCategory().isEmpty() && a.getPrice() != null)
+            .collect(Collectors.groupingBy(
+                SysAsset::getCategory,
+                Collectors.reducing(BigDecimal.ZERO, SysAsset::getPrice, BigDecimal::add)
+            ));
+        stats.put("categoryValue", categoryValue);
+        
+        return stats;
+    }
+
+    @Override
+    public List<String> getAllCategories() {
+        // 查询所有不重复的分类
+        List<SysAsset> assets = list(new LambdaQueryWrapper<SysAsset>()
+            .select(SysAsset::getCategory)
+            .isNotNull(SysAsset::getCategory)
+            .ne(SysAsset::getCategory, "")
+            .groupBy(SysAsset::getCategory));
+        return assets.stream()
+            .map(SysAsset::getCategory)
+            .distinct()
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * 统一记录资产变动日志
+     */
+    private void saveAssetLog(Long assetId, String type, Long targetId, String remark) {
         try {
             SysAssetLog assetLog = new SysAssetLog();
             assetLog.setRefId(assetId);
             assetLog.setRefType("1"); // 1:固定资产
-            assetLog.setType("归还");
+            assetLog.setType(type);
             assetLog.setQuantityChange(0); // 固定资产数量不变
             assetLog.setOperatorId(SecurityUtils.getUserId());
-            assetLog.setTargetId(previousOwnerId);
-            assetLog.setRemark("资产归还：" + asset.getName());
+            assetLog.setTargetId(targetId);
+            assetLog.setRemark(remark);
             assetLog.setCreateTime(new Date());
             assetLogMapper.insert(assetLog);
-            log.debug("资产归还日志记录成功，资产ID: {}, 归还人ID: {}", assetId, previousOwnerId);
+            log.debug("资产{}日志记录成功，资产ID: {}", type, assetId);
         } catch (Exception e) {
-            log.error("记录资产归还日志失败", e);
+            log.error("记录资产{}日志失败", type, e);
             // 日志记录失败不影响主流程
         }
     }

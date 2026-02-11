@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.merchant.OrderModule.mapper.OrderMapper">
+
+    <resultMap id="orderListVOMap" type="cn.joywon.poco.merchant.OrderModule.vo.OrderListVO">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="storeId" column="store_id"/>
+        <result property="storeName" column="store_name"/>
+        <result property="status" column="status_code"/>
+        <result property="orderAmount" column="total_product_price"/>
+        <result property="discountAmount" column="total_discount_amount"/>
+        <result property="payAmount" column="final_paid_price"/>
+        <result property="payMethod" column="pay_method"/>
+        <result property="payMethodDesc" column="payment_method_description"/>
+        <result property="payTime" column="payment_time"/>
+        <result property="fulfillmentMode" column="fulfillment_mode"/>
+        <result property="fulfillmentModeDesc" column="fulfillment_mode_description"/>
+        <result property="verifyCode" column="verification_code"/>
+        <result property="verifyTime" column="completion_time"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="created_time"/>
+        <result property="updateTime" column="updated_time"/>
+    </resultMap>
+
+    <resultMap id="orderDetailVOMap" type="cn.joywon.poco.merchant.OrderModule.vo.OrderDetailVO">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="storeId" column="store_id"/>
+        <result property="storeName" column="store_name"/>
+        <result property="status" column="status_code"/>
+        <result property="statusDesc" column="status_description"/>
+        <result property="orderAmount" column="total_product_price"/>
+        <result property="discountAmount" column="total_discount_amount"/>
+        <result property="payAmount" column="final_paid_price"/>
+        <result property="payMethod" column="pay_method"/>
+        <result property="payMethodDesc" column="payment_method_description"/>
+        <result property="payTime" column="payment_time"/>
+        <result property="fulfillmentMode" column="fulfillment_mode"/>
+        <result property="fulfillmentModeDesc" column="fulfillment_mode_description"/>
+        <result property="verifyCode" column="verification_code"/>
+        <result property="verifyTime" column="completion_time"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="created_time"/>
+        <result property="updateTime" column="updated_time"/>
+    </resultMap>
+
+
+    <select id="getOrderListPageByDTO" resultMap="orderListVOMap">
+        SELECT 
+            o.id,
+            o.order_no,
+            o.user_id,
+            o.store_id,
+            o.merchant_id,
+            s.name as store_name,
+            o.status as status_code,
+            o.remark,
+            o.total_product_price,
+            o.total_discount_amount,
+            o.final_paid_price,
+            CASE
+                WHEN (SELECT COUNT(1) FROM order_address_snapshots oas WHERE oas.order_id = o.id AND oas.detail_address IS NOT NULL AND oas.detail_address != '' AND oas.is_deleted = 0) > 0 THEN 'LOCAL_DELIVERY'
+                ELSE 'IN_STORE'
+            END as fulfillment_mode,
+            CASE
+                WHEN (SELECT COUNT(1) FROM order_address_snapshots oas WHERE oas.order_id = o.id AND oas.detail_address IS NOT NULL AND oas.detail_address != '' AND oas.is_deleted = 0) > 0 THEN '本地配送'
+                ELSE '到店核销'
+            END as fulfillment_mode_description,
+            CASE
+                WHEN o.payment_method = 'WECHAT_PAY' THEN 1
+                WHEN o.payment_method = 'ALIPAY' THEN 2
+                WHEN o.payment_method = 'BANK_CARD' THEN 3
+            END as pay_method,
+            CASE
+                WHEN o.payment_method = 'WECHAT_PAY' THEN '微信支付'
+                WHEN o.payment_method = 'ALIPAY' THEN '支付宝'
+                WHEN o.payment_method = 'BANK_CARD' THEN '银行卡'
+                ELSE '其他'
+            END as payment_method_description,
+            o.payment_time,
+            o.verification_code,
+            o.created_by,
+            o.completion_time,
+            o.created_time,
+            o.updated_time
+        FROM orders o
+        LEFT JOIN stores s ON o.store_id = s.id
+        WHERE o.is_deleted = 0
+        <if test="q.status != null and q.status != ''">
+            AND o.status = #{q.status}
+        </if>
+        <if test="q.storeId != null and q.storeId > 0">
+            AND o.store_id = #{q.storeId}
+        </if>
+        <if test="q.userId != null and q.userId > 0">
+            AND o.user_id = #{q.userId}
+        </if>
+        <if test="q.orderNo != null and q.orderNo != ''">
+            AND o.order_no = #{q.orderNo}
+        </if>
+        <if test="q.createdStart != null">
+            AND o.created_time &gt;= #{q.createdStart}
+        </if>
+        <if test="q.createdEnd != null">
+            AND o.created_time &lt;= #{q.createdEnd}
+        </if>
+        ORDER BY o.created_time DESC
+    </select>
+
+    <select id="countOrderListByDTO" resultType="long">
+        SELECT
+            o.user_id,
+            o.store_id,
+            o.created_by,
+            o.merchant_id
+        FROM orders o
+        WHERE o.is_deleted = 0
+        <if test="q.status != null and q.status != ''">
+            AND o.status = #{q.status}
+        </if>
+        <if test="q.storeId != null and q.storeId > 0">
+            AND o.store_id = #{q.storeId}
+        </if>
+        <if test="q.userId != null and q.userId > 0">
+            AND o.user_id = #{q.userId}
+        </if>
+        <if test="q.orderNo != null and q.orderNo != ''">
+            AND o.order_no = #{q.orderNo}
+        </if>
+        <if test="q.createdStart != null">
+            AND o.created_time &gt;= #{q.createdStart}
+        </if>
+        <if test="q.createdEnd != null">
+            AND o.created_time &lt;= #{q.createdEnd}
+        </if>
+    </select>
+
+
+    <!-- 根据ID查询订单详情 -->
+    <select id="getOrderDetailById" resultMap="orderDetailVOMap">
+        SELECT
+        o.id,
+        o.order_no,
+        o.user_id,
+        o.store_id,
+        o.merchant_id,
+        s.name as store_name,
+        o.status as status_code,
+        CASE
+        WHEN o.status = 'PENDING_PAYMENT' THEN '待支付'
+        WHEN o.status = 'PAID' THEN '已支付'
+        WHEN o.status = 'PENDING_VERIFICATION' THEN '待核销'
+        WHEN o.status = 'COMPLETED' THEN '已完成'
+        WHEN o.status = 'CANCELLED' THEN '已取消'
+        WHEN o.status = 'REFUNDING' THEN '退款中'
+        WHEN o.status = 'REFUNDED' THEN '已退款'
+        ELSE '未知状态'
+        END as status_description,
+        o.remark,
+        o.total_product_price,
+        o.total_discount_amount,
+        o.final_paid_price,
+        CASE
+            WHEN (SELECT COUNT(1) FROM order_address_snapshots oas WHERE oas.order_id = o.id AND oas.detail_address IS NOT NULL AND oas.detail_address != '' AND oas.is_deleted = 0) > 0 THEN 'LOCAL_DELIVERY'
+            ELSE 'IN_STORE'
+        END as fulfillment_mode,
+        CASE
+            WHEN (SELECT COUNT(1) FROM order_address_snapshots oas WHERE oas.order_id = o.id AND oas.detail_address IS NOT NULL AND oas.detail_address != '' AND oas.is_deleted = 0) > 0 THEN '本地配送'
+            ELSE '到店核销'
+        END as fulfillment_mode_description,
+        CASE
+        WHEN o.payment_method = 'WECHAT_PAY' THEN 1
+        WHEN o.payment_method = 'ALIPAY' THEN 2
+        WHEN o.payment_method = 'BANK_CARD' THEN 3
+        END as pay_method,
+        CASE
+        WHEN o.payment_method = 'WECHAT_PAY' THEN '微信支付'
+        WHEN o.payment_method = 'ALIPAY' THEN '支付宝'
+        WHEN o.payment_method = 'BANK_CARD' THEN '银行卡'
+        ELSE '其他'
+        END as payment_method_description,
+        o.payment_time,
+        o.verification_code,
+        o.completion_time,
+        o.created_time,
+        o.updated_time
+        FROM orders o
+        LEFT JOIN stores s ON o.store_id = s.id
+        WHERE o.id = #{orderId} AND o.is_deleted = 0
+    </select>
+
+    <!-- 根据订单号查询订单 -->
+    <select id="getOrderByOrderNo" resultType="cn.joywon.poco.merchant.OrderModule.entity.Order">
+        SELECT 
+            id,
+            order_no,
+            user_id,
+            store_id,
+            status,
+            remark,
+            total_product_price,
+            total_discount_amount,
+            final_paid_price,
+            payment_method,
+            payment_time,
+            completion_time,
+            cancel_time,
+            cancel_reason,
+            expire_time,
+            verification_code,
+            created_by,
+            created_time,
+            updated_by,
+            updated_time,
+            is_deleted,
+            deleted_time
+        FROM orders 
+        WHERE order_no = #{orderNo} AND is_deleted = 0
+    </select>
+
+    <!-- 批量更新订单状态 -->
+    <update id="batchUpdateOrderStatus">
+        UPDATE orders 
+        SET status = #{status}, updated_by = #{updateBy}, updated_time = NOW()
+        WHERE id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+        AND is_deleted = 0
+    </update>
+
+    <!-- ==================== 报表聚合查询SQL ==================== -->
+
+    <!-- 聚合门店经营日报数据 -->
+    <select id="aggregateStoreDailyStats" resultType="cn.joywon.poco.merchant.ReportModule.dto.StoreDailyStatsAggDTO">
+        SELECT 
+            o.store_id AS storeId,
+            o.merchant_id AS merchantId,
+            s.name AS storeName,
+            COUNT(*) AS totalOrderCount,
+            COUNT(CASE WHEN o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED') THEN 1 END) AS paidOrderCount,
+            COALESCE(SUM(o.total_product_price), 0) AS totalSalesAmount,
+            COALESCE(SUM(o.final_paid_price), 0) AS realPayAmount,
+            COUNT(CASE WHEN o.status IN ('REFUNDING', 'REFUNDED', 'CANCELLED') THEN 1 END) AS refundOrderCount,
+            COALESCE(SUM(CASE WHEN o.status = 'REFUNDED' THEN o.final_paid_price ELSE 0 END), 0) AS refundAmount
+        FROM orders o
+        LEFT JOIN stores s ON o.store_id = s.id
+        WHERE DATE(o.created_time) = #{statDate}
+          AND o.is_deleted = 0
+        GROUP BY o.store_id, o.merchant_id, s.name
+    </select>
+
+    <!-- 聚合商品销售日报数据 -->
+    <select id="aggregateGoodsSalesDaily" resultType="cn.joywon.poco.merchant.ReportModule.dto.GoodsSalesAggDTO">
+        SELECT 
+            oi.product_sku_id AS productSkuId,
+            oi.product_id AS productId,
+            oi.product_name AS productName,
+            oi.sku_name AS skuName,
+            o.store_id AS storeId,
+            o.merchant_id AS merchantId,
+            SUM(oi.quantity) AS salesQuantity,
+            SUM(oi.final_price) AS salesAmount
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        WHERE DATE(o.created_time) = #{statDate}
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+          AND oi.is_deleted = 0
+        GROUP BY oi.product_sku_id, oi.product_id, oi.product_name, oi.sku_name, o.store_id, o.merchant_id
+        ORDER BY salesAmount DESC
+    </select>
+
+    <!-- 聚合分类销售汇总数据 -->
+    <select id="aggregateCategorySalesSummary" resultType="cn.joywon.poco.merchant.ReportModule.dto.CategorySalesAggDTO">
+        SELECT 
+            p.category_id AS categoryId,
+            pc.name AS categoryName,
+            o.store_id AS storeId,
+            o.merchant_id AS merchantId,
+            SUM(oi.quantity) AS salesQuantity,
+            SUM(oi.final_price) AS salesAmount
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        INNER JOIN products p ON oi.product_id = p.id
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
+        WHERE DATE(o.created_time) = #{statDate}
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+          AND oi.is_deleted = 0
+        GROUP BY p.category_id, pc.name, o.store_id, o.merchant_id
+    </select>
+
+    <!-- 聚合时段销售趋势数据 -->
+    <select id="aggregateHourlySales" resultType="cn.joywon.poco.merchant.ReportModule.dto.HourlySalesAggDTO">
+        SELECT 
+            o.merchant_id AS merchantId,
+            o.store_id AS storeId,
+            HOUR(o.created_time) AS hourOfDay,
+            COUNT(*) AS orderCount,
+            SUM(o.final_paid_price) AS salesAmount,
+            AVG(o.final_paid_price) AS avgOrderValue
+        FROM orders o
+        WHERE DATE(o.created_time) = #{statDate}
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+        GROUP BY o.merchant_id, o.store_id, HOUR(o.created_time)
+        ORDER BY o.store_id, hourOfDay
+    </select>
+
+    <!-- 聚合用户消费分析数据 -->
+    <select id="aggregateUserConsumption" resultType="cn.joywon.poco.merchant.ReportModule.dto.UserConsumptionAggDTO">
+        SELECT 
+            o.merchant_id AS merchantId,
+            o.store_id AS storeId,
+            COUNT(DISTINCT CASE 
+                WHEN NOT EXISTS (
+                    SELECT 1 FROM orders o2 
+                    WHERE o2.user_id = o.user_id 
+                    AND o2.created_time &lt; o.created_time
+                    AND o2.is_deleted = 0
+                    AND o2.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+                ) THEN o.user_id 
+            END) AS newUserCount,
+            COUNT(DISTINCT o.user_id) AS activeUserCount,
+            COUNT(DISTINCT CASE WHEN o.final_paid_price &lt;= 50 THEN o.user_id END) AS amount0To50,
+            COUNT(DISTINCT CASE WHEN o.final_paid_price &gt; 50 AND o.final_paid_price &lt;= 100 THEN o.user_id END) AS amount50To100,
+            COUNT(DISTINCT CASE WHEN o.final_paid_price &gt; 100 AND o.final_paid_price &lt;= 200 THEN o.user_id END) AS amount100To200,
+            COUNT(DISTINCT CASE WHEN o.final_paid_price &gt; 200 THEN o.user_id END) AS amount200Plus
+        FROM orders o
+        WHERE DATE(o.created_time) = #{statDate}
+          AND o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.is_deleted = 0
+        GROUP BY o.merchant_id, o.store_id
+    </select>
+
+</mapper>

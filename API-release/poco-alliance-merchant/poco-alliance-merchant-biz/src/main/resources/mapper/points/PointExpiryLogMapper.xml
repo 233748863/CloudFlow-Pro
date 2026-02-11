@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.PointsModule.mapper.PointExpiryLogMapper">
+
+
+    <!--  获取指定时间范围内过期的积分数量
+          Integer getExpiredPointsTotal(Long ownerId, String ownerType, LocalDateTime startTime, LocalDateTime endTime)  -->
+    <select id="getExpiredPointsTotal" resultType="java.lang.Integer">
+
+        SELECT SUM(expiry_points)
+        FROM points_expiry_logs
+        WHERE is_deleted = 0
+          AND owner_id = #{ownerId}
+          AND owner_type = #{ownerType}
+          AND expiry_date BETWEEN #{startTime} AND #{endTime}
+
+    </select>
+
+
+</mapper>

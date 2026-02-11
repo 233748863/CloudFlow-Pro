@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.merchant.OrderModule.mapper.OrderDeliveryRecordMapper">
+
+    <resultMap id="orderDeliveryRecordVOMap" type="cn.joywon.poco.merchant.OrderModule.vo.OrderDeliveryRecordVO">
+        <id property="id" column="id"/>
+        <result property="channel" column="channel"/>
+        <result property="provider" column="provider"/>
+        <result property="trackingNo" column="tracking_no"/>
+        <result property="status" column="status"/>
+        <result property="deliveryPersonName" column="delivery_person_name"/>
+        <result property="deliveryPersonPhone" column="delivery_person_phone"/>
+        <result property="estimatePickTime" column="estimate_pick_time"/>
+        <result property="estimateArrivalTime" column="estimate_arrival_time"/>
+        <result property="actualPickTime" column="actual_pick_time"/>
+        <result property="deliveredTime" column="delivered_time"/>
+        <result property="remark" column="remark"/>
+        <result property="statusDesc" column="status_desc"/>
+    </resultMap>
+
+    <!-- 根据订单ID查询最新配送记录 -->
+    <select id="getLatestDeliveryRecordByOrderId" resultMap="orderDeliveryRecordVOMap">
+        SELECT 
+            id,
+            channel,
+            provider,
+            tracking_no,
+            status,
+            delivery_person_name,
+            delivery_person_phone,
+            estimate_pick_time,
+            estimate_arrival_time,
+            actual_pick_time,
+            delivered_time,
+            remark,
+            CASE 
+                WHEN status = 'CREATED' THEN '待配送创建'
+                WHEN status = 'ASSIGNED' THEN '已分配'
+                WHEN status = 'PICKED' THEN '已取件'
+                WHEN status = 'DELIVERING' THEN '配送中'
+                WHEN status = 'DELIVERED' THEN '已送达'
+                WHEN status = 'FAILED' THEN '配送失败'
+                WHEN status = 'CANCELLED' THEN '已取消'
+                ELSE '未知状态'
+            END AS status_desc
+        FROM order_delivery_records
+        WHERE order_id = #{orderId} AND is_deleted = 0
+        ORDER BY created_time DESC
+        LIMIT 1
+    </select>
+
+</mapper>

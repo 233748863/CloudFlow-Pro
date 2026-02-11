@@ -50,19 +50,39 @@ export const mapBackendInstanceToTask = (inst: any): Task => ({
 
 import { UnifiedTask, WorkTask, WorkTaskStatus } from '../types';
 
-export const mapTaskToUnified = (t: Task): UnifiedTask => ({
-    id: t.id,
-    title: `${t.workflowName} - ${t.nodeName}`,
-    type: 'PROCESS',
-    status: t.status,
-    statusLabel: t.status === 'PENDING' ? '待处理' : '已完成', 
-    priority: 1, // Default Medium
-    assigneeId: t.assigneeId,
-    assigneeName: t.assigneeName,
-    dueDate: t.dueDate,
-    createdTime: t.createdTime,
-    sourceData: t
-});
+export const mapTaskToUnified = (t: Task): UnifiedTask => {
+    // 将流程任务状态映射到工作任务状态，以便在看板视图中正确显示
+    let mappedStatus: string;
+    let statusLabel: string;
+    
+    if (t.status === TaskStatus.PENDING) {
+        mappedStatus = WorkTaskStatus.TODO;
+        statusLabel = '待处理';
+    } else if (t.status === TaskStatus.APPROVED) {
+        mappedStatus = WorkTaskStatus.DONE;
+        statusLabel = '已完成';
+    } else if (t.status === TaskStatus.REJECTED) {
+        mappedStatus = WorkTaskStatus.DONE;
+        statusLabel = '已拒绝';
+    } else {
+        mappedStatus = WorkTaskStatus.TODO;
+        statusLabel = '待处理';
+    }
+    
+    return {
+        id: t.id,
+        title: `${t.workflowName} - ${t.nodeName}`,
+        type: 'PROCESS',
+        status: mappedStatus,
+        statusLabel,
+        priority: 1, // Default Medium
+        assigneeId: t.assigneeId,
+        assigneeName: t.assigneeName,
+        dueDate: t.dueDate,
+        createdTime: t.createdTime,
+        sourceData: t
+    };
+};
 
 export const mapWorkTaskToUnified = (t: WorkTask): UnifiedTask => ({
     id: t.taskId,

@@ -45,17 +45,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = async (token: string) => {
+    // 先保存 token
     localStorage.setItem('token', token);
-    const userInfo = await getInfo();
-    if (userInfo) {
-      setUser({
-        id: String(userInfo.userId),
-        name: userInfo.nickName || userInfo.userName,
-        email: userInfo.email || '',
-        role: userInfo.role,
-        status: 'ACTIVE',
-        avatar: userInfo.avatar
-      });
+    
+    try {
+      // 调用 getInfo 获取用户信息
+      const userInfo = await getInfo();
+      if (userInfo) {
+        setUser({
+          id: String(userInfo.userId),
+          name: userInfo.nickName || userInfo.userName,
+          email: userInfo.email || '',
+          role: userInfo.role,
+          status: 'ACTIVE',
+          avatar: userInfo.avatar
+        });
+      }
+    } catch (error) {
+      // 如果获取用户信息失败，清除 token
+      logger.error('获取用户信息失败:', error);
+      localStorage.removeItem('token');
+      throw error;
     }
   };
 

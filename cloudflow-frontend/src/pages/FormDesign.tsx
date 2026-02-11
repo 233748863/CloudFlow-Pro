@@ -8,12 +8,15 @@ import { SkeletonForm } from '../components/ui/Skeleton';
 import { EmptyForms, EmptyError } from '../components/ui/EmptyState';
 import { toast } from 'sonner';
 import { logForm } from '../lib/logger';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, GitMerge, Rocket } from 'lucide-react';
 
 export const FormDesign = () => {
   const [forms, setForms] = useState<FormDefinition[]>([]);
   const [selectedForm, setSelectedForm] = useState<FormDefinition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const loadForms = async () => {
     try {
@@ -23,11 +26,30 @@ export const FormDesign = () => {
       const formList = await getFormDefinitions();
       
       if (Array.isArray(formList)) {
-        const mapped = formList.map((f: any) => ({
-          id: f.id || f.formId,
-          name: f.name || f.formName,
-          fields: typeof f.fieldsJson === 'string' ? JSON.parse(f.fieldsJson) : (f.fields || f.fieldsJson || [])
-        }));
+        const mapped = formList.map((f: any) => {
+          let fields = f.fields || [];
+          if (typeof f.fieldsJson === 'string') {
+            try {
+              fields = JSON.parse(f.fieldsJson);
+            } catch (parseErr) {
+              // 尝试修复常见的非法转义字符（如 \d, \w 等正则表达式字符）
+              try {
+                const sanitized = f.fieldsJson.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
+                fields = JSON.parse(sanitized);
+              } catch {
+                logForm.warn(`表单 ${f.formId || f.id} 的 fieldsJson 解析失败，使用空字段`, parseErr);
+                fields = [];
+              }
+            }
+          } else if (f.fieldsJson) {
+            fields = f.fieldsJson;
+          }
+          return {
+            id: f.id || f.formId,
+            name: f.name || f.formName,
+            fields
+          };
+        });
         setForms(mapped);
         
         // 默认选择第一个表单，如果没有则创建新表单
@@ -177,6 +199,27 @@ export const FormDesign = () => {
               </button>
             ))
           )}
+        </div>
+
+        {/* 使用引导 */}
+        <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
+          <p className="text-xs text-slate-400 font-medium">下一步</p>
+          <button
+            onClick={() => navigate('/workflow')}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-left"
+          >
+            <GitMerge size={14} />
+            <span className="flex-1">绑定到流程</span>
+            <ArrowRight size={12} />
+          </button>
+          <button
+            onClick={() => navigate('/workplace')}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors text-left"
+          >
+            <Rocket size={14} />
+            <span className="flex-1">发起流程</span>
+            <ArrowRight size={12} />
+          </button>
         </div>
       </div>
 

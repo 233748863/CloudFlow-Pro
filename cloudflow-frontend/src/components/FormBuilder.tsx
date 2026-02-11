@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { FormDefinition, FormField, FormFieldType } from '../types';
-import { Plus, Trash2, GripVertical, Type, Hash, Calendar, List, AlignLeft, Save, AlertCircle, Code, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Type, Hash, Calendar, List, AlignLeft, Save, AlertCircle, Code, X, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -198,6 +198,122 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
   );
 };
 
+// 表单预览填写组件（内联）
+const FormPreview: React.FC<{
+  formName: string;
+  fields: FormField[];
+  onSubmit: (data: Record<string, any>) => void;
+  onCancel: () => void;
+}> = ({ formName, fields, onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleChange = (id: string, value: any) => {
+    setFormData(prev => ({ ...prev, [id]: value }));
+    if (errors[id]) setErrors(prev => ({ ...prev, [id]: '' }));
+  };
+
+  const handleSubmit = () => {
+    const newErrors: Record<string, string> = {};
+    let isValid = true;
+
+    fields.forEach(field => {
+      const val = formData[field.id];
+      if (field.required && (!val || String(val).trim() === '')) {
+        newErrors[field.id] = '此项必填';
+        isValid = false;
+      } else if (val && field.regex) {
+        try {
+          if (!new RegExp(field.regex).test(String(val))) {
+            newErrors[field.id] = field.errorMsg || '格式不正确';
+            isValid = false;
+          }
+        } catch { /* 正则无效时跳过 */ }
+      }
+    });
+
+    if (isValid) {
+      onSubmit(formData);
+    } else {
+      setErrors(newErrors);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-blue-50 flex justify-between items-center">
+        <div>
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <Eye size={18} className="text-indigo-600" />
+            预览: {formName}
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">模拟用户填写体验，提交不会保存数据</p>
+        </div>
+        <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+          <X size={20} />
+        </button>
+      </div>
+      <div className="p-8 space-y-6 max-h-[55vh] overflow-y-auto">
+        {fields.map(field => (
+          <div key={field.id} className="space-y-1">
+            <label className="block text-sm font-bold text-slate-700">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            {field.type === 'TEXTAREA' ? (
+              <textarea
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${
+                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                }`}
+                rows={3}
+                placeholder={`请输入${field.label}`}
+                value={formData[field.id] || ''}
+                onChange={e => handleChange(field.id, e.target.value)}
+              />
+            ) : field.type === 'SELECT' ? (
+              <select
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white ${
+                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                }`}
+                value={formData[field.id] || ''}
+                onChange={e => handleChange(field.id, e.target.value)}
+              >
+                <option value="" disabled>请选择</option>
+                {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            ) : (
+              <input
+                type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${
+                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                }`}
+                placeholder={`请输入${field.label}`}
+                value={formData[field.id] || ''}
+                onChange={e => handleChange(field.id, e.target.value)}
+              />
+            )}
+            {errors[field.id] && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle size={10} /> {errors[field.id]}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+        <button onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium">
+          返回设计
+        </button>
+        <button
+          onClick={handleSubmit}
+          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md shadow-indigo-200 flex items-center gap-2"
+        >
+          <Save size={16} /> 模拟提交
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   const [formName, setFormName] = useState(initialForm?.name || '未命名表单');
   const [fields, setFields] = useState<FormField[]>(initialForm?.fields || []);
@@ -246,6 +362,10 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   const updateField = (id: string, updates: Partial<FormField>) => {
     setFields(fields.map(f => f.id === id ? { ...f, ...updates } : f));
   };
+
+  // 预览模式状态
+  const [previewing, setPreviewing] = useState(false);
+  const [previewData, setPreviewData] = useState<Record<string, any> | null>(null);
 
   const handleSave = () => {
     // 校验表单名称
@@ -315,33 +435,101 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
             className="text-lg font-bold bg-transparent border-none focus:ring-0 text-slate-800 placeholder-slate-400"
             placeholder="请输入表单名称"
           />
-          <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
-            <Save size={16} /> 保存表单
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setPreviewing(!previewing);
+                setPreviewData(null);
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                previewing
+                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {previewing ? <EyeOff size={16} /> : <Eye size={16} />}
+              {previewing ? '退出预览' : '预览填写'}
+            </button>
+            <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+              <Save size={16} /> 保存表单
+            </button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
-          <div className="max-w-2xl mx-auto space-y-4">
-            {fields.length === 0 && (
-              <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-xl">
-                <p className="text-slate-400">画布空空如也，请从左侧添加组件</p>
-              </div>
-            )}
+          {previewing ? (
+            /* 预览模式：模拟真实表单填写 */
+            <div className="max-w-2xl mx-auto">
+              {previewData ? (
+                /* 提交成功后展示数据 */
+                <div className="bg-white rounded-xl border border-green-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 bg-green-50 border-b border-green-100">
+                    <h3 className="font-bold text-green-800 flex items-center gap-2">
+                      ✅ 模拟提交成功
+                    </h3>
+                    <p className="text-xs text-green-600 mt-1">以下是表单提交的数据（仅预览，未实际提交）</p>
+                  </div>
+                  <div className="p-6">
+                    <pre className="bg-slate-50 rounded-lg p-4 text-sm text-slate-700 overflow-auto max-h-80 font-mono">
+                      {JSON.stringify(previewData, null, 2)}
+                    </pre>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => setPreviewData(null)}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+                      >
+                        重新填写
+                      </button>
+                      <button
+                        onClick={() => { setPreviewing(false); setPreviewData(null); }}
+                        className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm hover:bg-slate-200"
+                      >
+                        返回设计
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : fields.length === 0 ? (
+                <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-xl">
+                  <p className="text-slate-400">没有字段可预览，请先添加组件</p>
+                </div>
+              ) : (
+                /* 表单填写预览 */
+                <FormPreview
+                  formName={formName}
+                  fields={fields}
+                  onSubmit={(data) => {
+                    setPreviewData(data);
+                    toast.success('模拟提交成功！（仅预览）');
+                  }}
+                  onCancel={() => setPreviewing(false)}
+                />
+              )}
+            </div>
+          ) : (
+            /* 设计模式 */
+            <div className="max-w-2xl mx-auto space-y-4">
+              {fields.length === 0 && (
+                <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-xl">
+                  <p className="text-slate-400">画布空空如也，请从左侧添加组件</p>
+                </div>
+              )}
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-                {fields.map((field, index) => (
-                  <SortableField
-                    key={field.id}
-                    field={field}
-                    index={index}
-                    onRemove={removeField}
-                    onUpdate={updateField}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          </div>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                  {fields.map((field, index) => (
+                    <SortableField
+                      key={field.id}
+                      field={field}
+                      index={index}
+                      onRemove={removeField}
+                      onUpdate={updateField}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
         </div>
       </div>
     </div>

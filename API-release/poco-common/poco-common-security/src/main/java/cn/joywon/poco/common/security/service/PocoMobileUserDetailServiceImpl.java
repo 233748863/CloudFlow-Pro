@@ -1,0 +1,48 @@
+package cn.joywon.poco.common.security.service;
+
+import cn.joywon.poco.admin.api.dto.UserInfo;
+import cn.joywon.poco.admin.api.feign.RemoteUserService;
+import cn.joywon.poco.common.core.constant.SecurityConstants;
+import cn.joywon.poco.common.core.util.R;
+import cn.joywon.poco.common.core.util.RetOps;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+
+/**
+ * @author aeizzz
+ */
+@Slf4j
+@RequiredArgsConstructor
+public class PocoMobileUserDetailServiceImpl implements PocoUserDetailsService {
+
+	private final UserDetailsService pocoDefaultUserDetailsServiceImpl;
+
+	private final RemoteUserService remoteUserService;
+
+	@Override
+	@SneakyThrows
+	public UserDetails loadUserByUsername(String phone) {
+		R<UserInfo> result = remoteUserService.social(phone);
+		return getUserDetails(RetOps.of(result).getData());
+	}
+
+	@Override
+	public UserDetails loadUserByUser(PocoUser pocoUser) {
+		return pocoDefaultUserDetailsServiceImpl.loadUserByUsername(pocoUser.getUsername());
+	}
+
+	/**
+	 * 支持所有的 mobile 类型
+	 * @param clientId 目标客户端
+	 * @param grantType 授权类型
+	 * @return true/false
+	 */
+	@Override
+	public boolean support(String clientId, String grantType) {
+		return SecurityConstants.GRANT_MOBILE.equals(grantType);
+	}
+
+}

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.MemberModule.mapper.UserMapper">
+
+
+    <!--  删除用户
+    int deleteUsers(List<Long> userIds)  -->
+    <update id="deleteUsers">
+
+        UPDATE users
+        SET is_deleted = 1, deleted_time = NOW(), is_enable = 0
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+
+    </update>
+
+
+    <!--  获取用户关联的积分账户ID列表
+    List<Long> getUsersPointAccountIds(List<Long> ids)  -->
+    <select id="getUsersPointAccountIds" resultType="java.lang.Long">
+
+        SELECT points_account FROM users WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+
+    </select>
+
+
+</mapper>

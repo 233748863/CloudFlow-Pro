@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "ask": [
+      "Read(!D:\\Workspace\\html\\MA\\api/**)",
+      "Edit(!D:\\Workspace\\html\\MA\\api/**)"
+    ],
+    "allow": [
+      "Read(D:\\Workspace\\html\\MA\\api/**)",
+      "Edit(D:\\Workspace\\html\\MA\\api/**)"
+    ]
+  },
+  "memoryImport": {},
+  "monitoring": {}
+}

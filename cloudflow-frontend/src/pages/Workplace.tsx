@@ -34,20 +34,24 @@ export const Workplace = () => {
         if(Array.isArray(res)) {
             const mapped = res.map((f: any) => {
                 let fields = [];
-                try {
-                    if (typeof f.fieldsJson === 'string') {
-                        // 清理转义字符
-                        const cleanedJson = f.fieldsJson.replace(/\\/g, '');
-                        fields = JSON.parse(cleanedJson);
-                    } else if (typeof f.formSchema === 'string') {
-                        const cleanedJson = f.formSchema.replace(/\\/g, '');
-                        fields = JSON.parse(cleanedJson);
-                    } else {
-                        fields = f.fields || f.fieldsJson || [];
+                const raw = typeof f.fieldsJson === 'string' ? f.fieldsJson
+                          : typeof f.formSchema === 'string' ? f.formSchema
+                          : null;
+                if (raw) {
+                    try {
+                        fields = JSON.parse(raw);
+                    } catch {
+                        // 尝试修复非法转义字符（如 \d, \w 等正则表达式字符）
+                        try {
+                            const sanitized = raw.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
+                            fields = JSON.parse(sanitized);
+                        } catch (parseError) {
+                            console.error('解析表单字段失败:', parseError);
+                            fields = [];
+                        }
                     }
-                } catch (parseError) {
-                    console.error('解析表单字段失败:', parseError);
-                    fields = [];
+                } else {
+                    fields = f.fields || f.fieldsJson || [];
                 }
                 
                 return {

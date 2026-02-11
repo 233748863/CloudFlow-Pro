@@ -58,20 +58,24 @@ export const WorkflowDesign = () => {
       if (Array.isArray(forms)) {
         const mapped = forms.map((f: any) => {
           let fields = [];
-          try {
-            if (typeof f.fieldsJson === 'string') {
-              // Clean up any escaped characters before parsing
-              const cleanJson = f.fieldsJson.replace(/\\/g, '');
-              fields = JSON.parse(cleanJson);
-            } else if (typeof f.formSchema === 'string') {
-              const cleanJson = f.formSchema.replace(/\\/g, '');
-              fields = JSON.parse(cleanJson);
-            } else {
-              fields = f.fields || f.fieldsJson || [];
+          const raw = typeof f.fieldsJson === 'string' ? f.fieldsJson
+                    : typeof f.formSchema === 'string' ? f.formSchema
+                    : null;
+          if (raw) {
+            try {
+              fields = JSON.parse(raw);
+            } catch {
+              // 尝试修复非法转义字符（如 \d, \w 等正则表达式字符）
+              try {
+                const sanitized = raw.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
+                fields = JSON.parse(sanitized);
+              } catch (parseError) {
+                logWorkflow.error('解析表单字段失败:', parseError);
+                fields = [];
+              }
             }
-          } catch (parseError) {
-            logWorkflow.error('解析表单字段失败:', parseError);
-            fields = [];
+          } else {
+            fields = f.fields || f.fieldsJson || [];
           }
           return {
             id: f.id || f.formId,
@@ -115,7 +119,7 @@ export const WorkflowDesign = () => {
         modelJson: JSON.stringify(wf.nodes)
       };
       
-      logWorkflow.info('保存流程:', payload.name);
+      logWorkflow.info('保存流程:', payload.processName);
       const result = await saveProcessDefinition(payload);
       
       // 保存成功后更新流程 ID

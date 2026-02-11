@@ -206,6 +206,17 @@ public class WorkflowStatisticsService {
                 .collect(Collectors.toList());
             analysis.put("workloadRank", workloadRank);
 
+            // 6. 完成率（已完成 / 总实例数）
+            long totalCount = allInstances.size();
+            long completedCount = allInstances.stream()
+                .filter(i -> "COMPLETED".equals(i.getStatus())).count();
+            if (totalCount > 0) {
+                double approvalRate = (double) completedCount / totalCount * 100;
+                analysis.put("approvalRate", Math.round(approvalRate * 100.0) / 100.0);
+            } else {
+                analysis.put("approvalRate", 0);
+            }
+
         } catch (Exception e) {
             log.error("[getStatisticsAnalysis] 获取统计分析数据失败: {}", e.getMessage(), e);
         }
@@ -214,14 +225,64 @@ public class WorkflowStatisticsService {
     }
 
     /**
-     * M.2: 获取监控指标（从 Redis 计数器读取）
+     * M.2: 获取监控指标（合并数据库统计 + Redis 计数器）
      */
     public Map<String, Object> getMetrics() {
         log.info("[getMetrics] 获取监控指标");
         Map<String, Object> metrics = new HashMap<>();
 
         try {
-            // 操作计数器
+            // === 核心实例统计（从数据库查询） ===
+            Long totalInstances = processInstanceMapper.selectCount(null);
+            Long runningInstances = processInstanceMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "RUNNING"));
+            Long completedInstances = processInstanceMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "COMPLETED"));
+            Long rejectedInstances = processInstanceMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "REJECTED"));
+
+            Long revokedInstances = processInstanceMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStatus, "REVOKED"));
+
+            metrics.put("totalInstances", totalInstances);
+            metrics.put("runningInstances", runningInstances);
+            metrics.put("completedInstances", completedInstances);
+            metrics.put("rejectedInstances", rejectedInstances);
+            metrics.put("revokedInstances", revokedInstances);
+
+            // === 流程定义统计 ===
+            Long totalDefinitions = processDefinitionMapper.selectCount(null);
+            Long deployedDefinitions = processDefinitionMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessDefinition>().eq(WfProcessDefinition::getStatus, 1));
+            metrics.put("totalDefinitions", totalDefinitions);
+            metrics.put("deployedDefinitions", deployedDefinitions);
+
+            // === 任务统计 ===
+            Long totalTasks = taskMapper.selectCount(
+                new LambdaQueryWrapper<WfTask>().eq(WfTask::getStatus, "TODO"));
+            Long allTasks = taskMapper.selectCount(null);
+            metrics.put("totalTasks", totalTasks);
+            metrics.put("allTaskCount", allTasks);
+
+            // === 今日统计 ===
+            Calendar cal = Calendar.getInstance();
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            Date todayStart = cal.getTime();
+
+            Long todayInstances = processInstanceMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessInstance>()
+                    .ge(WfProcessInstance::getStartTime, todayStart));
+            Long todayTasks = taskHistoryMapper.selectCount(
+                new LambdaQueryWrapper<WfTaskHistory>()
+                    .ge(WfTaskHistory::getCreateTime, todayStart));
+
+            metrics.put("todayInstances", todayInstances);
+            metrics.put("todayTasks", todayTasks);
+
+            // === 操作计数器（从 Redis 读取） ===
             Map<String, Object> actionCounters = new HashMap<>();
             for (WorkflowAuditService.AuditAction action : WorkflowAuditService.AuditAction.values()) {
                 String counterKey = "sys:wf:metrics:action:" + action.name();
@@ -233,10 +294,10 @@ public class WorkflowStatisticsService {
             metrics.put("actionCounters", actionCounters);
 
             // 今日操作计数
-            String today = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
+            String todayStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
             Map<String, Object> todayCounters = new HashMap<>();
             for (WorkflowAuditService.AuditAction action : WorkflowAuditService.AuditAction.values()) {
-                String dailyKey = "sys:wf:metrics:daily:" + action.name() + ":" + today;
+                String dailyKey = "sys:wf:metrics:daily:" + action.name() + ":" + todayStr;
                 Object count = redisCache.getCacheObject(dailyKey);
                 if (count != null) {
                     todayCounters.put(action.name(), count);
@@ -244,10 +305,33 @@ public class WorkflowStatisticsService {
             }
             metrics.put("todayCounters", todayCounters);
 
-            // 系统健康指标
+            // === 系统健康检查 ===
             Map<String, Object> health = new HashMap<>();
             health.put("timestamp", new Date());
             health.put("status", "UP");
+
+            // 检查数据库连接
+            try {
+                processInstanceMapper.selectCount(new LambdaQueryWrapper<WfProcessInstance>().last("LIMIT 1"));
+                health.put("database", "UP");
+            } catch (Exception dbEx) {
+                health.put("database", "DOWN");
+                health.put("status", "DEGRADED");
+            }
+
+            // 检查 Redis 连接
+            try {
+                redisCache.setCacheObject("sys:wf:health:ping", "pong", 60, java.util.concurrent.TimeUnit.SECONDS);
+                Object pong = redisCache.getCacheObject("sys:wf:health:ping");
+                health.put("redis", pong != null ? "UP" : "DOWN");
+            } catch (Exception redisEx) {
+                health.put("redis", "DOWN");
+                health.put("status", "DEGRADED");
+            }
+
+            // 工作流引擎状态（基于数据库可用性判断）
+            health.put("workflowEngine", "UP".equals(health.get("database")) ? "UP" : "DOWN");
+
             metrics.put("health", health);
 
         } catch (Exception e) {

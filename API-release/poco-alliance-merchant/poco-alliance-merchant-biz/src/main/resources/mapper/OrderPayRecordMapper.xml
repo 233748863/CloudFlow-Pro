@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.merchant.OrderModule.mapper.OrderPayRecordMapper">
+
+    <resultMap id="orderPayRecordVOMap" type="cn.joywon.poco.merchant.OrderModule.vo.OrderPayRecordVO">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="paymentChannel" column="channel"/>
+        <result property="thirdPartyTradeNo" column="trade_no"/>
+        <result property="requestAmount" column="request_amount"/>
+        <result property="status" column="status"/>
+        <result property="statusDescription" column="status_description"/>
+        <result property="callbackData" column="response_payload" javaType="java.util.Map" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="createdTime" column="created_time"/>
+        <result property="updatedTime" column="updated_time"/>
+    </resultMap>
+
+    <!-- 根据订单ID查询支付流水列表 -->
+    <select id="getPayRecordsByOrderId" resultMap="orderPayRecordVOMap">
+        SELECT
+            opr.id,
+            opr.order_id,
+            o.order_no,
+            opr.channel,
+            opr.trade_no,
+            opr.request_amount,
+            opr.status,
+            CASE
+                WHEN opr.status = 'INIT' THEN '初始化'
+                WHEN opr.status = 'PAYING' THEN '支付中'
+                WHEN opr.status = 'SUCCESS' THEN '支付成功'
+                WHEN opr.status = 'FAILED' THEN '支付失败'
+                WHEN opr.status = 'CANCELLED' THEN '已取消'
+                ELSE '未知状态'
+            END as status_description,
+            opr.response_payload,
+            opr.created_time,
+            opr.updated_time
+        FROM order_pay_records opr
+        LEFT JOIN orders o ON opr.order_id = o.id
+        WHERE opr.order_id = #{orderId} AND opr.is_deleted = 0
+        ORDER BY opr.created_time DESC
+    </select>
+
+    <!-- 根据第三方支付单号查询支付流水 -->
+    <select id="getPayRecordByThirdPayNo" resultMap="orderPayRecordVOMap">
+        SELECT
+            opr.id,
+            opr.order_id,
+            o.order_no,
+            opr.channel,
+            opr.trade_no,
+            opr.request_amount,
+            opr.status,
+            CASE
+                WHEN opr.status = 'INIT' THEN '初始化'
+                WHEN opr.status = 'PAYING' THEN '支付中'
+                WHEN opr.status = 'SUCCESS' THEN '支付成功'
+                WHEN opr.status = 'FAILED' THEN '支付失败'
+                WHEN opr.status = 'CANCELLED' THEN '已取消'
+                ELSE '未知状态'
+            END as status_description,
+            opr.response_payload,
+            opr.created_time,
+            opr.updated_time
+        FROM order_pay_records opr
+        LEFT JOIN orders o ON opr.order_id = o.id
+        WHERE opr.trade_no = #{thirdPayNo} AND opr.is_deleted = 0
+    </select>
+
+    <!-- 更新支付状态
+         业务说明：
+         - 更新字段：status（支付状态）、response_payload（支付回调/响应报文，JSON）、updated_time（更新时间）。
+         - 说明：actual_amount、payment_time、callback_time 不在当前表结构（order_pay_records）中，故不在此处更新；
+                 若后续增加字段，请同步Java接口参数与SQL实现。
+         - 要求：callbackData 需为合法JSON字符串，避免MySQL JSON类型写入失败。
+    -->
+    <update id="updatePaymentStatus">
+        UPDATE order_pay_records
+        SET status = #{status},
+            response_payload = #{callbackData, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            updated_time = NOW()
+        WHERE id = #{id} AND is_deleted = 0
+    </update>
+
+    <!-- ==================== 报表聚合查询SQL ==================== -->
+
+    <!-- 聚合商家结算日报数据 -->
+    <select id="aggregateMerchantSettlement" resultType="cn.joywon.poco.merchant.ReportModule.dto.MerchantSettlementAggDTO">
+        SELECT 
+            o.merchant_id AS merchantId,
+            opr.channel AS channel,
+            COUNT(*) AS orderCount,
+            SUM(opr.request_amount) AS channelAmount,
+            SUM(opr.request_amount) AS totalRevenue
+        FROM order_pay_records opr
+        INNER JOIN orders o ON opr.order_id = o.id
+        WHERE DATE(opr.created_time) = #{statDate}
+          AND opr.status = 'SUCCESS'
+          AND opr.is_deleted = 0
+        GROUP BY o.merchant_id, opr.channel
+    </select>
+
+    <!-- 聚合支付渠道对账数据 -->
+    <select id="aggregatePayChannelReconcile" resultType="cn.joywon.poco.merchant.ReportModule.dto.PayChannelReconcileAggDTO">
+        SELECT 
+            opr.channel AS channel,
+            o.merchant_id AS merchantId,
+            o.store_id AS storeId,
+            COUNT(*) AS transactionCount,
+            SUM(opr.request_amount) AS transactionAmount,
+            0 AS refundCount,
+            0 AS refundAmount
+        FROM order_pay_records opr
+        INNER JOIN orders o ON opr.order_id = o.id
+        WHERE DATE(opr.created_time) = #{statDate}
+          AND opr.status = 'SUCCESS'
+          AND opr.is_deleted = 0
+        GROUP BY opr.channel, o.merchant_id, o.store_id
+    </select>
+
+    <!-- 聚合应收账款数据 -->
+    <select id="aggregateReceivable" resultType="cn.joywon.poco.merchant.ReportModule.dto.ReceivableAggDTO">
+        SELECT 
+            o.merchant_id AS merchantId,
+            o.store_id AS storeId,
+            SUM(o.final_paid_price) AS totalReceivable,
+            COUNT(*) AS orderCount,
+            SUM(CASE WHEN DATEDIFF(#{statDate}, o.payment_time) &lt;= 7 THEN o.final_paid_price ELSE 0 END) AS aging0To7,
+            SUM(CASE WHEN DATEDIFF(#{statDate}, o.payment_time) BETWEEN 8 AND 15 THEN o.final_paid_price ELSE 0 END) AS aging8To15,
+            SUM(CASE WHEN DATEDIFF(#{statDate}, o.payment_time) BETWEEN 16 AND 30 THEN o.final_paid_price ELSE 0 END) AS aging16To30,
+            SUM(CASE WHEN DATEDIFF(#{statDate}, o.payment_time) &gt; 30 THEN o.final_paid_price ELSE 0 END) AS aging30Plus
+        FROM orders o
+        WHERE o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+          AND o.profit_sharing_status IN (1, 2)
+          AND o.is_deleted = 0
+        GROUP BY o.merchant_id, o.store_id
+    </select>
+
+</mapper>

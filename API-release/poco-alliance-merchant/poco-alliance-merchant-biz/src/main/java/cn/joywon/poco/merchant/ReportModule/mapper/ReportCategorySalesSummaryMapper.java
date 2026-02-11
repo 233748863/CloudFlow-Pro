@@ -1,0 +1,15 @@
+package cn.joywon.poco.merchant.ReportModule.mapper;
+
+import cn.joywon.poco.common.data.datascope.PocoBaseMapper;
+import cn.joywon.poco.merchant.ReportModule.entity.ReportCategorySalesSummary;
+import org.apache.ibatis.annotations.Mapper;
+
+/**
+ * 商品分类销售汇总Mapper
+ *
+ * @author poco
+ * @date 2025-12-27
+ */
+@Mapper
+public interface ReportCategorySalesSummaryMapper extends PocoBaseMapper<ReportCategorySalesSummary> {
+}

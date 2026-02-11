@@ -22,12 +22,17 @@ public interface IVehicleUsageService extends IService<VehicleUsage> {
     R<Void> submitUsage(VehicleUsage usage);
 
     /**
-     * 审批通过后更新状态
+     * 审批用车申请（通过/驳回）
      */
-    void approveUsage(Long usageId);
-    
+    R<Void> approveUsage(Long usageId, boolean approved, String remark);
+
     /**
-     * 驳回
+     * 归还车辆（完成用车）
      */
-    void rejectUsage(Long usageId);
+    R<Void> returnVehicle(Long usageId, double endMileage, String remark);
+
+    /**
+     * 取消用车申请
+     */
+    R<Void> cancelUsage(Long usageId);
 }

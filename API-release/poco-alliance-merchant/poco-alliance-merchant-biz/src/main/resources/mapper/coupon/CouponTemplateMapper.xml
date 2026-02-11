@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.CouponModule.mapper.CouponTemplateMapper">
+
+
+    <!--  用户查询可领取优惠券列表
+          Page<UserClaimableCouponListVO> queryUserClaimableCoupons(Page<> page, Collection<Long> merchantIds)  -->
+    <select id="queryUserClaimableCoupons"
+            resultType="cn.joywon.poco.merchant.CouponModule.vo.UserClaimableCouponListVO">
+
+        SELECT ct.id AS couponTemplateId,
+        ct.name AS couponName,
+        ct.summary,
+        ct.logo_url AS couponLogoUrl,
+        ct.scope,
+        ct.type,
+        ct.discount_amount,
+        ct.discount_rate,
+        ct.min_spend_amount,
+        ct.max_deductible_amount,
+        ct.validity_type,
+        ct.valid_start_time,
+        ct.valid_end_time,
+        ct.valid_days_from_receive,
+        ct.receive_limit_per_user,
+        m.name AS merchantName,
+        m.logo_url AS merchantLogoUrl
+
+        FROM coupon_templates AS ct
+        JOIN merchants AS m ON ct.merchant_id = m.id
+
+        WHERE ct.is_deleted = 0 AND ct.is_enable = 1 AND ct.coupon_status = 'ACTIVE'
+        AND ct.merchant_id IN
+        <foreach collection="merchantIds" item="mid" open="(" separator="," close=")">
+            #{mid}
+        </foreach>
+
+        ORDER BY ct.sort_order DESC
+
+    </select>
+
+
+    <!--  根据商家ID列表查询商家优惠券分组列表
+          List<MerchantCouponGroupBO> queryMerchantCouponGroups(Collection<Long> merchantIds)  -->
+    <select id="queryMerchantCouponGroups" resultMap="MerchantCouponGroupBOMap">
+
+        SELECT ranked.id,
+        ranked.merchant_id,
+        ranked.name,
+        ranked.type ,
+        ranked.logo_url,
+        ranked.discount_rate,
+        ranked.discount_amount,
+        ranked.issued_quantity,
+        ranked.min_spend_amount,
+        ranked.max_deductible_amount
+
+        FROM (
+        SELECT ct.merchant_id,
+        ct.id,
+        ct.type,
+        ct.name,
+        ct.logo_url,
+        ct.discount_rate,
+        ct.discount_amount,
+        ct.issued_quantity,
+        ct.min_spend_amount,
+        ct.max_deductible_amount,
+        ROW_NUMBER() OVER (PARTITION BY ct.merchant_id ORDER BY ct.sort_order DESC) AS rn
+
+        FROM coupon_templates AS ct
+
+        WHERE ct.is_deleted = 0 AND ct.is_enable = 1 AND ct.coupon_status = 'ACTIVE'
+        AND ct.scope IN ('MERCHANT_OWN') AND ct.merchant_id IN
+        <foreach collection="merchantIds" item="mid" open="(" separator="," close=")">
+            #{mid}
+        </foreach>
+        ) AS ranked
+
+        WHERE ranked.rn &lt;= 5
+        ORDER BY ranked.rn
+
+    </select>
+    <resultMap id="MerchantCouponGroupBOMap" type="cn.joywon.poco.merchant.CouponModule.bo.MerchantCouponGroupBO">
+        <id column="merchant_id" property="merchantId"/>
+        <collection property="coupons" resultMap="CouponIndexShowVOMap"
+                    ofType="cn.joywon.poco.merchant.CouponModule.vo.MiniCouponIndexShowVO"/>
+    </resultMap>
+    <resultMap id="CouponIndexShowVOMap" type="cn.joywon.poco.merchant.CouponModule.vo.MiniCouponIndexShowVO">
+        <id column="id" property="couponTemplateId"/>
+        <result column="name" property="couponName"/>
+        <result column="type" property="couponType"/>
+        <result column="logo_url" property="couponLogo"/>
+        <result column="discount_rate" property="discountRate"/>
+        <result column="discount_amount" property="discountAmount"/>
+        <result column="issued_quantity" property="issuedQuantity"/>
+        <result column="min_spend_amount" property="minSpendAmount"/>
+        <result column="max_deductible_amount" property="maxDeductibleAmount"/>
+    </resultMap>
+
+
+    <!--  【用户端】根据商家ID查询商家优惠券列表
+          Page<MiniCouponIndexShowVO> getMerchantCoupons(Page<> page, Long merchantId)  -->
+    <select id="getMerchantCoupons" resultType="cn.joywon.poco.merchant.CouponModule.vo.MiniCouponIndexShowVO">
+
+        SELECT id       AS couponTemplateId,
+               name     AS couponName,
+               logo_url AS couponLogo,
+               type     AS couponType,
+               discount_rate,
+               discount_amount,
+               issued_quantity,
+               min_spend_amount,
+               max_deductible_amount,
+               receive_limit_per_user
+
+        FROM coupon_templates
+        WHERE coupon_status = 'ACTIVE'
+          AND is_deleted = 0
+          AND is_enable = 1
+          AND merchant_id = #{merchantId}
+
+        ORDER BY sort_order DESC
+
+    </select>
+
+
+</mapper>

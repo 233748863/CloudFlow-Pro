@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.MerchantModule.mapper.MerchantMapper">
+
+
+    <!--  获取商家列表
+          Page<MerchantListVO> getList(Page<> page, MerchantListDTO dto)  -->
+    <select id="getList"
+            resultType="cn.joywon.poco.merchant.MerchantModule.vo.MerchantListVO"
+            parameterType="cn.joywon.poco.merchant.MerchantModule.dto.MerchantListDTO">
+
+        SELECT m.id,
+        m.logo_url,
+        m.is_enable,
+        m.created_time,
+        m.contact_name,
+        m.contact_phone,
+        m.business_status,
+        m.name AS merchantName,
+        CONCAT(m.location, m.address_detail) AS addressDetail,
+        i.name AS industryName
+
+        FROM merchants AS m
+        LEFT JOIN industries AS i ON m.industry_id = i.id
+
+        <where>
+            <if test="dto.name != null and dto.name != ''">
+                AND m.name LIKE CONCAT(#{dto.name}, '%')
+            </if>
+
+            <if test="dto.merchantIds != null and dto.merchantIds.size > 0">
+                AND m.id IN
+                <foreach item="id" collection="dto.merchantIds" open="(" separator="," close=")">
+                    CAST(#{id} AS BIGINT)
+                </foreach>
+            </if>
+
+            <if test="dto.industryIds != null and dto.industryIds.size > 0">
+                AND m.industry_id IN
+                <foreach collection="dto.industryIds" item="id" open="(" separator="," close=")">
+                    CAST(#{id} AS BIGINT)
+                </foreach>
+            </if>
+
+            <if test="dto.businessStatus != null and dto.businessStatus.size > 0">
+                AND m.business_status IN
+                <foreach collection="dto.businessStatus" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+
+            <if test="dto.enable != null">
+                AND m.is_enable = ${dto.enable ? 1 : 0}
+            </if>
+
+            <if test="dto.regionCodeJsonStr != null and dto.regionCodeJsonStr != ''">
+                AND JSON_OVERLAPS(m.region_code, #{dto.regionCodeJsonStr}) = 1
+            </if>
+        </where>
+
+        ORDER BY
+        <if test="dto.orderByCreateTime == null or !dto.orderByCreateTime">
+            m.created_time DESC
+        </if>
+        <if test="dto.orderByCreateTime">
+            m.created_time ASC
+        </if>
+
+    </select>
+
+
+    <!--  根据商家ID列表获取商家名称列表
+          List<MerchantSimpleInfoBO> getMerchantSimpleInfoList(Collection<Long> ids)  -->
+    <select id="getMerchantSimpleInfoListWithIndustry" resultType="cn.joywon.poco.merchant.MerchantModule.bo.MerchantSimpleInfoBO">
+
+        SELECT m.id AS merchantId,
+        m.name AS merchantName,
+        m.logo_url AS merchantLogo,
+        i.id AS industryId,
+        i.name AS industryName
+
+        FROM merchants AS m
+        LEFT JOIN industries AS i ON m.industry_id = i.id
+
+        WHERE m.id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+
+    </select>
+
+
+    <!--  根据商家ID列表获取商家简要信息列表
+          List<MerchantSimpleInfoBO> getMerchantSimpleInfoList(Collection<Long> ids)  -->
+    <select id="getMerchantSimpleInfoList" resultType="cn.joywon.poco.merchant.MerchantModule.bo.MerchantSimpleInfoBO">
+
+        SELECT id AS merchantId,
+        name AS merchantName,
+        logo_url AS merchantLogo
+
+        FROM merchants WHERE is_deleted = 0 AND id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+
+    </select>
+
+    <!--  根据商家ID获取商家简要信息
+          MerchantSimpleInfoVO getMerchantSimpleInfo(Long merchantId)  -->
+    <select id="getMerchantSimpleInfo" resultType="cn.joywon.poco.merchant.MerchantModule.vo.MerchantSimpleInfoVO">
+
+        SELECT m.id            AS merchantId,
+               m.name          AS merchantName,
+               logo_url        AS merchantLogoUrl,
+               m.description,
+               contact_name,
+               contact_phone,
+               address_detail  AS merchantAddress,
+               business_status AS merchantBusinessStatus,
+               i.name          AS industryName
+        FROM merchants AS m
+                 LEFT JOIN industries AS i ON m.industry_id = i.id
+        WHERE m.id = #{merchantId}
+          AND m.is_deleted = 0
+
+    </select>
+
+
+    <!--  【消费者端】 获取商家首页信息
+          MiniMerchantIndexBO getMerchantIndexInfo(Long merchantId, Double longitude, Double latitude)  -->
+    <select id="getMerchantIndexInfo" resultType="cn.joywon.poco.merchant.MerchantModule.bo.MiniMerchantIndexBO">
+
+        SELECT s.id                                                                                        AS storeId,
+               s.name                                                                                      AS storeName,
+               s.phone                                                                                     AS storePhone,
+               s.logo_url                                                                                  AS storeLogo,
+               s.latitude,
+               s.longitude,
+               s.store_score,
+               s.business_hours,
+               s.business_status,
+               JSON_EXTRACT(s.images, '$[0 to 19]')                                                        AS storeImages,
+               CONCAT(s.location, s.address_detail)                                                        AS storeAddress,
+               m.id                                                                                        AS merchantId,
+               m.description,
+               m.industry_id,
+               m.logo_url                                                                                  AS merchantLogo,
+               m.name                                                                                      AS merchantName,
+               JSON_EXTRACT(m.images, '$[0 to 9]')                                                         AS merchantImages,
+               i.name                                                                                      AS industryName,
+               ST_DISTANCE_SPHERE(POINT(#{longitude}, #{latitude}), POINT(s.longitude, s.latitude)) / 1000 AS distance
+
+        FROM merchants AS m
+                 JOIN stores AS s ON m.id = s.merchant_id
+                 LEFT JOIN industries AS i ON m.industry_id = i.id
+
+        WHERE s.is_enable = 1
+          AND s.is_deleted = 0
+          AND s.business_status NOT IN ('CLOSED', 'DELETED')
+          AND m.is_enable = 1
+          AND m.is_deleted = 0
+          AND m.business_status NOT IN ('SUSPENDED', 'TERMINATED')
+          AND m.id = #{merchantId}
+
+        ORDER BY distance
+        LIMIT 1
+
+    </select>
+
+
+    <!--  【消费者端】根据名称查询商家列表
+    Page<MiniMerchantListVO> queryMerchantByNameWithDistance(Page<> page, MiniStoreQueryDTO dto)  -->
+    <select id="queryMerchantByNameWithDistance"
+            resultType="cn.joywon.poco.merchant.MerchantModule.vo.MiniMerchantListVO"
+            parameterType="cn.joywon.poco.merchant.MerchantModule.dto.MiniStoreQueryDTO">
+
+        WITH rankedStores AS (
+
+        SELECT s.id AS storeId,
+        s.name AS storeName,
+        s.logo_url AS storeLogo,
+        s.phone AS storePhone,
+        s.business_hours,
+        s.business_status,
+        s.store_score,
+        CONCAT(s.location, s.address_detail) AS storeAddress,
+        m.id AS merchantId,
+        m.name AS merchantName,
+        m.logo_url AS merchantLogo,
+        m.industry_id,
+        i.name AS industryName,
+        ST_DISTANCE_SPHERE(
+        POINT(s.longitude, s.latitude),
+        POINT(#{dto.longitude}, #{dto.latitude})
+        ) / 1000 AS distance,
+        ROW_NUMBER() OVER (PARTITION BY m.id
+        ORDER BY ST_DISTANCE_SPHERE(
+        POINT(s.longitude, s.latitude),
+        POINT(#{dto.longitude}, #{dto.latitude})
+        )) AS rn
+
+        FROM merchants AS m
+        INNER JOIN stores AS s ON m.id = s.merchant_id
+        LEFT JOIN industries AS i ON m.industry_id = i.id
+
+        WHERE m.is_enable = 1
+        AND m.is_deleted = 0
+        AND m.business_status = 'OPERATING'
+        <if test="dto.name != null and dto.name != ''">
+            AND m.name LIKE CONCAT('%', #{dto.name}, '%')
+        </if>
+        <if test="dto.industryId != null and dto.industryId != ''">
+            AND m.industry_id = CAST(#{dto.industryId} AS BIGINT)
+        </if>
+        AND s.is_enable = 1
+        AND s.is_deleted = 0
+        AND s.business_status NOT IN ('CLOSED', 'DELETED')
+        AND i.is_enable = 1
+        ANd i.is_deleted = 0
+        )
+
+        SELECT storeId,
+        storeName,
+        storeLogo,
+        storePhone,
+        business_hours,
+        business_status,
+        store_score,
+        storeAddress,
+        merchantId,
+        merchantName,
+        merchantLogo,
+        industry_id,
+        industryName,
+        distance
+
+        FROM rankedStores
+        WHERE rn = 1
+        ORDER BY
+        <if test="dto.sortByScore != null">
+            store_score ${dto.sortByScore ? 'DESC' : 'ASC'},
+        </if>
+        distance
+
+    </select>
+
+    <!--  【消费者端】获取商家详细信息
+          MiniMerchantInfoVO getMerchantInfo(Long merchantId)  -->
+    <select id="getMerchantInfo" resultType="cn.joywon.poco.merchant.MerchantModule.vo.MiniMerchantInfoVO">
+
+        SELECT m.id             AS merchantId,
+               m.name           AS merchantName,
+               m.logo_url       AS merchantLogo,
+               m.address_detail AS merchantAddress,
+               m.description,
+               m.industry_id,
+               m.created_time,
+               i.name           AS industryName
+        FROM merchants AS m
+                 LEFT JOIN industries AS i ON m.industry_id = i.id
+        WHERE m.id = #{merchantId}
+          AND m.is_deleted = 0
+          AND m.is_enable = 1
+
+    </select>
+
+
+    <!--  根据商家ID获取商家资质信息
+          QualificationBO getMerchantQualification(Long merchantId)  -->
+    <select id="getMerchantQualification" resultType="cn.joywon.poco.merchant.MerchantModule.bo.QualificationBO">
+
+        SELECT id, license_no, license_images AS licenseImage, legal_person
+        FROM merchants
+        WHERE id = #{merchantId}
+          AND is_deleted = 0
+
+    </select>
+
+
+    <!--  根据商家ID获取商家图片列表
+          String getMerchantImages(Long merchantId)  -->
+    <select id="getMerchantImages" resultType="java.lang.String">
+
+        SELECT images
+        FROM merchants
+        WHERE id = #{merchantId}
+          AND is_deleted = 0
+
+    </select>
+
+
+    <!--  根据行业ID列表和地区ID列表查询商家列表  -->
+    <select id="queryMerchantByIndustryAndRegions" resultType="cn.joywon.poco.merchant.MerchantModule.bo.MerchantSimpleInfoBO">
+
+        SELECT id AS merchantId,
+               name AS merchantName,
+               logo_url AS merchantLogo
+        FROM merchants
+
+        WHERE is_deleted = 0 AND is_enable = 1
+        <if test="industryIds != null and industryIds.size > 0">
+            AND industry_id IN
+            <foreach item="id" collection="industryIds" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        <if test="regionCodes != null and regionCodes.size > 0">
+            AND JSON_OVERLAPS(region_code -> '$[*]', CAST(#{regionCodes} AS JSON))
+        </if>
+
+    </select>
+
+
+    <!--  获取联合营销邀请商家列表
+          Page<MerchantSimpleInfoVO> listForInviteJointMarketing(Page<> page, MerchantInviteQueryDTO dto)  -->
+    <select id="listForInviteJointMarketing"
+            resultType="cn.joywon.poco.merchant.MerchantModule.vo.MerchantSimpleInfoVO"
+            parameterType="cn.joywon.poco.merchant.MerchantModule.dto.MerchantInviteQueryDTO">
+
+        SELECT m.id AS merchantId,
+        m.name AS merchantName,
+        m.logo_url AS merchantLogoUrl,
+        i.name AS industryName
+
+        FROM merchants AS m
+        LEFT JOIN industries AS i ON m.industry_id = i.id
+
+        WHERE m.is_deleted = 0 AND m.is_enable = 1
+        AND i.is_deleted = 0 AND i.is_enable = 1
+        <if test="dto.industryIds != null and dto.industryIds.size > 0">
+            AND m.industry_id IN
+            <foreach item="id" collection="dto.industryIds" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+
+        <if test="dto.regionCodeJson != null and dto.regionCodeJson != ''">
+            AND JSON_OVERLAPS(m.region_code -> '$[*]', CAST(#{dto.regionCodeJson} AS JSON))
+        </if>
+
+        <if test="dto.merchantName != null and dto.merchantName != ''">
+            AND m.name LIKE CONCAT( #{dto.merchantName}, '%')
+        </if>
+
+        ORDER BY m.industry_id, m.created_time DESC
+
+    </select>
+
+
+</mapper>

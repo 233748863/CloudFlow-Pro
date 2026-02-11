@@ -76,20 +76,52 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
     }
 
     @Override
-    public void approveUsage(Long usageId) {
+    @Transactional(rollbackFor = Exception.class)
+    public R<Void> approveUsage(Long usageId, boolean approved, String remark) {
         VehicleUsage usage = this.getById(usageId);
-        if (usage != null) {
-            usage.setStatus("1"); // Approved
-            this.updateById(usage);
+        if (usage == null) {
+            return R.fail("用车记录不存在");
         }
+        if (!"0".equals(usage.getStatus())) {
+            return R.fail("当前状态不允许审批操作");
+        }
+        if (approved) {
+            usage.setStatus("1"); // 已批准
+        } else {
+            usage.setStatus("2"); // 已驳回
+        }
+        this.updateById(usage);
+        return R.ok();
     }
 
     @Override
-    public void rejectUsage(Long usageId) {
+    @Transactional(rollbackFor = Exception.class)
+    public R<Void> returnVehicle(Long usageId, double endMileage, String remark) {
         VehicleUsage usage = this.getById(usageId);
-        if (usage != null) {
-            usage.setStatus("2"); // Rejected
-            this.updateById(usage);
+        if (usage == null) {
+            return R.fail("用车记录不存在");
         }
+        if (!"1".equals(usage.getStatus()) && !"3".equals(usage.getStatus())) {
+            return R.fail("当前状态不允许归还操作");
+        }
+        usage.setStatus("4"); // 已完成
+        usage.setEndMileage(java.math.BigDecimal.valueOf(endMileage));
+        this.updateById(usage);
+        return R.ok();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<Void> cancelUsage(Long usageId) {
+        VehicleUsage usage = this.getById(usageId);
+        if (usage == null) {
+            return R.fail("用车记录不存在");
+        }
+        if (!"0".equals(usage.getStatus())) {
+            return R.fail("只有待审批状态的申请可以取消");
+        }
+        usage.setStatus("5"); // 已取消
+        this.updateById(usage);
+        return R.ok();
     }
 }

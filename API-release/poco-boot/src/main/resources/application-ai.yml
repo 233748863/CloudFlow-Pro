@@ -1,0 +1,20 @@
+pig:
+  ai:
+    risk-control: # 风控
+      enabled: true
+      no-limit-usernames: # 不受限制的用户名
+        - admin
+        - aitest
+    show-log: true
+    mi-iot:
+      api-key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjMGMwMzgzOGM3NjI0OTkzOTcwZDhiYmYxOTNmY2RkOCIsImlhdCI6MTczNDYxNzE1OSwiZXhwIjoyMDQ5OTc3MTU5fQ.-_p8Oiuzi1ZbS7imF1fzmPkk4VURUG9l1b7LFz_VKSk
+      entity-id-list:
+        - switch.zimi_cn_1054655059_dhkg02_on_p_2_1
+      enabled: false  # 是否启用小米IOT
+
+# liteflow配置
+liteflow:
+  rule-source: rules/*-rule.xml
+  print-banner: false
+  print-execution-log: false
+  enable: true

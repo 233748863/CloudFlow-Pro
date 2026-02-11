@@ -1,0 +1,7 @@
+cn.joywon.poco.common.core.config.AsyncConfiguration
+cn.joywon.poco.common.core.config.JacksonConfiguration
+cn.joywon.poco.common.core.config.MessageSourceConfiguration
+cn.joywon.poco.common.core.config.RestTemplateConfiguration
+cn.joywon.poco.common.core.config.ImmutableConfiguration
+cn.joywon.poco.common.core.util.SpringContextHolder
+

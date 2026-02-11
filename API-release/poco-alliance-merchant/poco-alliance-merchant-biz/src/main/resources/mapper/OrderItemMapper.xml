@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.merchant.OrderModule.mapper.OrderItemMapper">
+
+    <resultMap id="orderItemVOMap" type="cn.joywon.poco.merchant.OrderModule.vo.OrderItemVO">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="productSkuId" column="product_sku_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="skuCode" column="sku_code"/>
+        <result property="productName" column="product_name"/>
+        <result property="skuSpec" column="sku_name"/>
+        <result property="productImage" column="product_image"/>
+        <result property="quantity" column="quantity"/>
+        <result property="price" column="original_price"/>
+        <result property="originalPrice" column="market_price"/>
+        <result property="discountAmount" column="apportioned_discount"/>
+        <result property="payAmount" column="final_price"/>
+    </resultMap>
+
+    <!-- 根据订单ID查询订单商品列表 -->
+    <select id="getOrderItemsByOrderId" resultMap="orderItemVOMap">
+        SELECT
+        oi.id,
+        oi.order_id,
+        oi.product_sku_id,
+        oi.product_id,
+        oi.sku_code,
+        oi.product_name,
+        COALESCE(ps.spec_attributes, oi.sku_name) AS sku_name,
+        COALESCE(ps.sku_image, oi.product_image) AS product_image,
+        oi.original_price,
+        ps.original_price AS market_price,
+        oi.quantity,
+        oi.apportioned_discount,
+        oi.final_price
+        FROM order_items oi
+        LEFT JOIN product_skus ps ON oi.product_sku_id = ps.id
+        WHERE oi.order_id = #{orderId} AND oi.is_deleted = 0
+        ORDER BY oi.created_time
+    </select>
+
+    <!-- 根据订单ID列表查询订单商品列表 -->
+    <select id="getOrderItemsByOrderIds" resultMap="orderItemVOMap">
+        SELECT 
+            oi.id,
+            oi.order_id,
+            oi.product_sku_id,
+            oi.product_id,
+            oi.sku_code,
+            oi.product_name,
+            COALESCE(ps.spec_attributes, oi.sku_name) AS sku_name,
+            COALESCE(ps.sku_image, oi.product_image) AS product_image,
+            oi.original_price,
+            ps.original_price AS market_price,
+            oi.quantity,
+            oi.apportioned_discount,
+            oi.final_price
+        FROM order_items oi
+        LEFT JOIN product_skus ps ON oi.product_sku_id = ps.id
+        WHERE oi.order_id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+        AND oi.is_deleted = 0
+        ORDER BY oi.order_id , oi.created_time
+    </select>
+
+    <!-- 根据SKU ID查询订单商品列表 -->
+    <select id="getOrderItemsBySkuId" resultType="cn.joywon.poco.merchant.OrderModule.entity.OrderItem">
+        SELECT 
+            oi.id AS id,
+            oi.order_id AS orderId,
+            oi.product_sku_id AS productSkuId,
+            oi.product_id AS productId,
+            oi.sku_code AS skuCode,
+            oi.product_name AS productName,
+            oi.product_image AS productImage,
+            oi.sku_name AS skuName,
+            oi.quantity AS quantity,
+            oi.original_price AS originalPrice,
+            ps.original_price AS marketPrice,
+            oi.apportioned_discount AS apportionedDiscount,
+            oi.final_price AS finalPrice,
+            oi.created_time AS createdTime,
+            oi.updated_time AS updatedTime,
+            oi.created_by AS createdBy,
+            oi.updated_by AS updatedBy,
+            oi.is_deleted AS isDeleted,
+            oi.deleted_time AS deletedTime
+        FROM order_items oi
+        LEFT JOIN product_skus ps ON oi.product_sku_id = ps.id
+        WHERE oi.product_sku_id = #{productSkuId} AND oi.is_deleted = 0
+        ORDER BY oi.created_time DESC
+    </select>
+
+</mapper>

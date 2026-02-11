@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.CouponModule.mapper.JointMarketingRewardMapper">
+
+    <update id="incrementIssuedCount">
+        UPDATE joint_marketing_reward
+        SET issued_count = issued_count + #{count}
+        WHERE id = #{id}
+          AND (stock_limit = -1 OR issued_count + #{count} &lt;= stock_limit)
+    </update>
+
+</mapper>

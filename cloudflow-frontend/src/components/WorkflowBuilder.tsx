@@ -16,6 +16,7 @@ import {
 import { WorkflowNode, NodeType, WorkflowDefinition, FormDefinition, User } from '../types';
 import { useHistory } from '../hooks/useHistory';
 import { saveProcessDefinition, deployProcessDefinition } from '../services/api/workflow';
+import { getRoleList, getUserList, getDeptTree } from '../services/api/auth';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 
@@ -436,6 +437,288 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       }
     }}
   },
+  // ===== 复杂模板 - 使用高级节点类型 =====
+  {
+    id: 'purchase_advanced', name: '大额采购全流程', description: '部门审批 → 金额分级 → 多级审批 → 通知结果', category: 'finance',
+    icon: ClipboardList, color: 'text-orange-600 bg-orange-50',
+    nodes: { id: 'start', type: NodeType.START, title: '提交采购申请', next: {
+      id: 'pa_n1', type: NodeType.APPROVAL, title: '部门经理审批', approverType: 'DEPT_MANAGER',
+      branches: [
+        { id: 'pa_b1', type: NodeType.CONDITION, title: '金额 ≤ 5000', condition: 'amount <= 5000' },
+        { id: 'pa_b2', type: NodeType.CONDITION, title: '5000 < 金额 ≤ 50000', condition: 'amount > 5000 && amount <= 50000',
+          next: { id: 'pa_n2', type: NodeType.APPROVAL, title: '财务总监审核', approverType: 'ROLE', approverValue: 'FINANCE' }
+        },
+        { id: 'pa_b3', type: NodeType.CONDITION, title: '金额 > 50000', condition: 'amount > 50000',
+          next: { id: 'pa_n3', type: NodeType.APPROVAL, title: '总经理审批', approverType: 'ROLE', approverValue: 'MANAGER',
+            next: { id: 'pa_n4', type: NodeType.APPROVAL, title: '财务总监审核', approverType: 'ROLE', approverValue: 'FINANCE' }
+          }
+        }
+      ],
+      branchStrategy: 'EXCLUSIVE',
+      next: { id: 'pa_n5', type: NodeType.NOTIFICATION, title: '通知采购结果',
+        props: { recipientType: 'INITIATOR', notificationTitle: '采购审批结果通知', notificationContent: '您的采购申请（金额: ${amount}）已审批完成，请查看结果。' },
+        next: { id: 'pa_end', type: NodeType.END, title: '流程结束' }
+      }
+    }}
+  },
+  {
+    id: 'project_approval', name: '项目立项审批', description: '部门审核 → 技术+财务并行评审 → 总经理审批 → 通知', category: 'other',
+    icon: Rocket, color: 'text-purple-600 bg-purple-50',
+    nodes: { id: 'start', type: NodeType.START, title: '提交立项申请', next: {
+      id: 'proj_n1', type: NodeType.APPROVAL, title: '部门负责人审核', approverType: 'DEPT_MANAGER', next: {
+        id: 'proj_n2', type: NodeType.PARALLEL, title: '并行评审（技术+财务）', approverType: 'ROLE', approverValue: 'ADMIN,FINANCE',
+        branches: [
+          { id: 'proj_b1', type: NodeType.CONDITION, title: '技术可行性评审',
+            next: { id: 'proj_n3', type: NodeType.APPROVAL, title: '技术委员会评审', approverType: 'ROLE', approverValue: 'ADMIN' }
+          },
+          { id: 'proj_b2', type: NodeType.CONDITION, title: '财务预算评估',
+            next: { id: 'proj_n4', type: NodeType.APPROVAL, title: '财务部预算评估', approverType: 'ROLE', approverValue: 'FINANCE' }
+          }
+        ],
+        branchStrategy: 'PARALLEL',
+        next: { id: 'proj_n5', type: NodeType.APPROVAL, title: '总经理审批', approverType: 'ROLE', approverValue: 'MANAGER',
+          next: { id: 'proj_n6', type: NodeType.NOTIFICATION, title: '通知立项结果',
+            props: { recipientType: 'INITIATOR', notificationTitle: '项目立项结果', notificationContent: '您的项目立项申请已完成审批，请登录系统查看详情。' },
+            next: { id: 'proj_end', type: NodeType.END, title: '流程结束' }
+          }
+        }
+      }
+    }}
+  },
+  {
+    id: 'regularization', name: '员工转正审批', description: '定时提醒 → 部门评估 → HR审核 → 并行办理 → 通知', category: 'hr',
+    icon: UserCheck, color: 'text-green-600 bg-green-50',
+    nodes: { id: 'start', type: NodeType.START, title: '发起转正流程', next: {
+      id: 'reg_n1', type: NodeType.TIMER, title: '试用期到期提醒',
+        props: { timerType: 'DELAY', delayMinutes: 60 },
+        next: { id: 'reg_n2', type: NodeType.APPROVAL, title: '部门负责人评估', approverType: 'DEPT_MANAGER', next: {
+          id: 'reg_n3', type: NodeType.APPROVAL, title: 'HR综合审核', approverType: 'ROLE', approverValue: 'HR', next: {
+            id: 'reg_n4', type: NodeType.PARALLEL, title: '并行办理（IT+行政）', approverType: 'ROLE', approverValue: 'ADMIN',
+            branches: [
+              { id: 'reg_b1', type: NodeType.CONDITION, title: 'IT权限开通',
+                next: { id: 'reg_n5', type: NodeType.MANUAL, title: 'IT开通正式权限', approverType: 'ROLE', approverValue: 'ADMIN',
+                  props: { taskDescription: '为转正员工开通正式员工系统权限、邮箱等', priority: 'HIGH' }
+                }
+              },
+              { id: 'reg_b2', type: NodeType.CONDITION, title: '行政手续办理',
+                next: { id: 'reg_n6', type: NodeType.MANUAL, title: '行政办理工牌社保', approverType: 'ROLE', approverValue: 'ADMIN',
+                  props: { taskDescription: '办理正式工牌、更新社保信息、签订正式合同', priority: 'MEDIUM' }
+                }
+              }
+            ],
+            branchStrategy: 'PARALLEL',
+            next: { id: 'reg_n7', type: NodeType.NOTIFICATION, title: '通知转正结果',
+              props: { recipientType: 'INITIATOR', notificationTitle: '转正审批结果', notificationContent: '恭喜！您的转正申请已通过，欢迎成为正式员工。' },
+              next: { id: 'reg_end', type: NodeType.END, title: '流程结束' }
+            }
+          }
+        }
+      }
+    }}
+  },
+  {
+    id: 'incident', name: 'IT故障处理', description: '自动分级 → 按级别分流 → 处理 → 验证确认', category: 'it',
+    icon: Wrench, color: 'text-red-600 bg-red-50',
+    nodes: { id: 'start', type: NodeType.START, title: '提交故障报告', next: {
+      id: 'inc_n1', type: NodeType.SCRIPT, title: '自动故障分级',
+        props: { scriptType: 'JAVASCRIPT', scriptContent: 'const level = severity >= 8 ? "P1" : severity >= 5 ? "P2" : "P3";\nreturn { incidentLevel: level };', continueOnError: false },
+        branches: [
+          { id: 'inc_b1', type: NodeType.CONDITION, title: 'P1 紧急故障', condition: 'incidentLevel == "P1"',
+            next: { id: 'inc_n2', type: NodeType.NOTIFICATION, title: '紧急通知管理层',
+              props: { recipientType: 'ROLE', recipientValue: 'MANAGER', notificationTitle: '【紧急】P1级故障告警', notificationContent: '系统发生P1级紧急故障，请立即关注！故障描述: ${description}' },
+              next: { id: 'inc_n3', type: NodeType.MANUAL, title: '紧急修复处理', approverType: 'ROLE', approverValue: 'ADMIN',
+                props: { taskDescription: 'P1级紧急故障，需立即响应并修复', priority: 'HIGH' }
+              }
+            }
+          },
+          { id: 'inc_b2', type: NodeType.CONDITION, title: 'P2 重要故障', condition: 'incidentLevel == "P2"',
+            next: { id: 'inc_n4', type: NodeType.APPROVAL, title: '运维主管派单', approverType: 'ROLE', approverValue: 'ADMIN',
+              next: { id: 'inc_n5', type: NodeType.MANUAL, title: '运维工程师处理', approverType: 'ROLE', approverValue: 'ADMIN',
+                props: { taskDescription: 'P2级故障，请在4小时内完成修复', priority: 'MEDIUM' }
+              }
+            }
+          },
+          { id: 'inc_b3', type: NodeType.CONDITION, title: 'P3 一般故障', condition: 'incidentLevel == "P3"',
+            next: { id: 'inc_n6', type: NodeType.MANUAL, title: '运维工程师处理', approverType: 'ROLE', approverValue: 'ADMIN',
+              props: { taskDescription: 'P3级一般故障，请在24小时内处理', priority: 'LOW' }
+            }
+          }
+        ],
+        branchStrategy: 'EXCLUSIVE',
+        next: { id: 'inc_n7', type: NodeType.MANUAL, title: '报修人验证确认', approverType: 'USER',
+          props: { taskDescription: '请确认故障是否已修复，如未修复请退回重新处理', priority: 'MEDIUM' },
+          next: { id: 'inc_n8', type: NodeType.NOTIFICATION, title: '通知故障关闭',
+            props: { recipientType: 'INITIATOR', notificationTitle: '故障处理完成', notificationContent: '您提交的故障报告已处理完成并关闭。' },
+            next: { id: 'inc_end', type: NodeType.END, title: '流程结束' }
+          }
+        }
+    }}
+  },
+  {
+    id: 'sales_contract', name: '销售合同全流程', description: '销售审核 → 金额分级 → 法务审核 → 并行盖章 → 通知', category: 'sales',
+    icon: FileCheck, color: 'text-indigo-600 bg-indigo-50',
+    nodes: { id: 'start', type: NodeType.START, title: '提交合同审批', next: {
+      id: 'sc_n1', type: NodeType.APPROVAL, title: '销售主管审核', approverType: 'DIRECT_LEADER',
+      branches: [
+        { id: 'sc_b1', type: NodeType.CONDITION, title: '金额 ≤ 10万', condition: 'amount <= 100000',
+          next: { id: 'sc_n2', type: NodeType.APPROVAL, title: '销售总监审批', approverType: 'ROLE', approverValue: 'MANAGER' }
+        },
+        { id: 'sc_b2', type: NodeType.CONDITION, title: '金额 > 10万', condition: 'amount > 100000',
+          next: { id: 'sc_n3', type: NodeType.APPROVAL, title: '总经理审批', approverType: 'ROLE', approverValue: 'MANAGER',
+            next: { id: 'sc_n4', type: NodeType.APPROVAL, title: '董事会审批', approverType: 'ROLE', approverValue: 'MANAGER' }
+          }
+        }
+      ],
+      branchStrategy: 'EXCLUSIVE',
+      next: { id: 'sc_n5', type: NodeType.APPROVAL, title: '法务合规审核', approverType: 'ROLE', approverValue: 'LEGAL',
+        next: { id: 'sc_n6', type: NodeType.PARALLEL, title: '并行办理（财务+行政）', approverType: 'ROLE', approverValue: 'FINANCE,ADMIN',
+          branches: [
+            { id: 'sc_b3', type: NodeType.CONDITION, title: '财务确认',
+              next: { id: 'sc_n7', type: NodeType.APPROVAL, title: '财务确认收款条款', approverType: 'ROLE', approverValue: 'FINANCE' }
+            },
+            { id: 'sc_b4', type: NodeType.CONDITION, title: '行政盖章',
+              next: { id: 'sc_n8', type: NodeType.MANUAL, title: '行政盖章归档', approverType: 'ROLE', approverValue: 'ADMIN',
+                props: { taskDescription: '合同盖章并归档原件', priority: 'HIGH' }
+              }
+            }
+          ],
+          branchStrategy: 'PARALLEL',
+          next: { id: 'sc_n9', type: NodeType.NOTIFICATION, title: '通知合同签署完成',
+            props: { recipientType: 'INITIATOR', notificationTitle: '合同审批完成', notificationContent: '您提交的合同（金额: ${amount}）已完成全部审批流程，请及时跟进签署。' },
+            next: { id: 'sc_end', type: NodeType.END, title: '流程结束' }
+          }
+        }
+      }
+    }}
+  },
+  {
+    id: 'bidding', name: '招标采购流程', description: '需求审核 → 生成标书 → 等待投标 → 并行评标 → 审批', category: 'industry',
+    icon: ClipboardList, color: 'text-blue-700 bg-blue-50',
+    nodes: { id: 'start', type: NodeType.START, title: '提交招标需求', next: {
+      id: 'bid_n1', type: NodeType.APPROVAL, title: '采购部审核需求', approverType: 'ROLE', approverValue: 'ADMIN', next: {
+        id: 'bid_n2', type: NodeType.SCRIPT, title: '自动生成招标文件',
+          props: { scriptType: 'API', apiUrl: '/api/bidding/generate', apiMethod: 'POST', apiBody: '{"projectName": "${projectName}", "budget": "${budget}"}', continueOnError: false },
+          next: { id: 'bid_n3', type: NodeType.TIMER, title: '等待投标截止（7天）',
+            props: { timerType: 'DELAY', delayMinutes: 10080 },
+            next: { id: 'bid_n4', type: NodeType.PARALLEL, title: '并行评标', approverType: 'ROLE', approverValue: 'ADMIN',
+              branches: [
+                { id: 'bid_b1', type: NodeType.CONDITION, title: '技术评标',
+                  next: { id: 'bid_n5', type: NodeType.APPROVAL, title: '技术专家评标', approverType: 'ROLE', approverValue: 'ADMIN' }
+                },
+                { id: 'bid_b2', type: NodeType.CONDITION, title: '商务评标',
+                  next: { id: 'bid_n6', type: NodeType.APPROVAL, title: '商务专家评标', approverType: 'ROLE', approverValue: 'FINANCE' }
+                }
+              ],
+              branchStrategy: 'PARALLEL',
+              next: { id: 'bid_n7', type: NodeType.APPROVAL, title: '评标委员会定标', approverType: 'ROLE', approverValue: 'MANAGER',
+                next: { id: 'bid_n8', type: NodeType.NOTIFICATION, title: '通知中标结果',
+                  props: { recipientType: 'INITIATOR', notificationTitle: '招标结果通知', notificationContent: '招标项目「${projectName}」已完成评标，请查看中标结果。' },
+                  next: { id: 'bid_end', type: NodeType.END, title: '流程结束' }
+                }
+              }
+            }
+          }
+      }
+    }}
+  },
+  {
+    id: 'safety_incident', name: '安全事故处理', description: '自动记录 → 并行处置+通知 → 事故调查 → 整改审批', category: 'industry',
+    icon: ShieldCheck, color: 'text-red-700 bg-red-50',
+    nodes: { id: 'start', type: NodeType.START, title: '报告安全事故', next: {
+      id: 'sf_n1', type: NodeType.SCRIPT, title: '自动记录事故信息',
+        props: { scriptType: 'API', apiUrl: '/api/safety/record', apiMethod: 'POST', apiBody: '{"type": "${accidentType}", "location": "${location}"}', continueOnError: true },
+        next: { id: 'sf_n2', type: NodeType.PARALLEL, title: '并行处置（现场+通知）', approverType: 'ROLE', approverValue: 'ADMIN',
+          branches: [
+            { id: 'sf_b1', type: NodeType.CONDITION, title: '现场处置',
+              next: { id: 'sf_n3', type: NodeType.MANUAL, title: '现场紧急处置', approverType: 'ROLE', approverValue: 'ADMIN',
+                props: { taskDescription: '立即前往事故现场进行紧急处置，确保人员安全', priority: 'HIGH' }
+              }
+            },
+            { id: 'sf_b2', type: NodeType.CONDITION, title: '上报通知',
+              next: { id: 'sf_n4', type: NodeType.NOTIFICATION, title: '通知安全管理层',
+                props: { recipientType: 'ROLE', recipientValue: 'MANAGER', notificationTitle: '【紧急】安全事故报告', notificationContent: '发生安全事故，地点: ${location}，请立即关注。' }
+              }
+            }
+          ],
+          branchStrategy: 'PARALLEL',
+          next: { id: 'sf_n5', type: NodeType.APPROVAL, title: '事故调查报告审核', approverType: 'ROLE', approverValue: 'MANAGER',
+            next: { id: 'sf_n6', type: NodeType.APPROVAL, title: '整改方案审批', approverType: 'ROLE', approverValue: 'MANAGER',
+              next: { id: 'sf_n7', type: NodeType.MANUAL, title: '执行整改措施', approverType: 'ROLE', approverValue: 'ADMIN',
+                props: { taskDescription: '按照整改方案执行安全整改措施', priority: 'HIGH' },
+                next: { id: 'sf_n8', type: NodeType.APPROVAL, title: '整改验收确认', approverType: 'ROLE', approverValue: 'MANAGER',
+                  next: { id: 'sf_end', type: NodeType.END, title: '流程结束' }
+                }
+              }
+            }
+          }
+        }
+    }}
+  },
+  {
+    id: 'leave_advanced', name: '请假全流程', description: '天数判断 → 分级审批 → 子流程交接 → 定时提醒 → 通知', category: 'office',
+    icon: Calendar, color: 'text-blue-600 bg-blue-50',
+    nodes: { id: 'start', type: NodeType.START, title: '提交请假申请', next: {
+      id: 'la_n1', type: NodeType.APPROVAL, title: '直属上级审批', approverType: 'DIRECT_LEADER',
+      branches: [
+        { id: 'la_b1', type: NodeType.CONDITION, title: '请假 ≤ 3天', condition: 'days <= 3' },
+        { id: 'la_b2', type: NodeType.CONDITION, title: '3天 < 请假 ≤ 7天', condition: 'days > 3 && days <= 7',
+          next: { id: 'la_n2', type: NodeType.APPROVAL, title: '部门经理审批', approverType: 'DEPT_MANAGER' }
+        },
+        { id: 'la_b3', type: NodeType.CONDITION, title: '请假 > 7天', condition: 'days > 7',
+          next: { id: 'la_n3', type: NodeType.APPROVAL, title: '部门经理审批', approverType: 'DEPT_MANAGER',
+            next: { id: 'la_n4', type: NodeType.APPROVAL, title: '总经理审批', approverType: 'ROLE', approverValue: 'MANAGER' }
+          }
+        }
+      ],
+      branchStrategy: 'EXCLUSIVE',
+      next: { id: 'la_n5', type: NodeType.SUBPROCESS, title: '工作交接子流程',
+        props: { subprocessId: 'handover_process', variableMapping: '{"assignee": "${initiator}", "days": "${days}"}', waitForCompletion: true },
+        next: { id: 'la_n6', type: NodeType.TIMER, title: '假期结束前1天提醒',
+          props: { timerType: 'DELAY', delayMinutes: 1440 },
+          next: { id: 'la_n7', type: NodeType.NOTIFICATION, title: '通知请假结果',
+            props: { recipientType: 'INITIATOR', notificationTitle: '请假审批结果', notificationContent: '您的请假申请（${days}天）已审批通过，请做好工作交接。' },
+            next: { id: 'la_end', type: NodeType.END, title: '流程结束' }
+          }
+        }
+      }
+    }}
+  },
+  {
+    id: 'deployment', name: '生产环境发布', description: '代码审查 → 自动构建 → 等待窗口 → 并行部署+监控 → 验证', category: 'it',
+    icon: Server, color: 'text-slate-700 bg-slate-100',
+    nodes: { id: 'start', type: NodeType.START, title: '提交发布申请', next: {
+      id: 'dep_n1', type: NodeType.APPROVAL, title: '技术负责人代码审查', approverType: 'ROLE', approverValue: 'ADMIN', next: {
+        id: 'dep_n2', type: NodeType.SCRIPT, title: '自动构建与测试',
+          props: { scriptType: 'API', apiUrl: '/api/ci/build', apiMethod: 'POST', apiBody: '{"branch": "${branch}", "version": "${version}"}', continueOnError: false },
+          next: { id: 'dep_n3', type: NodeType.APPROVAL, title: '发布审批', approverType: 'ROLE', approverValue: 'MANAGER', next: {
+            id: 'dep_n4', type: NodeType.TIMER, title: '等待发布窗口',
+              props: { timerType: 'DELAY', delayMinutes: 30 },
+              next: { id: 'dep_n5', type: NodeType.PARALLEL, title: '并行执行（部署+监控）', approverType: 'ROLE', approverValue: 'ADMIN',
+                branches: [
+                  { id: 'dep_b1', type: NodeType.CONDITION, title: '执行部署',
+                    next: { id: 'dep_n6', type: NodeType.SCRIPT, title: '执行自动部署',
+                      props: { scriptType: 'API', apiUrl: '/api/deploy/execute', apiMethod: 'POST', apiBody: '{"version": "${version}"}', continueOnError: false }
+                    }
+                  },
+                  { id: 'dep_b2', type: NodeType.CONDITION, title: '监控告警',
+                    next: { id: 'dep_n7', type: NodeType.NOTIFICATION, title: '通知运维团队监控',
+                      props: { recipientType: 'ROLE', recipientValue: 'ADMIN', notificationTitle: '发布监控通知', notificationContent: '版本 ${version} 正在发布，请密切关注系统监控指标。' }
+                    }
+                  }
+                ],
+                branchStrategy: 'PARALLEL',
+                next: { id: 'dep_n8', type: NodeType.MANUAL, title: '发布后验证确认', approverType: 'ROLE', approverValue: 'ADMIN',
+                  props: { taskDescription: '验证发布后系统功能正常，检查关键业务指标', priority: 'HIGH' },
+                  next: { id: 'dep_n9', type: NodeType.NOTIFICATION, title: '通知发布完成',
+                    props: { recipientType: 'INITIATOR', notificationTitle: '发布完成通知', notificationContent: '版本 ${version} 已成功发布到生产环境。' },
+                    next: { id: 'dep_end', type: NodeType.END, title: '流程结束' }
+                  }
+                }
+              }
+          }}
+      }
+    }}
+  },
   {
     id: 'empty', name: '空白流程', description: '从零开始设计你的流程', category: 'other',
     icon: Sparkles, color: 'text-slate-500 bg-slate-50',
@@ -513,6 +796,232 @@ const TemplatePickerModal = ({ open, onClose, onSelect }: {
 
 // ==================== 属性面板 ====================
 
+// 角色/用户/部门选择器子组件 - 支持多选
+const ApproverValueSelector = ({ type, value, onChange, multiple = false }: {
+  type: string; value: string; onChange: (val: string) => void; multiple?: boolean;
+}) => {
+  const [roles, setRoles] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [depts, setDepts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState('');
+
+  // 加载数据
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        if (type === 'ROLE') {
+          const res: any = await getRoleList();
+          setRoles(Array.isArray(res) ? res : (res?.data || res?.rows || []));
+        } else if (type === 'USER') {
+          const res: any = await getUserList();
+          const list = Array.isArray(res) ? res : (res?.data || res?.rows || []);
+          setUsers(list);
+        } else if (type === 'DEPT') {
+          const res: any = await getDeptTree();
+          // 部门树扁平化
+          const flatten = (nodes: any[], result: any[] = []): any[] => {
+            nodes.forEach(n => {
+              result.push(n);
+              if (n.children) flatten(n.children, result);
+            });
+            return result;
+          };
+          const tree = Array.isArray(res) ? res : (res?.data || []);
+          setDepts(flatten(tree));
+        }
+      } catch (e) {
+        console.error('加载选项数据失败:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (type === 'ROLE' || type === 'USER' || type === 'DEPT') loadData();
+  }, [type]);
+
+  // 当前已选值数组
+  const selectedValues = value ? value.split(',').map(v => v.trim()).filter(Boolean) : [];
+
+  // 切换选中
+  const toggleValue = (val: string) => {
+    if (multiple) {
+      const newValues = selectedValues.includes(val)
+        ? selectedValues.filter(v => v !== val)
+        : [...selectedValues, val];
+      onChange(newValues.join(','));
+    } else {
+      onChange(val === value ? '' : val);
+    }
+  };
+
+  if (type === 'ROLE') {
+    const filtered = roles.filter(r => 
+      !searchText || r.roleName?.includes(searchText) || r.roleKey?.includes(searchText)
+    );
+    return (
+      <div>
+        <span className="text-xs text-slate-400 mb-1 block">选择角色{multiple ? '（可多选）' : ''}</span>
+        {loading ? (
+          <div className="text-xs text-slate-400 py-2 text-center">加载中...</div>
+        ) : (
+          <>
+            {roles.length > 5 && (
+              <input type="text" className="w-full border border-slate-200 rounded-lg p-2 text-xs mb-2"
+                placeholder="搜索角色..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+            )}
+            <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
+              {filtered.length === 0 ? (
+                <div className="text-xs text-slate-400 py-3 text-center">暂无角色数据</div>
+              ) : filtered.map(r => {
+                const isSelected = selectedValues.includes(r.roleKey);
+                return (
+                  <div key={r.roleId} onClick={() => toggleValue(r.roleKey)}
+                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
+                      isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
+                    }`}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                    }`}>
+                      {isSelected && <span className="text-white text-[10px]">✓</span>}
+                    </div>
+                    <span className="font-medium">{r.roleName}</span>
+                    <span className="text-slate-400 ml-auto">{r.roleKey}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {selectedValues.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {selectedValues.map(v => {
+                  const role = roles.find(r => r.roleKey === v);
+                  return (
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px]">
+                      {role?.roleName || v}
+                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-indigo-900">×</button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'USER') {
+    const filtered = users.filter(u => 
+      !searchText || u.nickName?.includes(searchText) || u.userName?.includes(searchText)
+    );
+    return (
+      <div>
+        <span className="text-xs text-slate-400 mb-1 block">选择人员{multiple ? '（可多选）' : ''}</span>
+        {loading ? (
+          <div className="text-xs text-slate-400 py-2 text-center">加载中...</div>
+        ) : (
+          <>
+            <input type="text" className="w-full border border-slate-200 rounded-lg p-2 text-xs mb-2"
+              placeholder="搜索人员..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+            <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
+              {filtered.length === 0 ? (
+                <div className="text-xs text-slate-400 py-3 text-center">暂无人员数据</div>
+              ) : filtered.map(u => {
+                const uid = String(u.userId);
+                const isSelected = selectedValues.includes(uid);
+                return (
+                  <div key={u.userId} onClick={() => toggleValue(uid)}
+                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
+                      isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
+                    }`}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                    }`}>
+                      {isSelected && <span className="text-white text-[10px]">✓</span>}
+                    </div>
+                    <span className="font-medium">{u.nickName || u.userName}</span>
+                    <span className="text-slate-400 ml-auto">{u.userName}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {selectedValues.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {selectedValues.map(v => {
+                  const user = users.find(u => String(u.userId) === v);
+                  return (
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px]">
+                      {user?.nickName || user?.userName || v}
+                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-indigo-900">×</button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'DEPT') {
+    const filtered = depts.filter(d => 
+      !searchText || d.deptName?.includes(searchText)
+    );
+    return (
+      <div>
+        <span className="text-xs text-slate-400 mb-1 block">选择部门{multiple ? '（可多选）' : ''}</span>
+        {loading ? (
+          <div className="text-xs text-slate-400 py-2 text-center">加载中...</div>
+        ) : (
+          <>
+            {depts.length > 5 && (
+              <input type="text" className="w-full border border-slate-200 rounded-lg p-2 text-xs mb-2"
+                placeholder="搜索部门..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+            )}
+            <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
+              {filtered.length === 0 ? (
+                <div className="text-xs text-slate-400 py-3 text-center">暂无部门数据</div>
+              ) : filtered.map(d => {
+                const did = String(d.deptId);
+                const isSelected = selectedValues.includes(did);
+                return (
+                  <div key={d.deptId} onClick={() => toggleValue(did)}
+                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
+                      isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
+                    }`}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                    }`}>
+                      {isSelected && <span className="text-white text-[10px]">✓</span>}
+                    </div>
+                    <span className="font-medium">{d.deptName}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {selectedValues.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {selectedValues.map(v => {
+                  const dept = depts.find(d => String(d.deptId) === v);
+                  return (
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px]">
+                      {dept?.deptName || v}
+                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-indigo-900">×</button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
   node: WorkflowNode; onClose: () => void;
   onUpdate: (id: string, data: Partial<WorkflowNode>) => void;
@@ -571,13 +1080,11 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
                 </select>
               </div>
               {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
-                <div>
-                  <span className="text-xs text-slate-400 mb-1 block">{formData.approverType === 'ROLE' ? '角色标识' : '人员ID'}</span>
-                  <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                    placeholder={formData.approverType === 'ROLE' ? '例如: MANAGER' : '输入用户ID'}
-                    value={formData.approverValue || ''} onChange={e => handleChange('approverValue', e.target.value)} />
-                  {formData.approverType === 'ROLE' && <p className="text-[10px] text-slate-400 mt-1">💡 输入系统中定义的角色标识符</p>}
-                </div>
+                <ApproverValueSelector
+                  type={formData.approverType || 'ROLE'}
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                />
               )}
             </div>
           )}
@@ -592,14 +1099,14 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
                 </select>
               </div>
               {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
-                <div>
-                  <span className="text-xs text-slate-400 mb-1 block">{formData.approverType === 'ROLE' ? '角色标识（多个用逗号分隔）' : '人员ID（多个用逗号分隔）'}</span>
-                  <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                    placeholder={formData.approverType === 'ROLE' ? '例如: MANAGER,FINANCE' : '输入多个用户ID'}
-                    value={formData.approverValue || ''} onChange={e => handleChange('approverValue', e.target.value)} />
-                  <p className="text-[10px] text-slate-400 mt-1">💡 会签需要所有审批人都同意才能通过</p>
-                </div>
+                <ApproverValueSelector
+                  type={formData.approverType || 'ROLE'}
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                  multiple={true}
+                />
               )}
+              <p className="text-[10px] text-slate-400 mt-1">💡 会签需要所有审批人都同意才能通过</p>
             </div>
           )}
           {node.type === NodeType.NOTIFICATION && (
@@ -617,15 +1124,11 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
                 </select>
               </div>
               {(formData.props?.recipientType === 'ROLE' || formData.props?.recipientType === 'USER' || formData.props?.recipientType === 'DEPT') && (
-                <div>
-                  <span className="text-xs text-slate-400 mb-1 block">
-                    {formData.props?.recipientType === 'ROLE' ? '角色标识' : formData.props?.recipientType === 'USER' ? '用户ID' : '部门ID'}
-                  </span>
-                  <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                    placeholder={formData.props?.recipientType === 'ROLE' ? '例如: MANAGER' : formData.props?.recipientType === 'USER' ? '输入用户ID' : '输入部门ID'}
-                    value={formData.props?.recipientValue || ''} 
-                    onChange={e => handleChange('props', { ...formData.props, recipientValue: e.target.value })} />
-                </div>
+                <ApproverValueSelector
+                  type={formData.props?.recipientType || 'ROLE'}
+                  value={formData.props?.recipientValue || ''}
+                  onChange={(val) => handleChange('props', { ...formData.props, recipientValue: val })}
+                />
               )}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">通知标题</span>
@@ -794,13 +1297,11 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
                 </select>
               </div>
               {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
-                <div>
-                  <span className="text-xs text-slate-400 mb-1 block">{formData.approverType === 'ROLE' ? '角色标识' : '人员ID'}</span>
-                  <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                    placeholder={formData.approverType === 'ROLE' ? '例如: ADMIN' : '输入用户ID'}
-                    value={formData.approverValue || ''} 
-                    onChange={e => handleChange('approverValue', e.target.value)} />
-                </div>
+                <ApproverValueSelector
+                  type={formData.approverType || 'ROLE'}
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                />
               )}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">任务优先级</span>

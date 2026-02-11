@@ -1,0 +1,185 @@
+# 使用说明 V5.2
+# 1. 使用docker-compose  宿主机不需要配置host来发现
+# 2. 无需修改源码，根目录  docker-compose up 即可
+# 3. 静静等待服务启动
+
+version: '3'
+services:
+  poco-mysql:
+    build:
+      context: ./db
+    environment:
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_ROOT_PASSWORD: root
+    restart: always
+    container_name: poco-mysql
+    image: poco-mysql
+    command: --lower_case_table_names=1
+    networks:
+      - spring_cloud_default
+
+  poco-redis:
+    container_name: poco-redis
+    image: registry.cn-hangzhou.aliyuncs.com/dockerhub_mirror/redis
+    restart: always
+    networks:
+      - spring_cloud_default
+
+  poco-register:
+    build:
+      context: ./poco-register
+    restart: always
+    container_name: poco-register
+    image: poco-register
+    ports:
+      - 8848:8848
+    networks:
+      - spring_cloud_default
+
+  poco-gateway:
+    build:
+      context: ./poco-gateway
+    restart: always
+    container_name: poco-gateway
+    image: poco-gateway
+    ports:
+      - 9999:9999
+    networks:
+      - spring_cloud_default
+
+  poco-auth:
+    build:
+      context: ./poco-auth
+    restart: always
+    container_name: poco-auth
+    image: poco-auth
+    networks:
+      - spring_cloud_default
+
+  poco-upms:
+    build:
+      context: ./poco-upms/poco-upms-biz
+    restart: always
+    container_name: poco-upms
+    image: poco-upms
+    networks:
+      - spring_cloud_default
+
+  poco-flow-task:
+    build:
+      context: ./poco-flow/poco-flow-task/poco-flow-task-biz
+    restart: always
+    container_name: poco-flow-task
+    image: poco-flow-task
+    networks:
+      - spring_cloud_default
+
+  poco-flow-engine:
+    build:
+      context: ./poco-flow/poco-flow-engine/poco-flow-engine-biz
+    restart: always
+    container_name: poco-flow-engine
+    image: poco-flow-engine
+    networks:
+      - spring_cloud_default
+
+  poco-app-server:
+    build:
+      context: ./poco-app-server/poco-app-server-biz
+    restart: always
+    container_name: poco-app-server
+    image: poco-app-server
+    networks:
+      - spring_cloud_default
+
+  poco-knowledge:
+    build:
+      context: ./poco-knowledge
+    restart: always
+    container_name: poco-knowledge
+    image: poco-knowledge
+    networks:
+      - spring_cloud_default
+
+  poco-monitor:
+    build:
+      context: ./poco-visual/poco-monitor
+    restart: always
+    image: poco-monitor
+    container_name: poco-monitor
+    ports:
+      - 5001:5001
+    networks:
+      - spring_cloud_default
+
+  poco-daemon-quartz:
+    build:
+      context: ./poco-visual/poco-daemon-quartz
+    restart: always
+    image: poco-daemon-quartz
+    container_name: poco-daemon-quartz
+    networks:
+      - spring_cloud_default
+
+  poco-daemon-elastic-job:
+    build:
+      context: ./poco-visual/poco-daemon-elastic-job
+    restart: always
+    image: poco-daemon-elastic-job
+    container_name: poco-daemon-elastic-job
+    networks:
+      - spring_cloud_default
+
+  poco-codegen:
+    build:
+      context: ./poco-visual/poco-codegen
+    restart: always
+    image: poco-codegen
+    container_name: poco-codegen
+    networks:
+      - spring_cloud_default
+
+  poco-mp-platform:
+    build:
+      context: ./poco-visual/poco-mp-platform
+    restart: always
+    image: poco-mp-platform
+    container_name: poco-mp-platform
+    networks:
+      - spring_cloud_default
+
+  poco-pay-platform:
+    build:
+      context: ./poco-visual/poco-pay-platform
+    restart: always
+    image: poco-pay-platform
+    container_name: poco-pay-platform
+    networks:
+      - spring_cloud_default
+
+  poco-report-platform:
+    build:
+      context: ./poco-visual/poco-report-platform
+    restart: always
+    image: poco-report-platform
+    container_name: poco-report-platform
+    ports:
+      - 9095:9095
+    networks:
+      - spring_cloud_default
+
+  poco-jimu-platform:
+    build:
+      context: ./poco-visual/poco-jimu-platform
+    restart: always
+    image: poco-jimu-platform
+    container_name: poco-jimu-platform
+    ports:
+      - 5008:5008
+    networks:
+      - spring_cloud_default
+
+networks:
+  spring_cloud_default:
+    name:  spring_cloud_default
+    driver: bridge

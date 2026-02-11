@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.ReportModule.mapper.ReportCategorySalesSummaryMapper">
+
+    <resultMap id="BaseResultMap" type="cn.joywon.poco.merchant.ReportModule.entity.ReportCategorySalesSummary">
+        <id column="id" property="id" />
+        <result column="stat_date" property="statDate" />
+        <result column="merchant_id" property="merchantId" />
+        <result column="store_id" property="storeId" />
+        <result column="category_id" property="categoryId" />
+        <result column="category_name" property="categoryName" />
+        <result column="sales_count" property="salesCount" />
+        <result column="sales_amount" property="salesAmount" />
+        <result column="sales_ratio" property="salesRatio" />
+        <result column="order_count" property="orderCount" />
+        <result column="sku_count" property="skuCount" />
+        <result column="created_by" property="createdBy" />
+        <result column="created_time" property="createdTime" />
+        <result column="updated_by" property="updatedBy" />
+        <result column="updated_time" property="updatedTime" />
+        <result column="is_deleted" property="isDeleted" />
+        <result column="deleted_time" property="deletedTime" />
+    </resultMap>
+
+</mapper>

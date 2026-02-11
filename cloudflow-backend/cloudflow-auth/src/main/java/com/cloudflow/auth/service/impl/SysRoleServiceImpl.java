@@ -5,26 +5,35 @@ import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.domain.SysRoleMenu;
 import com.cloudflow.auth.mapper.SysRoleMapper;
 import com.cloudflow.auth.mapper.SysRoleMenuMapper;
+import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysRoleService;
+import com.cloudflow.common.core.constant.CacheConstants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
 
+/**
+ * 角色服务实现
+ * 角色变更时自动清除菜单缓存和用户菜单树缓存
+ */
 @Service
 public class SysRoleServiceImpl implements ISysRoleService {
 
     @Autowired
     private SysRoleMapper roleMapper;
-    
+
     @Autowired
     private SysRoleMenuMapper roleMenuMapper;
 
+    @Autowired
+    private ISysMenuService menuService;
+
     @Override
     public List<SysRole> selectRoleList(SysRole role) {
-        // ... (existing code)
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(role.getRoleName())) {
             wrapper.like(SysRole::getRoleName, role.getRoleName());
@@ -42,7 +51,6 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Override
     public SysRole selectRoleById(Long roleId) {
         SysRole role = roleMapper.selectById(roleId);
-        // Load menu IDs
         if (role != null) {
             LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(SysRoleMenu::getRoleId, roleId);
@@ -57,6 +65,8 @@ public class SysRoleServiceImpl implements ISysRoleService {
     public int insertRole(SysRole role) {
         int rows = roleMapper.insert(role);
         insertRoleMenu(role);
+        // 角色新增时清除菜单缓存（新角色可能影响权限分配）
+        menuService.clearMenuCache();
         return rows;
     }
 
@@ -64,14 +74,17 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Transactional
     public int updateRole(SysRole role) {
         int rows = roleMapper.updateById(role);
-        // clear old menus
+        // 清除旧的角色-菜单关联
         LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysRoleMenu::getRoleId, role.getRoleId());
         roleMenuMapper.delete(wrapper);
+        // 插入新的角色-菜单关联
         insertRoleMenu(role);
+        // 角色变更时清除所有菜单缓存和用户菜单树缓存
+        menuService.clearMenuCache();
         return rows;
     }
-    
+
     public void insertRoleMenu(SysRole role) {
         Long[] menuIds = role.getMenuIds();
         if (menuIds != null && menuIds.length > 0) {
@@ -93,6 +106,8 @@ public class SysRoleServiceImpl implements ISysRoleService {
             wrapper.eq(SysRoleMenu::getRoleId, roleId);
             roleMenuMapper.delete(wrapper);
         }
+        // 角色删除时清除所有菜单缓存和用户菜单树缓存
+        menuService.clearMenuCache();
         return roleIds.length;
     }
 }

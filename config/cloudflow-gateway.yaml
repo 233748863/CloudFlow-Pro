@@ -28,7 +28,6 @@ spring:
             - Path=/oa/**
           filters:
             - StripPrefix=1
-      
       # 全局CORS配置
       globalcors:
         cors-configurations:

@@ -1,0 +1,39 @@
+package cn.joywon.poco.common.feign.interceptor;
+
+import cn.joywon.poco.common.core.constant.SecurityConstants;
+import cn.joywon.poco.common.feign.annotation.NoToken;
+import feign.RequestInterceptor;
+import feign.RequestTemplate;
+import org.springframework.core.Ordered;
+
+import java.lang.reflect.Method;
+
+/**
+ * @author poco
+ * @date 2024/6/1
+ */
+public class PocoFeignInnerRequestInterceptor implements RequestInterceptor, Ordered {
+
+	/**
+	 * Called for every request. Add data using methods on the supplied
+	 * {@link RequestTemplate}.
+	 * @param template
+	 */
+	@Override
+	public void apply(RequestTemplate template) {
+		Method method = template.methodMetadata().method();
+		NoToken noToken = method.getAnnotation(NoToken.class);
+		if (noToken != null) {
+			template.header(SecurityConstants.FROM, SecurityConstants.FROM_IN);
+		}
+
+		// 从内部调用标识
+		template.header(SecurityConstants.FEIGN_USER_AGENT, SecurityConstants.FROM_IN);
+	}
+
+	@Override
+	public int getOrder() {
+		return Integer.MIN_VALUE;
+	}
+
+}

@@ -1,13 +1,26 @@
 package com.cloudflow.oa.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.SysAsset;
+import com.cloudflow.oa.domain.SysAssetLog;
+import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.service.IAssetService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 固定资产管理控制器
+ */
 @RestController
 @RequestMapping("/asset")
 public class AssetController {
@@ -15,12 +28,54 @@ public class AssetController {
     @Autowired
     private IAssetService assetService;
 
+    @Autowired
+    private SysAssetLogMapper assetLogMapper;
+
     /**
-     * 获取资产列表
+     * 分页查询资产列表（支持条件筛选）
      */
     @GetMapping("/list")
-    public R list() {
-        return R.ok(assetService.list());
+    public R list(
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "assetCode", required = false) String assetCode,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "status", required = false) String status) {
+
+        LambdaQueryWrapper<SysAsset> wrapper = new LambdaQueryWrapper<>();
+        // 按名称模糊搜索
+        if (StringUtils.hasText(name)) {
+            wrapper.like(SysAsset::getName, name);
+        }
+        // 按资产编码模糊搜索
+        if (StringUtils.hasText(assetCode)) {
+            wrapper.like(SysAsset::getAssetCode, assetCode);
+        }
+        // 按分类精确筛选
+        if (StringUtils.hasText(category)) {
+            wrapper.eq(SysAsset::getCategory, category);
+        }
+        // 按状态精确筛选
+        if (StringUtils.hasText(status)) {
+            wrapper.eq(SysAsset::getStatus, status);
+        }
+        wrapper.orderByDesc(SysAsset::getCreateTime);
+
+        IPage<SysAsset> page = assetService.page(new Page<>(pageNum, pageSize), wrapper);
+        return R.ok(page);
+    }
+
+    /**
+     * 获取资产详情
+     */
+    @GetMapping("/{id}")
+    public R getById(@PathVariable("id") Long id) {
+        SysAsset asset = assetService.getById(id);
+        if (asset == null) {
+            return R.fail("资产不存在");
+        }
+        return R.ok(asset);
     }
 
     /**
@@ -29,6 +84,100 @@ public class AssetController {
     @PostMapping
     public R add(@RequestBody SysAsset asset) {
         return R.ok(assetService.save(asset));
+    }
+
+    /**
+     * 编辑资产
+     */
+    @PutMapping
+    public R update(@RequestBody SysAsset asset) {
+        if (asset.getAssetId() == null) {
+            return R.fail("资产ID不能为空");
+        }
+        return R.ok(assetService.updateById(asset));
+    }
+
+    /**
+     * 删除资产
+     */
+    @DeleteMapping("/{id}")
+    public R delete(@PathVariable("id") Long id) {
+        SysAsset asset = assetService.getById(id);
+        if (asset == null) {
+            return R.fail("资产不存在");
+        }
+        // 在用状态不允许删除
+        if ("2".equals(asset.getStatus())) {
+            return R.fail("在用资产不能删除，请先归还");
+        }
+        return R.ok(assetService.removeById(id));
+    }
+
+    /**
+     * 资产领用
+     */
+    @PostMapping("/{id}/borrow")
+    public R borrow(@PathVariable("id") Long id, @RequestParam("userId") Long userId) {
+        assetService.borrowAsset(id, userId);
+        return R.ok("领用成功");
+    }
+
+    /**
+     * 资产归还
+     */
+    @PostMapping("/{id}/return")
+    public R returnAsset(@PathVariable("id") Long id) {
+        assetService.returnAsset(id);
+        return R.ok("归还成功");
+    }
+
+    /**
+     * 资产送修
+     */
+    @PostMapping("/{id}/repair")
+    public R repair(@PathVariable("id") Long id, @RequestParam(value = "remark", required = false) String remark) {
+        assetService.repairAsset(id, remark);
+        return R.ok("已送修");
+    }
+
+    /**
+     * 资产报废
+     */
+    @PostMapping("/{id}/scrap")
+    public R scrap(@PathVariable("id") Long id, @RequestParam(value = "remark", required = false) String remark) {
+        assetService.scrapAsset(id, remark);
+        return R.ok("已报废");
+    }
+
+    /**
+     * 获取资产变动日志
+     */
+    @GetMapping("/{id}/logs")
+    public R getLogs(@PathVariable("id") Long id) {
+        LambdaQueryWrapper<SysAssetLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysAssetLog::getRefId, id)
+               .eq(SysAssetLog::getRefType, "1")
+               .orderByDesc(SysAssetLog::getCreateTime);
+        List<SysAssetLog> logs = assetLogMapper.selectList(wrapper);
+        return R.ok(logs);
+    }
+
+    /**
+     * 资产统计（按状态和分类统计）
+     */
+    @GetMapping("/statistics")
+    public R statistics() {
+        Map<String, Object> stats = assetService.getStatistics();
+        return R.ok(stats);
+    }
+
+    /**
+     * 获取所有分类列表（用于筛选下拉）
+     */
+    @GetMapping("/categories")
+    public R categories() {
+        List<String> categories = assetService.getAllCategories();
+        return R.ok(categories);
     }
 
     /**

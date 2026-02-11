@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.merchant.ProductModule.mapper.ProductMapper">
+
+    <resultMap id="productListVOMap" type="cn.joywon.poco.merchant.ProductModule.vo.ProductListVO">
+        <id property="id" column="id"/>
+        <result property="merchantId" column="merchant_id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="name" column="name"/>
+        <result property="type" column="type"/>
+        <result property="typeDesc" column="type_desc"/>
+        <result property="status" column="status"/>
+        <result property="statusDesc" column="status_desc"/>
+        <result property="tags" column="tags" javaType="java.util.List" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="description" column="description"/>
+        <result property="mainImage" column="main_image"/>
+        <result property="sortWeight" column="sort_weight"/>
+        <result property="minPrice" column="min_price"/>
+        <result property="maxPrice" column="max_price"/>
+        <result property="totalStock" column="total_stock"/>
+        <result property="skuCount" column="sku_count"/>
+        <result property="totalSales" column="total_sales"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="updatedBy" column="updated_by"/>
+        <result property="createdTime" column="created_time"/>
+        <result property="updatedTime" column="updated_time"/>
+        <result column="merchant_name" property="merchantName"/>
+    </resultMap>
+
+    <resultMap id="productVOMap" type="cn.joywon.poco.merchant.ProductModule.vo.ProductVO">
+        <id property="id" column="id"/>
+        <result property="merchantId" column="merchant_id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="name" column="name"/>
+        <result property="type" column="type"/>
+        <result property="typeDesc" column="type_desc"/>
+        <result property="status" column="status"/>
+        <result property="statusDesc" column="status_desc"/>
+        <result property="tags" column="tags" javaType="java.util.List" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="description" column="description"/>
+        <result property="mainImage" column="main_image"/>
+        <result property="detailImages" column="detail_images" javaType="java.util.List" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="detailDescription" column="detail_description" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="attributes" column="attributes" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result property="sortWeight" column="sort_weight"/>
+        <result property="totalSales" column="total_sales"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="updatedBy" column="updated_by"/>
+        <result property="createdTime" column="created_time"/>
+        <result property="updatedTime" column="updated_time"/>
+        <result property="isDeleted" column="is_deleted"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="version" column="version"/>
+    </resultMap>
+
+    <!-- 分页查询商品列表 -->
+    <!-- 分页查询商品列表（服务层批量组装SKU，避免XML嵌套N+1） -->
+    <select id="getProductListPage" resultMap="productListVOMap">
+        SELECT
+            p.id,
+            p.merchant_id,
+            m.name as merchant_name,
+            p.category_id,
+            c.name as category_name,
+            p.name,
+            p.type,
+            CASE
+                WHEN p.type = 'PHYSICAL' THEN '实物商品'
+                WHEN p.type = 'SERVICE' THEN '服务商品'
+                ELSE '未知类型'
+            END as type_desc,
+            p.status,
+            CASE
+                WHEN p.status = 'DRAFT' THEN '草稿'
+                WHEN p.status = 'PUBLISHED' THEN '已发布'
+                WHEN p.status = 'ARCHIVED' THEN '已归档'
+                ELSE '未知状态'
+            END as status_desc,
+            p.tags,
+            p.description,
+            p.main_image,
+            p.sort_weight,
+            COALESCE(sku_info.min_price, 0) as min_price,
+            COALESCE(sku_info.max_price, 0) as max_price,
+            COALESCE(sku_info.total_stock, 0) as total_stock,
+            COALESCE(sku_info.sku_count, 0) as sku_count,
+            COALESCE(sales_info.total_sales, 0) as total_sales,
+            p.created_by,
+            p.updated_by,
+            p.created_time,
+            p.updated_time
+        FROM products p
+        LEFT JOIN product_categories c ON p.category_id = c.id
+        LEFT JOIN merchants m on p.merchant_id = m.id
+        LEFT JOIN (
+            SELECT
+                product_id,
+                MIN(price) as min_price,
+                MAX(price) as max_price,
+                SUM(CASE WHEN stock = -1 THEN 999999 ELSE stock END) as total_stock,
+                COUNT(*) as sku_count
+            FROM product_skus
+            WHERE is_deleted = 0
+            GROUP BY product_id
+        ) sku_info ON p.id = sku_info.product_id
+        LEFT JOIN (
+            SELECT
+                oi.product_id,
+                SUM(oi.quantity) as total_sales
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+              AND o.is_deleted = 0
+              AND oi.is_deleted = 0
+            GROUP BY oi.product_id
+        ) sales_info ON p.id = sales_info.product_id
+        WHERE p.is_deleted = 0
+        <if test="query.merchantId != null and query.merchantId > 0">
+            AND p.merchant_id = #{query.merchantId}
+        </if>
+        <if test="query.categoryId != null and query.categoryId > 0">
+            AND p.category_id = #{query.categoryId}
+        </if>
+        <if test="query.name != null and query.name != ''">
+            AND p.name LIKE CONCAT('%', #{query.name}, '%')
+        </if>
+        <if test="query.type != null and query.type != ''">
+            AND p.type = #{query.type}
+        </if>
+        <if test="query.status != null and query.status != ''">
+            AND p.status = #{query.status}
+        </if>
+        <if test="query.tag != null and query.tag != ''">
+            AND JSON_SEARCH(p.tags, 'one', CONCAT('%', #{query.tag}, '%')) IS NOT NULL
+        </if>
+        <if test="query.createdStart != null">
+            AND p.created_time &gt;= #{query.createdStart}
+        </if>
+        <if test="query.createdEnd != null">
+            AND p.created_time &lt;= #{query.createdEnd}
+        </if>
+        <choose>
+            <when test="query.sortField != null and query.sortField != ''">
+                ORDER BY 
+                <choose>
+                    <when test="query.sortField == 'updated_time'">p.updated_time</when>
+                    <when test="query.sortField == 'created_time'">p.created_time</when>
+                    <when test="query.sortField == 'sort_weight'">p.sort_weight</when>
+                    <when test="query.sortField == 'name'">p.name</when>
+                    <otherwise>p.updated_time</otherwise>
+                </choose>
+                <choose>
+                    <when test="query.sortOrder != null and query.sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </when>
+            <otherwise>
+                ORDER BY p.updated_time DESC
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 根据ID查询商品详情 -->
+    <select id="getProductVoById" resultMap="productVOMap">
+        SELECT 
+            p.id,
+            p.merchant_id,
+            p.category_id,
+            pc.name AS category_name,
+            p.name,
+            p.type,
+            CASE 
+                WHEN p.type = 'PHYSICAL' THEN '实物商品'
+                WHEN p.type = 'SERVICE' THEN '服务商品'
+                ELSE '未知类型'
+            END AS type_desc,
+            p.status,
+            CASE 
+                WHEN p.status = 'DRAFT' THEN '草稿'
+                WHEN p.status = 'PUBLISHED' THEN '已发布'
+                WHEN p.status = 'ARCHIVED' THEN '已归档'
+                ELSE '未知状态'
+            END AS status_desc,
+            p.tags,
+            p.description,
+            p.main_image,
+            p.detail_images,
+            p.detail_description,
+            p.attributes,
+            p.sort_weight,
+            COALESCE(sales_info.total_sales, 0) as total_sales,
+            p.created_by,
+            p.updated_by,
+            p.created_time,
+            p.updated_time,
+            p.is_deleted,
+            p.tenant_id,
+            p.version
+        FROM products p
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
+        LEFT JOIN (
+            SELECT
+                oi.product_id,
+                SUM(oi.quantity) as total_sales
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+              AND o.is_deleted = 0
+              AND oi.is_deleted = 0
+            GROUP BY oi.product_id
+        ) sales_info ON p.id = sales_info.product_id
+        WHERE p.id = #{productId} AND p.is_deleted = 0
+    </select>
+
+
+    <!-- 根据商家ID查询商品列表 -->
+    <select id="getProductsByMerchantId" resultMap="productListVOMap">
+        SELECT
+            p.id,
+            p.merchant_id,
+            p.category_id,
+            c.name as category_name,
+            p.name,
+            p.type,
+            CASE
+                WHEN p.type = 'PHYSICAL' THEN '实物商品'
+                WHEN p.type = 'SERVICE' THEN '服务商品'
+                ELSE '未知类型'
+            END as type_desc,
+            p.status,
+            CASE
+                WHEN p.status = 'DRAFT' THEN '草稿'
+                WHEN p.status = 'PUBLISHED' THEN '已发布'
+                WHEN p.status = 'ARCHIVED' THEN '已归档'
+                ELSE '未知状态'
+            END as status_desc,
+            p.tags,
+            p.description,
+            p.main_image,
+            p.sort_weight,
+            COALESCE(sku_info.min_price, 0) as min_price,
+            COALESCE(sku_info.max_price, 0) as max_price,
+            COALESCE(sku_info.total_stock, 0) as total_stock,
+            COALESCE(sku_info.sku_count, 0) as sku_count,
+            COALESCE(sales_info.total_sales, 0) as total_sales,
+            p.created_by,
+            p.updated_by,
+            p.created_time,
+            p.updated_time
+        FROM products p
+        LEFT JOIN product_categories c ON p.category_id = c.id
+        LEFT JOIN (
+            SELECT
+                product_id,
+                MIN(price) as min_price,
+                MAX(price) as max_price,
+                SUM(CASE WHEN stock = -1 THEN 999999 ELSE stock END) as total_stock,
+                COUNT(*) as sku_count
+            FROM product_skus
+            WHERE is_deleted = 0
+            GROUP BY product_id
+        ) sku_info ON p.id = sku_info.product_id
+        LEFT JOIN (
+            SELECT
+                oi.product_id,
+                SUM(oi.quantity) as total_sales
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+              AND o.is_deleted = 0
+              AND oi.is_deleted = 0
+            GROUP BY oi.product_id
+        ) sales_info ON p.id = sales_info.product_id
+        WHERE p.merchant_id = #{merchantId} AND p.is_deleted = 0
+        <if test="status != null and status != ''">
+            AND p.status = #{status}
+        </if>
+        ORDER BY p.updated_time DESC
+    </select>
+
+    <!-- 根据分类ID查询商品列表 -->
+    <select id="getProductsByCategoryId" resultMap="productListVOMap">
+        SELECT 
+            p.id,
+            p.merchant_id,
+            p.category_id,
+            c.name as category_name,
+            p.name,
+            p.type,
+            CASE 
+                WHEN p.type = 'PHYSICAL' THEN '实物商品'
+                WHEN p.type = 'SERVICE' THEN '服务商品'
+                ELSE '未知类型'
+            END as type_desc,
+            p.status,
+            CASE 
+                WHEN p.status = 'DRAFT' THEN '草稿'
+                WHEN p.status = 'PUBLISHED' THEN '已发布'
+                WHEN p.status = 'ARCHIVED' THEN '已归档'
+                ELSE '未知状态'
+            END as status_desc,
+            p.tags,
+            p.description,
+            p.main_image,
+            p.sort_weight,
+            COALESCE(sku_info.min_price, 0) as min_price,
+            COALESCE(sku_info.max_price, 0) as max_price,
+            COALESCE(sku_info.total_stock, 0) as total_stock,
+            COALESCE(sku_info.sku_count, 0) as sku_count,
+            COALESCE(sales_info.total_sales, 0) as total_sales,
+            p.created_by,
+            p.updated_by,
+            p.created_time,
+            p.updated_time
+        FROM products p
+        LEFT JOIN product_categories c ON p.category_id = c.id
+        LEFT JOIN (
+            SELECT 
+                product_id,
+                MIN(price) as min_price,
+                MAX(price) as max_price,
+                SUM(CASE WHEN stock = -1 THEN 999999 ELSE stock END) as total_stock,
+                COUNT(*) as sku_count
+            FROM product_skus 
+            WHERE is_deleted = 0
+            GROUP BY product_id
+        ) sku_info ON p.id = sku_info.product_id
+        LEFT JOIN (
+            SELECT
+                oi.product_id,
+                SUM(oi.quantity) as total_sales
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.status IN ('PAID', 'PENDING_VERIFICATION', 'COMPLETED')
+              AND o.is_deleted = 0
+              AND oi.is_deleted = 0
+            GROUP BY oi.product_id
+        ) sales_info ON p.id = sales_info.product_id
+        WHERE p.category_id = #{categoryId} AND p.is_deleted = 0
+        <if test="status != null and status != ''">
+            AND p.status = #{status}
+        </if>
+        ORDER BY p.updated_time DESC
+    </select>
+
+    <!-- 批量更新商品状态 -->
+    <update id="batchUpdateStatus">
+        UPDATE products 
+        SET status = #{status}, updated_by = #{updateBy}, updated_time = NOW()
+        WHERE id IN
+        <foreach collection="productIds" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+        AND is_deleted = 0
+    </update>
+
+</mapper>

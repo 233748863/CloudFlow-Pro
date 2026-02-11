@@ -122,9 +122,19 @@ public class JsonSchemaValidator {
         // 但不应该抛出异常，因为审批节点可以作为流程的结束节点
         
         // GATEWAY节点必须有branches
-        if ("GATEWAY".equals(type) || "CONDITION".equals(type)) {
+        // 注意：CONDITION 类型在前端数据模型中既可以作为独立的条件网关（此时需要有branches），
+        // 也可以作为分支的子节点（此时不需要有branches，只需要有condition表达式）。
+        // 因此只对 GATEWAY 类型强制要求有 branches，CONDITION 类型不强制要求。
+        if ("GATEWAY".equals(type)) {
             if (!node.has("branches") || !node.get("branches").isArray() || node.get("branches").size() == 0) {
                 throw WorkflowException.validationError("网关节点必须有分支");
+            }
+        }
+        
+        // PARALLEL 类型的并行网关也必须有 branches
+        if ("PARALLEL".equals(type)) {
+            if (!node.has("branches") || !node.get("branches").isArray() || node.get("branches").size() == 0) {
+                throw WorkflowException.validationError("并行网关节点必须有分支");
             }
         }
         

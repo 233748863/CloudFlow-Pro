@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.PlatformModule.mapper.PointsRuleMapper">
+
+
+    <!--  删除积分规则
+    int deletePointsRule(Long id)  -->
+    <update id="deletePointsRule">
+        UPDATE points_rules
+        SET is_enable    = 0,
+            is_deleted   = 1,
+            deleted_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+
+    <!--  查询积分规则列表
+    Page<PointsRuleListVO> queryPointsRulesList(Page<> page, PointsRuleQueryDTO dto)  -->
+    <select id="queryPointsRulesList"
+            resultType="cn.joywon.poco.merchant.PlatformModule.vo.PointsRuleListVO"
+            parameterType="cn.joywon.poco.merchant.PlatformModule.dto.PointsRuleQueryDTO">
+
+        SELECT id,
+        rule_name,
+        add_or_ded,
+        apply_scope,
+        rules_type,
+        active_time,
+        expire_time,
+        sort_weight,
+        created_time,
+        is_enable AS enable
+        FROM points_rules
+
+        <where>
+            <if test="dto.ruleName != null and dto.ruleName.trim() != ''">
+                AND rule_name LIKE CONCAT('%', #{dto.ruleName}, '%')
+            </if>
+
+            <if test="dto.addOrDed != null and dto.addOrDed.size() > 0">
+                AND add_or_ded IN
+                <foreach item="item" collection="dto.addOrDed" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+            <if test="dto.applyScopes != null and dto.applyScopes.size() > 0">
+                AND apply_scope IN
+                <foreach item="scope" collection="dto.applyScopes" open="(" separator="," close=")">
+                    #{scope}
+                </foreach>
+            </if>
+
+            <if test="dto.rulesTypes != null and dto.rulesTypes.size() > 0">
+                AND rules_type IN
+                <foreach item="type" collection="dto.rulesTypes" open="(" separator="," close=")">
+                    #{type}
+                </foreach>
+            </if>
+
+            <if test="dto.activeTime != null">
+                AND active_time &gt;= #{dto.activeTime}
+            </if>
+
+            <if test="dto.expireTime != null">
+                AND expire_time &lt;= #{dto.expireTime}
+            </if>
+
+            <if test="dto.enable != null">
+                AND is_enable = ${dto.enable ? 1 : 0}
+            </if>
+        </where>
+
+        <choose>
+            <when test="dto.sortByWeight != null and dto.sortByCreateTime != null">
+                ORDER BY sort_weight ${dto.sortByWeight ? 'ASC' : 'DESC'},
+                created_time ${dto.sortByCreateTime ? 'ASC' : 'DESC'}
+            </when>
+
+            <when test="dto.sortByWeight != null and dto.sortByCreateTime == null">
+                ORDER BY sort_weight ${dto.sortByWeight ? 'ASC' : 'DESC'}
+            </when>
+
+            <when test="dto.sortByWeight == null and dto.sortByCreateTime != null">
+                ORDER BY created_time ${dto.sortByCreateTime ? 'ASC' : 'DESC'}
+            </when>
+        </choose>
+
+    </select>
+
+
+</mapper>

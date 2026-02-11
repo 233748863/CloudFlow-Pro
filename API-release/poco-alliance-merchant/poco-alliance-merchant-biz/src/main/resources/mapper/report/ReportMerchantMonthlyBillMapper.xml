@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.joywon.poco.merchant.ReportModule.mapper.ReportMerchantMonthlyBillMapper">
+
+    <resultMap id="BaseResultMap" type="cn.joywon.poco.merchant.ReportModule.entity.ReportMerchantMonthlyBill">
+        <id column="id" property="id" />
+        <result column="stat_month" property="statMonth" />
+        <result column="merchant_id" property="merchantId" />
+        <result column="merchant_name" property="merchantName" />
+        <result column="total_income" property="totalIncome" />
+        <result column="total_expenditure" property="totalExpenditure" />
+        <result column="final_settle_amount" property="finalSettleAmount" />
+        <result column="settle_status" property="settleStatus" />
+        <result column="created_by" property="createdBy" />
+        <result column="created_time" property="createdTime" />
+        <result column="updated_by" property="updatedBy" />
+        <result column="updated_time" property="updatedTime" />
+        <result column="is_deleted" property="isDeleted" />
+        <result column="deleted_time" property="deletedTime" />
+    </resultMap>
+
+</mapper>

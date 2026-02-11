@@ -1,117 +1,71 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, GitMerge, FileText, Settings, LogOut, Bell, CheckCircle2, 
-  Users, PlayCircle, ShieldCheck, ChevronRight, ChevronDown, FormInput, Code, Megaphone,
-  Calendar, Monitor, Rocket, Briefcase, Building2, Wrench, FolderOpen, Car, 
-  ClipboardCheck, Package, FileArchive
+  LogOut, Bell, ShieldCheck, ChevronRight, GitMerge
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { Role } from '../types';
+import { getRouters, MenuItem as ApiMenuItem } from '../services/api/menu';
+import { getIcon } from '../utils/iconMapper';
 
 // Types for menu structure
 interface MenuItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  path?: string; // If it's a leaf menu with a route
+  path?: string;
   children?: MenuItem[];
-  roles?: Role[]; // If specified, only these roles can see it
 }
 
 export const MainLayout = () => {
   const { user, logout } = useAuth();
-  useWebSocket(); // Activate Global WebSocket Listener
+  useWebSocket();
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+  const [menuTree, setMenuTree] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Two-level menu structure
-  const menuTree = useMemo(() => {
-    const allMenus: MenuItem[] = [
-      // ── 工作台 ──
-      {
-        id: 'workspace',
-        label: '工作台',
-        icon: LayoutDashboard,
-        children: [
-          { id: '/', label: '仪表盘', icon: LayoutDashboard, path: '/' },
-          { id: '/schedule', label: '我的日程', icon: Calendar, path: '/schedule' },
-        ],
-      },
-      // ── 办公协同 ──
-      {
-        id: 'office',
-        label: '办公协同',
-        icon: Briefcase,
-        children: [
-          { id: '/meeting-room', label: '会议室', icon: Monitor, path: '/meeting-room' },
-          { id: '/announcement', label: '公告中心', icon: Megaphone, path: '/announcement' },
-          { id: '/admin/attendance/checkin', label: '考勤打卡', icon: ClipboardCheck, path: '/admin/attendance/checkin' },
-        ],
-      },
-      // ── 流程中心 ──
-      {
-        id: 'process',
-        label: '流程中心',
-        icon: GitMerge,
-        children: [
-          { id: '/workplace', label: '发起流程', icon: PlayCircle, path: '/workplace' },
-          { id: '/my-apps', label: '我的申请', icon: FileText, path: '/my-apps' },
-          { id: '/tasks', label: '审批待办', icon: CheckCircle2, path: '/tasks' },
-        ],
-      },
-      // ── 流程管理 (ADMIN/MANAGER/HR) ──
-      {
-        id: 'workflow-mgmt',
-        label: '流程管理',
-        icon: Settings,
-        roles: [Role.ADMIN, Role.MANAGER, Role.HR],
-        children: [
-          { id: '/workflow', label: '流程设计', icon: GitMerge, path: '/workflow' },
-          { id: '/workflow/monitor', label: '流程监控', icon: Monitor, path: '/workflow/monitor' },
-          { id: '/workflow/deploy', label: '发布管理', icon: Rocket, path: '/workflow/deploy' },
-          { id: '/forms', label: '表单设计', icon: FormInput, path: '/forms' },
-        ],
-      },
-      // ── 行政管理 (ADMIN/MANAGER/HR) ──
-      {
-        id: 'admin-mgmt',
-        label: '行政管理',
-        icon: Building2,
-        roles: [Role.ADMIN, Role.MANAGER, Role.HR],
-        children: [
-          { id: '/users', label: '组织架构', icon: Users, path: '/users' },
-          { id: '/admin/asset', label: '资产管理', icon: Package, path: '/admin/asset' },
-          { id: '/admin/vehicle/list', label: '车辆管理', icon: Car, path: '/admin/vehicle/list' },
-          { id: '/admin/vehicle/booking', label: '用车申请', icon: Car, path: '/admin/vehicle/booking' },
-          { id: '/admin/vehicle/usage', label: '用车记录', icon: Car, path: '/admin/vehicle/usage' },
-          { id: '/admin/attendance/rule', label: '考勤规则', icon: ClipboardCheck, path: '/admin/attendance/rule' },
-        ],
-      },
-      // ── 系统管理 (ADMIN only) ──
-      {
-        id: 'system',
-        label: '系统管理',
-        icon: Wrench,
-        roles: [Role.ADMIN],
-        children: [
-          { id: '/system/users', label: '用户管理', icon: Users, path: '/system/users' },
-          { id: '/system/roles', label: '角色管理', icon: ShieldCheck, path: '/system/roles' },
-          { id: '/system/menus', label: '菜单管理', icon: LayoutDashboard, path: '/system/menus' },
-          { id: '/system/files', label: '文件管理', icon: FileArchive, path: '/system/files' },
-          { id: '/code', label: '源码生成', icon: Code, path: '/code' },
-        ],
-      },
-    ];
+  // 从后端动态加载菜单
+  useEffect(() => {
+    const loadMenus = async () => {
+      try {
+        const menus = await getRouters();
+        // 转换后端菜单数据为前端格式
+        const convertedMenus = convertApiMenusToMenuTree(menus);
+        setMenuTree(convertedMenus);
+      } catch (error) {
+        console.error('加载菜单失败:', error);
+        // 如果加载失败，使用空菜单
+        setMenuTree([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Filter by role
-    return allMenus.filter(group => {
-      if (!group.roles) return true;
-      return user && group.roles.includes(user.role);
-    });
+    if (user) {
+      loadMenus();
+    }
   }, [user]);
+
+  // 将后端菜单数据转换为前端菜单树结构
+  const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuItem[] => {
+    return apiMenus
+      .filter(menu => menu.menuType === 'M' && menu.visible === '0')
+      .map(group => ({
+        id: group.path,
+        label: group.menuName,
+        icon: getIcon(group.icon),
+        children: group.children
+          ?.filter(child => child.menuType === 'C' && child.visible === '0')
+          .map(child => ({
+            id: child.path,
+            label: child.menuName,
+            icon: getIcon(child.icon),
+            path: child.path,
+          })) || [],
+      }));
+  };
 
   // Auto-expand the group that contains the current route
   useMemo(() => {
@@ -154,6 +108,14 @@ export const MainLayout = () => {
   }, [location.pathname, menuTree]);
 
   if (!user) return null;
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-500">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-[Inter]">

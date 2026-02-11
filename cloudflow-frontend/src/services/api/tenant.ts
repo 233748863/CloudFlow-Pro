@@ -1,0 +1,40 @@
+import request from './request';
+
+/**
+ * 租户管理API
+ */
+
+// 获取租户列表
+export const getTenantList = (params?: any) => {
+  return request.get('/auth/system/tenant/list', { params });
+};
+
+// 获取租户详情
+export const getTenantDetail = (tenantId: number) => {
+  return request.get(`/auth/system/tenant/${tenantId}`);
+};
+
+// 新增租户
+export const addTenant = (data: any) => {
+  return request.post('/auth/system/tenant', data);
+};
+
+// 修改租户
+export const updateTenant = (data: any) => {
+  return request.put('/auth/system/tenant', data);
+};
+
+// 删除租户
+export const deleteTenant = (tenantIds: number[]) => {
+  return request.delete(`/auth/system/tenant/${tenantIds.join(',')}`);
+};
+
+// 修改租户状态
+export const changeTenantStatus = (data: { tenantId: number; status: string }) => {
+  return request.put('/auth/system/tenant/changeStatus', data);
+};
+
+// 获取租户统计信息
+export const getTenantStatistics = (tenantId: number) => {
+  return request.get(`/auth/system/tenant/statistics/${tenantId}`);
+};

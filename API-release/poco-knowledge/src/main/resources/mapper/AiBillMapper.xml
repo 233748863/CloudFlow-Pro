@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.joywon.poco.knowledge.mapper.AiBillMapper">
+
+    <resultMap id="aiBillMap" type="cn.joywon.poco.knowledge.entity.AiBillEntity">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="promptTokens" column="prompt_tokens"/>
+        <result property="completionTokens" column="completion_tokens"/>
+        <result property="model" column="model"/>
+        <result property="reqid" column="reqid"/>
+        <result property="ip" column="ip"/>
+        <result property="note" column="note"/>
+        <result property="tokenId" column="token_id"/>
+        <result property="tokens" column="tokens"/>
+        <result property="tokenType" column="token_type"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <select id="selectBillSum" resultType="java.util.Map">
+        SELECT DATE(create_time) AS date, SUM(tokens) AS total_tokens
+        FROM ai_bill
+        WHERE create_time >= CURDATE() - INTERVAL 30 DAY
+        GROUP BY DATE(create_time)
+        ORDER BY DATE(create_time);
+    </select>
+</mapper>
