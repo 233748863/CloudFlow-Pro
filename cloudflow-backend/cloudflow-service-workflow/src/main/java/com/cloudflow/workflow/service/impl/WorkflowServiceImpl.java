@@ -18,7 +18,7 @@ import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
-import com.cloudflow.workflow.service.IWorkflowService;
+import com.cloudflow.workflow.service.*;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,13 +56,6 @@ import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 
 import com.cloudflow.workflow.exception.WorkflowException;
-import com.cloudflow.workflow.service.WorkflowPermissionService;
-import com.cloudflow.workflow.service.RateLimiterService;
-import com.cloudflow.workflow.service.WorkflowAuditService;
-import com.cloudflow.workflow.service.IReplayAttackPreventionService;
-import com.cloudflow.workflow.service.IWorkflowSagaService;
-import com.cloudflow.workflow.service.IWorkflowHealthCheckService;
-import com.cloudflow.workflow.service.ICountersignService;
 import com.cloudflow.workflow.validator.JsonSchemaValidator;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.domain.WfProcessSnapshot;
@@ -158,6 +151,14 @@ public class WorkflowServiceImpl implements IWorkflowService {
     /** 9.C: 流程实例快照 Mapper */
     @Autowired
     private WfProcessSnapshotMapper snapshotMapper;
+    
+    /** 版本快照 Mapper */
+    @Autowired
+    private com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper versionSnapshotMapper;
+    
+    /** 发布记录 Mapper */
+    @Autowired
+    private com.cloudflow.workflow.mapper.WfDeployRecordMapper deployRecordMapper;
 
     /** 5.I: 会签服务 */
     @Autowired
@@ -170,6 +171,14 @@ public class WorkflowServiceImpl implements IWorkflowService {
     /** 4.G: 工作流配置属性 */
     @Autowired
     private com.cloudflow.workflow.config.properties.WorkflowProperties workflowProperties;
+
+    /** 脚本执行服务 */
+    @Autowired
+    private com.cloudflow.workflow.service.ScriptExecutionService scriptExecutionService;
+
+    /** HTTP客户端服务 */
+    @Autowired
+    private com.cloudflow.workflow.service.HttpClientService httpClientService;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -295,6 +304,35 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
                 .set(WfProcessDefinition::getStatus, "ARCHIVED")
         );
+        
+        // 创建发布记录
+        Long userId = UserContext.getUserId();
+        com.cloudflow.workflow.domain.WfDeployRecord deployRecord = new com.cloudflow.workflow.domain.WfDeployRecord();
+        deployRecord.setProcessDefId(definitionId);
+        deployRecord.setVersion(def.getVersion() != null ? def.getVersion() : 1);
+        deployRecord.setDeployStatus("SUCCESS");
+        deployRecord.setDeployBy(userId != null ? userId : 1L);
+        deployRecord.setDeployTime(java.time.LocalDateTime.now());
+        deployRecord.setCanRollback(true);
+        deployRecordMapper.insert(deployRecord);
+        
+        // 创建版本快照（用于回滚）
+        try {
+            com.cloudflow.workflow.domain.WfProcessVersionSnapshot snapshot = new com.cloudflow.workflow.domain.WfProcessVersionSnapshot();
+            snapshot.setProcessDefId(definitionId);
+            snapshot.setVersion(def.getVersion() != null ? def.getVersion() : 1);
+            snapshot.setDeployId(deployRecord.getId());
+            snapshot.setSnapshotData(def.getModelJson());
+            snapshot.setFormConfig(def.getFormId());
+            snapshot.setCreatedBy(userId != null ? userId : 1L);
+            snapshot.setCreatedTime(java.time.LocalDateTime.now());
+            versionSnapshotMapper.insert(snapshot);
+            log.info("[deployProcessDefinition] 版本快照创建成功, version={}, deployId={}", 
+                snapshot.getVersion(), deployRecord.getId());
+        } catch (Exception e) {
+            log.error("[deployProcessDefinition] 创建版本快照失败: {}", e.getMessage(), e);
+            // 快照创建失败不影响发布流程
+        }
         
         log.info("[deployProcessDefinition] 流程定义发布成功, definitionId={}, processKey={}", definitionId, def.getProcessKey());
         auditService.log(WorkflowAuditService.AuditAction.DEFINITION_DEPLOY, definitionId, 
@@ -624,7 +662,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
     // 递归/链式方法执行节点
     // 增加了深度检查以防止循环流程中的堆栈溢出
     // 4.K: 增加 rootNode 参数，避免每次递归都重新查询数据库
-    private void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
+    public void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
         // 4.G: 使用配置化的深度限制（支持通过 cloudflow.workflow.engine.max-depth 动态调整）
         int maxDepth = workflowProperties.getEngine().getMaxDepth();
         if (depth > maxDepth) {
@@ -757,6 +795,33 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 redisCache.setCacheZSet("sys:task:timeouts", task.getTaskId(), (double) expireTime);
             }
             
+            // 停止在此处，等待用户操作
+            return;
+
+        } else if ("NOTIFICATION".equals(node.getType())) {
+            // 通知节点：发送通知消息后自动继续
+            handleNotificationNode(node, instance, variables);
+            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            
+        } else if ("SCRIPT".equals(node.getType())) {
+            // 脚本节点：执行自动化脚本或API调用
+            handleScriptNode(node, instance, variables);
+            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            
+        } else if ("TIMER".equals(node.getType())) {
+            // 定时节点：延迟或定时触发
+            handleTimerNode(node, instance, variables, depth, rootNode);
+            // 注意：定时节点不立即继续，而是通过定时任务触发
+            return;
+            
+        } else if ("SUBPROCESS".equals(node.getType())) {
+            // 子流程节点：调用其他工作流
+            handleSubprocessNode(node, instance, variables);
+            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            
+        } else if ("MANUAL".equals(node.getType())) {
+            // 人工任务节点：需要人工处理但不是审批
+            handleManualTaskNode(node, instance);
             // 停止在此处，等待用户操作
             return;
 
@@ -1325,6 +1390,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         Page<WfTask> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfTask::getAssignee, userId);
+        queryWrapper.eq(WfTask::getStatus, WfTaskStatus.TODO.getCode()); // 只查询待办状态的任务
         queryWrapper.orderByDesc(WfTask::getCreateTime);
         
         Page<WfTask> resultPage = taskMapper.selectPage(page, queryWrapper);
@@ -2607,6 +2673,392 @@ public class WorkflowServiceImpl implements IWorkflowService {
             }
         } catch (Exception e) {
             log.warn("[enrichCurrentNodeInfo] 当前节点信息获取失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 处理通知节点：发送通知消息
+     */
+    private void handleNotificationNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
+        try {
+            log.info("[handleNotificationNode] 执行通知节点, nodeKey={}, instanceId={}", node.getId(), instance.getInstanceId());
+            
+            // 从节点配置中获取通知内容
+            Map<String, Object> props = node.getProps();
+            if (props == null) {
+                log.warn("[handleNotificationNode] 通知节点未配置属性, nodeKey={}", node.getId());
+                return;
+            }
+            
+            String noticeTitle = (String) props.getOrDefault("noticeTitle", node.getTitle());
+            String noticeContent = (String) props.getOrDefault("noticeContent", "流程通知");
+            String noticeType = (String) props.getOrDefault("noticeType", "1"); // 1-通知 2-公告
+            String recipientType = (String) props.getOrDefault("recipientType", "INITIATOR"); // INITIATOR/ROLE/USER/DEPT
+            
+            // 支持变量替换
+            if (variables != null) {
+                for (Map.Entry<String, Object> entry : variables.entrySet()) {
+                    String placeholder = "${" + entry.getKey() + "}";
+                    if (noticeContent.contains(placeholder)) {
+                        noticeContent = noticeContent.replace(placeholder, String.valueOf(entry.getValue()));
+                    }
+                }
+            }
+            
+            // 确定接收人
+            List<Long> recipientIds = new ArrayList<>();
+            if ("INITIATOR".equals(recipientType)) {
+                recipientIds.add(instance.getStartUserId());
+            } else if ("ROLE".equals(recipientType)) {
+                String roleKey = (String) props.get("recipientValue");
+                if (StringUtils.hasText(roleKey)) {
+                    SysRole role = sysRoleMapper.selectOne(
+                        new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, roleKey));
+                    if (role != null) {
+                        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                            new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
+                        for (SysUserRole ur : userRoles) {
+                            recipientIds.add(ur.getUserId());
+                        }
+                    }
+                }
+            } else if ("USER".equals(recipientType)) {
+                String userIdStr = (String) props.get("recipientValue");
+                if (StringUtils.hasText(userIdStr)) {
+                    try {
+                        recipientIds.add(Long.valueOf(userIdStr));
+                    } catch (NumberFormatException e) {
+                        log.warn("[handleNotificationNode] 无效的用户ID: {}", userIdStr);
+                    }
+                }
+            }
+            
+            // 发送通知
+            for (Long recipientId : recipientIds) {
+                sysNoticeService.sendNotice(
+                    recipientId,
+                    noticeTitle,
+                    noticeContent,
+                    noticeType,
+                    UserContext.getUserId(),
+                    UserContext.getUserName()
+                );
+            }
+            
+            log.info("[handleNotificationNode] 通知节点执行完成, nodeKey={}, recipients={}", node.getId(), recipientIds.size());
+            
+        } catch (Exception e) {
+            log.error("[handleNotificationNode] 通知节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
+            // 通知失败不中断流程，继续执行
+        }
+    }
+    
+    /**
+     * 处理脚本节点：执行自动化脚本或API调用
+     */
+    private void handleScriptNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
+        try {
+            log.info("[handleScriptNode] 执行脚本节点, nodeKey={}, instanceId={}", node.getId(), instance.getInstanceId());
+            
+            Map<String, Object> props = node.getProps();
+            if (props == null) {
+                log.warn("[handleScriptNode] 脚本节点未配置属性, nodeKey={}", node.getId());
+                return;
+            }
+            
+            String scriptType = (String) props.getOrDefault("scriptType", "GROOVY"); // GROOVY/JAVASCRIPT/API
+            
+            if ("API".equals(scriptType)) {
+                // API调用模式
+                String apiUrl = (String) props.get("apiUrl");
+                String apiMethod = (String) props.getOrDefault("apiMethod", "POST");
+                
+                if (StringUtils.hasText(apiUrl)) {
+                    log.info("[handleScriptNode] 执行API调用, url={}, method={}", apiUrl, apiMethod);
+                    
+                    // 准备请求头
+                    Map<String, String> headers = new HashMap<>();
+                    if (props.containsKey("apiHeaders")) {
+                        try {
+                            Map<String, String> configHeaders = (Map<String, String>) props.get("apiHeaders");
+                            if (configHeaders != null) {
+                                headers.putAll(configHeaders);
+                            }
+                        } catch (Exception e) {
+                            log.warn("[handleScriptNode] 解析请求头失败: {}", e.getMessage());
+                        }
+                    }
+                    headers.putIfAbsent("Content-Type", "application/json");
+                    
+                    // 准备请求体
+                    Map<String, Object> requestBody = null;
+                    if (props.containsKey("apiBody")) {
+                        requestBody = (Map<String, Object>) props.get("apiBody");
+                    }
+                    // 如果请求体包含变量引用，进行替换
+                    if (requestBody != null && variables != null) {
+                        requestBody = replaceVariablesInMap(requestBody, variables);
+                    }
+                    
+                    // 执行HTTP请求
+                    HttpClientService.ApiResponse response = httpClientService.executeRequest(
+                        apiUrl, apiMethod, headers, requestBody);
+                    
+                    log.info("[handleScriptNode] API调用完成, statusCode={}, success={}", 
+                        response.getStatusCode(), response.isSuccess());
+                    
+                    // 将响应结果存储到变量中
+                    if (variables != null) {
+                        variables.put("_apiResponse_" + node.getId(), response.getBody());
+                        variables.put("_apiStatusCode_" + node.getId(), response.getStatusCode());
+                    }
+                    
+                    // 如果API调用失败且配置为不继续，则抛出异常
+                    if (!response.isSuccess()) {
+                        Boolean continueOnError = (Boolean) props.getOrDefault("continueOnError", true);
+                        if (!continueOnError) {
+                            throw new WorkflowException("API_CALL_FAILED", 
+                                "API调用失败: HTTP " + response.getStatusCode());
+                        }
+                    }
+                }
+            } else if ("GROOVY".equals(scriptType)) {
+                // Groovy脚本执行模式
+                String scriptContent = (String) props.get("scriptContent");
+                if (StringUtils.hasText(scriptContent)) {
+                    log.info("[handleScriptNode] 执行Groovy脚本");
+                    
+                    // 执行脚本
+                    Object result = scriptExecutionService.executeGroovyScript(scriptContent, variables);
+                    
+                    // 将脚本执行结果存储到变量中
+                    if (variables != null && result != null) {
+                        variables.put("_scriptResult_" + node.getId(), result);
+                    }
+                    
+                    log.info("[handleScriptNode] Groovy脚本执行完成, result={}", result);
+                }
+            } else if ("JAVASCRIPT".equals(scriptType)) {
+                // JavaScript脚本执行模式
+                String scriptContent = (String) props.get("scriptContent");
+                if (StringUtils.hasText(scriptContent)) {
+                    log.info("[handleScriptNode] 执行JavaScript脚本");
+                    
+                    // 执行脚本
+                    Object result = scriptExecutionService.executeJavaScript(scriptContent, variables);
+                    
+                    // 将脚本执行结果存储到变量中
+                    if (variables != null && result != null) {
+                        variables.put("_scriptResult_" + node.getId(), result);
+                    }
+                    
+                    log.info("[handleScriptNode] JavaScript脚本执行完成, result={}", result);
+                }
+            }
+            
+            log.info("[handleScriptNode] 脚本节点执行完成, nodeKey={}", node.getId());
+            
+        } catch (Exception e) {
+            log.error("[handleScriptNode] 脚本节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
+            // 根据配置决定是否中断流程
+            Map<String, Object> props = node.getProps();
+            Boolean continueOnError = props != null ? (Boolean) props.getOrDefault("continueOnError", true) : true;
+            if (!continueOnError) {
+                throw new WorkflowException("SCRIPT_EXECUTION_FAILED", "脚本节点执行失败: " + e.getMessage(), e);
+            }
+        }
+    }
+    
+    /**
+     * 替换Map中的变量引用
+     */
+    private Map<String, Object> replaceVariablesInMap(Map<String, Object> map, Map<String, Object> variables) {
+        Map<String, Object> result = new HashMap<>();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                String strValue = (String) value;
+                // 替换 ${variableName} 格式的变量引用
+                for (Map.Entry<String, Object> var : variables.entrySet()) {
+                    String placeholder = "${" + var.getKey() + "}";
+                    if (strValue.contains(placeholder)) {
+                        strValue = strValue.replace(placeholder, String.valueOf(var.getValue()));
+                    }
+                }
+                result.put(entry.getKey(), strValue);
+            } else if (value instanceof Map) {
+                result.put(entry.getKey(), replaceVariablesInMap((Map<String, Object>) value, variables));
+            } else {
+                result.put(entry.getKey(), value);
+            }
+        }
+        return result;
+    }
+    
+    /**
+     * 处理定时节点：延迟或定时触发
+     */
+    private void handleTimerNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
+        try {
+            log.info("[handleTimerNode] 执行定时节点, nodeKey={}, instanceId={}", node.getId(), instance.getInstanceId());
+            
+            Map<String, Object> props = node.getProps();
+            if (props == null) {
+                log.warn("[handleTimerNode] 定时节点未配置属性, nodeKey={}", node.getId());
+                // 未配置延迟时间，直接继续
+                runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+                return;
+            }
+            
+            String timerType = (String) props.getOrDefault("timerType", "DELAY"); // DELAY/SCHEDULE
+            
+            if ("DELAY".equals(timerType)) {
+                // 延迟模式
+                Integer delayMinutes = (Integer) props.get("delayMinutes");
+                if (delayMinutes != null && delayMinutes > 0) {
+                    // 计算触发时间
+                    long triggerTime = System.currentTimeMillis() + delayMinutes * 60 * 1000L;
+                    
+                    // 将定时任务信息存储到Redis
+                    String timerKey = "sys:wf:timer:" + instance.getInstanceId() + ":" + node.getId();
+                    Map<String, Object> timerData = new HashMap<>();
+                    timerData.put("instanceId", instance.getInstanceId());
+                    timerData.put("nodeKey", node.getId());
+                    timerData.put("nextNodeKey", node.getNext() != null ? node.getNext().getId() : null);
+                    timerData.put("triggerTime", triggerTime);
+                    timerData.put("variables", variables);
+                    
+                    try {
+                        redisCache.setCacheObject(timerKey, timerData, delayMinutes, TimeUnit.MINUTES);
+                        redisCache.setCacheZSet("sys:wf:timers", timerKey, (double) triggerTime);
+                        log.info("[handleTimerNode] 定时任务已注册, nodeKey={}, delayMinutes={}", node.getId(), delayMinutes);
+                    } catch (Exception e) {
+                        log.error("[handleTimerNode] 定时任务注册失败: {}", e.getMessage(), e);
+                        // 注册失败，直接继续执行
+                        runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+                    }
+                } else {
+                    // 未配置延迟时间，直接继续
+                    runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+                }
+            } else {
+                // 定时模式（指定时间触发）
+                log.info("[handleTimerNode] 定时模式暂未实现, nodeKey={}", node.getId());
+                // TODO: 实现定时触发逻辑
+                runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            }
+            
+        } catch (Exception e) {
+            log.error("[handleTimerNode] 定时节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
+            throw new WorkflowException("TIMER_NODE_FAILED", "定时节点执行失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 处理子流程节点：调用其他工作流
+     */
+    private void handleSubprocessNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
+        try {
+            log.info("[handleSubprocessNode] 执行子流程节点, nodeKey={}, instanceId={}", node.getId(), instance.getInstanceId());
+            
+            Map<String, Object> props = node.getProps();
+            if (props == null) {
+                log.warn("[handleSubprocessNode] 子流程节点未配置属性, nodeKey={}", node.getId());
+                return;
+            }
+            
+            String subProcessKey = (String) props.get("subProcessKey");
+            if (!StringUtils.hasText(subProcessKey)) {
+                log.warn("[handleSubprocessNode] 子流程Key未配置, nodeKey={}", node.getId());
+                return;
+            }
+            
+            // 准备子流程变量
+            Map<String, Object> subProcessVars = new HashMap<>();
+            if (variables != null) {
+                subProcessVars.putAll(variables);
+            }
+            subProcessVars.put("_parentInstanceId", instance.getInstanceId());
+            subProcessVars.put("_parentNodeKey", node.getId());
+            
+            // 启动子流程
+            String subBusinessKey = instance.getBusinessKey() + "_sub_" + node.getId();
+            R<?> result = startProcess(subProcessKey, subBusinessKey, subProcessVars);
+            
+            if (result.getCode() == 200) {
+                String subInstanceId = (String) result.getData();
+                log.info("[handleSubprocessNode] 子流程启动成功, subInstanceId={}, parentInstanceId={}", 
+                    subInstanceId, instance.getInstanceId());
+                
+                // 记录子流程关系
+                if (variables != null) {
+                    variables.put("_subInstanceId_" + node.getId(), subInstanceId);
+                }
+            } else {
+                log.error("[handleSubprocessNode] 子流程启动失败, subProcessKey={}, error={}", 
+                    subProcessKey, result.getMsg());
+                throw new WorkflowException("SUBPROCESS_START_FAILED", "子流程启动失败: " + result.getMsg());
+            }
+            
+        } catch (Exception e) {
+            log.error("[handleSubprocessNode] 子流程节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
+            // 根据配置决定是否中断流程
+            Map<String, Object> props = node.getProps();
+            Boolean continueOnError = props != null ? (Boolean) props.getOrDefault("continueOnError", false) : false;
+            if (!continueOnError) {
+                throw new WorkflowException("SUBPROCESS_FAILED", "子流程节点执行失败: " + e.getMessage(), e);
+            }
+        }
+    }
+    
+    /**
+     * 处理人工任务节点：创建需要人工处理但不是审批的任务
+     */
+    private void handleManualTaskNode(WfNodeConfig node, WfProcessInstance instance) {
+        try {
+            log.info("[handleManualTaskNode] 执行人工任务节点, nodeKey={}, instanceId={}", node.getId(), instance.getInstanceId());
+            
+            // 创建人工任务
+            WfTask task = new WfTask();
+            task.setTaskId(UUID.randomUUID().toString());
+            task.setInstanceId(instance.getInstanceId());
+            task.setNodeName(node.getTitle());
+            task.setNodeKey(node.getId());
+            
+            // 确定处理人
+            Long assigneeId = resolveAssignee(node, instance);
+            if (assigneeId != null) {
+                task.setAssignee(assigneeId);
+            } else {
+                // 如果无法解析处理人，默认为管理员
+                task.setAssignee(1L);
+            }
+            
+            task.setStatus(WfTaskStatus.TODO.getCode());
+            task.setCreateTime(new Date());
+            taskMapper.insert(task);
+            
+            // 发送通知
+            String taskDescription = "您有一个新的人工任务";
+            Map<String, Object> props = node.getProps();
+            if (props != null && props.containsKey("taskDescription")) {
+                taskDescription = (String) props.get("taskDescription");
+            }
+            
+            sysNoticeService.sendNotice(
+                task.getAssignee(),
+                "人工任务通知",
+                taskDescription + ": " + node.getTitle() + " (流程: " + instance.getTitle() + ")",
+                "1",
+                UserContext.getUserId(),
+                UserContext.getUserName()
+            );
+            
+            log.info("[handleManualTaskNode] 人工任务创建成功, taskId={}, assignee={}", task.getTaskId(), task.getAssignee());
+            
+        } catch (Exception e) {
+            log.error("[handleManualTaskNode] 人工任务节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
+            throw new WorkflowException("MANUAL_TASK_FAILED", "人工任务节点执行失败: " + e.getMessage(), e);
         }
     }
 }

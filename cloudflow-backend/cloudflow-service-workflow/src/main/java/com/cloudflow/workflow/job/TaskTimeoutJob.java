@@ -12,6 +12,8 @@ import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 任务超时自动处理定时任务
@@ -42,6 +45,9 @@ public class TaskTimeoutJob {
     private RedisCache redisCache;
 
     @Autowired
+    private RedissonClient redissonClient;
+
+    @Autowired
     private WfTaskMapper taskMapper;
 
     @Autowired
@@ -58,33 +64,48 @@ public class TaskTimeoutJob {
 
     /**
      * 每分钟扫描一次超时任务
+     * 使用分布式锁防止多实例重复执行
      */
     @Scheduled(fixedRate = 60000)
     public void scanTimeoutTasks() {
+        String lockKey = "lock:scheduled:scanTimeoutTasks";
+        RLock lock = redissonClient.getLock(lockKey);
+        
         try {
-            long now = System.currentTimeMillis();
-            
-            // 从 Redis ZSet 中获取所有已超时的任务（score <= 当前时间）
-            Set<Object> timeoutTaskIds = redisCache.getCacheZSetByScoreRange(TIMEOUT_ZSET_KEY, 0, (double) now);
-            
-            if (timeoutTaskIds == null || timeoutTaskIds.isEmpty()) {
-                return;
-            }
-            
-            log.info("[TaskTimeoutJob] 发现 {} 个超时任务", timeoutTaskIds.size());
-            
-            for (Object taskIdObj : timeoutTaskIds) {
-                String taskId = taskIdObj.toString();
+            // 尝试获取锁，最多等待1秒，锁定50秒后自动释放
+            if (lock.tryLock(1, 50, TimeUnit.SECONDS)) {
                 try {
-                    handleTimeoutTask(taskId);
-                } catch (Exception e) {
-                    log.error("[TaskTimeoutJob] 处理超时任务失败, taskId={}, error={}", taskId, e.getMessage(), e);
+                    long now = System.currentTimeMillis();
+                    
+                    // 从 Redis ZSet 中获取所有已超时的任务（score <= 当前时间）
+                    Set<Object> timeoutTaskIds = redisCache.getCacheZSetByScoreRange(TIMEOUT_ZSET_KEY, 0, (double) now);
+                    
+                    if (timeoutTaskIds == null || timeoutTaskIds.isEmpty()) {
+                        return;
+                    }
+                    
+                    log.info("[TaskTimeoutJob] 发现 {} 个超时任务", timeoutTaskIds.size());
+                    
+                    for (Object taskIdObj : timeoutTaskIds) {
+                        String taskId = taskIdObj.toString();
+                        try {
+                            handleTimeoutTask(taskId);
+                        } catch (Exception e) {
+                            log.error("[TaskTimeoutJob] 处理超时任务失败, taskId={}, error={}", taskId, e.getMessage(), e);
+                        }
+                        
+                        // 无论处理成功与否，都从 ZSet 中移除，避免重复处理
+                        redisCache.removeCacheZSet(TIMEOUT_ZSET_KEY, taskId);
+                    }
+                } finally {
+                    lock.unlock();
                 }
-                
-                // 无论处理成功与否，都从 ZSet 中移除，避免重复处理
-                redisCache.removeCacheZSet(TIMEOUT_ZSET_KEY, taskId);
+            } else {
+                log.debug("[TaskTimeoutJob] 未能获取分布式锁，跳过本次执行");
             }
-            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[TaskTimeoutJob] 获取分布式锁被中断");
         } catch (Exception e) {
             log.error("[TaskTimeoutJob] 扫描超时任务异常: {}", e.getMessage(), e);
         }
@@ -183,20 +204,36 @@ public class TaskTimeoutJob {
     /**
      * 每天凌晨2点清理过期的 Redis Key
      * 防止 Redis 内存泄漏
+     * 使用分布式锁防止多实例重复执行
      */
     @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupExpiredKeys() {
+        String lockKey = "lock:scheduled:cleanupExpiredKeys";
+        RLock lock = redissonClient.getLock(lockKey);
+        
         try {
-            log.info("[TaskTimeoutJob] 开始清理过期 Redis Key");
-            
-            // 清理已完成流程的 join key
-            // 模式: sys:wf:join:*
-            // 注意: 这些 key 已设置了 1 小时过期时间，此处为兜底清理
-            
-            // 清理超时 ZSet 中的过期数据（score 为 0 或负数的异常数据）
-            redisCache.removeCacheZSetByScoreRange(TIMEOUT_ZSET_KEY, Double.NEGATIVE_INFINITY, 0);
-            
-            log.info("[TaskTimeoutJob] 过期 Redis Key 清理完成");
+            // 尝试获取锁，最多等待1秒，锁定60秒后自动释放
+            if (lock.tryLock(1, 60, TimeUnit.SECONDS)) {
+                try {
+                    log.info("[TaskTimeoutJob] 开始清理过期 Redis Key");
+                    
+                    // 清理已完成流程的 join key
+                    // 模式: sys:wf:join:*
+                    // 注意: 这些 key 已设置了 1 小时过期时间，此处为兜底清理
+                    
+                    // 清理超时 ZSet 中的过期数据（score 为 0 或负数的异常数据）
+                    redisCache.removeCacheZSetByScoreRange(TIMEOUT_ZSET_KEY, Double.NEGATIVE_INFINITY, 0);
+                    
+                    log.info("[TaskTimeoutJob] 过期 Redis Key 清理完成");
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                log.debug("[TaskTimeoutJob] 未能获取分布式锁，跳过本次清理");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[TaskTimeoutJob] 获取分布式锁被中断");
         } catch (Exception e) {
             log.error("[TaskTimeoutJob] 清理过期 Redis Key 失败: {}", e.getMessage(), e);
         }

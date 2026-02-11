@@ -55,6 +55,11 @@ export enum NodeType {
   CONDITION = 'CONDITION', // Exclusive Gateway (XOR)
   PARALLEL = 'PARALLEL',   // Parallel Gateway (AND)
   END = 'END',
+  NOTIFICATION = 'NOTIFICATION', // Send notification without approval
+  SCRIPT = 'SCRIPT',       // Execute automated script or API call
+  TIMER = 'TIMER',         // Delay or scheduled trigger
+  SUBPROCESS = 'SUBPROCESS', // Call another workflow
+  MANUAL = 'MANUAL',       // Manual task without approval
   // New: Support custom string types for plugins
 }
 

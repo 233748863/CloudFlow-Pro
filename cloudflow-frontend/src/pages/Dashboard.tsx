@@ -6,16 +6,14 @@ import { useNavigate } from 'react-router-dom';
 import request from '../services/api/request';
 
 /**
- * 提取列表数据，兼容 PageResult 和数组格式
+ * 提取总数，兼容 PageResult 格式
  */
-function extractList<T = any>(res: unknown): T[] {
+function extractTotal(res: unknown): number {
   if (res && typeof res === 'object') {
     const obj = res as Record<string, unknown>;
-    if (Array.isArray(obj.records)) return obj.records as T[];
-    if (Array.isArray(obj.rows)) return obj.rows as T[];
+    if (typeof obj.total === 'number') return obj.total;
   }
-  if (Array.isArray(res)) return res as T[];
-  return [];
+  return 0;
 }
 
 /**
@@ -42,15 +40,22 @@ export const Dashboard = () => {
   useEffect(() => {
     if (user) {
         // 使用 silent 模式调用工作流 API，避免服务不可用时弹出错误提示
-        request.get('/workflow/todo', { silent: true }).then(res => {
-            const list = extractList(res);
-            setPendingCount(list.length);
+        // 使用 total 字段获取准确的总数，而不是依赖返回的记录数
+        request.get('/workflow/todo', { 
+            params: { pageNum: 1, pageSize: 10 },
+            silent: true 
+        }).then(res => {
+            const total = extractTotal(res);
+            setPendingCount(total);
         }).catch(() => {
             setPendingCount(0);
         });
-        request.get('/workflow/my-instances', { silent: true }).then(res => {
-            const list = extractList(res);
-            setMyAppsCount(list.length);
+        request.get('/workflow/my-instances', { 
+            params: { pageNum: 1, pageSize: 10 },
+            silent: true 
+        }).then(res => {
+            const total = extractTotal(res);
+            setMyAppsCount(total);
         }).catch(() => {
             setMyAppsCount(0);
         });

@@ -30,13 +30,15 @@ export const mapBackendTaskToFrontend = (t: any): Task => ({
 });
 
 export const mapBackendInstanceToTask = (inst: any): Task => ({
-  id: inst.instanceId,
+  id: inst.taskId || inst.instanceId, // 优先使用 taskId，如果没有则使用 instanceId（用于显示）
   processInstanceId: inst.instanceId,
   workflowId: inst.processDefKey,
   workflowName: inst.title,
   nodeName: inst.status,
   applicantId: String(inst.startUserId),
   applicantName: inst.startUserName,
+  assigneeId: inst.assignee ? String(inst.assignee) : undefined,
+  assigneeName: inst.assigneeName || (inst.assignee ? String(inst.assignee) : undefined),
   type: 'DYNAMIC',
   status: inst.status === 'RUNNING' ? TaskStatus.PENDING : (inst.status === 'COMPLETED' ? TaskStatus.APPROVED : TaskStatus.REJECTED),
   createdTime: inst.startTime,

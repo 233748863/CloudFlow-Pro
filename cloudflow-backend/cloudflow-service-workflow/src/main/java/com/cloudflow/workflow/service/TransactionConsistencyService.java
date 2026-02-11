@@ -5,6 +5,8 @@ import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.WfTransactionMessage;
 import com.cloudflow.workflow.mapper.WfTransactionMessageMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +59,9 @@ public class TransactionConsistencyService {
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private RedissonClient redissonClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -198,28 +203,44 @@ public class TransactionConsistencyService {
     /**
      * 定时扫描并重试失败的消息
      * 每 60 秒执行一次
+     * 使用分布式锁防止多实例重复执行
      */
     @Scheduled(fixedDelay = 60000)
     public void retryPendingMessages() {
+        String lockKey = "lock:scheduled:retryPendingMessages";
+        RLock lock = redissonClient.getLock(lockKey);
+        
         try {
-            List<WfTransactionMessage> pendingMessages = messageMapper.selectList(
-                new LambdaQueryWrapper<WfTransactionMessage>()
-                    .eq(WfTransactionMessage::getStatus, "PENDING")
-                    .le(WfTransactionMessage::getNextRetryTime, new Date())
-                    .lt(WfTransactionMessage::getRetryCount, DEFAULT_MAX_RETRY)
-                    .orderByAsc(WfTransactionMessage::getCreateTime)
-                    .last("LIMIT 100")
-            );
+            // 尝试获取锁，最多等待1秒，锁定50秒后自动释放
+            if (lock.tryLock(1, 50, TimeUnit.SECONDS)) {
+                try {
+                    List<WfTransactionMessage> pendingMessages = messageMapper.selectList(
+                        new LambdaQueryWrapper<WfTransactionMessage>()
+                            .eq(WfTransactionMessage::getStatus, "PENDING")
+                            .le(WfTransactionMessage::getNextRetryTime, new Date())
+                            .lt(WfTransactionMessage::getRetryCount, DEFAULT_MAX_RETRY)
+                            .orderByAsc(WfTransactionMessage::getCreateTime)
+                            .last("LIMIT 100")
+                    );
 
-            if (pendingMessages.isEmpty()) {
-                return;
+                    if (pendingMessages.isEmpty()) {
+                        return;
+                    }
+
+                    log.info("[retryPendingMessages] 发现 {} 条待重试消息", pendingMessages.size());
+
+                    for (WfTransactionMessage msg : pendingMessages) {
+                        retryMessage(msg);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                log.debug("[retryPendingMessages] 未能获取分布式锁，跳过本次执行");
             }
-
-            log.info("[retryPendingMessages] 发现 {} 条待重试消息", pendingMessages.size());
-
-            for (WfTransactionMessage msg : pendingMessages) {
-                retryMessage(msg);
-            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[retryPendingMessages] 获取分布式锁被中断");
         } catch (Exception e) {
             log.error("[retryPendingMessages] 重试任务执行异常: {}", e.getMessage());
         }
@@ -425,22 +446,38 @@ public class TransactionConsistencyService {
     /**
      * 清理已成功的历史消息（保留最近7天）
      * 每天凌晨2点执行
+     * 使用分布式锁防止多实例重复执行
      */
     @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupSuccessMessages() {
+        String lockKey = "lock:scheduled:cleanupSuccessMessages";
+        RLock lock = redissonClient.getLock(lockKey);
+        
         try {
-            Calendar cal = Calendar.getInstance();
-            cal.add(Calendar.DAY_OF_MONTH, -7);
-            
-            int deleted = messageMapper.delete(
-                new LambdaQueryWrapper<WfTransactionMessage>()
-                    .eq(WfTransactionMessage::getStatus, "SUCCESS")
-                    .lt(WfTransactionMessage::getUpdateTime, cal.getTime())
-            );
-            
-            if (deleted > 0) {
-                log.info("[cleanupSuccessMessages] 清理了 {} 条历史成功消息", deleted);
+            // 尝试获取锁，最多等待1秒，锁定60秒后自动释放
+            if (lock.tryLock(1, 60, TimeUnit.SECONDS)) {
+                try {
+                    Calendar cal = Calendar.getInstance();
+                    cal.add(Calendar.DAY_OF_MONTH, -7);
+                    
+                    int deleted = messageMapper.delete(
+                        new LambdaQueryWrapper<WfTransactionMessage>()
+                            .eq(WfTransactionMessage::getStatus, "SUCCESS")
+                            .lt(WfTransactionMessage::getUpdateTime, cal.getTime())
+                    );
+                    
+                    if (deleted > 0) {
+                        log.info("[cleanupSuccessMessages] 清理了 {} 条历史成功消息", deleted);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                log.debug("[cleanupSuccessMessages] 未能获取分布式锁，跳过本次清理");
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[cleanupSuccessMessages] 获取分布式锁被中断");
         } catch (Exception e) {
             log.error("[cleanupSuccessMessages] 清理失败: {}", e.getMessage());
         }

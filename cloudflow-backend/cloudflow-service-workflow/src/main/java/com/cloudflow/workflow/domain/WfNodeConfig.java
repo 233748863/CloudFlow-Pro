@@ -9,7 +9,7 @@ import java.io.Serializable;
  */
 public class WfNodeConfig implements Serializable {
     private String id;
-    private String type; // START, APPROVAL, CONDITION, PARALLEL, END
+    private String type; // START, APPROVAL, CONDITION, PARALLEL, END, NOTIFICATION, SCRIPT, TIMER, SUBPROCESS, MANUAL
     private String title;
     private String description;
     private String approverType; // ROLE, USER, DEPT_MANAGER, DIRECT_LEADER

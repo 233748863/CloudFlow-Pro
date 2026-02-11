@@ -326,11 +326,44 @@ CREATE TABLE wf_transaction_message (
   KEY idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='本地消息表（分布式事务）';
 
+-- 16. 流程发布记录表
+DROP TABLE IF EXISTS wf_deploy_record;
+CREATE TABLE wf_deploy_record (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
+  process_key       VARCHAR(64)     NOT NULL COMMENT '流程Key',
+  version           INT             NOT NULL COMMENT '版本号',
+  deploy_status     VARCHAR(20)     DEFAULT 'SUCCESS' COMMENT '发布状态 (SUCCESS, FAILED, ROLLBACK)',
+  deploy_by         BIGINT(20)      NOT NULL COMMENT '发布人ID',
+  deployer_name     VARCHAR(64)     DEFAULT NULL COMMENT '发布人姓名',
+  deploy_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+  deploy_note       VARCHAR(500)    DEFAULT NULL COMMENT '发布说明',
+  change_log        TEXT            COMMENT '变更日志',
+  can_rollback      TINYINT(1)      DEFAULT 1 COMMENT '是否可回滚',
+  rollback_from_version INT         DEFAULT NULL COMMENT '回滚自哪个版本',
+  rollback_reason   VARCHAR(500)    DEFAULT NULL COMMENT '回滚原因',
+  rollback_by       BIGINT(20)      DEFAULT NULL COMMENT '回滚操作人ID',
+  rollback_time     DATETIME        DEFAULT NULL COMMENT '回滚时间',
+  approval_id       BIGINT(20)      DEFAULT NULL COMMENT '关联的审批ID',
+  deploy_window_id  BIGINT(20)      DEFAULT NULL COMMENT '关联的发布窗口ID',
+  impact_analysis   TEXT            COMMENT '影响分析(JSON格式)',
+  created_time      DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_time      DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_process_def_id (process_def_id),
+  KEY idx_process_key (process_key),
+  KEY idx_version (version),
+  KEY idx_deploy_status (deploy_status),
+  KEY idx_deploy_time (deploy_time),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程发布记录表';
+
 -- =========================================================
 -- 六、通知功能
 -- =========================================================
 
--- 16. 系统通知表
+-- 17. 系统通知表
 DROP TABLE IF EXISTS sys_notice;
 CREATE TABLE sys_notice (
   notice_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '公告ID',
@@ -349,7 +382,7 @@ CREATE TABLE sys_notice (
   PRIMARY KEY (notice_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COMMENT='通知公告表';
 
--- 17. 通知日志表
+-- 18. 通知日志表
 DROP TABLE IF EXISTS wf_notification_log;
 CREATE TABLE wf_notification_log (
   log_id            VARCHAR(64)     NOT NULL COMMENT '日志ID',
@@ -371,7 +404,7 @@ CREATE TABLE wf_notification_log (
   KEY idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知日志表';
 
--- 18. 通知配置表
+-- 19. 通知配置表
 DROP TABLE IF EXISTS wf_notification_config;
 CREATE TABLE wf_notification_config (
   config_id         VARCHAR(64)     NOT NULL COMMENT '配置ID',
@@ -389,7 +422,7 @@ CREATE TABLE wf_notification_config (
   KEY idx_enabled (is_enabled)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知配置表';
 
--- 19. 催办效果统计表
+-- 20. 催办效果统计表
 DROP TABLE IF EXISTS wf_urge_effect;
 CREATE TABLE wf_urge_effect (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
@@ -471,7 +504,7 @@ INSERT INTO wf_process_instance (
  '{"p1": "供应商A公司", "p2": "1234567890123456", "p3": 30000, "p4": "HT-2026-001"}', 'NORMAL'),
 
 ('test_inst_005', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_005',
- '张三的办公费报销', 1, '张三', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY),
+ '张三的办公费报销', 1, '张三', 'RUNNING', NOW(),
  '{"f1": "办公费", "f2": 500, "f3": "2026-02-05", "f4": "购买办公用品"}', 'NORMAL'),
 
 ('test_inst_006', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_006',
@@ -494,8 +527,15 @@ INSERT INTO wf_process_instance (
  '钱十一的婚假申请', 2, '钱十一', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY),
  '{"l1": "婚假", "l2": "2026-02-01", "l3": "2026-02-05", "l4": 5, "l5": "结婚度蜜月"}', 'NORMAL');
 
+-- 插入 test_inst_005 的待办任务（修复"待认领"问题）
+INSERT INTO wf_task (
+  task_id, tenant_id, instance_id, node_key, node_name,
+  assignee, assignee_name, status, priority, create_time, due_time
+) VALUES 
+('test_task_011', 100000, 'test_inst_005', 'gw1_b1', '财务主管审批',
+ 1, '管理员', 'TODO', 'NORMAL', NOW(), DATE_ADD(NOW(), INTERVAL 2 DAY));
+
 -- 更新已完成流程的结束时间
-UPDATE wf_process_instance SET end_time = DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE instance_id = 'test_inst_005';
 UPDATE wf_process_instance SET end_time = DATE_SUB(NOW(), INTERVAL 3 DAY) WHERE instance_id = 'test_inst_010';
 
 -- 插入测试待办任务

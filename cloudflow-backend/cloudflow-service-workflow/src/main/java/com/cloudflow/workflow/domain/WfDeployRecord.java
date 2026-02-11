@@ -19,9 +19,6 @@ public class WfDeployRecord {
     /** 租户ID */
     private Long tenantId;
     
-    /** 记录ID (UUID, 用于P4兼容) */
-    private String recordId;
-    
     /** 流程定义ID */
     private String processDefId;
     

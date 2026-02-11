@@ -35,6 +35,7 @@ const AttendanceCheckIn: React.FC = () => {
       return;
     }
     
+    setLocationError(null); // Clear previous error
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -105,27 +106,37 @@ const AttendanceCheckIn: React.FC = () => {
           {/* 定位状态 */}
           <div className="flex flex-col items-center space-y-2 w-full">
             {location ? (
-              <div className="flex items-center text-green-600">
-                <MapPin className="w-5 h-5 mr-1" />
-                <span>已定位: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</span>
+              <div className="flex flex-col items-center space-y-2 w-full">
+                <div className="flex items-center text-green-600">
+                  <MapPin className="w-5 h-5 mr-1" />
+                  <span>已定位: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</span>
+                </div>
+                <Button
+                  onClick={getLocation}
+                  disabled={loading}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  重新定位
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col items-center space-y-3 w-full">
-                <div className="flex items-center text-red-500">
+                <div className={`flex items-center ${loading ? 'text-blue-500' : 'text-red-500'}`}>
                   <AlertCircle className="w-5 h-5 mr-1" />
-                  <span>{locationError || "正在定位..."}</span>
+                  <span>{loading ? "正在定位..." : (locationError || "正在定位...")}</span>
                 </div>
-                {locationError && (
-                  <Button
-                    onClick={getLocation}
-                    disabled={loading}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    重新获取定位
-                  </Button>
-                )}
+                <Button
+                  onClick={getLocation}
+                  disabled={loading}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  {loading ? "定位中..." : "重新获取定位"}
+                </Button>
               </div>
             )}
             

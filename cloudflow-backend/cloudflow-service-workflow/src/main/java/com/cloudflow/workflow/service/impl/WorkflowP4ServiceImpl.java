@@ -671,7 +671,6 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public void recordDeploy(String definitionId, String processKey, Integer version,
                              Long deployerId, String deployerName, String deployNote, String changeLog) {
         WfDeployRecord record = new WfDeployRecord();
-        record.setRecordId(UUID.randomUUID().toString());
         record.setDefinitionId(definitionId);
         record.setProcessKey(processKey);
         record.setVersion(version);

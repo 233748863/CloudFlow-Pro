@@ -126,26 +126,42 @@ public class DeadlockDetectionService {
     /**
      * 定时检测死锁
      * 每 30 秒执行一次
+     * 使用分布式锁防止多实例重复执行
      */
     @Scheduled(fixedDelay = 30000)
     public void detectDeadlocks() {
+        String lockKey = "lock:scheduled:detectDeadlocks";
+        RLock lock = redissonClient.getLock(lockKey);
+        
         try {
-            // 1. 检测超时锁
-            List<String> timeoutLocks = detectTimeoutLocks();
-            if (!timeoutLocks.isEmpty()) {
-                log.warn("[detectDeadlocks] 发现 {} 个超时锁", timeoutLocks.size());
-                handleTimeoutLocks(timeoutLocks);
-            }
+            // 尝试获取锁，最多等待1秒，锁定25秒后自动释放
+            if (lock.tryLock(1, 25, TimeUnit.SECONDS)) {
+                try {
+                    // 1. 检测超时锁
+                    List<String> timeoutLocks = detectTimeoutLocks();
+                    if (!timeoutLocks.isEmpty()) {
+                        log.warn("[detectDeadlocks] 发现 {} 个超时锁", timeoutLocks.size());
+                        handleTimeoutLocks(timeoutLocks);
+                    }
 
-            // 2. 检测循环等待
-            List<DeadlockChain> deadlockChains = detectCircularWaits();
-            if (!deadlockChains.isEmpty()) {
-                log.error("[detectDeadlocks] 发现 {} 个死锁链", deadlockChains.size());
-                handleDeadlockChains(deadlockChains);
-            }
+                    // 2. 检测循环等待
+                    List<DeadlockChain> deadlockChains = detectCircularWaits();
+                    if (!deadlockChains.isEmpty()) {
+                        log.error("[detectDeadlocks] 发现 {} 个死锁链", deadlockChains.size());
+                        handleDeadlockChains(deadlockChains);
+                    }
 
-            // 3. 清理过期记录
-            cleanupExpiredRecords();
+                    // 3. 清理过期记录
+                    cleanupExpiredRecords();
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                log.debug("[detectDeadlocks] 未能获取分布式锁，跳过本次检测");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[detectDeadlocks] 获取分布式锁被中断");
         } catch (Exception e) {
             log.error("[detectDeadlocks] 死锁检测异常: {}", e.getMessage());
         }

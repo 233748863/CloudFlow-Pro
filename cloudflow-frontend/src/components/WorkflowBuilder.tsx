@@ -10,7 +10,8 @@ import {
   Briefcase, Car, Plane, Stamp, ShieldCheck, Server,
   GraduationCap, Heart, Building2, Wrench, Package,
   UserPlus, UserMinus, Award, CreditCard, PiggyBank,
-  Rocket, CheckSquare, Stethoscope, BookOpen
+  Rocket, CheckSquare, Stethoscope, BookOpen,
+  Bell, Code, Clock, Workflow, ClipboardCheck
 } from 'lucide-react';
 import { WorkflowNode, NodeType, WorkflowDefinition, FormDefinition, User } from '../types';
 import { useHistory } from '../hooks/useHistory';
@@ -64,7 +65,9 @@ const hasEndNode = (root: WorkflowNode): boolean => {
 
 const NODE_TYPE_LABELS: Record<string, string> = {
   [NodeType.START]: '开始', [NodeType.APPROVAL]: '审批',
-  [NodeType.CONDITION]: '条件判断', [NodeType.PARALLEL]: '同时处理', [NodeType.END]: '完成'
+  [NodeType.CONDITION]: '条件判断', [NodeType.PARALLEL]: '同时处理', [NodeType.END]: '完成',
+  [NodeType.NOTIFICATION]: '通知', [NodeType.SCRIPT]: '脚本',
+  [NodeType.TIMER]: '定时', [NodeType.SUBPROCESS]: '子流程', [NodeType.MANUAL]: '人工任务'
 };
 
 const APPROVER_TYPE_LABELS: Record<string, string> = {
@@ -105,6 +108,31 @@ const NODE_VISUAL: Record<string, {
     icon: Flag, color: 'bg-slate-700', bg: 'bg-slate-50/80',
     iconBg: 'bg-slate-200', iconColor: 'text-slate-600',
     border: 'border-slate-300', hoverBorder: 'hover:border-slate-500', label: '完成'
+  },
+  [NodeType.NOTIFICATION]: {
+    icon: Bell, color: 'bg-blue-500', bg: 'bg-blue-50/80',
+    iconBg: 'bg-blue-100', iconColor: 'text-blue-600',
+    border: 'border-blue-200', hoverBorder: 'hover:border-blue-400', label: '通知'
+  },
+  [NodeType.SCRIPT]: {
+    icon: Code, color: 'bg-green-500', bg: 'bg-green-50/80',
+    iconBg: 'bg-green-100', iconColor: 'text-green-600',
+    border: 'border-green-200', hoverBorder: 'hover:border-green-400', label: '脚本'
+  },
+  [NodeType.TIMER]: {
+    icon: Clock, color: 'bg-orange-500', bg: 'bg-orange-50/80',
+    iconBg: 'bg-orange-100', iconColor: 'text-orange-600',
+    border: 'border-orange-200', hoverBorder: 'hover:border-orange-400', label: '定时'
+  },
+  [NodeType.SUBPROCESS]: {
+    icon: Workflow, color: 'bg-purple-500', bg: 'bg-purple-50/80',
+    iconBg: 'bg-purple-100', iconColor: 'text-purple-600',
+    border: 'border-purple-200', hoverBorder: 'hover:border-purple-400', label: '子流程'
+  },
+  [NodeType.MANUAL]: {
+    icon: ClipboardCheck, color: 'bg-cyan-500', bg: 'bg-cyan-50/80',
+    iconBg: 'bg-cyan-100', iconColor: 'text-cyan-600',
+    border: 'border-cyan-200', hoverBorder: 'hover:border-cyan-400', label: '人工'
   }
 };
 
@@ -553,6 +581,239 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
               )}
             </div>
           )}
+          {node.type === NodeType.PARALLEL && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Layers size={12} /> 会签设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">审批方式</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
+                  value={formData.approverType || 'ROLE'} onChange={e => handleChange('approverType', e.target.value)}>
+                  {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
+                </select>
+              </div>
+              {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">{formData.approverType === 'ROLE' ? '角色标识（多个用逗号分隔）' : '人员ID（多个用逗号分隔）'}</span>
+                  <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                    placeholder={formData.approverType === 'ROLE' ? '例如: MANAGER,FINANCE' : '输入多个用户ID'}
+                    value={formData.approverValue || ''} onChange={e => handleChange('approverValue', e.target.value)} />
+                  <p className="text-[10px] text-slate-400 mt-1">💡 会签需要所有审批人都同意才能通过</p>
+                </div>
+              )}
+            </div>
+          )}
+          {node.type === NodeType.NOTIFICATION && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Bell size={12} /> 通知设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">接收人类型</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.props?.recipientType || 'INITIATOR'} 
+                  onChange={e => handleChange('props', { ...formData.props, recipientType: e.target.value })}>
+                  <option value="INITIATOR">发起人</option>
+                  <option value="ROLE">按角色</option>
+                  <option value="USER">指定人员</option>
+                  <option value="DEPT">按部门</option>
+                </select>
+              </div>
+              {(formData.props?.recipientType === 'ROLE' || formData.props?.recipientType === 'USER' || formData.props?.recipientType === 'DEPT') && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">
+                    {formData.props?.recipientType === 'ROLE' ? '角色标识' : formData.props?.recipientType === 'USER' ? '用户ID' : '部门ID'}
+                  </span>
+                  <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                    placeholder={formData.props?.recipientType === 'ROLE' ? '例如: MANAGER' : formData.props?.recipientType === 'USER' ? '输入用户ID' : '输入部门ID'}
+                    value={formData.props?.recipientValue || ''} 
+                    onChange={e => handleChange('props', { ...formData.props, recipientValue: e.target.value })} />
+                </div>
+              )}
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">通知标题</span>
+                <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                  placeholder="例如: 您有新的审批任务"
+                  value={formData.props?.notificationTitle || ''} 
+                  onChange={e => handleChange('props', { ...formData.props, notificationTitle: e.target.value })} />
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">通知内容</span>
+                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="支持变量: ${initiator}, ${amount}, ${days} 等"
+                  value={formData.props?.notificationContent || ''} 
+                  onChange={e => handleChange('props', { ...formData.props, notificationContent: e.target.value })} />
+                <p className="text-[10px] text-slate-400 mt-1">💡 可使用 ${'{'}变量名{'}'} 引用流程数据</p>
+              </div>
+            </div>
+          )}
+          {node.type === NodeType.SCRIPT && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Code size={12} /> 脚本设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">脚本类型</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  value={formData.props?.scriptType || 'GROOVY'} 
+                  onChange={e => handleChange('props', { ...formData.props, scriptType: e.target.value })}>
+                  <option value="GROOVY">Groovy 脚本</option>
+                  <option value="JAVASCRIPT">JavaScript 脚本</option>
+                  <option value="API">HTTP API 调用</option>
+                </select>
+              </div>
+              {(formData.props?.scriptType === 'GROOVY' || formData.props?.scriptType === 'JAVASCRIPT') && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">脚本内容</span>
+                  <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[120px] bg-slate-50 focus:ring-2 focus:ring-green-500 outline-none"
+                    placeholder={formData.props?.scriptType === 'GROOVY' ? 
+                      'def result = amount * 1.1\nreturn result' : 
+                      'const result = amount * 1.1;\nreturn result;'}
+                    value={formData.props?.scriptContent || ''} 
+                    onChange={e => handleChange('props', { ...formData.props, scriptContent: e.target.value })} />
+                  <p className="text-[10px] text-slate-400 mt-1">💡 可访问流程变量: amount, days, initiator 等</p>
+                </div>
+              )}
+              {formData.props?.scriptType === 'API' && (
+                <>
+                  <div>
+                    <span className="text-xs text-slate-400 mb-1 block">API URL</span>
+                    <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono"
+                      placeholder="https://api.example.com/endpoint"
+                      value={formData.props?.apiUrl || ''} 
+                      onChange={e => handleChange('props', { ...formData.props, apiUrl: e.target.value })} />
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 mb-1 block">请求方法</span>
+                    <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                      value={formData.props?.apiMethod || 'GET'} 
+                      onChange={e => handleChange('props', { ...formData.props, apiMethod: e.target.value })}>
+                      <option value="GET">GET</option>
+                      <option value="POST">POST</option>
+                      <option value="PUT">PUT</option>
+                      <option value="DELETE">DELETE</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 mb-1 block">请求头 (JSON)</span>
+                    <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[60px] bg-slate-50"
+                      placeholder='{"Content-Type": "application/json"}'
+                      value={formData.props?.apiHeaders || ''} 
+                      onChange={e => handleChange('props', { ...formData.props, apiHeaders: e.target.value })} />
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 mb-1 block">请求体 (JSON)</span>
+                    <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[60px] bg-slate-50"
+                      placeholder='{"amount": "${amount}"}'
+                      value={formData.props?.apiBody || ''} 
+                      onChange={e => handleChange('props', { ...formData.props, apiBody: e.target.value })} />
+                    <p className="text-[10px] text-slate-400 mt-1">💡 可使用 ${'{'}变量名{'}'} 引用流程数据</p>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="continueOnError" className="rounded border-slate-300"
+                  checked={formData.props?.continueOnError || false}
+                  onChange={e => handleChange('props', { ...formData.props, continueOnError: e.target.checked })} />
+                <label htmlFor="continueOnError" className="text-xs text-slate-600">出错时继续执行</label>
+              </div>
+            </div>
+          )}
+          {node.type === NodeType.TIMER && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Clock size={12} /> 定时设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">定时类型</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                  value={formData.props?.timerType || 'DELAY'} 
+                  onChange={e => handleChange('props', { ...formData.props, timerType: e.target.value })}>
+                  <option value="DELAY">延迟执行</option>
+                  <option value="SCHEDULE">定时执行</option>
+                </select>
+              </div>
+              {formData.props?.timerType === 'DELAY' && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">延迟时间（分钟）</span>
+                  <input type="number" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                    placeholder="例如: 60"
+                    min="1"
+                    value={formData.props?.delayMinutes || ''} 
+                    onChange={e => handleChange('props', { ...formData.props, delayMinutes: parseInt(e.target.value) || 0 })} />
+                  <p className="text-[10px] text-slate-400 mt-1">💡 流程将在指定时间后自动继续</p>
+                </div>
+              )}
+              {formData.props?.timerType === 'SCHEDULE' && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">定时时间</span>
+                  <input type="datetime-local" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                    value={formData.props?.scheduleTime || ''} 
+                    onChange={e => handleChange('props', { ...formData.props, scheduleTime: e.target.value })} />
+                  <p className="text-[10px] text-slate-400 mt-1">💡 流程将在指定时间点自动继续</p>
+                </div>
+              )}
+            </div>
+          )}
+          {node.type === NodeType.SUBPROCESS && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Workflow size={12} /> 子流程设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">子流程ID</span>
+                <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                  placeholder="输入子流程的ID"
+                  value={formData.props?.subprocessId || ''} 
+                  onChange={e => handleChange('props', { ...formData.props, subprocessId: e.target.value })} />
+                <p className="text-[10px] text-slate-400 mt-1">💡 将调用指定的子流程</p>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">变量映射 (JSON)</span>
+                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[80px] bg-slate-50 focus:ring-2 focus:ring-purple-500 outline-none"
+                  placeholder='{"subAmount": "${amount}", "subDays": "${days}"}'
+                  value={formData.props?.variableMapping || ''} 
+                  onChange={e => handleChange('props', { ...formData.props, variableMapping: e.target.value })} />
+                <p className="text-[10px] text-slate-400 mt-1">💡 定义父流程变量到子流程的映射关系</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="waitForCompletion" className="rounded border-slate-300"
+                  checked={formData.props?.waitForCompletion !== false}
+                  onChange={e => handleChange('props', { ...formData.props, waitForCompletion: e.target.checked })} />
+                <label htmlFor="waitForCompletion" className="text-xs text-slate-600">等待子流程完成</label>
+              </div>
+            </div>
+          )}
+          {node.type === NodeType.MANUAL && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><ClipboardCheck size={12} /> 人工任务设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">任务描述</span>
+                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-cyan-500 outline-none"
+                  placeholder="描述需要人工处理的任务内容"
+                  value={formData.props?.taskDescription || ''} 
+                  onChange={e => handleChange('props', { ...formData.props, taskDescription: e.target.value })} />
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">处理人类型</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
+                  value={formData.approverType || 'ROLE'} 
+                  onChange={e => handleChange('approverType', e.target.value)}>
+                  {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
+                </select>
+              </div>
+              {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">{formData.approverType === 'ROLE' ? '角色标识' : '人员ID'}</span>
+                  <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                    placeholder={formData.approverType === 'ROLE' ? '例如: ADMIN' : '输入用户ID'}
+                    value={formData.approverValue || ''} 
+                    onChange={e => handleChange('approverValue', e.target.value)} />
+                </div>
+              )}
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">任务优先级</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
+                  value={formData.props?.priority || 'MEDIUM'} 
+                  onChange={e => handleChange('props', { ...formData.props, priority: e.target.value })}>
+                  <option value="LOW">低</option>
+                  <option value="MEDIUM">中</option>
+                  <option value="HIGH">高</option>
+                </select>
+              </div>
+            </div>
+          )}
           {(node.branches && node.branches.length > 0) && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><GitBranch size={12} /> 分支规则</label>
@@ -619,6 +880,9 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
   const visual = getNodeVisual(node.type);
   const NIcon = visual.icon;
   const canDrag = node.type !== NodeType.START && node.type !== NodeType.END;
+  
+  // 当有任何菜单打开时，只有拥有该菜单的节点才能响应 hover
+  const canShowHover = !activeQuickAddId || activeQuickAddId === node.id;
 
   return (
     <div className="flex flex-col items-center relative">
@@ -641,8 +905,8 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
             `${visual.border} ${visual.hoverBorder} hover:shadow-md`
           }`}
           onClick={() => { onSelect(node); setActiveQuickAddId(null); }}
-          onMouseEnter={() => setHoveredNodeId(node.id)}
-          onMouseLeave={() => setHoveredNodeId(null)}
+          onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
+          onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
           draggable={canDrag}
           onDragStart={(e) => { e.dataTransfer.setData('nodeId', node.id); e.dataTransfer.effectAllowed = 'move'; setIsDragging(true); setDraggingGlobal(true); }}
           onDragEnd={() => { setIsDragging(false); setDraggingGlobal(false); }}
@@ -692,12 +956,12 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
 
         {/* END节点的添加按钮 - 在节点上方 */}
         {node.type === NodeType.END && (
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-30">
-          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-30" style={{ pointerEvents: showQuickAdd ? 'auto' : 'none' }}>
+          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`} style={{ pointerEvents: 'auto' }}>
             <button
               onClick={(e) => { e.stopPropagation(); setActiveQuickAddId(showQuickAdd ? null : node.id); }}
-              onMouseEnter={() => setHoveredNodeId(node.id)}
-              onMouseLeave={() => setHoveredNodeId(null)}
+              onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
+              onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
               className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
                 showQuickAdd 
                   ? 'bg-red-500 text-white rotate-45 scale-110' 
@@ -709,8 +973,18 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
             </button>
             {showQuickAdd && (
               <div 
-                className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-indigo-200 p-3 min-w-[200px] z-40 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-indigo-200 p-3 min-w-[200px] z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200"
                 onClick={(e) => e.stopPropagation()}
+                onMouseEnter={(e) => { 
+                  e.stopPropagation(); 
+                  setHoveredNodeId(node.id); // 强制保持当前节点的 hover 状态
+                }}
+                onMouseLeave={(e) => {
+                  e.stopPropagation();
+                  setHoveredNodeId(null);
+                }}
+                onMouseMove={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
+                style={{ pointerEvents: 'auto' }}
               >
                 <div className="text-xs text-slate-600 px-2 py-1 font-semibold mb-1 flex items-center gap-1.5">
                   <Sparkles size={12} className="text-indigo-500" />
@@ -718,6 +992,12 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 </div>
                 {([
                   { type: NodeType.APPROVAL, icon: UserCheck, label: '审批节点', desc: '需要审批人处理', color: 'text-indigo-500', bg: 'hover:bg-indigo-50', border: 'hover:border-indigo-200' },
+                  { type: NodeType.PARALLEL, icon: Layers, label: '会签节点', desc: '多人同时审批', color: 'text-violet-500', bg: 'hover:bg-violet-50', border: 'hover:border-violet-200' },
+                  { type: NodeType.NOTIFICATION, icon: Bell, label: '通知节点', desc: '发送通知消息', color: 'text-blue-500', bg: 'hover:bg-blue-50', border: 'hover:border-blue-200' },
+                  { type: NodeType.SCRIPT, icon: Code, label: '脚本节点', desc: '执行自动化脚本', color: 'text-green-500', bg: 'hover:bg-green-50', border: 'hover:border-green-200' },
+                  { type: NodeType.TIMER, icon: Clock, label: '定时节点', desc: '延迟或定时触发', color: 'text-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200' },
+                  { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
+                  { type: NodeType.MANUAL, icon: ClipboardCheck, label: '人工任务', desc: '需要人工处理', color: 'text-cyan-500', bg: 'hover:bg-cyan-50', border: 'hover:border-cyan-200' },
                   { type: NodeType.CONDITION, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true },
                 ] as const).map(item => {
                   const ItemIcon = item.icon;
@@ -753,12 +1033,12 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
 
         {/* 非END节点的添加按钮 - 在节点卡片下方 */}
         {node.type !== NodeType.END && (
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-30">
-          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-30" style={{ pointerEvents: showQuickAdd ? 'auto' : 'none' }}>
+          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`} style={{ pointerEvents: 'auto' }}>
             <button
               onClick={(e) => { e.stopPropagation(); setActiveQuickAddId(showQuickAdd ? null : node.id); }}
-              onMouseEnter={() => setHoveredNodeId(node.id)}
-              onMouseLeave={() => setHoveredNodeId(null)}
+              onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
+              onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
               className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
                 showQuickAdd 
                   ? 'bg-red-500 text-white rotate-45 scale-110' 
@@ -770,8 +1050,18 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
             </button>
             {showQuickAdd && (
               <div 
-                className="absolute top-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-indigo-200 p-3 min-w-[200px] z-40 animate-in fade-in slide-in-from-top-2 duration-200"
+                className="absolute top-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-indigo-200 p-3 min-w-[200px] z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
                 onClick={(e) => e.stopPropagation()}
+                onMouseEnter={(e) => { 
+                  e.stopPropagation(); 
+                  setHoveredNodeId(node.id); // 强制保持当前节点的 hover 状态
+                }}
+                onMouseLeave={(e) => {
+                  e.stopPropagation();
+                  setHoveredNodeId(null);
+                }}
+                onMouseMove={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
+                style={{ pointerEvents: 'auto' }}
               >
                 <div className="text-xs text-slate-600 px-2 py-1 font-semibold mb-1 flex items-center gap-1.5">
                   <Sparkles size={12} className="text-indigo-500" />
@@ -779,6 +1069,12 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 </div>
                 {([
                   { type: NodeType.APPROVAL, icon: UserCheck, label: '审批节点', desc: '需要审批人处理', color: 'text-indigo-500', bg: 'hover:bg-indigo-50', border: 'hover:border-indigo-200' },
+                  { type: NodeType.PARALLEL, icon: Layers, label: '会签节点', desc: '多人同时审批', color: 'text-violet-500', bg: 'hover:bg-violet-50', border: 'hover:border-violet-200' },
+                  { type: NodeType.NOTIFICATION, icon: Bell, label: '通知节点', desc: '发送通知消息', color: 'text-blue-500', bg: 'hover:bg-blue-50', border: 'hover:border-blue-200' },
+                  { type: NodeType.SCRIPT, icon: Code, label: '脚本节点', desc: '执行自动化脚本', color: 'text-green-500', bg: 'hover:bg-green-50', border: 'hover:border-green-200' },
+                  { type: NodeType.TIMER, icon: Clock, label: '定时节点', desc: '延迟或定时触发', color: 'text-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200' },
+                  { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
+                  { type: NodeType.MANUAL, icon: ClipboardCheck, label: '人工任务', desc: '需要人工处理', color: 'text-cyan-500', bg: 'hover:bg-cyan-50', border: 'hover:border-cyan-200' },
                   { type: NodeType.CONDITION, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true },
                   { type: NodeType.END, icon: Flag, label: '结束节点', desc: '流程终点', color: 'text-slate-500', bg: 'hover:bg-slate-50', border: 'hover:border-slate-200' },
                 ] as const).map(item => {
@@ -824,13 +1120,34 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
 
       {/* 分支 */}
       {node.branches && node.branches.length > 0 && (
-        <div className="flex flex-col items-center w-full mt-8">
-          <div className="h-4 w-0.5 bg-slate-300 absolute top-full left-1/2 -ml-0.5 -mt-8"></div>
-          <div className="flex gap-8 relative pt-4">
-            <div className="absolute top-0 left-8 right-8 h-0.5 bg-slate-300"></div>
-            {node.branches.map((branch) => (
+        <div className="flex flex-col items-center w-full mt-6">
+          {/* 从父节点到分支点的垂直连接线 */}
+          <div className="h-6 w-0.5 bg-slate-400"></div>
+          
+          {/* 分支点 - 菱形指示器 */}
+          <div className="w-3 h-3 bg-amber-500 rotate-45 border-2 border-white shadow-md z-10"></div>
+          
+          {/* 分支容器 */}
+          <div className="flex gap-12 relative pt-6">
+            {/* 水平连接线 - 连接所有分支 */}
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-400" style={{ 
+              left: `${100 / node.branches.length / 2}%`, 
+              right: `${100 / node.branches.length / 2}%` 
+            }}></div>
+            
+            {node.branches.map((branch, index) => (
               <div key={branch.id} className="flex flex-col items-center relative">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-4 bg-slate-300 -mt-4"></div>
+                {/* 从水平线到分支节点的垂直连接线 */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-slate-400 -mt-6"></div>
+                
+                {/* 分支标签 - 更醒目的设计 */}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-10">
+                  <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap shadow-lg border-2 border-white flex items-center gap-1">
+                    <GitBranch size={10} />
+                    分支 {index + 1}
+                  </div>
+                </div>
+                
                 <FlowNode node={branch} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
               </div>
             ))}
@@ -871,8 +1188,8 @@ function validateWorkflow(root: WorkflowNode): string[] {
   checkEnd(root);
   if (!hasEnd) errors.push('流程缺少结束节点');
   const checkApprover = (node: WorkflowNode) => {
-    if (node.type === NodeType.APPROVAL && !node.approverType && !node.approverValue) {
-      errors.push(`审批节点"${node.title}"未配置审批人`);
+    if ((node.type === NodeType.APPROVAL || node.type === NodeType.PARALLEL) && !node.approverType && !node.approverValue) {
+      errors.push(`${node.type === NodeType.PARALLEL ? '会签' : '审批'}节点"${node.title}"未配置审批人`);
     }
     if (node.next) checkApprover(node.next);
     if (node.branches) node.branches.forEach(checkApprover);
@@ -964,10 +1281,24 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       return;
     }
     
+    const getTitleByType = (type: NodeType): string => {
+      switch (type) {
+        case NodeType.END: return '流程结束';
+        case NodeType.PARALLEL: return '新会签节点';
+        case NodeType.NOTIFICATION: return '新通知节点';
+        case NodeType.SCRIPT: return '新脚本节点';
+        case NodeType.TIMER: return '新定时节点';
+        case NodeType.SUBPROCESS: return '新子流程节点';
+        case NodeType.MANUAL: return '新人工任务';
+        default: return '新审批节点';
+      }
+    };
+    
     const newNode: WorkflowNode = {
       id: `node_${Date.now()}`, type: nodeType,
-      title: nodeType === NodeType.END ? '流程结束' : '新审批节点',
-      ...(nodeType === NodeType.APPROVAL ? { approverType: 'ROLE' as const } : {})
+      title: getTitleByType(nodeType),
+      ...(nodeType === NodeType.APPROVAL || nodeType === NodeType.PARALLEL ? { approverType: 'ROLE' as const } : {}),
+      ...(nodeType === NodeType.MANUAL ? { approverType: 'ROLE' as const } : {})
     };
     setRoot(updateNodeInTree(root, parentId, node => ({ ...node, next: node.next ? { ...newNode, next: node.next } : newNode })));
   };
@@ -1000,6 +1331,25 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const handleDrop = (dragId: string, dropId: string) => {
     const dragNode = findNodeById(root, dragId);
     if (!dragNode) return;
+    
+    // 检查被拖拽的节点是否是分支节点
+    const checkIfBranchNode = (root: WorkflowNode, targetId: string): boolean => {
+      if (root.branches) {
+        for (const branch of root.branches) {
+          if (branch.id === targetId) return true;
+          if (checkIfBranchNode(branch, targetId)) return true;
+        }
+      }
+      if (root.next) return checkIfBranchNode(root.next, targetId);
+      return false;
+    };
+    
+    // 如果是分支节点，警告用户
+    if (checkIfBranchNode(root, dragId)) {
+      toast.error('分支节点不能移动，这会破坏流程结构');
+      return;
+    }
+    
     let newRoot = deleteNodeInTree(root, dragId);
     if (newRoot) {
       const nodeToInsert = { ...dragNode, next: undefined };
