@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { errorReporter } from '@/services/errorReporter';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -39,14 +40,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // 调用外部错误处理回调
     this.props.onError?.(error, errorInfo);
     
-    // 生产环境可以上报错误
-    if (import.meta.env.PROD) {
-      // TODO: 接入错误上报服务 (如 Sentry)
-      console.error('[ErrorBoundary] Caught error:', error.message);
-    } else {
-      console.error('[ErrorBoundary] Error:', error);
-      console.error('[ErrorBoundary] Component Stack:', errorInfo.componentStack);
-    }
+    // 上报错误到错误收集服务
+    errorReporter.captureError(error, {
+      componentStack: errorInfo.componentStack || undefined,
+      context: `ErrorBoundary: ${this.props.title || '未知组件'}`,
+    });
   }
 
   handleRetry = () => {
