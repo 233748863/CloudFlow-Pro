@@ -153,9 +153,20 @@ CREATE TABLE sys_attendance_rule (
   check_in_time     TIME            NOT NULL COMMENT '上班时间',
   check_out_time    TIME            NOT NULL COMMENT '下班时间',
   elastic_minutes   INT(11)         DEFAULT 0 COMMENT '弹性时间(分钟)',
+  work_days         VARCHAR(50)     DEFAULT '[1,2,3,4,5]' COMMENT '工作日配置(JSON数组, 1=周一...7=周日)',
+  lunch_break_start TIME            DEFAULT '12:00:00' COMMENT '午休开始时间',
+  lunch_break_end   TIME            DEFAULT '13:00:00' COMMENT '午休结束时间',
+  overtime_enabled  TINYINT(1)      DEFAULT 0 COMMENT '是否允许加班(0否 1是)',
+  overtime_min_minutes INT(11)      DEFAULT 30 COMMENT '加班最低时长(分钟)',
+  late_tolerance_count INT(11)      DEFAULT 0 COMMENT '每月迟到容忍次数',
+  severe_late_minutes INT(11)       DEFAULT 60 COMMENT '严重迟到阈值(分钟)',
+  absent_minutes    INT(11)         DEFAULT 240 COMMENT '旷工阈值(分钟)',
+  photo_required    TINYINT(1)      DEFAULT 0 COMMENT '是否需要拍照打卡(0否 1是)',
+  enabled           TINYINT(1)      DEFAULT 1 COMMENT '是否启用(0禁用 1启用)',
   location_points   TEXT            COMMENT '打卡点坐标集合(JSON)',
   wifi_configs      TEXT            COMMENT 'Wi-Fi配置(JSON)',
   radius            INT(11)         DEFAULT 200 COMMENT '打卡范围半径(米)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注说明',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
@@ -352,8 +363,8 @@ INSERT INTO sys_work_task (title, description, assignee_id, owner_id, priority, 
 ('编写用户手册', '更新系统使用文档', 1, 1, 1, 'TODO', NOW(), 'admin');
 
 -- 5. 初始化考勤规则
-INSERT INTO sys_attendance_rule (rule_name, check_in_time, check_out_time, elastic_minutes, tenant_id, create_time) 
-VALUES ('默认考勤组', '09:00:00', '18:00:00', 30, 100000, NOW());
+INSERT INTO sys_attendance_rule (rule_name, check_in_time, check_out_time, elastic_minutes, work_days, lunch_break_start, lunch_break_end, overtime_enabled, overtime_min_minutes, late_tolerance_count, severe_late_minutes, absent_minutes, photo_required, enabled, tenant_id, create_time) 
+VALUES ('默认考勤组', '09:00:00', '18:00:00', 30, '[1,2,3,4,5]', '12:00:00', '13:00:00', 0, 30, 3, 60, 240, 0, 1, 100000, NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;
 

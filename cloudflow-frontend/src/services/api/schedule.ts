@@ -73,3 +73,44 @@ export const deleteEvent = async (id: string): Promise<boolean> => {
 export const getTodaySchedule = async (): Promise<SysScheduleEvent[]> => {
   return request.get('/oa/schedule/today') as unknown as Promise<SysScheduleEvent[]>;
 };
+
+/**
+ * 获取会议室一周的预订（周视图日历用）
+ */
+export const getRoomWeekEvents = async (roomId: string, weekStart: string): Promise<SysScheduleEvent[]> => {
+  return request.get(`/oa/schedule/room/${roomId}/week`, { params: { weekStart } }) as unknown as Promise<SysScheduleEvent[]>;
+};
+
+/**
+ * 获取我的会议室预订记录
+ */
+export const getMyBookings = async (status?: 'upcoming' | 'past'): Promise<SysScheduleEvent[]> => {
+  return request.get('/oa/schedule/my-bookings', { params: status ? { status } : {} }) as unknown as Promise<SysScheduleEvent[]>;
+};
+
+/**
+ * 取消预订
+ */
+export const cancelBooking = async (id: string): Promise<boolean> => {
+  return request.put(`/oa/schedule/cancel/${id}`) as unknown as Promise<boolean>;
+};
+
+/**
+ * 会议室使用统计
+ */
+export interface RoomUsageStats {
+  roomId: number;
+  roomName: string;
+  bookingCount: number;
+  totalMinutes: number;
+  usedDays: number;
+}
+
+export const getRoomUsageStats = async (startDate?: string, endDate?: string): Promise<RoomUsageStats[]> => {
+  return request.get('/oa/schedule/room-stats', { 
+    params: { 
+      ...(startDate && { startDate }), 
+      ...(endDate && { endDate }) 
+    } 
+  }) as unknown as Promise<RoomUsageStats[]>;
+};

@@ -16,14 +16,39 @@ export interface AttendanceRecord {
 }
 
 export interface AttendanceRule {
-  ruleId: number;
+  ruleId?: number;
   ruleName: string;
   checkInTime: string;
   checkOutTime: string;
   elasticMinutes: number;
+  workDays?: string; // JSON: [1,2,3,4,5]
+  lunchBreakStart?: string;
+  lunchBreakEnd?: string;
+  overtimeEnabled?: number; // 0-否 1-是
+  overtimeMinMinutes?: number;
+  lateToleranceCount?: number;
+  severeLateMinutes?: number;
+  absentMinutes?: number;
+  photoRequired?: number; // 0-否 1-是
+  enabled?: number; // 0-禁用 1-启用
   locationPoints?: string;
   wifiConfigs?: string;
   radius?: number;
+  remark?: string;
+}
+
+// 考勤统计数据
+export interface AttendanceStatistics {
+  month: string;
+  userId: number;
+  totalDays: number;
+  normalCount: number;
+  lateCount: number;
+  earlyCount: number;
+  outsideCount: number;
+  absentCount: number;
+  severeLateCount: number;
+  totalRecords: number;
 }
 
 // 打卡
@@ -34,6 +59,30 @@ export const checkIn = (data: AttendanceRecord) => {
 // 获取当前规则
 export const getAttendanceRule = () => {
   return request.get<AttendanceRule>('/oa/attendance/rule');
+};
+
+// 保存/更新考勤规则
+export const saveAttendanceRule = (data: AttendanceRule) => {
+  return request.post<boolean>('/oa/attendance/rule', data);
+};
+
+// 获取考勤记录列表
+export const getAttendanceRecords = (params: {
+  userId?: number;
+  startDate?: string;
+  endDate?: string;
+  pageNum?: number;
+  pageSize?: number;
+}) => {
+  return request.get('/oa/attendance/records', { params });
+};
+
+// 获取月度考勤统计
+export const getAttendanceStatistics = (params: {
+  userId?: number;
+  month: string;
+}) => {
+  return request.get<AttendanceStatistics>('/oa/attendance/statistics', { params });
 };
 
 // ================= 资产管理 =================

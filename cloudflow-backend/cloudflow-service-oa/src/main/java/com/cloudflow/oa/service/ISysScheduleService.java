@@ -26,4 +26,24 @@ public interface ISysScheduleService extends IService<SysScheduleEvent> {
      * 检查冲突
      */
     boolean checkConflict(Long roomId, Date start, Date end);
+    
+    /**
+     * 获取会议室一周的预订（周视图日历用）
+     */
+    List<SysScheduleEvent> getRoomWeekEvents(Long roomId, String weekStart);
+    
+    /**
+     * 获取我的会议室预订记录
+     */
+    List<SysScheduleEvent> getMyBookings(Long userId, String status);
+    
+    /**
+     * 取消预订
+     */
+    boolean cancelBooking(Long eventId, Long userId);
+    
+    /**
+     * 会议室使用统计
+     */
+    List<java.util.Map<String, Object>> getRoomUsageStats(String startDate, String endDate);
 }

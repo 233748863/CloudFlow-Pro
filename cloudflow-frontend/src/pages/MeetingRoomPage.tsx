@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { MeetingRoom, SysScheduleEvent } from '../types';
 import {
   getMeetingRooms, createMeetingRoom, updateMeetingRoom, deleteMeetingRoom,
-  createEvent, getRoomEvents, getUserListForAttendees, getDeptTree,
-  UserBriefItem, DeptTreeItem
+  createEvent, getRoomEvents, getRoomWeekEvents, getMyBookings, cancelBooking,
+  getRoomUsageStats, getUserListForAttendees, getDeptTree,
+  UserBriefItem, DeptTreeItem, RoomUsageStats
 } from '../services/api/schedule';
 import {
   MapPin, Users, Monitor, CheckCircle2, XCircle, Plus, Pencil, Trash2,
   Settings, X, Clock, UserPlus, Calendar, ChevronRight, ChevronDown,
-  Building2, User, Search
+  Building2, User, Search, ChevronLeft, BarChart3, Filter, CalendarDays
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
@@ -26,6 +27,70 @@ interface DeptNodeWithUsers extends DeptTreeItem {
   users: UserBrief[];
   children?: DeptNodeWithUsers[];
 }
+
+type TabType = 'rooms' | 'my-bookings' | 'stats';
+type RoomRealtimeStatus = 'available' | 'in-use' | 'maintenance';
+
+// ==================== 工具函数 ====================
+function getLocalDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 调整到周一
+  return new Date(d.setDate(diff));
+}
+
+function buildDeptTreeWithUsers(deptTree: DeptTreeItem[], users: UserBrief[]): DeptNodeWithUsers[] {
+  const mapNode = (node: DeptTreeItem): DeptNodeWithUsers => ({
+    ...node,
+    users: users.filter(u => u.deptId === node.deptId),
+    children: node.children ? node.children.map(mapNode) : [],
+  });
+
+  const tree = deptTree.map(mapNode);
+  const allDeptIds = new Set<number>();
+  const collectIds = (nodes: DeptTreeItem[]) => { 
+    for (const n of nodes) { 
+      allDeptIds.add(n.deptId); 
+      if (n.children) collectIds(n.children); 
+    } 
+  };
+  collectIds(deptTree);
+
+  const unassigned = users.filter(u => !u.deptId || !allDeptIds.has(u.deptId));
+  if (unassigned.length > 0) {
+    tree.push({ deptId: -1, parentId: 0, deptName: '未分配部门', users: unassigned, children: [] });
+  }
+  return tree;
+}
+
+function getRoomRealtimeStatus(room: MeetingRoom, bookings: SysScheduleEvent[]): RoomRealtimeStatus {
+  if (room.status === '0') return 'maintenance';
+  if (!bookings || bookings.length === 0) return 'available';
+  
+  const now = new Date();
+  const isInUse = bookings.some(b => {
+    try {
+      const start = new Date(b.startTime);
+      const end = new Date(b.endTime);
+      return now >= start && now <= end;
+    } catch { return false; }
+  });
+  
+  return isInUse ? 'in-use' : 'available';
+}
+
+const roomStatusConfig: Record<RoomRealtimeStatus, { bg: string; text: string; label: string; icon: 'check' | 'clock' | 'x' }> = {
+  'available': { bg: 'bg-emerald-100 text-emerald-700', text: 'text-emerald-700', label: '空闲', icon: 'check' },
+  'in-use': { bg: 'bg-amber-100 text-amber-700', text: 'text-amber-700', label: '使用中', icon: 'clock' },
+  'maintenance': { bg: 'bg-red-100 text-red-700', text: 'text-red-700', label: '维护中', icon: 'x' },
+};
 
 // ==================== 组织架构树选择器 ====================
 interface OrgTreePickerProps {
@@ -250,7 +315,7 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
       } finally { setLoading(false); }
     };
     fetchBookings();
-  }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roomId, onBookingsLoaded]);
 
   if (loading) return <div className="text-xs text-slate-400 py-1">加载中...</div>;
   if (bookings.length === 0) {
@@ -274,10 +339,10 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
     } catch { return 'upcoming'; }
   };
 
-  const statusStyles: Record<string, { bg: string; text: string; icon: string }> = {
-    ongoing: { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: '🟢' },
-    ended: { bg: 'bg-slate-50', text: 'text-slate-400', icon: '⏹' },
-    upcoming: { bg: 'bg-indigo-50/50', text: 'text-indigo-600', icon: '🔵' },
+  const statusStyles: Record<string, { bg: string; text: string }> = {
+    ongoing: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+    ended: { bg: 'bg-slate-50', text: 'text-slate-400' },
+    upcoming: { bg: 'bg-indigo-50/50', text: 'text-indigo-600' },
   };
 
   return (
@@ -301,6 +366,174 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
   );
 };
 
+// ==================== 周日历视图组件 ====================
+interface WeekCalendarProps {
+  room: MeetingRoom;
+  onClose: () => void;
+  onBookRoom: (room: MeetingRoom, date: string, startTime: string) => void;
+}
+
+const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }) => {
+  const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart(new Date()));
+  const [events, setEvents] = useState<SysScheduleEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  const timeSlots = Array.from({ length: 14 }, (_, i) => i + 8); // 8:00 - 21:00
+
+  useEffect(() => {
+    const fetchWeekEvents = async () => {
+      setLoading(true);
+      try {
+        const weekStartStr = getLocalDateString(currentWeekStart);
+        const res = await getRoomWeekEvents(room.roomId.toString(), weekStartStr);
+        setEvents(Array.isArray(res) ? res : []);
+      } catch (e) {
+        console.error('获取周预订失败', e);
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWeekEvents();
+  }, [room.roomId, currentWeekStart]);
+
+  const goToPrevWeek = () => {
+    const prev = new Date(currentWeekStart);
+    prev.setDate(prev.getDate() - 7);
+    setCurrentWeekStart(prev);
+  };
+
+  const goToNextWeek = () => {
+    const next = new Date(currentWeekStart);
+    next.setDate(next.getDate() + 7);
+    setCurrentWeekStart(next);
+  };
+
+  const goToToday = () => {
+    setCurrentWeekStart(getWeekStart(new Date()));
+  };
+
+  const isSlotBooked = (day: Date, hour: number): SysScheduleEvent | null => {
+    const slotStart = new Date(day);
+    slotStart.setHours(hour, 0, 0, 0);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setHours(hour + 1, 0, 0, 0);
+
+    return events.find(e => {
+      try {
+        const eventStart = new Date(e.startTime);
+        const eventEnd = new Date(e.endTime);
+        return (eventStart < slotEnd && eventEnd > slotStart);
+      } catch {
+        return false;
+      }
+    }) || null;
+  };
+
+  const handleSlotClick = (day: Date, hour: number) => {
+    const dateStr = getLocalDateString(day);
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+    onBookRoom(room, dateStr, timeStr);
+  };
+
+  const formatDate = (d: Date) => {
+    const month = d.getMonth() + 1;
+    const date = d.getDate();
+    const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    return `${month}/${date} ${dayNames[d.getDay()]}`;
+  };
+
+  const isToday = (d: Date) => {
+    const today = new Date();
+    return d.getDate() === today.getDate() && 
+           d.getMonth() === today.getMonth() && 
+           d.getFullYear() === today.getFullYear();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">周日历 - {room.name}</h3>
+            <p className="text-xs text-slate-500 mt-1">点击空闲时段快速预订</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+        </div>
+
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <button onClick={goToPrevWeek} className="p-2 hover:bg-slate-100 rounded-lg">
+            <ChevronLeft size={20} />
+          </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-700">
+              {currentWeekStart.getFullYear()}年{currentWeekStart.getMonth() + 1}月
+            </span>
+            <button onClick={goToToday} className="px-3 py-1 text-sm bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
+              今天
+            </button>
+          </div>
+          <button onClick={goToNextWeek} className="p-2 hover:bg-slate-100 rounded-lg">
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : (
+            <div className="min-w-[800px]">
+              <div className="grid grid-cols-8 gap-2 mb-2">
+                <div className="text-xs font-medium text-slate-500 text-center">时间</div>
+                {weekDays.map((day, i) => (
+                  <div key={i} className={`text-xs font-medium text-center py-2 rounded-lg ${isToday(day) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600'}`}>
+                    {formatDate(day)}
+                  </div>
+                ))}
+              </div>
+              {timeSlots.map(hour => (
+                <div key={hour} className="grid grid-cols-8 gap-2 mb-1">
+                  <div className="text-xs text-slate-500 text-center py-2">
+                    {hour.toString().padStart(2, '0')}:00
+                  </div>
+                  {weekDays.map((day, i) => {
+                    const bookedEvent = isSlotBooked(day, hour);
+                    const isPast = new Date(day.setHours(hour, 0, 0, 0)) < new Date();
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => !bookedEvent && !isPast && handleSlotClick(day, hour)}
+                        className={`text-xs py-2 px-1 rounded-lg text-center cursor-pointer transition-colors ${
+                          bookedEvent
+                            ? 'bg-red-100 text-red-700 cursor-not-allowed'
+                            : isPast
+                              ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                        title={bookedEvent ? bookedEvent.title : isPast ? '已过期' : '点击预订'}
+                      >
+                        {bookedEvent ? '已预订' : isPast ? '-' : '空闲'}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ==================== 会议室表单弹窗 ====================
 const RoomFormModal: React.FC<{
   visible: boolean; room: Partial<MeetingRoom> | null; onClose: () => void; onSubmit: (room: Partial<MeetingRoom>) => void;
@@ -309,8 +542,17 @@ const RoomFormModal: React.FC<{
   const [equipmentInput, setEquipmentInput] = useState('');
 
   useEffect(() => {
-    if (room) { setForm({ ...room }); try { setEquipmentInput(JSON.parse(room.equipment || '[]').join(', ')); } catch { setEquipmentInput(''); } }
-    else { setForm({ name: '', capacity: 10, location: '', equipment: '[]', status: '1' }); setEquipmentInput(''); }
+    if (room) { 
+      setForm({ ...room }); 
+      try { 
+        setEquipmentInput(JSON.parse(room.equipment || '[]').join(', ')); 
+      } catch { 
+        setEquipmentInput(''); 
+      } 
+    } else { 
+      setForm({ name: '', capacity: 10, location: '', equipment: '[]', status: '1' }); 
+      setEquipmentInput(''); 
+    }
   }, [room, visible]);
 
   if (!visible) return null;
@@ -399,62 +641,9 @@ const DeleteConfirmModal: React.FC<{
   );
 };
 
-// ==================== 工具函数 ====================
-// 获取本地日期字符串（YYYY-MM-DD格式），避免时区问题
-function getLocalDateString(date: Date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function buildDeptTreeWithUsers(deptTree: DeptTreeItem[], users: UserBrief[]): DeptNodeWithUsers[] {
-  const mapNode = (node: DeptTreeItem): DeptNodeWithUsers => ({
-    ...node,
-    users: users.filter(u => u.deptId === node.deptId),
-    children: node.children ? node.children.map(mapNode) : [],
-  });
-
-  const tree = deptTree.map(mapNode);
-
-  const allDeptIds = new Set<number>();
-  const collectIds = (nodes: DeptTreeItem[]) => { for (const n of nodes) { allDeptIds.add(n.deptId); if (n.children) collectIds(n.children); } };
-  collectIds(deptTree);
-
-  const unassigned = users.filter(u => !u.deptId || !allDeptIds.has(u.deptId));
-  if (unassigned.length > 0) {
-    tree.push({ deptId: -1, parentId: 0, deptName: '未分配部门', users: unassigned, children: [] });
-  }
-  return tree;
-}
-
-// ==================== 会议室实时状态计算 ====================
-type RoomRealtimeStatus = 'available' | 'in-use' | 'maintenance';
-
-function getRoomRealtimeStatus(room: MeetingRoom, bookings: SysScheduleEvent[]): RoomRealtimeStatus {
-  if (room.status === '0') return 'maintenance';
-  if (!bookings || bookings.length === 0) return 'available';
-  
-  const now = new Date();
-  const isInUse = bookings.some(b => {
-    try {
-      const start = new Date(b.startTime);
-      const end = new Date(b.endTime);
-      return now >= start && now <= end;
-    } catch { return false; }
-  });
-  
-  return isInUse ? 'in-use' : 'available';
-}
-
-const roomStatusConfig: Record<RoomRealtimeStatus, { bg: string; text: string; label: string; icon: 'check' | 'clock' | 'x' }> = {
-  'available': { bg: 'bg-emerald-100 text-emerald-700', text: 'text-emerald-700', label: '空闲', icon: 'check' },
-  'in-use': { bg: 'bg-amber-100 text-amber-700', text: 'text-amber-700', label: '使用中', icon: 'clock' },
-  'maintenance': { bg: 'bg-red-100 text-red-700', text: 'text-red-700', label: '维护中', icon: 'x' },
-};
-
 // ==================== 主页面 ====================
 export const MeetingRoomPage = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('rooms');
   const [rooms, setRooms] = useState<MeetingRoom[]>([]);
   const [loading, setLoading] = useState(false);
   const [deptTree, setDeptTree] = useState<DeptNodeWithUsers[]>([]);
@@ -473,8 +662,13 @@ export const MeetingRoomPage = () => {
   const [deletingRoom, setDeletingRoom] = useState<MeetingRoom | null>(null);
   const [manageMode, setManageMode] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  // 存储每个会议室的今日预订数据，用于动态计算状态
   const [roomBookingsMap, setRoomBookingsMap] = useState<Record<string, SysScheduleEvent[]>>({});
+  const [weekCalendarRoom, setWeekCalendarRoom] = useState<MeetingRoom | null>(null);
+  const [myBookings, setMyBookings] = useState<SysScheduleEvent[]>([]);
+  const [bookingsFilter, setBookingsFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming');
+  const [stats, setStats] = useState<RoomUsageStats[]>([]);
+  const [statusFilter, setStatusFilter] = useState<'all' | RoomRealtimeStatus>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleBookingsLoaded = useCallback((roomId: string, bookings: SysScheduleEvent[]) => {
     setRoomBookingsMap(prev => ({ ...prev, [roomId]: bookings }));
@@ -482,7 +676,13 @@ export const MeetingRoomPage = () => {
 
   const fetchRooms = async () => {
     setLoading(true);
-    try { setRooms(await getMeetingRooms()); } catch (e) { console.error("Fetch rooms failed", e); } finally { setLoading(false); }
+    try { 
+      setRooms(await getMeetingRooms()); 
+    } catch (e) { 
+      console.error("Fetch rooms failed", e); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const fetchOrgData = async () => {
@@ -494,15 +694,47 @@ export const MeetingRoomPage = () => {
       }));
       const tree = Array.isArray(rawDeptTree) ? rawDeptTree : [];
       setDeptTree(buildDeptTreeWithUsers(tree, mapped));
-    } catch (e) { console.error("Fetch org data failed", e); }
+    } catch (e) { 
+      console.error("Fetch org data failed", e); 
+    }
   };
 
-  useEffect(() => { fetchRooms(); fetchOrgData(); }, []);
+  const fetchMyBookings = async () => {
+    try {
+      const status = bookingsFilter === 'all' ? undefined : bookingsFilter;
+      const res = await getMyBookings(status);
+      setMyBookings(Array.isArray(res) ? res : []);
+    } catch (e) {
+      console.error("Fetch my bookings failed", e);
+      setMyBookings([]);
+    }
+  };
 
-  // 每60秒自动刷新状态，确保会议室状态（空闲/使用中）实时更新
+  const fetchStats = async () => {
+    try {
+      const res = await getRoomUsageStats();
+      setStats(Array.isArray(res) ? res : []);
+    } catch (e) {
+      console.error("Fetch stats failed", e);
+      setStats([]);
+    }
+  };
+
+  useEffect(() => { 
+    fetchRooms(); 
+    fetchOrgData(); 
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'my-bookings') {
+      fetchMyBookings();
+    } else if (activeTab === 'stats') {
+      fetchStats();
+    }
+  }, [activeTab, bookingsFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const timer = setInterval(() => {
-      // 触发重新渲染以更新基于当前时间的状态计算
       setRoomBookingsMap(prev => ({ ...prev }));
     }, 60000);
     return () => clearInterval(timer);
@@ -510,235 +742,591 @@ export const MeetingRoomPage = () => {
 
   const handleBooking = async () => {
     if (!selectedRoom) return;
-    if (!bookingForm.title || !bookingForm.date || !bookingForm.startTime || !bookingForm.endTime) { toast.error("请完善预订信息"); return; }
+    if (!bookingForm.title || !bookingForm.date || !bookingForm.startTime || !bookingForm.endTime) { 
+      toast.error("请完善预订信息"); 
+      return; 
+    }
     const startDate = new Date(`${bookingForm.date}T${bookingForm.startTime}:00`);
     const endDate = new Date(`${bookingForm.date}T${bookingForm.endTime}:00`);
-    if (startDate >= endDate) { toast.error("结束时间必须晚于开始时间"); return; }
+    if (startDate >= endDate) { 
+      toast.error("结束时间必须晚于开始时间"); 
+      return; 
+    }
     const startDateTime = toBackendDateString(startDate);
     const endDateTime = toBackendDateString(endDate);
-    if (!startDateTime || !endDateTime) { toast.error("日期格式错误"); return; }
+    if (!startDateTime || !endDateTime) { 
+      toast.error("日期格式错误"); 
+      return; 
+    }
     try {
       await createEvent({
-        title: bookingForm.title, description: bookingForm.description,
-        startTime: startDateTime, endTime: endDateTime,
-        isAllDay: false, type: 'MEETING', roomId: selectedRoom.roomId,
+        title: bookingForm.title, 
+        description: bookingForm.description,
+        startTime: startDateTime, 
+        endTime: endDateTime,
+        isAllDay: false, 
+        type: 'MEETING', 
+        roomId: selectedRoom.roomId,
         attendees: JSON.stringify(selectedAttendees)
       });
       toast.success("预订成功");
       setSelectedRoom(null);
-      setBookingForm({ title: '', date: new Date().toISOString().split('T')[0], startTime: '09:00', endTime: '10:00', description: '' });
+      setBookingForm({ title: '', date: getLocalDateString(), startTime: '09:00', endTime: '10:00', description: '' });
       setSelectedAttendees([]);
       setRefreshKey(prev => prev + 1);
-    } catch (e: any) { toast.error("预订失败: " + (e.response?.data?.msg || e.message || "时间冲突")); }
+      setWeekCalendarRoom(null);
+    } catch (e: any) { 
+      toast.error("预订失败: " + (e.response?.data?.msg || e.message || "时间冲突")); 
+    }
   };
 
-  const handleAddRoom = () => { setEditingRoom(null); setRoomFormVisible(true); };
-  const handleEditRoom = (room: MeetingRoom) => { setEditingRoom({ ...room }); setRoomFormVisible(true); };
-  const handleDeleteRoom = (room: MeetingRoom) => { setDeletingRoom(room); setDeleteConfirmVisible(true); };
+  const handleCancelBooking = async (eventId: number) => {
+    try {
+      await cancelBooking(eventId.toString());
+      toast.success("预订已取消");
+      fetchMyBookings();
+      setRefreshKey(prev => prev + 1);
+    } catch (e: any) {
+      toast.error("取消失败: " + (e.response?.data?.msg || e.message || "未知错误"));
+    }
+  };
+
+  const handleAddRoom = () => { 
+    setEditingRoom(null); 
+    setRoomFormVisible(true); 
+  };
+  
+  const handleEditRoom = (room: MeetingRoom) => { 
+    setEditingRoom({ ...room }); 
+    setRoomFormVisible(true); 
+  };
+  
+  const handleDeleteRoom = (room: MeetingRoom) => { 
+    setDeletingRoom(room); 
+    setDeleteConfirmVisible(true); 
+  };
 
   const handleRoomFormSubmit = async (roomData: Partial<MeetingRoom>) => {
     try {
-      if (roomData.roomId) { await updateMeetingRoom(roomData as MeetingRoom); toast.success("会议室更新成功"); }
-      else { await createMeetingRoom(roomData); toast.success("会议室创建成功"); }
-      setRoomFormVisible(false); setEditingRoom(null); fetchRooms();
-    } catch (e: any) { toast.error("操作失败: " + (e.response?.data?.msg || e.message || "未知错误")); }
+      if (roomData.roomId) { 
+        await updateMeetingRoom(roomData as MeetingRoom); 
+        toast.success("会议室更新成功"); 
+      } else { 
+        await createMeetingRoom(roomData); 
+        toast.success("会议室创建成功"); 
+      }
+      setRoomFormVisible(false); 
+      setEditingRoom(null); 
+      fetchRooms();
+    } catch (e: any) { 
+      toast.error("操作失败: " + (e.response?.data?.msg || e.message || "未知错误")); 
+    }
   };
 
   const handleDeleteConfirm = async () => {
     if (!deletingRoom) return;
     try {
-      await deleteMeetingRoom(deletingRoom.roomId);
-      toast.success("会议室已删除"); setDeleteConfirmVisible(false); setDeletingRoom(null); fetchRooms();
-    } catch (e: any) { toast.error("删除失败: " + (e.response?.data?.msg || e.message || "未知错误")); }
+      await deleteMeetingRoom(deletingRoom.roomId.toString());
+      toast.success("会议室已删除"); 
+      setDeleteConfirmVisible(false); 
+      setDeletingRoom(null); 
+      fetchRooms();
+    } catch (e: any) { 
+      toast.error("删除失败: " + (e.response?.data?.msg || e.message || "未知错误")); 
+    }
   };
 
-  const parseEquipment = (json: string) => { try { return JSON.parse(json); } catch { return []; } };
+  const handleWeekCalendarBook = (room: MeetingRoom, date: string, startTime: string) => {
+    setWeekCalendarRoom(null);
+    setSelectedRoom(room);
+    setBookingForm({
+      title: '',
+      date: date,
+      startTime: startTime,
+      endTime: startTime,
+      description: ''
+    });
+    setSelectedAttendees([]);
+  };
+
+  const parseEquipment = (json: string) => { 
+    try { 
+      return JSON.parse(json); 
+    } catch { 
+      return []; 
+    } 
+  };
+
+  const filteredRooms = rooms.filter(room => {
+    const matchesSearch = !searchQuery || 
+      room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      room.location.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    if (statusFilter === 'all') return true;
+    
+    const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
+    return realtimeStatus === statusFilter;
+  });
+
+  const formatDateTime = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    } catch {
+      return '--';
+    }
+  };
+
+  const getBookingStatusBadge = (booking: SysScheduleEvent) => {
+    const now = new Date();
+    const start = new Date(booking.startTime);
+    const end = new Date(booking.endTime);
+    
+    if (now < start) {
+      return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">待开始</span>;
+    } else if (now >= start && now <= end) {
+      return <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">进行中</span>;
+    } else {
+      return <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-full">已结束</span>;
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* 标题栏 */}
+      {/* 标题栏和Tab切换 */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Monitor className="text-indigo-600" />会议室资源
-        </h2>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setManageMode(!manageMode)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${manageMode ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-            <Settings size={16} />{manageMode ? '退出管理' : '管理模式'}
-          </button>
-          {manageMode && (
-            <button onClick={handleAddRoom} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center gap-2 transition-colors">
-              <Plus size={16} />新增会议室
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <Monitor className="text-indigo-600" />会议室资源
+          </h2>
+          <div className="flex bg-slate-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('rooms')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'rooms' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              <Monitor size={16} className="inline mr-1" />会议室列表
             </button>
-          )}
+            <button
+              onClick={() => setActiveTab('my-bookings')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'my-bookings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              <CalendarDays size={16} className="inline mr-1" />我的预订
+            </button>
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              <BarChart3 size={16} className="inline mr-1" />使用统计
+            </button>
+          </div>
         </div>
+        {activeTab === 'rooms' && (
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setManageMode(!manageMode)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
+                manageMode ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Settings size={16} />{manageMode ? '退出管理' : '管理模式'}
+            </button>
+            {manageMode && (
+              <button 
+                onClick={handleAddRoom} 
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center gap-2 transition-colors"
+              >
+                <Plus size={16} />新增会议室
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* 加载状态 */}
-      {loading && (
-        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
+      {/* 会议室列表Tab */}
+      {activeTab === 'rooms' && (
+        <>
+          {/* 筛选栏 */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="搜索会议室名称或位置..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter size={16} className="text-slate-500" />
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+                  className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="all">全部状态</option>
+                  <option value="available">空闲</option>
+                  <option value="in-use">使用中</option>
+                  <option value="maintenance">维护中</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {loading && (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          )}
+
+          {!loading && filteredRooms.length === 0 && (
+            <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
+              <Monitor size={48} className="mx-auto text-slate-300 mb-4" />
+              <p className="text-slate-500 text-lg mb-2">
+                {searchQuery || statusFilter !== 'all' ? '没有找到符合条件的会议室' : '暂无会议室'}
+              </p>
+              {!searchQuery && statusFilter === 'all' && (
+                <>
+                  <p className="text-slate-400 text-sm mb-6">点击"管理模式"后可新增会议室</p>
+                  <button 
+                    onClick={() => { setManageMode(true); handleAddRoom(); }}
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 inline-flex items-center gap-2"
+                  >
+                    <Plus size={16} />新增第一个会议室
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {!loading && filteredRooms.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredRooms.map(room => {
+                const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
+                const statusCfg = roomStatusConfig[realtimeStatus];
+                const StatusIcon = realtimeStatus === 'available' ? CheckCircle2 : realtimeStatus === 'in-use' ? Clock : XCircle;
+                return (
+                  <div key={room.roomId} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden relative">
+                    {manageMode && (
+                      <div className="absolute top-3 left-3 z-10 flex gap-2">
+                        <button 
+                          onClick={() => handleEditRoom(room)} 
+                          className="bg-white/90 backdrop-blur-sm text-indigo-600 p-2 rounded-lg shadow-sm hover:bg-indigo-50 border border-slate-200" 
+                          title="编辑"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteRoom(room)} 
+                          className="bg-white/90 backdrop-blur-sm text-red-600 p-2 rounded-lg shadow-sm hover:bg-red-50 border border-slate-200" 
+                          title="删除"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                    <div className="h-32 bg-slate-100 flex items-center justify-center relative">
+                      <Monitor size={48} className="text-slate-300" />
+                      <div className={`absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${statusCfg.bg}`}>
+                        <StatusIcon size={12} />
+                        {statusCfg.label}
+                      </div>
+                    </div>
+                    <div className="p-5">
+                      <h3 className="text-lg font-bold text-slate-800 mb-1">{room.name}</h3>
+                      <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
+                        <span className="flex items-center gap-1"><MapPin size={12} /> {room.location}</span>
+                        <span className="flex items-center gap-1"><Users size={12} /> {room.capacity}人</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {parseEquipment(room.equipment).map((eq: string, i: number) => (
+                          <span key={i} className="bg-slate-50 text-slate-600 px-2 py-1 rounded text-xs border border-slate-100">{eq}</span>
+                        ))}
+                        {parseEquipment(room.equipment).length === 0 && <span className="text-xs text-slate-400">暂无设备信息</span>}
+                      </div>
+                      <div className="mb-4 border-t border-slate-100 pt-3">
+                        <RoomBookings key={`${room.roomId}-${refreshKey}`} roomId={room.roomId.toString()} onBookingsLoaded={handleBookingsLoaded} />
+                      </div>
+                      {!manageMode && (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => { 
+                              setSelectedRoom(room); 
+                              setSelectedAttendees([]);
+                              setBookingForm({
+                                title: '',
+                                date: getLocalDateString(),
+                                startTime: '09:00',
+                                endTime: '10:00',
+                                description: ''
+                              });
+                            }} 
+                            disabled={realtimeStatus === 'maintenance'}
+                            className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-medium hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            立即预订
+                          </button>
+                          <button
+                            onClick={() => setWeekCalendarRoom(room)}
+                            disabled={realtimeStatus === 'maintenance'}
+                            className="px-3 py-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="周日历"
+                          >
+                            <CalendarDays size={18} />
+                          </button>
+                        </div>
+                      )}
+                      {manageMode && (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleEditRoom(room)} 
+                            className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-medium hover:bg-indigo-100 flex items-center justify-center gap-1"
+                          >
+                            <Pencil size={14} />编辑
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteRoom(room)} 
+                            className="flex-1 bg-red-50 text-red-600 py-2 rounded-lg font-medium hover:bg-red-100 flex items-center justify-center gap-1"
+                          >
+                            <Trash2 size={14} />删除
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
-      {/* 空状态 */}
-      {!loading && rooms.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
-          <Monitor size={48} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-slate-500 text-lg mb-2">暂无会议室</p>
-          <p className="text-slate-400 text-sm mb-6">点击"管理模式"后可新增会议室</p>
-          <button onClick={() => { setManageMode(true); handleAddRoom(); }}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 inline-flex items-center gap-2">
-            <Plus size={16} />新增第一个会议室
-          </button>
+      {/* 我的预订Tab */}
+      {activeTab === 'my-bookings' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-slate-500" />
+              <select
+                value={bookingsFilter}
+                onChange={e => setBookingsFilter(e.target.value as typeof bookingsFilter)}
+                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                <option value="upcoming">待开始</option>
+                <option value="past">已结束</option>
+                <option value="all">全部</option>
+              </select>
+            </div>
+          </div>
+
+          {myBookings.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
+              <CalendarDays size={48} className="mx-auto text-slate-300 mb-4" />
+              <p className="text-slate-500 text-lg">暂无预订记录</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myBookings.map(booking => {
+                const room = rooms.find(r => r.roomId === booking.roomId);
+                const now = new Date();
+                const start = new Date(booking.startTime);
+                const canCancel = start > now;
+                
+                return (
+                  <div key={booking.eventId} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-bold text-slate-800">{booking.title}</h3>
+                          {getBookingStatusBadge(booking)}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <Monitor size={14} className="text-indigo-500" />
+                            {room?.name || `会议室 ${booking.roomId}`}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin size={14} className="text-slate-400" />
+                            {room?.location || '-'}
+                          </span>
+                        </div>
+                      </div>
+                      {canCancel && (
+                        <button
+                          onClick={() => handleCancelBooking(booking.eventId)}
+                          className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                        >
+                          取消预订
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-slate-500 mt-3 pt-3 border-t border-slate-100">
+                      <span className="flex items-center gap-1">
+                        <Clock size={14} />
+                        {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
+                      </span>
+                    </div>
+                    {booking.description && (
+                      <p className="text-sm text-slate-600 mt-2">{booking.description}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 会议室列表 */}
-      {!loading && rooms.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map(room => {
-            const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
-            const statusCfg = roomStatusConfig[realtimeStatus];
-            const StatusIcon = realtimeStatus === 'available' ? CheckCircle2 : realtimeStatus === 'in-use' ? Clock : XCircle;
-            return (
-            <div key={room.roomId} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden relative">
-              {manageMode && (
-                <div className="absolute top-3 left-3 z-10 flex gap-2">
-                  <button onClick={() => handleEditRoom(room)} className="bg-white/90 backdrop-blur-sm text-indigo-600 p-2 rounded-lg shadow-sm hover:bg-indigo-50 border border-slate-200" title="编辑"><Pencil size={14} /></button>
-                  <button onClick={() => handleDeleteRoom(room)} className="bg-white/90 backdrop-blur-sm text-red-600 p-2 rounded-lg shadow-sm hover:bg-red-50 border border-slate-200" title="删除"><Trash2 size={14} /></button>
-                </div>
-              )}
-              <div className="h-32 bg-slate-100 flex items-center justify-center relative">
-                <Monitor size={48} className="text-slate-300" />
-                <div className={`absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${statusCfg.bg}`}>
-                  <StatusIcon size={12} />
-                  {statusCfg.label}
-                </div>
-              </div>
-              <div className="p-5">
-                <h3 className="text-lg font-bold text-slate-800 mb-1">{room.name}</h3>
-                <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
-                  <span className="flex items-center gap-1"><MapPin size={12} /> {room.location}</span>
-                  <span className="flex items-center gap-1"><Users size={12} /> {room.capacity}人</span>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {parseEquipment(room.equipment).map((eq: string, i: number) => (
-                    <span key={i} className="bg-slate-50 text-slate-600 px-2 py-1 rounded text-xs border border-slate-100">{eq}</span>
-                  ))}
-                  {parseEquipment(room.equipment).length === 0 && <span className="text-xs text-slate-400">暂无设备信息</span>}
-                </div>
-                <div className="mb-4 border-t border-slate-100 pt-3">
-                  <RoomBookings key={`${room.roomId}-${refreshKey}`} roomId={room.roomId} onBookingsLoaded={handleBookingsLoaded} />
-                </div>
-                {!manageMode && (
-                  <button onClick={() => { 
-                    setSelectedRoom(room); 
-                    setSelectedAttendees([]);
-                    // 重置表单为今日的日期和默认时间
-                    setBookingForm({
-                      title: '',
-                      date: getLocalDateString(),
-                      startTime: '09:00',
-                      endTime: '10:00',
-                      description: ''
-                    });
-                  }} disabled={realtimeStatus === 'maintenance'}
-                    className="w-full bg-indigo-50 text-indigo-600 py-2 rounded-lg font-medium hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    立即预订
-                  </button>
-                )}
-                {manageMode && (
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEditRoom(room)} className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-medium hover:bg-indigo-100 flex items-center justify-center gap-1"><Pencil size={14} />编辑</button>
-                    <button onClick={() => handleDeleteRoom(room)} className="flex-1 bg-red-50 text-red-600 py-2 rounded-lg font-medium hover:bg-red-100 flex items-center justify-center gap-1"><Trash2 size={14} />删除</button>
-                  </div>
-                )}
+      {/* 使用统计Tab */}
+      {activeTab === 'stats' && (
+        <div className="space-y-4">
+          {stats.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
+              <BarChart3 size={48} className="mx-auto text-slate-300 mb-4" />
+              <p className="text-slate-500 text-lg">暂无统计数据</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">会议室</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">预订次数</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">使用时长</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">使用天数</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">利用率</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {stats.map((stat, index) => {
+                      const hours = Math.floor(stat.totalMinutes / 60);
+                      const minutes = stat.totalMinutes % 60;
+                      const utilizationRate = stat.usedDays > 0 ? ((stat.totalMinutes / (stat.usedDays * 8 * 60)) * 100).toFixed(1) : '0.0';
+                      
+                      return (
+                        <tr key={index} className="hover:bg-slate-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <Monitor size={16} className="text-indigo-500 mr-2" />
+                              <span className="text-sm font-medium text-slate-800">{stat.roomName}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                            {stat.bookingCount} 次
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                            {hours > 0 && `${hours}小时`}{minutes > 0 && `${minutes}分钟`}
+                            {hours === 0 && minutes === 0 && '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                            {stat.usedDays} 天
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-slate-100 rounded-full h-2 max-w-[100px]">
+                                <div 
+                                  className="bg-indigo-600 h-2 rounded-full" 
+                                  style={{ width: `${Math.min(parseFloat(utilizationRate), 100)}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium text-slate-700">{utilizationRate}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-            );
-          })}
+          )}
         </div>
       )}
 
       {/* 预订弹窗 */}
       {selectedRoom && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col animate-in fade-in zoom-in duration-200 max-h-[90vh]">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-bold text-slate-800">预订会议室</h3>
-                <p className="text-xs text-slate-500 mt-1">当前选择: {selectedRoom.name}</p>
+                <h3 className="text-lg font-bold text-slate-800">预订会议室 - {selectedRoom.name}</h3>
+                <p className="text-xs text-slate-500 mt-1">{selectedRoom.location} · 容纳{selectedRoom.capacity}人</p>
               </div>
-              <button onClick={() => setSelectedRoom(null)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              <button onClick={() => setSelectedRoom(null)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">会议主题 <span className="text-red-500">*</span></label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  value={bookingForm.title} onChange={e => setBookingForm({ ...bookingForm, title: e.target.value })} placeholder="请输入会议主题" />
+                <input
+                  type="text"
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  value={bookingForm.title}
+                  onChange={e => setBookingForm({ ...bookingForm, title: e.target.value })}
+                  placeholder="例如：项目评审会议"
+                />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">日期</label>
-                  <input 
-                    type="date" 
-                    className="w-full border border-slate-300 rounded-lg p-2 text-sm"
-                    value={bookingForm.date} 
-                    min={getLocalDateString()}
-                    onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })} 
+                  <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    value={bookingForm.date}
+                    onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">开始时间</label>
-                  <input 
-                    type="time" 
-                    className="w-full border border-slate-300 rounded-lg p-2 text-sm"
-                    value={bookingForm.startTime} 
-                    onChange={e => {
-                      const newStartTime = e.target.value;
-                      // 同步结束时间为相同的时间
-                      setBookingForm(prev => ({
-                        ...prev,
-                        startTime: newStartTime,
-                        endTime: newStartTime
-                      }));
-                    }} 
+                  <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
+                  <input
+                    type="time"
+                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    value={bookingForm.startTime}
+                    onChange={e => setBookingForm({ ...bookingForm, startTime: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">结束时间</label>
-                  <input 
-                    type="time" 
-                    className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                  <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
+                  <input
+                    type="time"
+                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     value={bookingForm.endTime}
-                    min={bookingForm.startTime}
-                    onChange={e => {
-                      const newEndTime = e.target.value;
-                      // 只有当新的结束时间晚于开始时间时才更新
-                      if (newEndTime > bookingForm.startTime) {
-                        setBookingForm({ ...bookingForm, endTime: newEndTime });
-                      } else {
-                        toast.error('结束时间必须晚于开始时间');
-                      }
-                    }} 
+                    onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-                  <Building2 size={14} /> 参与人（按部门选择）
+                <label className="block text-sm font-medium text-slate-700 mb-1">会议描述</label>
+                <textarea
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  rows={3}
+                  value={bookingForm.description}
+                  onChange={e => setBookingForm({ ...bookingForm, description: e.target.value })}
+                  placeholder="会议议程、注意事项等..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1">
+                  <UserPlus size={14} />参会人员
                 </label>
                 <OrgTreePicker deptTree={deptTree} selectedIds={selectedAttendees} onChange={setSelectedAttendees} />
-                <p className="text-xs text-slate-400 mt-1">可选择整个部门或单独选择人员，被选中的参与人也能在自己的日程中看到此会议</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">备注说明</label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20 text-sm"
-                  value={bookingForm.description} onChange={e => setBookingForm({ ...bookingForm, description: e.target.value })}
-                  placeholder="请输入参会议题、特殊需求等..." />
               </div>
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setSelectedRoom(null)} className="px-4 py-2 text-slate-600 hover:text-slate-800">取消</button>
+              <button onClick={() => setSelectedRoom(null)} className="px-4 py-2 text-slate-600 hover:text-slate-800">
+                取消
+              </button>
               <button onClick={handleBooking} className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 font-medium flex items-center gap-2">
                 <CheckCircle2 size={16} />确认预订
               </button>
@@ -747,10 +1335,14 @@ export const MeetingRoomPage = () => {
         </div>
       )}
 
-      <RoomFormModal visible={roomFormVisible} room={editingRoom}
-        onClose={() => { setRoomFormVisible(false); setEditingRoom(null); }} onSubmit={handleRoomFormSubmit} />
-      <DeleteConfirmModal visible={deleteConfirmVisible} roomName={deletingRoom?.name || ''}
-        onClose={() => { setDeleteConfirmVisible(false); setDeletingRoom(null); }} onConfirm={handleDeleteConfirm} />
+      {/* 会议室表单弹窗 */}
+      <RoomFormModal visible={roomFormVisible} room={editingRoom} onClose={() => { setRoomFormVisible(false); setEditingRoom(null); }} onSubmit={handleRoomFormSubmit} />
+
+      {/* 删除确认弹窗 */}
+      <DeleteConfirmModal visible={deleteConfirmVisible} roomName={deletingRoom?.name || ''} onClose={() => { setDeleteConfirmVisible(false); setDeletingRoom(null); }} onConfirm={handleDeleteConfirm} />
+
+      {/* 周日历弹窗 */}
+      {weekCalendarRoom && <WeekCalendar room={weekCalendarRoom} onClose={() => setWeekCalendarRoom(null)} onBookRoom={handleWeekCalendarBook} />}
     </div>
   );
 };

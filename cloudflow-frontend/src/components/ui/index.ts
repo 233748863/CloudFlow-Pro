@@ -32,6 +32,20 @@ export { Label } from './label'
  */
 export { Input } from './input'
 
+/**
+ * Textarea - 多行文本输入组件
+ * 用于多行文本输入
+ */
+export { Textarea } from './textarea'
+export type { TextareaProps } from './textarea'
+
+/**
+ * Switch - 开关组件
+ * 用于布尔值的切换
+ */
+export { Switch } from './switch'
+export type { SwitchProps } from './switch'
+
 // ============================================
 // 容器组件
 // ============================================

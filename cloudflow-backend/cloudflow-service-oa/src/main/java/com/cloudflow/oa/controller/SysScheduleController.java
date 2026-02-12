@@ -77,4 +77,45 @@ public class SysScheduleController {
         }
         return R.ok(scheduleService.removeById(id));
     }
+
+    /**
+     * 获取会议室一周的预订（周视图日历用）
+     * @param roomId 会议室ID
+     * @param weekStart 周一日期（YYYY-MM-DD格式）
+     */
+    @GetMapping("/room/{roomId}/week")
+    public R<List<SysScheduleEvent>> getRoomWeekEvents(@PathVariable("roomId") Long roomId,
+                                                       @RequestParam("weekStart") String weekStart) {
+        return R.ok(scheduleService.getRoomWeekEvents(roomId, weekStart));
+    }
+
+    /**
+     * 获取我的会议室预订记录
+     * @param status 状态筛选（可选：upcoming-待开始, past-已结束）
+     */
+    @GetMapping("/my-bookings")
+    public R<List<SysScheduleEvent>> getMyBookings(@RequestParam(value = "status", required = false) String status) {
+        return R.ok(scheduleService.getMyBookings(UserContext.getUserId(), status));
+    }
+
+    /**
+     * 取消预订
+     * @param id 日程ID
+     */
+    @PutMapping("/cancel/{id}")
+    public R<Boolean> cancelBooking(@PathVariable("id") Long id) {
+        return R.ok(scheduleService.cancelBooking(id, UserContext.getUserId()));
+    }
+
+    /**
+     * 会议室使用统计
+     * @param startDate 开始日期（可选）
+     * @param endDate 结束日期（可选）
+     */
+    @GetMapping("/room-stats")
+    public R<List<java.util.Map<String, Object>>> getRoomUsageStats(
+            @RequestParam(value = "startDate", required = false) String startDate,
+            @RequestParam(value = "endDate", required = false) String endDate) {
+        return R.ok(scheduleService.getRoomUsageStats(startDate, endDate));
+    }
 }

@@ -31,4 +31,24 @@ public interface SysScheduleEventMapper extends BaseMapper<SysScheduleEvent> {
     List<SysScheduleEvent> getRoomEvents(@Param("roomId") Long roomId,
                                         @Param("dayStart") Date dayStart,
                                         @Param("dayEnd") Date dayEnd);
+
+    /**
+     * 获取我的待开始预订
+     */
+    List<SysScheduleEvent> getMyUpcomingBookings(@Param("userId") Long userId, @Param("now") Date now);
+
+    /**
+     * 获取我的已结束预订
+     */
+    List<SysScheduleEvent> getMyPastBookings(@Param("userId") Long userId, @Param("now") Date now);
+
+    /**
+     * 获取我的所有会议室预订
+     */
+    List<SysScheduleEvent> getMyAllBookings(@Param("userId") Long userId);
+
+    /**
+     * 会议室使用统计
+     */
+    List<java.util.Map<String, Object>> getRoomUsageStats(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
 }

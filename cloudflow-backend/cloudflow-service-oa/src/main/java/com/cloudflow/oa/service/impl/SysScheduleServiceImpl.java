@@ -92,4 +92,51 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
         List<SysScheduleEvent> conflicts = baseMapper.checkConflict(roomId, start, end);
         return !conflicts.isEmpty();
     }
+
+    @Override
+    public List<SysScheduleEvent> getRoomWeekEvents(Long roomId, String weekStart) {
+        Date start = parseDate(weekStart);
+        // 一周 = 7天
+        Date end = new Date(start.getTime() + 86400000L * 7);
+        return baseMapper.getRoomEvents(roomId, start, end);
+    }
+
+    @Override
+    public List<SysScheduleEvent> getMyBookings(Long userId, String status) {
+        Date now = new Date();
+        if ("upcoming".equals(status)) {
+            // 待开始：开始时间在未来
+            return baseMapper.getMyUpcomingBookings(userId, now);
+        } else if ("past".equals(status)) {
+            // 已结束：结束时间在过去
+            return baseMapper.getMyPastBookings(userId, now);
+        } else {
+            // 全部：所有会议室预订
+            return baseMapper.getMyAllBookings(userId);
+        }
+    }
+
+    @Override
+    public boolean cancelBooking(Long eventId, Long userId) {
+        SysScheduleEvent event = getById(eventId);
+        if (event == null) {
+            throw new ServiceException("日程不存在");
+        }
+        if (!userId.equals(event.getCreatorId())) {
+            throw new ServiceException("无权取消此预订，只有创建者可以取消");
+        }
+        // 检查是否已经开始
+        if (event.getStartTime().before(new Date())) {
+            throw new ServiceException("会议已开始，无法取消");
+        }
+        return removeById(eventId);
+    }
+
+    @Override
+    public List<java.util.Map<String, Object>> getRoomUsageStats(String startDate, String endDate) {
+        Date start = StringUtils.hasText(startDate) ? parseDate(startDate) : 
+            Date.from(LocalDate.now().withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date end = StringUtils.hasText(endDate) ? parseDate(endDate) : new Date();
+        return baseMapper.getRoomUsageStats(start, end);
+    }
 }
