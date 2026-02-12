@@ -92,6 +92,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
                 SysRoleMenu rm = new SysRoleMenu();
                 rm.setRoleId(role.getRoleId());
                 rm.setMenuId(menuId);
+                rm.setTenantId(role.getTenantId());
                 roleMenuMapper.insert(rm);
             }
         }

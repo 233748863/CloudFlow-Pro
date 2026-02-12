@@ -10,6 +10,12 @@ import java.time.LocalDateTime;
 public class SysRole {
     @TableId
     private Long roleId;
+    
+    /**
+     * 租户ID
+     */
+    private Long tenantId;
+    
     private String roleName;
     private String roleKey;
     private Integer roleSort;

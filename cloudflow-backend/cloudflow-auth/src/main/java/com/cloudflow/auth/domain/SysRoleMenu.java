@@ -14,4 +14,7 @@ public class SysRoleMenu {
     
     /** 菜单ID */
     private Long menuId;
+    
+    /** 租户ID */
+    private Long tenantId;
 }
