@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.job;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -12,6 +13,7 @@ import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
+import com.cloudflow.workflow.service.IWorkflowService;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -22,6 +24,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -61,6 +65,9 @@ public class TaskTimeoutJob {
 
     @Autowired
     private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
+    
+    @Autowired
+    private IWorkflowService workflowService;
 
     /**
      * 每分钟扫描一次超时任务
@@ -114,6 +121,7 @@ public class TaskTimeoutJob {
     /**
      * 处理单个超时任务
      * 默认策略：自动通过（AUTO_PASS）
+     * 使用完整的流程引擎进行流转，确保后续节点正常执行
      */
     @Transactional(rollbackFor = Exception.class)
     public void handleTimeoutTask(String taskId) {
@@ -131,47 +139,109 @@ public class TaskTimeoutJob {
         
         log.info("[TaskTimeoutJob] 开始自动处理超时任务, taskId={}, nodeName={}", taskId, task.getNodeName());
         
-        // 1. 保存历史记录
-        WfTaskHistory history = new WfTaskHistory();
-        history.setHistoryId(UUID.randomUUID().toString());
-        history.setTaskId(task.getTaskId());
-        history.setInstanceId(task.getInstanceId());
-        history.setNodeName(task.getNodeName());
-        history.setNodeKey(task.getNodeKey());
-        history.setOperatorId(0L); // 系统自动处理
-        history.setOperatorName("系统自动处理");
-        history.setComment("任务超时，系统自动通过");
-        history.setAction("AUTO_PASS");
-        history.setCreateTime(new Date());
-        taskHistoryMapper.insert(history);
-        
-        // 2. 删除当前任务
-        taskMapper.deleteById(taskId);
-        
-        // 3. 查找流程实例
+        // 查找流程实例
         WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
         if (instance == null) {
             log.warn("[TaskTimeoutJob] 流程实例不存在, instanceId={}", task.getInstanceId());
             return;
         }
         
-        // 4. 简化处理：直接完成流程（完整实现应调用 runNode 继续流转）
-        // TODO: 后续可以注入 IWorkflowService 调用 completeTask 实现完整流转
-        // 当前简化为：如果没有其他待办任务，则完成流程
-        Long remainingTasks = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getInstanceId, instance.getInstanceId())
-        );
-        
-        if (remainingTasks == 0) {
-            instance.setStatus(WfProcessStatus.COMPLETED.getCode());
-            instance.setEndTime(new Date());
-            processInstanceMapper.updateById(instance);
-            log.info("[TaskTimeoutJob] 流程已自动完成, instanceId={}", instance.getInstanceId());
+        try {
+            // 设置系统用户上下文（用于权限校验和审计日志）
+            // 使用任务的处理人ID作为操作者，如果没有则使用系统ID(0)
+            Long operatorId = task.getAssignee() != null ? task.getAssignee() : 0L;
+            String operatorName = "系统自动处理";
+            
+            // 临时设置用户上下文
+            UserContext.setUserId(operatorId);
+            UserContext.setUserName(operatorName);
+            
+            // 准备流程变量（可以根据需要添加超时标记）
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("_autoProcessed", true);
+            variables.put("_autoProcessReason", "任务超时自动通过");
+            variables.put("_autoProcessTime", new Date());
+            
+            // 调用完整的流程引擎进行任务完成和流转
+            // 这将触发完整的流程流转逻辑，包括：
+            // 1. 保存历史记录
+            // 2. 删除当前任务
+            // 3. 解析流程定义
+            // 4. 执行下一个节点（可能是审批节点、通知节点、脚本节点等）
+            // 5. 如果到达流程末尾，自动完成流程
+            workflowService.completeTask(
+                taskId,
+                "APPROVE",  // 自动通过
+                "任务超时，系统自动通过",
+                variables
+            );
+            
+            log.info("[TaskTimeoutJob] 超时任务处理完成，流程已继续流转, taskId={}", taskId);
+            
+        } catch (Exception e) {
+            log.error("[TaskTimeoutJob] 调用流程引擎处理超时任务失败, taskId={}, error={}", taskId, e.getMessage(), e);
+            
+            // 如果调用流程引擎失败，回退到简化处理逻辑
+            log.warn("[TaskTimeoutJob] 回退到简化处理逻辑");
+            handleTimeoutTaskFallback(task, instance);
+            
+        } finally {
+            // 清理用户上下文
+            UserContext.clear();
         }
         
-        // 5. 发送通知
+        // 发送通知
+        sendTimeoutNotifications(task, instance);
+    }
+    
+    /**
+     * 简化的超时任务处理逻辑（回退方案）
+     * 当完整流程引擎调用失败时使用
+     */
+    private void handleTimeoutTaskFallback(WfTask task, WfProcessInstance instance) {
         try {
+            // 1. 保存历史记录
+            WfTaskHistory history = new WfTaskHistory();
+            history.setHistoryId(UUID.randomUUID().toString());
+            history.setTaskId(task.getTaskId());
+            history.setInstanceId(task.getInstanceId());
+            history.setNodeName(task.getNodeName());
+            history.setNodeKey(task.getNodeKey());
+            history.setOperatorId(0L); // 系统自动处理
+            history.setOperatorName("系统自动处理");
+            history.setComment("任务超时，系统自动通过（简化处理）");
+            history.setAction("AUTO_PASS_FALLBACK");
+            history.setCreateTime(new Date());
+            taskHistoryMapper.insert(history);
+            
+            // 2. 删除当前任务
+            taskMapper.deleteById(task.getTaskId());
+            
+            // 3. 检查是否还有其他待办任务
+            Long remainingTasks = taskMapper.selectCount(
+                new LambdaQueryWrapper<WfTask>()
+                    .eq(WfTask::getInstanceId, instance.getInstanceId())
+            );
+            
+            // 4. 如果没有其他待办任务，则完成流程
+            if (remainingTasks == 0) {
+                instance.setStatus(WfProcessStatus.COMPLETED.getCode());
+                instance.setEndTime(new Date());
+                processInstanceMapper.updateById(instance);
+                log.info("[TaskTimeoutJob] 流程已自动完成（简化处理）, instanceId={}", instance.getInstanceId());
+            }
+            
+        } catch (Exception e) {
+            log.error("[TaskTimeoutJob] 简化处理逻辑也失败了, taskId={}, error={}", task.getTaskId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 发送超时通知
+     */
+    private void sendTimeoutNotifications(WfTask task, WfProcessInstance instance) {
+        try {
+            // 通知任务处理人
             if (task.getAssignee() != null) {
                 sysNoticeService.sendNotice(
                     task.getAssignee(),
@@ -184,7 +254,7 @@ public class TaskTimeoutJob {
             }
             
             // 通知发起人
-            if (instance.getStartUserId() != null) {
+            if (instance.getStartUserId() != null && !instance.getStartUserId().equals(task.getAssignee())) {
                 sysNoticeService.sendNotice(
                     instance.getStartUserId(),
                     "任务超时自动处理通知",
@@ -197,8 +267,6 @@ public class TaskTimeoutJob {
         } catch (Exception e) {
             log.warn("[TaskTimeoutJob] 发送超时通知失败: {}", e.getMessage());
         }
-        
-        log.info("[TaskTimeoutJob] 超时任务处理完成, taskId={}", taskId);
     }
 
     /**
