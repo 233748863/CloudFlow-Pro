@@ -883,9 +883,9 @@ export const MeetingRoomPage = () => {
     }
   };
 
-  const handleCancelBooking = async (eventId: number) => {
+  const handleCancelBooking = async (eventId: string) => {
     try {
-      await cancelBooking(eventId);
+      await cancelBooking(Number(eventId));
       toast.success("预订已取消");
       fetchMyBookings();
       setRefreshKey(prev => prev + 1);
