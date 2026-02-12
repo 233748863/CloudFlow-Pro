@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Shield, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList, getDeptTree } from '../../services/api/auth';
+import { getTenantList } from '../../services/api/tenant';
 import { useMount } from '../../hooks/useMount';
 
 // Helper to build tree
@@ -21,6 +22,7 @@ export const RoleList = () => {
   const [flatMenus, setFlatMenus] = useState<any[]>([]);
   const [deptTree, setDeptTree] = useState<any[]>([]);
   const [flatDepts, setFlatDepts] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   
   // Modal State
@@ -33,7 +35,8 @@ export const RoleList = () => {
     status: '0',
     menuIds: [] as number[],
     dsType: 1,
-    dsScope: ''
+    dsScope: '',
+    tenantId: undefined as number | undefined
   });
 
   // Tree expand state in modal
@@ -44,6 +47,7 @@ export const RoleList = () => {
     fetchRoles();
     fetchMenus();
     fetchDepts();
+    fetchTenants();
   });
 
   const fetchRoles = async () => {
@@ -88,6 +92,15 @@ export const RoleList = () => {
       }
   };
 
+  const fetchTenants = async () => {
+    try {
+      const res: any = await getTenantList();
+      setTenants(Array.isArray(res) ? res : (res?.rows || res?.records || []));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleOpenModal = (role?: any) => {
     if (role) {
       setEditingRole(role);
@@ -99,7 +112,8 @@ export const RoleList = () => {
         status: role.status,
         menuIds: role.menuIds || [],
         dsType: role.dsType ?? 1,
-        dsScope: role.dsScope || ''
+        dsScope: role.dsScope || '',
+        tenantId: role.tenantId
       });
     } else {
       setEditingRole(null);
@@ -110,7 +124,8 @@ export const RoleList = () => {
         status: '0',
         menuIds: [],
         dsType: 1,
-        dsScope: ''
+        dsScope: '',
+        tenantId: undefined
       });
     }
     setIsModalOpen(true);
@@ -283,6 +298,7 @@ export const RoleList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">角色名称</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">权限字符</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">租户</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">显示顺序</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
@@ -291,11 +307,11 @@ export const RoleList = () => {
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">加载中...</td>
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">加载中...</td>
                 </tr>
               ) : roles.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">暂无数据</td>
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">暂无数据</td>
                 </tr>
               ) : (
                 roles.map((role) => (
@@ -306,6 +322,9 @@ export const RoleList = () => {
                        {role.roleName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono text-xs">{role.roleKey}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      {tenants.find(t => t.tenantId === role.tenantId)?.tenantName || '默认租户'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{role.roleSort}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${role.status === '0' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -364,15 +383,33 @@ export const RoleList = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">显示顺序</label>
-                <input 
-                  type="number" 
-                  required
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  value={formData.roleSort}
-                  onChange={e => setFormData({...formData, roleSort: parseInt(e.target.value)})}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">显示顺序</label>
+                  <input 
+                    type="number" 
+                    required
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={formData.roleSort}
+                    onChange={e => setFormData({...formData, roleSort: parseInt(e.target.value)})}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">所属租户</label>
+                  <select
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                    value={formData.tenantId || ''}
+                    onChange={e => setFormData({...formData, tenantId: e.target.value ? Number(e.target.value) : undefined})}
+                  >
+                    <option value="">请选择租户</option>
+                    {tenants.map(tenant => (
+                      <option key={tenant.tenantId} value={tenant.tenantId}>
+                        {tenant.tenantName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
