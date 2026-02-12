@@ -370,13 +370,19 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
 interface WeekCalendarProps {
   room: MeetingRoom;
   onClose: () => void;
-  onBookRoom: (room: MeetingRoom, date: string, startTime: string) => void;
+  onBookRoom: (room: MeetingRoom, date: string, startTime: string, endTime: string) => void;
 }
 
 const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart(new Date()));
   const [events, setEvents] = useState<SysScheduleEvent[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // ===== 鼠标拖动选择时间段相关状态 =====
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragDayIndex, setDragDayIndex] = useState<number | null>(null);
+  const [dragStartHour, setDragStartHour] = useState<number | null>(null);
+  const [dragEndHour, setDragEndHour] = useState<number | null>(null);
 
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(currentWeekStart);
@@ -436,11 +442,80 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
     }) || null;
   };
 
-  const handleSlotClick = (day: Date, hour: number) => {
-    const dateStr = getLocalDateString(day);
-    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-    onBookRoom(room, dateStr, timeStr);
+  // ===== 判断某个格子是否在拖动选中范围内 =====
+  const isSlotInDragRange = (dayIndex: number, hour: number): boolean => {
+    if (!isDragging || dragDayIndex !== dayIndex || dragStartHour === null || dragEndHour === null) return false;
+    const minHour = Math.min(dragStartHour, dragEndHour);
+    const maxHour = Math.max(dragStartHour, dragEndHour);
+    return hour >= minHour && hour <= maxHour;
   };
+
+  // ===== 鼠标按下：开始拖动 =====
+  const handleMouseDown = (dayIndex: number, hour: number, bookedEvent: SysScheduleEvent | null, isPast: boolean) => {
+    if (bookedEvent || isPast) return;
+    setIsDragging(true);
+    setDragDayIndex(dayIndex);
+    setDragStartHour(hour);
+    setDragEndHour(hour);
+  };
+
+  // ===== 鼠标移入：扩展选择范围（仅同一天） =====
+  const handleMouseEnter = (dayIndex: number, hour: number) => {
+    if (!isDragging || dragDayIndex !== dayIndex) return;
+    setDragEndHour(hour);
+  };
+
+  // ===== 鼠标松开：结束拖动，计算时间范围并触发预订 =====
+  const handleMouseUp = () => {
+    if (!isDragging || dragDayIndex === null || dragStartHour === null || dragEndHour === null) {
+      setIsDragging(false);
+      setDragDayIndex(null);
+      setDragStartHour(null);
+      setDragEndHour(null);
+      return;
+    }
+
+    const minHour = Math.min(dragStartHour, dragEndHour);
+    const maxHour = Math.max(dragStartHour, dragEndHour);
+    const day = weekDays[dragDayIndex];
+
+    // 检查选中范围内是否有冲突
+    let hasConflict = false;
+    for (let h = minHour; h <= maxHour; h++) {
+      const checkDay = new Date(day);
+      checkDay.setHours(h, 0, 0, 0);
+      if (isSlotBooked(new Date(day), h) || checkDay < new Date()) {
+        hasConflict = true;
+        break;
+      }
+    }
+
+    if (hasConflict) {
+      toast.error('选中的时间范围内存在已预订或已过期的时段');
+    } else {
+      const dateStr = getLocalDateString(day);
+      const startTimeStr = `${minHour.toString().padStart(2, '0')}:00`;
+      // 结束时间 = 最大小时 + 1（例如选了 9-11，结束时间为 12:00）
+      const endTimeStr = `${(maxHour + 1).toString().padStart(2, '0')}:00`;
+      onBookRoom(room, dateStr, startTimeStr, endTimeStr);
+    }
+
+    setIsDragging(false);
+    setDragDayIndex(null);
+    setDragStartHour(null);
+    setDragEndHour(null);
+  };
+
+  // ===== 全局鼠标松开监听，防止鼠标在格子外松开导致状态残留 =====
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        handleMouseUp();
+      }
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isDragging, dragDayIndex, dragStartHour, dragEndHour]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatDate = (d: Date) => {
     const month = d.getMonth() + 1;
@@ -462,7 +537,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <div>
             <h3 className="text-lg font-bold text-slate-800">周日历 - {room.name}</h3>
-            <p className="text-xs text-slate-500 mt-1">点击空闲时段快速预订</p>
+            <p className="text-xs text-slate-500 mt-1">点击空闲时段快速预订，拖动可选择连续时间段</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
@@ -482,6 +557,15 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
           <button onClick={goToNextWeek} className="p-2 hover:bg-slate-100 rounded-lg">
             <ChevronRight size={20} />
           </button>
+        </div>
+
+        {/* 图例说明 */}
+        <div className="px-6 py-2 border-b border-slate-100 flex items-center gap-4 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-50 border border-emerald-200 inline-block"></span> 空闲可选</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 border border-red-200 inline-block"></span> 已预订</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-50 border border-slate-200 inline-block"></span> 已过期</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-200 border border-indigo-400 inline-block"></span> 拖动选中</span>
+          <span className="ml-auto text-slate-400">💡 按住鼠标拖动可快速选择连续时间段</span>
         </div>
 
         <div className="flex-1 overflow-auto p-4">
@@ -506,21 +590,40 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
                   </div>
                   {weekDays.map((day, i) => {
                     const bookedEvent = isSlotBooked(day, hour);
-                    const isPast = new Date(day.setHours(hour, 0, 0, 0)) < new Date();
+                    // 用新的 Date 避免修改原始 day 对象
+                    const slotTime = new Date(day);
+                    slotTime.setHours(hour, 0, 0, 0);
+                    const isPast = slotTime < new Date();
+                    const inDragRange = isSlotInDragRange(i, hour);
                     return (
                       <div
                         key={i}
-                        onClick={() => !bookedEvent && !isPast && handleSlotClick(day, hour)}
-                        className={`text-xs py-2 px-1 rounded-lg text-center cursor-pointer transition-colors ${
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleMouseDown(i, hour, bookedEvent, isPast);
+                        }}
+                        onMouseEnter={() => handleMouseEnter(i, hour)}
+                        onMouseUp={handleMouseUp}
+                        className={`text-xs py-2 px-1 rounded-lg text-center select-none transition-colors ${
                           bookedEvent
                             ? 'bg-red-100 text-red-700 cursor-not-allowed'
                             : isPast
                               ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
-                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                              : inDragRange
+                                ? 'bg-indigo-200 text-indigo-800 ring-2 ring-indigo-400'
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
                         }`}
-                        title={bookedEvent ? bookedEvent.title : isPast ? '已过期' : '点击预订'}
+                        title={
+                          bookedEvent
+                            ? bookedEvent.title
+                            : isPast
+                              ? '已过期'
+                              : inDragRange
+                                ? '已选中'
+                                : '点击或拖动选择时间段'
+                        }
                       >
-                        {bookedEvent ? '已预订' : isPast ? '-' : '空闲'}
+                        {bookedEvent ? '已预订' : isPast ? '-' : inDragRange ? '✓' : '空闲'}
                       </div>
                     );
                   })}
@@ -836,14 +939,14 @@ export const MeetingRoomPage = () => {
     }
   };
 
-  const handleWeekCalendarBook = (room: MeetingRoom, date: string, startTime: string) => {
+  const handleWeekCalendarBook = (room: MeetingRoom, date: string, startTime: string, endTime: string) => {
     setWeekCalendarRoom(null);
     setSelectedRoom(room);
     setBookingForm({
       title: '',
       date: date,
       startTime: startTime,
-      endTime: startTime,
+      endTime: endTime,
       description: ''
     });
     setSelectedAttendees([]);
