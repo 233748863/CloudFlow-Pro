@@ -97,7 +97,9 @@ export const MobileLeaveRequest: React.FC = () => {
 
     setSubmitting(true);
     try {
-      // TODO: 调用真实 API 提交请假申请
+      // 注意：后端OA模块尚未实现请假模块（LeaveController/LeaveService），
+      // 需要后端开发完成后替换为真实API调用。
+      // 预期API: POST /oa/leave/apply
       await new Promise(resolve => setTimeout(resolve, 1200));
       toast.success('请假申请已提交，等待审批');
       navigate('/dashboard');

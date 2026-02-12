@@ -1,5 +1,6 @@
 package com.cloudflow.oa.service.impl;
 
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.SysScheduleEvent;
@@ -18,10 +19,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * 工作台服务实现
+ * 聚合多个数据源，为前端工作台提供统一的概览数据
  */
 @Slf4j
 @Service
@@ -60,14 +63,22 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             // 2. 统计数据
             WorkplaceSummaryDTO.Statistics statistics = new WorkplaceSummaryDTO.Statistics();
             
-            // 待办任务数量 (通过远程工作流服务获取)
+            // 待办任务数量 - 通过远程工作流服务获取
             try {
-                // 注意：这里需要工作流服务提供待办任务统计接口
-                // 暂时设置为0，实际应该调用 remoteWorkflowService 的统计接口
-                statistics.setPendingTasks(0);
-                log.debug("待办任务数量获取成功");
+                R<Map<String, Integer>> countResult = remoteWorkflowService.getTasksCount();
+                if (countResult != null && countResult.getCode() == 200 && countResult.getData() != null) {
+                    Map<String, Integer> counts = countResult.getData();
+                    // 待办任务 = todo + doing 的总和
+                    int todoCount = counts.getOrDefault("todo", 0);
+                    int doingCount = counts.getOrDefault("doing", 0);
+                    statistics.setPendingTasks(todoCount + doingCount);
+                    log.debug("待办任务数量: todo={}, doing={}, 合计={}", todoCount, doingCount, todoCount + doingCount);
+                } else {
+                    log.warn("获取待办任务数量返回异常，使用默认值0");
+                    statistics.setPendingTasks(0);
+                }
             } catch (Exception e) {
-                log.warn("获取待办任务数量失败", e);
+                log.warn("获取待办任务数量失败，使用默认值0", e);
                 statistics.setPendingTasks(0);
             }
             
@@ -99,42 +110,42 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             
             summary.setStatistics(statistics);
         
-        // 3. 快捷操作
-        List<WorkplaceSummaryDTO.QuickAction> quickActions = new ArrayList<>();
-        
-        WorkplaceSummaryDTO.QuickAction vehicleAction = new WorkplaceSummaryDTO.QuickAction();
-        vehicleAction.setId("vehicle");
-        vehicleAction.setName("用车申请");
-        vehicleAction.setIcon("car");
-        vehicleAction.setColor("blue");
-        vehicleAction.setPath("/vehicle/booking");
-        quickActions.add(vehicleAction);
-        
-        WorkplaceSummaryDTO.QuickAction leaveAction = new WorkplaceSummaryDTO.QuickAction();
-        leaveAction.setId("leave");
-        leaveAction.setName("请假申请");
-        leaveAction.setIcon("calendar");
-        leaveAction.setColor("green");
-        leaveAction.setPath("/leave/apply");
-        quickActions.add(leaveAction);
-        
-        WorkplaceSummaryDTO.QuickAction expenseAction = new WorkplaceSummaryDTO.QuickAction();
-        expenseAction.setId("expense");
-        expenseAction.setName("报销申请");
-        expenseAction.setIcon("dollar");
-        expenseAction.setColor("orange");
-        expenseAction.setPath("/expense/apply");
-        quickActions.add(expenseAction);
-        
-        WorkplaceSummaryDTO.QuickAction meetingAction = new WorkplaceSummaryDTO.QuickAction();
-        meetingAction.setId("meeting");
-        meetingAction.setName("会议室预订");
-        meetingAction.setIcon("users");
-        meetingAction.setColor("purple");
-        meetingAction.setPath("/meeting/booking");
-        quickActions.add(meetingAction);
-        
-        summary.setQuickActions(quickActions);
+            // 3. 快捷操作
+            List<WorkplaceSummaryDTO.QuickAction> quickActions = new ArrayList<>();
+            
+            WorkplaceSummaryDTO.QuickAction vehicleAction = new WorkplaceSummaryDTO.QuickAction();
+            vehicleAction.setId("vehicle");
+            vehicleAction.setName("用车申请");
+            vehicleAction.setIcon("car");
+            vehicleAction.setColor("blue");
+            vehicleAction.setPath("/vehicle/booking");
+            quickActions.add(vehicleAction);
+            
+            WorkplaceSummaryDTO.QuickAction leaveAction = new WorkplaceSummaryDTO.QuickAction();
+            leaveAction.setId("leave");
+            leaveAction.setName("请假申请");
+            leaveAction.setIcon("calendar");
+            leaveAction.setColor("green");
+            leaveAction.setPath("/leave/apply");
+            quickActions.add(leaveAction);
+            
+            WorkplaceSummaryDTO.QuickAction expenseAction = new WorkplaceSummaryDTO.QuickAction();
+            expenseAction.setId("expense");
+            expenseAction.setName("报销申请");
+            expenseAction.setIcon("dollar");
+            expenseAction.setColor("orange");
+            expenseAction.setPath("/expense/apply");
+            quickActions.add(expenseAction);
+            
+            WorkplaceSummaryDTO.QuickAction meetingAction = new WorkplaceSummaryDTO.QuickAction();
+            meetingAction.setId("meeting");
+            meetingAction.setName("会议室预订");
+            meetingAction.setIcon("users");
+            meetingAction.setColor("purple");
+            meetingAction.setPath("/meeting/booking");
+            quickActions.add(meetingAction);
+            
+            summary.setQuickActions(quickActions);
         
             // 4. 最新公告 (最多3条)
             try {
@@ -142,7 +153,6 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                 List<WorkplaceSummaryDTO.AnnouncementItem> announcements = new ArrayList<>();
                 
                 if (allAnnouncements != null && !allAnnouncements.isEmpty()) {
-                    // 取最新的3条公告
                     announcements = allAnnouncements.stream()
                         .limit(3)
                         .map(announcement -> {
@@ -179,13 +189,46 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     @Override
     public List<RecentTaskDTO> getRecentTasks(Long userId, Integer limit) {
         try {
-            // 注意：这里需要工作流服务提供最近任务查询接口
-            // 暂时返回空列表，实际应该调用 remoteWorkflowService 的最近任务接口
             log.debug("获取最近任务，用户ID: {}, 限制数量: {}", userId, limit);
             
-            // TODO: 实际实现应该类似：
-            // return remoteWorkflowService.getRecentTasks(userId, limit);
+            // 通过远程工作流服务获取用户的任务分组数据
+            R<Map<String, Object>> groupsResult = remoteWorkflowService.getTaskGroups(userId);
+            if (groupsResult != null && groupsResult.getCode() == 200 && groupsResult.getData() != null) {
+                Map<String, Object> groupsData = groupsResult.getData();
+                List<RecentTaskDTO> recentTasks = new ArrayList<>();
+                
+                // 从任务分组数据中提取最近任务
+                // 工作流服务返回的数据结构可能包含 recentTasks 或 tasks 字段
+                Object tasksObj = groupsData.get("recentTasks");
+                if (tasksObj == null) {
+                    tasksObj = groupsData.get("tasks");
+                }
+                
+                if (tasksObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> tasksList = (List<Map<String, Object>>) tasksObj;
+                    for (Map<String, Object> taskMap : tasksList) {
+                        if (recentTasks.size() >= limit) break;
+                        
+                        RecentTaskDTO dto = new RecentTaskDTO();
+                        dto.setTaskId(String.valueOf(taskMap.getOrDefault("taskId", "")));
+                        dto.setTaskName(String.valueOf(taskMap.getOrDefault("taskName", "")));
+                        dto.setProcessInstanceId(String.valueOf(taskMap.getOrDefault("processInstanceId", "")));
+                        dto.setProcessName(String.valueOf(taskMap.getOrDefault("processName", "")));
+                        dto.setStatus(String.valueOf(taskMap.getOrDefault("status", "")));
+                        dto.setPriority(String.valueOf(taskMap.getOrDefault("priority", "NORMAL")));
+                        dto.setDeadline(String.valueOf(taskMap.getOrDefault("deadline", "")));
+                        dto.setOperateTime(String.valueOf(taskMap.getOrDefault("operateTime", "")));
+                        dto.setApplicant(String.valueOf(taskMap.getOrDefault("applicant", "")));
+                        recentTasks.add(dto);
+                    }
+                }
+                
+                log.debug("获取到最近任务数量: {}", recentTasks.size());
+                return recentTasks;
+            }
             
+            log.debug("工作流服务未返回有效数据，返回空列表");
             return new ArrayList<>();
         } catch (Exception e) {
             log.error("获取最近任务失败", e);

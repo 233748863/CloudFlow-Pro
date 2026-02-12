@@ -15,7 +15,7 @@ import java.util.Map;
  * 付款申请Controller
  */
 @RestController
-@RequestMapping("/oa/payment/request")
+@RequestMapping("/payment/request")
 public class PaymentRequestController {
 
     @Autowired

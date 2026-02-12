@@ -15,7 +15,7 @@ import java.util.Map;
  * 报销申请Controller
  */
 @RestController
-@RequestMapping("/oa/expense/claim")
+@RequestMapping("/expense/claim")
 public class ExpenseClaimController {
 
     @Autowired

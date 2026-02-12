@@ -1,5 +1,6 @@
 package com.cloudflow.auth.config;
 
+import com.cloudflow.common.cache.TenantRedisCacheManager;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -11,7 +12,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
@@ -23,10 +24,12 @@ import java.util.Map;
 
 /**
  * Spring Cache + Redis 配置
- * 参考 API-release (Poco) 的缓存架构：
- * - user_details: 按 username 缓存用户信息（含角色+权限），TTL 12小时
- * - menu_details: 按 roleId 缓存菜单列表，TTL 12小时
- * - user_menus:   按 userId 缓存菜单树，TTL 12小时
+ * 使用 TenantRedisCacheManager 实现：
+ * - 自动租户隔离：缓存 key 自动追加 tenantId:: 前缀
+ * - 动态 TTL：支持 cacheName#ttl 语法（如 user_details#12h）
+ * - 全局缓存：以 GLOBALLY 开头的缓存不加租户前缀
+ * 
+ * @author CloudFlow
  */
 @Configuration
 @EnableCaching
@@ -48,7 +51,7 @@ public class RedisCacheConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
 
-        // 各缓存空间的个性化 TTL
+        // 各缓存空间的个性化 TTL（也可以通过 cacheName#ttl 动态设置）
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
         // 用户信息缓存 12小时
         cacheConfigurations.put(CacheConstants.USER_DETAILS,
@@ -59,10 +62,17 @@ public class RedisCacheConfig {
         // 用户菜单树缓存 12小时
         cacheConfigurations.put(CacheConstants.USER_MENUS,
                 defaultConfig.entryTtl(Duration.ofHours(12)));
+        // 角色缓存 12小时
+        cacheConfigurations.put(CacheConstants.ROLE_DETAILS,
+                defaultConfig.entryTtl(Duration.ofHours(12)));
 
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(defaultConfig)
-                .withInitialCacheConfigurations(cacheConfigurations)
-                .build();
+        // 使用 TenantRedisCacheManager 替代标准 RedisCacheManager
+        // 自动实现：租户隔离 + 动态 TTL
+        return new TenantRedisCacheManager(
+                RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory),
+                defaultConfig,
+                true,
+                cacheConfigurations
+        );
     }
 }

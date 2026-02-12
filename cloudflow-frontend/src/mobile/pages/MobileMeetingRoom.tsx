@@ -4,7 +4,7 @@ import { ChevronLeft, MapPin, Users, Clock, Calendar, Loader2, RefreshCw, Search
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
 import { format, addHours, startOfHour } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { getMeetingRooms, createEvent } from '@/services/api/schedule';
 
 interface MeetingRoom {
   id: number;
@@ -42,45 +42,37 @@ export const MobileMeetingRoom: React.FC = () => {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // 获取会议室列表
+  /**
+   * 将后端会议室数据映射为前端所需格式
+   * 后端 MeetingRoom 的 status 字段：1可用 2使用中 3维护中
+   */
+  const mapRoomStatus = (backendStatus: string | number): 'available' | 'occupied' | 'maintenance' => {
+    const statusStr = String(backendStatus);
+    switch (statusStr) {
+      case '1': return 'available';
+      case '2': return 'occupied';
+      case '3': return 'maintenance';
+      default: return 'available';
+    }
+  };
+
+  // 获取会议室列表 - 调用真实API
   const fetchRooms = useCallback(async () => {
     try {
-      // TODO: 替换为真实 API
-      const mockRooms: MeetingRoom[] = [
-        {
-          id: 1,
-          name: '会议室 A301',
-          location: '3楼东侧',
-          capacity: 10,
-          facilities: ['投影仪', '白板', '视频会议'],
-          status: 'available',
-        },
-        {
-          id: 2,
-          name: '会议室 B201',
-          location: '2楼西侧',
-          capacity: 6,
-          facilities: ['投影仪', '白板'],
-          status: 'available',
-        },
-        {
-          id: 3,
-          name: '会议室 C401',
-          location: '4楼中央',
-          capacity: 20,
-          facilities: ['投影仪', '白板', '视频会议', '音响系统'],
-          status: 'occupied',
-        },
-        {
-          id: 4,
-          name: '会议室 D102',
-          location: '1楼南侧',
-          capacity: 4,
-          facilities: ['白板'],
-          status: 'available',
-        },
-      ];
-      setRooms(mockRooms);
+      setLoading(true);
+      const data = await getMeetingRooms();
+      // 将后端数据映射为前端格式
+      const mappedRooms: MeetingRoom[] = (Array.isArray(data) ? data : []).map((room: any) => ({
+        id: room.roomId || room.id,
+        name: room.name || room.roomName || '',
+        location: room.location || '',
+        capacity: room.capacity || 0,
+        facilities: room.facilities
+          ? (typeof room.facilities === 'string' ? room.facilities.split(',') : room.facilities)
+          : [],
+        status: mapRoomStatus(room.status),
+      }));
+      setRooms(mappedRooms);
     } catch (err: any) {
       toast.error(err.message || '加载会议室失败');
     } finally {
@@ -150,7 +142,7 @@ export const MobileMeetingRoom: React.FC = () => {
     }));
   };
 
-  // 提交预订
+  // 提交预订 - 调用真实API
   const handleSubmit = async () => {
     // 验证
     if (!bookingForm.roomId) {
@@ -186,8 +178,15 @@ export const MobileMeetingRoom: React.FC = () => {
 
     setSubmitting(true);
     try {
-      // TODO: 调用真实 API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 调用日程创建API进行会议室预订
+      await createEvent({
+        title: bookingForm.purpose,
+        roomId: String(bookingForm.roomId),
+        startTime: `${bookingForm.date}T${bookingForm.startTime}:00`,
+        endTime: `${bookingForm.date}T${bookingForm.endTime}:00`,
+        type: 'MEETING',
+        description: `会议室预订：${bookingForm.roomName}，参会人数：${bookingForm.attendees}`,
+      } as any);
       toast.success('预订成功！');
       navigate('/dashboard');
     } catch (err: any) {

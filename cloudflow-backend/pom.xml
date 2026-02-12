@@ -62,6 +62,13 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- TransmittableThreadLocal: 线程池上下文自动传递 -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>transmittable-thread-local</artifactId>
+                <version>2.14.5</version>
+            </dependency>
+
             <!-- Knife4j -->
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>

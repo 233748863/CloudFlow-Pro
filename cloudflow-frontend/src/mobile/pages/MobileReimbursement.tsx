@@ -4,6 +4,7 @@ import { ChevronLeft, DollarSign, FileText, Upload, Loader2, X } from 'lucide-re
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { expenseClaimApi } from '@/services/api/expense';
 
 type ExpenseType = 'travel' | 'meal' | 'accommodation' | 'transportation' | 'office' | 'other';
 
@@ -148,8 +149,20 @@ export const MobileReimbursement: React.FC = () => {
 
     setSubmitting(true);
     try {
-      // TODO: 调用真实 API 提交报销申请
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // 构建报销申请数据，调用真实API
+      const claimData = {
+        category: form.items[0]?.type || 'other',
+        totalAmount: form.totalAmount,
+        description: form.remarks || form.items.map(i => i.description).join('；'),
+        items: form.items.map(item => ({
+          expenseType: item.type,
+          amount: item.amount,
+          expenseDate: item.date,
+          description: item.description,
+        })),
+      };
+      // 先创建报销单
+      await expenseClaimApi.add(claimData as any);
       toast.success('报销申请已提交，等待审批');
       navigate('/dashboard');
     } catch (err: any) {
