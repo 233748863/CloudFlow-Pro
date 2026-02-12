@@ -9,9 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -47,8 +50,20 @@ public class DeadlockDetectionService {
     /** 锁超时阈值（秒），超过此时间未释放视为可能死锁 */
     private static final int LOCK_TIMEOUT_THRESHOLD = 60;
 
+    /** 死锁牺牲记录前缀 */
+    private static final String DEADLOCK_VICTIM_PREFIX = "sys:deadlock:victim:";
+
+    /** 死锁牺牲统计前缀 */
+    private static final String DEADLOCK_STATS_KEY = "sys:deadlock:stats";
+
+    /** 最大牺牲记录保留数量 */
+    private static final int MAX_VICTIM_RECORDS = 100;
+
     /** 内存中的锁持有记录（用于快速检测） */
     private final Map<String, LockInfo> lockHolders = new ConcurrentHashMap<>();
+
+    /** 死锁牺牲计数器 */
+    private final AtomicLong victimCounter = new AtomicLong(0);
 
     @Autowired
     private RedissonClient redissonClient;
@@ -296,19 +311,225 @@ public class DeadlockDetectionService {
 
     /**
      * 处理死锁链
+     * 
+     * 牺牲策略流程：
+     * 1. 根据策略选择最优牺牲者（持有锁时间最短 → 回滚代价最小）
+     * 2. 强制释放牺牲者持有的所有锁
+     * 3. 清理牺牲者的等待记录
+     * 4. 记录牺牲事件到 Redis（供监控和审计）
+     * 5. 发送告警通知
      */
     private void handleDeadlockChains(List<DeadlockChain> chains) {
         for (DeadlockChain chain : chains) {
-            // 选择牺牲者（通常选择链中的第一个）
-            String victim = chain.nodes.get(0);
-            
-            log.error("[handleDeadlockChains] 检测到死锁，牺牲线程: {}, 死锁链: {}", victim, chain.nodes);
+            try {
+                // 1. 选择牺牲者（持有锁时间最短的线程，回滚代价最小）
+                String victim = selectVictim(chain);
+                log.error("[handleDeadlockChains] 检测到死锁，选定牺牲线程: {}, 死锁链: {}", victim, chain.nodes);
 
-            // TODO: 实现牺牲策略（例如中断线程、释放锁等）
-            // 这里只记录日志，实际处理需要根据业务场景定制
+                // 2. 执行牺牲策略：强制释放牺牲者持有的所有锁
+                List<String> releasedLocks = forceReleaseVictimLocks(victim);
 
-            // 发送告警
-            sendDeadlockAlert("循环等待", String.join(" -> ", chain.nodes), "检测到死锁链");
+                // 3. 清理牺牲者的所有等待记录
+                cleanupVictimWaiters(victim);
+
+                // 4. 记录牺牲事件到 Redis（供监控和审计查询）
+                recordVictimEvent(victim, chain, releasedLocks);
+
+                // 5. 发送告警通知
+                sendDeadlockAlert("循环等待-已自动恢复",
+                        String.join(" -> ", chain.nodes),
+                        String.format("死锁已解除，牺牲线程: %s，释放锁: %d 个", victim, releasedLocks.size()));
+
+                log.warn("[handleDeadlockChains] 死锁已自动恢复，牺牲线程: {}, 释放锁数量: {}", victim, releasedLocks.size());
+            } catch (Exception e) {
+                log.error("[handleDeadlockChains] 处理死锁链失败, chain={}, error={}", chain.nodes, e.getMessage(), e);
+                // 处理失败时仍然发送告警，确保运维人员知晓
+                sendDeadlockAlert("循环等待-自动恢复失败",
+                        String.join(" -> ", chain.nodes),
+                        "死锁自动恢复失败: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 选择牺牲者
+     * 
+     * 选择策略（按优先级依次判断）：
+     * 1. 持有锁时间最短的线程（回滚代价最小）
+     * 2. 持有锁数量最少的线程（影响范围最小）
+     * 3. 如果以上条件相同，选择链中最后加入的线程
+     * 
+     * @param chain 死锁链
+     * @return 被选中的牺牲者线程标识
+     */
+    private String selectVictim(DeadlockChain chain) {
+        // 去掉链尾的重复节点（环的闭合点）
+        List<String> candidates = chain.nodes.subList(0, chain.nodes.size() - 1);
+
+        if (candidates.size() == 1) {
+            return candidates.get(0);
+        }
+
+        String bestVictim = null;
+        long shortestHoldTime = Long.MAX_VALUE;
+        int fewestLocks = Integer.MAX_VALUE;
+
+        for (String candidate : candidates) {
+            // 计算该线程持有的锁数量和最长持有时间
+            int lockCount = 0;
+            long maxHoldTime = 0;
+
+            for (Map.Entry<String, LockInfo> entry : lockHolders.entrySet()) {
+                if (entry.getValue().threadId.equals(candidate)) {
+                    lockCount++;
+                    long holdTime = System.currentTimeMillis() - entry.getValue().acquireTime;
+                    maxHoldTime = Math.max(maxHoldTime, holdTime);
+                }
+            }
+
+            // 优先选择持有时间最短的（回滚代价最小）
+            // 持有时间相同时，选择持有锁数量最少的（影响范围最小）
+            if (maxHoldTime < shortestHoldTime
+                    || (maxHoldTime == shortestHoldTime && lockCount < fewestLocks)) {
+                shortestHoldTime = maxHoldTime;
+                fewestLocks = lockCount;
+                bestVictim = candidate;
+            }
+        }
+
+        // 兜底：如果所有候选者都没有锁持有记录，选择第一个
+        return bestVictim != null ? bestVictim : candidates.get(0);
+    }
+
+    /**
+     * 强制释放牺牲者持有的所有锁
+     * 
+     * @param victimThreadId 牺牲者线程标识
+     * @return 被释放的锁 key 列表
+     */
+    private List<String> forceReleaseVictimLocks(String victimThreadId) {
+        List<String> releasedLocks = new ArrayList<>();
+
+        // 遍历所有锁持有记录，找到牺牲者持有的锁
+        Iterator<Map.Entry<String, LockInfo>> iterator = lockHolders.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, LockInfo> entry = iterator.next();
+            if (entry.getValue().threadId.equals(victimThreadId)) {
+                String lockKey = entry.getKey();
+                try {
+                    // 强制释放 Redisson 分布式锁
+                    RLock lock = redissonClient.getLock(lockKey);
+                    if (lock.isLocked()) {
+                        lock.forceUnlock();
+                        log.warn("[forceReleaseVictimLocks] 强制释放锁, lockKey={}, victim={}", lockKey, victimThreadId);
+                    }
+
+                    // 清理 Redis 中的锁持有记录
+                    redisCache.deleteObject(LOCK_HOLDER_PREFIX + lockKey);
+
+                    releasedLocks.add(lockKey);
+                } catch (Exception e) {
+                    log.error("[forceReleaseVictimLocks] 释放锁失败, lockKey={}, error={}", lockKey, e.getMessage());
+                }
+
+                // 从内存记录中移除
+                iterator.remove();
+            }
+        }
+
+        return releasedLocks;
+    }
+
+    /**
+     * 清理牺牲者的所有等待记录
+     * 
+     * @param victimThreadId 牺牲者线程标识
+     */
+    private void cleanupVictimWaiters(String victimThreadId) {
+        try {
+            Collection<String> waiterKeys = redisCache.keys(LOCK_WAITER_PREFIX + "*");
+            if (waiterKeys == null) {
+                return;
+            }
+
+            for (String key : waiterKeys) {
+                try {
+                    Set<String> waiters = redisCache.getCacheObject(key);
+                    if (waiters != null && waiters.remove(victimThreadId)) {
+                        if (waiters.isEmpty()) {
+                            redisCache.deleteObject(key);
+                        } else {
+                            redisCache.setCacheObject(key, waiters, 120, TimeUnit.SECONDS);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("[cleanupVictimWaiters] 清理等待记录失败, key={}, error={}", key, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[cleanupVictimWaiters] 获取等待记录 keys 失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 记录牺牲事件到 Redis（供监控和审计）
+     * 
+     * @param victimThreadId 牺牲者线程标识
+     * @param chain 死锁链
+     * @param releasedLocks 被释放的锁列表
+     */
+    private void recordVictimEvent(String victimThreadId, DeadlockChain chain, List<String> releasedLocks) {
+        try {
+            long eventId = victimCounter.incrementAndGet();
+            String eventKey = DEADLOCK_VICTIM_PREFIX + eventId;
+
+            Map<String, Object> event = new HashMap<>();
+            event.put("eventId", eventId);
+            event.put("victimThread", victimThreadId);
+            event.put("deadlockChain", chain.nodes);
+            event.put("releasedLocks", releasedLocks);
+            event.put("releasedLockCount", releasedLocks.size());
+            event.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            event.put("resolved", true);
+
+            // 牺牲事件保留 7 天
+            redisCache.setCacheObject(eventKey, event, 7 * 24 * 60, TimeUnit.MINUTES);
+
+            // 更新统计计数
+            updateDeadlockStats();
+
+            log.info("[recordVictimEvent] 牺牲事件已记录, eventId={}, victim={}, releasedLocks={}",
+                    eventId, victimThreadId, releasedLocks.size());
+        } catch (Exception e) {
+            log.warn("[recordVictimEvent] 记录牺牲事件失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 更新死锁统计数据
+     */
+    private void updateDeadlockStats() {
+        try {
+            Map<String, Object> stats = redisCache.getCacheObject(DEADLOCK_STATS_KEY);
+            if (stats == null) {
+                stats = new HashMap<>();
+                stats.put("totalDeadlocks", 0L);
+                stats.put("totalVictims", 0L);
+                stats.put("firstOccurrence", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            }
+
+            // 递增计数
+            long totalDeadlocks = ((Number) stats.getOrDefault("totalDeadlocks", 0L)).longValue() + 1;
+            long totalVictims = ((Number) stats.getOrDefault("totalVictims", 0L)).longValue() + 1;
+
+            stats.put("totalDeadlocks", totalDeadlocks);
+            stats.put("totalVictims", totalVictims);
+            stats.put("lastOccurrence", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+            // 统计数据保留 30 天
+            redisCache.setCacheObject(DEADLOCK_STATS_KEY, stats, 30 * 24 * 60, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("[updateDeadlockStats] 更新统计数据失败: {}", e.getMessage());
         }
     }
 
@@ -437,12 +658,68 @@ public class DeadlockDetectionService {
         List<String> timeoutLocks = detectTimeoutLocks();
         List<DeadlockChain> deadlockChains = detectCircularWaits();
 
-        return Map.of(
-            "timeoutLocks", timeoutLocks,
-            "deadlockChains", deadlockChains.stream()
+        Map<String, Object> result = new HashMap<>();
+        result.put("timeoutLocks", timeoutLocks);
+        result.put("deadlockChains", deadlockChains.stream()
                 .map(c -> c.nodes)
-                .collect(Collectors.toList())
-        );
+                .collect(Collectors.toList()));
+        return result;
+    }
+
+    /**
+     * 获取死锁统计数据（供监控接口调用）
+     * 
+     * @return 包含死锁总数、牺牲总数、最近发生时间等统计信息
+     */
+    public Map<String, Object> getDeadlockStats() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Map<String, Object> stats = redisCache.getCacheObject(DEADLOCK_STATS_KEY);
+            if (stats != null) {
+                result.putAll(stats);
+            } else {
+                result.put("totalDeadlocks", 0L);
+                result.put("totalVictims", 0L);
+                result.put("message", "暂无死锁记录");
+            }
+        } catch (Exception e) {
+            result.put("error", "获取统计数据失败: " + e.getMessage());
+        }
+        result.put("currentLockCount", lockHolders.size());
+        result.put("victimCounterLocal", victimCounter.get());
+        return result;
+    }
+
+    /**
+     * 获取最近的牺牲事件记录（供监控接口调用）
+     * 
+     * @param limit 返回记录数量上限
+     * @return 最近的牺牲事件列表
+     */
+    public List<Map<String, Object>> getRecentVictimEvents(int limit) {
+        List<Map<String, Object>> events = new ArrayList<>();
+        try {
+            Collection<String> keys = redisCache.keys(DEADLOCK_VICTIM_PREFIX + "*");
+            if (keys == null || keys.isEmpty()) {
+                return events;
+            }
+
+            // 按 eventId 倒序取最近的记录
+            List<String> sortedKeys = keys.stream()
+                    .sorted(Comparator.reverseOrder())
+                    .limit(Math.min(limit, MAX_VICTIM_RECORDS))
+                    .collect(Collectors.toList());
+
+            for (String key : sortedKeys) {
+                Map<String, Object> event = redisCache.getCacheObject(key);
+                if (event != null) {
+                    events.add(event);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[getRecentVictimEvents] 获取牺牲事件失败: {}", e.getMessage());
+        }
+        return events;
     }
 
     // ==================== 内部类 ====================
