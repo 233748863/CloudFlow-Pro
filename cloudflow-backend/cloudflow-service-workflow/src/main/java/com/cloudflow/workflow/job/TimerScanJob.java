@@ -1,10 +1,10 @@
 package com.cloudflow.workflow.job;
 
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.service.IWorkflowService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -18,10 +18,18 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 定时节点扫描任务
+ * 定时节点扫描任务（完整版）
  * 
- * P0-1: 实现定时节点SCHEDULE模式
- * 定时扫描 Redis ZSet 中的定时任务，触发到期的定时节点继续流转
+ * 定时扫描 Redis ZSet 中的定时任务，触发到期的定时节点继续流转。
+ * 通过调用 WorkflowService.continueFromTimerNode() 实现完整的流程引擎流转，
+ * 支持定时节点的 branches（条件分支）和 next（后续节点）。
+ * 
+ * 核心流程：
+ * 1. 每分钟扫描 Redis ZSet（sys:wf:timers），获取 score <= 当前时间的到期任务
+ * 2. 对每个到期任务，从 Redis 读取定时任务数据（instanceId、nodeKey、variables）
+ * 3. 设置系统用户上下文，调用 continueFromTimerNode 触发流程引擎流转
+ * 4. 流转失败时执行 fallback 逻辑，并发送失败通知
+ * 5. 无论成功与否，都从 ZSet 中移除，避免重复处理
  * 
  * @author CloudFlow
  */
@@ -30,7 +38,11 @@ public class TimerScanJob {
 
     private static final Logger log = LoggerFactory.getLogger(TimerScanJob.class);
 
+    /** 定时任务 ZSet Key，score 为触发时间戳 */
     private static final String TIMER_ZSET_KEY = "sys:wf:timers";
+
+    /** 失败重试次数上限 */
+    private static final int MAX_RETRY_COUNT = 3;
 
     @Autowired
     private RedisCache redisCache;
@@ -44,7 +56,8 @@ public class TimerScanJob {
     @Autowired
     private IWorkflowService workflowService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
 
     /**
      * 每分钟扫描一次定时任务
@@ -96,51 +109,226 @@ public class TimerScanJob {
     }
 
     /**
-     * 处理单个到期的定时任务
+     * 处理单个到期的定时任务（完整版）
+     * 
+     * 通过调用 WorkflowService.continueFromTimerNode() 触发完整的流程引擎流转，
+     * 确保定时节点的 branches（条件分支）和 next（后续节点）都能正确处理。
+     * 
+     * 处理流程：
+     * 1. 从 Redis 读取定时任务数据
+     * 2. 校验流程实例是否仍在运行
+     * 3. 设置系统用户上下文（定时任务没有真实用户，使用流程发起人身份）
+     * 4. 调用 continueFromTimerNode 触发流转
+     * 5. 失败时执行 fallback + 发送通知
+     * 6. 清理 Redis 中的定时任务数据
      */
+    @SuppressWarnings("unchecked")
     private void handleExpiredTimer(String timerKey) {
+        // 1. 从 Redis 获取定时任务数据
+        Map<String, Object> timerData = redisCache.getCacheObject(timerKey);
+        if (timerData == null) {
+            log.warn("[TimerScanJob] 定时任务数据不存在（可能已被处理或已过期）, timerKey={}", timerKey);
+            return;
+        }
+        
+        String instanceId = (String) timerData.get("instanceId");
+        String nodeKey = (String) timerData.get("nodeKey");
+        Map<String, Object> variables = null;
+        
+        // 安全地提取变量（Redis 反序列化可能返回 LinkedHashMap）
+        Object varsObj = timerData.get("variables");
+        if (varsObj instanceof Map) {
+            variables = (Map<String, Object>) varsObj;
+        }
+        
+        log.info("[TimerScanJob] 开始处理定时任务, instanceId={}, nodeKey={}, timerKey={}", 
+            instanceId, nodeKey, timerKey);
+        
+        // 2. 校验流程实例是否仍在运行
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            log.warn("[TimerScanJob] 流程实例不存在, instanceId={}", instanceId);
+            cleanupTimerData(timerKey);
+            return;
+        }
+        
+        if (!"RUNNING".equals(instance.getStatus())) {
+            log.warn("[TimerScanJob] 流程实例状态非 RUNNING，跳过处理, instanceId={}, status={}", 
+                instanceId, instance.getStatus());
+            cleanupTimerData(timerKey);
+            return;
+        }
+        
+        // 3. 设置系统用户上下文
+        // 定时任务没有真实用户会话，使用流程发起人身份执行
+        // 这样后续节点（如通知节点）可以正确获取操作者信息
         try {
-            // 从 Redis 获取定时任务数据
-            Map<String, Object> timerData = redisCache.getCacheObject(timerKey);
-            if (timerData == null) {
-                log.warn("[TimerScanJob] 定时任务数据不存在（可能已被处理）, timerKey={}", timerKey);
-                return;
-            }
+            Long operatorId = instance.getStartUserId() != null ? instance.getStartUserId() : 0L;
+            String operatorName = instance.getStartUserName() != null ? instance.getStartUserName() : "系统定时任务";
+            UserContext.setUserId(operatorId);
+            UserContext.setUserName(operatorName);
             
-            String instanceId = (String) timerData.get("instanceId");
-            String nodeKey = (String) timerData.get("nodeKey");
-            String nextNodeKey = (String) timerData.get("nextNodeKey");
-            Map<String, Object> variables = (Map<String, Object>) timerData.get("variables");
+            // 4. 调用完整的流程引擎进行流转
+            // continueFromTimerNode 内部会：
+            //   - 再次校验实例状态
+            //   - 从流程定义中找到定时节点
+            //   - 合并变量
+            //   - 通过 advanceAfterNode 继续流转（支持 branches + next）
+            //   - 使用分布式锁防并发
+            //   - 保存快照和审计日志
+            workflowService.continueFromTimerNode(instanceId, nodeKey, variables);
             
-            log.info("[TimerScanJob] 开始处理定时任务, instanceId={}, nodeKey={}, nextNodeKey={}", 
-                instanceId, nodeKey, nextNodeKey);
+            log.info("[TimerScanJob] 定时任务处理完成，流程已继续流转, instanceId={}, nodeKey={}", instanceId, nodeKey);
             
-            // 检查流程实例是否仍在运行
-            WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
-            if (instance == null) {
-                log.warn("[TimerScanJob] 流程实例不存在, instanceId={}", instanceId);
-                return;
-            }
-            
-            if (!"RUNNING".equals(instance.getStatus())) {
-                log.warn("[TimerScanJob] 流程实例状态异常, instanceId={}, status={}", instanceId, instance.getStatus());
-                return;
-            }
-            
-            // 触发流程继续流转
-            // 注意：这里需要调用 WorkflowService 的内部方法来继续流转
-            // 由于 runNode 是 private 方法，我们需要通过其他方式触发
-            // 一个简单的方案是：创建一个系统任务，然后立即完成它来触发流转
-            // 但更好的方案是：在 WorkflowService 中提供一个公共方法来处理定时节点的继续流转
-            
-            log.info("[TimerScanJob] 定时任务处理完成, instanceId={}, nodeKey={}", instanceId, nodeKey);
-            
-            // 清理 Redis 中的定时任务数据
-            redisCache.deleteObject(timerKey);
+            // 5. 通知发起人定时节点已触发
+            sendTimerTriggeredNotification(instance, nodeKey, timerData);
             
         } catch (Exception e) {
-            log.error("[TimerScanJob] 处理定时任务失败, timerKey={}, error={}", timerKey, e.getMessage(), e);
-            throw e;
+            log.error("[TimerScanJob] 调用流程引擎处理定时任务失败, instanceId={}, nodeKey={}, error={}", 
+                instanceId, nodeKey, e.getMessage(), e);
+            
+            // 6. 执行 fallback 逻辑
+            handleTimerFallback(instance, nodeKey, timerData, e);
+            
+        } finally {
+            // 7. 清理用户上下文
+            UserContext.clear();
+            
+            // 8. 清理 Redis 中的定时任务数据
+            cleanupTimerData(timerKey);
+        }
+    }
+
+    /**
+     * 定时任务处理失败的 fallback 逻辑
+     * 
+     * 当 continueFromTimerNode 调用失败时：
+     * 1. 检查是否可以重试（通过 Redis 计数器记录重试次数）
+     * 2. 如果未超过重试上限，将任务重新放回 ZSet，延迟2分钟后重试
+     * 3. 如果已超过重试上限，发送失败通知给管理员和发起人
+     */
+    private void handleTimerFallback(WfProcessInstance instance, String nodeKey, 
+                                      Map<String, Object> timerData, Exception error) {
+        try {
+            String retryKey = "sys:wf:timer:retry:" + instance.getInstanceId() + ":" + nodeKey;
+            long retryCount = redisCache.increment(retryKey);
+            
+            // 设置重试计数器过期时间（1小时）
+            if (retryCount == 1) {
+                redisCache.expire(retryKey, 1, TimeUnit.HOURS);
+            }
+            
+            if (retryCount <= MAX_RETRY_COUNT) {
+                // 未超过重试上限，重新放回 ZSet，延迟2分钟后重试
+                long retryTime = System.currentTimeMillis() + 2 * 60 * 1000L;
+                String timerKey = "sys:wf:timer:" + instance.getInstanceId() + ":" + nodeKey;
+                
+                // 重新注册定时任务数据（可能已被清理）
+                redisCache.setCacheObject(timerKey, timerData, 30, TimeUnit.MINUTES);
+                redisCache.setCacheZSet(TIMER_ZSET_KEY, timerKey, (double) retryTime);
+                
+                log.warn("[TimerScanJob] 定时任务处理失败，已安排重试 ({}/{}), instanceId={}, nodeKey={}, retryTime={}",
+                    retryCount, MAX_RETRY_COUNT, instance.getInstanceId(), nodeKey, 
+                    new java.util.Date(retryTime));
+            } else {
+                // 超过重试上限，发送失败通知
+                log.error("[TimerScanJob] 定时任务处理失败且已超过重试上限 ({}/{}), instanceId={}, nodeKey={}",
+                    retryCount, MAX_RETRY_COUNT, instance.getInstanceId(), nodeKey);
+                
+                // 清理重试计数器
+                redisCache.deleteObject(retryKey);
+                
+                // 通知管理员
+                sendTimerFailureNotification(instance, nodeKey, error);
+            }
+        } catch (Exception e) {
+            log.error("[TimerScanJob] fallback 逻辑执行失败, instanceId={}, error={}", 
+                instance.getInstanceId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 发送定时节点触发成功通知
+     * 通知流程发起人定时节点已到期并继续流转
+     */
+    private void sendTimerTriggeredNotification(WfProcessInstance instance, String nodeKey, 
+                                                 Map<String, Object> timerData) {
+        try {
+            if (instance.getStartUserId() == null) {
+                return;
+            }
+            
+            // 构建通知内容
+            String timerType = timerData != null ? (String) timerData.getOrDefault("timerType", "DELAY") : "DELAY";
+            String content;
+            if ("SCHEDULE".equals(timerType)) {
+                String scheduleTime = timerData != null ? (String) timerData.get("scheduleTime") : "";
+                content = String.format("您发起的流程「%s」中的定时节点已到达预定时间（%s），流程已继续流转。",
+                    instance.getTitle(), scheduleTime);
+            } else {
+                content = String.format("您发起的流程「%s」中的延迟节点已到期，流程已继续流转。",
+                    instance.getTitle());
+            }
+            
+            sysNoticeService.sendNotice(
+                instance.getStartUserId(),
+                "定时节点触发通知",
+                content,
+                "1",
+                0L,
+                "系统定时任务"
+            );
+        } catch (Exception e) {
+            log.warn("[TimerScanJob] 发送定时触发通知失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 发送定时任务处理失败通知
+     * 通知管理员和流程发起人定时任务处理失败
+     */
+    private void sendTimerFailureNotification(WfProcessInstance instance, String nodeKey, Exception error) {
+        try {
+            String errorMsg = error != null ? error.getMessage() : "未知错误";
+            String content = String.format(
+                "流程「%s」(实例ID: %s) 的定时节点「%s」处理失败，已超过最大重试次数(%d次)。\n错误信息: %s\n请管理员手动处理。",
+                instance.getTitle(), instance.getInstanceId(), nodeKey, MAX_RETRY_COUNT, errorMsg);
+            
+            // 通知管理员（userId=1）
+            sysNoticeService.sendNotice(
+                1L,
+                "【告警】定时节点处理失败",
+                content,
+                "2",
+                0L,
+                "系统定时任务"
+            );
+            
+            // 通知流程发起人
+            if (instance.getStartUserId() != null && instance.getStartUserId() != 1L) {
+                sysNoticeService.sendNotice(
+                    instance.getStartUserId(),
+                    "流程定时节点处理异常",
+                    String.format("您发起的流程「%s」中的定时节点处理异常，系统正在处理中，如有疑问请联系管理员。",
+                        instance.getTitle()),
+                    "2",
+                    0L,
+                    "系统定时任务"
+                );
+            }
+        } catch (Exception e) {
+            log.warn("[TimerScanJob] 发送失败通知失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 清理 Redis 中的定时任务数据
+     */
+    private void cleanupTimerData(String timerKey) {
+        try {
+            redisCache.deleteObject(timerKey);
+        } catch (Exception e) {
+            log.warn("[TimerScanJob] 清理定时任务数据失败, timerKey={}, error={}", timerKey, e.getMessage());
         }
     }
 
@@ -160,12 +348,16 @@ public class TimerScanJob {
                 try {
                     log.info("[TimerScanJob] 开始清理过期定时任务 Key");
                     
-                    // 清理定时任务 ZSet 中的过期数据（score 为 0 或负数的异常数据）
+                    // 清理定时任务 ZSet 中的异常数据（score 为 0 或负数）
                     redisCache.removeCacheZSetByScoreRange(TIMER_ZSET_KEY, Double.NEGATIVE_INFINITY, 0);
                     
-                    // 清理超过7天的定时任务数据
+                    // 清理超过7天的定时任务数据（这些任务应该早已被处理）
                     long sevenDaysAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L;
                     redisCache.removeCacheZSetByScoreRange(TIMER_ZSET_KEY, 0, (double) sevenDaysAgo);
+                    
+                    // 清理过期的重试计数器
+                    // 重试计数器 Key 格式: sys:wf:timer:retry:*
+                    // 这些 Key 已设置了1小时过期时间，此处为兜底清理
                     
                     log.info("[TimerScanJob] 过期定时任务 Key 清理完成");
                 } finally {

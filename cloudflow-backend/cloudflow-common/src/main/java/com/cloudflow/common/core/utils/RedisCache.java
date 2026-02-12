@@ -63,7 +63,7 @@ public class RedisCache {
      * @param timeout  时间
      * @param timeUnit 时间颗粒度
      */
-    public <T> void setCacheObject(final String key, final T value, final Integer timeout, final TimeUnit timeUnit) {
+    public <T> void setCacheObject(final String key, final T value, final long timeout, final TimeUnit timeUnit) {
         redisTemplate.opsForValue().set(getTenantKey(key), value, timeout, timeUnit);
     }
 
@@ -187,7 +187,7 @@ public class RedisCache {
      * @param timeUnit 时间颗粒度
      * @return true=设置成功（key不存在）；false=设置失败（key已存在）
      */
-    public <T> boolean setCacheObjectIfAbsent(final String key, final T value, final Integer timeout, final TimeUnit timeUnit) {
+    public <T> boolean setCacheObjectIfAbsent(final String key, final T value, final long timeout, final TimeUnit timeUnit) {
         Boolean result = redisTemplate.opsForValue().setIfAbsent(getTenantKey(key), value, timeout, timeUnit);
         return result != null && result;
     }

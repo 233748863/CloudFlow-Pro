@@ -3236,7 +3236,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
                         timerData.put("variables", variables);
                         
                         // 计算过期时间（触发时间 + 1小时的缓冲时间）
-                        long expirationMinutes = (triggerTime - now) / (60 * 1000) + 60;
+                        int expirationMinutes = (int) ((triggerTime - now) / (60 * 1000) + 60);
                         
                         redisCache.setCacheObject(timerKey, timerData, expirationMinutes, TimeUnit.MINUTES);
                         redisCache.setCacheZSet("sys:wf:timers", timerKey, (double) triggerTime);
@@ -3376,6 +3376,121 @@ public class WorkflowServiceImpl implements IWorkflowService {
         } catch (Exception e) {
             log.error("[handleManualTaskNode] 人工任务节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
             throw new WorkflowException("MANUAL_TASK_FAILED", "人工任务节点执行失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 定时节点到期后继续流转（完整版）
+     * 
+     * 由 TimerScanJob 在定时任务到期时调用，完成以下工作：
+     * 1. 校验流程实例状态（必须为 RUNNING）
+     * 2. 从流程定义 JSON 中解析节点树，定位到定时节点
+     * 3. 合并定时任务中保存的变量与实例变量
+     * 4. 通过 advanceAfterNode 继续流转（正确处理 branches 和 next）
+     * 5. 使用分布式锁防止并发重复触发
+     * 
+     * @param instanceId 流程实例ID
+     * @param nodeKey    定时节点Key
+     * @param variables  定时任务中保存的流程变量
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables) {
+        log.info("[continueFromTimerNode] 定时节点到期，开始继续流转, instanceId={}, nodeKey={}", instanceId, nodeKey);
+        
+        // 分布式锁：防止同一个定时节点被并发触发多次
+        String lockKey = "lock:timer:continue:" + instanceId + ":" + nodeKey;
+        RLock lock = redissonClient.getLock(lockKey);
+        
+        try {
+            if (!lock.tryLock(5, 30, TimeUnit.SECONDS)) {
+                log.warn("[continueFromTimerNode] 获取锁失败，可能正在被其他实例处理, instanceId={}, nodeKey={}", 
+                    instanceId, nodeKey);
+                return;
+            }
+            
+            try {
+                // 1. 校验流程实例状态
+                WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+                if (instance == null) {
+                    log.warn("[continueFromTimerNode] 流程实例不存在, instanceId={}", instanceId);
+                    return;
+                }
+                
+                // 只有 RUNNING 状态的流程才能继续流转
+                if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+                    log.warn("[continueFromTimerNode] 流程实例状态不是 RUNNING，跳过流转, instanceId={}, status={}", 
+                        instanceId, instance.getStatus());
+                    return;
+                }
+                
+                // 2. 查询流程定义，解析节点树
+                // 优先使用 definitionId（版本锁定），回退到 processDefKey 最新版本
+                WfProcessDefinition def = null;
+                if (StringUtils.hasText(instance.getDefinitionId())) {
+                    def = processDefinitionMapper.selectById(instance.getDefinitionId());
+                }
+                if (def == null) {
+                    def = processDefinitionMapper.selectOne(
+                        new LambdaQueryWrapper<WfProcessDefinition>()
+                            .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                            .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+                            .orderByDesc(WfProcessDefinition::getVersion)
+                            .last("LIMIT 1")
+                    );
+                }
+                
+                if (def == null || !StringUtils.hasText(def.getModelJson())) {
+                    log.error("[continueFromTimerNode] 流程定义不存在或模型为空, instanceId={}, processDefKey={}", 
+                        instanceId, instance.getProcessDefKey());
+                    throw new WorkflowException("DEFINITION_NOT_FOUND", 
+                        "流程定义不存在，无法继续流转");
+                }
+                
+                // 解析节点树
+                WfNodeConfig rootNode = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                
+                // 3. 定位定时节点
+                WfNodeConfig timerNode = findNode(rootNode, nodeKey);
+                if (timerNode == null) {
+                    log.error("[continueFromTimerNode] 定时节点不存在, instanceId={}, nodeKey={}", instanceId, nodeKey);
+                    throw new WorkflowException("TIMER_NODE_NOT_FOUND", 
+                        "定时节点不存在: " + nodeKey);
+                }
+                
+                // 4. 合并变量：定时任务保存的变量 + 实例当前变量
+                Map<String, Object> mergedVariables = mergeVariables(instance, variables);
+                
+                // 5. 保存流程快照（记录定时节点完成的时间点）
+                saveProcessSnapshot(instance, nodeKey, timerNode.getTitle());
+                
+                // 6. 通过 advanceAfterNode 继续流转
+                // 这样可以正确处理定时节点的 branches（条件分支）和 next（后续节点）
+                advanceAfterNode(instance, timerNode, nodeKey, mergedVariables, 0, rootNode);
+                
+                log.info("[continueFromTimerNode] 定时节点流转完成, instanceId={}, nodeKey={}", instanceId, nodeKey);
+                
+                // 7. 审计日志
+                auditService.log(WorkflowAuditService.AuditAction.TASK_COMPLETE, instanceId,
+                    "timerNode=" + nodeKey + ", title=" + timerNode.getTitle());
+                
+            } finally {
+                if (lock.isHeldByCurrentThread()) {
+                    lock.unlock();
+                }
+            }
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("[continueFromTimerNode] 获取分布式锁被中断, instanceId={}, nodeKey={}", instanceId, nodeKey);
+            throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，定时节点流转被中断");
+        } catch (WorkflowException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[continueFromTimerNode] 定时节点流转失败, instanceId={}, nodeKey={}, error={}", 
+                instanceId, nodeKey, e.getMessage(), e);
+            throw new WorkflowException("TIMER_CONTINUE_FAILED", 
+                "定时节点流转失败: " + e.getMessage(), e);
         }
     }
 }
