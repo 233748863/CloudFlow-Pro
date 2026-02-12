@@ -77,14 +77,18 @@ export const TaskHandleModal = ({
       }
   }, [rejectMode, task, historyNodes.length]);
 
-  // Reset tab when task changes
+  // 弹窗打开或任务切换时，重置所有子界面状态
   useEffect(() => {
       if (isOpen) {
           setActiveTab('handle');
+          setDelegationMode(false);
+          setDelegateUser('');
           setRejectMode(false);
           setRejectTargetNode('');
           setRejectReason('');
           setHistoryNodes([]);
+          setComment('');
+          setConfirmAction(null);
       }
   }, [isOpen, task?.id]);
 
@@ -233,7 +237,19 @@ export const TaskHandleModal = ({
                   </div>
               )}
           </div>
-          <button onClick={onClose}><X size={20} className="text-slate-400"/></button>
+          <button onClick={() => {
+            // 如果在转办或驳回子界面，先返回详情而不是直接关闭弹窗
+            if (delegationMode) {
+              setDelegationMode(false);
+              setDelegateUser('');
+            } else if (rejectMode) {
+              setRejectMode(false);
+              setRejectTargetNode('');
+              setRejectReason('');
+            } else {
+              onClose();
+            }
+          }}><X size={20} className="text-slate-400"/></button>
         </div>
         
         <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">

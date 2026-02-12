@@ -1505,6 +1505,22 @@ public class WorkflowServiceImpl implements IWorkflowService {
                     r -> r
                 ));
             
+            // 批量查询处理人用户名
+            List<Long> assigneeIds = tasks.stream()
+                .map(WfTask::getAssignee)
+                .filter(a -> a != null)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+            
+            Map<Long, String> userNameMap = new java.util.HashMap<>();
+            if (!assigneeIds.isEmpty()) {
+                List<SysUser> assigneeUsers = sysUserMapper.selectBatchIds(assigneeIds);
+                for (SysUser u : assigneeUsers) {
+                    userNameMap.put(u.getUserId(), 
+                        u.getNickName() != null ? u.getNickName() : u.getUserName());
+                }
+            }
+            
             // P0-1: 填充任务数据
             for (WfTask task : tasks) {
                 WfProcessInstance instance = instanceMap.get(task.getInstanceId());
@@ -1528,6 +1544,14 @@ public class WorkflowServiceImpl implements IWorkflowService {
                             log.warn("[getTodoTasks] 变量反序列化失败: {}", e.getMessage());
                         }
                     }
+                }
+                
+                // 填充处理人用户名
+                if (task.getAssignee() != null) {
+                    String name = userNameMap.get(task.getAssignee());
+                    task.setAssigneeName(name != null ? name : String.valueOf(task.getAssignee()));
+                } else {
+                    task.setAssigneeName("待认领");
                 }
                 
                 // 8.C: 设置已读状态
@@ -1902,11 +1926,58 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 defMap.putIfAbsent(def.getProcessKey(), def);
             }
             
-            // P0-1: 填充实例数据
+            // P0-1: 批量查询当前活动任务，用于填充当前处理人信息
+            List<String> instanceIds = list.stream()
+                .map(WfProcessInstance::getInstanceId)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+            
+            // 查询所有活动任务
+            List<WfTask> activeTasks = taskMapper.selectList(
+                new LambdaQueryWrapper<WfTask>()
+                    .in(WfTask::getInstanceId, instanceIds)
+                    .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            );
+            
+            // 按 instanceId 分组
+            Map<String, List<WfTask>> tasksByInstance = activeTasks.stream()
+                .collect(java.util.stream.Collectors.groupingBy(WfTask::getInstanceId));
+            
+            // 批量查询处理人用户信息
+            List<Long> assigneeIds = activeTasks.stream()
+                .map(WfTask::getAssignee)
+                .filter(a -> a != null)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+            
+            Map<Long, String> userNameMap = new java.util.HashMap<>();
+            if (!assigneeIds.isEmpty()) {
+                List<SysUser> assigneeUsers = sysUserMapper.selectBatchIds(assigneeIds);
+                for (SysUser u : assigneeUsers) {
+                    userNameMap.put(u.getUserId(), 
+                        u.getNickName() != null ? u.getNickName() : u.getUserName());
+                }
+            }
+            
+            // P0-1: 填充实例数据（流程定义 + 当前处理人信息）
             for (WfProcessInstance instance : list) {
                 WfProcessDefinition def = defMap.get(instance.getProcessDefKey());
                 if (def != null) {
                     instance.setFormId(def.getFormId());
+                }
+                
+                // 填充当前处理人信息
+                List<WfTask> instanceTasks = tasksByInstance.get(instance.getInstanceId());
+                if (instanceTasks != null && !instanceTasks.isEmpty()) {
+                    WfTask firstTask = instanceTasks.get(0);
+                    instance.setTaskId(firstTask.getTaskId());
+                    if (firstTask.getAssignee() != null) {
+                        instance.setAssignee(firstTask.getAssignee());
+                        String assigneeName = userNameMap.get(firstTask.getAssignee());
+                        instance.setAssigneeName(assigneeName != null ? assigneeName : String.valueOf(firstTask.getAssignee()));
+                    } else {
+                        instance.setAssigneeName("待认领");
+                    }
                 }
             }
         }

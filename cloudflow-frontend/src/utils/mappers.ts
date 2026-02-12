@@ -18,7 +18,7 @@ export const mapBackendTaskToFrontend = (t: any): Task => ({
   applicantId: t.startUserId,
   applicantName: t.startUserName || 'Unknown',
   assigneeId: String(t.assignee),
-  assigneeName: String(t.assignee), 
+  assigneeName: t.assigneeName || (t.assignee ? String(t.assignee) : '待认领'), 
   type: 'DYNAMIC',
   status: t.status === 'TODO' ? TaskStatus.PENDING : TaskStatus.APPROVED,
   createdTime: t.createTime,
@@ -30,21 +30,26 @@ export const mapBackendTaskToFrontend = (t: any): Task => ({
 });
 
 export const mapBackendInstanceToTask = (inst: any): Task => ({
-  id: inst.taskId || inst.instanceId, // 优先使用 taskId，如果没有则使用 instanceId（用于显示）
+  id: inst.taskId || inst.instanceId, // 优先使用 taskId（用于审批操作），如果没有则使用 instanceId（用于显示）
   processInstanceId: inst.instanceId,
   workflowId: inst.processDefKey,
   workflowName: inst.title,
   nodeName: inst.status,
   applicantId: String(inst.startUserId),
   applicantName: inst.startUserName,
+  // 使用后端返回的 assigneeName（已解析为用户名），回退到"待认领"
   assigneeId: inst.assignee ? String(inst.assignee) : undefined,
-  assigneeName: inst.assigneeName || (inst.assignee ? String(inst.assignee) : undefined),
+  assigneeName: inst.assigneeName || (inst.assignee ? String(inst.assignee) : '待认领'),
   type: 'DYNAMIC',
-  status: inst.status === 'RUNNING' ? TaskStatus.PENDING : (inst.status === 'COMPLETED' ? TaskStatus.APPROVED : TaskStatus.REJECTED),
+  // REVOKED 状态映射为 REJECTED（已撤回）
+  status: inst.status === 'RUNNING' ? TaskStatus.PENDING 
+    : inst.status === 'COMPLETED' ? TaskStatus.APPROVED 
+    : inst.status === 'REVOKED' ? TaskStatus.REJECTED
+    : TaskStatus.REJECTED,
   createdTime: inst.startTime,
   allowEdit: false,
   formId: inst.formId || '',
-  formData: typeof inst.variables === 'string' ? JSON.parse(inst.variables) : (inst.variables || {}),
+  formData: typeof inst.variables === 'string' ? (() => { try { return JSON.parse(inst.variables); } catch { return {}; } })() : (inst.variables || {}),
   reason: ''
 });
 
@@ -92,7 +97,7 @@ export const mapWorkTaskToUnified = (t: WorkTask): UnifiedTask => ({
     statusLabel: t.status === WorkTaskStatus.TODO ? '待处理' : (t.status === WorkTaskStatus.DOING ? '进行中' : '已完成'),
     priority: t.priority,
     assigneeId: t.assigneeId,
-    assigneeName: String(t.assigneeId), 
+    assigneeName: t.assigneeName || (t.assigneeId ? String(t.assigneeId) : '待认领'), 
     dueDate: t.dueDate,
     createdTime: t.createTime,
     sourceData: t

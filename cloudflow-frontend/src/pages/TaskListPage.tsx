@@ -34,38 +34,41 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
         if (showLoading) setLoading(true);
         setError(null);
         
-        const promises: Promise<any>[] = [
-            getTodoTasks(),
-            getMyInstances()
-        ];
-        
-        // Only fetch work tasks if looking at pending (todo) list
-        if (type === 'pending') {
-            promises.push(getWorkTasks());
-        } else {
-            promises.push(Promise.resolve([]));
-        }
-
-        const [todoRes, myInstRes, workTaskRes] = await Promise.all(promises);
-
+        // 根据页面类型决定调用哪些接口
+        // "我的申请"只需要 getMyInstances（当前用户发起的流程）
+        // "任务中心"需要 getTodoTasks（待办任务）+ getWorkTasks（协作待办）
         let processTasks: Task[] = [];
-        if (Array.isArray(todoRes)) {
-            processTasks = [...processTasks, ...todoRes.map(mapBackendTaskToFrontend)];
+        let workTaskRes: any[] = [];
+
+        if (type === 'applications') {
+            // "我的申请"模式：只查询当前用户发起的流程实例
+            const myInstRes = await getMyInstances();
+            if (Array.isArray(myInstRes)) {
+                processTasks = myInstRes.map(mapBackendInstanceToTask);
+            }
+        } else {
+            // "任务中心"模式：查询待办任务和协作待办
+            const [todoRes, workRes] = await Promise.all([
+                getTodoTasks(),
+                getWorkTasks()
+            ]);
+            if (Array.isArray(todoRes)) {
+                processTasks = todoRes.map(mapBackendTaskToFrontend);
+            }
+            workTaskRes = Array.isArray(workRes) ? workRes : [];
         }
-        if (Array.isArray(myInstRes)) {
-            processTasks = [...processTasks, ...myInstRes.map(mapBackendInstanceToTask)];
-        }
-        
-        // Filter process tasks based on 'type' prop (pending vs applications)
+
+        // 过滤流程任务
         const filteredProcessTasks = processTasks.filter(t => {
             if (type === 'pending') {
+                // 待办任务：只显示分配给当前用户的，或当前用户角色匹配的
                 return t.status === TaskStatus.PENDING && (
                     t.assigneeId === user.id ||
-                    (t.assigneeRole === user.role && !t.assigneeId) ||
-                    user.role === 'ADMIN'
+                    (t.assigneeRole === user.role && !t.assigneeId)
                 );
             } else {
-                return t.applicantId === user.id;
+                // 我的申请：已经通过 getMyInstances 按 startUserId 过滤了，直接返回
+                return true;
             }
         });
         
@@ -73,7 +76,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
         let unified: UnifiedTask[] = filteredProcessTasks.map(mapTaskToUnified);
         
-        if (workTaskRes && Array.isArray(workTaskRes)) {
+        if (workTaskRes.length > 0) {
              const workTasks = workTaskRes.map(mapWorkTaskToUnified);
              unified = [...unified, ...workTasks];
         }
@@ -318,6 +321,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
             currentUser={user}
             onClose={() => setIsModalOpen(false)}
             onComplete={handleTaskUpdate}
+            viewOnly={type === 'applications'}
         />
     </div>
   );

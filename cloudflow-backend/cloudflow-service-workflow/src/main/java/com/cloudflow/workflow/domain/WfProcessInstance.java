@@ -82,6 +82,18 @@ public class WfProcessInstance implements Serializable {
     @TableField(exist = false)
     private String formId;
 
+    /** 当前任务ID (非持久化，用于查询结果填充) */
+    @TableField(exist = false)
+    private String taskId;
+
+    /** 当前处理人ID (非持久化，用于查询结果填充) */
+    @TableField(exist = false)
+    private Long assignee;
+
+    /** 当前处理人姓名 (非持久化，用于查询结果填充) */
+    @TableField(exist = false)
+    private String assigneeName;
+
     public String getVariables() {
         return variables;
     }
@@ -96,6 +108,30 @@ public class WfProcessInstance implements Serializable {
 
     public void setFormId(String formId) {
         this.formId = formId;
+    }
+
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(String taskId) {
+        this.taskId = taskId;
+    }
+
+    public Long getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(Long assignee) {
+        this.assignee = assignee;
+    }
+
+    public String getAssigneeName() {
+        return assigneeName;
+    }
+
+    public void setAssigneeName(String assigneeName) {
+        this.assigneeName = assigneeName;
     }
 
     public String getPriority() {

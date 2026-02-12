@@ -185,6 +185,8 @@ export interface WorkTask {
   title: string;
   description?: string;
   assigneeId?: string;
+  /** 处理人用户名（由后端填充） */
+  assigneeName?: string;
   ownerId?: string;
   priority: WorkTaskPriority;
   status: WorkTaskStatus;
