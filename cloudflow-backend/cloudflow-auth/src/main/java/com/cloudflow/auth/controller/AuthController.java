@@ -120,6 +120,9 @@ public class AuthController {
         user.setEmail(registerBody.getEmail());
         user.setStatus("0");
         user.setDelFlag("0");
+        // 注册时设置默认租户ID为1（默认租户）
+        // 如果需要支持多租户注册，可以从注册表单获取 tenantId
+        user.setTenantId(1L);
 
         sysUserService.insertUser(user);
 

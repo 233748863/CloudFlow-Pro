@@ -61,7 +61,7 @@ public class SysUserServiceImpl implements ISysUserService {
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
     @Override
-    @Cacheable(value = CacheConstants.USER_DETAILS, key = "#username", unless = "#result == null")
+    @Cacheable(value = CacheConstants.USER_DETAILS, key = "#username + ':' + T(com.cloudflow.common.core.context.UserContext).getTenantId()", unless = "#result == null")
     public UserInfo findUserInfo(String username) {
         // 查询用户
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
@@ -104,9 +104,9 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
-    @CacheEvict(value = CacheConstants.USER_DETAILS, key = "#username")
+    @CacheEvict(value = CacheConstants.USER_DETAILS, key = "#username + ':' + T(com.cloudflow.common.core.context.UserContext).getTenantId()")
     public void evictUserCache(String username) {
-        // 仅清除缓存，方法体为空
+        // 仅清除缓存,方法体为空
     }
 
     // ==================== 原有方法（增加缓存失效） ====================
