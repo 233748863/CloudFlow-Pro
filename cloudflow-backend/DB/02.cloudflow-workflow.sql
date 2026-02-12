@@ -30,11 +30,19 @@ CREATE TABLE wf_process_definition (
   start_permission_type VARCHAR(20) DEFAULT 'ALL' COMMENT '启动权限类型 (ALL, USER, ROLE, DEPT)',
   start_permission_value TEXT       COMMENT '启动权限值 (JSON数组)',
   description       VARCHAR(500)    DEFAULT NULL COMMENT '流程描述',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID - 数据权限',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 1代表删除）',
   PRIMARY KEY (definition_id),
   KEY idx_process_key (process_key),
   KEY idx_status (status),
   KEY idx_is_latest (is_latest),
+  KEY idx_dept_id (dept_id),
+  KEY idx_create_by (create_by),
+  KEY idx_del_flag (del_flag),
   UNIQUE KEY uk_proc_def_key_ver_tenant (process_key, version, tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程定义表';
 
@@ -77,13 +85,22 @@ CREATE TABLE wf_process_instance (
   variables         JSON            DEFAULT NULL COMMENT '流程变量(表单数据)',
   priority          VARCHAR(20)     DEFAULT 'NORMAL' COMMENT '优先级',
   process_no        VARCHAR(64)     DEFAULT NULL COMMENT '流程编号',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID - 数据权限',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 1代表删除）',
   PRIMARY KEY (instance_id),
   KEY idx_start_user (start_user_id),
   KEY idx_business_key (business_key),
   KEY idx_proc_inst_tenant (tenant_id),
   KEY idx_start_user_status (start_user_id, status),
   KEY idx_process_key_status (process_def_key, status),
-  KEY idx_start_time (start_time)
+  KEY idx_start_time (start_time),
+  KEY idx_dept_id (dept_id),
+  KEY idx_create_by (create_by),
+  KEY idx_del_flag (del_flag)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流实例表';
 
 -- 4. 流程任务表

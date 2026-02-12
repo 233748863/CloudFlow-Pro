@@ -8,6 +8,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { getRouters, MenuItem as ApiMenuItem } from '../services/api/menu';
 import { getIcon } from '../utils/iconMapper';
 import { getMyAnnouncements } from '../services/api/announcement';
+import { TenantSwitcher } from '../components/TenantSwitcher';
 
 // Types for menu structure
 interface MenuItem {
@@ -251,6 +252,7 @@ export const MainLayout = () => {
                <ShieldCheck size={14} className="text-emerald-500"/>
                <span className="text-xs font-medium text-slate-600">环境: 开发版 (Dev)</span>
             </div>
+            <TenantSwitcher />
             <button 
               onClick={() => navigate('/office/announcement')}
               className="relative text-slate-500 hover:text-slate-700 z-50"

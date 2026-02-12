@@ -47,6 +47,23 @@ request.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+
+    // 从 localStorage 获取 tenantId 并添加到请求头
+    // 注意：tenantId 在用户登录后会被存储在 user 对象中
+    // 我们需要从 localStorage 中获取完整的用户信息来提取 tenantId
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.tenantId) {
+          config.headers['X-Tenant-Id'] = String(user.tenantId);
+        }
+      }
+    } catch (e) {
+      // 如果解析失败，忽略错误，不添加 X-Tenant-Id 头
+      console.warn('Failed to parse user info from localStorage:', e);
+    }
+
     return config;
   },
   error => {

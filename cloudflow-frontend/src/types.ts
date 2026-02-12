@@ -13,6 +13,7 @@ export interface User {
   email: string;
   role: Role;
   deptId?: string; // Department Link
+  tenantId?: number; // Tenant Link
   position?: string;
   status: 'ACTIVE' | 'INACTIVE';
   avatar: string;

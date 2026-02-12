@@ -20,6 +20,15 @@ interface Tenant {
   remark?: string;
 }
 
+// 分页响应接口
+interface PageResponse<T> {
+  records: T[];
+  total: number;
+  size: number;
+  current: number;
+  pages: number;
+}
+
 export const TenantList = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,8 +57,17 @@ export const TenantList = () => {
   const fetchTenants = async () => {
     setLoading(true);
     try {
-      const res = await getTenantList({ tenantName: searchTerm });
-      setTenants(Array.isArray(res) ? res : []);
+      const res: any = await getTenantList({ tenantName: searchTerm });
+      // 响应拦截器已经解包了 data，所以 res 就是分页对象
+      // 分页对象结构：{ records: [...], total: 1, size: 10, current: 1, pages: 1 }
+      if (res && Array.isArray(res.records)) {
+        setTenants(res.records);
+      } else if (Array.isArray(res)) {
+        // 兼容直接返回数组的情况
+        setTenants(res);
+      } else {
+        setTenants([]);
+      }
     } catch (error) {
       console.error(error);
       toast.error('加载租户列表失败');

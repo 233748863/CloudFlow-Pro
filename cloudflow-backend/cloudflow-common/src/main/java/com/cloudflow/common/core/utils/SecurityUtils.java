@@ -19,6 +19,13 @@ public class SecurityUtils {
     }
 
     /**
+     * 获取当前登录用户的租户ID
+     */
+    public static Long getTenantId() {
+        return UserContext.getTenantId();
+    }
+    
+    /**
      * 判断是否为管理员
      */
     public static boolean isAdmin(Long userId) {

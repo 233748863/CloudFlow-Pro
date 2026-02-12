@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Search, X, Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserList, addUser, updateUser, deleteUser, getRoleList, getDeptTree } from '../../services/api/auth';
+import { getTenantList } from '../../services/api/tenant';
 import { hashPassword } from '../../utils/crypto';
 import { useMount } from '../../hooks/useMount';
 
 interface DeptItem { deptId: number; parentId: number; deptName: string; orderNum: number; children?: DeptItem[]; }
 interface RoleItem { roleId: number; roleName: string; roleKey: string; status: string; }
+interface TenantItem { tenantId: number; tenantName: string; status: string; }
 
 // 部门树扁平化
 const flattenDepts = (depts: DeptItem[], level = 0): { dept: DeptItem; level: number }[] => {
@@ -46,6 +48,7 @@ export const UserList = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
+  const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -61,6 +64,7 @@ export const UserList = () => {
     sex: '0',
     status: '0',
     deptId: undefined as number | undefined,
+    tenantId: undefined as number | undefined,
     remark: '',
   });
   const [selRoles, setSelRoles] = useState<number[]>([]);
@@ -69,6 +73,7 @@ export const UserList = () => {
     fetchUsers();
     fetchRoles();
     fetchDeptTree();
+    fetchTenants();
   });
 
   const fetchUsers = async () => {
@@ -101,6 +106,15 @@ export const UserList = () => {
     }
   };
 
+  const fetchTenants = async () => {
+    try {
+      const res: any = await getTenantList();
+      setTenants(Array.isArray(res) ? res : (res?.rows || res?.records || []));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchUsers();
@@ -118,6 +132,7 @@ export const UserList = () => {
         sex: user.sex || '0',
         status: user.status || '0',
         deptId: user.deptId,
+        tenantId: user.tenantId,
         remark: user.remark || '',
       });
       setSelRoles(user.roleIds || []);
@@ -132,6 +147,7 @@ export const UserList = () => {
         sex: '0',
         status: '0',
         deptId: undefined,
+        tenantId: undefined,
         remark: '',
       });
       setSelRoles([]);
@@ -230,6 +246,7 @@ export const UserList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">用户名</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">昵称</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">租户</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">部门</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">角色</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
@@ -239,13 +256,13 @@ export const UserList = () => {
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
                     <Loader2 className="animate-spin inline mr-2" size={18} />加载中...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">暂无数据</td>
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">暂无数据</td>
                 </tr>
               ) : (
                 users.map((user) => (
@@ -258,6 +275,9 @@ export const UserList = () => {
                        {user.userName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.nickName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      {tenants.find(t => t.tenantId === user.tenantId)?.tenantName || '默认租户'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.deptName || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {user.role ? (
@@ -318,10 +338,27 @@ export const UserList = () => {
                 </div>
               </div>
 
-              {/* 归属部门 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">归属部门</label>
-                <TreeSelect value={formData.deptId} onChange={v => setFormData({...formData, deptId: v})} deptTree={deptTree} />
+              {/* 归属部门 + 所属租户 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">归属部门</label>
+                  <TreeSelect value={formData.deptId} onChange={v => setFormData({...formData, deptId: v})} deptTree={deptTree} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">所属租户</label>
+                  <select
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                    value={formData.tenantId || ''}
+                    onChange={e => setFormData({...formData, tenantId: e.target.value ? Number(e.target.value) : undefined})}
+                  >
+                    <option value="">请选择租户</option>
+                    {tenants.map(tenant => (
+                      <option key={tenant.tenantId} value={tenant.tenantId}>
+                        {tenant.tenantName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* 密码（仅新增时显示） */}

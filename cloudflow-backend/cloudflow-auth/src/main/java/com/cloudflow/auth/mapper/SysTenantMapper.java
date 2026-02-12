@@ -5,8 +5,11 @@ import com.cloudflow.auth.domain.SysTenant;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 租户信息Mapper接口
+ * 租户Mapper接口
+ * 
+ * @author CloudFlow
  */
 @Mapper
 public interface SysTenantMapper extends BaseMapper<SysTenant> {
+    
 }

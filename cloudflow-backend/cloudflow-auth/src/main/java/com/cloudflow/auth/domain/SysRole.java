@@ -1,9 +1,9 @@
 package com.cloudflow.auth.domain;
 
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 @Data
 @TableName("sys_role")
@@ -27,4 +27,35 @@ public class SysRole {
 
     @TableField(exist = false)
     private Long[] menuIds;
+    
+    /**
+     * 创建人
+     */
+    @TableField(fill = FieldFill.INSERT)
+    private String createBy;
+    
+    /**
+     * 修改人
+     */
+    @TableField(fill = FieldFill.UPDATE)
+    private String updateBy;
+    
+    /**
+     * 创建时间
+     */
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createTime;
+    
+    /**
+     * 修改时间
+     */
+    @TableField(fill = FieldFill.UPDATE)
+    private LocalDateTime updateTime;
+    
+    /**
+     * 删除标记（0正常 1删除）
+     */
+    @TableLogic
+    @TableField(fill = FieldFill.INSERT)
+    private String delFlag;
 }

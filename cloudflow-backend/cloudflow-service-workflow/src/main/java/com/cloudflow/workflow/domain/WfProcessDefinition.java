@@ -1,8 +1,8 @@
 package com.cloudflow.workflow.domain;
 
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
@@ -60,6 +60,26 @@ public class WfProcessDefinition implements Serializable {
 
     /** 流程描述 */
     private String description;
+    
+    /** 部门ID - 数据权限 */
+    private Long deptId;
+    
+    /** 创建人 */
+    @TableField(fill = FieldFill.INSERT)
+    private String createBy;
+    
+    /** 更新人 */
+    @TableField(fill = FieldFill.UPDATE)
+    private String updateBy;
+    
+    /** 更新时间 */
+    @TableField(fill = FieldFill.UPDATE)
+    private LocalDateTime updateTime;
+    
+    /** 删除标记 */
+    @TableLogic
+    @TableField(fill = FieldFill.INSERT)
+    private String delFlag;
 
     public String getDefinitionId() {
         return definitionId;
@@ -187,6 +207,46 @@ public class WfProcessDefinition implements Serializable {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+    
+    public Long getDeptId() {
+        return deptId;
+    }
+    
+    public void setDeptId(Long deptId) {
+        this.deptId = deptId;
+    }
+    
+    public String getCreateBy() {
+        return createBy;
+    }
+    
+    public void setCreateBy(String createBy) {
+        this.createBy = createBy;
+    }
+    
+    public String getUpdateBy() {
+        return updateBy;
+    }
+    
+    public void setUpdateBy(String updateBy) {
+        this.updateBy = updateBy;
+    }
+    
+    public LocalDateTime getUpdateTime() {
+        return updateTime;
+    }
+    
+    public void setUpdateTime(LocalDateTime updateTime) {
+        this.updateTime = updateTime;
+    }
+    
+    public String getDelFlag() {
+        return delFlag;
+    }
+    
+    public void setDelFlag(String delFlag) {
+        this.delFlag = delFlag;
     }
 
     /** Alias for processName used by P4 compareVersions */

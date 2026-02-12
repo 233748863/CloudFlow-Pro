@@ -26,6 +26,7 @@ import org.springframework.context.annotation.FilterType;
             "com\\.cloudflow\\.common\\.core\\.aspect\\.RequestLogAspect",
             "com\\.cloudflow\\.common\\.core\\.interceptor\\.UserContextInterceptor",
             "com\\.cloudflow\\.common\\.config\\.WebMvcConfig",
+            "com\\.cloudflow\\.common\\.tenant\\.TenantInterceptor",
             // MyBatis 相关（Gateway 不需要数据库）
             "com\\.cloudflow\\.common\\.config\\.MybatisPlusConfig",
             // Redis Stream（Gateway 不需要 Stream 功能）

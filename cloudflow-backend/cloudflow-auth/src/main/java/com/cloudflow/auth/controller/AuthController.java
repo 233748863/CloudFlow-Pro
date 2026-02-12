@@ -85,6 +85,7 @@ public class AuthController {
         loginUser.put("username", user.getUserName());
         loginUser.put("nickName", user.getNickName());
         loginUser.put("deptId", user.getDeptId());
+        loginUser.put("tenantId", user.getTenantId()); // 添加租户ID
         loginUser.put("avatar", user.getAvatar());
         loginUser.put("roles", userInfo.getRoles());
         loginUser.put("permissions", userInfo.getPermissions());
@@ -153,6 +154,8 @@ public class AuthController {
         user.setUserName(cachedUser.getUserName());
         user.setNickName(cachedUser.getNickName());
         user.setAvatar(cachedUser.getAvatar());
+        user.setTenantId(cachedUser.getTenantId()); // 添加租户ID
+        user.setDeptId(cachedUser.getDeptId()); // 添加部门ID
 
         if (user.getAvatar() == null) {
             user.setAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.getUserName());
@@ -219,5 +222,61 @@ public class AuthController {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    /**
+     * 租户切换接口（仅超级管理员可用）
+     * 允许超级管理员切换到指定租户，以便查看和管理该租户的数据
+     */
+    @PostMapping("/switchTenant")
+    public R<?> switchTenant(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        Map<String, Object> userMap = tokenService.verifyToken(token);
+        if (userMap == null) {
+            return R.fail(401, "Token已过期或无效");
+        }
+
+        // 检查是否为超级管理员
+        @SuppressWarnings("unchecked")
+        List<String> roles = (List<String>) userMap.get("roles");
+        if (roles == null || !roles.contains("ADMIN")) {
+            return R.fail(403, "只有超级管理员才能切换租户");
+        }
+
+        // 获取目标租户ID
+        Object tenantIdObj = params.get("tenantId");
+        if (tenantIdObj == null) {
+            return R.fail("租户ID不能为空");
+        }
+
+        Long targetTenantId;
+        if (tenantIdObj instanceof Integer) {
+            targetTenantId = ((Integer) tenantIdObj).longValue();
+        } else if (tenantIdObj instanceof Long) {
+            targetTenantId = (Long) tenantIdObj;
+        } else {
+            try {
+                targetTenantId = Long.parseLong(tenantIdObj.toString());
+            } catch (NumberFormatException e) {
+                return R.fail("租户ID格式错误");
+            }
+        }
+
+        // 更新Token中的租户ID
+        userMap.put("tenantId", targetTenantId);
+        
+        // 重新生成Token
+        String newToken = tokenService.createToken(userMap);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", newToken);
+        result.put("tenantId", targetTenantId);
+        result.put("message", "租户切换成功");
+
+        return R.ok(result);
     }
 }

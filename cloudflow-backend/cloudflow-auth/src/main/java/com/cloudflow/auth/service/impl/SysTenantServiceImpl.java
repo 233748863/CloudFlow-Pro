@@ -1,137 +1,89 @@
 package com.cloudflow.auth.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.auth.domain.SysTenant;
-import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.mapper.SysTenantMapper;
-import com.cloudflow.auth.mapper.SysUserMapper;
-import com.cloudflow.auth.service.ISysTenantService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.cloudflow.auth.service.SysTenantService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
-import java.util.Date;
-import java.util.List;
+import java.time.LocalDateTime;
 
 /**
- * 租户信息Service实现
+ * 租户Service实现类
+ * 
+ * @author CloudFlow
  */
+@Slf4j
 @Service
-public class SysTenantServiceImpl implements ISysTenantService {
-
-    @Autowired
-    private SysTenantMapper sysTenantMapper;
+public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant> implements SysTenantService {
     
-    @Autowired
-    private SysUserMapper sysUserMapper;
-
     @Override
-    public List<SysTenant> selectTenantList(SysTenant tenant) {
-        LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
-        
-        if (StringUtils.hasText(tenant.getTenantName())) {
-            wrapper.like(SysTenant::getTenantName, tenant.getTenantName());
-        }
-        if (StringUtils.hasText(tenant.getContactName())) {
-            wrapper.like(SysTenant::getContactName, tenant.getContactName());
-        }
-        if (StringUtils.hasText(tenant.getContactPhone())) {
-            wrapper.like(SysTenant::getContactPhone, tenant.getContactPhone());
-        }
-        if (StringUtils.hasText(tenant.getStatus())) {
-            wrapper.eq(SysTenant::getStatus, tenant.getStatus());
+    public boolean isTenantExpired(Long tenantId) {
+        SysTenant tenant = this.getById(tenantId);
+        if (tenant == null) {
+            return true;
         }
         
-        wrapper.eq(SysTenant::getDelFlag, "0");
-        wrapper.orderByDesc(SysTenant::getCreateTime);
+        LocalDateTime expireTime = tenant.getExpireTime();
+        if (expireTime == null) {
+            // 如果没有设置过期时间，则认为永不过期
+            return false;
+        }
         
-        return sysTenantMapper.selectList(wrapper);
+        return LocalDateTime.now().isAfter(expireTime);
     }
-
+    
     @Override
-    public SysTenant selectTenantById(Long tenantId) {
-        return sysTenantMapper.selectById(tenantId);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public int insertTenant(SysTenant tenant) {
-        tenant.setCreateTime(new Date());
-        tenant.setDelFlag("0");
-        if (tenant.getStatus() == null) {
-            tenant.setStatus("0"); // 默认正常状态
+    public boolean isTenantDisabled(Long tenantId) {
+        SysTenant tenant = this.getById(tenantId);
+        if (tenant == null) {
+            return true;
         }
-        if (tenant.getStorageUsed() == null) {
-            tenant.setStorageUsed(0L);
-        }
-        return sysTenantMapper.insert(tenant);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public int updateTenant(SysTenant tenant) {
-        tenant.setUpdateTime(new Date());
-        return sysTenantMapper.updateById(tenant);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public int deleteTenantByIds(Long[] tenantIds) {
-        int count = 0;
-        for (Long tenantId : tenantIds) {
-            // 检查租户下是否有用户
-            LambdaQueryWrapper<SysUser> userWrapper = new LambdaQueryWrapper<>();
-            userWrapper.eq(SysUser::getTenantId, tenantId);
-            long userCount = sysUserMapper.selectCount(userWrapper);
-            
-            if (userCount > 0) {
-                throw new RuntimeException("租户下存在用户，无法删除");
-            }
-            
-            // 逻辑删除
-            SysTenant tenant = new SysTenant();
-            tenant.setTenantId(tenantId);
-            tenant.setDelFlag("2");
-            tenant.setUpdateTime(new Date());
-            count += sysTenantMapper.updateById(tenant);
-        }
-        return count;
-    }
-
-    @Override
-    public String checkTenantNameUnique(SysTenant tenant) {
-        LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysTenant::getTenantName, tenant.getTenantName());
-        wrapper.eq(SysTenant::getDelFlag, "0");
         
-        SysTenant info = sysTenantMapper.selectOne(wrapper);
-        if (info != null && !info.getTenantId().equals(tenant.getTenantId())) {
-            return "1"; // 不唯一
-        }
-        return "0"; // 唯一
+        // 状态：0正常 1停用
+        return "1".equals(tenant.getStatus());
     }
-
+    
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public int updateTenantStatus(SysTenant tenant) {
-        tenant.setUpdateTime(new Date());
-        return sysTenantMapper.updateById(tenant);
-    }
-
-    @Override
-    public SysTenant getTenantStatistics(Long tenantId) {
-        SysTenant tenant = sysTenantMapper.selectById(tenantId);
-        if (tenant != null) {
-            // 统计租户下的用户数量
-            LambdaQueryWrapper<SysUser> userWrapper = new LambdaQueryWrapper<>();
-            userWrapper.eq(SysUser::getTenantId, tenantId);
-            userWrapper.eq(SysUser::getDelFlag, "0");
-            long userCount = sysUserMapper.selectCount(userWrapper);
-            
-            // 这里可以添加更多统计信息，如存储使用情况等
-            // tenant.setCurrentUserCount(userCount); // 需要在实体类中添加此字段
+    public boolean isUserLimitReached(Long tenantId) {
+        SysTenant tenant = this.getById(tenantId);
+        if (tenant == null) {
+            return true;
         }
-        return tenant;
+        
+        Integer userLimit = tenant.getUserLimit();
+        if (userLimit == null || userLimit <= 0) {
+            // 如果没有设置用户限制或限制为0，则认为无限制
+            return false;
+        }
+        
+        // TODO: 查询当前租户的用户数量
+        // 这里需要注入UserService来查询用户数量
+        // 暂时返回false，后续完善
+        return false;
+    }
+    
+    @Override
+    public boolean updateStorageUsed(Long tenantId, Long size) {
+        SysTenant tenant = this.getById(tenantId);
+        if (tenant == null) {
+            log.warn("租户不存在: {}", tenantId);
+            return false;
+        }
+        
+        Long currentUsed = tenant.getStorageUsed() != null ? tenant.getStorageUsed() : 0L;
+        Long newUsed = currentUsed + size;
+        
+        // 检查是否超过存储限制
+        Long storageLimit = tenant.getStorageLimit();
+        if (storageLimit != null && storageLimit > 0 && newUsed > storageLimit) {
+            log.warn("租户 {} 存储空间已达上限，当前使用: {}MB, 限制: {}MB", 
+                tenantId, newUsed, storageLimit);
+            return false;
+        }
+        
+        tenant.setStorageUsed(newUsed);
+        return this.updateById(tenant);
     }
 }

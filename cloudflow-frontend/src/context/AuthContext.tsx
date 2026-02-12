@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { User } from '@/types';
-import { getInfo } from '@/services/api/auth';
+import { getInfo, switchTenant as switchTenantApi } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
+  switchTenant: (tenantId: number) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,18 +25,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const userInfo = await getInfo();
           if (userInfo) {
-            setUser({
+            const user = {
               id: String(userInfo.userId),
               name: userInfo.nickName || userInfo.userName,
               email: userInfo.email || '',
               role: userInfo.role,
-              status: 'ACTIVE',
+              deptId: userInfo.deptId,
+              tenantId: userInfo.tenantId,
+              status: 'ACTIVE' as const,
               avatar: userInfo.avatar
-            });
+            };
+            setUser(user);
+            // 保存用户信息到 localStorage，供 axios 拦截器使用
+            localStorage.setItem('user', JSON.stringify(user));
           }
         } catch (e) {
           logger.error('Failed to get user info:', e);
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
           toast.error('登录状态已过期，请重新登录');
         }
       }
@@ -52,30 +59,73 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // 调用 getInfo 获取用户信息
       const userInfo = await getInfo();
       if (userInfo) {
-        setUser({
+        const user = {
           id: String(userInfo.userId),
           name: userInfo.nickName || userInfo.userName,
           email: userInfo.email || '',
           role: userInfo.role,
-          status: 'ACTIVE',
+          deptId: userInfo.deptId,
+          tenantId: userInfo.tenantId,
+          status: 'ACTIVE' as const,
           avatar: userInfo.avatar
-        });
+        };
+        setUser(user);
+        // 保存用户信息到 localStorage，供 axios 拦截器使用
+        localStorage.setItem('user', JSON.stringify(user));
       }
     } catch (error) {
-      // 如果获取用户信息失败，清除 token
+      // 如果获取用户信息失败，清除 token 和用户信息
       logger.error('获取用户信息失败:', error);
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       throw error;
     }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
+  const switchTenant = async (tenantId: number) => {
+    try {
+      // 调用租户切换API
+      const response = await switchTenantApi(tenantId);
+      
+      // 更新token
+      localStorage.setItem('token', response.token);
+      
+      // 重新获取用户信息
+      const userInfo = await getInfo();
+      if (userInfo) {
+        const updatedUser = {
+          id: String(userInfo.userId),
+          name: userInfo.nickName || userInfo.userName,
+          email: userInfo.email || '',
+          role: userInfo.role,
+          deptId: userInfo.deptId,
+          tenantId: userInfo.tenantId,
+          status: 'ACTIVE' as const,
+          avatar: userInfo.avatar
+        };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      
+      toast.success(`已切换到租户 ${tenantId}`);
+      
+      // 刷新页面以重新加载数据
+      window.location.reload();
+    } catch (error) {
+      logger.error('租户切换失败:', error);
+      toast.error('租户切换失败，请重试');
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, switchTenant }}>
       {children}
     </AuthContext.Provider>
   );

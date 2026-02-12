@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.handler.TenantLineHandler;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.common.datascope.DataScopeHandle;
 import com.cloudflow.common.datascope.DataScopeInnerInterceptor;
 import net.sf.jsqlparser.expression.Expression;
@@ -43,8 +43,8 @@ public class MybatisPlusConfig {
         interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new TenantLineHandler() {
             @Override
             public Expression getTenantId() {
-                // 从 UserContext 获取租户ID，默认 100000
-                Long tenantId = UserContext.getTenantId();
+                // 从 TenantContext 获取租户ID，默认 100000
+                Long tenantId = TenantContext.getTenantId();
                 if (tenantId == null) {
                     tenantId = 100000L;
                 }

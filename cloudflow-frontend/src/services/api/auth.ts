@@ -16,6 +16,7 @@ export interface UserInfo {
   role: Role;
   avatar: string;
   deptId?: string;
+  tenantId?: number;
   position?: string;
 }
 
@@ -78,6 +79,7 @@ export const getInfo = async (): Promise<UserInfo> => {
     role: user.role || (Array.isArray(data?.roles) && data.roles.length > 0 ? data.roles[0].toUpperCase() : 'USER'),
     avatar: user.avatar,
     deptId: user.deptId,
+    tenantId: user.tenantId,
     position: user.position,
   } as UserInfo;
 }
@@ -166,4 +168,12 @@ export const deleteMenu = (menuId: number) => {
 // Tree Select
 export const getMenuTreeSelect = () => {
     return request.get('/auth/system/menu/list');
+};
+
+/**
+ * 租户切换接口（仅超级管理员可用）
+ * @param tenantId 目标租户ID
+ */
+export const switchTenant = async (tenantId: number): Promise<{ token: string; tenantId: number; message: string }> => {
+  return request.post('/auth/switchTenant', { tenantId });
 };
