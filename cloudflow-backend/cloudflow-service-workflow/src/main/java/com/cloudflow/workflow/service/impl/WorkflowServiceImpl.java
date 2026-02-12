@@ -2545,10 +2545,57 @@ public class WorkflowServiceImpl implements IWorkflowService {
     }
     
     /**
-     * 8.5: 任务统计 - 返回各类任务数量
+     * 8.5: 任务统计详情 - 返回完整的统计信息
+     * 支持按时间段、状态、流程类型、处理人等多维度统计
      */
-    public Map<String, Object> getTaskStatistics(Long userId) {
+    @Override
+    public Map<String, Object> getTaskStatistics(Long userId, java.time.LocalDateTime startTime, java.time.LocalDateTime endTime) {
+        log.info("[getTaskStatistics] 查询任务统计, userId={}, startTime={}, endTime={}", userId, startTime, endTime);
+        
         Map<String, Object> stats = new HashMap<>();
+        
+        // 如果userId为空，从上下文获取
+        if (userId == null) {
+            userId = UserContext.getUserId();
+        }
+        
+        // 1. 按时间段统计
+        Map<String, Object> timePeriodStats = new HashMap<>();
+        
+        // 今日任务统计
+        java.time.LocalDateTime todayStart = java.time.LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+        Long todayTodoCount = taskMapper.selectCount(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(todayStart))
+        );
+        timePeriodStats.put("todayTodo", todayTodoCount != null ? todayTodoCount : 0);
+        
+        // 本周任务统计
+        java.time.LocalDateTime weekStart = java.time.LocalDateTime.now().with(java.time.DayOfWeek.MONDAY).withHour(0).withMinute(0).withSecond(0);
+        Long weekTodoCount = taskMapper.selectCount(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(weekStart))
+        );
+        timePeriodStats.put("weekTodo", weekTodoCount != null ? weekTodoCount : 0);
+        
+        // 本月任务统计
+        java.time.LocalDateTime monthStart = java.time.LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        Long monthTodoCount = taskMapper.selectCount(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(monthStart))
+        );
+        timePeriodStats.put("monthTodo", monthTodoCount != null ? monthTodoCount : 0);
+        
+        stats.put("timePeriod", timePeriodStats);
+        
+        // 2. 按任务状态统计
+        Map<String, Object> statusStats = new HashMap<>();
         
         // 待办总数
         Long todoCount = taskMapper.selectCount(
@@ -2556,16 +2603,19 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .eq(WfTask::getAssignee, userId)
                 .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
         );
-        stats.put("todoCount", todoCount != null ? todoCount : 0);
+        statusStats.put("todo", todoCount != null ? todoCount : 0);
         
-        // 紧急任务数
-        Long urgentCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .eq(WfTask::getPriority, "URGENT")
-        );
-        stats.put("urgentCount", urgentCount != null ? urgentCount : 0);
+        // 已办总数（支持时间范围筛选）
+        LambdaQueryWrapper<WfTaskHistory> doneWrapper = new LambdaQueryWrapper<WfTaskHistory>()
+            .eq(WfTaskHistory::getOperatorId, userId);
+        if (startTime != null) {
+            doneWrapper.ge(WfTaskHistory::getCreateTime, java.sql.Timestamp.valueOf(startTime));
+        }
+        if (endTime != null) {
+            doneWrapper.le(WfTaskHistory::getCreateTime, java.sql.Timestamp.valueOf(endTime));
+        }
+        Long doneCount = taskHistoryMapper.selectCount(doneWrapper);
+        statusStats.put("done", doneCount != null ? doneCount : 0);
         
         // 超时任务数
         Long timeoutCount = taskMapper.selectCount(
@@ -2574,58 +2624,200 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
                 .eq(WfTask::getIsTimeout, 1)
         );
-        stats.put("timeoutCount", timeoutCount != null ? timeoutCount : 0);
+        statusStats.put("timeout", timeoutCount != null ? timeoutCount : 0);
         
-        // 已办总数
-        Long doneCount = taskHistoryMapper.selectCount(
+        stats.put("status", statusStats);
+        
+        // 3. 按流程类型统计
+        List<WfTask> userTasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssignee, userId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+        
+        Map<String, Long> processTypeStats = new HashMap<>();
+        if (!userTasks.isEmpty()) {
+            List<String> instanceIds = userTasks.stream()
+                .map(WfTask::getInstanceId)
+                .distinct()
+                .collect(Collectors.toList());
+            
+            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+            Map<String, String> instanceDefKeyMap = instances.stream()
+                .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
+            
+            for (WfTask task : userTasks) {
+                String defKey = instanceDefKeyMap.getOrDefault(task.getInstanceId(), "unknown");
+                processTypeStats.merge(defKey, 1L, Long::sum);
+            }
+        }
+        stats.put("processType", processTypeStats);
+        
+        // 4. 按处理人统计（管理员视角）
+        if (permissionService.isAdmin(userId)) {
+            List<Map<String, Object>> assigneeStats = new ArrayList<>();
+            // 查询所有待办任务，按处理人分组
+            List<WfTask> allTasks = taskMapper.selectList(
+                new LambdaQueryWrapper<WfTask>()
+                    .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            );
+            
+            Map<Long, Long> assigneeCountMap = allTasks.stream()
+                .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
+            
+            for (Map.Entry<Long, Long> entry : assigneeCountMap.entrySet()) {
+                Map<String, Object> assigneeStat = new HashMap<>();
+                assigneeStat.put("userId", entry.getKey());
+                assigneeStat.put("taskCount", entry.getValue());
+                
+                // 查询用户名称
+                SysUser user = sysUserMapper.selectById(entry.getKey());
+                if (user != null) {
+                    assigneeStat.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
+                }
+                assigneeStats.add(assigneeStat);
+            }
+            stats.put("assignees", assigneeStats);
+        }
+        
+        // 5. 平均处理时长（秒）
+        List<WfTaskHistory> histories = taskHistoryMapper.selectList(
             new LambdaQueryWrapper<WfTaskHistory>()
                 .eq(WfTaskHistory::getOperatorId, userId)
+                .isNotNull(WfTaskHistory::getDurationSeconds)
         );
-        stats.put("doneCount", doneCount != null ? doneCount : 0);
         
-        // 我发起的流程数
+        if (!histories.isEmpty()) {
+            double avgDuration = histories.stream()
+                .mapToInt(WfTaskHistory::getDurationSeconds)
+                .average()
+                .orElse(0.0);
+            stats.put("avgDurationSeconds", (long) avgDuration);
+            stats.put("avgDurationMinutes", (long) (avgDuration / 60));
+        } else {
+            stats.put("avgDurationSeconds", 0L);
+            stats.put("avgDurationMinutes", 0L);
+        }
+        
+        // 6. 任务完成率
+        Long totalAssigned = todoCount + doneCount;
+        if (totalAssigned > 0) {
+            double completionRate = (doneCount.doubleValue() / totalAssigned) * 100;
+            stats.put("completionRate", String.format("%.2f%%", completionRate));
+        } else {
+            stats.put("completionRate", "0.00%");
+        }
+        
+        // 7. 我发起的流程数
         Long myInstanceCount = processInstanceMapper.selectCount(
             new LambdaQueryWrapper<WfProcessInstance>()
                 .eq(WfProcessInstance::getStartUserId, userId)
         );
         stats.put("myInstanceCount", myInstanceCount != null ? myInstanceCount : 0);
         
+        log.info("[getTaskStatistics] 统计完成, userId={}, 待办={}, 已办={}", userId, todoCount, doneCount);
         return stats;
     }
     
     /**
-     * 8.4: 任务分组 - 按流程类型分组返回待办任务数量
+     * 8.4: 任务分组 - 按流程类型、状态、优先级、处理人等维度分组
+     * 支持多维度分组统计
      */
+    @Override
     public Map<String, Object> getTaskGroups(Long userId) {
+        log.info("[getTaskGroups] 查询任务分组, userId={}", userId);
+        
+        // 如果userId为空，从上下文获取
+        if (userId == null) {
+            userId = UserContext.getUserId();
+        }
+        
         Map<String, Object> groups = new HashMap<>();
         
+        // 查询用户的所有待办任务
         List<WfTask> tasks = taskMapper.selectList(
             new LambdaQueryWrapper<WfTask>()
                 .eq(WfTask::getAssignee, userId)
                 .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
         );
         
-        // 收集实例ID
+        groups.put("total", tasks.size());
+        
+        if (tasks.isEmpty()) {
+            groups.put("byProcessType", new HashMap<>());
+            groups.put("byStatus", new HashMap<>());
+            groups.put("byPriority", new HashMap<>());
+            return groups;
+        }
+        
+        // 1. 按流程类型分组
         List<String> instanceIds = tasks.stream()
             .map(WfTask::getInstanceId)
             .distinct()
             .collect(Collectors.toList());
         
-        if (!instanceIds.isEmpty()) {
-            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
-            Map<String, String> instanceDefKeyMap = instances.stream()
-                .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
+        List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+        Map<String, String> instanceDefKeyMap = instances.stream()
+            .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
+        
+        Map<String, Long> byProcessType = new HashMap<>();
+        for (WfTask task : tasks) {
+            String defKey = instanceDefKeyMap.getOrDefault(task.getInstanceId(), "unknown");
+            byProcessType.merge(defKey, 1L, Long::sum);
+        }
+        groups.put("byProcessType", byProcessType);
+        
+        // 2. 按任务状态分组（虽然当前只查询了TODO状态，但为了扩展性保留此维度）
+        Map<String, Long> byStatus = tasks.stream()
+            .collect(Collectors.groupingBy(
+                task -> task.getStatus() != null ? task.getStatus() : "UNKNOWN",
+                Collectors.counting()
+            ));
+        groups.put("byStatus", byStatus);
+        
+        // 3. 按优先级分组
+        Map<String, Long> byPriority = tasks.stream()
+            .collect(Collectors.groupingBy(
+                task -> {
+                    String priority = task.getPriority();
+                    if (priority == null || priority.isEmpty()) {
+                        return "NORMAL";
+                    }
+                    return priority;
+                },
+                Collectors.counting()
+            ));
+        groups.put("byPriority", byPriority);
+        
+        // 4. 如果是管理员，提供按处理人分组的统计
+        if (permissionService.isAdmin(userId)) {
+            List<WfTask> allTasks = taskMapper.selectList(
+                new LambdaQueryWrapper<WfTask>()
+                    .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            );
             
-            // 按流程类型分组计数
-            Map<String, Long> groupCounts = new HashMap<>();
-            for (WfTask task : tasks) {
-                String defKey = instanceDefKeyMap.getOrDefault(task.getInstanceId(), "unknown");
-                groupCounts.merge(defKey, 1L, Long::sum);
+            Map<Long, Long> byAssignee = allTasks.stream()
+                .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
+            
+            // 转换为包含用户名的格式
+            List<Map<String, Object>> assigneeGroups = new ArrayList<>();
+            for (Map.Entry<Long, Long> entry : byAssignee.entrySet()) {
+                Map<String, Object> assigneeGroup = new HashMap<>();
+                assigneeGroup.put("userId", entry.getKey());
+                assigneeGroup.put("taskCount", entry.getValue());
+                
+                // 查询用户名称
+                SysUser user = sysUserMapper.selectById(entry.getKey());
+                if (user != null) {
+                    assigneeGroup.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
+                }
+                assigneeGroups.add(assigneeGroup);
             }
-            groups.put("groups", groupCounts);
+            groups.put("byAssignee", assigneeGroups);
         }
         
-        groups.put("total", tasks.size());
+        log.info("[getTaskGroups] 分组完成, userId={}, total={}, processTypes={}", 
+            userId, tasks.size(), byProcessType.size());
         return groups;
     }
     
@@ -3010,10 +3202,62 @@ public class WorkflowServiceImpl implements IWorkflowService {
                     // 未配置延迟时间，直接继续
                     runNode(instance, node.getNext(), variables, depth + 1, rootNode);
                 }
-            } else {
+            } else if ("SCHEDULE".equals(timerType)) {
                 // 定时模式（指定时间触发）
-                log.info("[handleTimerNode] 定时模式暂未实现, nodeKey={}", node.getId());
-                // TODO: 实现定时触发逻辑
+                String scheduleTime = (String) props.get("scheduleTime"); // ISO 8601格式: 2024-01-01T10:00:00
+                
+                if (StringUtils.hasText(scheduleTime)) {
+                    try {
+                        // 解析定时时间
+                        java.time.LocalDateTime scheduledDateTime = java.time.LocalDateTime.parse(
+                            scheduleTime, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                        long triggerTime = scheduledDateTime.atZone(java.time.ZoneId.systemDefault())
+                            .toInstant().toEpochMilli();
+                        
+                        // 检查定时时间是否已过期
+                        long now = System.currentTimeMillis();
+                        if (triggerTime <= now) {
+                            log.warn("[handleTimerNode] 定时时间已过期, 立即执行, nodeKey={}, scheduleTime={}", 
+                                node.getId(), scheduleTime);
+                            // 定时时间已过，立即继续执行
+                            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+                            return;
+                        }
+                        
+                        // 将定时任务信息存储到Redis
+                        String timerKey = "sys:wf:timer:" + instance.getInstanceId() + ":" + node.getId();
+                        Map<String, Object> timerData = new HashMap<>();
+                        timerData.put("instanceId", instance.getInstanceId());
+                        timerData.put("nodeKey", node.getId());
+                        timerData.put("nextNodeKey", node.getNext() != null ? node.getNext().getId() : null);
+                        timerData.put("triggerTime", triggerTime);
+                        timerData.put("scheduleTime", scheduleTime);
+                        timerData.put("timerType", "SCHEDULE");
+                        timerData.put("variables", variables);
+                        
+                        // 计算过期时间（触发时间 + 1小时的缓冲时间）
+                        long expirationMinutes = (triggerTime - now) / (60 * 1000) + 60;
+                        
+                        redisCache.setCacheObject(timerKey, timerData, expirationMinutes, TimeUnit.MINUTES);
+                        redisCache.setCacheZSet("sys:wf:timers", timerKey, (double) triggerTime);
+                        
+                        log.info("[handleTimerNode] 定时任务已注册, nodeKey={}, scheduleTime={}, triggerTime={}", 
+                            node.getId(), scheduleTime, new Date(triggerTime));
+                            
+                    } catch (java.time.format.DateTimeParseException e) {
+                        log.error("[handleTimerNode] 定时时间格式错误, nodeKey={}, scheduleTime={}, error={}", 
+                            node.getId(), scheduleTime, e.getMessage());
+                        throw new WorkflowException("INVALID_SCHEDULE_TIME", 
+                            "定时时间格式错误，请使用ISO 8601格式（如: 2024-01-01T10:00:00）: " + e.getMessage());
+                    }
+                } else {
+                    log.warn("[handleTimerNode] 定时模式未配置定时时间, nodeKey={}", node.getId());
+                    // 未配置定时时间，直接继续
+                    runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+                }
+            } else {
+                // 未知的定时类型，直接继续
+                log.warn("[handleTimerNode] 未知的定时类型: {}, nodeKey={}", timerType, node.getId());
                 runNode(instance, node.getNext(), variables, depth + 1, rootNode);
             }
             
