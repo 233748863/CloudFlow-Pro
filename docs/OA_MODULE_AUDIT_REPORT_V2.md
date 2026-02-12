@@ -88,12 +88,35 @@
 
 1. ~~**P0（立即修复）**：API路径不对称（2处）+ workTask.ts响应解包错误（1处）~~ ✅ 已修复
 2. ~~**P1（尽快完成）**：工作流集成TODO（4处）+ 移动端mock数据替换（4处）~~ ✅ 已修复（请假模块因后端缺失，已标注说明）
-3. **P2（计划完成）**：车辆费用转报销、WebSocket推送、请假模块后端开发、耗材管理前端开发
+3. ~~**P2（计划完成）**：车辆费用转报销、WebSocket推送、请假模块后端开发、耗材管理前端开发~~ ✅ 已完成
 4. **P3（低优先级）**：ErrorBoundary错误上报接入
 
 ---
 
 ## 修复记录（2026-02-13）
+
+### P2修复记录（2026-02-13 第二批）
+
+已完成文件清单：
+- `ExpenseClaimServiceImpl.java` — 实现车辆费用转报销功能（查询VehicleExpense → 创建BizExpenseClaim + BizExpenseItem）
+- `NotificationWebSocketHandler.java` — 重写为真正的WebSocket推送实现（基于TextWebSocketHandler，支持多设备连接、心跳、广播）
+- `WebSocketConfig.java` — 新增WebSocket配置类，注册 `/ws/notification` 端点
+- `pom.xml (oa)` — 新增 `spring-boot-starter-websocket` 依赖
+- `LeaveRequest.java` — 新增请假申请实体类
+- `LeaveRequestMapper.java` — 新增请假Mapper
+- `ILeaveRequestService.java` — 新增请假Service接口
+- `LeaveRequestServiceImpl.java` — 新增请假Service实现（含工作流集成）
+- `LeaveController.java` — 新增请假Controller（/leave路径）
+- `biz_leave_request.sql` — 新增请假表建表SQL
+- `leave.ts` — 新增前端请假API服务
+- `MobileLeaveRequest.tsx` — 替换模拟逻辑为真实API调用
+- `IConsumableService.java` — 新增耗材Service接口
+- `ConsumableServiceImpl.java` — 新增耗材Service实现（含出入库、低库存预警）
+- `ConsumableController.java` — 新增耗材Controller（/consumable路径）
+- `consumable.ts` — 新增前端耗材API服务
+- `ConsumablePage.tsx` — 新增耗材管理前端页面（列表/搜索/CRUD/出入库/低库存预警）
+
+### P1修复记录（2026-02-13 第一批）
 
 已修复文件清单：
 - `ExpenseClaimController.java` — 路径 `/oa/expense/claim` → `/expense/claim`

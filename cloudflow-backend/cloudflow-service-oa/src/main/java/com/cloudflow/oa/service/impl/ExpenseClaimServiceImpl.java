@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
+import com.cloudflow.oa.domain.VehicleExpense;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
+import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.IExpenseClaimService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -30,6 +33,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Autowired
     private BizExpenseItemMapper expenseItemMapper;
+    
+    @Autowired
+    private VehicleExpenseMapper vehicleExpenseMapper;
     
     @Autowired
     private RemoteWorkflowService remoteWorkflowService;
@@ -139,9 +145,72 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean convertVehicleExpenseToClaim(List<Long> vehicleExpenseIds, Long userId) {
-        // TODO: 此功能需要车辆费用模块支持，暂时返回false
-        // 当SysVehicleExpense和SysVehicleExpenseMapper实现后，可以启用此功能
-        return false;
+        if (vehicleExpenseIds == null || vehicleExpenseIds.isEmpty()) {
+            return false;
+        }
+        
+        // 1. 批量查询车辆费用记录
+        List<VehicleExpense> vehicleExpenses = vehicleExpenseMapper.selectBatchIds(vehicleExpenseIds);
+        if (vehicleExpenses.isEmpty()) {
+            log.warn("未找到对应的车辆费用记录，IDs: {}", vehicleExpenseIds);
+            return false;
+        }
+        
+        // 2. 创建报销申请单
+        BizExpenseClaim claim = new BizExpenseClaim();
+        claim.setClaimNo(generateClaimNo());
+        claim.setUserId(userId);
+        claim.setCategory("TRANSPORT"); // 车辆费用归类为交通类
+        claim.setStatus("DRAFT");
+        claim.setDescription("车辆费用转报销（共" + vehicleExpenses.size() + "笔）");
+        
+        // 3. 计算总金额
+        BigDecimal totalAmount = vehicleExpenses.stream()
+                .map(VehicleExpense::getAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        claim.setTotalAmount(totalAmount);
+        
+        boolean saved = save(claim);
+        if (!saved) {
+            return false;
+        }
+        
+        // 4. 将每笔车辆费用转为报销明细
+        for (VehicleExpense ve : vehicleExpenses) {
+            BizExpenseItem item = new BizExpenseItem();
+            item.setClaimId(claim.getId());
+            item.setExpenseType(mapVehicleExpenseType(ve.getExpenseType()));
+            item.setAmount(ve.getAmount());
+            item.setExpenseDate(ve.getExpenseDate());
+            item.setDescription(ve.getDescription());
+            item.setReceiptUrl(ve.getReceiptUrl());
+            item.setVehicleExpenseId(ve.getExpenseId()); // 关联原始车辆费用ID
+            expenseItemMapper.insert(item);
+        }
+        
+        log.info("车辆费用转报销成功，报销单号: {}，费用笔数: {}，总金额: {}", 
+                claim.getClaimNo(), vehicleExpenses.size(), totalAmount);
+        return true;
+    }
+    
+    /**
+     * 将车辆费用类型映射为报销费用类型
+     * 车辆费用类型：1油费 2过路费 3停车费 4维修保养 5保险 6其他
+     * 报销费用类型：TRANSPORT交通
+     */
+    private String mapVehicleExpenseType(String vehicleExpenseType) {
+        if (vehicleExpenseType == null) {
+            return "OTHER";
+        }
+        switch (vehicleExpenseType) {
+            case "1": return "TRANSPORT";  // 油费 → 交通
+            case "2": return "TRANSPORT";  // 过路费 → 交通
+            case "3": return "TRANSPORT";  // 停车费 → 交通
+            case "4": return "OTHER";      // 维修保养 → 其他
+            case "5": return "OTHER";      // 保险 → 其他
+            default:  return "OTHER";
+        }
     }
 
     @Override

@@ -3,33 +3,128 @@ package com.cloudflow.oa.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * 通知 WebSocket 处理器
- * 用于向指定用户推送实时消息通知
+ * 实现基于原生 WebSocket 的实时消息推送
  * 
- * 注意：当前为简化实现，仅记录日志。
- * 后续可集成 Spring WebSocket 或其他消息推送方案（如 SSE、STOMP）。
+ * 前端连接方式：ws://host:port/ws/notification?userId=xxx
+ * 连接建立后，服务端可通过 sendMessage / broadcastMessage 向指定用户推送消息
  */
 @Slf4j
 @Component
-public class NotificationWebSocketHandler {
+public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 存储用户连接会话（预留，后续 WebSocket 集成时使用）
+     * 存储用户ID → WebSocket会话集合的映射
+     * 同一用户可能有多个设备/标签页连接，因此使用 Set 存储
      */
-    private final ConcurrentHashMap<Long, Object> userSessions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
+
+    /**
+     * 存储 sessionId → userId 的反向映射，用于断开连接时快速查找
+     */
+    private final ConcurrentHashMap<String, Long> sessionUserMap = new ConcurrentHashMap<>();
+
+    /**
+     * 连接建立时调用
+     * 从 URL 参数中提取 userId 并注册会话
+     */
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        Long userId = extractUserId(session);
+        if (userId == null) {
+            log.warn("WebSocket连接缺少userId参数，关闭连接: {}", session.getId());
+            session.close(CloseStatus.BAD_DATA);
+            return;
+        }
+
+        // 注册会话
+        userSessions.computeIfAbsent(userId, k -> new CopyOnWriteArraySet<>()).add(session);
+        sessionUserMap.put(session.getId(), userId);
+
+        log.info("用户 {} 已建立WebSocket连接，sessionId: {}，当前在线用户数: {}",
+                userId, session.getId(), userSessions.size());
+
+        // 发送连接成功确认消息
+        Map<String, Object> welcomeMsg = Map.of(
+                "type", "CONNECTED",
+                "message", "WebSocket连接成功",
+                "userId", userId,
+                "timestamp", System.currentTimeMillis()
+        );
+        sendToSession(session, welcomeMsg);
+    }
+
+    /**
+     * 收到客户端消息时调用（心跳/业务消息）
+     */
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        String payload = message.getPayload();
+        Long userId = sessionUserMap.get(session.getId());
+
+        // 处理心跳消息
+        if ("ping".equalsIgnoreCase(payload) || "heartbeat".equalsIgnoreCase(payload)) {
+            session.sendMessage(new TextMessage("{\"type\":\"PONG\",\"timestamp\":" + System.currentTimeMillis() + "}"));
+            return;
+        }
+
+        log.debug("收到用户 {} 的消息: {}", userId, payload);
+    }
+
+    /**
+     * 连接关闭时调用
+     */
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+        Long userId = sessionUserMap.remove(session.getId());
+        if (userId != null) {
+            Set<WebSocketSession> sessions = userSessions.get(userId);
+            if (sessions != null) {
+                sessions.remove(session);
+                // 如果该用户没有任何活跃连接了，移除整个条目
+                if (sessions.isEmpty()) {
+                    userSessions.remove(userId);
+                }
+            }
+            log.info("用户 {} 断开WebSocket连接，sessionId: {}，状态: {}",
+                    userId, session.getId(), status);
+        }
+    }
+
+    /**
+     * 传输错误时调用
+     */
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
+        Long userId = sessionUserMap.get(session.getId());
+        log.error("用户 {} WebSocket传输错误，sessionId: {}", userId, session.getId(), exception);
+        // 关闭异常连接
+        if (session.isOpen()) {
+            session.close(CloseStatus.SERVER_ERROR);
+        }
+    }
+
+    // ==================== 对外推送API ====================
 
     /**
      * 向指定用户发送消息
      *
      * @param userId  目标用户ID
-     * @param message 消息内容
+     * @param message 消息内容（Map会被序列化为JSON）
      */
     public void sendMessage(Long userId, Map<String, Object> message) {
         if (userId == null) {
@@ -37,21 +132,22 @@ public class NotificationWebSocketHandler {
             return;
         }
 
-        try {
-            String messageJson = objectMapper.writeValueAsString(message);
-            
-            // 检查用户是否有活跃的连接
-            if (userSessions.containsKey(userId)) {
-                // TODO: 实际 WebSocket 推送逻辑
-                log.debug("向用户 {} 推送消息: {}", userId, messageJson);
-            } else {
-                // 用户不在线，消息已保存到数据库，用户上线后可查看
-                log.debug("用户 {} 不在线，消息已持久化，待用户上线后查看。消息类型: {}", 
+        Set<WebSocketSession> sessions = userSessions.get(userId);
+        if (sessions == null || sessions.isEmpty()) {
+            // 用户不在线，消息已持久化到数据库，用户上线后可通过API查看
+            log.debug("用户 {} 不在线，消息已持久化，待用户上线后查看。消息类型: {}",
                     userId, message.get("type"));
-            }
-        } catch (Exception e) {
-            log.error("向用户 {} 发送消息失败", userId, e);
+            return;
         }
+
+        // 向该用户的所有活跃会话推送消息
+        int successCount = 0;
+        for (WebSocketSession session : sessions) {
+            if (sendToSession(session, message)) {
+                successCount++;
+            }
+        }
+        log.debug("向用户 {} 推送消息完成，成功 {}/{} 个会话", userId, successCount, sessions.size());
     }
 
     /**
@@ -70,22 +166,13 @@ public class NotificationWebSocketHandler {
     }
 
     /**
-     * 注册用户会话（预留）
+     * 向所有在线用户广播消息
+     *
+     * @param message 消息内容
      */
-    public void registerSession(Long userId, Object session) {
-        if (userId != null && session != null) {
-            userSessions.put(userId, session);
-            log.info("用户 {} 已连接", userId);
-        }
-    }
-
-    /**
-     * 移除用户会话（预留）
-     */
-    public void removeSession(Long userId) {
-        if (userId != null) {
-            userSessions.remove(userId);
-            log.info("用户 {} 已断开连接", userId);
+    public void broadcastAll(Map<String, Object> message) {
+        for (Long userId : userSessions.keySet()) {
+            sendMessage(userId, message);
         }
     }
 
@@ -94,5 +181,58 @@ public class NotificationWebSocketHandler {
      */
     public int getOnlineUserCount() {
         return userSessions.size();
+    }
+
+    /**
+     * 判断指定用户是否在线
+     */
+    public boolean isUserOnline(Long userId) {
+        Set<WebSocketSession> sessions = userSessions.get(userId);
+        return sessions != null && !sessions.isEmpty();
+    }
+
+    // ==================== 内部方法 ====================
+
+    /**
+     * 向单个会话发送消息
+     * 
+     * @return 是否发送成功
+     */
+    private boolean sendToSession(WebSocketSession session, Map<String, Object> message) {
+        if (session == null || !session.isOpen()) {
+            return false;
+        }
+        try {
+            String json = objectMapper.writeValueAsString(message);
+            // 同步发送，避免并发写入同一个session
+            synchronized (session) {
+                session.sendMessage(new TextMessage(json));
+            }
+            return true;
+        } catch (IOException e) {
+            log.error("发送WebSocket消息失败，sessionId: {}", session.getId(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 从 WebSocket 连接 URL 参数中提取 userId
+     * 连接格式：ws://host:port/ws/notification?userId=123
+     */
+    private Long extractUserId(WebSocketSession session) {
+        try {
+            String query = session.getUri() != null ? session.getUri().getQuery() : null;
+            if (query != null) {
+                for (String param : query.split("&")) {
+                    String[] kv = param.split("=", 2);
+                    if (kv.length == 2 && "userId".equals(kv[0])) {
+                        return Long.parseLong(kv[1]);
+                    }
+                }
+            }
+        } catch (NumberFormatException e) {
+            log.warn("解析WebSocket userId参数失败: {}", session.getUri());
+        }
+        return null;
     }
 }

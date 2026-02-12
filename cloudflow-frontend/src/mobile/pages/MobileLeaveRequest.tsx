@@ -4,6 +4,7 @@ import { ChevronLeft, Calendar, Clock, FileText, Loader2 } from 'lucide-react';
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import { toast } from 'sonner';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { leaveApi } from '@/services/api/leave';
 
 type LeaveType = 'annual' | 'sick' | 'personal' | 'maternity' | 'bereavement' | 'other';
 
@@ -97,10 +98,27 @@ export const MobileLeaveRequest: React.FC = () => {
 
     setSubmitting(true);
     try {
-      // 注意：后端OA模块尚未实现请假模块（LeaveController/LeaveService），
-      // 需要后端开发完成后替换为真实API调用。
-      // 预期API: POST /oa/leave/apply
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // 请假类型映射：前端小写 → 后端大写
+      const typeMap: Record<LeaveType, string> = {
+        annual: 'ANNUAL', sick: 'SICK', personal: 'PERSONAL',
+        maternity: 'MATERNITY', bereavement: 'BEREAVEMENT', other: 'OTHER',
+      };
+
+      // 1. 创建请假申请（草稿）
+      const createRes: any = await leaveApi.add({
+        leaveType: typeMap[form.type],
+        startTime: form.startDate + ' 09:00:00',
+        endTime: form.endDate + ' 18:00:00',
+        leaveDays: leaveDays,
+        reason: form.reason + (form.handover ? `\n【工作交接】${form.handover}` : '') + `\n【紧急联系】${form.contact}`,
+      });
+
+      // 2. 提交审批（启动工作流）
+      const leaveId = createRes?.data?.id || createRes?.id;
+      if (leaveId) {
+        await leaveApi.submit(leaveId);
+      }
+
       toast.success('请假申请已提交，等待审批');
       navigate('/dashboard');
     } catch (err: any) {
