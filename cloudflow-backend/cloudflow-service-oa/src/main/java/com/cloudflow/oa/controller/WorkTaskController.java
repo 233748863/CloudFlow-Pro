@@ -44,6 +44,7 @@ public class WorkTaskController {
     @PostMapping
     public R<Boolean> add(@RequestBody WorkTask workTask) {
         workTask.setOwnerId(UserContext.getUserId());
+        workTask.setDeptId(UserContext.getDeptId()); // 设置部门ID用于数据权限
         workTask.setCreateBy(String.valueOf(UserContext.getUserId()));
         workTask.setCreateTime(new Date());
         // 默认负责人为自己

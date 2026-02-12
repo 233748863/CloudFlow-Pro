@@ -108,6 +108,7 @@ CREATE TABLE sys_work_task (
   description       TEXT            COMMENT '任务描述',
   assignee_id       BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
   owner_id          BIGINT(20)      DEFAULT NULL COMMENT '创建人ID',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
   priority          INT(4)          DEFAULT 1 COMMENT '优先级 (0:低, 1:中, 2:高)',
   status            VARCHAR(20)     DEFAULT 'TODO' COMMENT '状态 (TODO, DOING, DONE)',
   due_date          DATETIME        DEFAULT NULL COMMENT '截止时间',
@@ -121,6 +122,7 @@ CREATE TABLE sys_work_task (
   PRIMARY KEY (task_id),
   KEY idx_assignee (assignee_id),
   KEY idx_owner (owner_id),
+  KEY idx_work_task_dept (dept_id),
   KEY idx_work_task_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='协作任务表';
 

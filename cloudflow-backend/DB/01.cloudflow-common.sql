@@ -106,6 +106,8 @@ CREATE TABLE sys_role (
   role_key          VARCHAR(100)    NOT NULL COMMENT '角色权限字符串',
   role_sort         INT(4)          NOT NULL COMMENT '显示顺序',
   data_scope        CHAR(1)         DEFAULT '1' COMMENT '数据范围（1：全部数据权限 2：自定数据权限 3：本部门数据权限 4：本部门及以下数据权限）',
+  ds_type           INT(1)          DEFAULT 1 COMMENT '数据权限类型（0全部 1自定义 2本级及下级 3本级 4本人）',
+  ds_scope          VARCHAR(500)    DEFAULT NULL COMMENT '自定义数据权限（部门ID列表，逗号分隔）',
   status            CHAR(1)         DEFAULT '0' COMMENT '角色状态（0正常 1停用）',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
@@ -229,13 +231,16 @@ INSERT INTO sys_dept VALUES(102,  100000, 100, '0,100',      '财务部',       
 INSERT INTO sys_dept VALUES(103,  100000, 100, '0,100',      '人力资源部',       3, 'wang_wu',   '15888888888', 'wang_wu@cloudflow.com',   '0', '0', 'admin', sysdate(), '', null);
 INSERT INTO sys_dept VALUES(104,  100000, 100, '0,100',      '法务部',           4, 'liu_fa',    '15888888888', 'liu_fa@cloudflow.com',    '0', '0', 'admin', sysdate(), '', null);
 INSERT INTO sys_dept VALUES(105,  100000, 100, '0,100',      'IT部',             5, 'chen_it',   '15888888888', 'chen_it@cloudflow.com',   '0', '0', 'admin', sysdate(), '', null);
+INSERT INTO sys_dept VALUES(106,  100000, 101, '0,100,101',  '前端组',           1, 'qian_duan', '15888888888', 'qian_duan@cloudflow.com', '0', '0', 'admin', sysdate(), '', null);
+INSERT INTO sys_dept VALUES(107,  100000, 101, '0,100,101',  '后端组',           2, 'hou_duan',  '15888888888', 'hou_duan@cloudflow.com',  '0', '0', 'admin', sysdate(), '', null);
+INSERT INTO sys_dept VALUES(108,  100000, 102, '0,100,102',  '会计组',           1, 'kuai_ji',   '15888888888', 'kuai_ji@cloudflow.com',   '0', '0', 'admin', sysdate(), '', null);
 
--- 3. 初始化角色数据
-INSERT INTO sys_role VALUES(1, 100000, 'ADMIN',   'admin',    1, '1', '0', '0', 'admin', sysdate(), '', null, '系统管理员，拥有最高权限');
-INSERT INTO sys_role VALUES(2, 100000, 'MANAGER', 'manager',  2, '3', '0', '0', 'admin', sysdate(), '', null, '部门经理，负责业务审批');
-INSERT INTO sys_role VALUES(3, 100000, 'FINANCE', 'finance',  3, '3', '0', '0', 'admin', sysdate(), '', null, '财务专员，负责资金相关审批');
-INSERT INTO sys_role VALUES(4, 100000, 'HR',      'hr',       4, '3', '0', '0', 'admin', sysdate(), '', null, '人事专员，负责人员相关审批');
-INSERT INTO sys_role VALUES(5, 100000, 'EMPLOYEE','employee', 5, '2', '0', '0', 'admin', sysdate(), '', null, '普通员工，仅能发起申请');
+-- 3. 初始化角色数据（包含数据权限配置）
+INSERT INTO sys_role VALUES(1, 100000, 'ADMIN',   'admin',    1, '1', 0, NULL, '0', '0', 'admin', sysdate(), '', null, '系统管理员，拥有最高权限');
+INSERT INTO sys_role VALUES(2, 100000, 'MANAGER', 'manager',  2, '3', 2, NULL, '0', '0', 'admin', sysdate(), '', null, '部门经理，负责业务审批');
+INSERT INTO sys_role VALUES(3, 100000, 'FINANCE', 'finance',  3, '3', 3, NULL, '0', '0', 'admin', sysdate(), '', null, '财务专员，负责资金相关审批');
+INSERT INTO sys_role VALUES(4, 100000, 'HR',      'hr',       4, '3', 2, NULL, '0', '0', 'admin', sysdate(), '', null, '人事专员，负责人员相关审批');
+INSERT INTO sys_role VALUES(5, 100000, 'EMPLOYEE','employee', 5, '2', 4, NULL, '0', '0', 'admin', sysdate(), '', null, '普通员工，仅能发起申请');
 
 -- 4. 初始化用户数据 (密码统一为: 123456, 存储格式为 BCrypt(SHA256(明文密码)))
 INSERT INTO sys_user VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '超级管理员');
@@ -245,6 +250,8 @@ INSERT INTO sys_user VALUES(4,  100000, 103, 'zhao', '赵HR', 'zhao@cloudflow.co
 INSERT INTO sys_user VALUES(5,  100000, 101, 'zhang', '张三', 'zhang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '研发工程师');
 INSERT INTO sys_user VALUES(6,  100000, 104, 'liu', '刘法务', 'liu@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '法务总监');
 INSERT INTO sys_user VALUES(7,  100000, 105, 'chen', '陈IT', 'chen@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '系统管理员');
+INSERT INTO sys_user VALUES(8,  100000, 106, 'test_fe', '前端测试', 'test_fe@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '前端组员工');
+INSERT INTO sys_user VALUES(9,  100000, 107, 'test_be', '后端测试', 'test_be@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '后端组员工');
 
 -- 5. 初始化用户角色关联
 INSERT INTO sys_user_role VALUES(1, 1, 100000);
@@ -254,6 +261,8 @@ INSERT INTO sys_user_role VALUES(4, 4, 100000);
 INSERT INTO sys_user_role VALUES(5, 5, 100000);
 INSERT INTO sys_user_role VALUES(6, 1, 100000);
 INSERT INTO sys_user_role VALUES(7, 1, 100000);
+INSERT INTO sys_user_role VALUES(8, 5, 100000);
+INSERT INTO sys_user_role VALUES(9, 5, 100000);
 
 -- 6. 初始化菜单权限（二级菜单结构）
 -- ═══════════════════════════════════════════════════
@@ -320,6 +329,8 @@ INSERT INTO sys_user_post VALUES(4, 2, 100000);  -- 赵HR → 部门经理（人
 INSERT INTO sys_user_post VALUES(5, 4, 100000);  -- 张三 → 普通员工
 INSERT INTO sys_user_post VALUES(6, 3, 100000);  -- 刘法务 → 总监
 INSERT INTO sys_user_post VALUES(7, 4, 100000);  -- 陈IT → 普通员工
+INSERT INTO sys_user_post VALUES(8, 4, 100000);  -- 前端测试 → 普通员工
+INSERT INTO sys_user_post VALUES(9, 4, 100000);  -- 后端测试 → 普通员工
 
 -- 9. 初始化角色菜单关联（新二级菜单结构）
 -- ═══════════════════════════════════════════════════

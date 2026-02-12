@@ -6,8 +6,11 @@ import com.baomidou.mybatisplus.extension.plugins.handler.TenantLineHandler;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.datascope.DataScopeHandle;
+import com.cloudflow.common.datascope.DataScopeInnerInterceptor;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,6 +19,9 @@ import java.util.List;
 
 @Configuration
 public class MybatisPlusConfig {
+    
+    @Autowired(required = false)
+    private DataScopeHandle dataScopeHandle;
     
     // 真正跨租户共享的表（不需要租户隔离）
     private static final List<String> IGNORE_TENANT_TABLES = Arrays.asList(
@@ -27,7 +33,7 @@ public class MybatisPlusConfig {
     );
 
     /**
-     * 分页插件 + 多租户插件
+     * 分页插件 + 多租户插件 + 数据权限插件
      */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
@@ -55,6 +61,11 @@ public class MybatisPlusConfig {
                 return IGNORE_TENANT_TABLES.contains(tableName);
             }
         }));
+        
+        // 数据权限插件 (如果存在DataScopeHandle实现)
+        if (dataScopeHandle != null) {
+            interceptor.addInnerInterceptor(new DataScopeInnerInterceptor(dataScopeHandle));
+        }
         
         // 分页插件
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));

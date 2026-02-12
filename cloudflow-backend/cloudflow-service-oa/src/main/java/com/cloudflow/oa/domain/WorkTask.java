@@ -26,6 +26,9 @@ public class WorkTask {
     
     private Long ownerId;
     
+    /** 部门ID */
+    private Long deptId;
+    
     /**
      * 0:低, 1:中, 2:高
      */

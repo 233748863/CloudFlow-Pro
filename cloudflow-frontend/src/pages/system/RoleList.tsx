@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Shield, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { getRoleList, addRole, updateRole, deleteRole, getMenuList } from '../../services/api/auth';
+import { getRoleList, addRole, updateRole, deleteRole, getMenuList, getDeptTree } from '../../services/api/auth';
 import { useMount } from '../../hooks/useMount';
 
 // Helper to build tree
@@ -19,6 +19,8 @@ export const RoleList = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [menuTree, setMenuTree] = useState<any[]>([]);
   const [flatMenus, setFlatMenus] = useState<any[]>([]);
+  const [deptTree, setDeptTree] = useState<any[]>([]);
+  const [flatDepts, setFlatDepts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   
   // Modal State
@@ -29,15 +31,19 @@ export const RoleList = () => {
     roleKey: '',
     roleSort: 0,
     status: '0',
-    menuIds: [] as number[]
+    menuIds: [] as number[],
+    dsType: 1,
+    dsScope: ''
   });
 
   // Tree expand state in modal
   const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
+  const [expandedDeptKeys, setExpandedDeptKeys] = useState<number[]>([]);
 
   useMount(() => {
     fetchRoles();
     fetchMenus();
+    fetchDepts();
   });
 
   const fetchRoles = async () => {
@@ -67,15 +73,33 @@ export const RoleList = () => {
       }
   };
 
+  const fetchDepts = async () => {
+      try {
+          const res = await getDeptTree();
+          if (Array.isArray(res)) {
+              setFlatDepts(res);
+              setDeptTree(buildTree(res.map(d => ({...d, menuId: d.deptId, parentId: d.parentId || 0, menuName: d.deptName, orderNum: d.orderNum || 0})), 0));
+              // Expand root by default
+              const rootIds = res.filter(d => !d.parentId || d.parentId === 0).map(d => d.deptId);
+              setExpandedDeptKeys(rootIds);
+          }
+      } catch (e) {
+          console.error(e);
+      }
+  };
+
   const handleOpenModal = (role?: any) => {
     if (role) {
       setEditingRole(role);
+      const deptIds = role.dsScope ? role.dsScope.split(',').map((id: string) => parseInt(id.trim())).filter((id: number) => !isNaN(id)) : [];
       setFormData({
         roleName: role.roleName,
         roleKey: role.roleKey,
         roleSort: role.roleSort,
         status: role.status,
-        menuIds: role.menuIds || []
+        menuIds: role.menuIds || [],
+        dsType: role.dsType ?? 1,
+        dsScope: role.dsScope || ''
       });
     } else {
       setEditingRole(null);
@@ -84,7 +108,9 @@ export const RoleList = () => {
         roleKey: '',
         roleSort: 0,
         status: '0',
-        menuIds: []
+        menuIds: [],
+        dsType: 1,
+        dsScope: ''
       });
     }
     setIsModalOpen(true);
@@ -132,6 +158,53 @@ export const RoleList = () => {
     setExpandedKeys(prev => 
         prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id]
     );
+  };
+
+  const toggleDeptExpand = (id: number) => {
+    setExpandedDeptKeys(prev => 
+        prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id]
+    );
+  };
+
+  const toggleDeptCheck = (deptId: number) => {
+      const currentIds = formData.dsScope ? formData.dsScope.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+      const isChecked = currentIds.includes(deptId);
+      
+      let newIds: number[];
+      if (isChecked) {
+          newIds = currentIds.filter(id => id !== deptId);
+      } else {
+          newIds = [...currentIds, deptId];
+      }
+      
+      setFormData({ ...formData, dsScope: newIds.join(',') });
+  };
+
+  const renderDeptTreeNodes = (nodes: any[]) => {
+      const currentIds = formData.dsScope ? formData.dsScope.split(',').map((id: string) => parseInt(id.trim())).filter((id: number) => !isNaN(id)) : [];
+      
+      return nodes.map(node => (
+          <div key={node.menuId} className="ml-4">
+              <div className="flex items-center gap-2 py-1">
+                  {node.children && node.children.length > 0 ? (
+                      <button type="button" onClick={() => toggleDeptExpand(node.menuId)} className="text-slate-400">
+                           {expandedDeptKeys.includes(node.menuId) ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+                      </button>
+                  ) : <span className="w-3.5"></span>}
+                  
+                  <input 
+                    type="checkbox"
+                    checked={currentIds.includes(node.menuId)}
+                    onChange={() => toggleDeptCheck(node.menuId)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-slate-700">{node.menuName}</span>
+              </div>
+              {expandedDeptKeys.includes(node.menuId) && node.children && (
+                  <div>{renderDeptTreeNodes(node.children)}</div>
+              )}
+          </div>
+      ));
   };
 
   const renderTreeNodes = (nodes: any[]) => {
@@ -313,6 +386,37 @@ export const RoleList = () => {
                   <option value="1">停用</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">数据权限范围</label>
+                <select
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                  value={formData.dsType}
+                  onChange={e => setFormData({...formData, dsType: parseInt(e.target.value), dsScope: parseInt(e.target.value) === 1 ? formData.dsScope : ''})}
+                >
+                  <option value={0}>全部数据权限</option>
+                  <option value={1}>自定义数据权限</option>
+                  <option value={2}>本部门及下级部门数据</option>
+                  <option value={3}>本部门数据</option>
+                  <option value={4}>仅本人数据</option>
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  {formData.dsType === 0 && '可以查看所有数据'}
+                  {formData.dsType === 1 && '可以查看指定部门的数据'}
+                  {formData.dsType === 2 && '可以查看本部门及下级部门的数据'}
+                  {formData.dsType === 3 && '只能查看本部门的数据'}
+                  {formData.dsType === 4 && '只能查看自己创建的数据'}
+                </p>
+              </div>
+
+              {formData.dsType === 1 && (
+                <div className="border-t pt-4">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">选择部门</label>
+                    <div className="border border-slate-200 rounded-lg p-2 max-h-60 overflow-y-auto bg-slate-50">
+                        {renderDeptTreeNodes(deptTree)}
+                    </div>
+                </div>
+              )}
               
               <div className="border-t pt-4">
                   <label className="block text-sm font-medium text-slate-700 mb-2">菜单权限</label>
