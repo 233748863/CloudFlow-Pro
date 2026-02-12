@@ -14,14 +14,17 @@ export const TaskHandleModal = ({
   onClose, 
   onComplete,
   availableForms,
-  currentUser
+  currentUser,
+  viewOnly = false
 }: { 
   task: Task | null, 
   isOpen: boolean, 
   onClose: () => void, 
   onComplete: (t: Task) => void,
   availableForms: FormDefinition[],
-  currentUser: User
+  currentUser: User,
+  /** 只读模式（"我的申请"页面使用），隐藏审批操作按钮 */
+  viewOnly?: boolean
 }) => {
   const [activeTab, setActiveTab] = useState<'handle' | 'trace'>('handle');
   const [comment, setComment] = useState('');
@@ -347,8 +350,8 @@ export const TaskHandleModal = ({
                         </div>
                     )}
 
-                    {/* Action Area - Only if assignee */}
-                    {canAct && (
+                    {/* 操作区域 - 仅在非只读模式且为当前处理人时显示 */}
+                    {canAct && !viewOnly && (
                         <div className="mt-4 pt-4 border-t">
                             <textarea 
                             className="w-full p-2 border rounded text-sm mb-2" 
@@ -389,7 +392,7 @@ export const TaskHandleModal = ({
                             )}
                         </div>
                     )}
-                    {!canAct && task.status === TaskStatus.PENDING && (
+                    {!canAct && !viewOnly && task.status === TaskStatus.PENDING && (
                         <div className="text-center text-xs text-slate-400 italic mt-2">您没有权限处理此任务 (当前待办: {task.assigneeRole || '指定人员'})</div>
                     )}
                     </>
