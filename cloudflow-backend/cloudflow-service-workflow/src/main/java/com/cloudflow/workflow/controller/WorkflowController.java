@@ -200,4 +200,17 @@ public class WorkflowController {
     public R<Map<String, Object>> getTaskGroups(@RequestParam(required = false) Long userId) {
         return R.ok(workflowService.getTaskGroups(userId));
     }
+
+    /**
+     * 撤回流程
+     * 发起人可以在流程未结束前撤回自己发起的流程
+     */
+    @PostMapping("/recall")
+    public R<?> recallProcess(@RequestBody Map<String, String> body) {
+        String instanceId = body.get("instanceId");
+        if (instanceId == null || instanceId.isBlank()) {
+            return R.fail("instanceId不能为空");
+        }
+        return workflowService.recallProcess(instanceId);
+    }
 }
