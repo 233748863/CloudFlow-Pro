@@ -200,7 +200,7 @@ public class SyncServiceImpl implements ISyncService {
                     announcementData.setTitle(announcement.getTitle());
                     announcementData.setContent(announcement.getContent());
                     announcementData.setPublishTime(announcement.getCreateTime().toString());
-                    announcementData.setIsRead(announcement.isRead());
+                    announcementData.setIsRead(announcement.getIsRead() != null && announcement.getIsRead());
                     announcements.add(announcementData);
                 }
             }

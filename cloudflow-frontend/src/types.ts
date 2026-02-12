@@ -223,7 +223,7 @@ export enum AnnouncementScope {
 }
 
 export interface Announcement {
-  announcementId: string;
+  announcementId: number;
   title: string;
   content: string; // HTML
   type: AnnouncementType;
@@ -231,8 +231,11 @@ export interface Announcement {
   scopeValue?: string;
   status: '0' | '1' | '2'; // Draft, Published, Revoked
   priority: 'L' | 'M' | 'H';
-  senderId: string;
+  senderId: number;
   createTime: string;
+  publishTime?: string;
+  expireTime?: string;
+  isTop: number; // 0 or 1
   isRead: boolean; // Computed field
 }
 

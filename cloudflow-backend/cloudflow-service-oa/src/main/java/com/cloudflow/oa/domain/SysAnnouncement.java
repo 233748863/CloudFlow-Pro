@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.util.Date;
 
@@ -66,9 +67,23 @@ public class SysAnnouncement {
     /** 租户ID */
     private Long tenantId;
     
+    /** 是否置顶: 0-否, 1-是 */
+    private Integer isTop;
+    
+    /** 发布时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date publishTime;
+    
+    /** 过期时间(NULL表示永不过期) */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date expireTime;
+    
     /**
      * 是否已读 (非数据库字段)
+     * 使用 Boolean 包装类型确保 MyBatis 正确映射 is_read 列
+     * 添加 @JsonProperty 确保 Jackson 序列化字段名为 "isRead"
      */
     @TableField(exist = false)
-    private boolean isRead;
+    @JsonProperty("isRead")
+    private Boolean isRead;
 }

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.BizExpenseClaimMapper">
+
+    <resultMap id="ClaimWithItemsMap" type="com.cloudflow.oa.domain.BizExpenseClaim">
+        <id property="id" column="id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="instanceId" column="instance_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="userName" column="user_name"/>
+        <result property="claimNo" column="claim_no"/>
+        <result property="category" column="category"/>
+        <result property="totalAmount" column="total_amount"/>
+        <result property="description" column="description"/>
+        <result property="status" column="status"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <collection property="items" ofType="com.cloudflow.oa.domain.BizExpenseItem">
+            <id property="id" column="item_id"/>
+            <result property="claimId" column="claim_id"/>
+            <result property="expenseType" column="expense_type"/>
+            <result property="amount" column="item_amount"/>
+            <result property="expenseDate" column="expense_date"/>
+            <result property="description" column="item_description"/>
+            <result property="receiptUrl" column="receipt_url"/>
+            <result property="vehicleExpenseId" column="vehicle_expense_id"/>
+        </collection>
+    </resultMap>
+
+    <select id="selectClaimWithItems" resultMap="ClaimWithItemsMap">
+        SELECT 
+            c.*, 
+            i.id as item_id,
+            i.claim_id,
+            i.expense_type,
+            i.amount as item_amount,
+            i.expense_date,
+            i.description as item_description,
+            i.receipt_url,
+            i.vehicle_expense_id
+        FROM biz_expense_claim c
+        LEFT JOIN biz_expense_item i ON c.id = i.claim_id
+        WHERE c.id = #{id} AND c.del_flag = '0'
+    </select>
+
+    <select id="selectMonthlyExpenseByDept" resultType="map">
+        SELECT 
+            dept_name,
+            SUM(total_amount) as total_amount,
+            COUNT(*) as claim_count
+        FROM biz_expense_claim
+        WHERE DATE_FORMAT(create_time, '%Y-%m') = #{month}
+          AND status IN ('APPROVED', 'PAID')
+          AND del_flag = '0'
+        GROUP BY dept_name
+        ORDER BY total_amount DESC
+    </select>
+
+    <select id="selectMonthlyExpenseByCategory" resultType="map">
+        SELECT 
+            category,
+            SUM(total_amount) as total_amount,
+            COUNT(*) as claim_count
+        FROM biz_expense_claim
+        WHERE DATE_FORMAT(create_time, '%Y-%m') = #{month}
+          AND status IN ('APPROVED', 'PAID')
+          AND del_flag = '0'
+        GROUP BY category
+        ORDER BY total_amount DESC
+    </select>
+
+</mapper>

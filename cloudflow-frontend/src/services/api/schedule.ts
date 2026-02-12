@@ -91,7 +91,7 @@ export const getMyBookings = async (status?: 'upcoming' | 'past'): Promise<SysSc
 /**
  * 取消预订
  */
-export const cancelBooking = async (id: string): Promise<boolean> => {
+export const cancelBooking = async (id: number): Promise<boolean> => {
   return request.put(`/oa/schedule/cancel/${id}`) as unknown as Promise<boolean>;
 };
 

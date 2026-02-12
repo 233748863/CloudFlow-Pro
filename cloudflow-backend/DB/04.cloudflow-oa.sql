@@ -24,13 +24,18 @@ CREATE TABLE sys_announcement (
   scope_value       VARCHAR(255)    DEFAULT NULL COMMENT '范围值',
   status            CHAR(1)         DEFAULT '0' COMMENT '状态 (0:草稿, 1:已发布, 2:已撤销)',
   priority          CHAR(1)         DEFAULT 'M' COMMENT '优先级 (L:低, M:中, H:高)',
+  is_top            INT(11)         DEFAULT 0 COMMENT '是否置顶 (0:否, 1:是)',
   sender_id         BIGINT(20)      DEFAULT NULL COMMENT '发布人ID',
+  publish_time      DATETIME        DEFAULT NULL COMMENT '发布时间',
+  expire_time       DATETIME        DEFAULT NULL COMMENT '过期时间(NULL表示永不过期)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
-  PRIMARY KEY (announcement_id)
+  PRIMARY KEY (announcement_id),
+  KEY idx_announcement_tenant (tenant_id),
+  KEY idx_announcement_status (status, is_top, priority)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='系统公告表';
 
 -- 2. 公告阅读记录表
@@ -335,6 +340,84 @@ CREATE TABLE biz_leave (
   create_time       DATETIME        DEFAULT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假业务表';
+
+-- =========================================================
+-- 八、费用报销与付款申请模块
+-- =========================================================
+
+-- 15. 报销申请表
+DROP TABLE IF EXISTS biz_expense_claim;
+CREATE TABLE biz_expense_claim (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  claim_no          VARCHAR(50)     NOT NULL COMMENT '报销单号',
+  category          VARCHAR(20)     NOT NULL COMMENT '报销类别(TRAVEL差旅/OFFICE办公/ENTERTAIN招待/TRANSPORT交通/OTHER其他)',
+  total_amount      DECIMAL(10,2)   DEFAULT 0.00 COMMENT '总金额',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '报销说明',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/PAID已打款)',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_claim_no (claim_no),
+  KEY idx_claim_user (user_id),
+  KEY idx_claim_status (status),
+  KEY idx_claim_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='报销申请表';
+
+-- 16. 报销明细表
+DROP TABLE IF EXISTS biz_expense_item;
+CREATE TABLE biz_expense_item (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  claim_id          BIGINT(20)      NOT NULL COMMENT '报销申请ID',
+  expense_type      VARCHAR(20)     NOT NULL COMMENT '费用类型(MEAL餐费/HOTEL住宿/TRANSPORT交通/OFFICE办公用品/COMM通讯/OTHER其他)',
+  amount            DECIMAL(10,2)   NOT NULL COMMENT '金额',
+  expense_date      DATE            NOT NULL COMMENT '费用发生日期',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '费用说明',
+  receipt_url       VARCHAR(255)    DEFAULT NULL COMMENT '票据图片URL',
+  vehicle_expense_id BIGINT(20)     DEFAULT NULL COMMENT '关联车辆费用ID',
+  PRIMARY KEY (id),
+  KEY idx_item_claim (claim_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='报销明细表';
+
+-- 17. 付款申请表
+DROP TABLE IF EXISTS biz_payment_request;
+CREATE TABLE biz_payment_request (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  payment_no        VARCHAR(50)     NOT NULL COMMENT '付款单号',
+  payee_name        VARCHAR(100)    NOT NULL COMMENT '收款方名称',
+  payee_account     VARCHAR(100)    DEFAULT NULL COMMENT '收款账号',
+  payee_bank        VARCHAR(100)    DEFAULT NULL COMMENT '开户行',
+  amount            DECIMAL(10,2)   NOT NULL COMMENT '付款金额',
+  payment_type      VARCHAR(20)     NOT NULL COMMENT '付款类型(PURCHASE采购/SERVICE服务/RENT租金/OTHER其他)',
+  reason            VARCHAR(500)    NOT NULL COMMENT '付款事由',
+  expected_date     DATE            DEFAULT NULL COMMENT '期望付款日期',
+  attachment_url    VARCHAR(255)    DEFAULT NULL COMMENT '附件URL',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/PAID已打款)',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_payment_no (payment_no),
+  KEY idx_payment_user (user_id),
+  KEY idx_payment_status (status),
+  KEY idx_payment_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='付款申请表';
 
 -- =========================================================
 -- 初始化数据

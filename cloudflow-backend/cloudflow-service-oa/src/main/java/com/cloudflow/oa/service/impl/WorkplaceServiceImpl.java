@@ -152,7 +152,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                             dto.setPublishTime(announcement.getCreateTime() != null 
                                 ? announcement.getCreateTime().toString() 
                                 : null);
-                            dto.setIsRead(announcement.isRead());
+                            dto.setIsRead(announcement.getIsRead() != null && announcement.getIsRead());
                             return dto;
                         })
                         .collect(Collectors.toList());

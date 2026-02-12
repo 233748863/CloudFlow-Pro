@@ -188,7 +188,7 @@ export const MobileWorkflowMonitor: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* 顶部标题栏 */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">

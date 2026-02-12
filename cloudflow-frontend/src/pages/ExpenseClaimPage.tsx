@@ -1,0 +1,628 @@
+import React, { useState, useEffect } from 'react';
+import { Receipt, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, FileText } from 'lucide-react';
+import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '../services/api/expense';
+import { toast } from 'sonner';
+
+export const ExpenseClaimPage: React.FC = () => {
+  const [claims, setClaims] = useState<ExpenseClaim[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchParams, setSearchParams] = useState({
+    status: '',
+    category: '',
+    pageNum: 1,
+    pageSize: 10,
+  });
+  const [total, setTotal] = useState(0);
+  const [showDialog, setShowDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [currentClaim, setCurrentClaim] = useState<ExpenseClaim | null>(null);
+  const [viewClaim, setViewClaim] = useState<ExpenseClaim | null>(null);
+  const [formData, setFormData] = useState<ExpenseClaim>({
+    category: 'TRAVEL',
+    description: '',
+    items: [{ expenseType: 'TRANSPORT', amount: 0, expenseDate: '', description: '' }],
+  });
+
+  useEffect(() => {
+    fetchClaims();
+  }, [searchParams]);
+
+  const fetchClaims = async () => {
+    setLoading(true);
+    try {
+      const res = await expenseClaimApi.list(searchParams);
+      if (res.data) {
+        setClaims(res.data.records || []);
+        setTotal(res.data.total || 0);
+      }
+    } catch (error) {
+      toast.error('获取报销申请列表失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdd = () => {
+    setCurrentClaim(null);
+    setFormData({
+      category: 'TRAVEL',
+      description: '',
+      items: [{ expenseType: 'TRANSPORT', amount: 0, expenseDate: '', description: '' }],
+    });
+    setShowDialog(true);
+  };
+
+  const handleView = async (id: number) => {
+    try {
+      const res = await expenseClaimApi.getInfo(id);
+      if (res.data) {
+        setViewClaim(res.data);
+        setShowDetailDialog(true);
+      }
+    } catch (error) {
+      toast.error('获取报销申请详情失败');
+    }
+  };
+
+  const handleEdit = async (id: number) => {
+    try {
+      const res = await expenseClaimApi.getInfo(id);
+      if (res.data) {
+        setCurrentClaim(res.data);
+        setFormData(res.data);
+        setShowDialog(true);
+      }
+    } catch (error) {
+      toast.error('获取报销申请详情失败');
+    }
+  };
+
+  const handleDelete = async (ids: number[]) => {
+    if (!confirm('确定要删除选中的报销申请吗？')) return;
+    try {
+      await expenseClaimApi.remove(ids);
+      toast.success('删除成功');
+      fetchClaims();
+    } catch (error) {
+      toast.error('删除失败');
+    }
+  };
+
+  const handleSubmit = async (id: number) => {
+    if (!confirm('确定要提交该报销申请吗？提交后将进入审批流程。')) return;
+    try {
+      await expenseClaimApi.submit(id);
+      toast.success('提交成功');
+      fetchClaims();
+    } catch (error) {
+      toast.error('提交失败');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.category || !formData.description) {
+      toast.error('请填写完整信息');
+      return;
+    }
+
+    if (!formData.items || formData.items.length === 0) {
+      toast.error('请至少添加一条报销明细');
+      return;
+    }
+
+    // 验证明细
+    for (const item of formData.items) {
+      if (!item.expenseType || !item.amount || !item.expenseDate) {
+        toast.error('请填写完整的报销明细信息');
+        return;
+      }
+      if (item.amount <= 0) {
+        toast.error('报销金额必须大于0');
+        return;
+      }
+    }
+
+    try {
+      const totalAmount = formData.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+      const data = { ...formData, totalAmount };
+
+      if (currentClaim?.id) {
+        await expenseClaimApi.edit(data);
+        toast.success('更新成功');
+      } else {
+        await expenseClaimApi.add(data);
+        toast.success('创建成功');
+      }
+      setShowDialog(false);
+      fetchClaims();
+    } catch (error) {
+      toast.error('保存失败');
+    }
+  };
+
+  const addItem = () => {
+    setFormData({
+      ...formData,
+      items: [
+        ...(formData.items || []),
+        { expenseType: 'TRANSPORT', amount: 0, expenseDate: '', description: '' },
+      ],
+    });
+  };
+
+  const removeItem = (index: number) => {
+    const items = [...(formData.items || [])];
+    items.splice(index, 1);
+    setFormData({ ...formData, items });
+  };
+
+  const updateItem = (index: number, field: keyof ExpenseItem, value: any) => {
+    const items = [...(formData.items || [])];
+    items[index] = { ...items[index], [field]: value };
+    setFormData({ ...formData, items });
+  };
+
+  const handleSearch = () => {
+    setSearchParams({ ...searchParams, pageNum: 1 });
+  };
+
+  const handleReset = () => {
+    setSearchParams({
+      status: '',
+      category: '',
+      pageNum: 1,
+      pageSize: 10,
+    });
+  };
+
+  const statusMap: Record<string, string> = {
+    DRAFT: '草稿',
+    PENDING: '审批中',
+    APPROVED: '已通过',
+    REJECTED: '已驳回',
+    PAID: '已打款',
+  };
+
+  const categoryMap: Record<string, string> = {
+    TRAVEL: '差旅',
+    OFFICE: '办公',
+    ENTERTAINMENT: '招待',
+    TRANSPORT: '交通',
+    OTHER: '其他',
+  };
+
+  const expenseTypeMap: Record<string, string> = {
+    TRANSPORT: '交通',
+    ACCOMMODATION: '住宿',
+    MEAL: '餐饮',
+    COMMUNICATION: '通讯',
+    OFFICE_SUPPLIES: '办公用品',
+    OTHER: '其他',
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { bg: string; text: string }> = {
+      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' },
+      PENDING: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      APPROVED: { bg: 'bg-green-100', text: 'text-green-600' },
+      REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
+      PAID: { bg: 'bg-purple-100', text: 'text-purple-600' },
+    };
+    const config = statusConfig[status] || statusConfig.DRAFT;
+    return (
+      <span className={`text-xs px-2 py-0.5 rounded ${config.bg} ${config.text}`}>
+        {statusMap[status] || status}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <Receipt className="text-indigo-600" />
+          报销申请
+        </h2>
+        <button
+          onClick={handleAdd}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+        >
+          <Plus size={18} />
+          新增报销申请
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
+        <div className="p-4 border-b border-slate-200 bg-slate-50">
+          <div className="flex gap-3">
+            <select
+              value={searchParams.status}
+              onChange={(e) => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })}
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">全部状态</option>
+              <option value="DRAFT">草稿</option>
+              <option value="PENDING">审批中</option>
+              <option value="APPROVED">已通过</option>
+              <option value="REJECTED">已驳回</option>
+              <option value="PAID">已打款</option>
+            </select>
+
+            <select
+              value={searchParams.category}
+              onChange={(e) => setSearchParams({ ...searchParams, category: e.target.value, pageNum: 1 })}
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">全部类别</option>
+              <option value="TRAVEL">差旅</option>
+              <option value="OFFICE">办公</option>
+              <option value="ENTERTAINMENT">招待</option>
+              <option value="TRANSPORT">交通</option>
+              <option value="OTHER">其他</option>
+            </select>
+
+            <button
+              onClick={handleSearch}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"
+            >
+              <Search size={16} />
+              搜索
+            </button>
+            <button
+              onClick={handleReset}
+              className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"
+            >
+              <RotateCcw size={16} />
+              重置
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">报销单号</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">类别</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">总金额</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">说明</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">创建时间</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                      <span className="ml-2">加载中...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : claims.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                    <Receipt size={48} className="mx-auto mb-2 opacity-20" />
+                    <p>暂无报销申请</p>
+                  </td>
+                </tr>
+              ) : (
+                claims.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-sm text-slate-900">{item.claimNo}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {categoryMap[item.category] || item.category}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900 font-medium">
+                      ¥{item.totalAmount?.toFixed(2) || '0.00'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">
+                      {item.description}
+                    </td>
+                    <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{item.createTime}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleView(item.id!)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="查看"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        {item.status === 'DRAFT' && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(item.id!)}
+                              className="text-green-600 hover:text-green-800"
+                              title="编辑"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleSubmit(item.id!)}
+                              className="text-indigo-600 hover:text-indigo-800"
+                              title="提交"
+                            >
+                              <Send size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete([item.id!])}
+                              className="text-red-600 hover:text-red-800"
+                              title="删除"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="p-4 border-t border-slate-200 flex justify-between items-center">
+          <span className="text-sm text-slate-600">共 {total} 条</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSearchParams((p) => ({ ...p, pageNum: Math.max(1, p.pageNum - 1) }))}
+              disabled={searchParams.pageNum === 1}
+              className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50"
+            >
+              上一页
+            </button>
+            <span className="px-3 py-1 text-sm">第 {searchParams.pageNum} 页</span>
+            <button
+              onClick={() => setSearchParams((p) => ({ ...p, pageNum: p.pageNum + 1 }))}
+              disabled={searchParams.pageNum * searchParams.pageSize >= total}
+              className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 新增/编辑对话框 */}
+      {showDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">
+                {currentClaim ? '编辑报销申请' : '新增报销申请'}
+              </h3>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">报销类别</label>
+                  <select
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  >
+                    <option value="TRAVEL">差旅</option>
+                    <option value="OFFICE">办公</option>
+                    <option value="ENTERTAINMENT">招待</option>
+                    <option value="TRANSPORT">交通</option>
+                    <option value="OTHER">其他</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">总金额</label>
+                  <input
+                    type="text"
+                    className="w-full border border-slate-300 rounded-lg p-2 bg-slate-50"
+                    value={`¥${formData.items?.reduce((sum, item) => sum + (item.amount || 0), 0).toFixed(2) || '0.00'}`}
+                    disabled
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">报销说明</label>
+                <textarea
+                  className="w-full border border-slate-300 rounded-lg p-2 h-20"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="请输入报销说明"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-700">报销明细</label>
+                  <button
+                    onClick={addItem}
+                    className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
+                  >
+                    添加明细
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {formData.items?.map((item, index) => (
+                    <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">费用类型</label>
+                          <select
+                            className="w-full border border-slate-300 rounded p-2 text-sm"
+                            value={item.expenseType}
+                            onChange={(e) => updateItem(index, 'expenseType', e.target.value)}
+                          >
+                            <option value="TRANSPORT">交通</option>
+                            <option value="ACCOMMODATION">住宿</option>
+                            <option value="MEAL">餐饮</option>
+                            <option value="COMMUNICATION">通讯</option>
+                            <option value="OFFICE_SUPPLIES">办公用品</option>
+                            <option value="OTHER">其他</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">金额（元）</label>
+                          <input
+                            type="number"
+                            className="w-full border border-slate-300 rounded p-2 text-sm"
+                            value={item.amount}
+                            onChange={(e) => updateItem(index, 'amount', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">费用日期</label>
+                          <input
+                            type="date"
+                            className="w-full border border-slate-300 rounded p-2 text-sm"
+                            value={item.expenseDate}
+                            onChange={(e) => updateItem(index, 'expenseDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">费用说明</label>
+                          <input
+                            type="text"
+                            className="w-full border border-slate-300 rounded p-2 text-sm"
+                            value={item.description}
+                            onChange={(e) => updateItem(index, 'description', e.target.value)}
+                            placeholder="请输入费用说明"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeItem(index)}
+                        className="mt-2 text-red-600 hover:text-red-800 text-sm flex items-center gap-1"
+                      >
+                        <Trash2 size={14} />
+                        删除此明细
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
+              <button
+                onClick={() => setShowDialog(false)}
+                className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSave}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 详情查看对话框 */}
+      {showDetailDialog && viewClaim && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-start">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">报销申请详情</h3>
+                <div className="flex items-center gap-3 text-sm text-slate-600">
+                  <span>单号: {viewClaim.claimNo}</span>
+                  <span>•</span>
+                  <span>{getStatusBadge(viewClaim.status || 'DRAFT')}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDetailDialog(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">报销类别</label>
+                  <div className="text-sm text-slate-900">
+                    {categoryMap[viewClaim.category] || viewClaim.category}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">总金额</label>
+                  <div className="text-sm text-slate-900 font-medium">
+                    ¥{viewClaim.totalAmount?.toFixed(2) || '0.00'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">申请人</label>
+                  <div className="text-sm text-slate-900">{viewClaim.userName || '-'}</div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">创建时间</label>
+                  <div className="text-sm text-slate-900">{viewClaim.createTime}</div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">报销说明</label>
+                <div className="text-sm text-slate-900 bg-slate-50 p-3 rounded">
+                  {viewClaim.description || '-'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">报销明细</label>
+                <div className="space-y-2">
+                  {viewClaim.items?.map((item, index) => (
+                    <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                      <div className="grid grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <span className="text-xs text-slate-500">费用类型</span>
+                          <div className="text-slate-900 mt-1">
+                            {expenseTypeMap[item.expenseType] || item.expenseType}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-500">金额</span>
+                          <div className="text-slate-900 font-medium mt-1">
+                            ¥{item.amount?.toFixed(2)}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-500">费用日期</span>
+                          <div className="text-slate-900 mt-1">{item.expenseDate}</div>
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-500">说明</span>
+                          <div className="text-slate-900 mt-1">{item.description || '-'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
+              <button
+                onClick={() => setShowDetailDialog(false)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ExpenseClaimPage;

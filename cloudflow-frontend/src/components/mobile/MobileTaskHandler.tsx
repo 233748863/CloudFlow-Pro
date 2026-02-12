@@ -48,7 +48,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* 顶部导航栏 */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white sticky top-0 z-10">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white sticky top-0 z-30">
         <button onClick={onBack} className="p-1">
           <ArrowLeft size={20} className="text-slate-600" />
         </button>

@@ -6,10 +6,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="getMyAnnouncements" resultType="com.cloudflow.oa.domain.SysAnnouncement">
         SELECT a.*, 
-        CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END as is_read 
+        CASE WHEN r.id IS NOT NULL THEN true ELSE false END as isRead 
         FROM sys_announcement a 
         LEFT JOIN sys_announcement_read r ON a.announcement_id = r.announcement_id AND r.user_id = #{userId} 
         WHERE a.del_flag = '0' AND a.status = '1' 
+        AND (a.expire_time IS NULL OR a.expire_time > NOW())
         AND (
            a.scope_type = 'ALL' 
            OR (a.scope_type = 'DEPT' AND a.scope_value = #{deptId}) 
@@ -25,7 +26,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                </if>
            ) 
         ) 
-        ORDER BY a.priority DESC, a.create_time DESC
+        ORDER BY a.is_top DESC, a.priority DESC, a.create_time DESC
     </select>
     
 </mapper>

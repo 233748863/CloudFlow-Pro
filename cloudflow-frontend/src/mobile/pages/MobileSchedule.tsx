@@ -161,7 +161,7 @@ export const MobileSchedule: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => navigate(-1)}
           className="p-1 -ml-1"

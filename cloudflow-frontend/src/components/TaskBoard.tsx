@@ -46,7 +46,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
             onDrop={(e) => handleDrop(e, col.id)}
           >
             {/* Header */}
-            <div className={`p-4 border-b ${col.borderColor} ${col.color} rounded-t-xl flex justify-between items-center sticky top-0 z-10`}>
+            <div className={`p-4 border-b ${col.borderColor} ${col.color} rounded-t-xl flex justify-between items-center sticky top-0 z-30`}>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-700">{col.title}</h3>
                 <span className="bg-white/50 px-2 py-0.5 rounded text-xs font-bold text-slate-500">

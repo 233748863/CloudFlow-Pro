@@ -44,6 +44,8 @@ const VehicleBooking = React.lazy(() => import('@/pages/admin/vehicle/VehicleBoo
 const VehicleUsageList = React.lazy(() => import('./pages/admin/vehicle/VehicleUsageList'));
 const WorkflowMonitor = React.lazy(() => import('./pages/WorkflowMonitor').then(module => ({ default: module.default })));
 const DeployManagement = React.lazy(() => import('./pages/DeployManagement').then(module => ({ default: module.DeployManagement })));
+const ExpenseClaimPage = React.lazy(() => import('./pages/ExpenseClaimPage'));
+const PaymentRequestPage = React.lazy(() => import('./pages/PaymentRequestPage').then(module => ({ default: module.PaymentRequestPage })));
 
 
 const Loading = () => (
@@ -86,6 +88,10 @@ const desktopRoutes = [
           },
           {
             path: '/announcement',
+            element: <Suspense fallback={<Loading />}><AnnouncementPage /></Suspense>,
+          },
+          {
+            path: '/office/announcement',
             element: <Suspense fallback={<Loading />}><AnnouncementPage /></Suspense>,
           },
           {
@@ -171,6 +177,14 @@ const desktopRoutes = [
           {
             path: '/admin/vehicle/usage',
             element: <Suspense fallback={<Loading />}><VehicleUsageList /></Suspense>,
+          },
+          {
+            path: '/expense/claim',
+            element: <Suspense fallback={<Loading />}><ExpenseClaimPage /></Suspense>,
+          },
+          {
+            path: '/payment/request',
+            element: <Suspense fallback={<Loading />}><PaymentRequestPage /></Suspense>,
           },
         ],
       },

@@ -7,6 +7,7 @@ import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/announcement")
@@ -42,12 +43,55 @@ public class SysAnnouncementController {
     }
     
     /**
-     * 获取管理列表 (简化版，复用 my-list 或者直接查全表)
-     * 实际生产中应有单独的 manage-list 接口
+     * 获取管理列表（分页）
      */
-    @GetMapping("/list")
-    public R<List<SysAnnouncement>> list() {
-        // 简单返回所有，实际应分页
-        return R.ok(announcementService.list());
+    @GetMapping("/manage-list")
+    public R<Map<String, Object>> getManageList(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        return R.ok(announcementService.getManageList(title, type, status, page, size));
+    }
+    
+    /**
+     * 编辑公告
+     */
+    @PutMapping
+    public R<Boolean> update(@RequestBody SysAnnouncement announcement) {
+        return R.ok(announcementService.updateAnnouncement(announcement));
+    }
+    
+    /**
+     * 删除公告
+     */
+    @DeleteMapping("/{id}")
+    public R<Boolean> delete(@PathVariable("id") Long id) {
+        return R.ok(announcementService.removeById(id));
+    }
+    
+    /**
+     * 撤销公告
+     */
+    @PostMapping("/revoke/{id}")
+    public R<Boolean> revoke(@PathVariable("id") Long id) {
+        return R.ok(announcementService.revokeAnnouncement(id));
+    }
+    
+    /**
+     * 切换置顶状态
+     */
+    @PostMapping("/toggle-top/{id}")
+    public R<Boolean> toggleTop(@PathVariable("id") Long id) {
+        return R.ok(announcementService.toggleTop(id));
+    }
+    
+    /**
+     * 获取阅读统计
+     */
+    @GetMapping("/read-stats/{id}")
+    public R<Map<String, Object>> getReadStats(@PathVariable("id") Long id) {
+        return R.ok(announcementService.getReadStats(id));
     }
 }

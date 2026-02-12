@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getRouters, MenuItem as ApiMenuItem } from '../services/api/menu';
 import { getIcon } from '../utils/iconMapper';
+import { getMyAnnouncements } from '../services/api/announcement';
 
 // Types for menu structure
 interface MenuItem {
@@ -25,6 +26,7 @@ export const MainLayout = () => {
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [menuTree, setMenuTree] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // 从后端动态加载菜单
   useEffect(() => {
@@ -45,6 +47,39 @@ export const MainLayout = () => {
 
     if (user) {
       loadMenus();
+    }
+  }, [user]);
+
+  // 加载未读公告数量
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      try {
+        const announcements = await getMyAnnouncements();
+        const unread = Array.isArray(announcements) 
+          ? announcements.filter(a => !a.isRead).length 
+          : 0;
+        setUnreadCount(unread);
+      } catch (error) {
+        console.error('加载未读公告数量失败:', error);
+        setUnreadCount(0);
+      }
+    };
+
+    if (user) {
+      loadUnreadCount();
+      // 每分钟刷新一次未读数量
+      const interval = setInterval(loadUnreadCount, 60000);
+      
+      // 监听公告已读事件
+      const handleAnnouncementRead = () => {
+        loadUnreadCount();
+      };
+      window.addEventListener('announcementRead', handleAnnouncementRead);
+      
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('announcementRead', handleAnnouncementRead);
+      };
     }
   }, [user]);
 
@@ -203,7 +238,7 @@ export const MainLayout = () => {
 
       {/* Main Content */}
       <div className="flex-1 ml-64 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10 bg-white/80 backdrop-blur-md">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30 bg-white/80 backdrop-blur-md">
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <span className="text-slate-400">{activeLabel.group}</span>
             <ChevronRight size={14}/>
@@ -216,8 +251,16 @@ export const MainLayout = () => {
                <ShieldCheck size={14} className="text-emerald-500"/>
                <span className="text-xs font-medium text-slate-600">环境: 开发版 (Dev)</span>
             </div>
-            <button className="relative text-slate-500 hover:text-slate-700">
+            <button 
+              onClick={() => navigate('/office/announcement')}
+              className="relative text-slate-500 hover:text-slate-700 z-50"
+            >
               <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold z-50">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
           </div>
         </header>
