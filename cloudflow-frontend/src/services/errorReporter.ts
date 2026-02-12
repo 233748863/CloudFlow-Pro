@@ -2,7 +2,6 @@
  * 前端错误上报服务
  * 
  * 将捕获到的错误上报到后端日志收集接口，便于生产环境排查问题。
- * 同时预留 Sentry 等第三方服务的接入口。
  * 
  * 使用方式：
  *   import { errorReporter } from '@/services/errorReporter';

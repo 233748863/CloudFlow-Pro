@@ -42,6 +42,8 @@ public class WebSecurityConfig {
                 .requestMatchers("/actuator/**").permitAll()
                 // 放行 Swagger 相关端点
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // 放行前端错误上报端点（错误可能在未登录时发生，必须允许匿名访问）
+                .requestMatchers("/error-report").permitAll()
                 // 其他所有请求需要认证（由 SecurityContextFilter 从网关请求头中设置）
                 .anyRequest().authenticated()
             )

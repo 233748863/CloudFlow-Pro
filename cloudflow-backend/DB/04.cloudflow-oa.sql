@@ -451,6 +451,36 @@ INSERT INTO sys_work_task (title, description, assignee_id, owner_id, priority, 
 INSERT INTO sys_attendance_rule (rule_name, check_in_time, check_out_time, elastic_minutes, work_days, lunch_break_start, lunch_break_end, overtime_enabled, overtime_min_minutes, late_tolerance_count, severe_late_minutes, absent_minutes, photo_required, enabled, tenant_id, create_time) 
 VALUES ('默认考勤组', '09:00:00', '18:00:00', 30, '[1,2,3,4,5]', '12:00:00', '13:00:00', 0, 30, 3, 60, 240, 0, 1, 100000, NOW());
 
+-- =========================================================
+-- 九、前端错误日志模块
+-- =========================================================
+
+-- 18. 前端错误日志表
+DROP TABLE IF EXISTS sys_frontend_error_log;
+CREATE TABLE sys_frontend_error_log (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT NULL COMMENT '租户ID',
+  message           VARCHAR(1000)   NOT NULL COMMENT '错误消息',
+  stack             TEXT            DEFAULT NULL COMMENT '错误堆栈',
+  component_stack   TEXT            DEFAULT NULL COMMENT 'React组件堆栈',
+  context           VARCHAR(200)    DEFAULT NULL COMMENT '错误发生的上下文描述',
+  url               VARCHAR(500)    DEFAULT NULL COMMENT '页面URL',
+  user_agent        VARCHAR(500)    DEFAULT NULL COMMENT '用户代理',
+  level             VARCHAR(20)     DEFAULT 'error' COMMENT '错误级别(error/warning/info)',
+  tags              JSON            DEFAULT NULL COMMENT '标签信息(JSON)',
+  extra             JSON            DEFAULT NULL COMMENT '额外数据(JSON)',
+  client_ip         VARCHAR(64)     DEFAULT NULL COMMENT '客户端IP',
+  user_id           BIGINT(20)      DEFAULT NULL COMMENT '当前用户ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '当前用户名',
+  client_time       DATETIME        DEFAULT NULL COMMENT '客户端上报时间',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '服务端接收时间',
+  PRIMARY KEY (id),
+  KEY idx_fe_error_tenant (tenant_id),
+  KEY idx_fe_error_level (level),
+  KEY idx_fe_error_create_time (create_time),
+  KEY idx_fe_error_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='前端错误日志表';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================
