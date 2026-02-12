@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>cloudflow-common</artifactId>
+        <groupId>com.cloudflow</groupId>
+        <version>1.0.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cloudflow-common-security</artifactId>
+    <description>CloudFlow 公共安全模块 - JWT、TokenService、@Inner 注解、SecurityUtils</description>
+
+    <dependencies>
+        <!-- 依赖 redis 模块（TokenService 需要 RedisCache） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-redis</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Web（provided，InnerAspect 需要 HttpServletRequest） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JWT -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+        </dependency>
+
+        <!-- JAXB（Java 17 需要，JWT 依赖） -->
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

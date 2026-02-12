@@ -12,86 +12,61 @@
     <artifactId>cloudflow-service-oa</artifactId>
 
     <dependencies>
-        <!-- Nacos Discovery -->
+        <!-- Nacos 服务发现 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
-        
-        <!-- Nacos Config -->
+        <!-- Nacos 配置中心 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
-        
-        <!-- OpenFeign for remote calls -->
+
+        <!-- OpenFeign 远程调用 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
-        
-        <!-- Load Balancer (required by OpenFeign) -->
+        <!-- 负载均衡（OpenFeign 需要） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
-        
+
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        
-        <!-- Spring Boot Redis -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
-        </dependency>
-        
         <!-- Spring Boot Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        
         <!-- Spring Boot WebSocket -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
-        
-        <!-- MySQL Driver -->
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.33</version>
-        </dependency>
-        
-        <!-- MyBatis Plus -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
-            <version>${mybatis-plus.version}</version>
-        </dependency>
-        
-        <!-- Common Module -->
+
+        <!-- 公共安全模块（JWT、TokenService、SecurityUtils、@Inner） -->
+        <!-- 传递依赖：common-security -> common-redis -> common-core -->
         <dependency>
             <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common</artifactId>
-            <version>${project.version}</version>
+            <artifactId>cloudflow-common-security</artifactId>
         </dependency>
-        <!-- TransmittableThreadLocal: 线程池上下文自动传递 -->
+
+        <!-- 公共数据模块（MyBatis-Plus、多租户、数据权限、MySQL 驱动） -->
         <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>transmittable-thread-local</artifactId>
-            <version>2.14.5</version>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-data</artifactId>
         </dependency>
-        
-        <!-- Zxing for QR Code (Asset QR) -->
+
+        <!-- ZXing 二维码（资产二维码） -->
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
-            <version>3.5.3</version>
         </dependency>
     </dependencies>
 

@@ -12,35 +12,38 @@
     <artifactId>cloudflow-gateway</artifactId>
 
     <dependencies>
+        <!-- Nacos 服务发现 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
+        <!-- Nacos 配置中心 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
+        <!-- Spring Cloud Gateway（WebFlux） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
+        <!-- 负载均衡 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
+
+        <!-- 公共安全模块（TokenService 用于 AuthFilter 校验 Token） -->
+        <!-- 传递依赖：common-security -> common-redis -> common-core -->
         <dependency>
             <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common</artifactId>
-            <version>${project.version}</version>
+            <artifactId>cloudflow-common-security</artifactId>
         </dependency>
+
+        <!-- 响应式 Redis（Gateway 是 WebFlux，需要 reactive 版本） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
-        </dependency>
-        <!-- 非响应式 Redis，提供 RedisTemplate（AuthFilter -> TokenService -> RedisCache 需要） -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
     </dependencies>
 

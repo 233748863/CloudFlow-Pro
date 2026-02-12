@@ -22,14 +22,25 @@
         <spring-boot.version>3.2.4</spring-boot.version>
         <spring-cloud.version>2023.0.1</spring-cloud.version>
         <spring-cloud-alibaba.version>2023.0.1.0</spring-cloud-alibaba.version>
+
+        <!-- 第三方依赖版本统一管理 -->
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <hutool.version>5.8.26</hutool.version>
         <lombok.version>1.18.30</lombok.version>
         <knife4j.version>4.5.0</knife4j.version>
+        <mysql.version>8.0.33</mysql.version>
+        <redisson.version>3.27.0</redisson.version>
+        <jjwt.version>0.9.1</jjwt.version>
+        <jaxb-api.version>2.3.1</jaxb-api.version>
+        <ttl.version>2.14.5</ttl.version>
+        <zxing.version>3.5.3</zxing.version>
+        <groovy.version>3.0.19</groovy.version>
+        <httpclient5.version>5.2.1</httpclient5.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- ==================== Spring 框架 BOM ==================== -->
             <!-- Spring Boot Dependencies -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -54,26 +65,106 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            
-            <!-- Common Module -->
+
+            <!-- ==================== 内部模块版本管理 ==================== -->
             <dependency>
                 <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common</artifactId>
+                <artifactId>cloudflow-common-core</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-data</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- ==================== 第三方依赖版本管理 ==================== -->
+            <!-- Hutool 工具集 -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+
+            <!-- MyBatis-Plus -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- MySQL 驱动 -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${mysql.version}</version>
+            </dependency>
+
+            <!-- Redisson 分布式锁 -->
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+
+            <!-- JWT -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <!-- JAXB（Java 17 兼容） -->
+            <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>${jaxb-api.version}</version>
             </dependency>
 
             <!-- TransmittableThreadLocal: 线程池上下文自动传递 -->
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>transmittable-thread-local</artifactId>
-                <version>2.14.5</version>
+                <version>${ttl.version}</version>
             </dependency>
 
-            <!-- Knife4j -->
+            <!-- Knife4j OpenAPI 文档 -->
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
                 <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
                 <version>${knife4j.version}</version>
+            </dependency>
+
+            <!-- ZXing 二维码 -->
+            <dependency>
+                <groupId>com.google.zxing</groupId>
+                <artifactId>core</artifactId>
+                <version>${zxing.version}</version>
+            </dependency>
+
+            <!-- Groovy 脚本引擎 -->
+            <dependency>
+                <groupId>org.codehaus.groovy</groupId>
+                <artifactId>groovy-all</artifactId>
+                <version>${groovy.version}</version>
+                <type>pom</type>
+            </dependency>
+
+            <!-- Apache HttpClient5 -->
+            <dependency>
+                <groupId>org.apache.httpcomponents.client5</groupId>
+                <artifactId>httpclient5</artifactId>
+                <version>${httpclient5.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

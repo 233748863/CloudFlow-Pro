@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>cloudflow-common</artifactId>
+        <groupId>com.cloudflow</groupId>
+        <version>1.0.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cloudflow-common-redis</artifactId>
+    <description>CloudFlow 公共 Redis 模块 - RedisCache、RedisStream、Redisson、缓存管理</description>
+
+    <dependencies>
+        <!-- 依赖 core 模块（UserContext、常量等） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-core</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Redis -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Redisson 分布式锁 -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-boot-starter</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -12,40 +12,33 @@
     <artifactId>cloudflow-auth</artifactId>
 
     <dependencies>
+        <!-- Nacos 服务发现 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
+        <!-- Nacos 配置中心 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
+        <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- 公共安全模块（JWT、TokenService、SecurityUtils） -->
+        <!-- 传递依赖：common-security -> common-redis -> common-core -->
         <dependency>
             <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common</artifactId>
-            <version>${project.version}</version>
+            <artifactId>cloudflow-common-security</artifactId>
         </dependency>
-        <!-- TransmittableThreadLocal: 线程池上下文自动传递 -->
+
+        <!-- 公共数据模块（MyBatis-Plus、多租户、MySQL 驱动） -->
         <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>transmittable-thread-local</artifactId>
-            <version>2.14.5</version>
-        </dependency>
-        
-        <!-- DB -->
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.33</version>
-        </dependency>
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
-            <version>${mybatis-plus.version}</version>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-data</artifactId>
         </dependency>
     </dependencies>
 

@@ -2,6 +2,10 @@ package com.cloudflow.common.core.utils;
 
 import com.cloudflow.common.core.context.UserContext;
 
+/**
+ * 安全工具类 - 提供当前登录用户信息的便捷访问方法
+ * 该类属于 core 模块，因为它只依赖 UserContext，不涉及 JWT/Token 等安全组件
+ */
 public class SecurityUtils {
     
     /**
