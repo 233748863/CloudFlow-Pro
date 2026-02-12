@@ -97,11 +97,11 @@
    - 代码: `// TODO: 实现牺牲策略（例如中断线程、释放锁等）`
    - 影响: 死锁问题无法自动恢复
 
-5. **管理员权限判断简化**
+5. ✅ **管理员权限判断简化** (已完成 2026-02-12)
    - 位置: `WorkflowPermissionService.java`
-   - 问题: 管理员判断逻辑过于简单（仅判断userId==1）
-   - 代码: `// TODO: 实际应查询 sys_user_role 表判断是否有管理员角色`
-   - 影响: 权限控制不够灵活
+   - 状态: 已优化,通过查询sys_user_role和sys_role表动态判断
+   - 实现: 支持roleKey为'admin'或'administrator'的角色
+   - 提交: commit 4344508
 
 #### 🟢 P2 - 低优先级
 
@@ -344,7 +344,7 @@
 
 ## 八、实施进度更新（2026-02-12）
 
-### 🎉 已完成的功能补全（2026年2月12日）
+### 🎉 已完成的功能补全（2026年2月12日上午）
 
 #### 1. ✅ 前端API方法补全
 **文件**: `cloudflow-frontend/src/services/api/workflow.ts`
@@ -452,6 +452,57 @@
 - 动态按钮文本和样式
 - 自动刷新机制（操作后重新获取数据）
 
+### 🎉 任务统计和分组API接口实现（2026年2月12日下午）
+
+#### 实施时间
+2026年2月12日 下午5:54
+
+#### 实施内容
+
+##### 1. ✅ 后端接口添加
+**文件**: `cloudflow-backend/cloudflow-service-workflow/src/main/java/com/cloudflow/workflow/controller/WorkflowController.java`
+
+新增REST接口：
+- `GET /workflow/tasks/statistics` - 获取任务统计详情
+  - 支持参数：userId（可选）、startTime（可选）、endTime（可选）
+  - 返回：按时间段、状态、流程类型、处理人的统计数据
+  - 包含：平均处理时长、完成率等指标
+
+- `GET /workflow/tasks/groups` - 获取任务分组信息
+  - 支持参数：userId（可选）
+  - 返回：按流程类型、状态、优先级、处理人等维度的分组数据
+
+##### 2. ✅ 前端API方法实现
+**文件**: `cloudflow-frontend/src/services/api/workflow.ts`
+
+新增API调用方法：
+```typescript
+// 获取任务统计详情
+getTaskStatistics(params?: {
+  userId?: number;
+  startTime?: string;
+  endTime?: string;
+}): Promise<Record<string, any>>
+
+// 获取任务分组信息
+getTaskGroups(userId?: number): Promise<Record<string, any>>
+```
+
+##### 3. ✅ API导出列表更新
+将新增的两个方法添加到默认导出对象中，方便其他组件导入使用。
+
+#### 功能完成度更新
+
+| 功能 | 实施前 | 实施后 | 状态 |
+|------|--------|--------|------|
+| 任务统计详情 | 后端100% / 前端0% | 后端100% / 前端100% | ✅ 完成 |
+| 任务分组信息 | 后端100% / 前端0% | 后端100% / 前端100% | ✅ 完成 |
+
+#### Git提交信息
+- 提交哈希: `3759dfb`
+- 提交信息: "feat: 添加任务统计和分组API接口"
+- 修改文件: 2个文件，新增47行代码
+
 ### 🔄 后续优化建议
 
 虽然核心功能已完成，但仍有优化空间：
@@ -459,11 +510,14 @@
 1. **性能优化**
    - 考虑添加虚拟滚动（如果流程实例很多）
    - 优化API调用频率（防抖/节流）
+   - 添加Redis缓存减少数据库查询压力
 
 2. **功能增强**
    - 添加批量操作（批量暂停/恢复）
    - 添加流程实例搜索和过滤
    - 添加操作历史记录
+   - 在前端实现图表展示（ECharts/Chart.js）
+   - 支持数据导出（Excel/PDF）
 
 3. **用户体验**
    - 添加操作撤销功能
