@@ -26,7 +26,15 @@ export const mapBackendTaskToFrontend = (t: any): Task => ({
   allowEdit: false,
   formId: t.formId || '', 
   formData: t.variables || {},
-  reason: t.variables?.reason || ''
+  reason: t.variables?.reason || '',
+  // 流程步骤进度信息
+  currentStepIndex: t.currentStepIndex,
+  totalSteps: t.totalSteps,
+  previousNodeName: t.previousNodeName,
+  previousOperatorName: t.previousOperatorName,
+  nextNodeName: t.nextNodeName,
+  nextAssigneeName: t.nextAssigneeName,
+  stepsDetail: t.stepsDetail || undefined,
 });
 
 export const mapBackendInstanceToTask = (inst: any): Task => ({
@@ -34,7 +42,7 @@ export const mapBackendInstanceToTask = (inst: any): Task => ({
   processInstanceId: inst.instanceId,
   workflowId: inst.processDefKey,
   workflowName: inst.title,
-  nodeName: inst.status,
+  nodeName: inst.currentNodeName || inst.status,
   applicantId: String(inst.startUserId),
   applicantName: inst.startUserName,
   // 使用后端返回的 assigneeName（已解析为用户名），回退到"待认领"
@@ -46,11 +54,21 @@ export const mapBackendInstanceToTask = (inst: any): Task => ({
     : inst.status === 'COMPLETED' ? TaskStatus.APPROVED 
     : inst.status === 'REVOKED' ? TaskStatus.REJECTED
     : TaskStatus.REJECTED,
+  backendStatus: inst.status, // 保存后端原始状态，用于"我的申请"筛选
   createdTime: inst.startTime,
   allowEdit: false,
   formId: inst.formId || '',
   formData: typeof inst.variables === 'string' ? (() => { try { return JSON.parse(inst.variables); } catch { return {}; } })() : (inst.variables || {}),
-  reason: ''
+  reason: '',
+  // 流程步骤进度信息
+  currentStepIndex: inst.currentStepIndex,
+  totalSteps: inst.totalSteps,
+  currentNodeName: inst.currentNodeName,
+  previousNodeName: inst.previousNodeName,
+  previousOperatorName: inst.previousOperatorName,
+  nextNodeName: inst.nextNodeName,
+  nextAssigneeName: inst.nextAssigneeName,
+  stepsDetail: inst.stepsDetail || undefined,
 });
 
 import { UnifiedTask, WorkTask, WorkTaskStatus } from '../types';

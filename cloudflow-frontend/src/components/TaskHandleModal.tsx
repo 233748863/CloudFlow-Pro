@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Task, TaskStatus, FormDefinition, User, Role } from '../types';
-import { Briefcase, X, GitMerge, AlertTriangle, CornerUpLeft } from 'lucide-react';
+import { Task, TaskStatus, FormDefinition, User, Role, StepDetail } from '../types';
+import { Briefcase, X, GitMerge, AlertTriangle, CornerUpLeft, Clock, CheckCircle2, XCircle, ArrowLeftCircle, UserPlus, Users, GitBranch, ChevronRight } from 'lucide-react';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { getUserList } from '../services/api/auth';
 import { completeTask, readTask, rejectTask, getProcessTrace } from '../services/api/workflow';
@@ -38,6 +38,8 @@ export const TaskHandleModal = ({
   const [rejectTargetNode, setRejectTargetNode] = useState<string>('');
   const [rejectReason, setRejectReason] = useState('');
   const [historyNodes, setHistoryNodes] = useState<Array<{key: string, name: string}>>([]);
+  // 标记历史节点是否已加载完成，区分"未加载"和"加载完成但为空"
+  const [historyNodesLoaded, setHistoryNodesLoaded] = useState(false);
 
   useEffect(() => {
     if (isOpen && task && task.assigneeId === currentUser.id) {
@@ -57,25 +59,39 @@ export const TaskHandleModal = ({
 
   // 加载历史节点用于驳回
   useEffect(() => {
-      if (rejectMode && task && task.processInstanceId && historyNodes.length === 0) {
+      // 使用 historyNodesLoaded 而非 historyNodes.length 判断是否已加载
+      if (rejectMode && task && task.processInstanceId && !historyNodesLoaded) {
           getProcessTrace(task.processInstanceId).then(res => {
-              if (res && res.historyDetails && Array.isArray(res.historyDetails)) {
-                  // 提取已完成的节点作为可驳回目标
-                  const nodes = res.historyDetails
-                      .filter((h: any) => h.nodeKey && h.nodeName)
-                      .map((h: any) => ({ key: h.nodeKey, name: h.nodeName }))
-                      .filter((node: any, index: number, self: any[]) => 
-                          // 去重
-                          index === self.findIndex((n: any) => n.key === node.key)
-                      );
+              if (res) {
+                  let nodes: Array<{key: string, name: string}> = [];
+                  
+                  // 从已完成的历史节点中提取可驳回目标
+                  if (res.historyDetails && Array.isArray(res.historyDetails)) {
+                      nodes = res.historyDetails
+                          .filter((h: any) => h.nodeKey && h.nodeName)
+                          .map((h: any) => ({ key: h.nodeKey, name: h.nodeName }))
+                          .filter((node: any, index: number, self: any[]) => 
+                              // 去重
+                              index === self.findIndex((n: any) => n.key === node.key)
+                          );
+                  }
+                  
+                  // 如果没有历史节点（第一个审批节点），添加"发起人"作为默认驳回目标
+                  if (nodes.length === 0) {
+                      nodes = [{ key: 'start', name: '发起人（重新提交）' }];
+                  }
+                  
                   setHistoryNodes(nodes);
               }
+              // 无论结果如何，标记为已加载
+              setHistoryNodesLoaded(true);
           }).catch(err => {
               console.error('加载历史节点失败:', err);
               toast.error('加载历史节点失败');
+              setHistoryNodesLoaded(true);
           });
       }
-  }, [rejectMode, task, historyNodes.length]);
+  }, [rejectMode, task, historyNodesLoaded]);
 
   // 弹窗打开或任务切换时，重置所有子界面状态
   useEffect(() => {
@@ -87,6 +103,7 @@ export const TaskHandleModal = ({
           setRejectTargetNode('');
           setRejectReason('');
           setHistoryNodes([]);
+          setHistoryNodesLoaded(false);
           setComment('');
           setConfirmAction(null);
       }
@@ -232,7 +249,7 @@ export const TaskHandleModal = ({
                         onClick={() => setActiveTab('trace')}
                         className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${activeTab === 'trace' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                       >
-                          <GitMerge size={12}/> 流程图
+                          <GitMerge size={12}/> 审批记录
                       </button>
                   </div>
               )}
@@ -264,7 +281,7 @@ export const TaskHandleModal = ({
                         选择驳回到哪个节点：
                       </p>
                       
-                      {historyNodes.length === 0 ? (
+                      {!historyNodesLoaded ? (
                         <div className="text-center text-slate-400 py-4">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto mb-2"></div>
                           加载历史节点中...
@@ -339,15 +356,212 @@ export const TaskHandleModal = ({
                     </div>
                 ) : (
                     <>
-                    <div className="bg-blue-50 p-3 rounded border border-blue-100 text-sm grid grid-cols-2 gap-2">
-                        <div>申请人: <b>{task.applicantName}</b></div>
-                        <div>当前状态: <b>{task.status}</b></div>
-                        <div className="col-span-2">业务摘要: {task.reason}</div>
+                    {/* 基本信息区域 - 完整展示任务数据 */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm space-y-3">
+                        {/* 第一行：流程名称 + 状态 */}
+                        <div className="flex justify-between items-center">
+                            <h4 className="font-bold text-slate-800 text-base">{task.workflowName}</h4>
+                            {(() => {
+                                // 状态中文映射及样式
+                                const statusMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+                                    [TaskStatus.PENDING]: { label: '待处理', color: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20', icon: <Clock size={12} /> },
+                                    [TaskStatus.APPROVED]: { label: '已通过', color: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20', icon: <CheckCircle2 size={12} /> },
+                                    [TaskStatus.REJECTED]: { label: '已拒绝', color: 'bg-red-50 text-red-700 ring-red-600/20', icon: <XCircle size={12} /> },
+                                    [TaskStatus.RETURNED]: { label: '已退回', color: 'bg-yellow-50 text-yellow-700 ring-yellow-600/20', icon: <ArrowLeftCircle size={12} /> },
+                                    [TaskStatus.DELEGATED]: { label: '已转办', color: 'bg-purple-50 text-purple-700 ring-purple-600/20', icon: <UserPlus size={12} /> },
+                                    [TaskStatus.TIMED_OUT]: { label: '已超时', color: 'bg-orange-50 text-orange-700 ring-orange-600/20', icon: <AlertTriangle size={12} /> },
+                                };
+                                const s = statusMap[task.status] || { label: task.status, color: 'bg-slate-50 text-slate-700 ring-slate-600/20', icon: null };
+                                return (
+                                    <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset ${s.color}`}>
+                                        {s.icon} {s.label}
+                                    </span>
+                                );
+                            })()}
+                        </div>
+
+                        {/* 详细信息网格 */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-500">申请人</span>
+                                <span className="font-semibold text-slate-700">{task.applicantName}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-500">当前节点</span>
+                                <span className="font-semibold text-slate-700">{task.nodeName || task.currentNodeName || '-'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-500">当前处理人</span>
+                                <span className="font-semibold text-slate-700">{task.assigneeName || task.assigneeId || '待认领'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-500">创建时间</span>
+                                <span className="text-slate-600">{task.createdTime ? new Date(task.createdTime).toLocaleString() : '-'}</span>
+                            </div>
+                            {task.dueDate && (
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-500">截止时间</span>
+                                    <span className="text-orange-600 font-medium">{new Date(task.dueDate).toLocaleString()}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 业务摘要 - 智能提取 */}
+                        {(() => {
+                            // 优先使用 reason，否则从 formData 中提取摘要
+                            const summary = task.reason 
+                                || (task.formData && Object.keys(task.formData).length > 0
+                                    ? Object.entries(task.formData)
+                                        .filter(([k]) => !['formId', 'processDefKey', 'startUserId'].includes(k))
+                                        .slice(0, 3)
+                                        .map(([k, v]) => `${v}`)
+                                        .join(' / ')
+                                    : '');
+                            return summary ? (
+                                <div className="text-xs text-slate-600 bg-white/60 p-2 rounded border border-blue-100/50">
+                                    <span className="text-slate-400">业务摘要: </span>{summary}
+                                </div>
+                            ) : null;
+                        })()}
                     </div>
+
+                    {/* 流程进度信息 */}
+                    {task.totalSteps && task.totalSteps > 0 && (
+                        <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/50">
+                            {/* 步骤进度条 */}
+                            <div className="flex items-center justify-between text-xs mb-1.5">
+                                <span className="text-slate-500 font-medium">流程进度</span>
+                                <span className="text-indigo-600 font-semibold">
+                                    {task.currentStepIndex || '-'} / {task.totalSteps}
+                                </span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-1.5 mb-3">
+                                <div
+                                    className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500"
+                                    style={{ width: `${task.currentStepIndex ? (task.currentStepIndex / task.totalSteps) * 100 : 0}%` }}
+                                />
+                            </div>
+
+                            {/* 步骤节点详情 */}
+                            {task.stepsDetail && task.stepsDetail.length > 0 ? (
+                                <div className="flex items-start gap-0 overflow-x-auto pb-1 -mx-1 px-1">
+                                    {task.stepsDetail.map((step: StepDetail, idx: number) => {
+                                        const isCompleted = step.status === 'completed';
+                                        const isActive = step.status === 'active';
+                                        const dotClass = isCompleted
+                                            ? 'bg-emerald-500 ring-emerald-100'
+                                            : isActive
+                                                ? 'bg-indigo-500 ring-indigo-100 animate-pulse'
+                                                : 'bg-slate-300 ring-slate-100';
+                                        const lineClass = isCompleted ? 'bg-emerald-400' : 'bg-slate-200';
+
+                                        return (
+                                            <div key={step.nodeKey + '-' + idx} className="flex items-start flex-shrink-0">
+                                                <div className="flex flex-col items-center min-w-[56px] max-w-[72px]">
+                                                    <div className={`w-3 h-3 rounded-full ring-2 ${dotClass} flex-shrink-0`} />
+                                                    <span className={`text-[9px] mt-1 text-center leading-tight line-clamp-2 ${
+                                                        isActive ? 'text-indigo-600 font-semibold' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
+                                                    }`} title={step.nodeTitle}>
+                                                        {step.nodeTitle}
+                                                    </span>
+                                                    <span className={`text-[8px] mt-0.5 text-center leading-tight truncate max-w-full ${
+                                                        isActive ? 'text-indigo-500' : isCompleted ? 'text-emerald-500' : 'text-slate-400'
+                                                    }`}>
+                                                        {isCompleted && step.operatorName ? step.operatorName : step.approverDescription}
+                                                    </span>
+                                                    {step.signType && (
+                                                        <span className="flex items-center gap-0.5 text-[7px] text-amber-600 bg-amber-50 px-1 rounded mt-0.5">
+                                                            <Users size={7} />
+                                                            {step.signType === 'ALL' ? '全签' : step.signType === 'ANY' ? '或签' : `${step.passPercent}%`}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {idx < task.stepsDetail!.length - 1 && (
+                                                    <div className={`h-[2px] w-4 mt-[5px] flex-shrink-0 ${lineClass}`} />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                /* 无 stepsDetail 时显示简单的上一步/当前/下一步 */
+                                <div className="flex items-center text-[10px] text-slate-400 gap-1">
+                                    {task.previousNodeName && (
+                                        <span className="truncate max-w-[40%]" title={`上一步: ${task.previousNodeName}`}>
+                                            {task.previousOperatorName || task.previousNodeName}
+                                        </span>
+                                    )}
+                                    <ChevronRight size={10} className="text-slate-300 flex-shrink-0" />
+                                    <span className="text-indigo-600 font-medium truncate max-w-[30%]">
+                                        {task.nodeName || task.currentNodeName || '当前'}
+                                    </span>
+                                    {task.nextNodeName && (
+                                        <>
+                                            <ChevronRight size={10} className="text-slate-300 flex-shrink-0" />
+                                            <span className="truncate max-w-[30%]">{task.nextNodeName}</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     
-                    {currentFormDef && task.formData && (
-                        <div className="border border-slate-100 rounded p-3">
+                    {/* 表单数据展示 - 有表单定义时用 DynamicFormViewer，否则直接展示 formData */}
+                    {currentFormDef && task.formData ? (
+                        <div className="border border-slate-100 rounded-lg p-3">
                             <DynamicFormViewer formDef={currentFormDef} data={task.formData}/>
+                        </div>
+                    ) : task.formData && Object.keys(task.formData).length > 0 && (
+                        <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/30">
+                            <h4 className="text-xs font-bold text-slate-500 mb-3">业务数据</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                {Object.entries(task.formData)
+                                    .filter(([key]) => {
+                                        // 过滤掉系统内部字段，只展示业务字段
+                                        const systemKeys = ['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId'];
+                                        return !systemKeys.includes(key);
+                                    })
+                                    .map(([key, value]) => {
+                                        // 字段名中文映射（常见业务字段）
+                                        const labelMap: Record<string, string> = {
+                                            payeeName: '收款方名称',
+                                            bankAccount: '银行账号',
+                                            amount: '付款金额',
+                                            contractNo: '合同编号',
+                                            reason: '申请原因',
+                                            days: '请假天数',
+                                            startDate: '开始日期',
+                                            endDate: '结束日期',
+                                            leaveType: '请假类型',
+                                            department: '部门',
+                                            description: '说明',
+                                            remark: '备注',
+                                            title: '标题',
+                                            category: '类别',
+                                            urgency: '紧急程度',
+                                            totalAmount: '总金额',
+                                            invoiceCount: '发票数量',
+                                            expenseType: '费用类型',
+                                            projectName: '项目名称',
+                                        };
+                                        const label = labelMap[key] || key;
+                                        // 格式化显示值
+                                        const displayValue = value === null || value === undefined ? '-'
+                                            : typeof value === 'number' ? value.toLocaleString()
+                                            : typeof value === 'boolean' ? (value ? '是' : '否')
+                                            : String(value) || '-';
+                                        
+                                        return (
+                                            <div key={key} className="bg-white p-2.5 rounded-lg border border-slate-100">
+                                                <div className="text-[10px] text-slate-400 mb-1">{label}</div>
+                                                <div className="text-sm font-medium text-slate-700 truncate" title={String(displayValue)}>
+                                                    {displayValue}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                }
+                            </div>
                         </div>
                     )}
 

@@ -88,23 +88,89 @@ export async function getProcessTrace(instanceId: string): Promise<ProcessTrace>
 }
 
 /**
- * 获取我的申请列表
+ * 获取我的申请列表（支持分页和条件查询）
  */
-export async function getMyInstances(): Promise<ProcessInstance[]> {
-  logApiCall('GET', '/workflow/my-instances');
-  return request.get('/workflow/my-instances').then(extractList);
+export async function getMyInstances(params?: {
+  pageNum?: number;
+  pageSize?: number;
+  status?: string;         // RUNNING / COMPLETED / REJECTED / REVOKED
+  keyword?: string;        // 按标题/流程编号模糊搜索
+  processDefKey?: string;  // 流程类型筛选
+  startTimeFrom?: string;  // 开始时间范围（起），格式 yyyy-MM-dd
+  startTimeTo?: string;    // 开始时间范围（止），格式 yyyy-MM-dd
+  priority?: string;       // 优先级筛选：URGENT / HIGH / NORMAL / LOW
+  processNo?: string;      // 流程编号搜索
+  startUserName?: string;  // 申请人姓名模糊搜索
+}): Promise<any> {
+  logApiCall('GET', '/workflow/my-instances', params);
+  // 将筛选条件放到 params[xxx] 格式，匹配后端 PageQuery.params Map
+  const query: Record<string, any> = {
+    pageNum: params?.pageNum || 1,
+    pageSize: params?.pageSize || 20,
+  };
+  if (params?.status) {
+    query['params[status]'] = params.status;
+  }
+  if (params?.keyword) {
+    query['params[keyword]'] = params.keyword;
+  }
+  if (params?.processDefKey) {
+    query['params[processDefKey]'] = params.processDefKey;
+  }
+  if (params?.startTimeFrom) {
+    query['params[startTimeFrom]'] = params.startTimeFrom;
+  }
+  if (params?.startTimeTo) {
+    query['params[startTimeTo]'] = params.startTimeTo;
+  }
+  if (params?.priority) {
+    query['params[priority]'] = params.priority;
+  }
+  if (params?.processNo) {
+    query['params[processNo]'] = params.processNo;
+  }
+  if (params?.startUserName) {
+    query['params[startUserName]'] = params.startUserName;
+  }
+  return request.get('/workflow/my-instances', { params: query });
 }
 
 // ==================== 任务相关 API ====================
 
 /**
- * 获取待办任务列表
+ * 获取待办任务列表（支持分页和条件查询）
  * 注意：userId 参数被后端忽略（使用上下文中的当前用户）
- * 保留此参数是为了向后兼容，或未来支持管理员查看他人任务
  */
-export async function getTodoTasks(): Promise<Task[]> {
-  logApiCall('GET', '/workflow/todo');
-  return request.get('/workflow/todo').then(extractList);
+export async function getTodoTasks(params?: {
+  pageNum?: number;
+  pageSize?: number;
+  keyword?: string;        // 按流程标题/编号模糊搜索
+  processDefKey?: string;  // 流程类型筛选
+  startTimeFrom?: string;  // 创建时间范围（起），格式 yyyy-MM-dd
+  startTimeTo?: string;    // 创建时间范围（止），格式 yyyy-MM-dd
+  startUserName?: string;  // 申请人姓名模糊搜索
+}): Promise<any> {
+  logApiCall('GET', '/workflow/todo', params);
+  const query: Record<string, any> = {
+    pageNum: params?.pageNum || 1,
+    pageSize: params?.pageSize || 999,
+  };
+  if (params?.keyword) {
+    query['params[keyword]'] = params.keyword;
+  }
+  if (params?.processDefKey) {
+    query['params[processDefKey]'] = params.processDefKey;
+  }
+  if (params?.startTimeFrom) {
+    query['params[startTimeFrom]'] = params.startTimeFrom;
+  }
+  if (params?.startTimeTo) {
+    query['params[startTimeTo]'] = params.startTimeTo;
+  }
+  if (params?.startUserName) {
+    query['params[startUserName]'] = params.startUserName;
+  }
+  return request.get('/workflow/todo', { params: query });
 }
 
 /**

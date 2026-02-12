@@ -94,6 +94,62 @@ public class WfProcessInstance implements Serializable {
     @TableField(exist = false)
     private String assigneeName;
 
+    /** 当前节点名称 (非持久化) */
+    @TableField(exist = false)
+    private String currentNodeName;
+
+    /** 当前步骤序号 (从1开始，非持久化) */
+    @TableField(exist = false)
+    private Integer currentStepIndex;
+
+    /** 总步骤数 (非持久化) */
+    @TableField(exist = false)
+    private Integer totalSteps;
+
+    /** 上一步节点名称 (非持久化) */
+    @TableField(exist = false)
+    private String previousNodeName;
+
+    /** 上一步处理人姓名 (非持久化) */
+    @TableField(exist = false)
+    private String previousOperatorName;
+
+    /** 下一步节点名称 (非持久化) */
+    @TableField(exist = false)
+    private String nextNodeName;
+
+    /** 下一步处理人描述 (非持久化) */
+    @TableField(exist = false)
+    private String nextAssigneeName;
+
+    /** 流程步骤详情列表 (非持久化，包含每个步骤的审批人分配信息) */
+    @TableField(exist = false)
+    private java.util.List<java.util.Map<String, Object>> stepsDetail;
+
+    public String getCurrentNodeName() { return currentNodeName; }
+    public void setCurrentNodeName(String currentNodeName) { this.currentNodeName = currentNodeName; }
+
+    public Integer getCurrentStepIndex() { return currentStepIndex; }
+    public void setCurrentStepIndex(Integer currentStepIndex) { this.currentStepIndex = currentStepIndex; }
+
+    public Integer getTotalSteps() { return totalSteps; }
+    public void setTotalSteps(Integer totalSteps) { this.totalSteps = totalSteps; }
+
+    public String getPreviousNodeName() { return previousNodeName; }
+    public void setPreviousNodeName(String previousNodeName) { this.previousNodeName = previousNodeName; }
+
+    public String getPreviousOperatorName() { return previousOperatorName; }
+    public void setPreviousOperatorName(String previousOperatorName) { this.previousOperatorName = previousOperatorName; }
+
+    public String getNextNodeName() { return nextNodeName; }
+    public void setNextNodeName(String nextNodeName) { this.nextNodeName = nextNodeName; }
+
+    public String getNextAssigneeName() { return nextAssigneeName; }
+    public void setNextAssigneeName(String nextAssigneeName) { this.nextAssigneeName = nextAssigneeName; }
+
+    public java.util.List<java.util.Map<String, Object>> getStepsDetail() { return stepsDetail; }
+    public void setStepsDetail(java.util.List<java.util.Map<String, Object>> stepsDetail) { this.stepsDetail = stepsDetail; }
+
     public String getVariables() {
         return variables;
     }

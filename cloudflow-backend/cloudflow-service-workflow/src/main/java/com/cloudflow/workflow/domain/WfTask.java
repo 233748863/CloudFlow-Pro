@@ -84,11 +84,60 @@ public class WfTask implements Serializable {
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private Date readTime;
 
+    /** 当前步骤序号 (从1开始，非持久化) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Integer currentStepIndex;
+
+    /** 总步骤数 (非持久化) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Integer totalSteps;
+
+    /** 上一步节点名称 (非持久化) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String previousNodeName;
+
+    /** 上一步处理人姓名 (非持久化) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String previousOperatorName;
+
+    /** 下一步节点名称 (非持久化) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String nextNodeName;
+
+    /** 下一步处理人描述 (非持久化，如角色名或具体用户名) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String nextAssigneeName;
+
+    /** 流程步骤详情列表 (非持久化，JSON序列化后传给前端) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private java.util.List<java.util.Map<String, Object>> stepsDetail;
+
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }
 
     public Date getReadTime() { return readTime; }
     public void setReadTime(Date readTime) { this.readTime = readTime; }
+
+    public Integer getCurrentStepIndex() { return currentStepIndex; }
+    public void setCurrentStepIndex(Integer currentStepIndex) { this.currentStepIndex = currentStepIndex; }
+
+    public Integer getTotalSteps() { return totalSteps; }
+    public void setTotalSteps(Integer totalSteps) { this.totalSteps = totalSteps; }
+
+    public String getPreviousNodeName() { return previousNodeName; }
+    public void setPreviousNodeName(String previousNodeName) { this.previousNodeName = previousNodeName; }
+
+    public String getPreviousOperatorName() { return previousOperatorName; }
+    public void setPreviousOperatorName(String previousOperatorName) { this.previousOperatorName = previousOperatorName; }
+
+    public String getNextNodeName() { return nextNodeName; }
+    public void setNextNodeName(String nextNodeName) { this.nextNodeName = nextNodeName; }
+
+    public String getNextAssigneeName() { return nextAssigneeName; }
+    public void setNextAssigneeName(String nextAssigneeName) { this.nextAssigneeName = nextAssigneeName; }
+
+    public java.util.List<java.util.Map<String, Object>> getStepsDetail() { return stepsDetail; }
+    public void setStepsDetail(java.util.List<java.util.Map<String, Object>> stepsDetail) { this.stepsDetail = stepsDetail; }
 
     public String getProcessDefKey() { return processDefKey; }
     public void setProcessDefKey(String processDefKey) { this.processDefKey = processDefKey; }

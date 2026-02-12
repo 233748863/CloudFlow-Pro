@@ -193,6 +193,11 @@ export interface ProcessDefinitionListItem {
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   createTime: string;
   updateTime: string;
+  // 后端实际返回的字段名（兼容）
+  processKey?: string;
+  processName?: string;
+  definitionId?: string;
+  category?: string;
 }
 
 /**

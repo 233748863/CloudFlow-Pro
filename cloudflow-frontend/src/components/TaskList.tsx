@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Clock, CheckCircle2, AlertTriangle, XCircle, ArrowLeftCircle, Edit3, UserPlus, RotateCcw } from 'lucide-react';
-import { Task, TaskStatus } from '../types';
+import { Clock, CheckCircle2, AlertTriangle, XCircle, ArrowLeftCircle, Edit3, UserPlus, RotateCcw, Ban, ChevronRight, Users, GitBranch, GitMerge } from 'lucide-react';
+import { Task, TaskStatus, StepDetail } from '../types';
 import { recallProcess } from '../services/api/workflow';
 import { toast } from 'sonner';
 
@@ -36,7 +36,18 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
       setRecalling(null);
     }
   };
-  const getStatusBadge = (status: TaskStatus) => {
+  // 根据后端原始状态和前端映射状态生成 badge
+  const getStatusBadge = (status: TaskStatus, task?: Task) => {
+    // 优先根据后端原始状态区分"已撤回"和"已拒绝"
+    if (task?.backendStatus === 'REVOKED') {
+      return (
+        <span className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset ring-amber-600/20">
+          <Ban size={12} />
+          已撤回
+        </span>
+      );
+    }
+    
     switch (status) {
       case TaskStatus.PENDING:
         return (
@@ -136,7 +147,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                     {task.nodeName}
                 </p>
             </div>
-            {getStatusBadge(task.status)}
+            {getStatusBadge(task.status, task)}
           </div>
           
           <div className="space-y-2 mb-4 relative z-10 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
@@ -149,6 +160,178 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                 <span className="text-slate-700">{task.applicantName}</span>
             </div>
           </div>
+
+          {/* 流程步骤进度信息 */}
+          {task.totalSteps && task.totalSteps > 0 && (
+            <div className="mb-4 relative z-10">
+              {/* 步骤进度条 */}
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="text-slate-500">流程进度</span>
+                <span className="text-indigo-600 font-semibold">
+                  {task.currentStepIndex || '-'} / {task.totalSteps}
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-2">
+                <div
+                  className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${task.currentStepIndex ? (task.currentStepIndex / task.totalSteps) * 100 : 0}%` }}
+                />
+              </div>
+
+              {/* 步骤节点详情（带审批人信息，支持并行/条件/会签） */}
+              {task.stepsDetail && task.stepsDetail.length > 0 ? (
+                <div className="flex items-start gap-0 overflow-x-auto pb-1 -mx-1 px-1">
+                  {task.stepsDetail.map((step: StepDetail, idx: number) => {
+                    // 并行/条件网关节点：渲染分支结构
+                    if (step.nodeType === 'PARALLEL' || step.nodeType === 'CONDITION') {
+                      return (
+                        <React.Fragment key={step.nodeKey + '-' + idx}>
+                          <div className="flex flex-col items-center flex-shrink-0">
+                            {/* 网关图标 */}
+                            <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${
+                              step.status === 'completed' ? 'bg-emerald-100 text-emerald-600'
+                                : step.status === 'active' ? 'bg-indigo-100 text-indigo-600'
+                                : 'bg-slate-100 text-slate-400'
+                            }`}>
+                              {step.nodeType === 'PARALLEL' ? <GitBranch size={10} /> : <GitMerge size={10} />}
+                            </div>
+                            <span className={`text-[8px] mt-0.5 text-center leading-tight ${
+                              step.status === 'active' ? 'text-indigo-600 font-semibold' : step.status === 'completed' ? 'text-emerald-600' : 'text-slate-400'
+                            }`}>{step.nodeTitle}</span>
+                            {/* 分支内容 */}
+                            {step.branches && step.branches.length > 0 && (
+                              <div className="flex flex-col gap-0.5 mt-0.5 border-l border-r border-dashed border-slate-200 px-1">
+                                {step.branches.map((branch: StepDetail[], bIdx: number) => (
+                                  <div key={bIdx} className="flex items-start gap-0">
+                                    {branch.map((bStep: StepDetail, bsIdx: number) => {
+                                      const bCompleted = bStep.status === 'completed';
+                                      const bActive = bStep.status === 'active';
+                                      const bDotClass = bCompleted ? 'bg-emerald-500 ring-emerald-100'
+                                        : bActive ? 'bg-indigo-500 ring-indigo-100 animate-pulse' : 'bg-slate-300 ring-slate-100';
+                                      const bLineClass = bCompleted ? 'bg-emerald-400' : 'bg-slate-200';
+                                      return (
+                                        <div key={bStep.nodeKey + '-' + bsIdx} className="flex items-start flex-shrink-0">
+                                          <div className="flex flex-col items-center min-w-[48px] max-w-[64px]">
+                                            <div className={`w-2.5 h-2.5 rounded-full ring-1 ${bDotClass} flex-shrink-0`} />
+                                            <span className={`text-[8px] mt-0.5 text-center leading-tight line-clamp-1 ${
+                                              bActive ? 'text-indigo-600 font-semibold' : bCompleted ? 'text-emerald-600' : 'text-slate-400'
+                                            }`} title={bStep.nodeTitle}>{bStep.nodeTitle}</span>
+                                            <span className={`text-[7px] text-center truncate max-w-full ${
+                                              bActive ? 'text-indigo-500' : bCompleted ? 'text-emerald-500' : 'text-slate-400'
+                                            }`}>{bCompleted && bStep.operatorName ? bStep.operatorName : bStep.approverDescription}</span>
+                                            {/* 会签标识 */}
+                                            {bStep.signType && (
+                                              <span className="text-[6px] text-amber-500 bg-amber-50 px-1 rounded mt-0.5">
+                                                {bStep.signType === 'ALL' ? '全签' : bStep.signType === 'ANY' ? '或签' : `${bStep.passPercent || 0}%`}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {bsIdx < branch.length - 1 && (
+                                            <div className={`h-[2px] w-3 mt-[4px] flex-shrink-0 ${bLineClass}`} />
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {/* 网关后的连接线 */}
+                          {idx < task.stepsDetail!.length - 1 && (
+                            <div className="h-[2px] w-4 mt-[7px] flex-shrink-0 bg-slate-200" />
+                          )}
+                        </React.Fragment>
+                      );
+                    }
+
+                    // 普通审批/人工/发起节点
+                    const isCompleted = step.status === 'completed';
+                    const isActive = step.status === 'active';
+                    const dotClass = isCompleted
+                      ? 'bg-emerald-500 ring-emerald-100'
+                      : isActive
+                        ? 'bg-indigo-500 ring-indigo-100 animate-pulse'
+                        : 'bg-slate-300 ring-slate-100';
+                    const lineClass = isCompleted ? 'bg-emerald-400' : 'bg-slate-200';
+
+                    return (
+                      <div key={step.nodeKey + '-' + idx} className="flex items-start flex-shrink-0">
+                        {/* 节点 */}
+                        <div className="flex flex-col items-center min-w-[56px] max-w-[72px] group/step">
+                          {/* 圆点 */}
+                          <div className={`w-3 h-3 rounded-full ring-2 ${dotClass} flex-shrink-0`} />
+                          {/* 节点标题 */}
+                          <span className={`text-[9px] mt-1 text-center leading-tight line-clamp-2 ${
+                            isActive ? 'text-indigo-600 font-semibold' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
+                          }`} title={step.nodeTitle}>
+                            {step.nodeTitle}
+                          </span>
+                          {/* 审批人信息 */}
+                          <span className={`text-[8px] mt-0.5 text-center leading-tight truncate max-w-full ${
+                            isActive ? 'text-indigo-500' : isCompleted ? 'text-emerald-500' : 'text-slate-400'
+                          }`} title={
+                            isCompleted && step.operatorName
+                              ? `实际处理: ${step.operatorName}`
+                              : `${step.approverTypeLabel}: ${step.approverDescription}${
+                                  step.approverUsers && step.approverUsers.length > 0
+                                    ? ' (' + step.approverUsers.map(u => u.userName).join(', ') + ')'
+                                    : ''
+                                }`
+                          }>
+                            {isCompleted && step.operatorName
+                              ? step.operatorName
+                              : step.approverDescription}
+                          </span>
+                          {/* 会签标识 */}
+                          {step.signType && (
+                            <span className="flex items-center gap-0.5 text-[7px] text-amber-600 bg-amber-50 px-1 rounded mt-0.5" title={
+                              step.signType === 'ALL' ? '会签-全部同意' : step.signType === 'ANY' ? '会签-任一同意' : `会签-${step.passPercent || 0}%通过`
+                            }>
+                              <Users size={7} />
+                              {step.signType === 'ALL' ? '全签' : step.signType === 'ANY' ? '或签' : `${step.passPercent}%`}
+                            </span>
+                          )}
+                          {/* 多人审批标识（非会签时显示） */}
+                          {!step.signType && step.approverUsers && step.approverUsers.length > 1 && (
+                            <span className="flex items-center gap-0.5 text-[7px] text-slate-400 mt-0.5">
+                              <Users size={8} />
+                              {step.approverUsers.length}人
+                            </span>
+                          )}
+                        </div>
+                        {/* 连接线（最后一个节点不显示） */}
+                        {idx < task.stepsDetail!.length - 1 && (
+                          <div className={`h-[2px] w-4 mt-[5px] flex-shrink-0 ${lineClass}`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* 回退：无 stepsDetail 时显示简单的上一步/下一步 */
+                <div className="flex items-center text-[10px] text-slate-400 gap-1">
+                  {task.previousNodeName && (
+                    <span className="truncate max-w-[40%]" title={`上一步: ${task.previousNodeName}${task.previousOperatorName ? ' (' + task.previousOperatorName + ')' : ''}`}>
+                      {task.previousOperatorName || task.previousNodeName}
+                    </span>
+                  )}
+                  <ChevronRight size={10} className="text-slate-300 flex-shrink-0" />
+                  <span className="text-indigo-600 font-medium truncate max-w-[30%]" title={task.nodeName || task.currentNodeName}>
+                    {task.nodeName || task.currentNodeName || '当前'}
+                  </span>
+                  {task.nextNodeName && (
+                    <>
+                      <ChevronRight size={10} className="text-slate-300 flex-shrink-0" />
+                      <span className="truncate max-w-[30%]" title={`下一步: ${task.nextNodeName}${task.nextAssigneeName ? ' (' + task.nextAssigneeName + ')' : ''}`}>
+                        {task.nextNodeName}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400 font-medium">
             <span>创建: {new Date(task.createdTime).toLocaleDateString()}</span>

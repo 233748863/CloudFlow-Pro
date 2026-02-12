@@ -153,11 +153,65 @@ export interface Task {
   reason: string;
   
   status: TaskStatus;
+  backendStatus?: string; // 后端原始状态（RUNNING/COMPLETED/REJECTED/REVOKED），用于"我的申请"筛选
   createdTime: string;
   dueDate?: string; // Deadline for the task
   allowEdit: boolean;
   logs?: TaskLog[];
   approvedAmount?: number;
+
+  // 流程步骤进度信息（后端填充的非持久化字段）
+  /** 当前步骤序号（从1开始） */
+  currentStepIndex?: number;
+  /** 总步骤数 */
+  totalSteps?: number;
+  /** 上一步节点名称 */
+  previousNodeName?: string;
+  /** 上一步处理人姓名 */
+  previousOperatorName?: string;
+  /** 下一步节点名称 */
+  nextNodeName?: string;
+  /** 下一步处理人描述 */
+  nextAssigneeName?: string;
+  /** 当前节点名称（用于流程实例） */
+  currentNodeName?: string;
+  /** 流程步骤详情列表（后端 buildStepDetail 构建） */
+  stepsDetail?: StepDetail[];
+}
+
+/**
+ * 流程步骤审批人详情（对应后端 buildStepDetail 返回的 Map）
+ * 支持普通审批节点、会签节点、并行网关节点、条件网关节点
+ */
+export interface StepDetail {
+  /** 节点Key */
+  nodeKey: string;
+  /** 节点标题 */
+  nodeTitle: string;
+  /** 步骤序号（从0开始，0为"发起申请"） */
+  stepIndex: number;
+  /** 节点类型 (START/APPROVAL/MANUAL/PARALLEL/CONDITION) */
+  nodeType?: string;
+  /** 审批人分配类型 (USER/ROLE/DEPT_MANAGER/DIRECT_LEADER/INITIATOR) */
+  approverType: string;
+  /** 分配类型中文标签 (指定人员/按角色/部门经理/直属领导/发起人) */
+  approverTypeLabel: string;
+  /** 审批人描述 (如"张三"、"财务主管"、"部门经理") */
+  approverDescription: string;
+  /** 具体审批人列表 */
+  approverUsers: { userId: number; userName: string }[];
+  /** 步骤状态: completed / active / pending */
+  status: 'completed' | 'active' | 'pending';
+  /** 实际处理人姓名（已完成的步骤才有） */
+  operatorName?: string;
+  /** 会签类型 (ALL-全部同意 / ANY-任一同意 / PERCENT-按比例)，仅会签节点 */
+  signType?: 'ALL' | 'ANY' | 'PERCENT';
+  /** 会签通过百分比，仅 PERCENT 类型 */
+  passPercent?: number;
+  /** 分支策略 (PARALLEL/EXCLUSIVE)，仅网关节点 */
+  branchStrategy?: 'PARALLEL' | 'EXCLUSIVE';
+  /** 分支步骤详情列表，仅网关节点。每个元素是一个分支的步骤数组 */
+  branches?: StepDetail[][];
 }
 
 export interface TaskLog {

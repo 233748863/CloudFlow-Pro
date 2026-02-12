@@ -1,73 +1,127 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Task, TaskStatus, FormDefinition, UnifiedTask, WorkTaskStatus } from '../types';
 import { TaskList } from '../components/TaskList';
 import { TaskHandleModal } from '../components/TaskHandleModal';
 import { TaskBoard } from '../components/TaskBoard';
-import { getTodoTasks, getMyInstances, getFormDefinitions } from '../services/api/workflow';
+import { getTodoTasks, getMyInstances, getFormDefinitions, getProcessDefinitions } from '../services/api/workflow';
 import { getWorkTasks, updateWorkTaskStatus } from '../services/api/workTask';
 import { useAuth } from '../context/AuthContext';
 import { mapBackendTaskToFrontend, mapBackendInstanceToTask, mapTaskToUnified, mapWorkTaskToUnified } from '../utils/mappers';
-import { LayoutList, Kanban, Plus, RefreshCw } from 'lucide-react';
+import { LayoutList, Kanban, RefreshCw, Search, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { EmptyTasks, EmptyError } from '../components/ui/EmptyState';
 import { toast } from 'sonner';
 import { usePolling } from '../hooks/usePolling';
 import { logTask } from '../lib/logger';
 
+// 每页条数
+const PAGE_SIZE = 12;
+
 export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<UnifiedTask[]>([]);
-  const [rawTasks, setRawTasks] = useState<Task[]>([]); // Keep raw process tasks for List view compatibility
+  const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [savedForms, setSavedForms] = useState<FormDefinition[]>([]);
   
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [filterType, setFilterType] = useState<'all' | 'process' | 'work'>('all');
+
+  // 任务中心搜索条件状态
+  const [todoKeyword, setTodoKeyword] = useState('');
+  const [todoSearchInput, setTodoSearchInput] = useState('');
+  const [todoProcessDefKey, setTodoProcessDefKey] = useState('');
+  const [todoStartTimeFrom, setTodoStartTimeFrom] = useState('');
+  const [todoStartTimeTo, setTodoStartTimeTo] = useState('');
+  const [todoStartUserName, setTodoStartUserName] = useState('');
+  const [todoProcessDefOptions, setTodoProcessDefOptions] = useState<{ key: string; name: string }[]>([]);
+
+  // "我的申请"服务端分页和筛选状态
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'RUNNING' | 'COMPLETED' | 'REJECTED' | 'REVOKED'>('ALL');
+  const [keyword, setKeyword] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // 输入框值（回车或点击搜索时才同步到 keyword）
+  const [processDefKey, setProcessDefKey] = useState(''); // 流程类型筛选
+  const [priorityFilter, setPriorityFilter] = useState(''); // 优先级筛选
+  const [startTimeFrom, setStartTimeFrom] = useState(''); // 开始时间范围（起）
+  const [startTimeTo, setStartTimeTo] = useState(''); // 开始时间范围（止）
+  const [processDefOptions, setProcessDefOptions] = useState<{ key: string; name: string }[]>([]); // 流程定义选项
+  const [pageNum, setPageNum] = useState(1);
+  const [total, setTotal] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchTasks = async (showLoading = true) => {
+  const fetchTasks = useCallback(async (showLoading = true) => {
     if (!user) return;
     try {
         if (showLoading) setLoading(true);
         setError(null);
         
-        // 根据页面类型决定调用哪些接口
-        // "我的申请"只需要 getMyInstances（当前用户发起的流程）
-        // "任务中心"需要 getTodoTasks（待办任务）+ getWorkTasks（协作待办）
         let processTasks: Task[] = [];
         let workTaskRes: any[] = [];
 
         if (type === 'applications') {
-            // "我的申请"模式：只查询当前用户发起的流程实例
-            const myInstRes = await getMyInstances();
-            if (Array.isArray(myInstRes)) {
-                processTasks = myInstRes.map(mapBackendInstanceToTask);
+            // "我的申请"模式：服务端分页+条件查询
+            const res = await getMyInstances({
+                pageNum,
+                pageSize: PAGE_SIZE,
+                status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                keyword: keyword || undefined,
+                processDefKey: processDefKey || undefined,
+                priority: priorityFilter || undefined,
+                startTimeFrom: startTimeFrom || undefined,
+                startTimeTo: startTimeTo || undefined,
+            });
+            
+            // 从 PageResult 中提取数据
+            let records: any[] = [];
+            let totalCount = 0;
+            if (res && typeof res === 'object') {
+                records = res.records || res.rows || [];
+                totalCount = res.total || 0;
             }
+            if (Array.isArray(res)) {
+                records = res;
+                totalCount = res.length;
+            }
+            
+            processTasks = records.map(mapBackendInstanceToTask);
+            setTotal(totalCount);
         } else {
-            // "任务中心"模式：查询待办任务和协作待办
+            // "任务中心"模式：支持服务端条件查询
+            const todoParams: any = {};
+            if (todoKeyword) todoParams.keyword = todoKeyword;
+            if (todoProcessDefKey) todoParams.processDefKey = todoProcessDefKey;
+            if (todoStartTimeFrom) todoParams.startTimeFrom = todoStartTimeFrom;
+            if (todoStartTimeTo) todoParams.startTimeTo = todoStartTimeTo;
+            if (todoStartUserName) todoParams.startUserName = todoStartUserName;
+
             const [todoRes, workRes] = await Promise.all([
-                getTodoTasks(),
+                getTodoTasks(Object.keys(todoParams).length > 0 ? todoParams : undefined),
                 getWorkTasks()
             ]);
-            if (Array.isArray(todoRes)) {
-                processTasks = todoRes.map(mapBackendTaskToFrontend);
+            // 兼容 PageResult 和数组两种返回格式
+            let todoList: any[] = [];
+            if (todoRes && typeof todoRes === 'object' && !Array.isArray(todoRes)) {
+                todoList = todoRes.records || todoRes.rows || [];
+            } else if (Array.isArray(todoRes)) {
+                todoList = todoRes;
             }
+            processTasks = todoList.map(mapBackendTaskToFrontend);
             workTaskRes = Array.isArray(workRes) ? workRes : [];
         }
 
-        // 过滤流程任务
+        // 过滤流程任务（仅任务中心需要前端过滤）
         const filteredProcessTasks = processTasks.filter(t => {
             if (type === 'pending') {
-                // 待办任务：只显示分配给当前用户的，或当前用户角色匹配的
                 return t.status === TaskStatus.PENDING && (
                     t.assigneeId === user.id ||
                     (t.assigneeRole === user.role && !t.assigneeId)
                 );
             } else {
-                // 我的申请：已经通过 getMyInstances 按 startUserId 过滤了，直接返回
+                // 我的申请：服务端已过滤，直接返回
                 return true;
             }
         });
@@ -91,10 +145,10 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
         setLoading(false);
         setRefreshing(false);
     }
-  };
+  }, [user, type, pageNum, statusFilter, keyword, processDefKey, priorityFilter, startTimeFrom, startTimeTo, todoKeyword, todoProcessDefKey, todoStartTimeFrom, todoStartTimeTo, todoStartUserName]);
 
-  // 定时刷新任务列表（30秒间隔）
-  const { refresh: pollingRefresh } = usePolling(
+  // 定时刷新（30秒）
+  usePolling(
     () => fetchTasks(false),
     {
       interval: 30000,
@@ -104,26 +158,51 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
     }
   );
 
+  // 初始加载和依赖变化时重新请求
   useEffect(() => {
     fetchTasks();
+  }, [fetchTasks]);
+
+  // 加载流程定义选项（用于流程类型筛选，任务中心和我的申请都需要）
+  useEffect(() => {
+    getProcessDefinitions().then(res => {
+      if (Array.isArray(res)) {
+        // 按 processKey 去重，只保留最新版本
+        // 兼容后端返回的 processKey/key 和 processName/name 两种字段名
+        const seen = new Set<string>();
+        const options: { key: string; name: string }[] = [];
+        for (const def of res) {
+          const defKey = def.processKey || def.key;
+          const defName = def.processName || def.name || defKey;
+          if (defKey && !seen.has(defKey)) {
+            seen.add(defKey);
+            options.push({ key: defKey, name: defName });
+          }
+        }
+        if (type === 'applications') {
+          setProcessDefOptions(options);
+        } else {
+          setTodoProcessDefOptions(options);
+        }
+      }
+    }).catch(err => {
+      console.error('Failed to fetch process definitions:', err);
+    });
+  }, [type]);
+
+  // 加载表单定义（只需一次）
+  useEffect(() => {
     getFormDefinitions().then(res => {
         if(Array.isArray(res)) {
             const mapped = res.map((f: any) => {
                 let fields = [];
                 try {
                     if (typeof f.fieldsJson === 'string') {
-                        // 尝试清理可能存在的转义问题
                         let cleanedJson = f.fieldsJson;
-                        
-                        // 修复常见的转义问题
-                        // 1. 替换错误的反斜杠转义
                         cleanedJson = cleanedJson.replace(/\\/g, '\\\\');
-                        
-                        // 2. 如果上面的修复导致双重转义，尝试原始字符串
                         try {
                             fields = JSON.parse(cleanedJson);
                         } catch {
-                            // 如果清理后的版本失败，尝试原始版本
                             fields = JSON.parse(f.fieldsJson);
                         }
                     } else {
@@ -133,18 +212,14 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     console.warn(`无法解析表单 "${f.formName}" 的 fieldsJson，使用空数组`, e);
                     fields = [];
                 }
-                return {
-                    id: f.formId,
-                    name: f.formName,
-                    fields
-                };
+                return { id: f.formId, name: f.formName, fields };
             });
             setSavedForms(mapped);
         }
     }).catch(err => {
         console.error('Failed to fetch form definitions:', err);
     });
-  }, [user, type]);
+  }, []);
 
   const handleTaskUpdate = () => {
       fetchTasks();
@@ -156,10 +231,84 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
       fetchTasks(false);
   };
 
+  // 筛选条件变更时重置页码
+  const handleStatusChange = (newStatus: typeof statusFilter) => {
+      setStatusFilter(newStatus);
+      setPageNum(1);
+  };
+
+  const handleProcessDefKeyChange = (key: string) => {
+      setProcessDefKey(key);
+      setPageNum(1);
+  };
+
+  const handlePriorityChange = (val: string) => {
+      setPriorityFilter(val);
+      setPageNum(1);
+  };
+
+  const handleTimeRangeChange = (from: string, to: string) => {
+      setStartTimeFrom(from);
+      setStartTimeTo(to);
+      setPageNum(1);
+  };
+
+  // 清除所有筛选条件
+  const handleClearFilters = () => {
+      setStatusFilter('ALL');
+      setKeyword('');
+      setSearchInput('');
+      setProcessDefKey('');
+      setPriorityFilter('');
+      setStartTimeFrom('');
+      setStartTimeTo('');
+      setPageNum(1);
+  };
+
+  // 是否有活跃的筛选条件（我的申请）
+  const hasActiveFilters = statusFilter !== 'ALL' || keyword || processDefKey || priorityFilter || startTimeFrom || startTimeTo;
+
+  // 是否有活跃的筛选条件（任务中心）
+  const hasTodoActiveFilters = todoKeyword || todoProcessDefKey || todoStartTimeFrom || todoStartTimeTo || todoStartUserName;
+
+  // "我的申请"搜索提交
+  const handleSearch = () => {
+      setKeyword(searchInput);
+      setPageNum(1);
+  };
+
+  // "我的申请"回车搜索
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+          handleSearch();
+      }
+  };
+
+  // 任务中心搜索提交
+  const handleTodoSearch = () => {
+      setTodoKeyword(todoSearchInput);
+  };
+
+  // 任务中心回车搜索
+  const handleTodoSearchKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+          handleTodoSearch();
+      }
+  };
+
+  // 清除任务中心所有筛选条件
+  const handleClearTodoFilters = () => {
+      setTodoKeyword('');
+      setTodoSearchInput('');
+      setTodoProcessDefKey('');
+      setTodoStartTimeFrom('');
+      setTodoStartTimeTo('');
+      setTodoStartUserName('');
+  };
+
   const handleTaskMove = async (taskId: string, newStatus: string) => {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
-
       if (task.type === 'WORK') {
           try {
               await updateWorkTaskStatus(taskId, newStatus);
@@ -178,6 +327,9 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
       if (filterType === 'work') return t.type === 'WORK';
       return true;
   });
+
+  // 分页计算
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   if (!user) return null;
 
@@ -211,6 +363,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
   return (
     <div className="space-y-4 h-full flex flex-col">
+        {/* 标题栏 */}
         <div className="flex justify-between items-center shrink-0">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-4">
                 {type === 'pending' ? '任务中心' : '我的申请'}
@@ -233,40 +386,235 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 )}
             </h2>
 
-            {type === 'pending' && (
-                <div className="flex gap-2">
-                     <select 
+            <div className="flex gap-2 items-center">
+                {/* 任务中心的类型筛选 */}
+                {type === 'pending' && (
+                    <select 
                         className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2"
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value as any)}
-                     >
+                    >
                         <option value="all">全部任务</option>
                         <option value="process">流程审批</option>
                         <option value="work">协作待办</option>
-                     </select>
-                     
-                     <button 
-                        onClick={handleRefresh}
-                        disabled={refreshing}
-                        className="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-1"
-                     >
-                        <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-                        刷新
-                     </button>
-                </div>
-            )}
+                    </select>
+                )}
+
+                {/* "我的申请"搜索框 */}
+                {type === 'applications' && (
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="搜索标题/编号..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            onKeyDown={handleSearchKeyDown}
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                        />
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        {searchInput && searchInput !== keyword && (
+                            <button
+                                onClick={handleSearch}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-indigo-600 hover:text-indigo-700"
+                            >
+                                搜索
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                <button 
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-1"
+                >
+                    <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+                    刷新
+                </button>
+            </div>
         </div>
         
+        {/* 任务中心筛选区域 */}
+        {type === 'pending' && (
+            <div className="flex flex-col gap-3 shrink-0">
+                {/* 第一行：搜索框 + 申请人 + 清除筛选 */}
+                <div className="flex items-center gap-3 flex-wrap">
+                    {/* 关键字搜索 */}
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="搜索流程标题/编号..."
+                            value={todoSearchInput}
+                            onChange={(e) => setTodoSearchInput(e.target.value)}
+                            onKeyDown={handleTodoSearchKeyDown}
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                        />
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        {todoSearchInput && todoSearchInput !== todoKeyword && (
+                            <button
+                                onClick={handleTodoSearch}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-indigo-600 hover:text-indigo-700"
+                            >
+                                搜索
+                            </button>
+                        )}
+                    </div>
+
+                    {/* 流程类型筛选 */}
+                    {todoProcessDefOptions.length > 0 && (
+                        <select
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-1.5"
+                            value={todoProcessDefKey}
+                            onChange={(e) => setTodoProcessDefKey(e.target.value)}
+                        >
+                            <option value="">全部流程类型</option>
+                            {todoProcessDefOptions.map(opt => (
+                                <option key={opt.key} value={opt.key}>{opt.name}</option>
+                            ))}
+                        </select>
+                    )}
+
+                    {/* 申请人搜索 */}
+                    <input
+                        type="text"
+                        placeholder="申请人姓名..."
+                        value={todoStartUserName}
+                        onChange={(e) => setTodoStartUserName(e.target.value)}
+                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                    />
+
+                    {/* 时间范围筛选 */}
+                    <div className="flex items-center gap-1.5 text-sm">
+                        <Calendar size={14} className="text-slate-400" />
+                        <input
+                            type="date"
+                            value={todoStartTimeFrom}
+                            onChange={(e) => setTodoStartTimeFrom(e.target.value)}
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                        />
+                        <span className="text-slate-400">至</span>
+                        <input
+                            type="date"
+                            value={todoStartTimeTo}
+                            onChange={(e) => setTodoStartTimeTo(e.target.value)}
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                        />
+                    </div>
+
+                    {/* 清除筛选 */}
+                    {hasTodoActiveFilters && (
+                        <button
+                            onClick={handleClearTodoFilters}
+                            className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                        >
+                            <X size={12} />
+                            清除筛选
+                        </button>
+                    )}
+                </div>
+            </div>
+        )}
+
+        {/* "我的申请"筛选区域 */}
+        {type === 'applications' && (
+            <div className="flex flex-col gap-3 shrink-0">
+                {/* 第一行：状态筛选Tab + 清除筛选 */}
+                <div className="flex items-center gap-3">
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+                        {([
+                            { key: 'ALL', label: '全部', color: '' },
+                            { key: 'RUNNING', label: '进行中', color: 'text-indigo-600' },
+                            { key: 'COMPLETED', label: '已完成', color: 'text-emerald-600' },
+                            { key: 'REJECTED', label: '已拒绝', color: 'text-red-600' },
+                            { key: 'REVOKED', label: '已撤回', color: 'text-amber-600' },
+                        ] as const).map(tab => (
+                            <button
+                                key={tab.key}
+                                onClick={() => handleStatusChange(tab.key)}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                                    statusFilter === tab.key 
+                                        ? 'bg-white shadow text-slate-800' 
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                    {hasActiveFilters && (
+                        <button
+                            onClick={handleClearFilters}
+                            className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                        >
+                            <X size={12} />
+                            清除筛选
+                        </button>
+                    )}
+                </div>
+
+                {/* 第二行：流程类型 + 时间范围 */}
+                <div className="flex items-center gap-3 flex-wrap">
+                    {/* 流程类型筛选 */}
+                    {processDefOptions.length > 0 && (
+                        <select
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-1.5"
+                            value={processDefKey}
+                            onChange={(e) => handleProcessDefKeyChange(e.target.value)}
+                        >
+                            <option value="">全部流程类型</option>
+                            {processDefOptions.map(opt => (
+                                <option key={opt.key} value={opt.key}>{opt.name}</option>
+                            ))}
+                        </select>
+                    )}
+
+                    {/* 优先级筛选 */}
+                    <select
+                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-1.5"
+                        value={priorityFilter}
+                        onChange={(e) => handlePriorityChange(e.target.value)}
+                    >
+                        <option value="">全部优先级</option>
+                        <option value="URGENT">紧急</option>
+                        <option value="HIGH">高</option>
+                        <option value="NORMAL">普通</option>
+                        <option value="LOW">低</option>
+                    </select>
+
+                    {/* 时间范围筛选 */}
+                    <div className="flex items-center gap-1.5 text-sm">
+                        <Calendar size={14} className="text-slate-400" />
+                        <input
+                            type="date"
+                            value={startTimeFrom}
+                            onChange={(e) => handleTimeRangeChange(e.target.value, startTimeTo)}
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                        />
+                        <span className="text-slate-400">至</span>
+                        <input
+                            type="date"
+                            value={startTimeTo}
+                            onChange={(e) => handleTimeRangeChange(startTimeFrom, e.target.value)}
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                        />
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* 内容区域 */}
         <div className="flex-1 overflow-hidden min-h-[400px]">
             {viewMode === 'list' ? (
                  rawTasks.length === 0 && filteredUnifiedTasks.filter(t=>t.type==='WORK').length === 0 ? (
                     <EmptyTasks />
                 ) : (
                     <div className="space-y-8">
-                         {/* Process Tasks */}
+                         {/* 流程任务 */}
                          {(filterType === 'all' || filterType === 'process') && rawTasks.length > 0 && (
                              <div>
-                                 <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">流程审批 ({rawTasks.length})</h3>
+                                 <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                     流程审批 ({type === 'applications' ? `${rawTasks.length} / 共${total}条` : rawTasks.length})
+                                 </h3>
                                  <TaskList 
                                     tasks={rawTasks} 
                                     onTaskClick={(task) => { setSelectedTask(task); setIsModalOpen(true); }}
@@ -276,7 +624,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                              </div>
                          )}
 
-                         {/* Work Tasks (Simple List View - to be implemented inside TaskList or separate) */}
+                         {/* 协作待办 */}
                          {(filterType === 'all' || filterType === 'work') && filteredUnifiedTasks.filter(t=>t.type==='WORK').length > 0 && (
                              <div>
                                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 mt-6">协作待办 ({filteredUnifiedTasks.filter(t=>t.type==='WORK').length})</h3>
@@ -313,6 +661,55 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 />
             )}
         </div>
+
+        {/* "我的申请"分页器 */}
+        {type === 'applications' && total > PAGE_SIZE && (
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 shrink-0">
+                <span className="text-sm text-slate-500">
+                    共 {total} 条，第 {pageNum}/{totalPages} 页
+                </span>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => setPageNum(p => Math.max(1, p - 1))}
+                        disabled={pageNum <= 1}
+                        className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    
+                    {/* 页码按钮 */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        // 计算显示的页码范围
+                        let start = Math.max(1, pageNum - 2);
+                        let end = Math.min(totalPages, start + 4);
+                        start = Math.max(1, end - 4);
+                        const page = start + i;
+                        if (page > totalPages) return null;
+                        return (
+                            <button
+                                key={page}
+                                onClick={() => setPageNum(page)}
+                                className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                                    page === pageNum
+                                        ? 'bg-indigo-600 text-white shadow'
+                                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        );
+                    })}
+                    
+                    <button
+                        onClick={() => setPageNum(p => Math.min(totalPages, p + 1))}
+                        disabled={pageNum >= totalPages}
+                        className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                </div>
+            </div>
+        )}
 
         <TaskHandleModal 
             isOpen={isModalOpen} 

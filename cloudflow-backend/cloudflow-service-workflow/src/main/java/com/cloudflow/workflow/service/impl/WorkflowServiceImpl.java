@@ -1390,6 +1390,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         // 7.D: 记录撤回历史 - 保存撤回操作到历史记录
         WfTaskHistory recallHistory = new WfTaskHistory();
         recallHistory.setHistoryId(UUID.randomUUID().toString());
+        recallHistory.setTaskId("SYSTEM_RECALL_" + instanceId); // 撤回操作不关联具体任务，使用系统占位值
         recallHistory.setInstanceId(instanceId);
         recallHistory.setNodeName("流程撤回");
         recallHistory.setNodeKey("SYSTEM_RECALL");
@@ -1448,10 +1449,87 @@ public class WorkflowServiceImpl implements IWorkflowService {
     public PageResult<WfTask> getTodoTasks(Long userId, PageQuery pageQuery) {
         log.info("[getTodoTasks] 查询待办任务, userId={}, pageNum={}, pageSize={}", userId, pageQuery.getPageNum(), pageQuery.getPageSize());
         
+        // 提取搜索条件
+        String keyword = (String) pageQuery.getParams().get("keyword");
+        String processDefKey = (String) pageQuery.getParams().get("processDefKey");
+        String startTimeFrom = (String) pageQuery.getParams().get("startTimeFrom");
+        String startTimeTo = (String) pageQuery.getParams().get("startTimeTo");
+        String startUserName = (String) pageQuery.getParams().get("startUserName");
+        
+        // 如果有关键字、流程类型或申请人搜索条件，需要先查出符合条件的 instanceId 列表
+        List<String> filteredInstanceIds = null;
+        boolean hasInstanceFilter = StringUtils.hasText(keyword) || StringUtils.hasText(processDefKey) || StringUtils.hasText(startUserName);
+        
+        if (hasInstanceFilter) {
+            LambdaQueryWrapper<WfProcessInstance> instanceWrapper = new LambdaQueryWrapper<>();
+            instanceWrapper.eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode());
+            
+            // 关键字搜索 - 按流程标题或流程编号模糊匹配
+            if (StringUtils.hasText(keyword)) {
+                instanceWrapper.and(w -> w
+                    .like(WfProcessInstance::getTitle, keyword)
+                    .or()
+                    .like(WfProcessInstance::getProcessNo, keyword)
+                );
+            }
+            
+            // 流程类型筛选
+            if (StringUtils.hasText(processDefKey)) {
+                instanceWrapper.eq(WfProcessInstance::getProcessDefKey, processDefKey);
+            }
+            
+            // 申请人姓名模糊搜索
+            if (StringUtils.hasText(startUserName)) {
+                instanceWrapper.like(WfProcessInstance::getStartUserName, startUserName);
+            }
+            
+            instanceWrapper.select(WfProcessInstance::getInstanceId);
+            List<WfProcessInstance> matchedInstances = processInstanceMapper.selectList(instanceWrapper);
+            filteredInstanceIds = matchedInstances.stream()
+                .map(WfProcessInstance::getInstanceId)
+                .collect(java.util.stream.Collectors.toList());
+            
+            // 如果没有匹配的实例，直接返回空结果
+            if (filteredInstanceIds.isEmpty()) {
+                log.info("[getTodoTasks] 搜索条件无匹配实例, 返回空结果");
+                return new PageResult<>(new ArrayList<>(), 0L, (long) pageQuery.getPageNum(), (long) pageQuery.getPageSize());
+            }
+        }
+        
         Page<WfTask> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfTask::getAssignee, userId);
         queryWrapper.eq(WfTask::getStatus, WfTaskStatus.TODO.getCode()); // 只查询待办状态的任务
+        
+        // 关联实例筛选条件
+        if (filteredInstanceIds != null) {
+            queryWrapper.in(WfTask::getInstanceId, filteredInstanceIds);
+        }
+        
+        // 任务创建时间范围筛选
+        if (StringUtils.hasText(startTimeFrom)) {
+            try {
+                Date fromDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(startTimeFrom);
+                queryWrapper.ge(WfTask::getCreateTime, fromDate);
+            } catch (Exception e) {
+                log.warn("[getTodoTasks] 解析开始时间失败: {}", e.getMessage());
+            }
+        }
+        if (StringUtils.hasText(startTimeTo)) {
+            try {
+                Date toDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(startTimeTo);
+                // 设置为当天结束时间
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                cal.setTime(toDate);
+                cal.set(java.util.Calendar.HOUR_OF_DAY, 23);
+                cal.set(java.util.Calendar.MINUTE, 59);
+                cal.set(java.util.Calendar.SECOND, 59);
+                queryWrapper.le(WfTask::getCreateTime, cal.getTime());
+            } catch (Exception e) {
+                log.warn("[getTodoTasks] 解析结束时间失败: {}", e.getMessage());
+            }
+        }
+        
         queryWrapper.orderByDesc(WfTask::getCreateTime);
         
         Page<WfTask> resultPage = taskMapper.selectPage(page, queryWrapper);
@@ -1561,6 +1639,43 @@ public class WorkflowServiceImpl implements IWorkflowService {
                     task.setReadTime(readRecord.getReadTime());
                 } else {
                     task.setIsRead(false);
+                }
+            }
+            
+            // 填充流程步骤信息（当前步骤/总步骤/上一步/下一步）
+            // 按 processDefKey 缓存已解析的步骤列表，避免重复解析
+            Map<String, List<Map<String, String>>> stepsCache = new java.util.HashMap<>();
+            // 批量查询历史记录
+            List<WfTaskHistory> allHistories = taskHistoryMapper.selectList(
+                new LambdaQueryWrapper<WfTaskHistory>()
+                    .in(WfTaskHistory::getInstanceId, instanceIds)
+                    .orderByAsc(WfTaskHistory::getCreateTime)
+            );
+            Map<String, List<WfTaskHistory>> historiesByInstance = allHistories.stream()
+                .collect(java.util.stream.Collectors.groupingBy(WfTaskHistory::getInstanceId));
+            
+            for (WfTask task : tasks) {
+                try {
+                    WfProcessInstance instance = instanceMap.get(task.getInstanceId());
+                    if (instance == null) continue;
+                    
+                    String processKey = instance.getProcessDefKey();
+                    List<Map<String, String>> steps = stepsCache.get(processKey);
+                    if (steps == null) {
+                        WfProcessDefinition def = defMap.get(processKey);
+                        if (def != null && StringUtils.hasText(def.getModelJson())) {
+                            WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                            steps = extractApprovalSteps(root);
+                            stepsCache.put(processKey, steps);
+                        }
+                    }
+                    
+                    if (steps != null && !steps.isEmpty()) {
+                        List<WfTaskHistory> histories = historiesByInstance.getOrDefault(task.getInstanceId(), new ArrayList<>());
+                        enrichTaskStepInfo(task, steps, histories);
+                    }
+                } catch (Exception e) {
+                    log.warn("[getTodoTasks] 填充步骤信息失败, taskId={}: {}", task.getTaskId(), e.getMessage());
                 }
             }
         }
@@ -1870,7 +1985,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfProcessInstance::getStartUserId, userId);
         
-        // 11.D: 筛选条件 - 支持按状态、流程类型、时间范围筛选
+        // 11.D: 筛选条件 - 支持按状态、流程类型、时间范围、关键字筛选
         String status = (String) pageQuery.getParams().get("status");
         if (StringUtils.hasText(status)) {
             queryWrapper.eq(WfProcessInstance::getStatus, status);
@@ -1879,6 +1994,34 @@ public class WorkflowServiceImpl implements IWorkflowService {
         String processDefKey = (String) pageQuery.getParams().get("processDefKey");
         if (StringUtils.hasText(processDefKey)) {
             queryWrapper.eq(WfProcessInstance::getProcessDefKey, processDefKey);
+        }
+        
+        // 关键字搜索 - 按流程标题或流程编号模糊匹配
+        String keyword = (String) pageQuery.getParams().get("keyword");
+        if (StringUtils.hasText(keyword)) {
+            queryWrapper.and(w -> w
+                .like(WfProcessInstance::getTitle, keyword)
+                .or()
+                .like(WfProcessInstance::getProcessNo, keyword)
+            );
+        }
+        
+        // 流程编号精确搜索
+        String processNo = (String) pageQuery.getParams().get("processNo");
+        if (StringUtils.hasText(processNo)) {
+            queryWrapper.like(WfProcessInstance::getProcessNo, processNo);
+        }
+        
+        // 优先级筛选
+        String priority = (String) pageQuery.getParams().get("priority");
+        if (StringUtils.hasText(priority)) {
+            queryWrapper.eq(WfProcessInstance::getPriority, priority);
+        }
+        
+        // 申请人姓名模糊搜索（管理员查看全部申请时使用）
+        String startUserName = (String) pageQuery.getParams().get("startUserName");
+        if (StringUtils.hasText(startUserName)) {
+            queryWrapper.like(WfProcessInstance::getStartUserName, startUserName);
         }
         
         String startTimeFrom = (String) pageQuery.getParams().get("startTimeFrom");
@@ -1978,6 +2121,43 @@ public class WorkflowServiceImpl implements IWorkflowService {
                     } else {
                         instance.setAssigneeName("待认领");
                     }
+                }
+            }
+            
+            // 填充流程步骤信息（当前步骤/总步骤/上一步/下一步）
+            // 按 processDefKey 缓存已解析的步骤列表，避免重复解析
+            Map<String, List<Map<String, String>>> stepsCache = new java.util.HashMap<>();
+            // 批量查询历史记录
+            List<WfTaskHistory> allHistories = taskHistoryMapper.selectList(
+                new LambdaQueryWrapper<WfTaskHistory>()
+                    .in(WfTaskHistory::getInstanceId, instanceIds)
+                    .orderByAsc(WfTaskHistory::getCreateTime)
+            );
+            Map<String, List<WfTaskHistory>> historiesByInstance = allHistories.stream()
+                .collect(java.util.stream.Collectors.groupingBy(WfTaskHistory::getInstanceId));
+            
+            for (WfProcessInstance instance : list) {
+                try {
+                    String processKey = instance.getProcessDefKey();
+                    List<Map<String, String>> steps = stepsCache.get(processKey);
+                    if (steps == null) {
+                        WfProcessDefinition def = defMap.get(processKey);
+                        if (def != null && StringUtils.hasText(def.getModelJson())) {
+                            WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                            steps = extractApprovalSteps(root);
+                            stepsCache.put(processKey, steps);
+                        }
+                    }
+                    
+                    if (steps != null && !steps.isEmpty()) {
+                        List<WfTaskHistory> histories = historiesByInstance.getOrDefault(instance.getInstanceId(), new ArrayList<>());
+                        // 获取当前活动任务（用于定位当前步骤）
+                        List<WfTask> instanceTasks = tasksByInstance.get(instance.getInstanceId());
+                        WfTask currentTask = (instanceTasks != null && !instanceTasks.isEmpty()) ? instanceTasks.get(0) : null;
+                        enrichInstanceStepInfo(instance, steps, histories, currentTask);
+                    }
+                } catch (Exception e) {
+                    log.warn("[getMyInstances] 填充步骤信息失败, instanceId={}: {}", instance.getInstanceId(), e.getMessage());
                 }
             }
         }
@@ -2922,6 +3102,551 @@ public class WorkflowServiceImpl implements IWorkflowService {
         counts.put("myInstanceCount", myInstanceCount != null ? myInstanceCount.intValue() : 0);
         
         return counts;
+    }
+
+    /**
+     * 解析流程定义JSON，提取主线审批节点列表（按顺序）
+     * 支持并行分支和会签节点的树形结构
+     * 返回有序列表: [{nodeKey, nodeTitle, approverType, approverValue, nodeType, signType, passPercent, branchStrategy, branches}]
+     */
+    private List<Map<String, String>> extractApprovalSteps(WfNodeConfig root) {
+        List<Map<String, String>> steps = new ArrayList<>();
+        collectApprovalSteps(root, steps);
+        return steps;
+    }
+
+    /**
+     * 递归收集主线上的审批/人工任务/并行/条件节点
+     * 并行网关和条件网关作为特殊步骤插入，其 branches 字段以 JSON 存储子分支步骤
+     */
+    private void collectApprovalSteps(WfNodeConfig node, List<Map<String, String>> steps) {
+        if (node == null) return;
+
+        if ("PARALLEL".equals(node.getType())) {
+            // 并行网关：插入一个虚拟步骤，branches 以 JSON 存储各分支的步骤列表
+            Map<String, String> step = new HashMap<>();
+            step.put("nodeKey", node.getId());
+            step.put("nodeTitle", node.getTitle() != null ? node.getTitle() : "并行审批");
+            step.put("nodeType", "PARALLEL");
+            step.put("branchStrategy", node.getBranchStrategy() != null ? node.getBranchStrategy() : "PARALLEL");
+            // 收集每个分支的步骤
+            if (node.getBranches() != null && !node.getBranches().isEmpty()) {
+                try {
+                    List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
+                    for (WfNodeConfig branch : node.getBranches()) {
+                        List<Map<String, String>> branchSteps = new ArrayList<>();
+                        collectApprovalSteps(branch, branchSteps);
+                        branchStepsList.add(branchSteps);
+                    }
+                    step.put("branches", objectMapper.writeValueAsString(branchStepsList));
+                } catch (Exception e) {
+                    log.warn("[collectApprovalSteps] 序列化并行分支失败: {}", e.getMessage());
+                    step.put("branches", "[]");
+                }
+            }
+            steps.add(step);
+            // 继续遍历并行网关的 next（汇聚后的节点）
+            collectApprovalSteps(node.getNext(), steps);
+            return;
+        }
+
+        if ("CONDITION".equals(node.getType()) || "GATEWAY".equals(node.getType())) {
+            // 条件网关：插入一个虚拟步骤，branches 以 JSON 存储各条件分支的步骤列表
+            Map<String, String> step = new HashMap<>();
+            step.put("nodeKey", node.getId());
+            step.put("nodeTitle", node.getTitle() != null ? node.getTitle() : "条件分支");
+            step.put("nodeType", "CONDITION");
+            step.put("branchStrategy", "EXCLUSIVE");
+            if (node.getBranches() != null && !node.getBranches().isEmpty()) {
+                try {
+                    List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
+                    for (WfNodeConfig branch : node.getBranches()) {
+                        List<Map<String, String>> branchSteps = new ArrayList<>();
+                        collectApprovalSteps(branch, branchSteps);
+                        branchStepsList.add(branchSteps);
+                    }
+                    step.put("branches", objectMapper.writeValueAsString(branchStepsList));
+                } catch (Exception e) {
+                    log.warn("[collectApprovalSteps] 序列化条件分支失败: {}", e.getMessage());
+                    step.put("branches", "[]");
+                }
+            }
+            steps.add(step);
+            // 继续遍历条件网关的 next
+            collectApprovalSteps(node.getNext(), steps);
+            return;
+        }
+
+        // 审批和人工任务节点作为流程步骤
+        if ("APPROVAL".equals(node.getType()) || "MANUAL".equals(node.getType())) {
+            Map<String, String> step = new HashMap<>();
+            step.put("nodeKey", node.getId());
+            step.put("nodeTitle", node.getTitle());
+            step.put("nodeType", node.getType());
+            step.put("approverType", node.getApproverType());
+            step.put("approverValue", node.getApproverValue());
+            // 会签信息
+            if (node.getSignType() != null && !node.getSignType().isEmpty()) {
+                step.put("signType", node.getSignType());
+                if (node.getPassPercent() != null) {
+                    step.put("passPercent", String.valueOf(node.getPassPercent()));
+                }
+            }
+            steps.add(step);
+        }
+
+        // 递归遍历 next 链
+        collectApprovalSteps(node.getNext(), steps);
+
+        // 对于审批/人工节点自身的 branches（如审批后的条件分支），也收集
+        if (node.getBranches() != null && !"PARALLEL".equals(node.getType())
+                && !"CONDITION".equals(node.getType()) && !"GATEWAY".equals(node.getType())) {
+            for (WfNodeConfig branch : node.getBranches()) {
+                collectApprovalSteps(branch, steps);
+            }
+        }
+    }
+
+    /**
+     * 根据审批人配置解析出可读的处理人描述
+     * 例如: "ROLE:finance_manager" -> "财务主管"
+     */
+    private String resolveAssigneeDescription(String approverType, String approverValue) {
+        if (!StringUtils.hasText(approverType)) return "待定";
+        try {
+            switch (approverType) {
+                case "USER":
+                    if (StringUtils.hasText(approverValue)) {
+                        SysUser user = sysUserMapper.selectById(Long.valueOf(approverValue));
+                        if (user != null) {
+                            return user.getNickName() != null ? user.getNickName() : user.getUserName();
+                        }
+                    }
+                    return "指定用户";
+                case "ROLE":
+                    if (StringUtils.hasText(approverValue)) {
+                        SysRole role = sysRoleMapper.selectOne(
+                            new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, approverValue));
+                        if (role != null) {
+                            return role.getRoleName();
+                        }
+                    }
+                    return "指定角色";
+                case "DEPT_MANAGER":
+                    return "部门经理";
+                case "DIRECT_LEADER":
+                    return "直属领导";
+                default:
+                    return "待定";
+            }
+        } catch (Exception e) {
+            log.warn("[resolveAssigneeDescription] 解析处理人描述失败: {}", e.getMessage());
+            return "待定";
+        }
+    }
+
+    /**
+     * 构建单个步骤的审批人详情信息
+     * 返回包含以下字段的 Map:
+     * - nodeKey: 节点Key
+     * - nodeTitle: 节点标题
+     * - stepIndex: 步骤序号（从1开始）
+     * - nodeType: 节点类型 (APPROVAL/MANUAL/PARALLEL/CONDITION)
+     * - approverType: 审批人分配类型 (USER/ROLE/DEPT_MANAGER/DIRECT_LEADER)
+     * - approverTypeLabel: 分配类型中文标签 (指定人员/按角色/部门经理/直属领导)
+     * - approverDescription: 审批人描述 (如"张三"、"财务主管"、"部门经理")
+     * - approverUsers: 具体审批人列表 [{userId, userName}]（如果能解析出来）
+     * - status: 步骤状态 (completed/active/pending)
+     * - operatorName: 实际处理人姓名（已完成的步骤才有）
+     * - signType: 会签类型 (ALL/ANY/PERCENT)，仅会签节点
+     * - passPercent: 会签通过百分比，仅 PERCENT 类型
+     * - branchStrategy: 分支策略 (PARALLEL/EXCLUSIVE)，仅网关节点
+     * - branches: 分支步骤详情列表 [[StepDetail...], [StepDetail...]]，仅网关节点
+     */
+    private Map<String, Object> buildStepDetail(Map<String, String> step, int index,
+                                                  List<WfTaskHistory> histories, String currentNodeKey) {
+        Map<String, Object> detail = new HashMap<>();
+        String nodeKey = step.get("nodeKey");
+        String nodeType = step.get("nodeType");
+        String approverType = step.get("approverType");
+        String approverValue = step.get("approverValue");
+
+        detail.put("nodeKey", nodeKey);
+        detail.put("nodeTitle", step.get("nodeTitle"));
+        detail.put("stepIndex", index + 1);
+        detail.put("nodeType", nodeType != null ? nodeType : "APPROVAL");
+
+        // 会签信息
+        String signType = step.get("signType");
+        if (StringUtils.hasText(signType)) {
+            detail.put("signType", signType);
+            String passPercent = step.get("passPercent");
+            if (StringUtils.hasText(passPercent)) {
+                detail.put("passPercent", Integer.parseInt(passPercent));
+            }
+        }
+
+        // 并行/条件网关节点：设置分支策略和递归构建分支详情
+        if ("PARALLEL".equals(nodeType) || "CONDITION".equals(nodeType)) {
+            String branchStrategy = step.get("branchStrategy");
+            detail.put("branchStrategy", branchStrategy != null ? branchStrategy : ("PARALLEL".equals(nodeType) ? "PARALLEL" : "EXCLUSIVE"));
+            detail.put("approverType", "");
+            detail.put("approverTypeLabel", "PARALLEL".equals(nodeType) ? "并行审批" : "条件分支");
+            detail.put("approverDescription", "PARALLEL".equals(nodeType) ? "并行审批" : "条件分支");
+            detail.put("approverUsers", new ArrayList<>());
+
+            // 解析 branches JSON，递归构建每个分支的步骤详情
+            String branchesJson = step.get("branches");
+            if (StringUtils.hasText(branchesJson)) {
+                try {
+                    List<List<Map<String, String>>> branchStepsList = objectMapper.readValue(branchesJson, List.class);
+                    List<List<Map<String, Object>>> branchDetails = new ArrayList<>();
+                    for (List<Map<String, String>> branchSteps : branchStepsList) {
+                        List<Map<String, Object>> branchDetail = new ArrayList<>();
+                        for (int bi = 0; bi < branchSteps.size(); bi++) {
+                            branchDetail.add(buildStepDetail(branchSteps.get(bi), bi, histories, currentNodeKey));
+                        }
+                        branchDetails.add(branchDetail);
+                    }
+                    detail.put("branches", branchDetails);
+                } catch (Exception e) {
+                    log.warn("[buildStepDetail] 解析分支步骤失败, nodeKey={}: {}", nodeKey, e.getMessage());
+                    detail.put("branches", new ArrayList<>());
+                }
+            } else {
+                detail.put("branches", new ArrayList<>());
+            }
+
+            // 网关节点状态：检查分支内是否有已完成/活动的节点
+            String gatewayStatus = determineGatewayStatus(detail, currentNodeKey, histories);
+            detail.put("status", gatewayStatus);
+
+            return detail;
+        }
+
+        // 普通审批/人工任务节点
+        detail.put("approverType", approverType != null ? approverType : "");
+        detail.put("approverDescription", resolveAssigneeDescription(approverType, approverValue));
+
+        // 分配类型中文标签
+        String typeLabel = "待定";
+        if (StringUtils.hasText(approverType)) {
+            switch (approverType) {
+                case "USER": typeLabel = "指定人员"; break;
+                case "ROLE": typeLabel = "按角色"; break;
+                case "DEPT_MANAGER": typeLabel = "部门经理"; break;
+                case "DIRECT_LEADER": typeLabel = "直属领导"; break;
+                case "USERS": case "USER_LIST": typeLabel = "指定多人"; break;
+                case "DEPT": typeLabel = "按部门"; break;
+                default: typeLabel = approverType; break;
+            }
+        }
+        // 会签节点追加标签
+        if (StringUtils.hasText(signType)) {
+            switch (signType) {
+                case "ALL": typeLabel += " (会签-全部同意)"; break;
+                case "ANY": typeLabel += " (会签-任一同意)"; break;
+                case "PERCENT": typeLabel += " (会签-按比例)"; break;
+                default: typeLabel += " (会签)"; break;
+            }
+        }
+        detail.put("approverTypeLabel", typeLabel);
+
+        // 解析具体审批人列表
+        List<Map<String, Object>> approverUsers = new ArrayList<>();
+        try {
+            if ("USER".equals(approverType) && StringUtils.hasText(approverValue)) {
+                // 指定单个用户
+                SysUser user = sysUserMapper.selectById(Long.valueOf(approverValue));
+                if (user != null) {
+                    Map<String, Object> u = new HashMap<>();
+                    u.put("userId", user.getUserId());
+                    u.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
+                    approverUsers.add(u);
+                }
+            } else if ("ROLE".equals(approverType) && StringUtils.hasText(approverValue)) {
+                // 按角色 - 查找该角色下的所有用户
+                SysRole role = sysRoleMapper.selectOne(
+                    new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, approverValue));
+                if (role != null) {
+                    List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                        new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
+                    if (userRoles != null) {
+                        // 批量查询用户信息
+                        List<Long> userIds = userRoles.stream()
+                            .map(SysUserRole::getUserId)
+                            .collect(Collectors.toList());
+                        if (!userIds.isEmpty()) {
+                            List<SysUser> users = sysUserMapper.selectBatchIds(userIds);
+                            for (SysUser user : users) {
+                                Map<String, Object> u = new HashMap<>();
+                                u.put("userId", user.getUserId());
+                                u.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
+                                approverUsers.add(u);
+                            }
+                        }
+                    }
+                }
+            } else if (("USERS".equals(approverType) || "USER_LIST".equals(approverType)) && StringUtils.hasText(approverValue)) {
+                // 指定多个用户
+                String[] ids = approverValue.split(",");
+                List<Long> userIds = new ArrayList<>();
+                for (String id : ids) {
+                    try { userIds.add(Long.valueOf(id.trim())); } catch (NumberFormatException ignored) {}
+                }
+                if (!userIds.isEmpty()) {
+                    List<SysUser> users = sysUserMapper.selectBatchIds(userIds);
+                    for (SysUser user : users) {
+                        Map<String, Object> u = new HashMap<>();
+                        u.put("userId", user.getUserId());
+                        u.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
+                        approverUsers.add(u);
+                    }
+                }
+            } else if ("DEPT".equals(approverType) && StringUtils.hasText(approverValue)) {
+                // 按部门 - 查找该部门下的所有用户
+                List<SysUser> deptUsers = sysUserMapper.selectList(
+                    new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeptId, Long.valueOf(approverValue)));
+                if (deptUsers != null) {
+                    for (SysUser user : deptUsers) {
+                        Map<String, Object> u = new HashMap<>();
+                        u.put("userId", user.getUserId());
+                        u.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
+                        approverUsers.add(u);
+                    }
+                }
+                // 同时查询部门名称
+                SysDept dept = sysDeptMapper.selectById(Long.valueOf(approverValue));
+                if (dept != null) {
+                    detail.put("approverDescription", dept.getDeptName() + " (全部门)");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[buildStepDetail] 解析审批人列表失败, nodeKey={}: {}", nodeKey, e.getMessage());
+        }
+        detail.put("approverUsers", approverUsers);
+
+        // 判断步骤状态：completed / active / pending
+        boolean isCompleted = false;
+        String operatorName = null;
+        if (histories != null) {
+            for (WfTaskHistory h : histories) {
+                if (nodeKey.equals(h.getNodeKey()) && h.getOperatorName() != null) {
+                    isCompleted = true;
+                    operatorName = h.getOperatorName();
+                }
+            }
+        }
+        if (isCompleted) {
+            detail.put("status", "completed");
+            detail.put("operatorName", operatorName);
+        } else if (nodeKey.equals(currentNodeKey)) {
+            detail.put("status", "active");
+        } else {
+            detail.put("status", "pending");
+        }
+
+        return detail;
+    }
+
+    /**
+     * 判断网关节点的聚合状态
+     * 遍历所有分支内的步骤，如果全部完成则网关完成，如果有活动的则网关活动，否则待处理
+     */
+    private String determineGatewayStatus(Map<String, Object> gatewayDetail, String currentNodeKey, List<WfTaskHistory> histories) {
+        Object branchesObj = gatewayDetail.get("branches");
+        if (!(branchesObj instanceof List)) return "pending";
+
+        List<List<Map<String, Object>>> branches = (List<List<Map<String, Object>>>) branchesObj;
+        if (branches.isEmpty()) return "pending";
+
+        boolean allCompleted = true;
+        boolean hasActive = false;
+        boolean hasCompleted = false;
+
+        for (List<Map<String, Object>> branch : branches) {
+            for (Map<String, Object> step : branch) {
+                String status = (String) step.get("status");
+                if ("completed".equals(status)) {
+                    hasCompleted = true;
+                } else if ("active".equals(status)) {
+                    hasActive = true;
+                    allCompleted = false;
+                } else {
+                    allCompleted = false;
+                }
+            }
+        }
+
+        if (allCompleted && hasCompleted) return "completed";
+        if (hasActive || hasCompleted) return "active";
+        return "pending";
+    }
+
+    /**
+     * 批量构建所有步骤的详情列表
+     * 支持并行/条件网关节点，递归构建分支内的步骤详情
+     */
+    private List<Map<String, Object>> buildAllStepsDetail(List<Map<String, String>> steps,
+                                                            List<WfTaskHistory> histories,
+                                                            String currentNodeKey) {
+        List<Map<String, Object>> details = new ArrayList<>();
+        // 添加"发起申请"作为第一步
+        Map<String, Object> startStep = new HashMap<>();
+        startStep.put("nodeKey", "_start");
+        startStep.put("nodeTitle", "发起申请");
+        startStep.put("stepIndex", 0);
+        startStep.put("nodeType", "START");
+        startStep.put("approverType", "INITIATOR");
+        startStep.put("approverTypeLabel", "发起人");
+        startStep.put("approverDescription", "发起人");
+        startStep.put("approverUsers", new ArrayList<>());
+        startStep.put("status", "completed");
+        details.add(startStep);
+
+        for (int i = 0; i < steps.size(); i++) {
+            details.add(buildStepDetail(steps.get(i), i, histories, currentNodeKey));
+        }
+        return details;
+    }
+
+    /**
+     * 为任务填充流程步骤信息（当前步骤/总步骤/上一步/下一步）
+     * 
+     * @param task 待填充的任务对象
+     * @param steps 流程审批步骤列表
+     * @param histories 该实例的历史记录（按时间升序）
+     */
+    private void enrichTaskStepInfo(WfTask task, List<Map<String, String>> steps, List<WfTaskHistory> histories) {
+        if (steps == null || steps.isEmpty()) return;
+
+        task.setTotalSteps(steps.size());
+
+        // 查找当前节点在步骤列表中的位置
+        int currentIndex = -1;
+        for (int i = 0; i < steps.size(); i++) {
+            if (steps.get(i).get("nodeKey").equals(task.getNodeKey())) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex >= 0) {
+            task.setCurrentStepIndex(currentIndex + 1); // 从1开始
+
+            // 上一步信息
+            if (currentIndex > 0) {
+                Map<String, String> prevStep = steps.get(currentIndex - 1);
+                task.setPreviousNodeName(prevStep.get("nodeTitle"));
+                // 从历史记录中查找上一步的实际处理人
+                if (histories != null) {
+                    for (int i = histories.size() - 1; i >= 0; i--) {
+                        WfTaskHistory h = histories.get(i);
+                        if (prevStep.get("nodeKey").equals(h.getNodeKey()) && h.getOperatorName() != null) {
+                            task.setPreviousOperatorName(h.getOperatorName());
+                            break;
+                        }
+                    }
+                }
+            } else {
+                task.setPreviousNodeName("发起申请");
+                // 上一步处理人就是申请人
+                task.setPreviousOperatorName(task.getStartUserName());
+            }
+
+            // 下一步信息
+            if (currentIndex < steps.size() - 1) {
+                Map<String, String> nextStep = steps.get(currentIndex + 1);
+                task.setNextNodeName(nextStep.get("nodeTitle"));
+                task.setNextAssigneeName(resolveAssigneeDescription(
+                    nextStep.get("approverType"), nextStep.get("approverValue")));
+            } else {
+                task.setNextNodeName("流程结束");
+                task.setNextAssigneeName("-");
+            }
+        }
+
+        // 构建完整的步骤详情列表（包含每个步骤的审批人分配信息）
+        task.setStepsDetail(buildAllStepsDetail(steps, histories, task.getNodeKey()));
+    }
+
+    /**
+     * 为流程实例填充流程步骤信息
+     */
+    private void enrichInstanceStepInfo(WfProcessInstance instance, List<Map<String, String>> steps,
+                                         List<WfTaskHistory> histories, WfTask currentTask) {
+        if (steps == null || steps.isEmpty()) return;
+
+        instance.setTotalSteps(steps.size());
+
+        // 如果有当前活动任务，用任务的 nodeKey 定位
+        String currentNodeKey = null;
+        if (currentTask != null) {
+            currentNodeKey = currentTask.getNodeKey();
+            instance.setCurrentNodeName(currentTask.getNodeName());
+        }
+
+        if (currentNodeKey != null) {
+            int currentIndex = -1;
+            for (int i = 0; i < steps.size(); i++) {
+                if (steps.get(i).get("nodeKey").equals(currentNodeKey)) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+
+            if (currentIndex >= 0) {
+                instance.setCurrentStepIndex(currentIndex + 1);
+
+                // 上一步
+                if (currentIndex > 0) {
+                    Map<String, String> prevStep = steps.get(currentIndex - 1);
+                    instance.setPreviousNodeName(prevStep.get("nodeTitle"));
+                    if (histories != null) {
+                        for (int i = histories.size() - 1; i >= 0; i--) {
+                            WfTaskHistory h = histories.get(i);
+                            if (prevStep.get("nodeKey").equals(h.getNodeKey()) && h.getOperatorName() != null) {
+                                instance.setPreviousOperatorName(h.getOperatorName());
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    instance.setPreviousNodeName("发起申请");
+                    instance.setPreviousOperatorName(instance.getStartUserName());
+                }
+
+                // 下一步
+                if (currentIndex < steps.size() - 1) {
+                    Map<String, String> nextStep = steps.get(currentIndex + 1);
+                    instance.setNextNodeName(nextStep.get("nodeTitle"));
+                    instance.setNextAssigneeName(resolveAssigneeDescription(
+                        nextStep.get("approverType"), nextStep.get("approverValue")));
+                } else {
+                    instance.setNextNodeName("流程结束");
+                    instance.setNextAssigneeName("-");
+                }
+            }
+        } else if ("COMPLETED".equals(instance.getStatus()) || "REJECTED".equals(instance.getStatus()) 
+                    || "REVOKED".equals(instance.getStatus())) {
+            // 已结束的流程
+            instance.setCurrentStepIndex(steps.size());
+            if (!steps.isEmpty()) {
+                Map<String, String> lastStep = steps.get(steps.size() - 1);
+                instance.setCurrentNodeName("已结束");
+                if (histories != null && !histories.isEmpty()) {
+                    WfTaskHistory lastHistory = histories.get(histories.size() - 1);
+                    instance.setPreviousNodeName(lastHistory.getNodeName());
+                    instance.setPreviousOperatorName(lastHistory.getOperatorName());
+                }
+            }
+            instance.setNextNodeName("-");
+            instance.setNextAssigneeName("-");
+        }
+
+        // 构建完整的步骤详情列表（包含每个步骤的审批人分配信息）
+        String currentNodeKeyForDetail = currentNodeKey;
+        instance.setStepsDetail(buildAllStepsDetail(steps, histories, currentNodeKeyForDetail));
     }
 
     /**
