@@ -133,6 +133,50 @@ export async function urgeTask(taskId: string, reason: string): Promise<void> {
 }
 
 /**
+ * 驳回任务到指定节点
+ */
+export async function rejectTask(taskId: string, targetNodeKey: string, comment: string): Promise<void> {
+  logApiCall('POST', '/workflow/reject', { taskId, targetNodeKey, comment });
+  return request.post('/workflow/reject', {
+    taskId,
+    targetNodeKey,
+    comment
+  });
+}
+
+/**
+ * 撤回流程
+ */
+export async function recallProcess(instanceId: string): Promise<void> {
+  logApiCall('POST', '/workflow/recall', { instanceId });
+  return request.post('/workflow/recall', { instanceId });
+}
+
+/**
+ * 暂停流程
+ */
+export async function pauseProcess(instanceId: string): Promise<void> {
+  logApiCall('POST', '/workflow/pause', { instanceId });
+  return request.post('/workflow/pause', { instanceId });
+}
+
+/**
+ * 恢复流程
+ */
+export async function resumeProcess(instanceId: string): Promise<void> {
+  logApiCall('POST', '/workflow/resume', { instanceId });
+  return request.post('/workflow/resume', { instanceId });
+}
+
+/**
+ * 删除流程定义
+ */
+export async function deleteProcessDefinition(definitionId: string): Promise<void> {
+  logApiCall('DELETE', `/workflow/definition/${definitionId}`);
+  return request.delete(`/workflow/definition/${definitionId}`);
+}
+
+/**
  * 获取任务统计
  */
 export async function getTasksCount(): Promise<TasksCount> {
@@ -234,13 +278,20 @@ export default {
   completeTask,
   readTask,
   urgeTask,
+  rejectTask,
   getTasksCount,
+  
+  // 流程控制
+  recallProcess,
+  pauseProcess,
+  resumeProcess,
   
   // 流程定义
   getProcessDefinitions,
   getProcessDefinition,
   saveProcessDefinition,
   deployProcessDefinition,
+  deleteProcessDefinition,
   
   // 表单定义
   getFormDefinitions,

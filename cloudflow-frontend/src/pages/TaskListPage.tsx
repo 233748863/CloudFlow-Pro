@@ -267,6 +267,8 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                                  <TaskList 
                                     tasks={rawTasks} 
                                     onTaskClick={(task) => { setSelectedTask(task); setIsModalOpen(true); }}
+                                    showRecallButton={type === 'applications'}
+                                    onRecallSuccess={() => fetchTasks(false)}
                                 />
                              </div>
                          )}

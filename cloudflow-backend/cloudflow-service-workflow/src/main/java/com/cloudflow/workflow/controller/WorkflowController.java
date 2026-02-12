@@ -168,4 +168,13 @@ public class WorkflowController {
     public R<Map<String, Object>> getStatisticsAnalysis() {
         return R.ok(statisticsService.getStatisticsAnalysis());
     }
+
+    /**
+     * 删除流程定义
+     * 检查是否有运行中的实例，有历史实例则归档，无历史实例则物理删除
+     */
+    @DeleteMapping("/definition/{definitionId}")
+    public R<?> deleteProcessDefinition(@PathVariable("definitionId") String definitionId) {
+        return workflowService.deleteProcessDefinition(definitionId);
+    }
 }

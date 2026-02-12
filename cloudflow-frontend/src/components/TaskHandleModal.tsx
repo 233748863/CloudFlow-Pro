@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, FormDefinition, User, Role } from '../types';
-import { Briefcase, X, GitMerge, AlertTriangle } from 'lucide-react';
+import { Briefcase, X, GitMerge, AlertTriangle, CornerUpLeft } from 'lucide-react';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { getUserList } from '../services/api/auth';
-import { completeTask, readTask } from '../services/api/workflow';
+import { completeTask, readTask, rejectTask, getProcessTrace } from '../services/api/workflow';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { ProcessTrace } from './ProcessTrace';
 import { toast } from 'sonner';
@@ -31,6 +31,10 @@ export const TaskHandleModal = ({
   const [users, setUsers] = useState<User[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'APPROVED' | 'REJECTED' | null>(null);
+  const [rejectMode, setRejectMode] = useState(false);
+  const [rejectTargetNode, setRejectTargetNode] = useState<string>('');
+  const [rejectReason, setRejectReason] = useState('');
+  const [historyNodes, setHistoryNodes] = useState<Array<{key: string, name: string}>>([]);
 
   useEffect(() => {
     if (isOpen && task && task.assigneeId === currentUser.id) {
@@ -48,10 +52,36 @@ export const TaskHandleModal = ({
       }
   }, [delegationMode, users.length]);
 
+  // 加载历史节点用于驳回
+  useEffect(() => {
+      if (rejectMode && task && task.processInstanceId && historyNodes.length === 0) {
+          getProcessTrace(task.processInstanceId).then(res => {
+              if (res && res.historyDetails && Array.isArray(res.historyDetails)) {
+                  // 提取已完成的节点作为可驳回目标
+                  const nodes = res.historyDetails
+                      .filter((h: any) => h.nodeKey && h.nodeName)
+                      .map((h: any) => ({ key: h.nodeKey, name: h.nodeName }))
+                      .filter((node: any, index: number, self: any[]) => 
+                          // 去重
+                          index === self.findIndex((n: any) => n.key === node.key)
+                      );
+                  setHistoryNodes(nodes);
+              }
+          }).catch(err => {
+              console.error('加载历史节点失败:', err);
+              toast.error('加载历史节点失败');
+          });
+      }
+  }, [rejectMode, task, historyNodes.length]);
+
   // Reset tab when task changes
   useEffect(() => {
       if (isOpen) {
           setActiveTab('handle');
+          setRejectMode(false);
+          setRejectTargetNode('');
+          setRejectReason('');
+          setHistoryNodes([]);
       }
   }, [isOpen, task?.id]);
 
@@ -122,10 +152,52 @@ export const TaskHandleModal = ({
       
       onClose();
       setDelegationMode(false);
+      setRejectMode(false);
       setComment('');
     } catch (err) {
       console.error('任务处理失败:', err);
       toast.error(err instanceof Error ? err.message : '任务处理失败，请重试');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectTargetNode) {
+      toast.error('请选择驳回目标节点');
+      return;
+    }
+    if (!rejectReason.trim()) {
+      toast.error('请填写驳回原因');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await rejectTask(task!.id, rejectTargetNode, rejectReason);
+      
+      const log = {
+        operator: currentUser.name,
+        action: '驳回',
+        comment: rejectReason,
+        time: new Date().toLocaleString()
+      };
+
+      toast.success('任务已驳回');
+      
+      onComplete({
+        ...task!,
+        status: TaskStatus.RETURNED,
+        logs: [...(task!.logs || []), log as any]
+      });
+      
+      onClose();
+      setRejectMode(false);
+      setRejectTargetNode('');
+      setRejectReason('');
+    } catch (err) {
+      console.error('驳回失败:', err);
+      toast.error(err instanceof Error ? err.message : '驳回失败，请重试');
     } finally {
       setSubmitting(false);
     }
@@ -138,10 +210,10 @@ export const TaskHandleModal = ({
           <div className="flex items-center gap-4">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
                 <Briefcase size={18} className="text-indigo-600"/>
-                {delegationMode ? '选择转办受托人' : `任务详情`}
+                {delegationMode ? '选择转办受托人' : rejectMode ? '驳回任务' : `任务详情`}
               </h3>
               
-              {!delegationMode && (
+              {!delegationMode && !rejectMode && (
                   <div className="flex bg-slate-200 rounded-lg p-1">
                       <button 
                         onClick={() => setActiveTab('handle')}
@@ -166,8 +238,74 @@ export const TaskHandleModal = ({
                <ProcessTrace instanceId={task.processInstanceId} />
            ) : (
                <>
-                {/* If delegation mode, show user picker */}
-                {delegationMode ? (
+                {/* If reject mode, show node picker */}
+                {rejectMode ? (
+                    <div className="space-y-4">
+                      <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                        选择驳回到哪个节点：
+                      </p>
+                      
+                      {historyNodes.length === 0 ? (
+                        <div className="text-center text-slate-400 py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto mb-2"></div>
+                          加载历史节点中...
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {historyNodes.map(node => (
+                            <div 
+                              key={node.key} 
+                              onClick={() => setRejectTargetNode(node.key)} 
+                              className={`p-3 border rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
+                                rejectTargetNode === node.key 
+                                  ? 'border-indigo-500 bg-indigo-50 shadow-sm' 
+                                  : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <CornerUpLeft size={16} className={rejectTargetNode === node.key ? 'text-indigo-600' : 'text-slate-400'} />
+                              <span className={rejectTargetNode === node.key ? 'text-indigo-700 font-medium' : 'text-slate-700'}>
+                                {node.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          驳回原因 <span className="text-red-500">*</span>
+                        </label>
+                        <textarea 
+                          className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          placeholder="请填写驳回原因（必填）..."
+                          rows={4}
+                          value={rejectReason}
+                          onChange={e => setRejectReason(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                        <button 
+                          onClick={() => {
+                            setRejectMode(false);
+                            setRejectTargetNode('');
+                            setRejectReason('');
+                          }} 
+                          disabled={submitting}
+                          className="px-4 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          取消
+                        </button>
+                        <button 
+                          onClick={handleReject} 
+                          disabled={submitting || !rejectTargetNode || !rejectReason.trim()}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {submitting ? '处理中...' : '确认驳回'}
+                        </button>
+                      </div>
+                    </div>
+                ) : delegationMode ? (
                     <div className="space-y-4">
                     <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded">选择转办给谁：</p>
                     {users.filter(u => u.id !== currentUser.id).map(u => (
@@ -219,6 +357,10 @@ export const TaskHandleModal = ({
                             onChange={e => setComment(e.target.value)}
                             />
                             <div className="flex gap-2 justify-end">
+                            <button onClick={() => setRejectMode(true)} disabled={submitting} className="px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center gap-1">
+                              <CornerUpLeft size={14} />
+                              驳回
+                            </button>
                             <button onClick={() => setDelegationMode(true)} disabled={submitting} className="px-3 py-1.5 border rounded text-xs disabled:opacity-50">转办</button>
                             <button onClick={() => setConfirmAction('REJECTED')} disabled={submitting} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs disabled:opacity-50">拒绝</button>
                             <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs shadow disabled:opacity-50">

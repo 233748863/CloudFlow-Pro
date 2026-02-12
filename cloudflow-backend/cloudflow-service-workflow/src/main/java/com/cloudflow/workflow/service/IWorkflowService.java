@@ -136,4 +136,11 @@ public interface IWorkflowService {
      * @return 包含 todoCount, doneCount, myInstanceCount 等统计信息
      */
     Map<String, Integer> getTasksCount(Long userId);
+
+    /**
+     * 删除流程定义
+     * @param definitionId 流程定义ID
+     * @return 结果
+     */
+    R<?> deleteProcessDefinition(String definitionId);
 }

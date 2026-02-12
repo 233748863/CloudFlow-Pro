@@ -17,8 +17,14 @@ import {
   Rocket,
   Calendar,
   Award,
+  Pause,
+  Play,
+  Settings,
 } from 'lucide-react';
 import request from '@/services/api/request';
+import { pauseProcess, resumeProcess, getMyInstances } from '@/services/api/workflow';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 // === 类型定义 ===
 interface MetricsData {
@@ -50,6 +56,16 @@ interface AnalysisData {
   approvalRate?: number;
   dailyTrend?: { date: string; count: number }[];
   workloadRank?: { operatorId: number; taskCount: number }[];
+}
+
+interface ProcessInstance {
+  instanceId: string;
+  processDefKey: string;
+  title: string;
+  status: string;
+  startUserId: number;
+  startUserName: string;
+  startTime: string;
 }
 
 // === 子组件 ===
@@ -144,23 +160,44 @@ const ACTION_LABELS: Record<string, string> = {
 
 // === 主组件 ===
 const WorkflowMonitor: React.FC = () => {
+  const { user } = useAuth();
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
+  const [runningInstances, setRunningInstances] = useState<ProcessInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [processingInstance, setProcessingInstance] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
       setError(null);
-      const [metricsRes, analysisRes] = await Promise.all([
+      const [metricsRes, analysisRes, instancesRes] = await Promise.all([
         request.get('/workflow/statistics/metrics', { silent: true }).catch(() => null),
         request.get('/workflow/statistics/analysis', { silent: true }).catch(() => null),
+        getMyInstances().catch(() => []),
       ]);
 
       if (metricsRes) setMetrics(metricsRes);
       if (analysisRes) setAnalysis(analysisRes);
+      
+      // 过滤运行中和暂停的流程实例
+      if (Array.isArray(instancesRes)) {
+        const running = instancesRes.filter((inst: any) => 
+          inst.status === 'RUNNING' || inst.status === 'SUSPENDED'
+        ).map((inst: any) => ({
+          instanceId: inst.instanceId || inst.id,
+          processDefKey: inst.processDefKey || inst.workflowId,
+          title: inst.title,
+          status: inst.status,
+          startUserId: inst.startUserId,
+          startUserName: inst.startUserName,
+          startTime: inst.startTime,
+        }));
+        setRunningInstances(running);
+      }
+      
       setLastUpdate(new Date().toLocaleTimeString());
     } catch (err) {
       setError('获取监控数据失败，请检查后端服务是否正常运行');
@@ -169,6 +206,25 @@ const WorkflowMonitor: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  const handlePauseResume = async (instanceId: string, currentStatus: string) => {
+    setProcessingInstance(instanceId);
+    try {
+      if (currentStatus === 'RUNNING') {
+        await pauseProcess(instanceId);
+        toast.success('流程已暂停');
+      } else if (currentStatus === 'SUSPENDED') {
+        await resumeProcess(instanceId);
+        toast.success('流程已恢复');
+      }
+      await fetchData(); // 刷新数据
+    } catch (err) {
+      console.error('操作失败:', err);
+      toast.error(err instanceof Error ? err.message : '操作失败，请重试');
+    } finally {
+      setProcessingInstance(null);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -222,6 +278,7 @@ const WorkflowMonitor: React.FC = () => {
 
   const maxProcessTypeCount = Math.max(...Object.values(a.byProcessKey || {}), 1);
   const completionRate = a.approvalRate || 0;
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <div className="space-y-6">
@@ -474,6 +531,106 @@ const WorkflowMonitor: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 第六行：流程实例管理（仅管理员可见） */}
+      {isAdmin && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Settings className="w-5 h-5 text-gray-500" />
+            <h2 className="text-lg font-semibold text-gray-700">流程实例管理</h2>
+            <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
+              管理员功能
+            </span>
+          </div>
+
+          {runningInstances.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left py-3 px-4 text-gray-500 font-medium">流程标题</th>
+                    <th className="text-left py-3 px-4 text-gray-500 font-medium">流程类型</th>
+                    <th className="text-left py-3 px-4 text-gray-500 font-medium">发起人</th>
+                    <th className="text-left py-3 px-4 text-gray-500 font-medium">状态</th>
+                    <th className="text-left py-3 px-4 text-gray-500 font-medium">开始时间</th>
+                    <th className="text-right py-3 px-4 text-gray-500 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {runningInstances.map((instance) => (
+                    <tr key={instance.instanceId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4 text-gray-700 font-medium max-w-xs truncate" title={instance.title}>
+                        {instance.title}
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {instance.processDefKey}
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {instance.startUserName}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          instance.status === 'RUNNING' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {instance.status === 'RUNNING' ? (
+                            <>
+                              <Activity className="w-3 h-3" />
+                              运行中
+                            </>
+                          ) : (
+                            <>
+                              <Pause className="w-3 h-3" />
+                              已暂停
+                            </>
+                          )}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {new Date(instance.startTime).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => handlePauseResume(instance.instanceId, instance.status)}
+                          disabled={processingInstance === instance.instanceId}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            instance.status === 'RUNNING'
+                              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                          }`}
+                        >
+                          {processingInstance === instance.instanceId ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              处理中...
+                            </>
+                          ) : instance.status === 'RUNNING' ? (
+                            <>
+                              <Pause className="w-3 h-3" />
+                              暂停
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3 h-3" />
+                              恢复
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <Activity className="w-12 h-12 mb-3 opacity-50" />
+              <p>当前没有运行中或暂停的流程实例</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

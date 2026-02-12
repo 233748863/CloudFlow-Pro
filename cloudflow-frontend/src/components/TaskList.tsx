@@ -1,13 +1,41 @@
-import React from 'react';
-import { Clock, CheckCircle2, AlertTriangle, XCircle, ArrowLeftCircle, Edit3, UserPlus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, CheckCircle2, AlertTriangle, XCircle, ArrowLeftCircle, Edit3, UserPlus, RotateCcw } from 'lucide-react';
 import { Task, TaskStatus } from '../types';
+import { recallProcess } from '../services/api/workflow';
+import { toast } from 'sonner';
 
 interface TaskListProps {
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
+  showRecallButton?: boolean; // 是否显示撤回按钮（仅在"我的申请"页面显示）
+  onRecallSuccess?: () => void; // 撤回成功后的回调
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
+export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showRecallButton = false, onRecallSuccess }) => {
+  const [recalling, setRecalling] = useState<string | null>(null);
+  const [confirmRecall, setConfirmRecall] = useState<string | null>(null);
+
+  const handleRecall = async (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation(); // 阻止触发任务点击事件
+    
+    if (!task.processInstanceId) {
+      toast.error('无法获取流程实例ID');
+      return;
+    }
+
+    setRecalling(task.id);
+    try {
+      await recallProcess(task.processInstanceId);
+      toast.success('流程已撤回');
+      setConfirmRecall(null);
+      onRecallSuccess?.();
+    } catch (err) {
+      console.error('撤回失败:', err);
+      toast.error(err instanceof Error ? err.message : '撤回失败，请重试');
+    } finally {
+      setRecalling(null);
+    }
+  };
   const getStatusBadge = (status: TaskStatus) => {
     switch (status) {
       case TaskStatus.PENDING:
@@ -83,7 +111,10 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {tasks.map((task) => (
+      {tasks.map((task) => {
+        const canRecall = showRecallButton && task.status === TaskStatus.PENDING;
+        
+        return (
         <div 
           key={task.id}
           onClick={() => onTaskClick?.(task)}
@@ -128,8 +159,57 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
                  </span>
             )}
           </div>
+
+          {/* 撤回按钮 - 仅在"我的申请"页面且流程运行中时显示 */}
+          {canRecall && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              {confirmRecall === task.id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-amber-600 flex-1">确认撤回此流程？</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmRecall(null);
+                    }}
+                    className="px-2 py-1 text-xs text-slate-500 border border-slate-200 rounded hover:bg-slate-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={(e) => handleRecall(e, task)}
+                    disabled={recalling === task.id}
+                    className="px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {recalling === task.id ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                        撤回中...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={12} />
+                        确认
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmRecall(task.id);
+                  }}
+                  className="w-full px-3 py-1.5 text-xs text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors flex items-center justify-center gap-1"
+                >
+                  <RotateCcw size={12} />
+                  撤回流程
+                </button>
+              )}
+            </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

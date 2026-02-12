@@ -92,18 +92,52 @@ export interface ProcessTraceNode extends WorkflowNode {
 }
 
 /**
+ * 流程轨迹历史详情
+ */
+export interface ProcessTraceHistoryDetail {
+  historyId: string;
+  taskId: string;
+  nodeKey: string;
+  nodeName: string;
+  operatorId: string;
+  operatorName: string;
+  action: string;
+  comment?: string;
+  createTime: string;
+}
+
+/**
+ * 流程轨迹活动任务详情
+ */
+export interface ProcessTraceActiveDetail {
+  taskId: string;
+  nodeKey: string;
+  nodeName: string;
+  assignee: string;
+  assigneeName?: string;
+  status: string;
+  createTime: string;
+}
+
+/**
  * 流程轨迹
  */
 export interface ProcessTrace {
-  instanceId: string;
-  workflowName: string;
-  status: ProcessInstanceStatus;
-  applicantId: string;
-  applicantName: string;
-  startTime: string;
+  instanceId?: string;
+  workflowName?: string;
+  status?: ProcessInstanceStatus;
+  applicantId?: string;
+  applicantName?: string;
+  startTime?: string;
   endTime?: string;
-  nodes: ProcessTraceNode;
-  logs: ProcessLog[];
+  nodes?: ProcessTraceNode;
+  logs?: ProcessLog[];
+  // 后端实际返回的字段
+  finished: string[];
+  active: string[];
+  historyDetails?: ProcessTraceHistoryDetail[];
+  activeDetails?: ProcessTraceActiveDetail[];
+  parallelBranches?: any[];
 }
 
 /**
