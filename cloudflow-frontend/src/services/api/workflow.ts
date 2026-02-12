@@ -184,6 +184,28 @@ export async function getTasksCount(): Promise<TasksCount> {
   return request.get('/workflow/tasks/count');
 }
 
+/**
+ * 获取任务统计详情
+ * 包括按时间段、状态、流程类型、处理人的统计，以及平均处理时长和完成率
+ */
+export async function getTaskStatistics(params?: {
+  userId?: number;
+  startTime?: string;
+  endTime?: string;
+}): Promise<Record<string, any>> {
+  logApiCall('GET', '/workflow/tasks/statistics', params);
+  return request.get('/workflow/tasks/statistics', { params });
+}
+
+/**
+ * 获取任务分组信息
+ * 按流程类型、状态、优先级、处理人等维度分组
+ */
+export async function getTaskGroups(userId?: number): Promise<Record<string, any>> {
+  logApiCall('GET', '/workflow/tasks/groups', { userId });
+  return request.get('/workflow/tasks/groups', { params: { userId } });
+}
+
 // ==================== 流程定义相关 API ====================
 
 /**
@@ -280,6 +302,8 @@ export default {
   urgeTask,
   rejectTask,
   getTasksCount,
+  getTaskStatistics,
+  getTaskGroups,
   
   // 流程控制
   recallProcess,

@@ -177,4 +177,27 @@ public class WorkflowController {
     public R<?> deleteProcessDefinition(@PathVariable("definitionId") String definitionId) {
         return workflowService.deleteProcessDefinition(definitionId);
     }
+
+    /**
+     * 获取任务统计详情
+     * 包括按时间段、状态、流程类型、处理人的统计，以及平均处理时长和完成率
+     */
+    @GetMapping("/tasks/statistics")
+    public R<Map<String, Object>> getTaskStatistics(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        java.time.LocalDateTime start = startTime != null ? java.time.LocalDateTime.parse(startTime) : null;
+        java.time.LocalDateTime end = endTime != null ? java.time.LocalDateTime.parse(endTime) : null;
+        return R.ok(workflowService.getTaskStatistics(userId, start, end));
+    }
+
+    /**
+     * 获取任务分组信息
+     * 按流程类型、状态、优先级、处理人等维度分组
+     */
+    @GetMapping("/tasks/groups")
+    public R<Map<String, Object>> getTaskGroups(@RequestParam(required = false) Long userId) {
+        return R.ok(workflowService.getTaskGroups(userId));
+    }
 }
