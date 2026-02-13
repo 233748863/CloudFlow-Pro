@@ -235,8 +235,8 @@ export const AnnouncementPage = () => {
             )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
-            <div className="flex border-b border-slate-200">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[500px] flex flex-col">
+            <div className="flex border-b border-slate-200 pt-2 overflow-visible relative z-10">
                 <button 
                     onClick={() => setActiveTab('unread')}
                     className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 relative ${activeTab === 'unread' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
