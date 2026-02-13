@@ -16,25 +16,35 @@
 # 8. 根据实际环境修改敏感信息（数据库密码、Redis密码等）
 # ============================================================
 
-# 数据库配置（生产环境）
+# ==================== 多数据源配置（dynamic-datasource） ====================
+# 各服务共享的数据源基础配置
+# 各服务可在自己的配置文件中覆盖或新增数据源
+# 使用 @DS("数据源名") 注解在 Mapper 层切换数据源
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: Juwangkeji@2025
-    hikari:
-      pool-name: CloudFlowHikariCP
-      minimum-idle: 10
-      maximum-pool-size: 50
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      connection-test-query: SELECT 1
-      auto-commit: true
-      leak-detection-threshold: 60000
+    dynamic:
+      # 默认数据源名称，不加 @DS 注解时使用此数据源
+      primary: master
+      # 严格模式：false 表示未匹配到数据源时使用默认数据源
+      strict: false
+      datasource:
+        # ---- 主数据源 ----
+        master:
+          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+          username: root
+          password: Juwangkeji@2025
+          driver-class-name: com.mysql.cj.jdbc.Driver
+      # HikariCP 连接池全局配置（所有数据源共享）
+      hikari:
+        pool-name: CloudFlowHikariCP
+        minimum-idle: 10
+        maximum-pool-size: 50
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        connection-test-query: SELECT 1
 
-  # Redis 配置（开发环境）
+  # Redis 配置
   data:
     redis:
       host: 192.168.1.173

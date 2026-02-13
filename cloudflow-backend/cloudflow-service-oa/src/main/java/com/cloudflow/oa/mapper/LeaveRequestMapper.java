@@ -1,13 +1,22 @@
 package com.cloudflow.oa.mapper;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.cloudflow.common.datasource.constants.DsConstants;
 import com.cloudflow.oa.domain.LeaveRequest;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 /**
  * 请假申请 Mapper 接口
+ * <p>
+ * 使用 @DS 注解指定数据源：
+ * - @DS(DsConstants.MASTER) 或不加注解 → 使用主数据源（默认）
+ * - @DS(DsConstants.REPORT) → 使用报表数据源
+ * - @DS("自定义名称") → 使用 Nacos 中配置的对应数据源
+ * </p>
  */
+@DS(DsConstants.MASTER)
 @Mapper
 public interface LeaveRequestMapper extends BaseMapper<LeaveRequest> {
 

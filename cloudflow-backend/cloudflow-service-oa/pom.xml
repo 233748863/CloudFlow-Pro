@@ -57,10 +57,11 @@
             <artifactId>cloudflow-common-security</artifactId>
         </dependency>
 
-        <!-- 公共数据模块（MyBatis-Plus、多租户、数据权限、MySQL 驱动） -->
+        <!-- 公共多数据源模块（包含 MyBatis-Plus、MySQL 驱动、dynamic-datasource） -->
+        <!-- 通过 @DS("数据源名") 注解在 Mapper 层切换数据源 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-data</artifactId>
+            <artifactId>cloudflow-common-datasource</artifactId>
         </dependency>
 
         <!-- ZXing 二维码（资产二维码） -->

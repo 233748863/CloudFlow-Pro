@@ -18,6 +18,7 @@
         <module>cloudflow-common-redis</module>
         <module>cloudflow-common-security</module>
         <module>cloudflow-common-data</module>
+        <module>cloudflow-common-datasource</module>
     </modules>
 
 </project>

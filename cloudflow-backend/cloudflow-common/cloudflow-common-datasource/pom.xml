@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>cloudflow-common</artifactId>
+        <groupId>com.cloudflow</groupId>
+        <version>1.0.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cloudflow-common-datasource</artifactId>
+    <description>CloudFlow 公共多数据源模块 - 基于 dynamic-datasource 实现多数据源切换，Mapper 层通过 @DS 注解指定数据源</description>
+
+    <dependencies>
+        <!-- 公共数据模块（MyBatis-Plus、MySQL 驱动等） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-data</artifactId>
+        </dependency>
+
+        <!-- 苞米豆 dynamic-datasource 多数据源框架（Spring Boot 3 版本） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

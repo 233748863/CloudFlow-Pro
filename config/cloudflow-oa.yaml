@@ -2,12 +2,35 @@
 # 此配置文件应上传到Nacos配置中心
 
 spring:
+  # ==================== 多数据源配置（dynamic-datasource） ====================
+  # 使用 @DS("数据源名") 注解在 Mapper 层切换数据源
+  # 不加 @DS 注解的 Mapper 默认使用 primary 指定的数据源
   datasource:
-    url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: Juwangkeji@2025
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  
+    dynamic:
+      # 默认数据源名称，不加 @DS 注解时使用此数据源
+      primary: master
+      # 严格模式：true 表示未匹配到数据源时抛异常，false 则使用默认数据源
+      strict: false
+      datasource:
+        # ---- 主数据源（OA 业务库） ----
+        master:
+          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+          username: root
+          password: Juwangkeji@2025
+          driver-class-name: com.mysql.cj.jdbc.Driver
+        # ---- 报表/只读数据源（示例，按需修改连接信息） ----
+        report:
+          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_report?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+          username: root
+          password: Juwangkeji@2025
+          driver-class-name: com.mysql.cj.jdbc.Driver
+        # ---- 第三方/外部数据源（示例，按需修改连接信息） ----
+        # thirdparty:
+        #   url: jdbc:mysql://192.168.1.200:3306/third_party_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+        #   username: root
+        #   password: your_password
+        #   driver-class-name: com.mysql.cj.jdbc.Driver
+
   data:
     redis:
       host: 192.168.1.173

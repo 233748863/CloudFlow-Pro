@@ -41,5 +41,13 @@ import org.springframework.context.annotation.FilterType;
 public class GatewayApplication {
     public static void main(String[] args) {
         SpringApplication.run(GatewayApplication.class, args);
+        System.out.println("\n" +
+            "  ╔═══════════════════════════════════════════════════════╗\n" +
+            "  ║                                                       ║\n" +
+            "  ║   (✧≖‿ゝ≖)✧  Gateway 网关服务启动成功!                   ║\n" +
+            "  ║                                                       ║\n" +
+            "  ║   ☁ 云端已就绪，流量尽在掌控 ☁                            ║\n" +
+            "  ║                                                       ║\n" +
+            "  ╚═══════════════════════════════════════════════════════╝\n");
     }
 }

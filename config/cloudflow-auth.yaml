@@ -4,18 +4,33 @@
 # Group: DEFAULT_GROUP
 
 spring:
+  # ==================== 多数据源配置（dynamic-datasource） ====================
+  # 使用 @DS("数据源名") 注解在 Mapper 层切换数据源
+  # 不加 @DS 注解的 Mapper 默认使用 primary 指定的数据源
   datasource:
-    url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: Juwangkeji@2025
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      pool-name: AuthHikariCP
-      minimum-idle: 5
-      maximum-pool-size: 20
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+    dynamic:
+      primary: master
+      strict: false
+      datasource:
+        # ---- 主数据源（认证业务库） ----
+        master:
+          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+          username: root
+          password: Juwangkeji@2025
+          driver-class-name: com.mysql.cj.jdbc.Driver
+        # ---- 按需添加更多数据源 ----
+        # slave:
+        #   url: jdbc:mysql://192.168.1.173:3306/cloud_flow_slave?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+        #   username: root
+        #   password: Juwangkeji@2025
+        #   driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        pool-name: AuthHikariCP
+        minimum-idle: 5
+        maximum-pool-size: 20
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
   
   data:
     redis:

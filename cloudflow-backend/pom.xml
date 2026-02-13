@@ -36,6 +36,7 @@
         <zxing.version>3.5.3</zxing.version>
         <groovy.version>3.0.19</groovy.version>
         <httpclient5.version>5.2.1</httpclient5.version>
+        <dynamic-ds.version>4.3.1</dynamic-ds.version>
     </properties>
 
     <dependencyManagement>
@@ -165,6 +166,20 @@
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
                 <version>${httpclient5.version}</version>
+            </dependency>
+
+            <!-- 苞米豆 dynamic-datasource 多数据源 -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
+                <version>${dynamic-ds.version}</version>
+            </dependency>
+
+            <!-- 内部模块：多数据源公共模块 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-datasource</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
