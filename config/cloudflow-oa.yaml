@@ -19,11 +19,11 @@ spring:
           password: Juwangkeji@2025
           driver-class-name: com.mysql.cj.jdbc.Driver
         # ---- 报表/只读数据源（示例，按需修改连接信息） ----
-        report:
-          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_report?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-          username: root
-          password: Juwangkeji@2025
-          driver-class-name: com.mysql.cj.jdbc.Driver
+        # report:
+        #   url: jdbc:mysql://192.168.1.173:3306/cloud_flow_report?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+        #   username: root
+        #   password: Juwangkeji@2025
+        #   driver-class-name: com.mysql.cj.jdbc.Driver
         # ---- 第三方/外部数据源（示例，按需修改连接信息） ----
         # thirdparty:
         #   url: jdbc:mysql://192.168.1.200:3306/third_party_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true

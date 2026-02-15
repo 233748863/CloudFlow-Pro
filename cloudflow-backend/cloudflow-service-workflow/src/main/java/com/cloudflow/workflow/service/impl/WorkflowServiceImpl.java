@@ -180,6 +180,18 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private com.cloudflow.workflow.service.HttpClientService httpClientService;
 
+    /** 人员分配策略工厂（借鉴 poco-flow 策略模式） */
+    @Autowired
+    private com.cloudflow.workflow.strategy.AssignUserStrategyFactory assignUserStrategyFactory;
+
+    /** 条件表达式引擎（借鉴 poco-flow 分组条件设计） */
+    @Autowired
+    private com.cloudflow.workflow.expression.ConditionExpressionEngine conditionExpressionEngine;
+
+    /** 审批后置处理器（借鉴 poco-flow ApproveServiceTask 设计） */
+    @Autowired
+    private com.cloudflow.workflow.processor.ApprovalPostProcessor approvalPostProcessor;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -871,72 +883,35 @@ public class WorkflowServiceImpl implements IWorkflowService {
         }
     }
 
+    /**
+     * 解析单个审批人（使用策略工厂，借鉴 poco-flow 策略模式）
+     * 替代原来的 if-else 硬编码，通过 AssignUserStrategyFactory 自动匹配策略
+     */
     private Long resolveAssignee(WfNodeConfig node, WfProcessInstance instance) {
-        String type = node.getApproverType();
-        String value = node.getApproverValue();
-        
-        if ("USER".equals(type)) {
-            try {
-                return Long.valueOf(value);
-            } catch (Exception e) { return null; }
-        } else if ("ROLE".equals(type)) {
-            // Find user by role key
-            // 1. Find role id by key
-            SysRole role = sysRoleMapper.selectOne(new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, value));
-            if (role != null) {
-                // 2. Find users with this role
-                List<SysUserRole> userRoles = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
-                if (userRoles != null && !userRoles.isEmpty()) {
-                    // Return first one for now, or logic for pool
-                    return userRoles.get(0).getUserId();
-                }
-            }
-        } else if ("DEPT_MANAGER".equals(type) || "DIRECT_LEADER".equals(type)) {
-             // Find start user's department
-             Long startUserId = instance.getStartUserId();
-             SysUser startUser = sysUserMapper.selectById(startUserId);
-             if (startUser != null && startUser.getDeptId() != null) {
-                 SysDept dept = sysDeptMapper.selectById(startUser.getDeptId());
-                 if (dept != null) {
-                     // In our mock data, leader is 'admin' or 'zhang_san' (username)
-                     // Real system should store ID. Let's try to find user by username = leader
-                     String leaderUsername = dept.getLeader();
-                     if (StringUtils.hasText(leaderUsername)) {
-                         SysUser leader = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserName, leaderUsername));
-                         if (leader != null) {
-                             return leader.getUserId();
-                         }
-                     }
-                 }
-             }
-        }
-        
-        return null;
+        return assignUserStrategyFactory.resolve(node, instance);
     }
 
+    /**
+     * 条件表达式评估（使用条件表达式引擎，借鉴 poco-flow 分组条件设计）
+     * 支持两种格式：
+     * 1. 结构化 JSON 条件（分组条件 + AND/OR 组合）
+     * 2. SpEL 表达式（兼容原有逻辑）
+     */
     private boolean evaluateCondition(String condition, Map<String, Object> variables) {
         if (!StringUtils.hasText(condition)) {
-            return true; // No condition means always true (or default path)
+            return true;
         }
-        try {
-            // 4.N: 条件表达式安全性验证
-            securityUtils.validateSpelExpression(condition);
-            
-            // Use SimpleEvaluationContext to prevent SpEL injection attacks
-            SimpleEvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
-            
-            // Add variables to context
-            if (variables != null) {
-                variables.forEach(context::setVariable);
+        // 4.N: 非 JSON 格式的条件先做安全性验证
+        String trimmed = condition.trim();
+        if (!trimmed.startsWith("{")) {
+            try {
+                securityUtils.validateSpelExpression(condition);
+            } catch (Exception e) {
+                log.warn("[evaluateCondition] SpEL 表达式安全校验失败: {}", e.getMessage());
+                return false;
             }
-            
-            // Support simple expressions like "#amount > 5000"
-            Boolean result = parser.parseExpression(condition).getValue(context, Boolean.class);
-            return result != null && result;
-        } catch (Exception e) {
-            log.warn("[evaluateCondition] 条件表达式求值失败: condition={}, error={}", condition, e.getMessage());
-            return false;
         }
+        return conditionExpressionEngine.evaluate(condition, variables);
     }
 
     private void completeInstance(WfProcessInstance instance, String status) {
@@ -1061,6 +1036,27 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 } catch (Exception e) {
                     log.error("[completeTask] 流程流转失败, taskId={}, error={}", taskId, e.getMessage(), e);
                     throw new WorkflowException("TASK_FLOW_FAILED", "流程流转失败: " + e.getMessage(), e);
+                }
+                
+                // 审批后置处理（借鉴 poco-flow ApproveServiceTask 设计）
+                // 在流程流转完成后执行节点配置的后置动作（如 Webhook、变量计算等）
+                try {
+                    WfProcessDefinition postDef = processDefinitionMapper.selectOne(
+                        new LambdaQueryWrapper<WfProcessDefinition>()
+                            .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                            .orderByDesc(WfProcessDefinition::getVersion)
+                            .last("LIMIT 1")
+                    );
+                    if (postDef != null && StringUtils.hasText(postDef.getModelJson())) {
+                        WfNodeConfig postRoot = objectMapper.readValue(postDef.getModelJson(), WfNodeConfig.class);
+                        WfNodeConfig completedNode = findNode(postRoot, task.getNodeKey());
+                        if (completedNode != null) {
+                            approvalPostProcessor.process(completedNode, instance, action, mergedVariables);
+                        }
+                    }
+                } catch (Exception e) {
+                    // 后置处理失败不影响主流程
+                    log.warn("[completeTask] 审批后置处理失败, taskId={}: {}", taskId, e.getMessage());
                 }
                 
                 // 5.F: 通知发起人审批进度
@@ -2459,53 +2455,11 @@ public class WorkflowServiceImpl implements IWorkflowService {
     }
     
     /**
-     * 5.I: 解析多个审批人（用于会签场景）
-     * 支持 ROLE 类型返回该角色下的所有用户
+     * 5.I: 解析多个审批人（使用策略工厂，借鉴 poco-flow 策略模式）
+     * 替代原来的 if-else 硬编码
      */
     private List<Long> resolveMultipleAssignees(WfNodeConfig node, WfProcessInstance instance) {
-        String type = node.getApproverType();
-        String value = node.getApproverValue();
-        List<Long> assigneeIds = new ArrayList<>();
-        
-        if ("USERS".equals(type) || "USER_LIST".equals(type)) {
-            // 直接指定多个用户ID，逗号分隔
-            if (StringUtils.hasText(value)) {
-                String[] ids = value.split(",");
-                for (String id : ids) {
-                    try {
-                        assigneeIds.add(Long.valueOf(id.trim()));
-                    } catch (NumberFormatException e) {
-                        log.warn("[resolveMultipleAssignees] 无效的用户ID: {}", id);
-                    }
-                }
-            }
-        } else if ("ROLE".equals(type)) {
-            // 查找该角色下的所有用户
-            SysRole role = sysRoleMapper.selectOne(
-                new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, value));
-            if (role != null) {
-                List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
-                    new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
-                if (userRoles != null) {
-                    for (SysUserRole ur : userRoles) {
-                        assigneeIds.add(ur.getUserId());
-                    }
-                }
-            }
-        } else if ("DEPT".equals(type)) {
-            // 查找该部门下的所有用户
-            if (StringUtils.hasText(value)) {
-                List<SysUser> deptUsers = sysUserMapper.selectList(
-                    new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeptId, Long.valueOf(value)));
-                if (deptUsers != null) {
-                    for (SysUser u : deptUsers) {
-                        assigneeIds.add(u.getUserId());
-                    }
-                }
-            }
-        }
-        
-        return assigneeIds;
+        return assignUserStrategyFactory.resolveMultiple(node, instance);
     }
 
     /**
@@ -3208,41 +3162,11 @@ public class WorkflowServiceImpl implements IWorkflowService {
     }
 
     /**
-     * 根据审批人配置解析出可读的处理人描述
+     * 根据审批人配置解析出可读的处理人描述（使用策略工厂）
      * 例如: "ROLE:finance_manager" -> "财务主管"
      */
     private String resolveAssigneeDescription(String approverType, String approverValue) {
-        if (!StringUtils.hasText(approverType)) return "待定";
-        try {
-            switch (approverType) {
-                case "USER":
-                    if (StringUtils.hasText(approverValue)) {
-                        SysUser user = sysUserMapper.selectById(Long.valueOf(approverValue));
-                        if (user != null) {
-                            return user.getNickName() != null ? user.getNickName() : user.getUserName();
-                        }
-                    }
-                    return "指定用户";
-                case "ROLE":
-                    if (StringUtils.hasText(approverValue)) {
-                        SysRole role = sysRoleMapper.selectOne(
-                            new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, approverValue));
-                        if (role != null) {
-                            return role.getRoleName();
-                        }
-                    }
-                    return "指定角色";
-                case "DEPT_MANAGER":
-                    return "部门经理";
-                case "DIRECT_LEADER":
-                    return "直属领导";
-                default:
-                    return "待定";
-            }
-        } catch (Exception e) {
-            log.warn("[resolveAssigneeDescription] 解析处理人描述失败: {}", e.getMessage());
-            return "待定";
-        }
+        return assignUserStrategyFactory.getDescription(approverType, approverValue);
     }
 
     /**
