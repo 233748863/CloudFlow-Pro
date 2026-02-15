@@ -1096,7 +1096,19 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
                 <span className="text-xs text-slate-400 mb-1 block">会签类型</span>
                 <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
                   value={formData.props?.signType || 'ALL'}
-                  onChange={e => handleChange('props', { ...formData.props, signType: e.target.value })}>
+                  onChange={e => {
+                    const newSignType = e.target.value;
+                    // 设置会签类型时，同时清除并行分支（会签是多人审批同一任务，不需要分支）
+                    const updates: Partial<WorkflowNode> = {
+                      props: { ...formData.props, signType: newSignType },
+                    };
+                    if (formData.branches && formData.branches.length > 0) {
+                      updates.branches = undefined;
+                      updates.branchStrategy = undefined;
+                    }
+                    setFormData(prev => ({ ...prev, ...updates }));
+                    onUpdate(node.id, updates);
+                  }}>
                   <option value="ALL">全签（所有人同意）</option>
                   <option value="ANY">或签（任一人同意）</option>
                   <option value="PERCENT">比例签（按比例通过）</option>
