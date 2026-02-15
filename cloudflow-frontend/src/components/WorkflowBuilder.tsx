@@ -1022,10 +1022,11 @@ const ApproverValueSelector = ({ type, value, onChange, multiple = false }: {
   return null;
 };
 
-const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
+const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
   node: WorkflowNode; onClose: () => void;
   onUpdate: (id: string, data: Partial<WorkflowNode>) => void;
   onDelete: (id: string) => void;
+  onConfirmAction: (message: string, onConfirm: () => void) => void;
 }) => {
   const [formData, setFormData] = useState(node);
   useEffect(() => { setFormData(node); }, [node.id]);
@@ -1098,16 +1099,32 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
                   value={formData.props?.signType || 'ALL'}
                   onChange={e => {
                     const newSignType = e.target.value;
-                    // 设置会签类型时，同时清除并行分支（会签是多人审批同一任务，不需要分支）
-                    const updates: Partial<WorkflowNode> = {
-                      props: { ...formData.props, signType: newSignType },
+                    const hasBranches = formData.branches && formData.branches.length > 0;
+                    const applySignType = () => {
+                      const updates: Partial<WorkflowNode> = {
+                        props: { ...formData.props, signType: newSignType },
+                      };
+                      // 会签是多人审批同一任务，不需要条件分支
+                      if (hasBranches) {
+                        updates.branches = undefined;
+                        updates.branchStrategy = undefined;
+                      }
+                      // 切换离开 PERCENT 时清除 passPercent
+                      if (formData.props?.signType === 'PERCENT' && newSignType !== 'PERCENT') {
+                        updates.props = { ...updates.props, passPercent: undefined };
+                      }
+                      setFormData(prev => ({ ...prev, ...updates }));
+                      onUpdate(node.id, updates);
                     };
-                    if (formData.branches && formData.branches.length > 0) {
-                      updates.branches = undefined;
-                      updates.branchStrategy = undefined;
+                    // 如果有分支，弹确认对话框
+                    if (hasBranches) {
+                      onConfirmAction(
+                        `切换会签类型将清除当前 ${formData.branches!.length} 个分支及其下属节点，此操作不可撤销。是否继续？`,
+                        applySignType
+                      );
+                    } else {
+                      applySignType();
                     }
-                    setFormData(prev => ({ ...prev, ...updates }));
-                    onUpdate(node.id, updates);
                   }}>
                   <option value="ALL">全签（所有人同意）</option>
                   <option value="ANY">或签（任一人同意）</option>
@@ -1739,6 +1756,23 @@ function validateWorkflow(root: WorkflowNode): string[] {
     if (node.branches) node.branches.forEach(checkApprover);
   };
   checkApprover(root);
+  // 会签节点一致性校验
+  const checkParallel = (node: WorkflowNode) => {
+    if (node.type === NodeType.PARALLEL) {
+      const signType = node.props?.signType || 'ALL';
+      // 会签模式（ALL/ANY/PERCENT/SEQUENTIAL）不应有条件分支
+      if ((signType === 'ALL' || signType === 'ANY' || signType === 'PERCENT' || signType === 'SEQUENTIAL') && node.branches && node.branches.length > 0) {
+        errors.push(`会签节点"${node.title}"设置了${signType === 'ALL' ? '全签' : signType === 'ANY' ? '或签' : signType === 'PERCENT' ? '比例签' : '顺序签'}模式，但仍包含 ${node.branches.length} 个条件分支，请先清除分支或改用并行分支策略`);
+      }
+      // 比例签必须设置百分比
+      if (signType === 'PERCENT' && (!node.props?.passPercent || node.props.passPercent <= 0 || node.props.passPercent > 100)) {
+        errors.push(`会签节点"${node.title}"使用比例签模式，但未设置有效的通过比例（1-100%）`);
+      }
+    }
+    if (node.next) checkParallel(node.next);
+    if (node.branches) node.branches.forEach(checkParallel);
+  };
+  checkParallel(root);
   const checkTitle = (node: WorkflowNode) => {
     if (!node.title || node.title.trim() === '') errors.push(`有节点缺少名称`);
     if (node.next) checkTitle(node.next);
@@ -2013,7 +2047,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
 
       {/* 属性面板 */}
       {selectedNode && (
-        <PropertyPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={handleUpdateNode} onDelete={handleDeleteNode} />
+        <PropertyPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={handleUpdateNode} onDelete={handleDeleteNode} onConfirmAction={(message, onConfirm) => setConfirmDialog({ open: true, message, onConfirm })} />
       )}
 
       {/* 模板选择器 */}
