@@ -33,19 +33,19 @@ export const useWebSocket = () => {
 
     /**
      * 探测后端是否可达
-     * 通过发送一个简单的 HTTP 请求到 /api 前缀路径来判断
+     * 使用网关白名单路径（/auth/login），避免被 AuthFilter 拦截返回 401
      */
     const isBackendAvailable = useCallback(async (): Promise<boolean> => {
         try {
-            // 使用 HEAD 请求探测网关，超时 3 秒
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
-            const response = await fetch('/api/auth/health', {
-                method: 'HEAD',
+            // 使用 OPTIONS 请求探测白名单路径，不会触发 401
+            await fetch('/api/auth/login', {
+                method: 'OPTIONS',
                 signal: controller.signal,
             });
             clearTimeout(timeoutId);
-            // 任何响应（包括 404）都说明后端可达
+            // 任何 HTTP 响应（包括 404/405）都说明后端可达
             return true;
         } catch {
             // 网络错误或超时，后端不可达
