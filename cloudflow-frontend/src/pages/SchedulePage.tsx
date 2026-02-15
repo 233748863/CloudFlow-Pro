@@ -163,18 +163,34 @@ export const SchedulePage = () => {
 
         <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <style>{`
-                /* Style for event items in the "more" popup */
+                /* 月视图事件紧凑样式 */
+                .fc-dayGridMonth-view .fc-event {
+                    border-radius: 3px !important;
+                    padding: 0 !important;
+                    margin: 1px 2px !important;
+                    font-size: 0.75rem !important;
+                    line-height: 1.2 !important;
+                }
+                .fc-dayGridMonth-view .fc-daygrid-event-harness {
+                    margin-top: 0 !important;
+                }
+                /* 月视图日期格子允许滚动查看更多事件 */
+                .fc-dayGridMonth-view .fc-daygrid-day-events {
+                    max-height: none !important;
+                    overflow-y: auto;
+                }
+                .fc-dayGridMonth-view .fc-daygrid-day-frame {
+                    min-height: 80px;
+                }
+                /* 隐藏月视图事件的默认圆点指示器 */
+                .fc-dayGridMonth-view .fc-daygrid-event-dot {
+                    display: none !important;
+                }
+                /* 弹出层样式 */
                 .fc-popover .fc-event {
                     border-radius: 4px;
                     padding: 2px 4px;
                     margin: 2px 0;
-                }
-                .fc-popover .fc-event-title {
-                    font-weight: 500;
-                }
-                .fc-popover .fc-event-time {
-                    font-size: 0.75rem;
-                    opacity: 0.9;
                 }
             `}</style>
             <FullCalendar
@@ -188,7 +204,7 @@ export const SchedulePage = () => {
                 editable={true}
                 selectable={true}
                 selectMirror={true}
-                dayMaxEvents={true}
+                dayMaxEvents={false}
                 weekends={true}
                 events={events}
                 datesSet={(dateInfo) => {
@@ -198,9 +214,27 @@ export const SchedulePage = () => {
                 select={handleDateSelect}
                 eventClick={handleEventClick}
                 eventContent={(eventInfo) => {
-                    const { event } = eventInfo;
+                    const { event, view } = eventInfo;
                     const props = event.extendedProps;
+                    const isMonthView = view.type === 'dayGridMonth';
                     
+                    // 月视图：紧凑单行显示，最大化可见事件数量
+                    if (isMonthView) {
+                        return (
+                            <div className="flex items-center gap-1 px-1 py-0 text-xs leading-tight truncate w-full" style={{ minHeight: '18px' }}>
+                                <span 
+                                    className="w-2 h-2 rounded-full shrink-0" 
+                                    style={{ backgroundColor: event.backgroundColor || '#64748b' }}
+                                />
+                                {eventInfo.timeText && (
+                                    <span className="opacity-70 shrink-0">{eventInfo.timeText}</span>
+                                )}
+                                <span className="font-medium truncate">{props.originalTitle || event.title}</span>
+                            </div>
+                        );
+                    }
+                    
+                    // 周视图/日视图：完整显示详细信息
                     return (
                         <div className="fc-event-main-frame p-1">
                             <div className="fc-event-time text-xs opacity-90">
