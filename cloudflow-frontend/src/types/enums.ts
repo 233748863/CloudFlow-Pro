@@ -61,6 +61,10 @@ export enum ProcessInstanceStatus {
   RUNNING = 'RUNNING',
   /** 已完成 */
   COMPLETED = 'COMPLETED',
+  /** 已拒绝 */
+  REJECTED = 'REJECTED',
+  /** 已撤回 */
+  REVOKED = 'REVOKED',
   /** 已挂起 */
   SUSPENDED = 'SUSPENDED',
   /** 已终止 */

@@ -24,13 +24,14 @@ public interface IWorkflowService {
     /**
      * 完成任务
      *
-     * @param taskId    任务ID
-     * @param action    动作 (APPROVE/REJECT)
-     * @param comment   审批意见
-     * @param variables 流程变量
+     * @param taskId         任务ID
+     * @param action         动作 (APPROVE/REJECT/DELEGATE)
+     * @param comment        审批意见
+     * @param variables      流程变量
+     * @param delegateUserId 转办目标用户ID（action=DELEGATE 时必填）
      * @return 结果
      */
-    R<?> completeTask(String taskId, String action, String comment, Map<String, Object> variables);
+    R<?> completeTask(String taskId, String action, String comment, Map<String, Object> variables, String delegateUserId);
 
     /**
      * 驳回任务到指定节点
@@ -47,6 +48,20 @@ public interface IWorkflowService {
      * @return 结果
      */
     R<?> recallProcess(String instanceId);
+
+    /**
+     * 暂停流程
+     * @param instanceId 实例ID
+     * @return 结果
+     */
+    R<?> pauseProcess(String instanceId);
+
+    /**
+     * 恢复流程
+     * @param instanceId 实例ID
+     * @return 结果
+     */
+    R<?> resumeProcess(String instanceId);
 
     /**
      * 查询待办任务 (分页)
@@ -77,6 +92,13 @@ public interface IWorkflowService {
      * @return 实例列表
      */
     PageResult<WfProcessInstance> getMyInstances(Long userId, PageQuery pageQuery);
+
+    /**
+     * 查询流程定义详情
+     * @param definitionId 流程定义ID
+     * @return 流程定义
+     */
+    com.cloudflow.workflow.domain.WfProcessDefinition getProcessDefinition(String definitionId);
 
     /**
      * 查询流程定义列表 (分页)

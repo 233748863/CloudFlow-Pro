@@ -173,7 +173,8 @@ public class TaskTimeoutJob {
                 taskId,
                 "APPROVE",  // 自动通过
                 "任务超时，系统自动通过",
-                variables
+                variables,
+                null  // delegateUserId: 非转办操作
             );
             
             log.info("[TaskTimeoutJob] 超时任务处理完成，流程已继续流转, taskId={}", taskId);

@@ -11,7 +11,7 @@ import {
   GraduationCap, Heart, Building2, Wrench, Package,
   UserPlus, UserMinus, Award, CreditCard, PiggyBank,
   Rocket, CheckSquare, Stethoscope, BookOpen,
-  Bell, Code, Clock, Workflow, ClipboardCheck
+  Bell, Code, Clock, Workflow, ClipboardCheck, Send
 } from 'lucide-react';
 import { WorkflowNode, NodeType, WorkflowDefinition, FormDefinition, User } from '../types';
 import { useHistory } from '../hooks/useHistory';
@@ -62,13 +62,30 @@ const hasEndNode = (root: WorkflowNode): boolean => {
   return false;
 };
 
+// 查找指定节点的父节点（即 next 或 branches 中包含 targetId 的节点）
+const findParentOfNode = (root: WorkflowNode, targetId: string, parent: WorkflowNode | null = null): WorkflowNode | null => {
+  if (root.id === targetId) return parent;
+  if (root.next) {
+    const found = findParentOfNode(root.next, targetId, root);
+    if (found) return found;
+  }
+  if (root.branches) {
+    for (const b of root.branches) {
+      const found = findParentOfNode(b, targetId, root);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
 // ==================== 常量配置 ====================
 
 const NODE_TYPE_LABELS: Record<string, string> = {
   [NodeType.START]: '开始', [NodeType.APPROVAL]: '审批',
   [NodeType.CONDITION]: '条件判断', [NodeType.PARALLEL]: '同时处理', [NodeType.END]: '完成',
   [NodeType.NOTIFICATION]: '通知', [NodeType.SCRIPT]: '脚本',
-  [NodeType.TIMER]: '定时', [NodeType.SUBPROCESS]: '子流程', [NodeType.MANUAL]: '人工任务'
+  [NodeType.TIMER]: '定时', [NodeType.SUBPROCESS]: '子流程', [NodeType.MANUAL]: '人工任务',
+  [NodeType.COPY]: '抄送'
 };
 
 const APPROVER_TYPE_LABELS: Record<string, string> = {
@@ -134,6 +151,11 @@ const NODE_VISUAL: Record<string, {
     icon: ClipboardCheck, color: 'bg-cyan-500', bg: 'bg-cyan-50/80',
     iconBg: 'bg-cyan-100', iconColor: 'text-cyan-600',
     border: 'border-cyan-200', hoverBorder: 'hover:border-cyan-400', label: '人工'
+  },
+  [NodeType.COPY]: {
+    icon: Send, color: 'bg-pink-500', bg: 'bg-pink-50/80',
+    iconBg: 'bg-pink-100', iconColor: 'text-pink-600',
+    border: 'border-pink-200', hoverBorder: 'hover:border-pink-400', label: '抄送'
   }
 };
 
@@ -1108,13 +1130,50 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
                 </select>
               </div>
-              {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
+              {(formData.approverType === 'ROLE') && (
                 <ApproverValueSelector
-                  type={formData.approverType || 'ROLE'}
+                  type="ROLE"
                   value={formData.approverValue || ''}
                   onChange={(val) => handleChange('approverValue', val)}
                   onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
                 />
+              )}
+              {(formData.approverType === 'USER') && (
+                <ApproverValueSelector
+                  type="USER"
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
+                />
+              )}
+              {(formData.approverType === 'USERS') && (
+                <ApproverValueSelector
+                  type="USER"
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
+                  multiple={true}
+                />
+              )}
+              {(formData.approverType === 'DEPT') && (
+                <ApproverValueSelector
+                  type="DEPT"
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
+                />
+              )}
+              {(formData.approverType === 'DIRECT_LEADER') && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-blue-700 font-medium">直属上级</p>
+                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人的直属上级作为审批人。无需手动指定。</p>
+                </div>
+              )}
+              {(formData.approverType === 'DEPT_MANAGER') && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-blue-700 font-medium">部门负责人</p>
+                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人所在部门的负责人作为审批人。无需手动指定。</p>
+                </div>
               )}
             </div>
           )}
@@ -1393,6 +1452,48 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               </div>
             </div>
           )}
+          {node.type === NodeType.COPY && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Send size={12} /> 抄送设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">抄送人类型</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                  value={formData.approverType || 'USER'} onChange={e => handleChange('approverType', e.target.value)}>
+                  <option value="USER">指定人员</option>
+                  <option value="USERS">指定多人</option>
+                  <option value="ROLE">按角色</option>
+                  <option value="DEPT">按部门</option>
+                  <option value="DEPT_MANAGER">部门负责人</option>
+                  <option value="DIRECT_LEADER">直属上级</option>
+                </select>
+              </div>
+              {(formData.approverType === 'ROLE') && (
+                <ApproverValueSelector type="ROLE" value={formData.approverValue || ''} onChange={(val) => handleChange('approverValue', val)} onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })} />
+              )}
+              {(formData.approverType === 'USER') && (
+                <ApproverValueSelector type="USER" value={formData.approverValue || ''} onChange={(val) => handleChange('approverValue', val)} onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })} />
+              )}
+              {(formData.approverType === 'USERS') && (
+                <ApproverValueSelector type="USER" value={formData.approverValue || ''} onChange={(val) => handleChange('approverValue', val)} onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })} multiple={true} />
+              )}
+              {(formData.approverType === 'DEPT') && (
+                <ApproverValueSelector type="DEPT" value={formData.approverValue || ''} onChange={(val) => handleChange('approverValue', val)} onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })} />
+              )}
+              {(formData.approverType === 'DIRECT_LEADER') && (
+                <div className="bg-pink-50 border border-pink-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-700 font-medium">直属上级</p>
+                  <p className="text-[10px] text-pink-500 mt-0.5">系统将自动抄送给流程发起人的直属上级。</p>
+                </div>
+              )}
+              {(formData.approverType === 'DEPT_MANAGER') && (
+                <div className="bg-pink-50 border border-pink-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-700 font-medium">部门负责人</p>
+                  <p className="text-[10px] text-pink-500 mt-0.5">系统将自动抄送给流程发起人所在部门的负责人。</p>
+                </div>
+              )}
+              <p className="text-[10px] text-slate-400 mt-1">💡 抄送节点仅发送通知副本，不阻塞流程推进</p>
+            </div>
+          )}
           {node.type === NodeType.MANUAL && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><ClipboardCheck size={12} /> 人工任务设置</label>
@@ -1411,13 +1512,50 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
                 </select>
               </div>
-              {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
+              {(formData.approverType === 'ROLE') && (
                 <ApproverValueSelector
-                  type={formData.approverType || 'ROLE'}
+                  type="ROLE"
                   value={formData.approverValue || ''}
                   onChange={(val) => handleChange('approverValue', val)}
                   onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
                 />
+              )}
+              {(formData.approverType === 'USER') && (
+                <ApproverValueSelector
+                  type="USER"
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
+                />
+              )}
+              {(formData.approverType === 'USERS') && (
+                <ApproverValueSelector
+                  type="USER"
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
+                  multiple={true}
+                />
+              )}
+              {(formData.approverType === 'DEPT') && (
+                <ApproverValueSelector
+                  type="DEPT"
+                  value={formData.approverValue || ''}
+                  onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
+                />
+              )}
+              {(formData.approverType === 'DIRECT_LEADER') && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-blue-700 font-medium">直属上级</p>
+                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人的直属上级作为处理人。无需手动指定。</p>
+                </div>
+              )}
+              {(formData.approverType === 'DEPT_MANAGER') && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-blue-700 font-medium">部门负责人</p>
+                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人所在部门的负责人作为处理人。无需手动指定。</p>
+                </div>
               )}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">任务优先级</span>
@@ -1658,6 +1796,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                   { type: NodeType.TIMER, icon: Clock, label: '定时节点', desc: '延迟或定时触发', color: 'text-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200' },
                   { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
                   { type: NodeType.MANUAL, icon: ClipboardCheck, label: '人工任务', desc: '需要人工处理', color: 'text-cyan-500', bg: 'hover:bg-cyan-50', border: 'hover:border-cyan-200' },
+                  { type: NodeType.COPY, icon: Send, label: '抄送节点', desc: '发送流程副本', color: 'text-pink-500', bg: 'hover:bg-pink-50', border: 'hover:border-pink-200' },
                   { type: NodeType.CONDITION, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true },
                 ] as const).map(item => {
                   const ItemIcon = item.icon;
@@ -1735,6 +1874,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                   { type: NodeType.TIMER, icon: Clock, label: '定时节点', desc: '延迟或定时触发', color: 'text-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200' },
                   { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
                   { type: NodeType.MANUAL, icon: ClipboardCheck, label: '人工任务', desc: '需要人工处理', color: 'text-cyan-500', bg: 'hover:bg-cyan-50', border: 'hover:border-cyan-200' },
+                  { type: NodeType.COPY, icon: Send, label: '抄送节点', desc: '发送流程副本', color: 'text-pink-500', bg: 'hover:bg-pink-50', border: 'hover:border-pink-200' },
                   { type: NodeType.CONDITION, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true },
                   { type: NodeType.END, icon: Flag, label: '结束节点', desc: '流程终点', color: 'text-slate-500', bg: 'hover:bg-slate-50', border: 'hover:border-slate-200' },
                 ] as const).map(item => {
@@ -1970,6 +2110,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         case NodeType.TIMER: return '新定时节点';
         case NodeType.SUBPROCESS: return '新子流程节点';
         case NodeType.MANUAL: return '新人工任务';
+        case NodeType.COPY: return '新抄送节点';
         default: return '新审批节点';
       }
     };
@@ -1980,6 +2121,23 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       ...(nodeType === NodeType.APPROVAL || nodeType === NodeType.PARALLEL ? { approverType: 'ROLE' as const } : {}),
       ...(nodeType === NodeType.MANUAL ? { approverType: 'ROLE' as const } : {})
     };
+
+    // 关键修复：当 parentId 是 END 节点时，新节点应插入到 END 之前，而不是之后
+    // 即找到 END 的父节点，把新节点插在父节点和 END 之间
+    const targetNode = findNodeById(root, parentId);
+    if (targetNode && targetNode.type === NodeType.END) {
+      const endParent = findParentOfNode(root, parentId);
+      if (endParent) {
+        // 在 END 的父节点上操作：parent.next = newNode, newNode.next = END
+        setRoot(updateNodeInTree(root, endParent.id, node => ({
+          ...node,
+          next: { ...newNode, next: targetNode }
+        })));
+        return;
+      }
+    }
+
+    // 普通情况：在 parentId 节点后面插入新节点
     setRoot(updateNodeInTree(root, parentId, node => ({ ...node, next: node.next ? { ...newNode, next: node.next } : newNode })));
   };
 

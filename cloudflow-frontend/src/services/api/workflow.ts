@@ -396,7 +396,8 @@ export async function markCopyAsRead(copyId: number): Promise<void> {
  */
 export async function batchMarkCopyAsRead(copyIds: number[]): Promise<void> {
   logApiCall('POST', '/workflow/copy/batch-read', copyIds);
-  return request.post('/workflow/copy/batch-read', copyIds);
+  // 后端期望 { copyIds: [...] } 格式
+  return request.post('/workflow/copy/batch-read', { copyIds });
 }
 
 // ==================== 导出所有 API ====================

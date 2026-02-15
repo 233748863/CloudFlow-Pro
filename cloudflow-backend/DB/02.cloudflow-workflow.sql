@@ -324,7 +324,31 @@ CREATE TABLE wf_process_snapshot (
   KEY idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程实例快照表';
 
--- 15. 本地消息表（分布式事务最终一致性）
+-- 15. 节点执行记录表（工作流事件驱动，借鉴 poco-flow FlowProcessEventListener 设计）
+DROP TABLE IF EXISTS wf_node_record;
+CREATE TABLE wf_node_record (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+  process_def_key   VARCHAR(64)     DEFAULT NULL COMMENT '流程定义Key',
+  node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key',
+  node_name         VARCHAR(128)    DEFAULT NULL COMMENT '节点名称',
+  event_type        VARCHAR(32)     NOT NULL COMMENT '事件类型: PROCESS_STARTED/PROCESS_COMPLETED/PROCESS_REJECTED/TASK_CREATED/TASK_COMPLETED',
+  action            VARCHAR(32)     DEFAULT NULL COMMENT '操作动作: APPROVE/REJECT/DELEGATE等（仅TASK_COMPLETED有值）',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
+  assignee_id       BIGINT(20)      DEFAULT NULL COMMENT '任务处理人ID（仅TASK_CREATED有值）',
+  extra_data        TEXT            DEFAULT NULL COMMENT '扩展数据(JSON格式)',
+  event_time        DATETIME        NOT NULL COMMENT '事件发生时间',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+  PRIMARY KEY (id),
+  KEY idx_instance_id (instance_id),
+  KEY idx_node_key (node_key),
+  KEY idx_event_type (event_type),
+  KEY idx_event_time (event_time),
+  KEY idx_instance_event (instance_id, event_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='节点执行记录表（事件驱动）';
+
+-- 16. 本地消息表（分布式事务最终一致性）
 DROP TABLE IF EXISTS wf_transaction_message;
 CREATE TABLE wf_transaction_message (
   message_id        VARCHAR(64)     NOT NULL COMMENT '消息ID',
@@ -509,7 +533,7 @@ INSERT INTO wf_process_definition (definition_id, process_name, process_key, ver
 ('wf_leave', '员工请假流程', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"id": "root", "type": "START", "title": "提交请假", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "gw_leave", "type": "CONDITION", "title": "天数校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "HR备案", "icon": "file-box", "approverType": "ROLE", "approverValue": "HR", "condition": "days <= 3"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "condition": "days > 3"}], "next": {"id": "end", "type": "END", "title": "归档"}}}}', sysdate());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
-('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"id": "root", "type": "START", "title": "起草合同", "next": {"id": "n1", "type": "PARALLEL", "title": "会签", "branchStrategy": "PARALLEL", "branches": [{"id": "b1", "type": "APPROVAL", "title": "法务审核", "icon": "scale", "approverType": "ROLE", "approverValue": "ADMIN"}, {"id": "b2", "type": "APPROVAL", "title": "财务审核", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE"}], "next": {"id": "n2", "type": "APPROVAL", "title": "总经理签发", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "next": {"id": "end", "type": "END", "title": "盖章归档"}}}}', sysdate());
+('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"id": "root", "type": "START", "title": "起草合同", "next": {"id": "n1", "type": "APPROVAL", "title": "法务&财务会签审核", "icon": "scale", "signType": "ALL", "approverType": "USERS", "approverValue": "1", "next": {"id": "n2", "type": "APPROVAL", "title": "总经理签发", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "next": {"id": "end", "type": "END", "title": "盖章归档"}}}}', sysdate());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
 ('wf_recruit', '人员招聘流程', 'biz_recruit', 1, 'PUBLISHED', 1, 'form_recruit', '{"id": "root", "type": "START", "title": "提交招聘需求", "next": {"id": "n1", "type": "APPROVAL", "title": "部门总监审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR审核", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "n3", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "next": {"id": "end", "type": "END", "title": "开始招聘"}}}}}', sysdate());
@@ -591,10 +615,10 @@ INSERT INTO wf_task (
 ('test_task_002', 100000, 'test_inst_002', 'n1', '部门经理审批',
  1, '管理员', 'TODO', 'URGENT', NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY)),
 
-('test_task_003', 100000, 'test_inst_003', 'b1', '法务审核',
+('test_task_003', 100000, 'test_inst_003', 'n1', '法务&财务会签审核',
  1, '管理员', 'TODO', 'HIGH', NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY)),
 
-('test_task_004', 100000, 'test_inst_003', 'b2', '财务审核',
+('test_task_004', 100000, 'test_inst_003', 'n1', '法务&财务会签审核',
  1, '管理员', 'TODO', 'HIGH', NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY)),
 
 ('test_task_005', 100000, 'test_inst_004', 'n1', '财务主管审批',
@@ -609,11 +633,21 @@ INSERT INTO wf_task (
 ('test_task_008', 100000, 'test_inst_008', 'n1', '部门总监审批',
  1, '管理员', 'TODO', 'HIGH', NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY)),
 
-('test_task_009', 100000, 'test_inst_009', 'b1', '法务审核',
+('test_task_009', 100000, 'test_inst_009', 'n1', '法务&财务会签审核',
  1, '管理员', 'TODO', 'NORMAL', NOW(), DATE_ADD(NOW(), INTERVAL 4 DAY)),
 
-('test_task_010', 100000, 'test_inst_009', 'b2', '财务审核',
+('test_task_010', 100000, 'test_inst_009', 'n1', '法务&财务会签审核',
  1, '管理员', 'TODO', 'NORMAL', NOW(), DATE_ADD(NOW(), INTERVAL 4 DAY));
+
+-- 插入会签任务记录（合同审批流程的会签节点 n1）
+INSERT INTO wf_countersign_task (
+  countersign_id, tenant_id, instance_id, node_key, node_name,
+  sign_type, total_count, voted_count, approve_count, reject_count, status, create_time
+) VALUES
+('cs_inst_003', 100000, 'test_inst_003', 'n1', '法务&财务会签审核',
+ 'ALL', 2, 0, 0, 0, 'VOTING', NOW()),
+('cs_inst_009', 100000, 'test_inst_009', 'n1', '法务&财务会签审核',
+ 'ALL', 2, 0, 0, 0, 'VOTING', NOW());
 
 -- 插入任务历史记录
 INSERT INTO wf_task_history (
@@ -644,7 +678,7 @@ INSERT INTO wf_process_copy (
  0, NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
 
 -- 王五的销售合同审批 → 抄送给admin（未读）
-(100000, 'test_inst_003', 'biz_contract', '王五的销售合同审批', 'b1', '法务审核',
+(100000, 'test_inst_003', 'biz_contract', '王五的销售合同审批', 'n1', '法务&财务会签审核',
  3, '王五', 1,
  '{"c1":"XX公司软件采购合同","c2":"XX科技有限公司","c3":50000,"c4":"销售合同","c5":"软件授权及技术支持服务"}',
  0, NULL, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
@@ -668,7 +702,7 @@ INSERT INTO wf_process_copy (
  1, DATE_SUB(NOW(), INTERVAL 5 HOUR), DATE_SUB(NOW(), INTERVAL 1 DAY)),
 
 -- 郑十的采购合同审批 → 抄送给admin（已读）
-(100000, 'test_inst_009', 'biz_contract', '郑十的采购合同审批', 'b1', '法务审核',
+(100000, 'test_inst_009', 'biz_contract', '郑十的采购合同审批', 'n1', '法务&财务会签审核',
  4, '郑十', 1,
  '{"c1":"办公设备采购合同","c2":"YY科技有限公司","c3":80000,"c4":"采购合同","c5":"采购办公电脑、打印机等设备"}',
  1, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),

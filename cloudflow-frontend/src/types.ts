@@ -64,6 +64,7 @@ export enum NodeType {
   TIMER = 'TIMER',         // Delay or scheduled trigger
   SUBPROCESS = 'SUBPROCESS', // Call another workflow
   MANUAL = 'MANUAL',       // Manual task without approval
+  COPY = 'COPY',           // Copy/CC node - send copy to specified users
   // New: Support custom string types for plugins
 }
 

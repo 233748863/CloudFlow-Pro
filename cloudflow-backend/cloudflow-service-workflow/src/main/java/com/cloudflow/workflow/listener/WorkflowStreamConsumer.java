@@ -38,7 +38,7 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
         try {
             // 执行业务逻辑 (自动通过)
             // 幂等性依赖 workflowService 内部判断 (如果任务非 pending 状态应抛错或忽略)
-            workflowService.completeTask(taskId, "PASS", "系统 SLA 自动通过 (Stream)", Collections.emptyMap());
+            workflowService.completeTask(taskId, "PASS", "系统 SLA 自动通过 (Stream)", Collections.<String, Object>emptyMap(), null);
 
             // 手动确认
             redisStreamUtil.ack(workflowProperties.getStream().getKey(), workflowProperties.getStream().getGroup(), msgId);

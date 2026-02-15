@@ -41,7 +41,7 @@ export enum ProcessInstanceStatus {
   RUNNING = 'RUNNING',
   COMPLETED = 'COMPLETED',
   REJECTED = 'REJECTED',
-  CANCELLED = 'CANCELLED',
+  REVOKED = 'REVOKED',
   SUSPENDED = 'SUSPENDED'
 }
 

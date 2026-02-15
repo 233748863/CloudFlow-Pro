@@ -196,6 +196,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private com.cloudflow.workflow.service.IProcessCopyService processCopyService;
 
+    /** 工作流事件发布器（借鉴 poco-flow FlowProcessEventListener 设计） */
+    @Autowired
+    private com.cloudflow.workflow.event.WorkflowEventPublisher workflowEventPublisher;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -598,6 +602,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
         log.info("[startProcess] 流程启动成功, instanceId={}", instance.getInstanceId());
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_START, instance.getInstanceId(),
             "processDefKey=" + processDefKey + ", businessKey=" + businessKey);
+        
+        // 发布流程启动事件（借鉴 poco-flow FlowProcessEventListener 设计）
+        workflowEventPublisher.publishProcessStarted(instance);
+        
         return R.ok(instance.getInstanceId());
     }
     
@@ -811,6 +819,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 redisCache.setCacheZSet("sys:task:timeouts", task.getTaskId(), (double) expireTime);
             }
             
+            // 发布任务分配事件（借鉴 poco-flow FlowProcessEventListener 设计）
+            workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), task.getAssignee(), null);
+            
             // 停止在此处，等待用户操作
             return;
 
@@ -928,11 +939,17 @@ public class WorkflowServiceImpl implements IWorkflowService {
         instance.setStatus(status);
         instance.setEndTime(new Date());
         processInstanceMapper.updateById(instance);
+        
+        // 发布流程完成事件（借鉴 poco-flow FlowProcessEventListener 设计）
+        // 注意：REJECTED 事件由 completeTask 的 REJECT 分支单独发布（携带节点名和审批意见）
+        if (WfProcessStatus.COMPLETED.getCode().equals(status)) {
+            workflowEventPublisher.publishProcessCompleted(instance);
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public R<?> completeTask(String taskId, String action, String comment, Map<String, Object> variables) {
+    public R<?> completeTask(String taskId, String action, String comment, Map<String, Object> variables, String delegateUserId) {
         Long currentUserId = UserContext.getUserId();
         log.info("[completeTask] 开始处理任务, taskId={}, action={}, userId={}", taskId, action, currentUserId);
         
@@ -942,6 +959,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
         }
         if (!StringUtils.hasText(action)) {
             throw WorkflowException.validationError("操作类型不能为空");
+        }
+        // 转办操作必须指定目标用户
+        if ("DELEGATE".equalsIgnoreCase(action) && !StringUtils.hasText(delegateUserId)) {
+            throw WorkflowException.validationError("转办操作必须指定目标用户ID");
         }
         
         // P0-5: 限流检查
@@ -1003,9 +1024,42 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 // 9.C: 保存实例快照
                 saveProcessSnapshot(instance, task.getNodeKey(), task.getNodeName());
                 
+                // 转办操作：不推进流程，而是将任务重新分配给目标用户
+                if ("DELEGATE".equalsIgnoreCase(action)) {
+                    WfTask newTask = new WfTask();
+                    newTask.setTaskId(UUID.randomUUID().toString());
+                    newTask.setInstanceId(task.getInstanceId());
+                    newTask.setNodeName(task.getNodeName());
+                    newTask.setNodeKey(task.getNodeKey());
+                    newTask.setAssignee(Long.valueOf(delegateUserId));
+                    newTask.setStatus(WfTaskStatus.TODO.getCode());
+                    newTask.setCreateTime(new Date());
+                    taskMapper.insert(newTask);
+                    
+                    // 通知被转办人
+                    sysNoticeService.sendNotice(
+                        Long.valueOf(delegateUserId),
+                        "任务转办通知",
+                        String.format("您收到一个转办任务: %s (流程: %s)，转办人: %s，意见: %s",
+                            task.getNodeName(), instance.getTitle(),
+                            UserContext.getUserName(), StringUtils.hasText(comment) ? comment : "无"),
+                        "1",
+                        UserContext.getUserId(),
+                        UserContext.getUserName()
+                    );
+                    
+                    notifyInitiator(instance, task.getNodeName(), action, comment);
+                    log.info("[completeTask] 任务已转办, taskId={}, delegateUserId={}", taskId, delegateUserId);
+                    auditService.log(WorkflowAuditService.AuditAction.TASK_COMPLETE, taskId,
+                        "action=DELEGATE, delegateUserId=" + delegateUserId);
+                    return R.ok();
+                }
+                
                 if ("REJECT".equalsIgnoreCase(action)) {
                     completeInstance(instance, WfProcessStatus.REJECTED.getCode());
                     log.info("[completeTask] 流程被拒绝, instanceId={}", instance.getInstanceId());
+                    // 发布流程拒绝事件（携带拒绝节点名和审批意见）
+                    workflowEventPublisher.publishProcessRejected(instance, task.getNodeName(), comment);
                     // 5.F: 通知发起人流程被拒绝
                     notifyInitiator(instance, task.getNodeName(), action, comment);
                     return R.ok();
@@ -1074,6 +1128,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 
                 auditService.log(WorkflowAuditService.AuditAction.TASK_COMPLETE, taskId,
                     "action=" + action + ", nodeName=" + task.getNodeName());
+
+                // 发布任务完成事件（借鉴 poco-flow FlowProcessEventListener 设计）
+                workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(), action, comment);
 
                 return R.ok();
             } else {
@@ -1442,6 +1499,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
         instance.setStatus(WfProcessStatus.REVOKED.getCode());
         instance.setEndTime(new Date());
         processInstanceMapper.updateById(instance);
+        
+        // 发布流程撤回事件（借鉴 poco-flow FlowProcessEventListener 设计）
+        workflowEventPublisher.publishProcessRevoked(instance);
         
         // 7.3: 撤回通知 - 通知所有相关人员
         notifyRecallToParticipants(instance, activeTasks);
@@ -2173,6 +2233,16 @@ public class WorkflowServiceImpl implements IWorkflowService {
     }
 
     @Override
+    public WfProcessDefinition getProcessDefinition(String definitionId) {
+        log.info("[getProcessDefinition] 查询流程定义详情, definitionId={}", definitionId);
+        WfProcessDefinition def = processDefinitionMapper.selectById(definitionId);
+        if (def == null) {
+            throw new WorkflowException("DEFINITION_NOT_FOUND", "流程定义不存在: " + definitionId);
+        }
+        return def;
+    }
+
+    @Override
     public PageResult<WfProcessDefinition> listProcessDefinitions(PageQuery pageQuery) {
         log.info("[listProcessDefinitions] 查询流程定义列表, pageNum={}, pageSize={}", pageQuery.getPageNum(), pageQuery.getPageSize());
         
@@ -2708,7 +2778,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.invalidState("只有运行中的流程才能暂停");
         }
         
-        instance.setStatus("SUSPENDED");
+        instance.setStatus(WfProcessStatus.SUSPENDED.getCode());
         processInstanceMapper.updateById(instance);
         
         // 暂停所有活动任务
@@ -2718,7 +2788,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
         );
         for (WfTask task : activeTasks) {
-            task.setStatus("SUSPENDED");
+            task.setStatus(WfTaskStatus.SUSPENDED.getCode());
             taskMapper.updateById(task);
         }
         
@@ -2737,7 +2807,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
-        if (!"SUSPENDED".equals(instance.getStatus())) {
+        if (!WfProcessStatus.SUSPENDED.getCode().equals(instance.getStatus())) {
             throw WorkflowException.invalidState("只有暂停中的流程才能恢复");
         }
         
@@ -2748,7 +2818,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         List<WfTask> suspendedTasks = taskMapper.selectList(
             new LambdaQueryWrapper<WfTask>()
                 .eq(WfTask::getInstanceId, instanceId)
-                .eq(WfTask::getStatus, "SUSPENDED")
+                .eq(WfTask::getStatus, WfTaskStatus.SUSPENDED.getCode())
         );
         for (WfTask task : suspendedTasks) {
             task.setStatus(WfTaskStatus.TODO.getCode());
@@ -4102,6 +4172,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
             );
             
             log.info("[handleManualTaskNode] 人工任务创建成功, taskId={}, assignee={}", task.getTaskId(), task.getAssignee());
+            
+            // 发布任务分配事件（借鉴 poco-flow FlowProcessEventListener 设计）
+            // 使用带 nodeType 参数的重载方法，传入 "MANUAL" 而非默认的 "APPROVAL"
+            workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), "MANUAL", task.getAssignee(), null);
             
         } catch (Exception e) {
             log.error("[handleManualTaskNode] 人工任务节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);

@@ -7,7 +7,8 @@ public enum WfProcessStatus {
     RUNNING("RUNNING", "运行中"),
     COMPLETED("COMPLETED", "已完成"),
     REJECTED("REJECTED", "已驳回"),
-    REVOKED("REVOKED", "已撤销");
+    REVOKED("REVOKED", "已撤销"),
+    SUSPENDED("SUSPENDED", "已暂停");
 
     private final String code;
     private final String desc;

@@ -37,7 +37,7 @@ public class WorkflowController {
      */
     @PostMapping("/complete")
     public R<?> completeTask(@RequestBody TaskCompleteReq req) {
-        return workflowService.completeTask(req.getTaskId(), req.getAction(), req.getComment(), req.getVariables());
+        return workflowService.completeTask(req.getTaskId(), req.getAction(), req.getComment(), req.getVariables(), req.getDelegateUserId());
     }
 
     /**
@@ -212,5 +212,51 @@ public class WorkflowController {
             return R.fail("instanceId不能为空");
         }
         return workflowService.recallProcess(instanceId);
+    }
+
+    /**
+     * 驳回任务到指定节点
+     */
+    @PostMapping("/reject")
+    public R<?> rejectTask(@RequestBody Map<String, String> body) {
+        String taskId = body.get("taskId");
+        String targetNodeKey = body.get("targetNodeKey");
+        String comment = body.get("comment");
+        if (taskId == null || taskId.isBlank()) {
+            return R.fail("taskId不能为空");
+        }
+        return workflowService.rejectTask(taskId, targetNodeKey, comment);
+    }
+
+    /**
+     * 暂停流程
+     */
+    @PostMapping("/pause")
+    public R<?> pauseProcess(@RequestBody Map<String, String> body) {
+        String instanceId = body.get("instanceId");
+        if (instanceId == null || instanceId.isBlank()) {
+            return R.fail("instanceId不能为空");
+        }
+        return workflowService.pauseProcess(instanceId);
+    }
+
+    /**
+     * 恢复流程
+     */
+    @PostMapping("/resume")
+    public R<?> resumeProcess(@RequestBody Map<String, String> body) {
+        String instanceId = body.get("instanceId");
+        if (instanceId == null || instanceId.isBlank()) {
+            return R.fail("instanceId不能为空");
+        }
+        return workflowService.resumeProcess(instanceId);
+    }
+
+    /**
+     * 查询流程定义详情
+     */
+    @GetMapping("/definition/{definitionId}")
+    public R<com.cloudflow.workflow.domain.WfProcessDefinition> getProcessDefinition(@PathVariable("definitionId") String definitionId) {
+        return R.ok(workflowService.getProcessDefinition(definitionId));
     }
 }
