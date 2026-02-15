@@ -192,6 +192,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private com.cloudflow.workflow.processor.ApprovalPostProcessor approvalPostProcessor;
 
+    /** 流程抄送服务（借鉴 poco-flow CopyServiceTask 设计） */
+    @Autowired
+    private com.cloudflow.workflow.service.IProcessCopyService processCopyService;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -840,6 +844,12 @@ public class WorkflowServiceImpl implements IWorkflowService {
             handleManualTaskNode(node, instance);
             // 停止在此处，等待用户操作
             return;
+
+        } else if ("COPY".equals(node.getType())) {
+            // 抄送节点：借鉴 poco-flow CopyServiceTask 设计
+            // 解析抄送人列表，为每个抄送人创建抄送记录，然后自动继续流转
+            handleCopyNode(node, instance, variables);
+            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
 
         } else if ("CONDITION".equals(node.getType()) || "GATEWAY".equals(node.getType())) {
             // 排他网关（条件）
@@ -4096,6 +4106,103 @@ public class WorkflowServiceImpl implements IWorkflowService {
         } catch (Exception e) {
             log.error("[handleManualTaskNode] 人工任务节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
             throw new WorkflowException("MANUAL_TASK_FAILED", "人工任务节点执行失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 处理抄送节点：借鉴 poco-flow CopyServiceTask 设计
+     * 从节点配置中解析抄送人（支持用户ID列表、角色、部门三种维度），
+     * 为每个抄送人创建一条抄送记录，包含流程标题、节点信息、表单数据快照。
+     * 抄送节点是自动节点，执行完毕后自动继续流转。
+     */
+    private void handleCopyNode(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
+        try {
+            log.info("[handleCopyNode] 执行抄送节点, nodeKey={}, instanceId={}", node.getId(), instance.getInstanceId());
+
+            Map<String, Object> props = node.getProps();
+            if (props == null) {
+                log.warn("[handleCopyNode] 抄送节点未配置属性, nodeKey={}", node.getId());
+                return;
+            }
+
+            // 收集抄送人ID列表（支持多种来源）
+            List<Long> copyUserIds = new ArrayList<>();
+
+            // 1. 直接指定的用户ID列表（逗号分隔或JSON数组）
+            Object userIdsObj = props.get("copyUserIds");
+            if (userIdsObj instanceof String && StringUtils.hasText((String) userIdsObj)) {
+                for (String idStr : ((String) userIdsObj).split(",")) {
+                    try {
+                        copyUserIds.add(Long.valueOf(idStr.trim()));
+                    } catch (NumberFormatException ignored) {}
+                }
+            } else if (userIdsObj instanceof List) {
+                for (Object id : (List<?>) userIdsObj) {
+                    try {
+                        copyUserIds.add(Long.valueOf(String.valueOf(id)));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+
+            // 2. 按角色抄送（roleKey）
+            String copyRoleKey = (String) props.get("copyRoleKey");
+            if (StringUtils.hasText(copyRoleKey)) {
+                SysRole role = sysRoleMapper.selectOne(
+                    new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, copyRoleKey));
+                if (role != null) {
+                    List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                        new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
+                    for (SysUserRole ur : userRoles) {
+                        copyUserIds.add(ur.getUserId());
+                    }
+                }
+            }
+
+            // 3. 按部门抄送（deptId）
+            String copyDeptId = (String) props.get("copyDeptId");
+            if (StringUtils.hasText(copyDeptId)) {
+                List<SysUser> deptUsers = sysUserMapper.selectList(
+                    new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeptId, Long.valueOf(copyDeptId)));
+                if (deptUsers != null) {
+                    for (SysUser u : deptUsers) {
+                        copyUserIds.add(u.getUserId());
+                    }
+                }
+            }
+
+            if (copyUserIds.isEmpty()) {
+                log.info("[handleCopyNode] 未解析到抄送人, nodeKey={}", node.getId());
+                return;
+            }
+
+            // 序列化当前表单数据作为快照
+            String formData = null;
+            if (variables != null && !variables.isEmpty()) {
+                try {
+                    formData = objectMapper.writeValueAsString(variables);
+                } catch (Exception e) {
+                    log.warn("[handleCopyNode] 序列化表单数据失败: {}", e.getMessage());
+                }
+            }
+
+            // 调用抄送服务创建记录
+            processCopyService.createCopyRecords(
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                instance.getTitle(),
+                node.getId(),
+                node.getTitle(),
+                instance.getStartUserId(),
+                instance.getStartUserName(),
+                copyUserIds,
+                formData
+            );
+
+            log.info("[handleCopyNode] 抄送节点执行完成, nodeKey={}, 抄送人数={}", node.getId(), copyUserIds.size());
+
+        } catch (Exception e) {
+            log.error("[handleCopyNode] 抄送节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
+            // 抄送失败不中断流程，继续执行
         }
     }
 

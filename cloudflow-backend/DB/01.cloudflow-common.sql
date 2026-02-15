@@ -292,6 +292,7 @@ INSERT INTO sys_menu VALUES(202, '考勤打卡',   2, 3, '/admin/attendance/chec
 INSERT INTO sys_menu VALUES(300, '发起流程',   3, 1, '/workplace',           'pages/Workplace',              NULL, 0, 0, 'C', '0', '0', 'process:start',             'PlayCircle',      'admin', sysdate(), '', null, '发起流程');
 INSERT INTO sys_menu VALUES(301, '我的申请',   3, 2, '/my-apps',             'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'process:myapps',            'FileText',        'admin', sysdate(), '', null, '我的申请');
 INSERT INTO sys_menu VALUES(302, '审批待办',   3, 3, '/tasks',               'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'process:tasks',             'CheckCircle2',    'admin', sysdate(), '', null, '审批待办');
+INSERT INTO sys_menu VALUES(303, '抄送我的',   3, 4, '/my-copies',           'pages/CopyListPage',           NULL, 0, 0, 'C', '0', '0', 'process:copy:list',         'MailOpen',        'admin', sysdate(), '', null, '抄送我的');
 
 -- 流程管理 (parent_id=4)
 INSERT INTO sys_menu VALUES(400, '流程设计',   4, 1, '/workflow',            'pages/WorkflowDesign',         NULL, 0, 0, 'C', '0', '0', 'workflow:model:list',        'GitMerge',        'admin', sysdate(), '', null, '流程设计');
@@ -355,6 +356,7 @@ INSERT INTO sys_role_menu VALUES(2, 202, 100000);
 INSERT INTO sys_role_menu VALUES(2, 300, 100000);
 INSERT INTO sys_role_menu VALUES(2, 301, 100000);
 INSERT INTO sys_role_menu VALUES(2, 302, 100000);
+INSERT INTO sys_role_menu VALUES(2, 303, 100000);
 -- 流程管理子菜单
 INSERT INTO sys_role_menu VALUES(2, 400, 100000);
 INSERT INTO sys_role_menu VALUES(2, 401, 100000);
@@ -380,6 +382,7 @@ INSERT INTO sys_role_menu VALUES(3, 202, 100000);
 INSERT INTO sys_role_menu VALUES(3, 300, 100000);
 INSERT INTO sys_role_menu VALUES(3, 301, 100000);
 INSERT INTO sys_role_menu VALUES(3, 302, 100000);
+INSERT INTO sys_role_menu VALUES(3, 303, 100000);
 
 -- HR (role_id=4): 工作台 + 办公协同 + 流程中心 + 流程管理 + 行政管理
 INSERT INTO sys_role_menu VALUES(4, 1, 100000);
@@ -395,6 +398,7 @@ INSERT INTO sys_role_menu VALUES(4, 202, 100000);
 INSERT INTO sys_role_menu VALUES(4, 300, 100000);
 INSERT INTO sys_role_menu VALUES(4, 301, 100000);
 INSERT INTO sys_role_menu VALUES(4, 302, 100000);
+INSERT INTO sys_role_menu VALUES(4, 303, 100000);
 INSERT INTO sys_role_menu VALUES(4, 400, 100000);
 INSERT INTO sys_role_menu VALUES(4, 401, 100000);
 INSERT INTO sys_role_menu VALUES(4, 402, 100000);
@@ -414,6 +418,7 @@ INSERT INTO sys_role_menu VALUES(5, 202, 100000);
 INSERT INTO sys_role_menu VALUES(5, 300, 100000);
 INSERT INTO sys_role_menu VALUES(5, 301, 100000);
 INSERT INTO sys_role_menu VALUES(5, 302, 100000);
+INSERT INTO sys_role_menu VALUES(5, 303, 100000);
 
 SET FOREIGN_KEY_CHECKS = 1;
 

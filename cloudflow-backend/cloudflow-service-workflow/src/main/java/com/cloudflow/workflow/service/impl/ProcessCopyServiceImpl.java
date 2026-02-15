@@ -1,0 +1,224 @@
+package com.cloudflow.workflow.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.workflow.domain.WfProcessCopy;
+import com.cloudflow.workflow.domain.WfProcessDefinition;
+import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.mapper.WfProcessCopyMapper;
+import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
+import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
+import com.cloudflow.workflow.service.IProcessCopyService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * 流程抄送服务实现
+ * 借鉴 poco-flow CopyServiceTask 的设计，适配 CloudFlow Pro 自研引擎
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ProcessCopyServiceImpl implements IProcessCopyService {
+
+    private final WfProcessCopyMapper processCopyMapper;
+    private final WfProcessInstanceMapper processInstanceMapper;
+    private final WfProcessDefinitionMapper processDefinitionMapper;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createCopyRecords(String instanceId, String processDefKey, String title,
+                                  String nodeId, String nodeName,
+                                  Long startUserId, String startUserName,
+                                  List<Long> userIds, String formData) {
+        if (userIds == null || userIds.isEmpty()) {
+            log.warn("[createCopyRecords] 抄送人列表为空, instanceId={}, nodeId={}", instanceId, nodeId);
+            return;
+        }
+
+        // 去重：同一个流程实例的同一个节点，不重复抄送同一个人
+        Set<Long> uniqueUserIds = new LinkedHashSet<>(userIds);
+        // 排除发起人自己（抄送给自己没有意义）
+        uniqueUserIds.remove(startUserId);
+
+        if (uniqueUserIds.isEmpty()) {
+            log.info("[createCopyRecords] 去重后抄送人列表为空, instanceId={}, nodeId={}", instanceId, nodeId);
+            return;
+        }
+
+        Long tenantId = UserContext.getTenantId();
+        Date now = new Date();
+
+        for (Long userId : uniqueUserIds) {
+            WfProcessCopy copy = new WfProcessCopy();
+            copy.setTenantId(tenantId);
+            copy.setInstanceId(instanceId);
+            copy.setProcessDefKey(processDefKey);
+            copy.setTitle(title);
+            copy.setNodeId(nodeId);
+            copy.setNodeName(nodeName);
+            copy.setStartUserId(startUserId);
+            copy.setStartUserName(startUserName);
+            copy.setUserId(userId);
+            copy.setFormData(formData);
+            copy.setIsRead(0);
+            copy.setCreateTime(now);
+            processCopyMapper.insert(copy);
+        }
+
+        log.info("[createCopyRecords] 抄送记录创建成功, instanceId={}, nodeId={}, 抄送人数={}",
+                instanceId, nodeId, uniqueUserIds.size());
+    }
+
+    @Override
+    public PageResult<WfProcessCopy> getMyCopyList(Long userId, PageQuery pageQuery) {
+        log.info("[getMyCopyList] 查询抄送列表, userId={}, pageNum={}, pageSize={}",
+                userId, pageQuery.getPageNum(), pageQuery.getPageSize());
+
+        Page<WfProcessCopy> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
+        LambdaQueryWrapper<WfProcessCopy> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WfProcessCopy::getUserId, userId);
+
+        // 关键字搜索（按流程标题模糊匹配）
+        String keyword = (String) pageQuery.getParams().get("keyword");
+        if (StringUtils.hasText(keyword)) {
+            wrapper.like(WfProcessCopy::getTitle, keyword);
+        }
+
+        // 已读状态筛选
+        String isRead = (String) pageQuery.getParams().get("isRead");
+        if (StringUtils.hasText(isRead)) {
+            wrapper.eq(WfProcessCopy::getIsRead, Integer.parseInt(isRead));
+        }
+
+        // 流程类型筛选
+        String processDefKey = (String) pageQuery.getParams().get("processDefKey");
+        if (StringUtils.hasText(processDefKey)) {
+            wrapper.eq(WfProcessCopy::getProcessDefKey, processDefKey);
+        }
+
+        wrapper.orderByDesc(WfProcessCopy::getCreateTime);
+
+        Page<WfProcessCopy> resultPage = processCopyMapper.selectPage(page, wrapper);
+        List<WfProcessCopy> records = resultPage.getRecords();
+
+        // 批量填充关联信息（流程名称、流程状态）
+        if (records != null && !records.isEmpty()) {
+            enrichCopyRecords(records);
+        }
+
+        return new PageResult<>(records, resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markAsRead(Long copyId, Long userId) {
+        WfProcessCopy copy = processCopyMapper.selectById(copyId);
+        if (copy == null) {
+            log.warn("[markAsRead] 抄送记录不存在, copyId={}", copyId);
+            return;
+        }
+        // 校验：只有抄送接收人才能标记已读
+        if (!copy.getUserId().equals(userId)) {
+            log.warn("[markAsRead] 非抄送接收人, copyId={}, userId={}, ownerId={}", copyId, userId, copy.getUserId());
+            return;
+        }
+        if (copy.getIsRead() == 1) {
+            return; // 已经是已读状态
+        }
+
+        copy.setIsRead(1);
+        copy.setReadTime(new Date());
+        processCopyMapper.updateById(copy);
+        log.debug("[markAsRead] 标记已读成功, copyId={}", copyId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchMarkAsRead(List<Long> copyIds, Long userId) {
+        if (copyIds == null || copyIds.isEmpty()) {
+            return;
+        }
+        processCopyMapper.update(null,
+                new LambdaUpdateWrapper<WfProcessCopy>()
+                        .in(WfProcessCopy::getId, copyIds)
+                        .eq(WfProcessCopy::getUserId, userId)
+                        .eq(WfProcessCopy::getIsRead, 0)
+                        .set(WfProcessCopy::getIsRead, 1)
+                        .set(WfProcessCopy::getReadTime, new Date())
+        );
+        log.info("[batchMarkAsRead] 批量标记已读, userId={}, count={}", userId, copyIds.size());
+    }
+
+    @Override
+    public int getUnreadCount(Long userId) {
+        Long count = processCopyMapper.selectCount(
+                new LambdaQueryWrapper<WfProcessCopy>()
+                        .eq(WfProcessCopy::getUserId, userId)
+                        .eq(WfProcessCopy::getIsRead, 0)
+        );
+        return count != null ? count.intValue() : 0;
+    }
+
+    /**
+     * 批量填充抄送记录的关联信息（流程名称、流程状态）
+     * 使用批量查询避免 N+1 问题
+     */
+    private void enrichCopyRecords(List<WfProcessCopy> records) {
+        // 收集所有 instanceId 和 processDefKey
+        List<String> instanceIds = records.stream()
+                .map(WfProcessCopy::getInstanceId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<String> processKeys = records.stream()
+                .map(WfProcessCopy::getProcessDefKey)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 批量查询流程实例（获取状态）
+        Map<String, WfProcessInstance> instanceMap = new HashMap<>();
+        if (!instanceIds.isEmpty()) {
+            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+            for (WfProcessInstance inst : instances) {
+                instanceMap.put(inst.getInstanceId(), inst);
+            }
+        }
+
+        // 批量查询流程定义（获取流程名称，每个 processKey 取最新版本）
+        Map<String, String> processNameMap = new HashMap<>();
+        if (!processKeys.isEmpty()) {
+            List<WfProcessDefinition> definitions = processDefinitionMapper.selectList(
+                    new LambdaQueryWrapper<WfProcessDefinition>()
+                            .in(WfProcessDefinition::getProcessKey, processKeys)
+                            .orderByDesc(WfProcessDefinition::getVersion)
+            );
+            for (WfProcessDefinition def : definitions) {
+                processNameMap.putIfAbsent(def.getProcessKey(), def.getProcessName());
+            }
+        }
+
+        // 填充
+        for (WfProcessCopy copy : records) {
+            WfProcessInstance inst = instanceMap.get(copy.getInstanceId());
+            if (inst != null) {
+                copy.setProcessStatus(inst.getStatus());
+            }
+            String processName = processNameMap.get(copy.getProcessDefKey());
+            if (processName != null) {
+                copy.setProcessName(processName);
+            }
+        }
+    }
+}

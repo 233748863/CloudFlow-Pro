@@ -46,6 +46,7 @@ const WorkflowMonitor = React.lazy(() => import('./pages/WorkflowMonitor').then(
 const DeployManagement = React.lazy(() => import('./pages/DeployManagement').then(module => ({ default: module.DeployManagement })));
 const ExpenseClaimPage = React.lazy(() => import('./pages/ExpenseClaimPage'));
 const PaymentRequestPage = React.lazy(() => import('./pages/PaymentRequestPage').then(module => ({ default: module.PaymentRequestPage })));
+const CopyListPage = React.lazy(() => import('./pages/CopyListPage').then(module => ({ default: module.CopyListPage })));
 
 
 const Loading = () => (
@@ -105,6 +106,10 @@ const desktopRoutes = [
           {
             path: '/my-apps',
             element: <Suspense fallback={<Loading />}><TaskListPage type="applications" /></Suspense>,
+          },
+          {
+            path: '/my-copies',
+            element: <Suspense fallback={<Loading />}><CopyListPage /></Suspense>,
           },
           {
             path: '/workflow',

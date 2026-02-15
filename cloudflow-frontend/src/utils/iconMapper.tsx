@@ -2,7 +2,7 @@ import {
   LayoutDashboard, GitMerge, FileText, Settings, LogOut, Bell, CheckCircle2,
   Users, PlayCircle, ShieldCheck, ChevronRight, ChevronDown, FormInput, Code, Megaphone,
   Calendar, Monitor, Rocket, Briefcase, Building2, Wrench, FolderOpen, Car,
-  ClipboardCheck, Package, FileArchive
+  ClipboardCheck, Package, FileArchive, MailOpen
 } from 'lucide-react';
 
 // 图标名称到组件的映射
@@ -33,6 +33,7 @@ export const iconMap: Record<string, React.ElementType> = {
   'ClipboardCheck': ClipboardCheck,
   'Package': Package,
   'FileArchive': FileArchive,
+  'MailOpen': MailOpen,
 };
 
 // 获取图标组件，如果找不到则返回默认图标

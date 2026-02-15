@@ -454,6 +454,29 @@ CREATE TABLE wf_urge_effect (
   KEY idx_task_id (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='催办效果统计表';
 
+-- 21. 流程抄送记录表
+DROP TABLE IF EXISTS wf_process_copy;
+CREATE TABLE wf_process_copy (
+  `id`              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `tenant_id`       BIGINT       DEFAULT NULL            COMMENT '租户ID',
+  `instance_id`     VARCHAR(64)  NOT NULL                COMMENT '流程实例ID',
+  `process_def_key` VARCHAR(128) NOT NULL                COMMENT '流程定义Key',
+  `title`           VARCHAR(256) DEFAULT NULL            COMMENT '流程标题',
+  `node_id`         VARCHAR(64)  DEFAULT NULL            COMMENT '抄送节点ID',
+  `node_name`       VARCHAR(128) DEFAULT NULL            COMMENT '抄送节点名称',
+  `start_user_id`   BIGINT       DEFAULT NULL            COMMENT '发起人ID',
+  `start_user_name` VARCHAR(64)  DEFAULT NULL            COMMENT '发起人姓名',
+  `user_id`         BIGINT       NOT NULL                COMMENT '抄送接收人ID',
+  `form_data`       TEXT         DEFAULT NULL            COMMENT '表单数据快照（JSON格式）',
+  `is_read`         TINYINT      NOT NULL DEFAULT 0      COMMENT '是否已读：0-未读，1-已读',
+  `read_time`       DATETIME     DEFAULT NULL            COMMENT '已读时间',
+  `create_time`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '抄送时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id`     (`user_id`, `is_read`),
+  KEY `idx_instance_id` (`instance_id`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='流程抄送记录表';
+
 -- =========================================================
 -- 初始化数据 - 表单定义
 -- =========================================================
@@ -606,6 +629,53 @@ INSERT INTO wf_task_history (
 
 ('test_hist_004', 100000, 'test_task_completed_004', 'test_inst_010', 'HR备案', 'b1',
  1, '管理员', 'APPROVE', '已备案', 120, DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+-- 插入流程抄送测试数据（接收人为 admin, user_id=1）
+INSERT INTO wf_process_copy (
+  tenant_id, instance_id, process_def_key, title, node_id, node_name,
+  start_user_id, start_user_name, user_id, form_data, is_read, read_time, create_time
+) VALUES
+-- 李四的年假申请 → 抄送给admin（未读）
+(100000, 'test_inst_002', 'biz_leave', '李四的年假申请', 'n1', '部门经理审批',
+ 2, '李四', 1,
+ '{"l1":"年假","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"春节后休假"}',
+ 0, NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+
+-- 王五的销售合同审批 → 抄送给admin（未读）
+(100000, 'test_inst_003', 'biz_contract', '王五的销售合同审批', 'b1', '法务审核',
+ 3, '王五', 1,
+ '{"c1":"XX公司软件采购合同","c2":"XX科技有限公司","c3":50000,"c4":"销售合同","c5":"软件授权及技术支持服务"}',
+ 0, NULL, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+
+-- 赵六的对公付款申请 → 抄送给admin（未读）
+(100000, 'test_inst_004', 'biz_payment', '赵六的对公付款申请', 'n1', '财务主管审批',
+ 4, '赵六', 1,
+ '{"p1":"供应商A公司","p2":"1234567890123456","p3":30000,"p4":"HT-2026-001"}',
+ 0, NULL, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+
+-- 孙七的招待费报销 → 抄送给admin（已读）
+(100000, 'test_inst_006', 'biz_reimburse', '孙七的招待费报销', 'n1', '直属上级审批',
+ 2, '孙七', 1,
+ '{"f1":"招待费","f2":2500,"f3":"2026-02-09","f4":"客户商务宴请"}',
+ 1, DATE_SUB(NOW(), INTERVAL 3 HOUR), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+
+-- 周八的病假申请 → 抄送给admin（已读）
+(100000, 'test_inst_007', 'biz_leave', '周八的病假申请', 'n1', '部门经理审批',
+ 3, '周八', 1,
+ '{"l1":"病假","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"感冒发烧需要休息"}',
+ 1, DATE_SUB(NOW(), INTERVAL 5 HOUR), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+
+-- 郑十的采购合同审批 → 抄送给admin（已读）
+(100000, 'test_inst_009', 'biz_contract', '郑十的采购合同审批', 'b1', '法务审核',
+ 4, '郑十', 1,
+ '{"c1":"办公设备采购合同","c2":"YY科技有限公司","c3":80000,"c4":"采购合同","c5":"采购办公电脑、打印机等设备"}',
+ 1, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
+
+-- 钱十一的婚假申请（已完成流程）→ 抄送给admin（已读）
+(100000, 'test_inst_010', 'biz_leave', '钱十一的婚假申请', 'b1', 'HR备案',
+ 2, '钱十一', 1,
+ '{"l1":"婚假","l2":"2026-02-01","l3":"2026-02-05","l4":5,"l5":"结婚度蜜月"}',
+ 1, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY));
 
 -- =========================================================
 -- 脚本执行完成
