@@ -131,10 +131,15 @@ public class JsonSchemaValidator {
             }
         }
         
-        // PARALLEL 类型的并行网关也必须有 branches
+        // PARALLEL 类型：会签模式（signType 为 ALL/ANY/PERCENT/SEQUENTIAL）不需要分支，
+        // 只有作为并行网关（无会签配置）时才要求有分支
         if ("PARALLEL".equals(type)) {
-            if (!node.has("branches") || !node.get("branches").isArray() || node.get("branches").size() == 0) {
-                throw WorkflowException.validationError("并行网关节点必须有分支");
+            boolean isCountersignMode = isCountersignNode(node);
+            // 非会签模式下，并行网关必须有分支
+            if (!isCountersignMode) {
+                if (!node.has("branches") || !node.get("branches").isArray() || node.get("branches").size() == 0) {
+                    throw WorkflowException.validationError("并行网关节点必须有分支");
+                }
             }
         }
         
@@ -243,6 +248,27 @@ public class JsonSchemaValidator {
         }
     }
     
+    /**
+     * 判断 PARALLEL 节点是否为会签模式
+     * signType 可能存储在节点顶层（node.signType）或 props 内（node.props.signType）
+     */
+    private boolean isCountersignNode(JsonNode node) {
+        String signType = null;
+        // 优先检查 props.signType（前端 WorkflowBuilder 的存储方式）
+        if (node.has("props") && node.get("props").has("signType")) {
+            signType = node.get("props").get("signType").asText();
+        }
+        // 兼容直接存储在节点顶层的情况
+        if (signType == null && node.has("signType")) {
+            signType = node.get("signType").asText();
+        }
+        if (signType == null) {
+            return false;
+        }
+        return "ALL".equals(signType) || "ANY".equals(signType)
+                || "PERCENT".equals(signType) || "SEQUENTIAL".equals(signType);
+    }
+
     /**
      * 验证字段类型是否有效
      */

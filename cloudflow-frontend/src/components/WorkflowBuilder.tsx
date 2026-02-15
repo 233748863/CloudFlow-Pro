@@ -1032,6 +1032,13 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
   // 当节点 ID 变化或节点内容（分支、props）变化时同步 formData
   useEffect(() => { setFormData(node); }, [node.id, node.branches, node.branchStrategy, node.props]);
   const handleChange = (field: keyof WorkflowNode, value: any) => {
+    // 切换审批方式时，清空之前选择的审批人，避免残留旧数据
+    if (field === 'approverType') {
+      const updated = { ...formData, approverType: value, approverValue: '' };
+      setFormData(updated);
+      onUpdate(node.id, { approverType: value, approverValue: '' });
+      return;
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
     onUpdate(node.id, { [field]: value });
   };
