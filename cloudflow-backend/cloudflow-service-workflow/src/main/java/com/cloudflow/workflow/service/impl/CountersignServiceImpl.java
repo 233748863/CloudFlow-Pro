@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -19,8 +21,14 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 会签服务实现类
- * 支持 ALL（全部通过）、ANY（任一通过）、PERCENT（按比例通过）三种模式
+ * 支持 ALL（全部通过）、ANY（任一通过）、PERCENT（按比例通过）、SEQUENTIAL（顺序签署）四种模式
  * 使用 Redisson 分布式锁保证并发安全
+ *
+ * 顺序签署模式（SEQUENTIAL）：
+ * - 按照 assigneeOrder 中的顺序，逐个创建审批任务
+ * - 前一个人通过后，才给下一个人创建任务
+ * - 任何一个人拒绝，整个会签立即结束（REJECTED）
+ * - 所有人按顺序全部通过后，会签结束（PASSED）
  */
 @Service
 public class CountersignServiceImpl implements ICountersignService {
@@ -48,6 +56,11 @@ public class CountersignServiceImpl implements ICountersignService {
     @Autowired
     private RedissonClient redissonClient;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
+
     /**
      * 创建会签任务
      * 
@@ -70,8 +83,8 @@ public class CountersignServiceImpl implements ICountersignService {
         }
 
         // 校验会签类型
-        if (!"ALL".equals(signType) && !"ANY".equals(signType) && !"PERCENT".equals(signType)) {
-            throw WorkflowException.validationError("无效的会签类型: " + signType + "，支持: ALL/ANY/PERCENT");
+        if (!"ALL".equals(signType) && !"ANY".equals(signType) && !"PERCENT".equals(signType) && !"SEQUENTIAL".equals(signType)) {
+            throw WorkflowException.validationError("无效的会签类型: " + signType + "，支持: ALL/ANY/PERCENT/SEQUENTIAL");
         }
 
         if ("PERCENT".equals(signType) && (passPercent == null || passPercent < 1 || passPercent > 100)) {
@@ -92,25 +105,54 @@ public class CountersignServiceImpl implements ICountersignService {
         csTask.setRejectCount(0);
         csTask.setStatus("VOTING");
         csTask.setCreateTime(new Date());
+
+        // 顺序签署模式：存储有序审批人列表和当前索引
+        if ("SEQUENTIAL".equals(signType)) {
+            try {
+                csTask.setAssigneeOrder(objectMapper.writeValueAsString(assigneeIds));
+            } catch (Exception e) {
+                throw WorkflowException.validationError("序列化审批人列表失败: " + e.getMessage());
+            }
+            csTask.setCurrentIndex(0);
+        }
+
         countersignTaskMapper.insert(csTask);
 
-        // 2. 为每个参与人创建独立的任务
-        for (Long assigneeId : assigneeIds) {
+        // 2. 创建审批任务
+        if ("SEQUENTIAL".equals(signType)) {
+            // 顺序签署：只为第一个人创建任务
+            Long firstAssignee = assigneeIds.get(0);
             WfTask task = new WfTask();
             task.setTaskId(UUID.randomUUID().toString());
             task.setInstanceId(instanceId);
             task.setNodeKey(nodeKey);
-            task.setNodeName(nodeName + " (会签)");
-            task.setAssignee(assigneeId);
+            task.setNodeName(nodeName + " (顺序签署 1/" + assigneeIds.size() + ")");
+            task.setAssignee(firstAssignee);
             task.setStatus("TODO");
             task.setCreateTime(new Date());
-            // 在 candidateRoles 字段中存储会签ID，用于关联
             task.setCandidateRoles("CS:" + csTask.getCountersignId());
             taskMapper.insert(task);
-        }
 
-        log.info("[createCountersignTask] 会签任务创建成功, countersignId={}, totalCount={}",
-                csTask.getCountersignId(), assigneeIds.size());
+            log.info("[createCountersignTask] 顺序签署任务创建成功, countersignId={}, 第1个签署人={}, 共{}人",
+                    csTask.getCountersignId(), firstAssignee, assigneeIds.size());
+        } else {
+            // ALL/ANY/PERCENT：为每个参与人同时创建独立的任务
+            for (Long assigneeId : assigneeIds) {
+                WfTask task = new WfTask();
+                task.setTaskId(UUID.randomUUID().toString());
+                task.setInstanceId(instanceId);
+                task.setNodeKey(nodeKey);
+                task.setNodeName(nodeName + " (会签)");
+                task.setAssignee(assigneeId);
+                task.setStatus("TODO");
+                task.setCreateTime(new Date());
+                task.setCandidateRoles("CS:" + csTask.getCountersignId());
+                taskMapper.insert(task);
+            }
+
+            log.info("[createCountersignTask] 会签任务创建成功, countersignId={}, totalCount={}",
+                    csTask.getCountersignId(), assigneeIds.size());
+        }
         return csTask.getCountersignId();
     }
 
@@ -220,7 +262,12 @@ public class CountersignServiceImpl implements ICountersignService {
             // 10. 删除当前投票人的任务
             taskMapper.deleteById(taskId);
 
-            // 11. 如果会签已结束，清理剩余未投票的任务
+            // 11. 顺序签署模式：如果仍在投票中，为下一个人创建任务
+            if ("VOTING".equals(result) && "SEQUENTIAL".equals(csTask.getSignType())) {
+                advanceToNextSequentialAssignee(csTask);
+            }
+
+            // 12. 如果会签已结束，清理剩余未投票的任务
             if (!"VOTING".equals(result)) {
                 cleanupRemainingTasks(countersignId);
             }
@@ -306,9 +353,81 @@ public class CountersignServiceImpl implements ICountersignService {
                 }
                 return "VOTING";
 
+            case "SEQUENTIAL":
+                // 顺序签署模式：任何一人拒绝立即结束，全部通过才算通过
+                if (rejected > 0) {
+                    return "REJECTED";
+                }
+                if (approved == total) {
+                    return "PASSED";
+                }
+                return "VOTING";
+
             default:
                 log.warn("[evaluateCountersignResult] 未知的会签类型: {}", signType);
                 return "VOTING";
+        }
+    }
+
+    /**
+     * 顺序签署：推进到下一个签署人
+     * 从 assigneeOrder 中取出下一个人，创建新的审批任务
+     */
+    private void advanceToNextSequentialAssignee(WfCountersignTask csTask) {
+        try {
+            List<Long> assigneeOrder = objectMapper.readValue(
+                csTask.getAssigneeOrder(), new TypeReference<List<Long>>() {});
+
+            int nextIndex = csTask.getCurrentIndex() + 1;
+            if (nextIndex >= assigneeOrder.size()) {
+                // 不应该走到这里（evaluateCountersignResult 应该已经判定为 PASSED）
+                log.warn("[advanceToNextSequentialAssignee] 索引越界, countersignId={}, nextIndex={}, total={}",
+                        csTask.getCountersignId(), nextIndex, assigneeOrder.size());
+                return;
+            }
+
+            Long nextAssignee = assigneeOrder.get(nextIndex);
+
+            // 更新当前索引
+            csTask.setCurrentIndex(nextIndex);
+            countersignTaskMapper.updateById(csTask);
+
+            // 为下一个签署人创建任务
+            WfTask task = new WfTask();
+            task.setTaskId(UUID.randomUUID().toString());
+            task.setInstanceId(csTask.getInstanceId());
+            task.setNodeKey(csTask.getNodeKey());
+            task.setNodeName(csTask.getNodeName().replace(" (会签)", "")
+                    + " (顺序签署 " + (nextIndex + 1) + "/" + csTask.getTotalCount() + ")");
+            task.setAssignee(nextAssignee);
+            task.setStatus("TODO");
+            task.setCreateTime(new Date());
+            task.setCandidateRoles("CS:" + csTask.getCountersignId());
+            taskMapper.insert(task);
+
+            // 发送通知给下一个签署人
+            try {
+                sysNoticeService.sendNotice(
+                    nextAssignee,
+                    "顺序签署任务通知",
+                    "您有一个新的顺序签署任务: " + csTask.getNodeName()
+                        + " (第" + (nextIndex + 1) + "位，共" + csTask.getTotalCount() + "位)",
+                    "1",
+                    null,
+                    "系统"
+                );
+            } catch (Exception e) {
+                log.warn("[advanceToNextSequentialAssignee] 发送通知失败: {}", e.getMessage());
+            }
+
+            log.info("[advanceToNextSequentialAssignee] 顺序签署推进成功, countersignId={}, nextIndex={}, nextAssignee={}",
+                    csTask.getCountersignId(), nextIndex, nextAssignee);
+
+        } catch (Exception e) {
+            log.error("[advanceToNextSequentialAssignee] 推进失败, countersignId={}: {}",
+                    csTask.getCountersignId(), e.getMessage(), e);
+            throw new WorkflowException("SEQUENTIAL_ADVANCE_FAILED",
+                    "顺序签署推进失败: " + e.getMessage(), e);
         }
     }
 

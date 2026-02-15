@@ -204,8 +204,8 @@ export interface StepDetail {
   status: 'completed' | 'active' | 'pending';
   /** 实际处理人姓名（已完成的步骤才有） */
   operatorName?: string;
-  /** 会签类型 (ALL-全部同意 / ANY-任一同意 / PERCENT-按比例)，仅会签节点 */
-  signType?: 'ALL' | 'ANY' | 'PERCENT';
+  /** 会签类型 (ALL-全部同意 / ANY-任一同意 / PERCENT-按比例 / SEQUENTIAL-顺序签署)，仅会签节点 */
+  signType?: 'ALL' | 'ANY' | 'PERCENT' | 'SEQUENTIAL';
   /** 会签通过百分比，仅 PERCENT 类型 */
   passPercent?: number;
   /** 分支策略 (PARALLEL/EXCLUSIVE)，仅网关节点 */

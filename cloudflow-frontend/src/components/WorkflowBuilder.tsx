@@ -1091,6 +1091,31 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
           {node.type === NodeType.PARALLEL && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Layers size={12} /> 会签设置</label>
+              {/* 会签类型选择 */}
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">会签类型</span>
+                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
+                  value={formData.props?.signType || 'ALL'}
+                  onChange={e => handleChange('props', { ...formData.props, signType: e.target.value })}>
+                  <option value="ALL">全签（所有人同意）</option>
+                  <option value="ANY">或签（任一人同意）</option>
+                  <option value="PERCENT">比例签（按比例通过）</option>
+                  <option value="SEQUENTIAL">顺序签（按顺序逐个审批）</option>
+                </select>
+              </div>
+              {/* 比例签 - 通过百分比设置 */}
+              {formData.props?.signType === 'PERCENT' && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">通过比例 (%)</span>
+                  <input type="number" min="1" max="100"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
+                    placeholder="例如: 60"
+                    value={formData.props?.passPercent || ''}
+                    onChange={e => handleChange('props', { ...formData.props, passPercent: parseInt(e.target.value) || 0 })} />
+                  <p className="text-[10px] text-slate-400 mt-1">💡 当同意人数达到该比例时流程通过</p>
+                </div>
+              )}
+              {/* 审批人选择 */}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">审批方式</span>
                 <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
@@ -1106,7 +1131,13 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete }: {
                   multiple={true}
                 />
               )}
-              <p className="text-[10px] text-slate-400 mt-1">💡 会签需要所有审批人都同意才能通过</p>
+              {/* 根据会签类型显示不同提示 */}
+              <p className="text-[10px] text-slate-400 mt-1">
+                {formData.props?.signType === 'ANY' && '💡 任意一人同意即可通过，一人拒绝则整体拒绝'}
+                {formData.props?.signType === 'PERCENT' && `💡 同意人数 ≥ ${formData.props?.passPercent || 0}% 时通过`}
+                {formData.props?.signType === 'SEQUENTIAL' && '💡 按审批人顺序逐个签署，前一人通过后才轮到下一人'}
+                {(!formData.props?.signType || formData.props?.signType === 'ALL') && '💡 所有审批人都同意才能通过，任一人拒绝则整体拒绝'}
+              </p>
             </div>
           )}
           {node.type === NodeType.NOTIFICATION && (

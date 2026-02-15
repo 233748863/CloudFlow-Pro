@@ -50,6 +50,12 @@ public class WfCountersignTask {
     /** 会签状态: VOTING(投票中), PASSED(通过), REJECTED(拒绝) */
     private String status;
     
+    /** 顺序签署：有序的审批人ID列表（JSON数组，如 "[1,2,3]"），仅 SEQUENTIAL 类型使用 */
+    private String assigneeOrder;
+    
+    /** 顺序签署：当前签署人在 assigneeOrder 中的索引（从0开始），仅 SEQUENTIAL 类型使用 */
+    private Integer currentIndex;
+    
     /** 创建时间 */
     private Date createTime;
     

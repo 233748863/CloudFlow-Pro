@@ -222,7 +222,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                                             {/* 会签标识 */}
                                             {bStep.signType && (
                                               <span className="text-[6px] text-amber-500 bg-amber-50 px-1 rounded mt-0.5">
-                                                {bStep.signType === 'ALL' ? '全签' : bStep.signType === 'ANY' ? '或签' : `${bStep.passPercent || 0}%`}
+                                                {bStep.signType === 'ALL' ? '全签' : bStep.signType === 'ANY' ? '或签' : bStep.signType === 'SEQUENTIAL' ? '顺序签' : `${bStep.passPercent || 0}%`}
                                               </span>
                                             )}
                                           </div>
@@ -286,10 +286,10 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                           {/* 会签标识 */}
                           {step.signType && (
                             <span className="flex items-center gap-0.5 text-[7px] text-amber-600 bg-amber-50 px-1 rounded mt-0.5" title={
-                              step.signType === 'ALL' ? '会签-全部同意' : step.signType === 'ANY' ? '会签-任一同意' : `会签-${step.passPercent || 0}%通过`
+                              step.signType === 'ALL' ? '会签-全部同意' : step.signType === 'ANY' ? '会签-任一同意' : step.signType === 'SEQUENTIAL' ? '顺序签署' : `会签-${step.passPercent || 0}%通过`
                             }>
                               <Users size={7} />
-                              {step.signType === 'ALL' ? '全签' : step.signType === 'ANY' ? '或签' : `${step.passPercent}%`}
+                              {step.signType === 'ALL' ? '全签' : step.signType === 'ANY' ? '或签' : step.signType === 'SEQUENTIAL' ? '顺序签' : `${step.passPercent}%`}
                             </span>
                           )}
                           {/* 多人审批标识（非会签时显示） */}

@@ -472,7 +472,7 @@ export const TaskHandleModal = ({
                                                     {step.signType && (
                                                         <span className="flex items-center gap-0.5 text-[7px] text-amber-600 bg-amber-50 px-1 rounded mt-0.5">
                                                             <Users size={7} />
-                                                            {step.signType === 'ALL' ? '全签' : step.signType === 'ANY' ? '或签' : `${step.passPercent}%`}
+                                                            {step.signType === 'ALL' ? '全签' : step.signType === 'ANY' ? '或签' : step.signType === 'SEQUENTIAL' ? '顺序签' : `${step.passPercent}%`}
                                                         </span>
                                                     )}
                                                 </div>
