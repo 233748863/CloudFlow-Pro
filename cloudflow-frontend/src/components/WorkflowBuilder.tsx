@@ -72,7 +72,7 @@ const NODE_TYPE_LABELS: Record<string, string> = {
 };
 
 const APPROVER_TYPE_LABELS: Record<string, string> = {
-  ROLE: '按角色', USER: '指定人员', DEPT_MANAGER: '部门负责人', DIRECT_LEADER: '直属上级'
+  ROLE: '按角色', USER: '指定人员', USERS: '指定多人', DEPT_MANAGER: '部门负责人', DIRECT_LEADER: '直属上级', DEPT: '按部门'
 };
 
 const BRANCH_STRATEGY_LABELS: Record<string, string> = {
@@ -797,8 +797,8 @@ const TemplatePickerModal = ({ open, onClose, onSelect }: {
 // ==================== 属性面板 ====================
 
 // 角色/用户/部门选择器子组件 - 支持多选
-const ApproverValueSelector = ({ type, value, onChange, multiple = false }: {
-  type: string; value: string; onChange: (val: string) => void; multiple?: boolean;
+const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple = false }: {
+  type: string; value: string; onChange: (val: string) => void; onLabelChange?: (label: string) => void; multiple?: boolean;
 }) => {
   const [roles, setRoles] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -843,6 +843,23 @@ const ApproverValueSelector = ({ type, value, onChange, multiple = false }: {
   // 当前已选值数组
   const selectedValues = value ? value.split(',').map(v => v.trim()).filter(Boolean) : [];
 
+  // 根据类型和值获取显示名称
+  const getDisplayLabel = (vals: string[]): string => {
+    return vals.map(v => {
+      if (type === 'ROLE') {
+        const role = roles.find(r => r.roleKey === v);
+        return role?.roleName || v;
+      } else if (type === 'USER') {
+        const user = users.find(u => String(u.userId) === v);
+        return user?.nickName || user?.userName || v;
+      } else if (type === 'DEPT') {
+        const dept = depts.find(d => String(d.deptId) === v);
+        return dept?.deptName || v;
+      }
+      return v;
+    }).join(', ');
+  };
+
   // 切换选中
   const toggleValue = (val: string) => {
     if (multiple) {
@@ -850,8 +867,11 @@ const ApproverValueSelector = ({ type, value, onChange, multiple = false }: {
         ? selectedValues.filter(v => v !== val)
         : [...selectedValues, val];
       onChange(newValues.join(','));
+      onLabelChange?.(getDisplayLabel(newValues));
     } else {
-      onChange(val === value ? '' : val);
+      const newVal = val === value ? '' : val;
+      onChange(newVal);
+      onLabelChange?.(newVal ? getDisplayLabel([newVal]) : '');
     }
   };
 
@@ -1093,6 +1113,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   type={formData.approverType || 'ROLE'}
                   value={formData.approverValue || ''}
                   onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
                 />
               )}
             </div>
@@ -1104,13 +1125,14 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">会签类型</span>
                 <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
-                  value={formData.props?.signType || 'ALL'}
+                  value={formData.signType || 'ALL'}
                   onChange={e => {
                     const newSignType = e.target.value;
                     const hasBranches = formData.branches && formData.branches.length > 0;
                     const applySignType = () => {
+                      // signType 和 passPercent 存到节点顶层，与后端 WfNodeConfig 对齐
                       const updates: Partial<WorkflowNode> = {
-                        props: { ...formData.props, signType: newSignType },
+                        signType: newSignType as any,
                       };
                       // 会签是多人审批同一任务，不需要条件分支
                       if (hasBranches) {
@@ -1118,8 +1140,15 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                         updates.branchStrategy = undefined;
                       }
                       // 切换离开 PERCENT 时清除 passPercent
-                      if (formData.props?.signType === 'PERCENT' && newSignType !== 'PERCENT') {
-                        updates.props = { ...updates.props, passPercent: undefined };
+                      if (formData.signType === 'PERCENT' && newSignType !== 'PERCENT') {
+                        updates.passPercent = undefined;
+                      }
+                      // 同步清理 props 中的旧数据（兼容迁移）
+                      if (formData.props?.signType || formData.props?.passPercent) {
+                        const cleanProps = { ...formData.props };
+                        delete cleanProps.signType;
+                        delete cleanProps.passPercent;
+                        updates.props = cleanProps;
                       }
                       setFormData(prev => ({ ...prev, ...updates }));
                       onUpdate(node.id, updates);
@@ -1141,14 +1170,14 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                 </select>
               </div>
               {/* 比例签 - 通过百分比设置 */}
-              {formData.props?.signType === 'PERCENT' && (
+              {formData.signType === 'PERCENT' && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">通过比例 (%)</span>
                   <input type="number" min="1" max="100"
                     className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
                     placeholder="例如: 60"
-                    value={formData.props?.passPercent || ''}
-                    onChange={e => handleChange('props', { ...formData.props, passPercent: parseInt(e.target.value) || 0 })} />
+                    value={formData.passPercent || ''}
+                    onChange={e => handleChange('passPercent', parseInt(e.target.value) || 0)} />
                   <p className="text-[10px] text-slate-400 mt-1">💡 当同意人数达到该比例时流程通过</p>
                 </div>
               )}
@@ -1160,20 +1189,38 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
                 </select>
               </div>
-              {(formData.approverType === 'ROLE' || formData.approverType === 'USER') && (
+              {(formData.approverType === 'ROLE' || formData.approverType === 'USER' || formData.approverType === 'USERS') && (
                 <ApproverValueSelector
-                  type={formData.approverType || 'ROLE'}
+                  type={formData.approverType === 'USERS' ? 'USER' : (formData.approverType || 'ROLE')}
                   value={formData.approverValue || ''}
-                  onChange={(val) => handleChange('approverValue', val)}
+                  onChange={(val) => {
+                    // 会签节点：多选用户时自动切换为 USERS 类型，确保后端路由到 UsersAssignStrategy
+                    const hasMultiple = val.includes(',');
+                    const currentType = formData.approverType;
+                    if (currentType === 'USER' && hasMultiple) {
+                      // 一次性更新 approverType 和 approverValue，避免闭包覆盖
+                      const updates = { approverType: 'USERS' as const, approverValue: val };
+                      setFormData(prev => ({ ...prev, ...updates }));
+                      onUpdate(node.id, updates);
+                    } else if (currentType === 'USERS' && !hasMultiple && val) {
+                      // 只剩一个人时切回 USER
+                      const updates = { approverType: 'USER' as const, approverValue: val };
+                      setFormData(prev => ({ ...prev, ...updates }));
+                      onUpdate(node.id, updates);
+                    } else {
+                      handleChange('approverValue', val);
+                    }
+                  }}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
                   multiple={true}
                 />
               )}
               {/* 根据会签类型显示不同提示 */}
               <p className="text-[10px] text-slate-400 mt-1">
-                {formData.props?.signType === 'ANY' && '💡 任意一人同意即可通过，一人拒绝则整体拒绝'}
-                {formData.props?.signType === 'PERCENT' && `💡 同意人数 ≥ ${formData.props?.passPercent || 0}% 时通过`}
-                {formData.props?.signType === 'SEQUENTIAL' && '💡 按审批人顺序逐个签署，前一人通过后才轮到下一人'}
-                {(!formData.props?.signType || formData.props?.signType === 'ALL') && '💡 所有审批人都同意才能通过，任一人拒绝则整体拒绝'}
+                {formData.signType === 'ANY' && '💡 任意一人同意即可通过，一人拒绝则整体拒绝'}
+                {formData.signType === 'PERCENT' && `💡 同意人数 ≥ ${formData.passPercent || 0}% 时通过`}
+                {formData.signType === 'SEQUENTIAL' && '💡 按审批人顺序逐个签署，前一人通过后才轮到下一人'}
+                {(!formData.signType || formData.signType === 'ALL') && '💡 所有审批人都同意才能通过，任一人拒绝则整体拒绝'}
               </p>
             </div>
           )}
@@ -1369,6 +1416,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   type={formData.approverType || 'ROLE'}
                   value={formData.approverValue || ''}
                   onChange={(val) => handleChange('approverValue', val)}
+                  onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
                 />
               )}
               <div>
@@ -1497,7 +1545,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                   {node.type === NodeType.PARALLEL
                     ? (node.branches && node.branches.length > 0 && node.branchStrategy
                         ? BRANCH_STRATEGY_LABELS[node.branchStrategy] || node.branchStrategy
-                        : node.props?.signType === 'ANY' ? '或签模式' : node.props?.signType === 'PERCENT' ? '比例签模式' : node.props?.signType === 'SEQUENTIAL' ? '顺序签模式' : '全签模式')
+                        : node.signType === 'ANY' ? '或签模式' : node.signType === 'PERCENT' ? '比例签模式' : node.signType === 'SEQUENTIAL' ? '顺序签模式' : '全签模式')
                     : (node.branches && node.branches.length > 0 && node.branchStrategy
                         ? BRANCH_STRATEGY_LABELS[node.branchStrategy] || node.branchStrategy
                         : NODE_TYPE_LABELS[node.type] || node.type)}
@@ -1515,7 +1563,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 {/* 会签类型标签 */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700">
-                    {node.props?.signType === 'ANY' ? '或签' : node.props?.signType === 'PERCENT' ? `比例签 ${node.props?.passPercent || 0}%` : node.props?.signType === 'SEQUENTIAL' ? '顺序签' : '全签'}
+                    {node.signType === 'ANY' ? '或签' : node.signType === 'PERCENT' ? `比例签 ${node.passPercent || 0}%` : node.signType === 'SEQUENTIAL' ? '顺序签' : '全签'}
                   </span>
                   {node.approverType && (
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}>
@@ -1526,11 +1574,17 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 {/* 参与人展示 */}
                 {node.approverValue && (
                   <div className="text-[10px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1 border border-slate-100">
-                    <span className="text-slate-400">参与人: </span>
+                    <span className="text-slate-400">
+                      {node.approverType === 'ROLE' ? '参与角色: ' : node.approverType === 'USER' ? '参与人员: ' : '参与人: '}
+                    </span>
                     <span className="font-medium text-slate-600">
-                      {node.approverValue.split(',').length > 3 
-                        ? `${node.approverValue.split(',').slice(0, 3).join(', ')} 等${node.approverValue.split(',').length}人`
-                        : node.approverValue}
+                      {(() => {
+                        const displayText = node.props?.approverLabel || node.approverValue;
+                        const parts = displayText.split(',').map((s: string) => s.trim());
+                        return parts.length > 3 
+                          ? `${parts.slice(0, 3).join(', ')} 等${parts.length}人`
+                          : displayText;
+                      })()}
                     </span>
                   </div>
                 )}
@@ -1548,7 +1602,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}>
                   {APPROVER_TYPE_LABELS[node.approverType] || node.approverType}
                 </span>
-                {node.approverValue && <span className="text-[10px] text-slate-500">{node.approverValue}</span>}
+                {node.approverValue && <span className="text-[10px] text-slate-500 truncate max-w-[140px]">{node.props?.approverLabel || node.approverValue}</span>}
               </div>
             )}
             {/* 条件标签 */}
@@ -1804,13 +1858,13 @@ function validateWorkflow(root: WorkflowNode): string[] {
   // 会签节点一致性校验
   const checkParallel = (node: WorkflowNode) => {
     if (node.type === NodeType.PARALLEL) {
-      const signType = node.props?.signType || 'ALL';
+      const signType = node.signType || 'ALL';
       // 会签模式（ALL/ANY/PERCENT/SEQUENTIAL）不应有条件分支
       if ((signType === 'ALL' || signType === 'ANY' || signType === 'PERCENT' || signType === 'SEQUENTIAL') && node.branches && node.branches.length > 0) {
         errors.push(`会签节点"${node.title}"设置了${signType === 'ALL' ? '全签' : signType === 'ANY' ? '或签' : signType === 'PERCENT' ? '比例签' : '顺序签'}模式，但仍包含 ${node.branches.length} 个条件分支，请先清除分支或改用并行分支策略`);
       }
       // 比例签必须设置百分比
-      if (signType === 'PERCENT' && (!node.props?.passPercent || node.props.passPercent <= 0 || node.props.passPercent > 100)) {
+      if (signType === 'PERCENT' && (!node.passPercent || node.passPercent <= 0 || node.passPercent > 100)) {
         errors.push(`会签节点"${node.title}"使用比例签模式，但未设置有效的通过比例（1-100%）`);
       }
     }
@@ -1943,7 +1997,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
 
   const handleUpdateNode = (id: string, data: Partial<WorkflowNode>) => {
     // 通过 rootRef.current 获取最新的 root，解决确认对话框等异步回调中闭包过时的问题
-    setRoot(updateNodeInTree(rootRef.current, id, node => ({ ...node, ...data })));
+    // 立即更新 ref，确保连续同步调用（如 onChange + onLabelChange）不会互相覆盖
+    const newRoot = updateNodeInTree(rootRef.current, id, node => ({ ...node, ...data }));
+    rootRef.current = newRoot;
+    setRoot(newRoot);
     setSelectedNode(prev => prev && prev.id === id ? { ...prev, ...data } : prev);
   };
 

@@ -10,13 +10,16 @@ export enum Role {
 export interface User {
   id: string;
   name: string;
+  username?: string; // 登录账号名
   email: string;
   role: Role;
-  deptId?: string; // Department Link
-  tenantId?: number; // Tenant Link
+  deptId?: string;
+  deptName?: string; // 部门名称（由后端填充）
+  tenantId?: number;
   position?: string;
-  status: 'ACTIVE' | 'INACTIVE';
-  avatar: string;
+  phone?: string; // 手机号
+  status?: string;
+  avatar?: string;
 }
 
 // --- Dynamic Form Types ---
@@ -99,10 +102,16 @@ export interface WorkflowNode {
   // 6. Plugin Properties (Flexible container)
   props?: Record<string, any>; // Stores specific config like api url, approver settings etc.
 
+  // 会签配置（顶层字段，与后端 WfNodeConfig 对齐）
+  /** 会签类型，仅 PARALLEL 节点 */
+  signType?: 'ALL' | 'ANY' | 'PERCENT' | 'SEQUENTIAL';
+  /** 会签通过百分比，仅 PERCENT 类型 */
+  passPercent?: number;
+
   // Legacy/Direct props (for backward compatibility or convenience)
   description?: string;
   icon?: string;
-  approverType?: 'ROLE' | 'USER' | 'DEPT_MANAGER' | 'DIRECT_LEADER';
+  approverType?: 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT';
   approverValue?: string;
   allowEdit?: boolean;
 }

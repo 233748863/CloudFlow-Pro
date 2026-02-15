@@ -16,8 +16,10 @@ export interface UserInfo {
   role: Role;
   avatar: string;
   deptId?: string;
+  deptName?: string; // 部门名称
   tenantId?: number;
   position?: string;
+  phone?: string; // 手机号
 }
 
 export interface CaptchaResponse {
@@ -39,6 +41,7 @@ export interface RegisterData {
   confirmPassword: string;
   email?: string;
   nickName?: string;
+  captchaToken?: string; // 验证码通过后的令牌
 }
 
 export const login = async (username: string, password?: string, captchaToken?: string): Promise<LoginResponse> => {
@@ -79,8 +82,10 @@ export const getInfo = async (): Promise<UserInfo> => {
     role: user.role || (Array.isArray(data?.roles) && data.roles.length > 0 ? data.roles[0].toUpperCase() : 'USER'),
     avatar: user.avatar,
     deptId: user.deptId,
+    deptName: user.deptName || user.dept?.deptName,
     tenantId: user.tenantId,
     position: user.position,
+    phone: user.phone || user.phonenumber,
   } as UserInfo;
 }
 

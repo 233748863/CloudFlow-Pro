@@ -42,10 +42,19 @@ public class UserAssignStrategy implements AssignUserStrategy {
 
     @Override
     public List<Long> resolveMultiple(WfNodeConfig node, WfProcessInstance instance) {
+        String value = node.getApproverValue();
+        if (!StringUtils.hasText(value)) {
+            return new ArrayList<>();
+        }
+        // 容错处理：如果前端传了逗号分隔的多个用户ID（本应使用 USERS 类型），也能正确解析
         List<Long> list = new ArrayList<>();
-        Long id = resolve(node, instance);
-        if (id != null) {
-            list.add(id);
+        String[] parts = value.split(",");
+        for (String part : parts) {
+            try {
+                list.add(Long.valueOf(part.trim()));
+            } catch (NumberFormatException e) {
+                log.warn("[UserAssignStrategy] 无效的用户ID: {}", part);
+            }
         }
         return list;
     }

@@ -28,10 +28,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const user = {
               id: String(userInfo.userId),
               name: userInfo.nickName || userInfo.userName,
+              username: userInfo.userName,
               email: userInfo.email || '',
               role: userInfo.role,
               deptId: userInfo.deptId,
+              deptName: userInfo.deptName,
               tenantId: userInfo.tenantId,
+              position: userInfo.position,
+              phone: userInfo.phone,
               status: 'ACTIVE' as const,
               avatar: userInfo.avatar
             };
@@ -62,10 +66,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const user = {
           id: String(userInfo.userId),
           name: userInfo.nickName || userInfo.userName,
+          username: userInfo.userName,
           email: userInfo.email || '',
           role: userInfo.role,
           deptId: userInfo.deptId,
+          deptName: userInfo.deptName,
           tenantId: userInfo.tenantId,
+          position: userInfo.position,
+          phone: userInfo.phone,
           status: 'ACTIVE' as const,
           avatar: userInfo.avatar
         };
@@ -102,10 +110,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const updatedUser = {
           id: String(userInfo.userId),
           name: userInfo.nickName || userInfo.userName,
+          username: userInfo.userName,
           email: userInfo.email || '',
           role: userInfo.role,
           deptId: userInfo.deptId,
+          deptName: userInfo.deptName,
           tenantId: userInfo.tenantId,
+          position: userInfo.position,
+          phone: userInfo.phone,
           status: 'ACTIVE' as const,
           avatar: userInfo.avatar
         };

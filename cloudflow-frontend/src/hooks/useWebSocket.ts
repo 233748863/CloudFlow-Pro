@@ -8,12 +8,13 @@ interface WebSocketMessage {
 }
 
 export const useWebSocket = () => {
-    const { token, user } = useAuth();
+    const { user } = useAuth();
     const wsRef = useRef<WebSocket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const connect = useCallback(() => {
+        const token = localStorage.getItem('token');
         if (!token || !user) return;
         
         // Close existing connection
@@ -75,7 +76,7 @@ export const useWebSocket = () => {
         };
 
         wsRef.current = ws;
-    }, [token, user]);
+    }, [user]);
 
     useEffect(() => {
         connect();
