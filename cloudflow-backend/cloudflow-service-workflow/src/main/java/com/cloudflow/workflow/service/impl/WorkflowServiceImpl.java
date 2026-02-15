@@ -200,6 +200,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private com.cloudflow.workflow.event.WorkflowEventPublisher workflowEventPublisher;
 
+    /** 任务到期提醒 Job（到期前 1h/30m/10m 推送提醒） */
+    @Autowired
+    private com.cloudflow.workflow.job.TaskReminderJob taskReminderJob;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -817,6 +821,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
             if (node.getSlaHours() != null && node.getSlaHours() > 0) {
                 long expireTime = System.currentTimeMillis() + node.getSlaHours() * 3600 * 1000L;
                 redisCache.setCacheZSet("sys:task:timeouts", task.getTaskId(), (double) expireTime);
+                
+                // 注册到期前提醒（1小时、30分钟、10分钟）
+                taskReminderJob.registerReminders(task.getTaskId(), node.getSlaHours());
             }
             
             // 发布任务分配事件（借鉴 poco-flow FlowProcessEventListener 设计）
@@ -1014,6 +1021,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 // 3. 删除当前任务
                 taskMapper.deleteById(taskId);
                 log.info("[completeTask] 任务已完成, taskId={}, action={}", taskId, action);
+                
+                // 取消该任务的到期提醒（任务已完成，无需再提醒）
+                taskReminderJob.cancelReminders(taskId);
                 
                 // 15.D: 清理已读数据
                 cleanupTaskReadData(taskId);
