@@ -1487,9 +1487,13 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-slate-700 truncate">{node.title}</div>
                 <div className="text-[10px] text-slate-400">
-                  {node.branches && node.branches.length > 0 && node.branchStrategy
-                    ? BRANCH_STRATEGY_LABELS[node.branchStrategy] || node.branchStrategy
-                    : NODE_TYPE_LABELS[node.type] || node.type}
+                  {node.type === NodeType.PARALLEL
+                    ? (node.branches && node.branches.length > 0 && node.branchStrategy
+                        ? BRANCH_STRATEGY_LABELS[node.branchStrategy] || node.branchStrategy
+                        : node.props?.signType === 'ANY' ? '或签模式' : node.props?.signType === 'PERCENT' ? '比例签模式' : node.props?.signType === 'SEQUENTIAL' ? '顺序签模式' : '全签模式')
+                    : (node.branches && node.branches.length > 0 && node.branchStrategy
+                        ? BRANCH_STRATEGY_LABELS[node.branchStrategy] || node.branchStrategy
+                        : NODE_TYPE_LABELS[node.type] || node.type)}
                 </div>
               </div>
               {canDrag && (
@@ -1498,8 +1502,41 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 </div>
               )}
             </div>
-            {/* 审批人标签 */}
-            {node.approverType && (
+            {/* 会签信息展示 - 仅 PARALLEL 节点 */}
+            {node.type === NodeType.PARALLEL && (
+              <div className="mt-1.5 space-y-1.5">
+                {/* 会签类型标签 */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700">
+                    {node.props?.signType === 'ANY' ? '或签' : node.props?.signType === 'PERCENT' ? `比例签 ${node.props?.passPercent || 0}%` : node.props?.signType === 'SEQUENTIAL' ? '顺序签' : '全签'}
+                  </span>
+                  {node.approverType && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}>
+                      {APPROVER_TYPE_LABELS[node.approverType] || node.approverType}
+                    </span>
+                  )}
+                </div>
+                {/* 参与人展示 */}
+                {node.approverValue && (
+                  <div className="text-[10px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1 border border-slate-100">
+                    <span className="text-slate-400">参与人: </span>
+                    <span className="font-medium text-slate-600">
+                      {node.approverValue.split(',').length > 3 
+                        ? `${node.approverValue.split(',').slice(0, 3).join(', ')} 等${node.approverValue.split(',').length}人`
+                        : node.approverValue}
+                    </span>
+                  </div>
+                )}
+                {/* 未配置审批人提示 */}
+                {!node.approverValue && (
+                  <div className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1 border border-amber-100 flex items-center gap-1">
+                    ⚠ 请在右侧面板配置审批人
+                  </div>
+                )}
+              </div>
+            )}
+            {/* 审批人标签 - 非 PARALLEL 节点 */}
+            {node.type !== NodeType.PARALLEL && node.approverType && (
               <div className="flex items-center gap-1.5 mt-1">
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}>
                   {APPROVER_TYPE_LABELS[node.approverType] || node.approverType}
