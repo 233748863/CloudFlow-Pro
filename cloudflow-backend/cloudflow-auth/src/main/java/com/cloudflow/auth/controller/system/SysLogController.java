@@ -1,4 +1,4 @@
-package com.cloudflow.oa.controller;
+package com.cloudflow.auth.controller.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -20,12 +20,13 @@ import java.util.stream.Collectors;
  * 操作日志查询控制器
  * <p>
  * 提供操作日志的分页查询、详情查看、删除、趋势统计等接口。
+ * 归属于系统管理模块，由 auth 服务承载。
  * </p>
  *
  * @author CloudFlow
  */
 @RestController
-@RequestMapping("/sys/log")
+@RequestMapping("/system/log")
 public class SysLogController {
 
     @Autowired
@@ -126,7 +127,6 @@ public class SysLogController {
         List<SysLogEntity> logs = sysLogMapper.selectList(wrapper);
 
         // 按日期分组统计
-        // key: 日期字符串, value: {success: count, fail: count}
         Map<String, Map<String, Long>> grouped = new LinkedHashMap<>();
 
         // 初始化最近30天的日期

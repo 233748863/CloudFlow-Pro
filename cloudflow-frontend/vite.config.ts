@@ -21,6 +21,12 @@ export default defineConfig(({ mode }) => {
             target: env.VITE_API_BASE_URL || 'http://localhost:9000',
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api/, '')
+          },
+          // WebSocket 代理，转发到网关
+          '/ws': {
+            target: env.VITE_API_BASE_URL || 'http://localhost:9000',
+            changeOrigin: true,
+            ws: true
           }
         }
       },

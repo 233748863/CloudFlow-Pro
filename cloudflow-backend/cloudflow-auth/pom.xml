@@ -41,6 +41,18 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-datasource</artifactId>
         </dependency>
+
+        <!-- 操作日志模块 -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-log</artifactId>
+        </dependency>
+
+        <!-- 审计日志模块 -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-audit</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

@@ -70,39 +70,42 @@ export interface AuditLogQuery {
 
 // ==================== 操作日志 API ====================
 
+// 日志/审计接口统一走 auth 服务，网关路由: /auth/** → cloudflow-auth (StripPrefix=1)
+// 后端 Controller 路径: /system/log/... 和 /system/audit-log/...
+
 /** 分页查询操作日志 */
 export const getSysLogPage = (params: SysLogQuery): Promise<PageResult<SysLog>> => {
-  return request.get('/sys/log/page', { params }) as any;
+  return request.get('/auth/system/log/page', { params }) as any;
 };
 
 /** 获取操作日志详情 */
 export const getSysLogDetail = (id: number): Promise<SysLog> => {
-  return request.get(`/sys/log/${id}`) as any;
+  return request.get(`/auth/system/log/${id}`) as any;
 };
 
 /** 删除操作日志（批量） */
 export const deleteSysLogs = (ids: number[]): Promise<string> => {
-  return request.delete('/sys/log', { data: ids }) as any;
+  return request.delete('/auth/system/log', { data: ids }) as any;
 };
 
 /** 获取操作日志趋势（最近30天） */
 export const getSysLogTrend = (): Promise<LogTrendItem[]> => {
-  return request.get('/sys/log/trend') as any;
+  return request.get('/auth/system/log/trend') as any;
 };
 
 // ==================== 审计日志 API ====================
 
 /** 分页查询审计日志 */
 export const getAuditLogPage = (params: AuditLogQuery): Promise<PageResult<SysAuditLog>> => {
-  return request.get('/sys/audit-log/page', { params }) as any;
+  return request.get('/auth/system/audit-log/page', { params }) as any;
 };
 
 /** 获取审计日志详情 */
 export const getAuditLogDetail = (id: number): Promise<SysAuditLog> => {
-  return request.get(`/sys/audit-log/${id}`) as any;
+  return request.get(`/auth/system/audit-log/${id}`) as any;
 };
 
 /** 删除审计日志（批量） */
 export const deleteAuditLogs = (ids: number[]): Promise<string> => {
-  return request.delete('/sys/audit-log', { data: ids }) as any;
+  return request.delete('/auth/system/audit-log', { data: ids }) as any;
 };

@@ -1,4 +1,4 @@
-package com.cloudflow.oa.controller;
+package com.cloudflow.auth.controller.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -19,12 +19,13 @@ import java.util.List;
  * 审计日志查询控制器
  * <p>
  * 提供审计日志的分页查询、详情查看、删除等接口。
+ * 归属于系统管理模块，由 auth 服务承载。
  * </p>
  *
  * @author CloudFlow
  */
 @RestController
-@RequestMapping("/sys/audit-log")
+@RequestMapping("/system/audit-log")
 public class SysAuditLogController {
 
     @Autowired

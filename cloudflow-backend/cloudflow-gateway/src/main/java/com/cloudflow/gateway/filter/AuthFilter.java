@@ -28,11 +28,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
     @Autowired
     private TokenService tokenService;
     
-    // 白名单
+    // 白名单（WebSocket 认证由下游服务的 HandshakeInterceptor 处理，网关放行）
     private final List<String> whiteList = Arrays.asList(
             "/auth/login",
             "/auth/register",
-            "/auth/captcha/**"
+            "/auth/captcha/**",
+            "/ws/**"
     );
 
     @Override
