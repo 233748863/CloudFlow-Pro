@@ -1029,7 +1029,8 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
   onConfirmAction: (message: string, onConfirm: () => void) => void;
 }) => {
   const [formData, setFormData] = useState(node);
-  useEffect(() => { setFormData(node); }, [node.id]);
+  // 当节点 ID 变化或节点内容（分支、props）变化时同步 formData
+  useEffect(() => { setFormData(node); }, [node.id, node.branches, node.branchStrategy, node.props]);
   const handleChange = (field: keyof WorkflowNode, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     onUpdate(node.id, { [field]: value });
@@ -1802,6 +1803,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   };
 
   const { state: root, set: setRoot, undo, redo, canUndo, canRedo } = useHistory<WorkflowNode>(workflow?.nodes || defaultRoot);
+  // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
+  const rootRef = useRef(root);
+  rootRef.current = root;
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
   const [saving, setSaving] = useState(false);
   const [workflowName, setWorkflowName] = useState(workflow?.name || '未命名流程');
@@ -1894,7 +1898,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   };
 
   const handleUpdateNode = (id: string, data: Partial<WorkflowNode>) => {
-    setRoot(updateNodeInTree(root, id, node => ({ ...node, ...data })));
+    // 通过 rootRef.current 获取最新的 root，解决确认对话框等异步回调中闭包过时的问题
+    setRoot(updateNodeInTree(rootRef.current, id, node => ({ ...node, ...data })));
     setSelectedNode(prev => prev && prev.id === id ? { ...prev, ...data } : prev);
   };
 
