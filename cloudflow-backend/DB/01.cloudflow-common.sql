@@ -315,6 +315,8 @@ INSERT INTO sys_menu VALUES(602, '菜单管理',   6, 3, '/system/menus',       
 INSERT INTO sys_menu VALUES(603, '文件管理',   6, 4, '/system/files',       'pages/system/FileList',        NULL, 0, 0, 'C', '0', '0', 'system:file:list',           'FileArchive',     'admin', sysdate(), '', null, '文件管理');
 INSERT INTO sys_menu VALUES(604, '源码生成',   6, 5, '/code',               'pages/CodeGeneration',         NULL, 0, 0, 'C', '0', '0', 'system:code:list',           'Code',            'admin', sysdate(), '', null, '源码生成');
 INSERT INTO sys_menu VALUES(605, '租户管理',   6, 6, '/system/tenant',      'pages/system/TenantList',      NULL, 0, 0, 'C', '0', '0', 'system:tenant:list',         'Building2',       'admin', sysdate(), '', null, '租户管理');
+INSERT INTO sys_menu VALUES(606, '操作日志',   6, 7, '/system/log',         'pages/system/OperationLogPage', NULL, 0, 0, 'C', '0', '0', 'system:log:list',           'ScrollText',      'admin', sysdate(), '', null, '操作日志');
+INSERT INTO sys_menu VALUES(607, '审计日志',   6, 8, '/system/audit-log',   'pages/system/AuditLogPage',    NULL, 0, 0, 'C', '0', '0', 'system:audit:list',          'ClipboardList',   'admin', sysdate(), '', null, '审计日志');
 
 -- 7. 初始化岗位数据
 INSERT INTO sys_post VALUES(1, 100000, 'ceo',      '董事长',     1, '0', 'admin', sysdate(), '', null, '公司最高管理者');
@@ -419,6 +421,50 @@ INSERT INTO sys_role_menu VALUES(5, 300, 100000);
 INSERT INTO sys_role_menu VALUES(5, 301, 100000);
 INSERT INTO sys_role_menu VALUES(5, 302, 100000);
 INSERT INTO sys_role_menu VALUES(5, 303, 100000);
+
+-- =========================================================
+-- 六、操作日志与审计日志
+-- =========================================================
+
+-- 11. 操作日志表
+DROP TABLE IF EXISTS sys_log;
+CREATE TABLE sys_log (
+  log_id            BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  log_type          VARCHAR(10)     DEFAULT '0' COMMENT '日志类型（0正常 9错误）',
+  title             VARCHAR(255)    DEFAULT '' COMMENT '操作描述',
+  service_id        VARCHAR(64)     DEFAULT '' COMMENT '服务名称',
+  remote_addr       VARCHAR(128)    DEFAULT '' COMMENT '客户端IP',
+  user_agent        VARCHAR(500)    DEFAULT '' COMMENT 'User-Agent',
+  request_uri       VARCHAR(255)    DEFAULT '' COMMENT '请求URI',
+  method            VARCHAR(10)     DEFAULT '' COMMENT 'HTTP方法',
+  params            TEXT            COMMENT '请求参数',
+  time              BIGINT(20)      DEFAULT 0 COMMENT '执行时间(ms)',
+  exception         TEXT            COMMENT '异常信息',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '操作人',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (log_id),
+  KEY idx_log_tenant (tenant_id),
+  KEY idx_log_type (log_type),
+  KEY idx_log_create_time (create_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
+
+-- 12. 审计日志表
+DROP TABLE IF EXISTS sys_audit_log;
+CREATE TABLE sys_audit_log (
+  audit_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '审计ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  audit_name        VARCHAR(255)    DEFAULT '' COMMENT '审计业务名称',
+  audit_field       VARCHAR(255)    DEFAULT '' COMMENT '变更字段名',
+  before_val        TEXT            COMMENT '变更前值',
+  after_val         TEXT            COMMENT '变更后值',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '操作人',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (audit_id),
+  KEY idx_audit_tenant (tenant_id),
+  KEY idx_audit_name (audit_name),
+  KEY idx_audit_create_time (create_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
 
 SET FOREIGN_KEY_CHECKS = 1;
 

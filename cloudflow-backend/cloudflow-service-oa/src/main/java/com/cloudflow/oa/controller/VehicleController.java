@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysVehicle;
 import com.cloudflow.oa.domain.VehicleExpense;
 import com.cloudflow.oa.domain.VehicleUsage;
@@ -48,18 +49,21 @@ public class VehicleController {
     }
 
     /** 新增车辆 */
+    @SysLog("新增车辆")
     @PostMapping
     public R<Void> add(@RequestBody SysVehicle vehicle) {
         return R.result(vehicleService.save(vehicle));
     }
 
     /** 编辑车辆 */
+    @SysLog("编辑车辆")
     @PutMapping
     public R<Void> edit(@RequestBody SysVehicle vehicle) {
         return R.result(vehicleService.updateById(vehicle));
     }
 
     /** 删除车辆 */
+    @SysLog("删除车辆")
     @DeleteMapping("/{ids}")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         return R.result(vehicleService.removeBatchByIds(ids));
@@ -80,6 +84,7 @@ public class VehicleController {
     }
 
     /** 提交用车申请 */
+    @SysLog("提交用车申请")
     @PostMapping("/usage")
     public R<Void> submitUsage(@RequestBody VehicleUsage usage) {
         return usageService.submitUsage(usage);
@@ -92,6 +97,7 @@ public class VehicleController {
     }
 
     /** 审批用车申请 */
+    @SysLog("审批用车申请")
     @PutMapping("/usage/{id}/approve")
     public R<Void> approveUsage(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
         boolean approved = Boolean.parseBoolean(String.valueOf(params.get("approved")));
@@ -100,6 +106,7 @@ public class VehicleController {
     }
 
     /** 归还车辆（完成用车） */
+    @SysLog("归还车辆")
     @PutMapping("/usage/{id}/return")
     public R<Void> returnVehicle(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
         double endMileage = Double.parseDouble(String.valueOf(params.get("endMileage")));
@@ -108,6 +115,7 @@ public class VehicleController {
     }
 
     /** 取消用车申请 */
+    @SysLog("取消用车申请")
     @PutMapping("/usage/{id}/cancel")
     public R<Void> cancelUsage(@PathVariable("id") Long id) {
         return usageService.cancelUsage(id);
@@ -122,6 +130,7 @@ public class VehicleController {
     }
 
     /** 新增费用 */
+    @SysLog("新增车辆费用")
     @PostMapping("/expense")
     public R<Void> addExpense(@RequestBody VehicleExpense expense) {
         return R.result(expenseService.save(expense));

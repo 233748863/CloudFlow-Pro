@@ -69,6 +69,18 @@
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
         </dependency>
+
+        <!-- 公共操作日志模块（@SysLog 注解自动记录操作日志） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-log</artifactId>
+        </dependency>
+
+        <!-- 公共审计日志模块（@Audit 注解自动记录数据变更） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-audit</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

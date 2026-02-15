@@ -7,6 +7,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.SysAsset;
 import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.service.IAssetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -81,6 +82,7 @@ public class AssetController {
     /**
      * 新增资产
      */
+    @SysLog("新增资产")
     @PostMapping
     public R add(@RequestBody SysAsset asset) {
         return R.ok(assetService.save(asset));
@@ -89,6 +91,7 @@ public class AssetController {
     /**
      * 编辑资产
      */
+    @SysLog("编辑资产")
     @PutMapping
     public R update(@RequestBody SysAsset asset) {
         if (asset.getAssetId() == null) {
@@ -100,6 +103,7 @@ public class AssetController {
     /**
      * 删除资产
      */
+    @SysLog("删除资产")
     @DeleteMapping("/{id}")
     public R delete(@PathVariable("id") Long id) {
         SysAsset asset = assetService.getById(id);
@@ -116,6 +120,7 @@ public class AssetController {
     /**
      * 资产领用
      */
+    @SysLog("资产领用")
     @PostMapping("/{id}/borrow")
     public R borrow(@PathVariable("id") Long id, @RequestParam("userId") Long userId) {
         assetService.borrowAsset(id, userId);
@@ -125,6 +130,7 @@ public class AssetController {
     /**
      * 资产归还
      */
+    @SysLog("资产归还")
     @PostMapping("/{id}/return")
     public R returnAsset(@PathVariable("id") Long id) {
         assetService.returnAsset(id);
@@ -134,6 +140,7 @@ public class AssetController {
     /**
      * 资产送修
      */
+    @SysLog("资产送修")
     @PostMapping("/{id}/repair")
     public R repair(@PathVariable("id") Long id, @RequestParam(value = "remark", required = false) String remark) {
         assetService.repairAsset(id, remark);
@@ -143,6 +150,7 @@ public class AssetController {
     /**
      * 资产报废
      */
+    @SysLog("资产报废")
     @PostMapping("/{id}/scrap")
     public R scrap(@PathVariable("id") Long id, @RequestParam(value = "remark", required = false) String remark) {
         assetService.scrapAsset(id, remark);

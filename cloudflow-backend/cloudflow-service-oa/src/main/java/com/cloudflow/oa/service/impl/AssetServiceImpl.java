@@ -4,6 +4,7 @@ import cn.hutool.extra.qrcode.QrCodeUtil;
 import cn.hutool.extra.qrcode.QrConfig;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.SysAsset;
@@ -45,6 +46,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
     }
 
     @Override
+    @Audit(name = "资产领用", spel = "#assetId", oldVal = "@assetServiceImpl.getById(#assetId)")
     @Transactional(rollbackFor = Exception.class)
     public void borrowAsset(Long assetId, Long userId) {
         SysAsset asset = getById(assetId);
@@ -64,6 +66,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
     }
 
     @Override
+    @Audit(name = "资产归还", spel = "#assetId", oldVal = "@assetServiceImpl.getById(#assetId)")
     @Transactional(rollbackFor = Exception.class)
     public void returnAsset(Long assetId) {
         SysAsset asset = getById(assetId);
@@ -85,6 +88,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
     }
 
     @Override
+    @Audit(name = "资产送修", spel = "#assetId", oldVal = "@assetServiceImpl.getById(#assetId)")
     @Transactional(rollbackFor = Exception.class)
     public void repairAsset(Long assetId, String remark) {
         SysAsset asset = getById(assetId);
@@ -108,6 +112,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
     }
 
     @Override
+    @Audit(name = "资产报废", spel = "#assetId", oldVal = "@assetServiceImpl.getById(#assetId)")
     @Transactional(rollbackFor = Exception.class)
     public void scrapAsset(Long assetId, String remark) {
         SysAsset asset = getById(assetId);

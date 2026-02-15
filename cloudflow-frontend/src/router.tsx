@@ -47,6 +47,8 @@ const DeployManagement = React.lazy(() => import('./pages/DeployManagement').the
 const ExpenseClaimPage = React.lazy(() => import('./pages/ExpenseClaimPage'));
 const PaymentRequestPage = React.lazy(() => import('./pages/PaymentRequestPage').then(module => ({ default: module.PaymentRequestPage })));
 const CopyListPage = React.lazy(() => import('./pages/CopyListPage').then(module => ({ default: module.CopyListPage })));
+const OperationLogPage = React.lazy(() => import('./pages/system/OperationLogPage').then(module => ({ default: module.OperationLogPage })));
+const AuditLogPage = React.lazy(() => import('./pages/system/AuditLogPage').then(module => ({ default: module.AuditLogPage })));
 
 
 const Loading = () => (
@@ -190,6 +192,14 @@ const desktopRoutes = [
           {
             path: '/payment/request',
             element: <Suspense fallback={<Loading />}><PaymentRequestPage /></Suspense>,
+          },
+          {
+            path: '/system/log',
+            element: <Suspense fallback={<Loading />}><OperationLogPage /></Suspense>,
+          },
+          {
+            path: '/system/audit-log',
+            element: <Suspense fallback={<Loading />}><AuditLogPage /></Suspense>,
           },
         ],
       },

@@ -28,6 +28,14 @@ spring:
             - Path=/oa/**
           filters:
             - StripPrefix=1
+        
+        # 系统管理路由（日志、审计等系统级功能，由OA服务承载）
+        - id: cloudflow-sys
+          uri: lb://cloudflow-oa
+          predicates:
+            - Path=/sys/**
+          filters:
+            - StripPrefix=1
       # 全局CORS配置
       globalcors:
         cors-configurations:

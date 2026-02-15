@@ -1,6 +1,7 @@
 package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysAttendanceRecord;
 import com.cloudflow.oa.domain.SysAttendanceRule;
 import com.cloudflow.oa.service.IAttendanceService;
@@ -19,6 +20,7 @@ public class AttendanceController {
     /**
      * 打卡 (签到/签退)
      */
+    @SysLog("考勤打卡")
     @PostMapping("/checkin")
     public R<Boolean> checkIn(@RequestBody SysAttendanceRecord record) {
         return R.ok(attendanceService.checkIn(record));
@@ -35,6 +37,7 @@ public class AttendanceController {
     /**
      * 保存/更新考勤规则
      */
+    @SysLog("保存考勤规则")
     @PostMapping("/rule")
     public R<Boolean> saveRule(@RequestBody SysAttendanceRule rule) {
         return R.ok(attendanceService.saveOrUpdateRule(rule));

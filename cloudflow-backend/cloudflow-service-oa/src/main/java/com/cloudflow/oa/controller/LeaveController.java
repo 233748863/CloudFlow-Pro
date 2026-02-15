@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.LeaveRequest;
 import com.cloudflow.oa.service.ILeaveRequestService;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class LeaveController {
     /**
      * 新增请假申请（草稿）
      */
+    @SysLog("新增请假申请")
     @PostMapping
     public R add(@RequestBody LeaveRequest leave) {
         return R.result(leaveRequestService.createLeave(leave));
@@ -54,6 +56,7 @@ public class LeaveController {
     /**
      * 修改请假申请
      */
+    @SysLog("修改请假申请")
     @PutMapping
     public R edit(@RequestBody LeaveRequest leave) {
         if (leave.getId() == null) {
@@ -65,6 +68,7 @@ public class LeaveController {
     /**
      * 删除请假申请（逻辑删除）
      */
+    @SysLog("删除请假申请")
     @DeleteMapping("/{ids}")
     public R remove(@PathVariable("ids") List<Long> ids) {
         return R.result(leaveRequestService.removeBatchByIds(ids));
@@ -73,6 +77,7 @@ public class LeaveController {
     /**
      * 提交请假申请（启动工作流审批）
      */
+    @SysLog("提交请假申请")
     @PostMapping("/submit/{id}")
     public R submit(@PathVariable("id") Long id) {
         return R.result(leaveRequestService.submitLeave(id));
@@ -81,6 +86,7 @@ public class LeaveController {
     /**
      * 取消请假申请
      */
+    @SysLog("取消请假申请")
     @PutMapping("/cancel/{id}")
     public R cancel(@PathVariable("id") Long id) {
         return R.result(leaveRequestService.cancelLeave(id));

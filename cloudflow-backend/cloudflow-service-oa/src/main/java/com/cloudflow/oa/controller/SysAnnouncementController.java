@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +36,7 @@ public class SysAnnouncementController {
     /**
      * 发布公告 (仅管理员)
      */
+    @SysLog("发布公告")
     @PostMapping("/publish")
     public R<Boolean> publish(@RequestBody SysAnnouncement announcement) {
         announcement.setSenderId(UserContext.getUserId());
@@ -58,6 +60,7 @@ public class SysAnnouncementController {
     /**
      * 编辑公告
      */
+    @SysLog("编辑公告")
     @PutMapping
     public R<Boolean> update(@RequestBody SysAnnouncement announcement) {
         return R.ok(announcementService.updateAnnouncement(announcement));
@@ -66,6 +69,7 @@ public class SysAnnouncementController {
     /**
      * 删除公告
      */
+    @SysLog("删除公告")
     @DeleteMapping("/{id}")
     public R<Boolean> delete(@PathVariable("id") Long id) {
         return R.ok(announcementService.removeById(id));
@@ -74,6 +78,7 @@ public class SysAnnouncementController {
     /**
      * 撤销公告
      */
+    @SysLog("撤销公告")
     @PostMapping("/revoke/{id}")
     public R<Boolean> revoke(@PathVariable("id") Long id) {
         return R.ok(announcementService.revokeAnnouncement(id));
@@ -82,6 +87,7 @@ public class SysAnnouncementController {
     /**
      * 切换置顶状态
      */
+    @SysLog("切换公告置顶")
     @PostMapping("/toggle-top/{id}")
     public R<Boolean> toggleTop(@PathVariable("id") Long id) {
         return R.ok(announcementService.toggleTop(id));

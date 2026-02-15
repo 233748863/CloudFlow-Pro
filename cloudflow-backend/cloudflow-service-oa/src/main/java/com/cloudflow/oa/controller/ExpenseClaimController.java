@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.service.IExpenseClaimService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,7 @@ public class ExpenseClaimController {
     /**
      * 新增报销申请
      */
+    @SysLog("新增报销申请")
     @PostMapping
     public R<Void> add(@RequestBody BizExpenseClaim claim) {
         return expenseClaimService.createClaim(claim) ? R.ok() : R.fail("创建失败");
@@ -62,6 +64,7 @@ public class ExpenseClaimController {
     /**
      * 修改报销申请
      */
+    @SysLog("修改报销申请")
     @PutMapping
     public R<Void> edit(@RequestBody BizExpenseClaim claim) {
         return expenseClaimService.updateClaim(claim) ? R.ok() : R.fail("更新失败");
@@ -70,6 +73,7 @@ public class ExpenseClaimController {
     /**
      * 删除报销申请
      */
+    @SysLog("删除报销申请")
     @DeleteMapping("/{ids}")
     public R<Void> remove(@PathVariable Long[] ids) {
         for (Long id : ids) {
@@ -84,6 +88,7 @@ public class ExpenseClaimController {
     /**
      * 提交报销申请
      */
+    @SysLog("提交报销申请")
     @PostMapping("/submit/{id}")
     public R<Void> submit(@PathVariable Long id) {
         return expenseClaimService.submitClaim(id) ? R.ok() : R.fail("提交失败");
@@ -92,6 +97,7 @@ public class ExpenseClaimController {
     /**
      * 车辆费用转报销单
      */
+    @SysLog("车辆费用转报销单")
     @PostMapping("/convert")
     public R<Void> convertVehicleExpense(
             @RequestBody Map<String, Object> params) {

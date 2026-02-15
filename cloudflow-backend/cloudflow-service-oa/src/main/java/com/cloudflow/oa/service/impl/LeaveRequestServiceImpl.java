@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.LeaveRequest;
 import com.cloudflow.oa.mapper.LeaveRequestMapper;
@@ -64,6 +65,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
+    @Audit(name = "创建请假申请", spel = "#leave")
     @Transactional(rollbackFor = Exception.class)
     public boolean createLeave(LeaveRequest leave) {
         // 生成请假单号
@@ -73,6 +75,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
+    @Audit(name = "提交请假申请", spel = "#id", oldVal = "@leaveRequestServiceImpl.getById(#id)")
     @Transactional(rollbackFor = Exception.class)
     public boolean submitLeave(Long id) {
         LeaveRequest leave = getById(id);
@@ -119,6 +122,7 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
 
     @Override
+    @Audit(name = "取消请假申请", spel = "#id", oldVal = "@leaveRequestServiceImpl.getById(#id)")
     @Transactional(rollbackFor = Exception.class)
     public boolean cancelLeave(Long id) {
         LeaveRequest leave = getById(id);

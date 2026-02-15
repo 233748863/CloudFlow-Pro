@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.service.ISysScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,12 +45,14 @@ public class SysScheduleController {
         return R.ok(scheduleService.getRoomEvents(roomId, queryDate));
     }
 
+    @SysLog("新增日程")
     @PostMapping
     public R<Boolean> add(@RequestBody SysScheduleEvent event) {
         event.setCreatorId(UserContext.getUserId());
         return R.ok(scheduleService.createEvent(event));
     }
     
+    @SysLog("编辑日程")
     @PutMapping
     public R<Boolean> edit(@RequestBody SysScheduleEvent event) {
         // 权限检查：只有创建者可以编辑日程
@@ -64,6 +67,7 @@ public class SysScheduleController {
         return R.ok(scheduleService.updateById(event));
     }
 
+    @SysLog("删除日程")
     @DeleteMapping("/{id}")
     public R<Boolean> remove(@PathVariable("id") Long id) {
         // 权限检查：只有创建者可以删除日程
@@ -102,6 +106,7 @@ public class SysScheduleController {
      * 取消预订
      * @param id 日程ID
      */
+    @SysLog("取消预订")
     @PutMapping("/cancel/{id}")
     public R<Boolean> cancelBooking(@PathVariable("id") Long id) {
         return R.ok(scheduleService.cancelBooking(id, UserContext.getUserId()));

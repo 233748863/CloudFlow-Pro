@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,7 @@ public class PaymentRequestController {
     /**
      * 新增付款申请
      */
+    @SysLog("新增付款申请")
     @PostMapping
     public R<Void> add(@RequestBody BizPaymentRequest payment) {
         payment.setPaymentNo(paymentRequestService.generatePaymentNo());
@@ -64,6 +66,7 @@ public class PaymentRequestController {
     /**
      * 修改付款申请
      */
+    @SysLog("修改付款申请")
     @PutMapping
     public R<Void> edit(@RequestBody BizPaymentRequest payment) {
         return paymentRequestService.updateById(payment) ? R.ok() : R.fail("更新失败");
@@ -72,6 +75,7 @@ public class PaymentRequestController {
     /**
      * 删除付款申请
      */
+    @SysLog("删除付款申请")
     @DeleteMapping("/{ids}")
     public R<Void> remove(@PathVariable Long[] ids) {
         for (Long id : ids) {
@@ -86,6 +90,7 @@ public class PaymentRequestController {
     /**
      * 提交付款申请
      */
+    @SysLog("提交付款申请")
     @PostMapping("/submit/{id}")
     public R<Void> submit(@PathVariable Long id) {
         return paymentRequestService.submitPayment(id) ? R.ok() : R.fail("提交失败");

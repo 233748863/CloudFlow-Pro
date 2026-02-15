@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
@@ -37,6 +38,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     @Override
+    @Audit(name = "提交付款申请", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)")
     @Transactional(rollbackFor = Exception.class)
     public boolean submitPayment(Long id) {
         BizPaymentRequest payment = getById(id);

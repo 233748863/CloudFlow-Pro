@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
@@ -54,6 +55,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     }
 
     @Override
+    @Audit(name = "创建报销申请", spel = "#claim")
     @Transactional(rollbackFor = Exception.class)
     public boolean createClaim(BizExpenseClaim claim) {
         // 生成报销单号
@@ -75,6 +77,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     }
 
     @Override
+    @Audit(name = "更新报销申请", spel = "#claim", oldVal = "@expenseClaimServiceImpl.getById(#claim.id)")
     @Transactional(rollbackFor = Exception.class)
     public boolean updateClaim(BizExpenseClaim claim) {
         // 更新报销申请
@@ -99,6 +102,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     }
 
     @Override
+    @Audit(name = "提交报销申请", spel = "#id", oldVal = "@expenseClaimServiceImpl.getById(#id)")
     @Transactional(rollbackFor = Exception.class)
     public boolean submitClaim(Long id) {
         BizExpenseClaim claim = getById(id);
@@ -143,6 +147,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     }
 
     @Override
+    @Audit(name = "车辆费用转报销", spel = "#vehicleExpenseIds")
     @Transactional(rollbackFor = Exception.class)
     public boolean convertVehicleExpenseToClaim(List<Long> vehicleExpenseIds, Long userId) {
         if (vehicleExpenseIds == null || vehicleExpenseIds.isEmpty()) {

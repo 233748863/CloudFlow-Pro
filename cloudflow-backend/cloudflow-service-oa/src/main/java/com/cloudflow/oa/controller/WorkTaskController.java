@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.WorkTask;
 import com.cloudflow.oa.service.IWorkTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,7 @@ public class WorkTaskController {
     /**
      * 创建任务
      */
+    @SysLog("创建协作任务")
     @PostMapping
     public R<Boolean> add(@RequestBody WorkTask workTask) {
         workTask.setOwnerId(UserContext.getUserId());
@@ -60,6 +62,7 @@ public class WorkTaskController {
     /**
      * 修改任务
      */
+    @SysLog("修改协作任务")
     @PutMapping
     public R<Boolean> edit(@RequestBody WorkTask workTask) {
         workTask.setUpdateBy(String.valueOf(UserContext.getUserId()));
@@ -70,6 +73,7 @@ public class WorkTaskController {
     /**
      * 修改任务状态 (看板拖拽)
      */
+    @SysLog("修改任务状态")
     @PutMapping("/status")
     public R<Boolean> updateStatus(@RequestBody Map<String, Object> params) {
         Long taskId = Long.valueOf(params.get("taskId").toString());
@@ -80,6 +84,7 @@ public class WorkTaskController {
     /**
      * 删除任务
      */
+    @SysLog("删除协作任务")
     @DeleteMapping("/{taskId}")
     public R<Boolean> remove(@PathVariable("taskId") Long taskId) {
         return R.ok(workTaskService.removeById(taskId));

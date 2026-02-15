@@ -37,6 +37,7 @@
         <groovy.version>3.0.19</groovy.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <dynamic-ds.version>4.3.1</dynamic-ds.version>
+        <javers.version>7.6.2</javers.version>
     </properties>
 
     <dependencyManagement>
@@ -180,6 +181,27 @@
                 <groupId>com.cloudflow</groupId>
                 <artifactId>cloudflow-common-datasource</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!-- 内部模块：操作日志公共模块 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-log</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- 内部模块：审计日志公共模块 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-audit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Javers 对象差异比较（审计模块使用） -->
+            <dependency>
+                <groupId>org.javers</groupId>
+                <artifactId>javers-core</artifactId>
+                <version>${javers.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

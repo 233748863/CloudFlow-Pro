@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysConsumable;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class ConsumableController {
     /**
      * 新增耗材
      */
+    @SysLog("新增耗材")
     @PostMapping
     public R add(@RequestBody SysConsumable consumable) {
         return R.result(consumableService.save(consumable));
@@ -55,6 +57,7 @@ public class ConsumableController {
     /**
      * 修改耗材
      */
+    @SysLog("修改耗材")
     @PutMapping
     public R edit(@RequestBody SysConsumable consumable) {
         if (consumable.getConsumableId() == null) {
@@ -66,6 +69,7 @@ public class ConsumableController {
     /**
      * 删除耗材
      */
+    @SysLog("删除耗材")
     @DeleteMapping("/{ids}")
     public R remove(@PathVariable("ids") List<Long> ids) {
         return R.result(consumableService.removeBatchByIds(ids));
@@ -82,6 +86,7 @@ public class ConsumableController {
     /**
      * 入库操作
      */
+    @SysLog("耗材入库")
     @PostMapping("/{id}/add-stock")
     public R addStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
         Integer quantity = params.get("quantity");
@@ -94,6 +99,7 @@ public class ConsumableController {
     /**
      * 出库操作
      */
+    @SysLog("耗材出库")
     @PostMapping("/{id}/reduce-stock")
     public R reduceStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
         Integer quantity = params.get("quantity");

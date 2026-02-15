@@ -326,22 +326,36 @@ CREATE TABLE sys_vehicle_expense (
 -- 七、业务表（与工作流关联）
 -- =========================================================
 
--- 14. 请假业务表
-DROP TABLE IF EXISTS biz_leave;
-CREATE TABLE biz_leave (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT,
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+-- 14. 请假申请表
+DROP TABLE IF EXISTS biz_leave_request;
+CREATE TABLE biz_leave_request (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT NULL COMMENT '租户ID',
   instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
-  user_id           BIGINT(20)      DEFAULT NULL COMMENT '申请人',
-  type              VARCHAR(20)     DEFAULT NULL COMMENT '请假类型',
+  user_id           BIGINT(20)      DEFAULT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  leave_no          VARCHAR(32)     DEFAULT NULL COMMENT '请假单号',
+  leave_type        VARCHAR(20)     DEFAULT NULL COMMENT '请假类型(ANNUAL年假/SICK病假/PERSONAL事假/MATERNITY产假/MARRIAGE婚假/BEREAVEMENT丧假/OTHER其他)',
   start_time        DATETIME        DEFAULT NULL COMMENT '开始时间',
   end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
-  days              DECIMAL(5,1)    DEFAULT NULL COMMENT '天数',
-  reason            VARCHAR(500)    DEFAULT NULL COMMENT '事由',
-  status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态',
-  create_time       DATETIME        DEFAULT NULL,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假业务表';
+  leave_days        DECIMAL(5,1)    DEFAULT NULL COMMENT '请假天数',
+  reason            VARCHAR(500)    DEFAULT NULL COMMENT '请假事由',
+  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_leave_no (leave_no),
+  KEY idx_user_id (user_id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_status (status),
+  KEY idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假申请表';
 
 -- =========================================================
 -- 八、费用报销与付款申请模块
