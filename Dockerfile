@@ -1,40 +1,43 @@
-# Stage 1: Build Frontend
-FROM node:18-alpine as frontend-builder
-WORKDIR /app/frontend
-COPY cloudflow-frontend/package*.json ./
-RUN npm install
-COPY cloudflow-frontend/ .
-RUN npm run build
+# ============================================================
+# CloudFlow Pro - 统一后端构建 Dockerfile
+# ============================================================
+# 此文件用于构建单个后端微服务，通过 MODULE_NAME 参数指定
+#
+# 使用示例:
+#   docker build --build-arg MODULE_NAME=cloudflow-gateway -t cloudflow-gateway .
+#   docker build --build-arg MODULE_NAME=cloudflow-auth -t cloudflow-auth .
+#   docker build --build-arg MODULE_NAME=cloudflow-service-workflow -t cloudflow-workflow .
+#   docker build --build-arg MODULE_NAME=cloudflow-service-oa -t cloudflow-oa .
+#
+# 注意: 生产部署请使用 docker compose，参见 docker-compose.yml
+# ============================================================
 
-# Stage 2: Build Backend
-FROM maven:3.8-openjdk-17 as backend-builder
-WORKDIR /app/backend
-COPY cloudflow-backend/pom.xml .
+# 构建阶段
+FROM maven:3.8-openjdk-17 as builder
+
+# 必须指定要构建的模块名称
+ARG MODULE_NAME
+
+WORKDIR /app
 COPY cloudflow-backend/ .
-# Skip tests to speed up build as requested
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -pl ${MODULE_NAME} -am
 
-# Stage 3: Run
-FROM openjdk:17-slim
+# 运行阶段
+FROM eclipse-temurin:17-jre-alpine
+
+ARG MODULE_NAME
+
 WORKDIR /app
 
-# Copy Backend Jar (Assuming workflow service is the main entry or we use a launcher)
-# In microservice, we might need multiple containers or a single fat jar. 
-# For simplicity, let's assume we run the workflow service which embeds others or we just run the main service.
-# Wait, this is a multi-module project. We likely need to run Gateway, Auth, and Workflow.
-# Docker Compose is better for local dev. For production single container, it's hard.
-# Let's create a Dockerfile that runs the Workflow Service as an example, 
-# but in reality we need Docker Compose.
+# 创建非 root 用户
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+USER appuser
 
-# Let's copy the workflow service jar
-COPY --from=backend-builder /app/backend/cloudflow-service-workflow/target/*.jar app.jar
+COPY --from=builder --chown=appuser:appuser /app/${MODULE_NAME}/target/*.jar app.jar
 
-# Copy Frontend Static Files (to be served by Nginx or embedded if Spring Boot serves static)
-# Usually we use Nginx. Let's install Nginx in this image or use a separate Nginx image.
-# For simplicity in this "all-in-one" attempt (often anti-pattern but requested as single file), 
-# let's stick to standard practice: 
-# This Dockerfile builds the Workflow Service. 
-# We should provide a docker-compose.yml for the full stack.
-
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# JVM 优化参数
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]

@@ -1,12 +1,12 @@
 # ============================================================
-# CloudFlow Gateway 网关服务 Dockerfile
+# CloudFlow OA 服务 Dockerfile
 # ============================================================
 
-# 构建阶段：使用 Maven 编译网关服务
+# 构建阶段：使用 Maven 编译 OA 服务
 FROM maven:3.8-openjdk-17 as builder
 WORKDIR /app
 COPY cloudflow-backend/ .
-RUN mvn clean package -DskipTests -pl cloudflow-gateway -am
+RUN mvn clean package -DskipTests -pl cloudflow-service-oa -am
 
 # 运行阶段：使用轻量级 JRE 运行
 FROM eclipse-temurin:17-jre-alpine
@@ -16,10 +16,10 @@ WORKDIR /app
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 USER appuser
 
-COPY --from=builder --chown=appuser:appuser /app/cloudflow-gateway/target/*.jar app.jar
+COPY --from=builder --chown=appuser:appuser /app/cloudflow-service-oa/target/*.jar app.jar
 
-# 网关服务端口（与 application.yml 中 server.port=9000 一致）
-EXPOSE 9000
+# OA 服务端口
+EXPOSE 9003
 
 # JVM 优化参数
 ENTRYPOINT ["java", \
