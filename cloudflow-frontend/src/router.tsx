@@ -50,6 +50,14 @@ const CopyListPage = React.lazy(() => import('./pages/CopyListPage').then(module
 const OperationLogPage = React.lazy(() => import('./pages/system/OperationLogPage').then(module => ({ default: module.OperationLogPage })));
 const AuditLogPage = React.lazy(() => import('./pages/system/AuditLogPage').then(module => ({ default: module.AuditLogPage })));
 
+// OA扩展模块页面 - 补卡申请、加班申请、出差申请、通讯录、访客管理、值班排班
+const AttendanceAppealPage = React.lazy(() => import('./pages/AttendanceAppealPage'));
+const OvertimePage = React.lazy(() => import('./pages/OvertimePage'));
+const BusinessTripPage = React.lazy(() => import('./pages/BusinessTripPage'));
+const ContactPage = React.lazy(() => import('./pages/ContactPage'));
+const VisitorPage = React.lazy(() => import('./pages/VisitorPage'));
+const DutySchedulePage = React.lazy(() => import('./pages/DutySchedulePage'));
+
 
 const Loading = () => (
   <div className="flex items-center justify-center h-full w-full min-h-[400px]">
@@ -200,6 +208,31 @@ const desktopRoutes = [
           {
             path: '/system/audit-log',
             element: <Suspense fallback={<Loading />}><AuditLogPage /></Suspense>,
+          },
+          // === OA扩展模块路由 ===
+          {
+            path: '/office/attendance-appeal',
+            element: <Suspense fallback={<Loading />}><AttendanceAppealPage /></Suspense>,
+          },
+          {
+            path: '/office/overtime',
+            element: <Suspense fallback={<Loading />}><OvertimePage /></Suspense>,
+          },
+          {
+            path: '/office/business-trip',
+            element: <Suspense fallback={<Loading />}><BusinessTripPage /></Suspense>,
+          },
+          {
+            path: '/office/contact',
+            element: <Suspense fallback={<Loading />}><ContactPage /></Suspense>,
+          },
+          {
+            path: '/admin/visitor',
+            element: <Suspense fallback={<Loading />}><VisitorPage /></Suspense>,
+          },
+          {
+            path: '/admin/duty-schedule',
+            element: <Suspense fallback={<Loading />}><DutySchedulePage /></Suspense>,
           },
         ],
       },

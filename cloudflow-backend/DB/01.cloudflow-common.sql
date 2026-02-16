@@ -318,6 +318,16 @@ INSERT INTO sys_menu VALUES(605, '租户管理',   6, 6, '/system/tenant',      
 INSERT INTO sys_menu VALUES(606, '操作日志',   6, 7, '/system/log',         'pages/system/OperationLogPage', NULL, 0, 0, 'C', '0', '0', 'system:log:list',           'ScrollText',      'admin', sysdate(), '', null, '操作日志');
 INSERT INTO sys_menu VALUES(607, '审计日志',   6, 8, '/system/audit-log',   'pages/system/AuditLogPage',    NULL, 0, 0, 'C', '0', '0', 'system:audit:list',          'ClipboardList',   'admin', sysdate(), '', null, '审计日志');
 
+-- 办公协同(parent_id=2)扩展菜单：补卡申请、加班申请、出差申请、通讯录
+INSERT INTO sys_menu VALUES(203, '补卡申请',   2, 4, '/office/attendance-appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'office:attendance:appeal',  'ClipboardEdit',   'admin', sysdate(), '', null, '补卡/外勤申请');
+INSERT INTO sys_menu VALUES(204, '加班申请',   2, 5, '/office/overtime',          'pages/OvertimePage',           NULL, 0, 0, 'C', '0', '0', 'office:overtime:list',      'Clock',           'admin', sysdate(), '', null, '加班申请');
+INSERT INTO sys_menu VALUES(205, '出差申请',   2, 6, '/office/business-trip',     'pages/BusinessTripPage',       NULL, 0, 0, 'C', '0', '0', 'office:trip:list',          'Plane',           'admin', sysdate(), '', null, '出差申请');
+INSERT INTO sys_menu VALUES(206, '通讯录',     2, 7, '/office/contact',           'pages/ContactPage',            NULL, 0, 0, 'C', '0', '0', 'office:contact:list',       'BookUser',        'admin', sysdate(), '', null, '企业通讯录');
+
+-- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班
+INSERT INTO sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', sysdate(), '', null, '访客预约管理');
+INSERT INTO sys_menu VALUES(507, '值班排班',   5, 8, '/admin/duty-schedule',      'pages/DutySchedulePage',       NULL, 0, 0, 'C', '0', '0', 'admin:duty:list',           'CalendarClock',   'admin', sysdate(), '', null, '值班排班管理');
+
 -- 7. 初始化岗位数据
 INSERT INTO sys_post VALUES(1, 100000, 'ceo',      '董事长',     1, '0', 'admin', sysdate(), '', null, '公司最高管理者');
 INSERT INTO sys_post VALUES(2, 100000, 'manager',   '部门经理',   2, '0', 'admin', sysdate(), '', null, '部门负责人');
@@ -371,6 +381,14 @@ INSERT INTO sys_role_menu VALUES(2, 502, 100000);
 INSERT INTO sys_role_menu VALUES(2, 503, 100000);
 INSERT INTO sys_role_menu VALUES(2, 504, 100000);
 INSERT INTO sys_role_menu VALUES(2, 505, 100000);
+-- 办公协同扩展菜单
+INSERT INTO sys_role_menu VALUES(2, 203, 100000);
+INSERT INTO sys_role_menu VALUES(2, 204, 100000);
+INSERT INTO sys_role_menu VALUES(2, 205, 100000);
+INSERT INTO sys_role_menu VALUES(2, 206, 100000);
+-- 行政管理扩展菜单
+INSERT INTO sys_role_menu VALUES(2, 506, 100000);
+INSERT INTO sys_role_menu VALUES(2, 507, 100000);
 
 -- FINANCE (role_id=3): 工作台 + 办公协同 + 流程中心
 INSERT INTO sys_role_menu VALUES(3, 1, 100000);
@@ -385,6 +403,10 @@ INSERT INTO sys_role_menu VALUES(3, 300, 100000);
 INSERT INTO sys_role_menu VALUES(3, 301, 100000);
 INSERT INTO sys_role_menu VALUES(3, 302, 100000);
 INSERT INTO sys_role_menu VALUES(3, 303, 100000);
+INSERT INTO sys_role_menu VALUES(3, 203, 100000);
+INSERT INTO sys_role_menu VALUES(3, 204, 100000);
+INSERT INTO sys_role_menu VALUES(3, 205, 100000);
+INSERT INTO sys_role_menu VALUES(3, 206, 100000);
 
 -- HR (role_id=4): 工作台 + 办公协同 + 流程中心 + 流程管理 + 行政管理
 INSERT INTO sys_role_menu VALUES(4, 1, 100000);
@@ -407,6 +429,12 @@ INSERT INTO sys_role_menu VALUES(4, 402, 100000);
 INSERT INTO sys_role_menu VALUES(4, 403, 100000);
 INSERT INTO sys_role_menu VALUES(4, 500, 100000);
 INSERT INTO sys_role_menu VALUES(4, 505, 100000);
+INSERT INTO sys_role_menu VALUES(4, 203, 100000);
+INSERT INTO sys_role_menu VALUES(4, 204, 100000);
+INSERT INTO sys_role_menu VALUES(4, 205, 100000);
+INSERT INTO sys_role_menu VALUES(4, 206, 100000);
+INSERT INTO sys_role_menu VALUES(4, 506, 100000);
+INSERT INTO sys_role_menu VALUES(4, 507, 100000);
 
 -- EMPLOYEE (role_id=5): 工作台 + 办公协同 + 流程中心（仅基础功能）
 INSERT INTO sys_role_menu VALUES(5, 1, 100000);
@@ -421,6 +449,10 @@ INSERT INTO sys_role_menu VALUES(5, 300, 100000);
 INSERT INTO sys_role_menu VALUES(5, 301, 100000);
 INSERT INTO sys_role_menu VALUES(5, 302, 100000);
 INSERT INTO sys_role_menu VALUES(5, 303, 100000);
+INSERT INTO sys_role_menu VALUES(5, 203, 100000);
+INSERT INTO sys_role_menu VALUES(5, 204, 100000);
+INSERT INTO sys_role_menu VALUES(5, 205, 100000);
+INSERT INTO sys_role_menu VALUES(5, 206, 100000);
 
 -- =========================================================
 -- 六、操作日志与审计日志

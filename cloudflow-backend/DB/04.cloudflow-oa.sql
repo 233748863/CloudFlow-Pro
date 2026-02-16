@@ -436,6 +436,230 @@ CREATE TABLE biz_payment_request (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='付款申请表';
 
 -- =========================================================
+-- 九、补卡/外勤申请模块
+-- =========================================================
+
+-- 19. 补卡申请表
+DROP TABLE IF EXISTS biz_attendance_appeal;
+CREATE TABLE biz_attendance_appeal (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  appeal_no         VARCHAR(32)     NOT NULL COMMENT '申请单号',
+  appeal_type       VARCHAR(20)     NOT NULL COMMENT '申请类型(MAKEUP补卡/FIELD外勤)',
+  appeal_date       DATE            NOT NULL COMMENT '补卡/外勤日期',
+  appeal_time       TIME            DEFAULT NULL COMMENT '补卡时间(补卡类型必填)',
+  check_type        CHAR(1)         DEFAULT NULL COMMENT '补卡打卡类型(1签到 2签退)',
+  location          VARCHAR(100)    DEFAULT NULL COMMENT '外勤地点经纬度(lat,lng)',
+  address           VARCHAR(255)    DEFAULT NULL COMMENT '外勤地点地址',
+  reason            VARCHAR(500)    NOT NULL COMMENT '申请事由',
+  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL(外勤照片等)',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_appeal_no (appeal_no),
+  KEY idx_appeal_user (user_id),
+  KEY idx_appeal_tenant (tenant_id),
+  KEY idx_appeal_status (status),
+  KEY idx_appeal_date (appeal_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补卡/外勤申请表';
+
+-- =========================================================
+-- 十、加班申请模块
+-- =========================================================
+
+-- 20. 加班申请表
+DROP TABLE IF EXISTS biz_overtime_request;
+CREATE TABLE biz_overtime_request (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  overtime_no       VARCHAR(32)     NOT NULL COMMENT '加班单号',
+  overtime_type     VARCHAR(20)     NOT NULL COMMENT '加班类型(WORKDAY工作日/WEEKEND周末/HOLIDAY节假日)',
+  start_time        DATETIME        NOT NULL COMMENT '加班开始时间',
+  end_time          DATETIME        NOT NULL COMMENT '加班结束时间',
+  overtime_hours    DECIMAL(5,1)    DEFAULT NULL COMMENT '加班时长(小时)',
+  compensate_type   VARCHAR(20)     DEFAULT 'SALARY' COMMENT '补偿方式(SALARY加班费/LEAVE调休)',
+  reason            VARCHAR(500)    NOT NULL COMMENT '加班事由',
+  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_overtime_no (overtime_no),
+  KEY idx_overtime_user (user_id),
+  KEY idx_overtime_tenant (tenant_id),
+  KEY idx_overtime_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加班申请表';
+
+-- =========================================================
+-- 十一、出差申请模块
+-- =========================================================
+
+-- 21. 出差申请表
+DROP TABLE IF EXISTS biz_business_trip;
+CREATE TABLE biz_business_trip (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  trip_no           VARCHAR(32)     NOT NULL COMMENT '出差单号',
+  destination       VARCHAR(200)    NOT NULL COMMENT '出差目的地',
+  start_date        DATE            NOT NULL COMMENT '出差开始日期',
+  end_date          DATE            NOT NULL COMMENT '出差结束日期',
+  trip_days         DECIMAL(5,1)    DEFAULT NULL COMMENT '出差天数',
+  transport_type    VARCHAR(20)     DEFAULT NULL COMMENT '交通方式(PLANE飞机/TRAIN火车/CAR自驾/OTHER其他)',
+  estimated_cost    DECIMAL(10,2)   DEFAULT NULL COMMENT '预计费用',
+  companions        VARCHAR(500)    DEFAULT NULL COMMENT '同行人员(JSON数组)',
+  reason            VARCHAR(500)    NOT NULL COMMENT '出差事由',
+  itinerary         TEXT            DEFAULT NULL COMMENT '行程安排(JSON)',
+  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_trip_no (trip_no),
+  KEY idx_trip_user (user_id),
+  KEY idx_trip_tenant (tenant_id),
+  KEY idx_trip_status (status),
+  KEY idx_trip_date (start_date, end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出差申请表';
+
+-- =========================================================
+-- 十二、访客管理模块
+-- =========================================================
+
+-- 22. 访客预约表
+DROP TABLE IF EXISTS sys_visitor;
+CREATE TABLE sys_visitor (
+  visitor_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '访客记录ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  visitor_name      VARCHAR(64)     NOT NULL COMMENT '访客姓名',
+  visitor_phone     VARCHAR(20)     DEFAULT NULL COMMENT '访客电话',
+  visitor_company   VARCHAR(100)    DEFAULT NULL COMMENT '访客单位',
+  visitor_count     INT(11)         DEFAULT 1 COMMENT '来访人数',
+  id_card           VARCHAR(20)     DEFAULT NULL COMMENT '身份证号(脱敏存储)',
+  visit_reason      VARCHAR(500)    NOT NULL COMMENT '来访事由',
+  host_id           BIGINT(20)      NOT NULL COMMENT '被访人ID',
+  host_name         VARCHAR(64)     DEFAULT NULL COMMENT '被访人姓名',
+  host_dept         VARCHAR(64)     DEFAULT NULL COMMENT '被访人部门',
+  visit_date        DATE            NOT NULL COMMENT '预约来访日期',
+  visit_time_start  TIME            DEFAULT NULL COMMENT '预计到达时间',
+  visit_time_end    TIME            DEFAULT NULL COMMENT '预计离开时间',
+  actual_arrive     DATETIME        DEFAULT NULL COMMENT '实际到达时间',
+  actual_leave      DATETIME        DEFAULT NULL COMMENT '实际离开时间',
+  visit_area        VARCHAR(200)    DEFAULT NULL COMMENT '访问区域',
+  car_plate         VARCHAR(20)     DEFAULT NULL COMMENT '车牌号',
+  belongings        VARCHAR(500)    DEFAULT NULL COMMENT '携带物品',
+  photo_url         VARCHAR(255)    DEFAULT NULL COMMENT '访客照片URL',
+  pass_code         VARCHAR(32)     DEFAULT NULL COMMENT '通行证编号',
+  status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态(PENDING待确认/CONFIRMED已确认/ARRIVED已到访/COMPLETED已离开/CANCELLED已取消)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (visitor_id),
+  KEY idx_visitor_tenant (tenant_id),
+  KEY idx_visitor_host (host_id),
+  KEY idx_visitor_date (visit_date),
+  KEY idx_visitor_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='访客预约表';
+
+-- =========================================================
+-- 十三、值班排班模块
+-- =========================================================
+
+-- 23. 值班排班计划表
+DROP TABLE IF EXISTS sys_duty_schedule;
+CREATE TABLE sys_duty_schedule (
+  schedule_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '排班ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  title             VARCHAR(100)    NOT NULL COMMENT '排班标题',
+  schedule_type     VARCHAR(20)     NOT NULL COMMENT '排班类型(DAILY日常值班/HOLIDAY节假日值班/EMERGENCY应急值班)',
+  duty_date         DATE            NOT NULL COMMENT '值班日期',
+  shift_type        VARCHAR(20)     DEFAULT 'DAY' COMMENT '班次(DAY白班/NIGHT夜班/FULL全天)',
+  start_time        TIME            DEFAULT NULL COMMENT '值班开始时间',
+  end_time          TIME            DEFAULT NULL COMMENT '值班结束时间',
+  user_id           BIGINT(20)      NOT NULL COMMENT '值班人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '值班人姓名',
+  backup_user_id    BIGINT(20)      DEFAULT NULL COMMENT '替班人ID',
+  backup_user_name  VARCHAR(64)     DEFAULT NULL COMMENT '替班人姓名',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  location          VARCHAR(200)    DEFAULT NULL COMMENT '值班地点',
+  duty_content      VARCHAR(500)    DEFAULT NULL COMMENT '值班内容/职责',
+  check_in_time     DATETIME        DEFAULT NULL COMMENT '签到时间',
+  check_out_time    DATETIME        DEFAULT NULL COMMENT '签退时间',
+  status            VARCHAR(20)     DEFAULT 'SCHEDULED' COMMENT '状态(SCHEDULED已排班/CHECKED_IN已签到/COMPLETED已完成/SWAPPED已换班/CANCELLED已取消)',
+  swap_reason       VARCHAR(255)    DEFAULT NULL COMMENT '换班原因',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (schedule_id),
+  KEY idx_duty_tenant (tenant_id),
+  KEY idx_duty_user (user_id),
+  KEY idx_duty_date (duty_date),
+  KEY idx_duty_dept (dept_id),
+  KEY idx_duty_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='值班排班表';
+
+-- =========================================================
+-- 十四、前端错误日志模块
+-- =========================================================
+
+-- 24. 前端错误日志表
+DROP TABLE IF EXISTS sys_frontend_error_log;
+CREATE TABLE sys_frontend_error_log (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT NULL COMMENT '租户ID',
+  message           VARCHAR(1000)   NOT NULL COMMENT '错误消息',
+  stack             TEXT            DEFAULT NULL COMMENT '错误堆栈',
+  component_stack   TEXT            DEFAULT NULL COMMENT 'React组件堆栈',
+  context           VARCHAR(200)    DEFAULT NULL COMMENT '错误发生的上下文描述',
+  url               VARCHAR(500)    DEFAULT NULL COMMENT '页面URL',
+  user_agent        VARCHAR(500)    DEFAULT NULL COMMENT '用户代理',
+  level             VARCHAR(20)     DEFAULT 'error' COMMENT '错误级别(error/warning/info)',
+  tags              JSON            DEFAULT NULL COMMENT '标签信息(JSON)',
+  extra             JSON            DEFAULT NULL COMMENT '额外数据(JSON)',
+  client_ip         VARCHAR(64)     DEFAULT NULL COMMENT '客户端IP',
+  user_id           BIGINT(20)      DEFAULT NULL COMMENT '当前用户ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '当前用户名',
+  client_time       DATETIME        DEFAULT NULL COMMENT '客户端上报时间',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '服务端接收时间',
+  PRIMARY KEY (id),
+  KEY idx_fe_error_tenant (tenant_id),
+  KEY idx_fe_error_level (level),
+  KEY idx_fe_error_create_time (create_time),
+  KEY idx_fe_error_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='前端错误日志表';
+
+-- =========================================================
 -- 初始化数据
 -- =========================================================
 
@@ -465,35 +689,10 @@ INSERT INTO sys_work_task (title, description, assignee_id, owner_id, priority, 
 INSERT INTO sys_attendance_rule (rule_name, check_in_time, check_out_time, elastic_minutes, work_days, lunch_break_start, lunch_break_end, overtime_enabled, overtime_min_minutes, late_tolerance_count, severe_late_minutes, absent_minutes, photo_required, enabled, tenant_id, create_time) 
 VALUES ('默认考勤组', '09:00:00', '18:00:00', 30, '[1,2,3,4,5]', '12:00:00', '13:00:00', 0, 30, 3, 60, 240, 0, 1, 100000, NOW());
 
--- =========================================================
--- 九、前端错误日志模块
--- =========================================================
-
--- 18. 前端错误日志表
-DROP TABLE IF EXISTS sys_frontend_error_log;
-CREATE TABLE sys_frontend_error_log (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id         BIGINT(20)      DEFAULT NULL COMMENT '租户ID',
-  message           VARCHAR(1000)   NOT NULL COMMENT '错误消息',
-  stack             TEXT            DEFAULT NULL COMMENT '错误堆栈',
-  component_stack   TEXT            DEFAULT NULL COMMENT 'React组件堆栈',
-  context           VARCHAR(200)    DEFAULT NULL COMMENT '错误发生的上下文描述',
-  url               VARCHAR(500)    DEFAULT NULL COMMENT '页面URL',
-  user_agent        VARCHAR(500)    DEFAULT NULL COMMENT '用户代理',
-  level             VARCHAR(20)     DEFAULT 'error' COMMENT '错误级别(error/warning/info)',
-  tags              JSON            DEFAULT NULL COMMENT '标签信息(JSON)',
-  extra             JSON            DEFAULT NULL COMMENT '额外数据(JSON)',
-  client_ip         VARCHAR(64)     DEFAULT NULL COMMENT '客户端IP',
-  user_id           BIGINT(20)      DEFAULT NULL COMMENT '当前用户ID',
-  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '当前用户名',
-  client_time       DATETIME        DEFAULT NULL COMMENT '客户端上报时间',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '服务端接收时间',
-  PRIMARY KEY (id),
-  KEY idx_fe_error_tenant (tenant_id),
-  KEY idx_fe_error_level (level),
-  KEY idx_fe_error_create_time (create_time),
-  KEY idx_fe_error_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='前端错误日志表';
+-- 6. 初始化值班排班示例数据
+INSERT INTO sys_duty_schedule (title, schedule_type, duty_date, shift_type, start_time, end_time, user_id, user_name, dept_id, location, duty_content, status, create_by, create_time) VALUES
+('周一日常值班', 'DAILY', DATE_ADD(CURDATE(), INTERVAL 1 DAY), 'DAY', '09:00:00', '18:00:00', 1, 'admin', NULL, '前台', '负责来访接待和电话转接', 'SCHEDULED', 'admin', NOW()),
+('周一夜班值班', 'DAILY', DATE_ADD(CURDATE(), INTERVAL 1 DAY), 'NIGHT', '18:00:00', '09:00:00', 1, 'admin', NULL, '监控室', '负责安全巡查和监控', 'SCHEDULED', 'admin', NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;
 

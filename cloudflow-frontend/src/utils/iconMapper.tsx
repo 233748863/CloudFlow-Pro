@@ -2,7 +2,8 @@ import {
   LayoutDashboard, GitMerge, FileText, Settings, LogOut, Bell, CheckCircle2,
   Users, PlayCircle, ShieldCheck, ChevronRight, ChevronDown, FormInput, Code, Megaphone,
   Calendar, Monitor, Rocket, Briefcase, Building2, Wrench, FolderOpen, Car,
-  ClipboardCheck, Package, FileArchive, MailOpen, ScrollText, ClipboardList
+  ClipboardCheck, Package, FileArchive, MailOpen, ScrollText, ClipboardList,
+  ClipboardEdit, Clock, Plane, BookUser, UserCheck, CalendarClock
 } from 'lucide-react';
 
 // 图标名称到组件的映射
@@ -36,6 +37,13 @@ export const iconMap: Record<string, React.ElementType> = {
   'MailOpen': MailOpen,
   'ScrollText': ScrollText,
   'ClipboardList': ClipboardList,
+  // OA扩展模块图标
+  'ClipboardEdit': ClipboardEdit,
+  'Clock': Clock,
+  'Plane': Plane,
+  'BookUser': BookUser,
+  'UserCheck': UserCheck,
+  'CalendarClock': CalendarClock,
 };
 
 // 获取图标组件，如果找不到则返回默认图标
