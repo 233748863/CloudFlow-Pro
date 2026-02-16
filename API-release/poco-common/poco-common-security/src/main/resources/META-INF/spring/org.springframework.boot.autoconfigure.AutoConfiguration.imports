@@ -1,9 +1,0 @@
-cn.joywon.poco.common.security.service.PocoDefaultUserDetailsServiceImpl
-cn.joywon.poco.common.security.service.PocoTocDefaultUserDetailsServiceImpl
-cn.joywon.poco.common.security.service.PocoMobileUserDetailServiceImpl
-cn.joywon.poco.common.security.service.PocoTocMobileUserDetailsServiceImpl
-cn.joywon.poco.common.security.service.PocoRedisOAuth2AuthorizationService
-cn.joywon.poco.common.security.service.PocoRedisOAuth2AuthorizationConsentService
-cn.joywon.poco.common.security.component.PocoSecurityInnerAspect
-cn.joywon.poco.common.security.component.PocoSecurityMessageSourceConfiguration
-cn.joywon.poco.common.security.service.PocoRemoteRegisteredClientRepository

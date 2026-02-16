@@ -1,3 +1,0 @@
-cn.joywon.poco.common.websocket.config.WebSocketAutoConfiguration
-cn.joywon.poco.common.websocket.config.RedisMessageDistributorConfiguration
-cn.joywon.poco.common.websocket.config.LocalMessageDistributorConfiguration
