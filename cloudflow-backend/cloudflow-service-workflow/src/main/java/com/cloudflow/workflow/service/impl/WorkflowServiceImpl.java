@@ -315,7 +315,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw WorkflowException.validationError("流程定义模型为空，无法发布");
         }
         
-        // Update status to PUBLISHED
+        // 更新状态为已发布
         def.setStatus("PUBLISHED");
         def.setVersionLock(def.getVersionLock() != null ? def.getVersionLock() + 1 : 1); // 1.B: 更新乐观锁
         processDefinitionMapper.updateById(def);
@@ -748,7 +748,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
 
         if ("APPROVAL".equals(node.getType())) {
             // 5.I: 检查是否为会签节点
-            String signType = node.getSignType(); // ALL / ANY / PERCENT
+            String signType = node.getSignType(); // 会签类型：ALL/ANY/PERCENT
             if (signType != null && !signType.isEmpty()) {
                 // 会签模式：为多个审批人创建会签任务
                 List<Long> assigneeIds = resolveMultipleAssignees(node, instance);
@@ -807,7 +807,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             task.setCreateTime(new Date());
             taskMapper.insert(task);
             
-            // Send Notification
+            // 发送通知
             sysNoticeService.sendNotice(
                 task.getAssignee(), 
                 "待办任务通知", 
@@ -1159,26 +1159,26 @@ public class WorkflowServiceImpl implements IWorkflowService {
     }
 
     /**
-     * Find the next node to execute after the current node completes.
-     * Traverses up the tree to find the nearest "next" node (Join or Sequence).
+     * 查找当前节点完成后要执行的下一个节点
+     * 向上遍历树结构，找到最近的"next"节点（汇聚或顺序节点）
      */
     private WfNodeConfig findNextNode(WfNodeConfig root, String currentNodeId) {
         java.util.LinkedList<WfNodeConfig> path = new java.util.LinkedList<>();
         if (findPath(root, currentNodeId, path)) {
-            // Path found. Iterate from the end (current node) upwards.
-            // We are looking for the first node in the ancestry chain (including self) that has a 'next'.
-            // Note: In this model, a 'Branch' node itself might not have a 'next', but its parent (Gateway) does.
-            // When the last node of a branch finishes, we should look at the Gateway's next.
+            // 路径已找到。从末端（当前节点）向上遍历。
+            // 查找祖先链中第一个拥有 'next' 的节点（包含自身）。
+            // 注意：在此模型中，'Branch' 节点本身可能没有 'next'，但其父节点（Gateway）有。
+            // 当分支的最后一个节点完成时，应查看 Gateway 的 next。
             
-            // path contains: [Root, Node1, Gateway, BranchNode, TaskNode]
-            // We iterate in reverse: TaskNode -> BranchNode -> Gateway -> Node1 -> Root
+            // path 包含：[Root, Node1, Gateway, BranchNode, TaskNode]
+            // 反向遍历：TaskNode -> BranchNode -> Gateway -> Node1 -> Root
             
             while (!path.isEmpty()) {
                 WfNodeConfig node = path.removeLast();
                 if (node.getNext() != null) {
                     return node.getNext();
                 }
-                // If node.next is null, continue to parent (loop again)
+                // 如果 node.next 为空，继续查找父节点（继续循环）
             }
         }
         return null;
@@ -1192,12 +1192,12 @@ public class WorkflowServiceImpl implements IWorkflowService {
             return true;
         }
         
-        // Check next
+        // 检查 next 节点
         if (findPath(current.getNext(), targetId, path)) {
             return true;
         }
         
-        // Check branches
+        // 检查分支
         if (current.getBranches() != null) {
             for (WfNodeConfig branch : current.getBranches()) {
                 if (findPath(branch, targetId, path)) {
@@ -1206,7 +1206,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             }
         }
         
-        // Not found in this subtree, backtrack
+        // 此子树中未找到，回溯
         path.removeLast();
         return false;
     }

@@ -1,7 +1,7 @@
 import request from './request';
 import { MeetingRoom, SysScheduleEvent } from '../../types';
 
-// Meeting Rooms - CRUD
+// 会议室 - 增删改查
 export const getMeetingRooms = async (): Promise<MeetingRoom[]> => {
   return request.get('/oa/meeting-room/list') as unknown as Promise<MeetingRoom[]>;
 };
@@ -54,7 +54,7 @@ export const getDeptTree = async (): Promise<DeptTreeItem[]> => {
   return request.get('/auth/system/dept/tree') as unknown as Promise<DeptTreeItem[]>;
 };
 
-// Schedule Events
+// 日程事件
 export const getMyEvents = async (start: string, end: string): Promise<SysScheduleEvent[]> => {
   return request.get('/oa/schedule/my-events', { params: { start, end } }) as unknown as Promise<SysScheduleEvent[]>;
 };

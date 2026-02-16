@@ -2,7 +2,6 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
 
-// Define standard API response interface
 // 定义标准 API 响应接口
 export interface ApiResponse<T = any> {
   code: number;
@@ -10,7 +9,7 @@ export interface ApiResponse<T = any> {
   data: T;
 }
 
-// Extend AxiosRequestConfig to support silent mode
+// 扩展 AxiosRequestConfig 以支持静默模式
 declare module 'axios' {
   export interface AxiosRequestConfig {
     /** 静默模式：不显示错误 toast 提示 */

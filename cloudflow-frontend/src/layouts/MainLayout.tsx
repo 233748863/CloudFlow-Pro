@@ -10,7 +10,7 @@ import { getIcon } from '../utils/iconMapper';
 import { getMyAnnouncements } from '../services/api/announcement';
 import { TenantSwitcher } from '../components/TenantSwitcher';
 
-// Types for menu structure
+// 菜单结构类型定义
 interface MenuItem {
   id: string;
   label: string;
@@ -103,7 +103,7 @@ export const MainLayout = () => {
       }));
   };
 
-  // Auto-expand the group that contains the current route
+  // 自动展开包含当前路由的分组
   useMemo(() => {
     for (const group of menuTree) {
       if (group.children) {
@@ -132,7 +132,7 @@ export const MainLayout = () => {
     return location.pathname === path;
   };
 
-  // Find active menu label for breadcrumb
+  // 查找当前活动菜单的标签（用于面包屑）
   const activeLabel = useMemo(() => {
     for (const group of menuTree) {
       if (group.children) {

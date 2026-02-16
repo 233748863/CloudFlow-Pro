@@ -2,7 +2,7 @@ import request from '@/services/api/request';
 import { hashPassword } from '@/utils/crypto';
 import { Role } from '@/types';
 
-// API Response Types
+// API 响应类型
 export interface LoginResponse {
   token: string;
   expiresIn?: number;
@@ -50,7 +50,7 @@ export const login = async (username: string, password?: string, captchaToken?: 
 };
 
 export const register = async (data: RegisterData): Promise<void> => {
-  // Hash password before sending
+  // 发送前对密码进行哈希
   const registerData = { ...data };
   if (registerData.password) {
     registerData.password = await hashPassword(registerData.password);
@@ -71,8 +71,8 @@ export const checkCaptcha = (data: { uuid: string, x: number }): Promise<Captcha
 
 export const getInfo = async (): Promise<UserInfo> => {
   const data: any = await request.get('/auth/info');
-  // Backend returns { user: {...}, roles: [...], permissions: [...] }
-  // We need to flatten it into UserInfo format
+  // 后端返回格式 { user: {...}, roles: [...], permissions: [...] }
+  // 需要将其扁平化为 UserInfo 格式
   const user = data?.user || data;
   return {
     userId: user.userId,
@@ -89,9 +89,9 @@ export const getInfo = async (): Promise<UserInfo> => {
   } as UserInfo;
 }
 
-// All /system/** endpoints are served by cloudflow-auth service.
-// Gateway route: /auth/** → cloudflow-auth (StripPrefix=1)
-// So we prefix all system management calls with /auth to match the gateway route.
+// 所有 /system/** 接口由 cloudflow-auth 服务提供
+// 网关路由: /auth/** → cloudflow-auth (StripPrefix=1)
+// 因此所有系统管理接口都添加 /auth 前缀以匹配网关路由
 
 export const getDeptTree = () => {
   return request.get('/auth/system/dept/tree');

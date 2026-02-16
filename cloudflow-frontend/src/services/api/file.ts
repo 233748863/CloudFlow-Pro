@@ -1,7 +1,7 @@
 import request from './request';
 
-// All /system/** endpoints are served by cloudflow-auth service.
-// Gateway route: /auth/** → cloudflow-auth (StripPrefix=1)
+// 所有 /system/** 接口由 cloudflow-auth 服务提供
+// 网关路由: /auth/** → cloudflow-auth (StripPrefix=1)
 
 export const uploadFile = (file: File) => {
   const formData = new FormData();

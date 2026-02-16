@@ -143,12 +143,17 @@ public interface IWorkflowService {
     R<?> saveFormDefinition(com.cloudflow.workflow.domain.WfFormDefinition definition);
 
     /**
-     * Mark task as read
+     * 标记任务为已读
+     * @param taskId 任务ID
+     * @param userId 用户ID
      */
     void readTask(String taskId, Long userId);
 
     /**
-     * Urge task
+     * 催办任务
+     * @param taskId 任务ID
+     * @param reason 催办原因
+     * @return 结果
      */
     R<?> urgeTask(String taskId, String reason);
 

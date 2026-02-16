@@ -22,7 +22,7 @@ export interface User {
   avatar?: string;
 }
 
-// --- Dynamic Form Types ---
+// --- 动态表单类型 ---
 export type FormFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'TEXTAREA';
 
 export interface FormField {
@@ -30,9 +30,9 @@ export interface FormField {
   type: FormFieldType;
   label: string;
   required: boolean;
-  options?: string[]; // For SELECT type
+  options?: string[]; // 用于 SELECT 类型
   placeholder?: string;
-  // New Validation Fields
+  // 新增验证字段
   regex?: string;
   errorMsg?: string;
 }
@@ -43,29 +43,29 @@ export interface FormDefinition {
   fields: FormField[];
 }
 
-// --- Org Structure Types ---
+// --- 组织架构类型 ---
 export interface Department {
   id: string;
   name: string;
   parentId?: string;
-  managerId?: string; // Department Head
+  managerId?: string; // 部门负责人
   children?: Department[];
 }
 
-// --- Workflow Definition Types ---
+// --- 工作流定义类型 ---
 export enum NodeType {
   START = 'START',
   APPROVAL = 'APPROVAL',
-  CONDITION = 'CONDITION', // Exclusive Gateway (XOR)
-  PARALLEL = 'PARALLEL',   // Parallel Gateway (AND)
+  CONDITION = 'CONDITION', // 排他网关 (XOR)
+  PARALLEL = 'PARALLEL',   // 并行网关 (AND)
   END = 'END',
-  NOTIFICATION = 'NOTIFICATION', // Send notification without approval
-  SCRIPT = 'SCRIPT',       // Execute automated script or API call
-  TIMER = 'TIMER',         // Delay or scheduled trigger
-  SUBPROCESS = 'SUBPROCESS', // Call another workflow
-  MANUAL = 'MANUAL',       // Manual task without approval
-  COPY = 'COPY',           // Copy/CC node - send copy to specified users
-  // New: Support custom string types for plugins
+  NOTIFICATION = 'NOTIFICATION', // 发送通知（无需审批）
+  SCRIPT = 'SCRIPT',       // 执行自动化脚本或 API 调用
+  TIMER = 'TIMER',         // 延时或定时触发
+  SUBPROCESS = 'SUBPROCESS', // 调用子流程
+  MANUAL = 'MANUAL',       // 手动任务（无需审批）
+  COPY = 'COPY',           // 抄送节点 - 发送副本给指定用户
+  // 新增：支持自定义字符串类型（插件扩展）
 }
 
 export interface SLAConfig {
@@ -75,22 +75,22 @@ export interface SLAConfig {
 
 export interface RetryConfig {
   maxAttempts: number;
-  interval: number; // seconds
+  interval: number; // 秒
 }
 
 export interface WorkflowNode {
   // 1. Basic Identity
   id: string;
-  type: NodeType | string; // Support custom types (Plugin)
+  type: NodeType | string; // 支持自定义类型（插件）
   title: string;
   
   // 2. Structure (Recursive + Linked List)
-  next?: WorkflowNode;      // Next node (Serial)
-  branches?: WorkflowNode[];// Child branches (Parallel/Exclusive)
+  next?: WorkflowNode;      // 下一个节点（串行）
+  branches?: WorkflowNode[];// 子分支（并行/排他）
   
   // 3. Execution Strategy
   branchStrategy?: 'PARALLEL' | 'RACE' | 'EXCLUSIVE'; 
-  condition?: string;       // Entry condition expression
+  condition?: string;       // 入口条件表达式
 
   // 4. Data Flow (I/O)
   inputs?: Record<string, string>;  // { "targetVar": "expression/source" }
@@ -101,7 +101,7 @@ export interface WorkflowNode {
   retry?: RetryConfig;
   
   // 6. Plugin Properties (Flexible container)
-  props?: Record<string, any>; // Stores specific config like api url, approver settings etc.
+  props?: Record<string, any>; // 存储特定配置，如 API URL、审批人设置等
 
   // 会签配置（顶层字段，与后端 WfNodeConfig 对齐）
   /** 会签类型，仅 PARALLEL 节点 */
@@ -109,7 +109,7 @@ export interface WorkflowNode {
   /** 会签通过百分比，仅 PERCENT 类型 */
   passPercent?: number;
 
-  // Legacy/Direct props (for backward compatibility or convenience)
+  // 兼容性/直接属性（向后兼容或便捷访问）
   description?: string;
   icon?: string;
   approverType?: 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT';
@@ -122,7 +122,7 @@ export interface WorkflowDefinition {
   name: string;
   key: string;
   version: number;
-  formId?: string; // Bind to a dynamic form
+  formId?: string; // 绑定动态表单
   nodes: WorkflowNode;
 }
 
@@ -131,7 +131,7 @@ export enum TaskStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
-  RETURNED = 'RETURNED', // New Status
+  RETURNED = 'RETURNED', // 新增状态
   MODIFIED = 'MODIFIED',
   DELEGATED = 'DELEGATED',
   TIMED_OUT = 'TIMED_OUT'
@@ -140,24 +140,24 @@ export enum TaskStatus {
 export interface Task {
   id: string;
   processInstanceId: string;
-  workflowId: string; // Link back to definition
+  workflowId: string; // 关联流程定义
   workflowName: string;
   nodeName: string;
   
-  applicantId: string; // Who started it
+  applicantId: string; // 发起人
   applicantName: string;
   
-  assigneeId?: string; // Specific user assignee
-  assigneeName?: string; // Display name for assignee
-  assigneeRole?: Role; // Role-based assignee
+  assigneeId?: string; // 指定处理人ID
+  assigneeName?: string; // 处理人显示名称
+  assigneeRole?: Role; // 角色类型处理人
   
-  type: 'LEAVE' | 'REIMBURSEMENT' | 'DYNAMIC'; // Support dynamic forms
+  type: 'LEAVE' | 'REIMBURSEMENT' | 'DYNAMIC'; // 支持动态表单
   
-  // Dynamic Data Container
-  formId?: string; // Link to the form definition
+  // 动态数据容器
+  formId?: string; // 关联表单定义
   formData?: Record<string, any>; 
   
-  // Legacy fields for backward compatibility (optional)
+  // 兼容性字段（可选，向后兼容）
   amount?: number;
   days?: number;
   reason: string;
@@ -165,7 +165,7 @@ export interface Task {
   status: TaskStatus;
   backendStatus?: string; // 后端原始状态（RUNNING/COMPLETED/REJECTED/REVOKED），用于"我的申请"筛选
   createdTime: string;
-  dueDate?: string; // Deadline for the task
+  dueDate?: string; // 任务截止时间
   allowEdit: boolean;
   logs?: TaskLog[];
   approvedAmount?: number;
@@ -255,25 +255,25 @@ export interface WorkTask {
   priority: WorkTaskPriority;
   status: WorkTaskStatus;
   dueDate?: string;
-  tags?: string; // JSON array string
+  tags?: string; // JSON 数组字符串
   parentId?: string;
   createBy?: string;
   createTime?: string;
 }
 
-// Unified Task Interface for UI
+// 统一任务接口（UI层使用）
 export interface UnifiedTask {
   id: string;
   title: string;
   type: 'PROCESS' | 'WORK';
-  status: string; // TaskStatus | WorkTaskStatus
+  status: string; // 任务状态（TaskStatus | WorkTaskStatus）
   statusLabel: string;
   priority: number; // 0-2
   assigneeId?: string;
   assigneeName?: string;
   dueDate?: string;
   createdTime?: string;
-  sourceData: Task | WorkTask; // Keep original data
+  sourceData: Task | WorkTask; // 保留原始数据
 }
 
 // --- Announcement Types ---
@@ -292,18 +292,18 @@ export enum AnnouncementScope {
 export interface Announcement {
   announcementId: number;
   title: string;
-  content: string; // HTML
+  content: string; // HTML内容
   type: AnnouncementType;
   scopeType: AnnouncementScope;
   scopeValue?: string;
-  status: '0' | '1' | '2'; // Draft, Published, Revoked
+  status: '0' | '1' | '2'; // 0=草稿, 1=已发布, 2=已撤回
   priority: 'L' | 'M' | 'H';
   senderId: number;
   createTime: string;
   publishTime?: string;
   expireTime?: string;
   isTop: number; // 0 or 1
-  isRead: boolean; // Computed field
+  isRead: boolean; // 计算字段
 }
 
 // --- Schedule & Meeting Types ---
@@ -312,7 +312,7 @@ export interface MeetingRoom {
   name: string;
   capacity: number;
   location: string;
-  equipment: string; // JSON String
+  equipment: string; // JSON 字符串
   status: '1' | '0';
 }
 
@@ -326,7 +326,7 @@ export interface SysScheduleEvent {
   type: 'MEETING' | 'PERSONAL' | 'WORK';
   roomId?: string;
   creatorId: string;
-  attendees?: string; // JSON String of IDs
+  attendees?: string; // JSON 字符串格式的用户ID列表
 }
 
 // --- Common API Types ---
@@ -339,7 +339,7 @@ export interface PageQuery {
 export interface PageResult<T> {
   total: number;
   rows: T[];
-  records?: T[]; // For compatibility if backend uses records
+  records?: T[]; // 兼容后端使用 records 字段的情况
 }
 
 export interface R<T = any> {

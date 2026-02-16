@@ -36,13 +36,13 @@ public class RedisStreamUtil {
             // 注意：如果 Stream 不存在，mkStream=true 会自动创建
             redisTemplate.opsForStream().createGroup(tenantKey, group);
         } catch (Exception e) {
-            // BUSYGROUP Consumer Group name already exists
+            // BUSYGROUP：消费者组名称已存在
             // Spring Data Redis 可能会抛出异常，需捕获忽略
             if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
                 log.debug("Consumer Group already exists: {}", group);
             } else {
-                // 如果是因为 Stream 不存在导致无法创建 Group (Redis < 5.0 behavior, though 7.0 should support MKSTREAM implicit in some clients)
-                // Spring Data Redis 的 createGroup 默认行为可能不同，稳妥起见我们只记录警告
+                // 如果是因为 Stream 不存在导致无法创建 Group（Redis < 5.0 行为）
+                // Spring Data Redis 的 createGroup 默认行为可能不同，稳妥起见只记录警告
                 log.warn("Failed to create consumer group. Key: {}, Group: {}", tenantKey, group, e);
             }
         }

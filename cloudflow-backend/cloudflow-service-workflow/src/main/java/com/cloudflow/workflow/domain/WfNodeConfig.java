@@ -5,34 +5,34 @@ import java.util.Map;
 import java.io.Serializable;
 
 /**
- * Workflow Node Configuration (mapped from frontend JSON)
+ * 工作流节点配置（从前端 JSON 映射）
  */
 public class WfNodeConfig implements Serializable {
     private String id;
-    private String type; // START, APPROVAL, CONDITION, PARALLEL, END, NOTIFICATION, SCRIPT, TIMER, SUBPROCESS, MANUAL
+    private String type; // 节点类型：START, APPROVAL, CONDITION, PARALLEL, END, NOTIFICATION, SCRIPT, TIMER, SUBPROCESS, MANUAL
     private String title;
     private String description;
-    private String approverType; // ROLE, USER, DEPT_MANAGER, DIRECT_LEADER
+    private String approverType; // 审批人类型：ROLE, USER, DEPT_MANAGER, DIRECT_LEADER
     private String approverValue;
     private WfNodeConfig next;
     private List<WfNodeConfig> branches;
-    private String branchStrategy; // PARALLEL, RACE, EXCLUSIVE
+    private String branchStrategy; // 分支策略：PARALLEL, RACE, EXCLUSIVE
     private String condition;
     private Boolean allowEdit;
     
-    // Data Flow & Plugin Props
+    // 数据流与插件属性
     private Map<String, String> inputs;
     private Map<String, String> outputs;
     private Map<String, Object> props;
-    private Map<String, Object> retry; // Retry Config
+    private Map<String, Object> retry; // 重试配置
 
-    // Countersign fields (会签)
-    private String signType; // ALL / ANY / PERCENT
-    private Integer passPercent; // 通过百分比 (signType=PERCENT时使用)
+    // 会签字段
+    private String signType; // 会签类型：ALL / ANY / PERCENT
+    private Integer passPercent; // 通过百分比（signType=PERCENT时使用）
 
-    // SLA fields
+    // SLA 字段
     private Integer slaHours;
-    private String slaAction; // AUTO_PASS, AUTO_REJECT
+    private String slaAction; // SLA动作：AUTO_PASS, AUTO_REJECT
 
     public String getId() {
         return id;

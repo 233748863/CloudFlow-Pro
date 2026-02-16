@@ -43,10 +43,10 @@ public class TokenService {
         String userKey = getTokenKey(token);
         redisCache.setCacheObject(userKey, loginUser, securityProperties.getToken().getExpiration(), TimeUnit.MINUTES);
 
-        // Reverse Index (用户 -> Tokens 集合)
+        // 反向索引（用户 -> Tokens 集合）
         if (userId != null) {
             String userTokensKey = CacheConstants.USER_TOKENS_KEY + userId;
-            // Use wrapped RedisCache methods to ensure tenant isolation
+            // 使用封装的 RedisCache 方法确保租户隔离
             redisCache.setCacheSet(userTokensKey, token);
             redisCache.expire(userTokensKey, securityProperties.getToken().getExpiration(), TimeUnit.MINUTES);
         }
@@ -80,7 +80,7 @@ public class TokenService {
                 return userMap;
             }
         } catch (Exception e) {
-            // Token 解析失败或过期
+            // Token 解析失败或过期，忽略异常
         }
         return null;
     }

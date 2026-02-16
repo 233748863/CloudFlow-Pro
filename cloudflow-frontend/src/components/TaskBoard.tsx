@@ -45,7 +45,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, col.id)}
           >
-            {/* Header */}
+            {/* 标题栏 */}
             <div className={`p-4 border-b ${col.borderColor} ${col.color} rounded-t-xl flex justify-between items-center sticky top-0 z-30`}>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-700">{col.title}</h3>
@@ -84,7 +84,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                     ${draggedTaskId === task.id ? 'opacity-50' : 'opacity-100'}
                   `}
                 >
-                  {/* Priority Tag */}
+                  {/* 优先级标签 */}
                   <div className="flex justify-between items-start mb-2">
                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium
                         ${task.priority === 2 ? 'bg-red-50 text-red-600' : 

@@ -274,7 +274,7 @@ export const TaskHandleModal = ({
                <ProcessTrace instanceId={task.processInstanceId} />
            ) : (
                <>
-                {/* If reject mode, show node picker */}
+                {/* 驳回模式时显示节点选择器 */}
                 {rejectMode ? (
                     <div className="space-y-4">
                       <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
@@ -565,7 +565,7 @@ export const TaskHandleModal = ({
                         </div>
                     )}
 
-                    {/* Logs */}
+                    {/* 流转记录 */}
                     {task.logs && task.logs.length > 0 && (
                         <div className="mt-4 border-t pt-2">
                             <h4 className="text-xs font-bold text-slate-500 mb-2">流转记录</h4>

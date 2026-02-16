@@ -99,13 +99,13 @@ export const SkeletonTable: React.FC<{ rows?: number; columns?: number; classNam
 }) => {
   return (
     <div className={cn('space-y-2', className)}>
-      {/* Header */}
+      {/* 表头 */}
       <div className="flex gap-4 pb-2 border-b border-slate-200">
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} height={20} className="flex-1" />
         ))}
       </div>
-      {/* Rows */}
+      {/* 行内容 */}
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <div key={rowIndex} className="flex gap-4 py-2">
           {Array.from({ length: columns }).map((_, colIndex) => (

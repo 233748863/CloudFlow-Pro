@@ -98,7 +98,7 @@ export const mapTaskToUnified = (t: Task): UnifiedTask => {
         type: 'PROCESS',
         status: mappedStatus,
         statusLabel,
-        priority: 1, // Default Medium
+        priority: 1, // 默认中优先级
         assigneeId: t.assigneeId,
         assigneeName: t.assigneeName,
         dueDate: t.dueDate,
