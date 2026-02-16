@@ -1,4 +1,5 @@
 import request from './request';
+import { PageResult } from '@/types';
 
 export interface ExpenseItem {
   id?: number;
@@ -60,10 +61,10 @@ export const expenseClaimApi = {
     status?: string;
     category?: string;
     userId?: number;
-  }) => request.get('/oa/expense/claim/list', { params }),
+  }) => request.get('/oa/expense/claim/list', { params }) as Promise<PageResult<ExpenseClaim>>,
 
   // 查询报销申请详情
-  getInfo: (id: number) => request.get(`/oa/expense/claim/${id}`),
+  getInfo: (id: number) => request.get(`/oa/expense/claim/${id}`) as Promise<ExpenseClaim>,
 
   // 新增报销申请
   add: (data: ExpenseClaim) => request.post('/oa/expense/claim', data),
@@ -99,10 +100,10 @@ export const paymentRequestApi = {
     status?: string;
     paymentType?: string;
     userId?: number;
-  }) => request.get('/oa/payment/request/list', { params }),
+  }) => request.get('/oa/payment/request/list', { params }) as Promise<PageResult<PaymentRequest>>,
 
   // 查询付款申请详情
-  getInfo: (id: number) => request.get(`/oa/payment/request/${id}`),
+  getInfo: (id: number) => request.get(`/oa/payment/request/${id}`) as Promise<PaymentRequest>,
 
   // 新增付款申请
   add: (data: PaymentRequest) => request.post('/oa/payment/request', data),

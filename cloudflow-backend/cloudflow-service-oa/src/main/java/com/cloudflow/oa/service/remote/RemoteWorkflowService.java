@@ -15,7 +15,7 @@ import java.util.Map;
  * @author CloudFlow
  */
 @FeignClient(
-    name = "cloudflow-workflow",
+    name = "cloudflow-service-workflow",
     fallbackFactory = RemoteWorkflowFallbackFactory.class
 )
 public interface RemoteWorkflowService {

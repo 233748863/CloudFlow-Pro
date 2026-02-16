@@ -1,4 +1,5 @@
 import request from './request';
+import { PageResult } from '@/types';
 
 /** 值班排班接口类型 */
 export interface DutySchedule {
@@ -29,10 +30,10 @@ export interface DutySchedule {
 /** 值班排班 API */
 export const dutyScheduleApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; scheduleType?: string; userId?: number }) =>
-    request.get('/oa/duty/list', { params }),
+    request.get('/oa/duty/list', { params }) as Promise<PageResult<DutySchedule>>,
   calendar: (params: { year: number; month: number; deptId?: number }) =>
-    request.get('/oa/duty/calendar', { params }),
-  getInfo: (id: number) => request.get(`/oa/duty/${id}`),
+    request.get('/oa/duty/calendar', { params }) as Promise<DutySchedule[]>,
+  getInfo: (id: number) => request.get(`/oa/duty/${id}`) as Promise<DutySchedule>,
   add: (data: DutySchedule) => request.post('/oa/duty', data),
   addBatch: (data: DutySchedule[]) => request.post('/oa/duty/batch', data),
   edit: (data: DutySchedule) => request.put('/oa/duty', data),

@@ -1,4 +1,5 @@
 import request from './request';
+import { PageResult } from '@/types';
 
 /** 访客预约接口类型 */
 export interface Visitor {
@@ -31,8 +32,8 @@ export interface Visitor {
 /** 访客管理 API */
 export const visitorApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; visitorName?: string; visitDate?: string }) =>
-    request.get('/oa/visitor/list', { params }),
-  getInfo: (id: number) => request.get(`/oa/visitor/${id}`),
+    request.get('/oa/visitor/list', { params }) as Promise<PageResult<Visitor>>,
+  getInfo: (id: number) => request.get(`/oa/visitor/${id}`) as Promise<Visitor>,
   add: (data: Visitor) => request.post('/oa/visitor', data),
   edit: (data: Visitor) => request.put('/oa/visitor', data),
   remove: (ids: number[]) => request.delete(`/oa/visitor/${ids.join(',')}`),

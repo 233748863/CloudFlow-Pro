@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.AttendanceAppeal;
 import com.cloudflow.oa.mapper.AttendanceAppealMapper;
@@ -62,6 +63,11 @@ public class AttendanceAppealServiceImpl extends ServiceImpl<AttendanceAppealMap
     @Audit(name = "创建补卡/外勤申请", spel = "#appeal")
     @Transactional(rollbackFor = Exception.class)
     public boolean createAppeal(AttendanceAppeal appeal) {
+        // 从当前登录用户上下文中填充用户信息
+        appeal.setUserId(UserContext.getUserId());
+        appeal.setUserName(UserContext.getUserName());
+        appeal.setDeptId(UserContext.getDeptId());
+        appeal.setCreateBy(UserContext.getUserName());
         appeal.setAppealNo(generateAppealNo());
         appeal.setStatus("DRAFT");
         return save(appeal);
@@ -80,13 +86,22 @@ public class AttendanceAppealServiceImpl extends ServiceImpl<AttendanceAppealMap
         // 启动工作流
         try {
             Map<String, Object> req = new HashMap<>();
-            req.put("processDefinitionKey", "attendance_appeal");
+            req.put("processDefKey", "attendance_appeal");
             req.put("businessKey", "ATTENDANCE_APPEAL:" + appeal.getId());
             Map<String, Object> variables = new HashMap<>();
             variables.put("appealId", appeal.getId());
             variables.put("appealNo", appeal.getAppealNo());
             variables.put("appealType", appeal.getAppealType());
             variables.put("userId", appeal.getUserId());
+            // 补充完整的业务字段，供审批人在审批卡片和详情中查看
+            variables.put("userName", appeal.getUserName());
+            variables.put("appealDate", appeal.getAppealDate() != null
+                    ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(appeal.getAppealDate()) : null);
+            variables.put("appealTime", appeal.getAppealTime());
+            variables.put("checkType", appeal.getCheckType());
+            variables.put("reason", appeal.getReason());
+            variables.put("address", appeal.getAddress());
+            variables.put("deptName", appeal.getDeptName());
             req.put("variables", variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);

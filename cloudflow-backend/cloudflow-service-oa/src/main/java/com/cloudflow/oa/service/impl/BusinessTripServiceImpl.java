@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.BusinessTrip;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
@@ -61,6 +62,11 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
     @Audit(name = "创建出差申请", spel = "#trip")
     @Transactional(rollbackFor = Exception.class)
     public boolean createTrip(BusinessTrip trip) {
+        // 从当前登录用户上下文中填充用户信息
+        trip.setUserId(UserContext.getUserId());
+        trip.setUserName(UserContext.getUserName());
+        trip.setDeptId(UserContext.getDeptId());
+        trip.setCreateBy(UserContext.getUserName());
         trip.setTripNo(generateTripNo());
         trip.setStatus("DRAFT");
         return save(trip);
@@ -78,8 +84,9 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
 
         try {
             Map<String, Object> req = new HashMap<>();
-            req.put("processDefinitionKey", "business_trip");
+            req.put("processDefKey", "business_trip");
             req.put("businessKey", "BUSINESS_TRIP:" + trip.getId());
+            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("tripId", trip.getId());
             variables.put("tripNo", trip.getTripNo());
@@ -87,6 +94,14 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             variables.put("tripDays", trip.getTripDays());
             variables.put("estimatedCost", trip.getEstimatedCost());
             variables.put("userId", trip.getUserId());
+            variables.put("userName", trip.getUserName());
+            variables.put("startDate", trip.getStartDate() != null
+                    ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(trip.getStartDate()) : null);
+            variables.put("endDate", trip.getEndDate() != null
+                    ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(trip.getEndDate()) : null);
+            variables.put("transportType", trip.getTransportType());
+            variables.put("reason", trip.getReason());
+            variables.put("deptName", trip.getDeptName());
             req.put("variables", variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);

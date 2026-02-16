@@ -1,4 +1,5 @@
 import request from './request';
+import { PageResult } from '@/types';
 
 /** 加班申请接口类型 */
 export interface OvertimeRequest {
@@ -24,8 +25,8 @@ export interface OvertimeRequest {
 /** 加班申请 API */
 export const overtimeApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; overtimeType?: string }) =>
-    request.get('/oa/overtime/list', { params }),
-  getInfo: (id: number) => request.get(`/oa/overtime/${id}`),
+    request.get('/oa/overtime/list', { params }) as Promise<PageResult<OvertimeRequest>>,
+  getInfo: (id: number) => request.get(`/oa/overtime/${id}`) as Promise<OvertimeRequest>,
   add: (data: OvertimeRequest) => request.post('/oa/overtime', data),
   edit: (data: OvertimeRequest) => request.put('/oa/overtime', data),
   remove: (ids: number[]) => request.delete(`/oa/overtime/${ids.join(',')}`),

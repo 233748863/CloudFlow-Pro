@@ -116,15 +116,18 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         // 启动工作流
         try {
             Map<String, Object> req = new HashMap<>();
-            req.put("processDefinitionKey", "expense_claim");
+            req.put("processDefKey", "expense_claim");
             req.put("businessKey", "EXPENSE_CLAIM:" + claim.getId());
-            // 流程变量：传递报销单关键信息
+            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("claimId", claim.getId());
             variables.put("claimNo", claim.getClaimNo());
             variables.put("totalAmount", claim.getTotalAmount());
             variables.put("userId", claim.getUserId());
+            variables.put("userName", claim.getUserName());
             variables.put("category", claim.getCategory());
+            variables.put("description", claim.getDescription());
+            variables.put("deptName", claim.getDeptName());
             req.put("variables", variables);
             
             R<?> result = remoteWorkflowService.startProcess(req);

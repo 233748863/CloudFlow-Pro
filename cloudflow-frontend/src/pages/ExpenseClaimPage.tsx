@@ -31,9 +31,10 @@ export const ExpenseClaimPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await expenseClaimApi.list(searchParams);
-      if (res.data) {
-        setClaims(res.data.records || []);
-        setTotal(res.data.total || 0);
+      if (res) {
+        // PageResult 兼容 records 和 rows 两种字段
+        setClaims(res.records || res.rows || []);
+        setTotal(res.total || 0);
       }
     } catch (error) {
       toast.error('获取报销申请列表失败');
@@ -55,8 +56,8 @@ export const ExpenseClaimPage: React.FC = () => {
   const handleView = async (id: number) => {
     try {
       const res = await expenseClaimApi.getInfo(id);
-      if (res.data) {
-        setViewClaim(res.data);
+      if (res) {
+        setViewClaim(res);
         setShowDetailDialog(true);
       }
     } catch (error) {
@@ -67,9 +68,9 @@ export const ExpenseClaimPage: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       const res = await expenseClaimApi.getInfo(id);
-      if (res.data) {
-        setCurrentClaim(res.data);
-        setFormData(res.data);
+      if (res) {
+        setCurrentClaim(res);
+        setFormData(res);
         setShowDialog(true);
       }
     } catch (error) {
@@ -156,7 +157,7 @@ export const ExpenseClaimPage: React.FC = () => {
     setFormData({ ...formData, items });
   };
 
-  const updateItem = (index: number, field: keyof ExpenseItem, value: any) => {
+  const updateItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
     const items = [...(formData.items || [])];
     items[index] = { ...items[index], [field]: value };
     setFormData({ ...formData, items });

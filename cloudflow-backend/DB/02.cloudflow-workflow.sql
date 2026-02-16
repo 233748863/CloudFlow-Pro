@@ -333,19 +333,23 @@ CREATE TABLE wf_node_record (
   process_def_key   VARCHAR(64)     DEFAULT NULL COMMENT '流程定义Key',
   node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key',
   node_name         VARCHAR(128)    DEFAULT NULL COMMENT '节点名称',
-  event_type        VARCHAR(32)     NOT NULL COMMENT '事件类型: PROCESS_STARTED/PROCESS_COMPLETED/PROCESS_REJECTED/TASK_CREATED/TASK_COMPLETED',
-  action            VARCHAR(32)     DEFAULT NULL COMMENT '操作动作: APPROVE/REJECT/DELEGATE等（仅TASK_COMPLETED有值）',
-  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
-  assignee_id       BIGINT(20)      DEFAULT NULL COMMENT '任务处理人ID（仅TASK_CREATED有值）',
+  node_type         VARCHAR(32)     DEFAULT NULL COMMENT '节点类型: APPROVAL/NOTIFICATION/SCRIPT/TIMER/COPY/MANUAL/CONDITION/PARALLEL/END',
+  status            VARCHAR(20)     DEFAULT 'RUNNING' COMMENT '节点执行状态: RUNNING/COMPLETED/SKIPPED/FAILED',
+  executor_id       BIGINT(20)      DEFAULT NULL COMMENT '执行人ID',
+  executor_name     VARCHAR(64)     DEFAULT NULL COMMENT '执行人姓名',
+  start_time        DATETIME        DEFAULT NULL COMMENT '节点开始时间',
+  end_time          DATETIME        DEFAULT NULL COMMENT '节点结束时间',
+  duration_ms       BIGINT(20)      DEFAULT NULL COMMENT '执行耗时(毫秒)',
   extra_data        TEXT            DEFAULT NULL COMMENT '扩展数据(JSON格式)',
-  event_time        DATETIME        NOT NULL COMMENT '事件发生时间',
+  event_type        VARCHAR(32)     DEFAULT NULL COMMENT '事件类型(兼容旧字段)',
+  event_time        DATETIME        DEFAULT NULL COMMENT '事件发生时间(兼容旧字段)',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   PRIMARY KEY (id),
   KEY idx_instance_id (instance_id),
   KEY idx_node_key (node_key),
-  KEY idx_event_type (event_type),
-  KEY idx_event_time (event_time),
-  KEY idx_instance_event (instance_id, event_type)
+  KEY idx_status (status),
+  KEY idx_instance_node_status (instance_id, node_key, status),
+  KEY idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='节点执行记录表（事件驱动）';
 
 -- 16. 本地消息表（分布式事务最终一致性）
@@ -542,6 +546,40 @@ INSERT INTO wf_process_definition (definition_id, process_name, process_key, ver
 ('wf_payment', '对公付款流程', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"id": "root", "type": "START", "title": "提交付款申请", "next": {"id": "n1", "type": "APPROVAL", "title": "财务主管审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务总监审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "condition": "amount < 50000"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "condition": "amount >= 50000"}], "next": {"id": "end", "type": "END", "title": "财务打款"}}}}', sysdate());
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- =========================================================
+-- OA 模块流程定义（补卡/外勤、加班、报销、请假、付款、出差）
+-- =========================================================
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_attendance_appeal', '补卡/外勤审批流程', 'attendance_appeal', 1, 'PUBLISHED', 1, 'OA',
+ '{"id": "root", "type": "START", "title": "提交申请", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级审批", "icon": "briefcase", "approverType": "DIRECT_LEADER", "next": {"id": "end", "type": "END", "title": "归档"}}}',
+ sysdate());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_overtime_request', '加班审批流程', 'overtime_request', 1, 'PUBLISHED', 1, 'OA',
+ '{"id": "root", "type": "START", "title": "提交加班申请", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级审批", "icon": "briefcase", "approverType": "DIRECT_LEADER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR备案", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "end", "type": "END", "title": "归档"}}}}',
+ sysdate());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_expense_claim', '报销审批流程', 'expense_claim', 1, 'PUBLISHED', 1, 'OA',
+ '{"id": "root", "type": "START", "title": "提交报销", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级审批", "icon": "briefcase", "approverType": "DIRECT_LEADER", "next": {"id": "n2", "type": "APPROVAL", "title": "财务审核", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "next": {"id": "end", "type": "END", "title": "打款"}}}}',
+ sysdate());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_leave_request', '请假审批流程', 'leave_request', 1, 'PUBLISHED', 1, 'OA',
+ '{"id": "root", "type": "START", "title": "提交请假", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR备案", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "end", "type": "END", "title": "归档"}}}}',
+ sysdate());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_payment_request', '付款审批流程', 'payment_request', 1, 'PUBLISHED', 1, 'OA',
+ '{"id": "root", "type": "START", "title": "提交付款申请", "next": {"id": "n1", "type": "APPROVAL", "title": "财务主管审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务总监审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "condition": "amount < 50000"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "condition": "amount >= 50000"}], "next": {"id": "end", "type": "END", "title": "财务打款"}}}}',
+ sysdate());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_business_trip', '出差审批流程', 'business_trip', 1, 'PUBLISHED', 1, 'OA',
+ '{"id": "root", "type": "START", "title": "提交出差申请", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR备案", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "end", "type": "END", "title": "归档"}}}}',
+ sysdate());
 
 -- =========================================================
 -- 测试数据

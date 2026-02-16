@@ -18,8 +18,9 @@ export const OvertimePage: React.FC = () => {
   const fetchList = async () => {
     setLoading(true);
     try {
+      // 响应拦截器已解包外层 { code, msg, data }，res 即为 data 部分
       const res = await overtimeApi.list(searchParams);
-      if (res.data) { setList(res.data.records || []); setTotal(res.data.total || 0); }
+      if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
     } catch { toast.error('获取列表失败'); } finally { setLoading(false); }
   };
 
@@ -32,7 +33,7 @@ export const OvertimePage: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       const res = await overtimeApi.getInfo(id);
-      if (res.data) { setCurrent(res.data); setFormData(res.data); setShowDialog(true); }
+      if (res) { setCurrent(res); setFormData(res); setShowDialog(true); }
     } catch { toast.error('获取详情失败'); }
   };
 

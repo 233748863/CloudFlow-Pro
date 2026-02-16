@@ -159,6 +159,39 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                 <span className="text-slate-500">申请人:</span>
                 <span className="text-slate-700">{task.applicantName}</span>
             </div>
+            {/* 业务摘要 - 从 formData 中智能提取关键信息 */}
+            {task.formData && Object.keys(task.formData).length > 0 && (() => {
+                const fd = task.formData as Record<string, any>;
+                // 优先提取的摘要字段（按优先级排列）
+                const summaryKeys = ['reason', 'description', 'destination', 'payeeName', 'leaveType', 'appealType', 'overtimeType', 'appealDate', 'startTime', 'startDate', 'totalAmount', 'amount'];
+                const skipKeys = new Set(['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'userId', 'appealId', 'leaveId', 'overtimeId', 'tripId', 'claimId', 'paymentId', 'userName', 'deptName', 'appealNo', 'leaveNo', 'overtimeNo', 'tripNo', 'claimNo', 'paymentNo']);
+                // 枚举快速翻译
+                const enumQuick: Record<string, Record<string, string>> = {
+                    appealType: { MAKEUP: '补卡', FIELD: '外勤' },
+                    leaveType: { ANNUAL: '年假', SICK: '病假', PERSONAL: '事假', MATERNITY: '产假', MARRIAGE: '婚假', BEREAVEMENT: '丧假', OTHER: '其他' },
+                    overtimeType: { WORKDAY: '工作日', WEEKEND: '周末', HOLIDAY: '节假日' },
+                };
+                const parts: string[] = [];
+                for (const key of summaryKeys) {
+                    if (parts.length >= 2) break;
+                    const val = fd[key];
+                    if (val === null || val === undefined || val === '') continue;
+                    const translated = enumQuick[key]?.[String(val)] || String(val);
+                    parts.push(translated);
+                }
+                if (parts.length === 0) {
+                    for (const [k, v] of Object.entries(fd)) {
+                        if (parts.length >= 2) break;
+                        if (skipKeys.has(k) || v === null || v === undefined || v === '') continue;
+                        parts.push(String(v));
+                    }
+                }
+                return parts.length > 0 ? (
+                    <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-100/80 truncate" title={parts.join(' / ')}>
+                        {parts.join(' / ')}
+                    </div>
+                ) : null;
+            })()}
           </div>
 
           {/* 流程步骤进度信息 */}

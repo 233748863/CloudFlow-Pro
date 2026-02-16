@@ -26,7 +26,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         try {
             // 构建统一的请求参数Map，适配新的RemoteWorkflowService接口
             Map<String, Object> req = new HashMap<>();
-            req.put("processDefinitionKey", processDefinitionKey);
+            req.put("processDefKey", processDefinitionKey);
             req.put("businessKey", businessKey);
             if (variables != null) {
                 req.put("variables", variables);

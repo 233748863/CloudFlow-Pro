@@ -21,7 +21,7 @@ export const DutySchedulePage: React.FC = () => {
     setLoading(true);
     try {
       const res = await dutyScheduleApi.list(searchParams);
-      if (res.data) { setList(res.data.records || []); setTotal(res.data.total || 0); }
+      if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
     } catch { toast.error('获取列表失败'); } finally { setLoading(false); }
   };
 

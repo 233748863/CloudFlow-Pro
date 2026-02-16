@@ -1,6 +1,7 @@
 package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.DutySchedule;
@@ -51,6 +52,8 @@ public class DutyScheduleController {
     @SysLog("新增值班排班")
     @PostMapping
     public R add(@RequestBody DutySchedule schedule) {
+        // 填充当前登录用户信息作为创建者
+        schedule.setCreateBy(UserContext.getUserName());
         schedule.setStatus("SCHEDULED");
         return R.result(dutyScheduleService.save(schedule));
     }
@@ -59,7 +62,11 @@ public class DutyScheduleController {
     @SysLog("批量新增值班排班")
     @PostMapping("/batch")
     public R addBatch(@RequestBody List<DutySchedule> schedules) {
-        schedules.forEach(s -> s.setStatus("SCHEDULED"));
+        String currentUser = UserContext.getUserName();
+        schedules.forEach(s -> {
+            s.setCreateBy(currentUser);
+            s.setStatus("SCHEDULED");
+        });
         return R.result(dutyScheduleService.saveBatch(schedules));
     }
 

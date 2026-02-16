@@ -1,4 +1,5 @@
 import request from './request';
+import { PageResult } from '@/types';
 
 /** 出差申请接口类型 */
 export interface BusinessTrip {
@@ -27,8 +28,8 @@ export interface BusinessTrip {
 /** 出差申请 API */
 export const businessTripApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; destination?: string }) =>
-    request.get('/oa/business-trip/list', { params }),
-  getInfo: (id: number) => request.get(`/oa/business-trip/${id}`),
+    request.get('/oa/business-trip/list', { params }) as Promise<PageResult<BusinessTrip>>,
+  getInfo: (id: number) => request.get(`/oa/business-trip/${id}`) as Promise<BusinessTrip>,
   add: (data: BusinessTrip) => request.post('/oa/business-trip', data),
   edit: (data: BusinessTrip) => request.put('/oa/business-trip', data),
   remove: (ids: number[]) => request.delete(`/oa/business-trip/${ids.join(',')}`),

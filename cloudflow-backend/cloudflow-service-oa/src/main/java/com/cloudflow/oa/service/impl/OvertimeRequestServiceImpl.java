@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.OvertimeRequest;
 import com.cloudflow.oa.mapper.OvertimeRequestMapper;
@@ -61,6 +62,11 @@ public class OvertimeRequestServiceImpl extends ServiceImpl<OvertimeRequestMappe
     @Audit(name = "创建加班申请", spel = "#overtime")
     @Transactional(rollbackFor = Exception.class)
     public boolean createOvertime(OvertimeRequest overtime) {
+        // 从当前登录用户上下文中填充用户信息
+        overtime.setUserId(UserContext.getUserId());
+        overtime.setUserName(UserContext.getUserName());
+        overtime.setDeptId(UserContext.getDeptId());
+        overtime.setCreateBy(UserContext.getUserName());
         overtime.setOvertimeNo(generateOvertimeNo());
         overtime.setStatus("DRAFT");
         return save(overtime);
@@ -78,14 +84,23 @@ public class OvertimeRequestServiceImpl extends ServiceImpl<OvertimeRequestMappe
 
         try {
             Map<String, Object> req = new HashMap<>();
-            req.put("processDefinitionKey", "overtime_request");
+            req.put("processDefKey", "overtime_request");
             req.put("businessKey", "OVERTIME_REQUEST:" + overtime.getId());
+            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("overtimeId", overtime.getId());
             variables.put("overtimeNo", overtime.getOvertimeNo());
             variables.put("overtimeType", overtime.getOvertimeType());
             variables.put("overtimeHours", overtime.getOvertimeHours());
             variables.put("userId", overtime.getUserId());
+            variables.put("userName", overtime.getUserName());
+            variables.put("startTime", overtime.getStartTime() != null
+                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(overtime.getStartTime()) : null);
+            variables.put("endTime", overtime.getEndTime() != null
+                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(overtime.getEndTime()) : null);
+            variables.put("compensateType", overtime.getCompensateType());
+            variables.put("reason", overtime.getReason());
+            variables.put("deptName", overtime.getDeptName());
             req.put("variables", variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);

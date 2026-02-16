@@ -52,16 +52,21 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         // 启动工作流
         try {
             Map<String, Object> req = new HashMap<>();
-            req.put("processDefinitionKey", "payment_request");
+            req.put("processDefKey", "payment_request");
             req.put("businessKey", "PAYMENT_REQUEST:" + payment.getId());
-            // 流程变量：传递付款单关键信息
+            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("paymentId", payment.getId());
             variables.put("paymentNo", payment.getPaymentNo());
             variables.put("amount", payment.getAmount());
             variables.put("userId", payment.getUserId());
+            variables.put("userName", payment.getUserName());
             variables.put("paymentType", payment.getPaymentType());
             variables.put("payeeName", payment.getPayeeName());
+            variables.put("payeeAccount", payment.getPayeeAccount());
+            variables.put("payeeBank", payment.getPayeeBank());
+            variables.put("reason", payment.getReason());
+            variables.put("deptName", payment.getDeptName());
             req.put("variables", variables);
             
             R<?> result = remoteWorkflowService.startProcess(req);

@@ -89,16 +89,23 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         // 启动工作流
         try {
             Map<String, Object> req = new HashMap<>();
-            req.put("processDefinitionKey", "leave_request");
+            req.put("processDefKey", "leave_request");
             req.put("businessKey", "LEAVE_REQUEST:" + leave.getId());
 
-            // 流程变量
+            // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("leaveId", leave.getId());
             variables.put("leaveNo", leave.getLeaveNo());
             variables.put("leaveType", leave.getLeaveType());
             variables.put("leaveDays", leave.getLeaveDays());
             variables.put("userId", leave.getUserId());
+            variables.put("userName", leave.getUserName());
+            variables.put("startTime", leave.getStartTime() != null
+                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(leave.getStartTime()) : null);
+            variables.put("endTime", leave.getEndTime() != null
+                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(leave.getEndTime()) : null);
+            variables.put("reason", leave.getReason());
+            variables.put("deptName", leave.getDeptName());
             req.put("variables", variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);

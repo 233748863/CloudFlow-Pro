@@ -19,7 +19,7 @@ export const BusinessTripPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await businessTripApi.list(searchParams);
-      if (res.data) { setList(res.data.records || []); setTotal(res.data.total || 0); }
+      if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
     } catch { toast.error('获取列表失败'); } finally { setLoading(false); }
   };
 
@@ -32,7 +32,7 @@ export const BusinessTripPage: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       const res = await businessTripApi.getInfo(id);
-      if (res.data) { setCurrent(res.data); setFormData(res.data); setShowDialog(true); }
+      if (res) { setCurrent(res); setFormData(res); setShowDialog(true); }
     } catch { toast.error('获取详情失败'); }
   };
 

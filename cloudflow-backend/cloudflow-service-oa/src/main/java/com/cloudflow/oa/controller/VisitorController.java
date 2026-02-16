@@ -1,6 +1,7 @@
 package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.Visitor;
@@ -41,6 +42,8 @@ public class VisitorController {
     @SysLog("新增访客预约")
     @PostMapping
     public R add(@RequestBody Visitor visitor) {
+        // 填充当前登录用户信息作为创建者
+        visitor.setCreateBy(UserContext.getUserName());
         visitor.setStatus("PENDING");
         return R.result(visitorService.save(visitor));
     }

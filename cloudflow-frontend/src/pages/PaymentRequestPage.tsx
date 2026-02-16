@@ -32,9 +32,10 @@ export const PaymentRequestPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await paymentRequestApi.list(searchParams);
-      if (res.data) {
-        setPayments(res.data.records || []);
-        setTotal(res.data.total || 0);
+      if (res) {
+        // PageResult 兼容 records 和 rows 两种字段
+        setPayments(res.records || res.rows || []);
+        setTotal(res.total || 0);
       }
     } catch (error) {
       toast.error('获取付款申请列表失败');
@@ -57,8 +58,8 @@ export const PaymentRequestPage: React.FC = () => {
   const handleView = async (id: number) => {
     try {
       const res = await paymentRequestApi.getInfo(id);
-      if (res.data) {
-        setViewPayment(res.data);
+      if (res) {
+        setViewPayment(res);
         setShowDetailDialog(true);
       }
     } catch (error) {
@@ -69,9 +70,9 @@ export const PaymentRequestPage: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       const res = await paymentRequestApi.getInfo(id);
-      if (res.data) {
-        setCurrentPayment(res.data);
-        setFormData(res.data);
+      if (res) {
+        setCurrentPayment(res);
+        setFormData(res);
         setShowDialog(true);
       }
     } catch (error) {

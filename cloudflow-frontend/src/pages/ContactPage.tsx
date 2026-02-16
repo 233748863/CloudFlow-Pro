@@ -12,7 +12,7 @@ export const ContactPage: React.FC = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<number | undefined>();
   const [total, setTotal] = useState(0);
   const [pageNum, setPageNum] = useState(1);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<Contact | null>(null);
 
   useEffect(() => { loadDepts(); }, []);
   useEffect(() => { fetchContacts(); }, [keyword, selectedDeptId, pageNum]);
@@ -20,7 +20,7 @@ export const ContactPage: React.FC = () => {
   const loadDepts = async () => {
     try {
       const res = await contactApi.deptTree();
-      if (res.data) setDepts(res.data);
+      if (res) setDepts(Array.isArray(res) ? res : []);
     } catch { /* 静默处理 */ }
   };
 
@@ -28,14 +28,14 @@ export const ContactPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await contactApi.list({ keyword, deptId: selectedDeptId, pageNum, pageSize: 20 });
-      if (res.data) { setContacts(res.data.records || []); setTotal(res.data.total || 0); }
+      if (res) { setContacts(res.records || res.rows || []); setTotal(res.total || 0); }
     } catch { toast.error('获取通讯录失败'); } finally { setLoading(false); }
   };
 
   const handleViewUser = async (userId: number) => {
     try {
       const res = await contactApi.getUserDetail(userId);
-      if (res.data) setSelectedUser(res.data);
+      if (res) setSelectedUser(res);
     } catch { toast.error('获取用户详情失败'); }
   };
 
