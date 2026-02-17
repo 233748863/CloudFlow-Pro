@@ -3,6 +3,7 @@ package com.cloudflow.oa.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -58,6 +60,12 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Audit(name = "创建报销申请", spel = "#claim")
     @Transactional(rollbackFor = Exception.class)
     public boolean createClaim(BizExpenseClaim claim) {
+        // 从当前登录用户上下文中填充用户信息
+        claim.setUserId(UserContext.getUserId());
+        claim.setUserName(UserContext.getUserName());
+        claim.setDeptId(UserContext.getDeptId());
+        claim.setDeptName(UserContext.getDeptName());
+        claim.setCreateBy(UserContext.getUserName());
         // 生成报销单号
         claim.setClaimNo(generateClaimNo());
         claim.setStatus("DRAFT");
@@ -108,6 +116,20 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         BizExpenseClaim claim = getById(id);
         if (claim == null) {
             return false;
+        }
+        
+        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
+        if (!StringUtils.hasText(claim.getDeptName())) {
+            claim.setDeptName(UserContext.getDeptName());
+        }
+        if (claim.getDeptId() == null) {
+            claim.setDeptId(UserContext.getDeptId());
+        }
+        if (!StringUtils.hasText(claim.getUserName())) {
+            claim.setUserName(UserContext.getUserName());
+        }
+        if (claim.getUserId() == null) {
+            claim.setUserId(UserContext.getUserId());
         }
         
         // 更新状态为审批中

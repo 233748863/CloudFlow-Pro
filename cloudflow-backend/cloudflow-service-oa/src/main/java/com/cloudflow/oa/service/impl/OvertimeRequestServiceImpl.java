@@ -66,6 +66,7 @@ public class OvertimeRequestServiceImpl extends ServiceImpl<OvertimeRequestMappe
         overtime.setUserId(UserContext.getUserId());
         overtime.setUserName(UserContext.getUserName());
         overtime.setDeptId(UserContext.getDeptId());
+        overtime.setDeptName(UserContext.getDeptName());
         overtime.setCreateBy(UserContext.getUserName());
         overtime.setOvertimeNo(generateOvertimeNo());
         overtime.setStatus("DRAFT");
@@ -79,6 +80,19 @@ public class OvertimeRequestServiceImpl extends ServiceImpl<OvertimeRequestMappe
         OvertimeRequest overtime = getById(id);
         if (overtime == null) {
             return false;
+        }
+        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
+        if (!StringUtils.hasText(overtime.getDeptName())) {
+            overtime.setDeptName(UserContext.getDeptName());
+        }
+        if (overtime.getDeptId() == null) {
+            overtime.setDeptId(UserContext.getDeptId());
+        }
+        if (!StringUtils.hasText(overtime.getUserName())) {
+            overtime.setUserName(UserContext.getUserName());
+        }
+        if (overtime.getUserId() == null) {
+            overtime.setUserId(UserContext.getUserId());
         }
         overtime.setStatus("PENDING");
 

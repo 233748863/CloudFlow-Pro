@@ -16,6 +16,7 @@ public class UserContext {
     private static final ThreadLocal<String> USER_NAME = new TransmittableThreadLocal<>();
     private static final ThreadLocal<Set<String>> USER_ROLES = new TransmittableThreadLocal<>();
     private static final ThreadLocal<Long> USER_DEPT_ID = new TransmittableThreadLocal<>();
+    private static final ThreadLocal<String> USER_DEPT_NAME = new TransmittableThreadLocal<>();
     private static final ThreadLocal<Long> USER_TENANT_ID = new TransmittableThreadLocal<>();
 
     public static void setUserId(Long userId) {
@@ -50,6 +51,14 @@ public class UserContext {
         return USER_DEPT_ID.get();
     }
 
+    public static void setDeptName(String deptName) {
+        USER_DEPT_NAME.set(deptName);
+    }
+
+    public static String getDeptName() {
+        return USER_DEPT_NAME.get();
+    }
+
     public static void setTenantId(Long tenantId) {
         USER_TENANT_ID.set(tenantId);
     }
@@ -67,6 +76,7 @@ public class UserContext {
         USER_NAME.remove();
         USER_ROLES.remove();
         USER_DEPT_ID.remove();
+        USER_DEPT_NAME.remove();
         USER_TENANT_ID.remove();
     }
 }

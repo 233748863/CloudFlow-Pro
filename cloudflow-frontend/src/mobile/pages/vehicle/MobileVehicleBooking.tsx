@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
+import { toBackendDateString } from '@/utils/dateFormat';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
@@ -87,8 +88,8 @@ export const MobileVehicleBooking: React.FC = () => {
       await submitUsage({
         vehicleId: parseInt(formData.vehicleId),
         applicantId: parseInt(user.id),
-        startTime: formData.startTime.replace('T', ' ') + ':00',
-        endTime: formData.endTime.replace('T', ' ') + ':00',
+        startTime: toBackendDateString(formData.startTime),
+        endTime: toBackendDateString(formData.endTime),
         destination: formData.destination.trim(),
         reason: formData.reason.trim(),
         passengerCount: formData.passengerCount,

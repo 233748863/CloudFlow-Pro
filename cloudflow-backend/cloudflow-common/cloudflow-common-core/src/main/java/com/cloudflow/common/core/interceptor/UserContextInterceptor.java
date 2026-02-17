@@ -18,6 +18,7 @@ public class UserContextInterceptor implements HandlerInterceptor {
         String userName = request.getHeader("X-User-Name");
         String roles = request.getHeader("X-User-Roles");
         String deptId = request.getHeader("X-User-Dept-Id");
+        String deptName = request.getHeader("X-User-Dept-Name");
         String tenantId = request.getHeader("X-User-Tenant-Id");
 
         if (StringUtils.hasText(userId)) {
@@ -38,6 +39,14 @@ public class UserContextInterceptor implements HandlerInterceptor {
                 UserContext.setDeptId(Long.valueOf(deptId));
             } catch (NumberFormatException e) {
                 // ignore
+            }
+        }
+        if (StringUtils.hasText(deptName)) {
+            // 部门名称可能经过URL编码，需要解码
+            try {
+                UserContext.setDeptName(java.net.URLDecoder.decode(deptName, "UTF-8"));
+            } catch (Exception e) {
+                UserContext.setDeptName(deptName);
             }
         }
         if (StringUtils.hasText(tenantId)) {

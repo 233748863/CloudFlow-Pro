@@ -827,7 +827,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
             }
             
             // 发布任务分配事件（借鉴 poco-flow FlowProcessEventListener 设计）
-            workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), task.getAssignee(), null);
+            // 查询被分配人姓名，避免事件中 operatorName 为 null
+            String assigneeName = null;
+            if (task.getAssignee() != null) {
+                SysUser assigneeUser = sysUserMapper.selectById(task.getAssignee());
+                if (assigneeUser != null) {
+                    assigneeName = assigneeUser.getNickName() != null ? assigneeUser.getNickName() : assigneeUser.getUserName();
+                }
+            }
+            workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), task.getAssignee(), assigneeName);
             
             // 停止在此处，等待用户操作
             return;
@@ -4184,8 +4192,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
             log.info("[handleManualTaskNode] 人工任务创建成功, taskId={}, assignee={}", task.getTaskId(), task.getAssignee());
             
             // 发布任务分配事件（借鉴 poco-flow FlowProcessEventListener 设计）
-            // 使用带 nodeType 参数的重载方法，传入 "MANUAL" 而非默认的 "APPROVAL"
-            workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), "MANUAL", task.getAssignee(), null);
+            // 查询被分配人姓名，避免事件中 operatorName 为 null
+            String manualAssigneeName = null;
+            if (task.getAssignee() != null) {
+                SysUser manualUser = sysUserMapper.selectById(task.getAssignee());
+                if (manualUser != null) {
+                    manualAssigneeName = manualUser.getNickName() != null ? manualUser.getNickName() : manualUser.getUserName();
+                }
+            }
+            workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), "MANUAL", task.getAssignee(), manualAssigneeName);
             
         } catch (Exception e) {
             log.error("[handleManualTaskNode] 人工任务节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);

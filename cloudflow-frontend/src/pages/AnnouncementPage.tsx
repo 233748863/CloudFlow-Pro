@@ -12,6 +12,7 @@ import {
   getReadStats
 } from '../services/api/announcement';
 import { useAuth } from '../context/AuthContext';
+import { toBackendDateString } from '../utils/dateFormat';
 import { Bell, Megaphone, AlertCircle, Eye, Plus, Edit, Trash2, X, Pin, Users, Search, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -97,11 +98,16 @@ export const AnnouncementPage = () => {
           return;
       }
       try {
+          // 将 datetime-local 格式的 expireTime 转为后端要求的 "yyyy-MM-dd HH:mm:ss"
+          const submitData = {
+              ...formData,
+              expireTime: formData.expireTime ? toBackendDateString(formData.expireTime) : undefined
+          };
           if (modalMode === 'create') {
-              await publishAnnouncement(formData);
+              await publishAnnouncement(submitData);
               toast.success("发布成功");
           } else {
-              await updateAnnouncement(formData);
+              await updateAnnouncement(submitData);
               toast.success("更新成功");
           }
           setIsModalOpen(false);

@@ -67,6 +67,7 @@ public class AttendanceAppealServiceImpl extends ServiceImpl<AttendanceAppealMap
         appeal.setUserId(UserContext.getUserId());
         appeal.setUserName(UserContext.getUserName());
         appeal.setDeptId(UserContext.getDeptId());
+        appeal.setDeptName(UserContext.getDeptName());
         appeal.setCreateBy(UserContext.getUserName());
         appeal.setAppealNo(generateAppealNo());
         appeal.setStatus("DRAFT");
@@ -80,6 +81,19 @@ public class AttendanceAppealServiceImpl extends ServiceImpl<AttendanceAppealMap
         AttendanceAppeal appeal = getById(id);
         if (appeal == null) {
             return false;
+        }
+        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
+        if (!StringUtils.hasText(appeal.getDeptName())) {
+            appeal.setDeptName(UserContext.getDeptName());
+        }
+        if (appeal.getDeptId() == null) {
+            appeal.setDeptId(UserContext.getDeptId());
+        }
+        if (!StringUtils.hasText(appeal.getUserName())) {
+            appeal.setUserName(UserContext.getUserName());
+        }
+        if (appeal.getUserId() == null) {
+            appeal.setUserId(UserContext.getUserId());
         }
         appeal.setStatus("PENDING");
 

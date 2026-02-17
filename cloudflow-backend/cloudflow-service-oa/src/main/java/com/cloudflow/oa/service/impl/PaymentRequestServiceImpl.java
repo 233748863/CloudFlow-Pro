@@ -2,6 +2,7 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +46,20 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         BizPaymentRequest payment = getById(id);
         if (payment == null) {
             return false;
+        }
+        
+        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
+        if (!StringUtils.hasText(payment.getDeptName())) {
+            payment.setDeptName(UserContext.getDeptName());
+        }
+        if (payment.getDeptId() == null) {
+            payment.setDeptId(UserContext.getDeptId());
+        }
+        if (!StringUtils.hasText(payment.getUserName())) {
+            payment.setUserName(UserContext.getUserName());
+        }
+        if (payment.getUserId() == null) {
+            payment.setUserId(UserContext.getUserId());
         }
         
         // 更新状态为审批中

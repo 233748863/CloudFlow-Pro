@@ -66,6 +66,7 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         trip.setUserId(UserContext.getUserId());
         trip.setUserName(UserContext.getUserName());
         trip.setDeptId(UserContext.getDeptId());
+        trip.setDeptName(UserContext.getDeptName());
         trip.setCreateBy(UserContext.getUserName());
         trip.setTripNo(generateTripNo());
         trip.setStatus("DRAFT");
@@ -79,6 +80,19 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         BusinessTrip trip = getById(id);
         if (trip == null) {
             return false;
+        }
+        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
+        if (!StringUtils.hasText(trip.getDeptName())) {
+            trip.setDeptName(UserContext.getDeptName());
+        }
+        if (trip.getDeptId() == null) {
+            trip.setDeptId(UserContext.getDeptId());
+        }
+        if (!StringUtils.hasText(trip.getUserName())) {
+            trip.setUserName(UserContext.getUserName());
+        }
+        if (trip.getUserId() == null) {
+            trip.setUserId(UserContext.getUserId());
         }
         trip.setStatus("PENDING");
 

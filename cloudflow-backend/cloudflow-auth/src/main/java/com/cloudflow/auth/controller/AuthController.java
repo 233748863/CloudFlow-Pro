@@ -47,6 +47,9 @@ public class AuthController {
     @Autowired
     private com.cloudflow.auth.service.CaptchaService captchaService;
 
+    @Autowired
+    private com.cloudflow.auth.mapper.SysDeptMapper sysDeptMapper;
+
     @PostMapping("/login")
     public R<?> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
         // 验证码校验
@@ -85,6 +88,11 @@ public class AuthController {
         loginUser.put("username", user.getUserName());
         loginUser.put("nickName", user.getNickName());
         loginUser.put("deptId", user.getDeptId());
+        // 查询部门名称，存入 token 以便网关传递给下游服务
+        if (user.getDeptId() != null) {
+            com.cloudflow.auth.domain.SysDept dept = sysDeptMapper.selectById(user.getDeptId());
+            loginUser.put("deptName", dept != null ? dept.getDeptName() : null);
+        }
         loginUser.put("tenantId", user.getTenantId()); // 添加租户ID
         loginUser.put("avatar", user.getAvatar());
         loginUser.put("roles", userInfo.getRoles());

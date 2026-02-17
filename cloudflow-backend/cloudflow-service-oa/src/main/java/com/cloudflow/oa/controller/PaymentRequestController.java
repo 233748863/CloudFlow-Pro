@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
@@ -58,6 +59,12 @@ public class PaymentRequestController {
     @SysLog("新增付款申请")
     @PostMapping
     public R<Void> add(@RequestBody BizPaymentRequest payment) {
+        // 从当前登录用户上下文中填充用户信息
+        payment.setUserId(UserContext.getUserId());
+        payment.setUserName(UserContext.getUserName());
+        payment.setDeptId(UserContext.getDeptId());
+        payment.setDeptName(UserContext.getDeptName());
+        payment.setCreateBy(UserContext.getUserName());
         payment.setPaymentNo(paymentRequestService.generatePaymentNo());
         payment.setStatus("DRAFT");
         return paymentRequestService.save(payment) ? R.ok() : R.fail("创建失败");

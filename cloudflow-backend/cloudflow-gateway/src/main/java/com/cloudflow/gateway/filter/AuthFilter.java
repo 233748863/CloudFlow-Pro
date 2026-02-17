@@ -74,6 +74,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
                 .header("X-User-Id", String.valueOf(loginUser.get("userId")))
                 .header("X-User-Roles", rolesStr)
                 .header("X-User-Dept-Id", String.valueOf(loginUser.get("deptId")))
+                .header("X-User-Dept-Name", encodeDeptName(loginUser.get("deptName")))
                 // 如果 Token 中有租户ID，优先使用；否则检查请求头中的 X-Tenant-Id
                 .header("X-User-Tenant-Id", loginUser.containsKey("tenantId") 
                         ? String.valueOf(loginUser.get("tenantId")) 
@@ -89,6 +90,21 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String body = "{\"code\":401,\"msg\":\"未授权或Token已过期\"}";
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
+    }
+
+    /**
+     * 对部门名称进行 URL 编码，确保中文字符能安全传递到 HTTP header
+     * 下游服务的 UserContextInterceptor 会进行解码
+     */
+    private String encodeDeptName(Object deptName) {
+        if (deptName == null) {
+            return "";
+        }
+        try {
+            return java.net.URLEncoder.encode(String.valueOf(deptName), "UTF-8");
+        } catch (Exception e) {
+            return String.valueOf(deptName);
+        }
     }
 
     @Override

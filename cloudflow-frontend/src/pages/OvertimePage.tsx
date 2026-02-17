@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Plus, Edit, Trash2, Send, Search, RotateCcw, X } from 'lucide-react';
 import { overtimeApi, OvertimeRequest } from '../services/api/overtime';
+import { toBackendDateString, toLocalDatetimeString } from '../utils/dateFormat';
 import { toast } from 'sonner';
 
 /** 加班申请页面 */
@@ -44,7 +45,8 @@ export const OvertimePage: React.FC = () => {
       const start = new Date(formData.startTime).getTime();
       const end = new Date(formData.endTime).getTime();
       const hours = Math.round((end - start) / 3600000 * 10) / 10;
-      const data = { ...formData, overtimeHours: hours > 0 ? hours : 0 };
+      // 使用统一工具函数将 datetime-local 格式转为后端要求的 "yyyy-MM-dd HH:mm:ss"
+      const data = { ...formData, overtimeHours: hours > 0 ? hours : 0, startTime: toBackendDateString(formData.startTime), endTime: toBackendDateString(formData.endTime) };
 
       if (current?.id) { await overtimeApi.edit(data); toast.success('更新成功'); }
       else { await overtimeApi.add(data); toast.success('创建成功'); }

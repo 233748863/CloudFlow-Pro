@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
+import { toBackendDateString } from '@/utils/dateFormat';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useAsyncData } from '@/hooks/useAsyncData';
@@ -176,8 +177,8 @@ export const VehicleBooking: React.FC = () => {
       await submitUsage({
         vehicleId: parseInt(formData.vehicleId),
         applicantId: parseInt(user.id),
-        startTime: formData.startTime.replace('T', ' ') + ':00',
-        endTime: formData.endTime.replace('T', ' ') + ':00',
+        startTime: toBackendDateString(formData.startTime),
+        endTime: toBackendDateString(formData.endTime),
         destination: formData.destination,
         reason: formData.reason,
         passengerCount: formData.passengerCount,

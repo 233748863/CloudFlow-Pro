@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.LeaveRequest;
 import com.cloudflow.oa.mapper.LeaveRequestMapper;
@@ -68,6 +69,12 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     @Audit(name = "创建请假申请", spel = "#leave")
     @Transactional(rollbackFor = Exception.class)
     public boolean createLeave(LeaveRequest leave) {
+        // 从当前登录用户上下文中填充用户信息
+        leave.setUserId(UserContext.getUserId());
+        leave.setUserName(UserContext.getUserName());
+        leave.setDeptId(UserContext.getDeptId());
+        leave.setDeptName(UserContext.getDeptName());
+        leave.setCreateBy(UserContext.getUserName());
         // 生成请假单号
         leave.setLeaveNo(generateLeaveNo());
         leave.setStatus("DRAFT");
@@ -81,6 +88,20 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         LeaveRequest leave = getById(id);
         if (leave == null) {
             return false;
+        }
+
+        // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
+        if (!StringUtils.hasText(leave.getDeptName())) {
+            leave.setDeptName(UserContext.getDeptName());
+        }
+        if (leave.getDeptId() == null) {
+            leave.setDeptId(UserContext.getDeptId());
+        }
+        if (!StringUtils.hasText(leave.getUserName())) {
+            leave.setUserName(UserContext.getUserName());
+        }
+        if (leave.getUserId() == null) {
+            leave.setUserId(UserContext.getUserId());
         }
 
         // 更新状态为审批中

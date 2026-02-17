@@ -27,6 +27,7 @@ public class ContextTaskDecorator implements TaskDecorator {
         String userName = UserContext.getUserName();
         Set<String> roles = UserContext.getRoles();
         Long deptId = UserContext.getDeptId();
+        String deptName = UserContext.getDeptName();
         Long tenantId = UserContext.getTenantId();
         Long tenantContextId = TenantContext.getTenantId();
 
@@ -37,6 +38,7 @@ public class ContextTaskDecorator implements TaskDecorator {
                 if (userName != null) UserContext.setUserName(userName);
                 if (roles != null) UserContext.setRoles(roles);
                 if (deptId != null) UserContext.setDeptId(deptId);
+                if (deptName != null) UserContext.setDeptName(deptName);
                 if (tenantId != null) UserContext.setTenantId(tenantId);
                 if (tenantContextId != null) TenantContext.setTenantId(tenantContextId);
 
