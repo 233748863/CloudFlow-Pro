@@ -50,6 +50,15 @@ public class AttendanceAppeal implements Serializable {
     /** 补卡打卡类型(1签到 2签退) */
     private String checkType;
 
+    /** 关联原始考勤记录ID */
+    private Long originalRecordId;
+
+    /** 原始打卡状态(LATE迟到/EARLY早退/ABSENT缺卡/ABNORMAL异常) */
+    private String originalStatus;
+
+    /** 证明人姓名 */
+    private String witnessName;
+
     /** 外勤地点经纬度 */
     private String location;
 

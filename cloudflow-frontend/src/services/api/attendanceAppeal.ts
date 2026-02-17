@@ -13,9 +13,16 @@ export interface AttendanceAppeal {
   appealDate: string;
   appealTime?: string;
   checkType?: string;       // 1签到 2签退
+  /** 关联原始考勤记录ID */
+  originalRecordId?: number;
+  /** 原始打卡状态(LATE迟到/EARLY早退/ABSENT缺卡/ABNORMAL异常) */
+  originalStatus?: string;
+  /** 证明人姓名 */
+  witnessName?: string;
   location?: string;
   address?: string;
   reason: string;
+  /** 附件URL（多个用逗号分隔） */
   attachmentUrl?: string;
   status?: string;
   deptId?: number;

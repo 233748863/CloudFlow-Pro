@@ -38,6 +38,9 @@ public class BusinessTrip implements Serializable {
     /** 出差单号 */
     private String tripNo;
 
+    /** 出发地 */
+    private String departure;
+
     /** 出差目的地 */
     private String destination;
 
@@ -57,6 +60,21 @@ public class BusinessTrip implements Serializable {
 
     /** 预计费用 */
     private BigDecimal estimatedCost;
+
+    /** 住宿安排(SELF自行安排/COMPANY公司安排/NONE无需住宿) */
+    private String accommodation;
+
+    /** 出差期间联系电话 */
+    private String contactPhone;
+
+    /** 紧急联系人 */
+    private String emergencyContact;
+
+    /** 紧急联系人电话 */
+    private String emergencyPhone;
+
+    /** 关联项目名称 */
+    private String projectName;
 
     /** 同行人员(JSON数组) */
     private String companions;

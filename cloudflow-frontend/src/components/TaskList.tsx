@@ -163,13 +163,33 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
             {task.formData && Object.keys(task.formData).length > 0 && (() => {
                 const fd = task.formData as Record<string, any>;
                 // 优先提取的摘要字段（按优先级排列）
-                const summaryKeys = ['reason', 'description', 'destination', 'payeeName', 'leaveType', 'appealType', 'overtimeType', 'appealDate', 'startTime', 'startDate', 'totalAmount', 'amount'];
-                const skipKeys = new Set(['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'userId', 'appealId', 'leaveId', 'overtimeId', 'tripId', 'claimId', 'paymentId', 'userName', 'deptName', 'appealNo', 'leaveNo', 'overtimeNo', 'tripNo', 'claimNo', 'paymentNo']);
+                const summaryKeys = [
+                    'reason', 'description', 'destination', 'payeeName',
+                    // 补卡/外勤
+                    'appealType', 'appealDate', 'checkType', 'address',
+                    // 请假
+                    'leaveType', 'leaveDays',
+                    // 加班
+                    'overtimeType', 'compensateType', 'workLocation', 'overtimeHours',
+                    // 出差
+                    'departure', 'transportType', 'tripDays', 'estimatedCost', 'accommodation',
+                    // 用车
+                    'vehiclePlate', 'isRoundTrip', 'passengerCount',
+                    // 报销/付款
+                    'startTime', 'startDate', 'totalAmount', 'amount',
+                ];
+                const skipKeys = new Set(['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'userId', 'appealId', 'leaveId', 'overtimeId', 'tripId', 'claimId', 'paymentId', 'userName', 'deptName', 'appealNo', 'leaveNo', 'overtimeNo', 'tripNo', 'claimNo', 'paymentNo', 'delFlag', 'createBy', 'updateBy', 'createTime', 'updateTime', 'status', 'attachmentUrl', 'id', 'vehicleId', 'applicantId', 'driverId']);
                 // 枚举快速翻译
                 const enumQuick: Record<string, Record<string, string>> = {
                     appealType: { MAKEUP: '补卡', FIELD: '外勤' },
+                    checkType: { '1': '签到', '2': '签退' },
                     leaveType: { ANNUAL: '年假', SICK: '病假', PERSONAL: '事假', MATERNITY: '产假', MARRIAGE: '婚假', BEREAVEMENT: '丧假', OTHER: '其他' },
                     overtimeType: { WORKDAY: '工作日', WEEKEND: '周末', HOLIDAY: '节假日' },
+                    compensateType: { SALARY: '加班费', LEAVE: '调休' },
+                    workLocation: { OFFICE: '办公室', HOME: '居家', OTHER: '其他' },
+                    transportType: { PLANE: '飞机', TRAIN: '火车', CAR: '自驾', OTHER: '其他' },
+                    accommodation: { SELF: '自行安排', COMPANY: '公司安排', NONE: '无需住宿' },
+                    isRoundTrip: { '0': '单程', '1': '往返' },
                 };
                 const parts: string[] = [];
                 for (const key of summaryKeys) {

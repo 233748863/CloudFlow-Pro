@@ -34,11 +34,20 @@ public class VehicleUsage {
 
     private String destination;
 
+    /** 还车地点 */
+    private String returnLocation;
+
+    /** 是否往返(0单程 1往返) */
+    private Integer isRoundTrip;
+
     private String reason;
 
     private Integer passengerCount;
 
     private String passengers;
+
+    /** 附件URL */
+    private String attachmentUrl;
 
     private BigDecimal startMileage;
 

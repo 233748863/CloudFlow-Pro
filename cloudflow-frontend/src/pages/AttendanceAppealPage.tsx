@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardCheck, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, X } from 'lucide-react';
+import { ClipboardCheck, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip } from 'lucide-react';
 import { attendanceAppealApi, AttendanceAppeal } from '../services/api/attendanceAppeal';
+import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
 
 /** 补卡/外勤申请页面 */
@@ -18,7 +19,6 @@ export const AttendanceAppealPage: React.FC = () => {
   const fetchList = async () => {
     setLoading(true);
     try {
-      // 响应拦截器已解包外层 { code, msg, data }，res 即为 data 部分
       const res = await attendanceAppealApi.list(searchParams);
       if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
     } catch { toast.error('获取列表失败'); } finally { setLoading(false); }
@@ -26,7 +26,7 @@ export const AttendanceAppealPage: React.FC = () => {
 
   const handleAdd = () => {
     setCurrent(null);
-    setFormData({ appealType: 'MAKEUP', appealDate: '', reason: '', checkType: '1' });
+    setFormData({ appealType: 'MAKEUP', appealDate: '', reason: '', checkType: '1', originalStatus: '', witnessName: '', attachmentUrl: '' });
     setShowDialog(true);
   };
 
@@ -40,6 +40,7 @@ export const AttendanceAppealPage: React.FC = () => {
   const handleSave = async () => {
     if (!formData.appealDate || !formData.reason) { toast.error('请填写完整信息'); return; }
     if (formData.appealType === 'MAKEUP' && !formData.appealTime) { toast.error('补卡类型请填写补卡时间'); return; }
+    if (formData.appealType === 'FIELD' && !formData.address) { toast.error('外勤类型请填写外勤地址'); return; }
     try {
       if (current?.id) { await attendanceAppealApi.edit(formData); toast.success('更新成功'); }
       else { await attendanceAppealApi.add(formData); toast.success('创建成功'); }
@@ -61,6 +62,7 @@ export const AttendanceAppealPage: React.FC = () => {
   const statusMap: Record<string, string> = { DRAFT: '草稿', PENDING: '审批中', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已取消' };
   const typeMap: Record<string, string> = { MAKEUP: '补卡', FIELD: '外勤' };
   const checkTypeMap: Record<string, string> = { '1': '签到', '2': '签退' };
+  const originalStatusMap: Record<string, string> = { LATE: '迟到', EARLY: '早退', ABSENT: '缺卡', ABNORMAL: '异常' };
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
@@ -104,23 +106,27 @@ export const AttendanceAppealPage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">类型</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">日期</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">补卡时间/地址</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">原始状态</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">事由</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">附件</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
               ) : list.map(item => (
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm text-slate-900">{item.appealNo}</td>
                   <td className="px-4 py-3 text-sm">{typeMap[item.appealType] || item.appealType}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{item.appealDate}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{item.appealType === 'MAKEUP' ? `${item.appealTime || ''} (${checkTypeMap[item.checkType || ''] || ''})` : (item.address || '-')}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{originalStatusMap[item.originalStatus || ''] || '-'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{item.reason}</td>
+                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-indigo-500" /> : <span className="text-slate-300">-</span>}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -151,46 +157,79 @@ export const AttendanceAppealPage: React.FC = () => {
       {/* 新增/编辑对话框 */}
       {showDialog && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-slate-800">{current ? '编辑申请' : '新增申请'}</h3>
               <button onClick={() => setShowDialog(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
+              {/* 申请类型 */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">申请类型</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">申请类型 <span className="text-red-500">*</span></label>
                 <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.appealType} onChange={e => setFormData({ ...formData, appealType: e.target.value })}>
                   <option value="MAKEUP">补卡</option><option value="FIELD">外勤</option>
                 </select>
               </div>
+              {/* 日期 */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">日期</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
                 <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.appealDate} onChange={e => setFormData({ ...formData, appealDate: e.target.value })} />
               </div>
+              {/* 补卡专有字段 */}
               {formData.appealType === 'MAKEUP' && (<>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">补卡时间</label>
-                  <input type="time" className="w-full border border-slate-300 rounded-lg p-2" value={formData.appealTime || ''} onChange={e => setFormData({ ...formData, appealTime: e.target.value })} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">补卡时间 <span className="text-red-500">*</span></label>
+                    <input type="time" className="w-full border border-slate-300 rounded-lg p-2" value={formData.appealTime || ''} onChange={e => setFormData({ ...formData, appealTime: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">打卡类型 <span className="text-red-500">*</span></label>
+                    <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.checkType || '1'} onChange={e => setFormData({ ...formData, checkType: e.target.value })}>
+                      <option value="1">签到</option><option value="2">签退</option>
+                    </select>
+                  </div>
                 </div>
+                {/* 原始打卡状态 */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">打卡类型</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.checkType || '1'} onChange={e => setFormData({ ...formData, checkType: e.target.value })}>
-                    <option value="1">签到</option><option value="2">签退</option>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">原始打卡状态</label>
+                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.originalStatus || ''} onChange={e => setFormData({ ...formData, originalStatus: e.target.value })}>
+                    <option value="">请选择</option>
+                    <option value="LATE">迟到</option>
+                    <option value="EARLY">早退</option>
+                    <option value="ABSENT">缺卡</option>
+                    <option value="ABNORMAL">异常</option>
                   </select>
                 </div>
               </>)}
+              {/* 外勤专有字段 */}
               {formData.appealType === 'FIELD' && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">外勤地址</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">外勤地址 <span className="text-red-500">*</span></label>
                   <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.address || ''} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="请输入外勤地址" />
                 </div>
               )}
+              {/* 证明人 */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">申请事由</label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请输入申请事由" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">证明人</label>
+                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.witnessName || ''} onChange={e => setFormData({ ...formData, witnessName: e.target.value })} placeholder="可填写知情同事姓名" />
+              </div>
+              {/* 申请事由 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">申请事由 <span className="text-red-500">*</span></label>
+                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请详细描述补卡/外勤原因" />
+              </div>
+              {/* 附件上传 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">附件</label>
+                <FileUpload
+                  value={formData.attachmentUrl || ''}
+                  onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })}
+                  maxCount={3}
+                  hint="可上传截图、照片等证明材料，最多3个文件"
+                />
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
+            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2 sticky bottom-0">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
               <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
             </div>

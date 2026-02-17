@@ -75,9 +75,14 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
         Long currentUsed = tenant.getStorageUsed() != null ? tenant.getStorageUsed() : 0L;
         Long newUsed = currentUsed + size;
         
-        // 检查是否超过存储限制
+        // 确保已用空间不会变成负数（删除文件回收空间时）
+        if (newUsed < 0) {
+            newUsed = 0L;
+        }
+        
+        // 检查是否超过存储限制（仅在增加空间时检查）
         Long storageLimit = tenant.getStorageLimit();
-        if (storageLimit != null && storageLimit > 0 && newUsed > storageLimit) {
+        if (size > 0 && storageLimit != null && storageLimit > 0 && newUsed > storageLimit) {
             log.warn("租户 {} 存储空间已达上限，当前使用: {}MB, 限制: {}MB", 
                 tenantId, newUsed, storageLimit);
             return false;

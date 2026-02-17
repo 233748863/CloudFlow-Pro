@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Plus, Edit, Trash2, Send, Search, RotateCcw, X } from 'lucide-react';
+import { Clock, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip } from 'lucide-react';
 import { overtimeApi, OvertimeRequest } from '../services/api/overtime';
+import { FileUpload } from '../components/FileUpload';
 import { toBackendDateString, toLocalDatetimeString } from '../utils/dateFormat';
 import { toast } from 'sonner';
 
@@ -12,14 +13,16 @@ export const OvertimePage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
   const [current, setCurrent] = useState<OvertimeRequest | null>(null);
-  const [formData, setFormData] = useState<OvertimeRequest>({ overtimeType: 'WORKDAY', startTime: '', endTime: '', reason: '', compensateType: 'SALARY' });
+  const [formData, setFormData] = useState<OvertimeRequest>({
+    overtimeType: 'WORKDAY', startTime: '', endTime: '', reason: '',
+    compensateType: 'SALARY', workContent: '', expectedOutput: '', needMeal: 0, workLocation: 'OFFICE', attachmentUrl: ''
+  });
 
   useEffect(() => { fetchList(); }, [searchParams]);
 
   const fetchList = async () => {
     setLoading(true);
     try {
-      // 响应拦截器已解包外层 { code, msg, data }，res 即为 data 部分
       const res = await overtimeApi.list(searchParams);
       if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
     } catch { toast.error('获取列表失败'); } finally { setLoading(false); }
@@ -27,26 +30,43 @@ export const OvertimePage: React.FC = () => {
 
   const handleAdd = () => {
     setCurrent(null);
-    setFormData({ overtimeType: 'WORKDAY', startTime: '', endTime: '', reason: '', compensateType: 'SALARY' });
+    setFormData({
+      overtimeType: 'WORKDAY', startTime: '', endTime: '', reason: '',
+      compensateType: 'SALARY', workContent: '', expectedOutput: '', needMeal: 0, workLocation: 'OFFICE', attachmentUrl: ''
+    });
     setShowDialog(true);
   };
 
   const handleEdit = async (id: number) => {
     try {
       const res = await overtimeApi.getInfo(id);
-      if (res) { setCurrent(res); setFormData(res); setShowDialog(true); }
+      if (res) {
+        setCurrent(res);
+        // 将后端时间格式转为 datetime-local 格式用于表单显示
+        setFormData({
+          ...res,
+          startTime: toLocalDatetimeString(res.startTime) || res.startTime,
+          endTime: toLocalDatetimeString(res.endTime) || res.endTime,
+        });
+        setShowDialog(true);
+      }
     } catch { toast.error('获取详情失败'); }
   };
 
   const handleSave = async () => {
     if (!formData.startTime || !formData.endTime || !formData.reason) { toast.error('请填写完整信息'); return; }
+    if (!formData.workContent) { toast.error('请填写加班工作内容'); return; }
     try {
       // 自动计算加班时长
       const start = new Date(formData.startTime).getTime();
       const end = new Date(formData.endTime).getTime();
       const hours = Math.round((end - start) / 3600000 * 10) / 10;
-      // 使用统一工具函数将 datetime-local 格式转为后端要求的 "yyyy-MM-dd HH:mm:ss"
-      const data = { ...formData, overtimeHours: hours > 0 ? hours : 0, startTime: toBackendDateString(formData.startTime), endTime: toBackendDateString(formData.endTime) };
+      const data = {
+        ...formData,
+        overtimeHours: hours > 0 ? hours : 0,
+        startTime: toBackendDateString(formData.startTime),
+        endTime: toBackendDateString(formData.endTime)
+      };
 
       if (current?.id) { await overtimeApi.edit(data); toast.success('更新成功'); }
       else { await overtimeApi.add(data); toast.success('创建成功'); }
@@ -67,6 +87,7 @@ export const OvertimePage: React.FC = () => {
   const statusMap: Record<string, string> = { DRAFT: '草稿', PENDING: '审批中', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已取消' };
   const typeMap: Record<string, string> = { WORKDAY: '工作日', WEEKEND: '周末', HOLIDAY: '节假日' };
   const compensateMap: Record<string, string> = { SALARY: '加班费', LEAVE: '调休' };
+  const locationMap: Record<string, string> = { OFFICE: '办公室', HOME: '居家', OTHER: '其他' };
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
@@ -106,16 +127,18 @@ export const OvertimePage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">开始时间</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">结束时间</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">时长(h)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">补偿方式</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">地点</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">补偿</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">附件</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
               ) : list.map(item => (
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm text-slate-900">{item.overtimeNo}</td>
@@ -123,7 +146,9 @@ export const OvertimePage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-slate-600">{item.startTime}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{item.endTime}</td>
                   <td className="px-4 py-3 text-sm text-slate-900 font-medium">{item.overtimeHours || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{locationMap[item.workLocation || ''] || '-'}</td>
                   <td className="px-4 py-3 text-sm">{compensateMap[item.compensateType || ''] || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-indigo-500" /> : <span className="text-slate-300">-</span>}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -150,17 +175,19 @@ export const OvertimePage: React.FC = () => {
         </div>
       </div>
 
+      {/* 新增/编辑对话框 */}
       {showDialog && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-slate-800">{current ? '编辑加班申请' : '新增加班申请'}</h3>
               <button onClick={() => setShowDialog(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
+              {/* 加班类型 & 补偿方式 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">加班类型</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">加班类型 <span className="text-red-500">*</span></label>
                   <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.overtimeType} onChange={e => setFormData({ ...formData, overtimeType: e.target.value })}>
                     <option value="WORKDAY">工作日</option><option value="WEEKEND">周末</option><option value="HOLIDAY">节假日</option>
                   </select>
@@ -172,22 +199,59 @@ export const OvertimePage: React.FC = () => {
                   </select>
                 </div>
               </div>
+              {/* 时间 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">开始时间</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
                   <input type="datetime-local" className="w-full border border-slate-300 rounded-lg p-2" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">结束时间</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
                   <input type="datetime-local" className="w-full border border-slate-300 rounded-lg p-2" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} />
                 </div>
               </div>
+              {/* 加班地点 & 是否用餐 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">加班地点</label>
+                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.workLocation || 'OFFICE'} onChange={e => setFormData({ ...formData, workLocation: e.target.value })}>
+                    <option value="OFFICE">办公室</option><option value="HOME">居家</option><option value="OTHER">其他</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">是否需要用餐</label>
+                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.needMeal ?? 0} onChange={e => setFormData({ ...formData, needMeal: parseInt(e.target.value) })}>
+                    <option value={0}>否</option><option value={1}>是</option>
+                  </select>
+                </div>
+              </div>
+              {/* 加班事由 */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">加班事由</label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请输入加班事由" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">加班事由 <span className="text-red-500">*</span></label>
+                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-16" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请简要说明加班原因" />
+              </div>
+              {/* 加班工作内容 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">工作内容 <span className="text-red-500">*</span></label>
+                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.workContent || ''} onChange={e => setFormData({ ...formData, workContent: e.target.value })} placeholder="请详细描述加班期间的工作内容" />
+              </div>
+              {/* 预计产出 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">预计产出/成果</label>
+                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.expectedOutput || ''} onChange={e => setFormData({ ...formData, expectedOutput: e.target.value })} placeholder="如：完成XX模块开发、提交XX报告等" />
+              </div>
+              {/* 附件上传 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">附件</label>
+                <FileUpload
+                  value={formData.attachmentUrl || ''}
+                  onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })}
+                  maxCount={3}
+                  hint="可上传相关工作文档、任务截图等，最多3个文件"
+                />
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
+            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2 sticky bottom-0">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
               <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
             </div>

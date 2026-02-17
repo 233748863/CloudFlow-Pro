@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, Plus, Edit, Trash2, Send, Search, RotateCcw, X } from 'lucide-react';
+import { Plane, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip } from 'lucide-react';
 import { businessTripApi, BusinessTrip } from '../services/api/businessTrip';
+import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
 
 /** 出差申请页面 */
@@ -11,7 +12,10 @@ export const BusinessTripPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
   const [current, setCurrent] = useState<BusinessTrip | null>(null);
-  const [formData, setFormData] = useState<BusinessTrip>({ destination: '', startDate: '', endDate: '', reason: '', transportType: 'TRAIN' });
+  const [formData, setFormData] = useState<BusinessTrip>({
+    destination: '', startDate: '', endDate: '', reason: '', transportType: 'TRAIN',
+    departure: '', accommodation: 'SELF', contactPhone: '', emergencyContact: '', emergencyPhone: '', projectName: '', attachmentUrl: ''
+  });
 
   useEffect(() => { fetchList(); }, [searchParams]);
 
@@ -25,7 +29,10 @@ export const BusinessTripPage: React.FC = () => {
 
   const handleAdd = () => {
     setCurrent(null);
-    setFormData({ destination: '', startDate: '', endDate: '', reason: '', transportType: 'TRAIN' });
+    setFormData({
+      destination: '', startDate: '', endDate: '', reason: '', transportType: 'TRAIN',
+      departure: '', accommodation: 'SELF', contactPhone: '', emergencyContact: '', emergencyPhone: '', projectName: '', attachmentUrl: ''
+    });
     setShowDialog(true);
   };
 
@@ -37,6 +44,7 @@ export const BusinessTripPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!formData.departure) { toast.error('请填写出发地'); return; }
     if (!formData.destination || !formData.startDate || !formData.endDate || !formData.reason) { toast.error('请填写完整信息'); return; }
     try {
       // 自动计算出差天数
@@ -63,6 +71,7 @@ export const BusinessTripPage: React.FC = () => {
 
   const statusMap: Record<string, string> = { DRAFT: '草稿', PENDING: '审批中', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已取消' };
   const transportMap: Record<string, string> = { PLANE: '飞机', TRAIN: '火车', CAR: '自驾', OTHER: '其他' };
+  const accommodationMap: Record<string, string> = { SELF: '自行安排', COMPANY: '公司安排', NONE: '无需住宿' };
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
@@ -96,30 +105,32 @@ export const BusinessTripPage: React.FC = () => {
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">出差单号</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">目的地</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">开始日期</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">结束日期</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">出发地→目的地</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">日期</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">天数</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">交通方式</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">预计费用</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">交通</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">住宿</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">费用</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">附件</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
               ) : list.map(item => (
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm text-slate-900">{item.tripNo}</td>
-                  <td className="px-4 py-3 text-sm text-slate-900 font-medium">{item.destination}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{item.startDate}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{item.endDate}</td>
+                  <td className="px-4 py-3 text-sm text-slate-900 font-medium">{item.departure ? `${item.departure} → ` : ''}{item.destination}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{item.startDate} ~ {item.endDate}</td>
                   <td className="px-4 py-3 text-sm">{item.tripDays || '-'}天</td>
                   <td className="px-4 py-3 text-sm">{transportMap[item.transportType || ''] || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{accommodationMap[item.accommodation || ''] || '-'}</td>
                   <td className="px-4 py-3 text-sm">¥{item.estimatedCost?.toFixed(2) || '0.00'}</td>
+                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-indigo-500" /> : <span className="text-slate-300">-</span>}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -146,28 +157,38 @@ export const BusinessTripPage: React.FC = () => {
         </div>
       </div>
 
+      {/* 新增/编辑对话框 */}
       {showDialog && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-slate-800">{current ? '编辑出差申请' : '新增出差申请'}</h3>
               <button onClick={() => setShowDialog(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">出差目的地</label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} placeholder="请输入目的地" />
-              </div>
+              {/* 出发地 & 目的地 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">开始日期</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">出发地 <span className="text-red-500">*</span></label>
+                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.departure || ''} onChange={e => setFormData({ ...formData, departure: e.target.value })} placeholder="如：北京" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">目的地 <span className="text-red-500">*</span></label>
+                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} placeholder="如：上海" />
+                </div>
+              </div>
+              {/* 日期 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">开始日期 <span className="text-red-500">*</span></label>
                   <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">结束日期</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">结束日期 <span className="text-red-500">*</span></label>
                   <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
                 </div>
               </div>
+              {/* 交通方式 & 住宿安排 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">交通方式</label>
@@ -176,16 +197,61 @@ export const BusinessTripPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">住宿安排</label>
+                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.accommodation || 'SELF'} onChange={e => setFormData({ ...formData, accommodation: e.target.value })}>
+                    <option value="SELF">自行安排</option><option value="COMPANY">公司安排</option><option value="NONE">无需住宿</option>
+                  </select>
+                </div>
+              </div>
+              {/* 预计费用 & 关联项目 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">预计费用(元)</label>
                   <input type="number" className="w-full border border-slate-300 rounded-lg p-2" value={formData.estimatedCost || ''} onChange={e => setFormData({ ...formData, estimatedCost: parseFloat(e.target.value) || 0 })} placeholder="0.00" step="0.01" min="0" />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">关联项目</label>
+                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.projectName || ''} onChange={e => setFormData({ ...formData, projectName: e.target.value })} placeholder="如：XX项目客户拜访" />
+                </div>
               </div>
+              {/* 联系电话 */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">出差事由</label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请输入出差事由" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">出差期间联系电话</label>
+                <input type="tel" className="w-full border border-slate-300 rounded-lg p-2" value={formData.contactPhone || ''} onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} placeholder="请输入手机号" />
+              </div>
+              {/* 紧急联系人 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">紧急联系人</label>
+                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.emergencyContact || ''} onChange={e => setFormData({ ...formData, emergencyContact: e.target.value })} placeholder="姓名" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">紧急联系人电话</label>
+                  <input type="tel" className="w-full border border-slate-300 rounded-lg p-2" value={formData.emergencyPhone || ''} onChange={e => setFormData({ ...formData, emergencyPhone: e.target.value })} placeholder="电话" />
+                </div>
+              </div>
+              {/* 同行人员 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">同行人员</label>
+                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.companions || ''} onChange={e => setFormData({ ...formData, companions: e.target.value })} placeholder="如：张三、李四" />
+              </div>
+              {/* 出差事由 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">出差事由 <span className="text-red-500">*</span></label>
+                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请详细描述出差目的和工作安排" />
+              </div>
+              {/* 附件上传 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">附件</label>
+                <FileUpload
+                  value={formData.attachmentUrl || ''}
+                  onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })}
+                  maxCount={5}
+                  hint="可上传邀请函、会议通知、行程单等，最多5个文件"
+                />
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
+            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2 sticky bottom-0">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
               <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
             </div>

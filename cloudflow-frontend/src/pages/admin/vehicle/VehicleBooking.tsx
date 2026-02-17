@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Car, Loader2, MapPin, Users, Calendar, FileText,
-  CheckCircle, AlertCircle, ChevronRight, Search
+  CheckCircle, AlertCircle, ChevronRight, Search, ArrowLeftRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -23,6 +23,7 @@ import { toBackendDateString } from '@/utils/dateFormat';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useAsyncData } from '@/hooks/useAsyncData';
+import { FileUpload } from '@/components/FileUpload';
 
 /** 车辆卡片组件 */
 const VehicleCard: React.FC<{
@@ -120,9 +121,12 @@ export const VehicleBooking: React.FC = () => {
     startTime: '',
     endTime: '',
     destination: '',
+    returnLocation: '',
+    isRoundTrip: 0,
     reason: '',
     passengerCount: 1,
     passengers: '',
+    attachmentUrl: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -153,6 +157,8 @@ export const VehicleBooking: React.FC = () => {
     formData.startTime && formData.endTime && formData.destination && formData.reason
   );
 
+  const roundTripLabel = formData.isRoundTrip ? '往返' : '单程';
+
   // 时间验证
   const timeError = useMemo(() => {
     if (formData.startTime && formData.endTime) {
@@ -180,9 +186,12 @@ export const VehicleBooking: React.FC = () => {
         startTime: toBackendDateString(formData.startTime),
         endTime: toBackendDateString(formData.endTime),
         destination: formData.destination,
+        returnLocation: formData.returnLocation,
+        isRoundTrip: formData.isRoundTrip,
         reason: formData.reason,
         passengerCount: formData.passengerCount,
         passengers: formData.passengers,
+        attachmentUrl: formData.attachmentUrl,
       });
       toast.success('用车申请已提交，请等待审批');
       navigate('/admin/vehicle/usage');
@@ -383,18 +392,49 @@ export const VehicleBooking: React.FC = () => {
               </p>
             )}
 
-            {/* 目的地和事由 */}
+            {/* 目的地 & 还车地点 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1">
+                  <MapPin size={14} />
+                  目的地 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  placeholder="请输入目的地"
+                  required
+                  value={formData.destination}
+                  onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1">
+                  <MapPin size={14} />
+                  还车地点
+                </Label>
+                <Input
+                  placeholder="默认原地还车"
+                  value={formData.returnLocation}
+                  onChange={(e) => setFormData({ ...formData, returnLocation: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* 是否往返 */}
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1">
-                <MapPin size={14} />
-                目的地 <span className="text-red-500">*</span>
+                <ArrowLeftRight size={14} />
+                行程类型
               </Label>
-              <Input
-                placeholder="请输入目的地"
-                required
-                value={formData.destination}
-                onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-              />
+              <div className="flex gap-4">
+                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 0 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <input type="radio" name="roundTrip" className="hidden" checked={formData.isRoundTrip === 0} onChange={() => setFormData({ ...formData, isRoundTrip: 0 })} />
+                  <span className="text-sm font-medium">单程</span>
+                </label>
+                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 1 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <input type="radio" name="roundTrip" className="hidden" checked={formData.isRoundTrip === 1} onChange={() => setFormData({ ...formData, isRoundTrip: 1 })} />
+                  <span className="text-sm font-medium">往返</span>
+                </label>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -408,6 +448,17 @@ export const VehicleBooking: React.FC = () => {
                 required
                 value={formData.reason}
                 onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              />
+            </div>
+
+            {/* 附件上传 */}
+            <div className="space-y-1.5">
+              <Label>附件</Label>
+              <FileUpload
+                value={formData.attachmentUrl}
+                onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })}
+                maxCount={3}
+                hint="可上传行程单、审批文件等，最多3个文件"
               />
             </div>
 
@@ -476,10 +527,11 @@ export const VehicleBooking: React.FC = () => {
                 <div>
                   <span className="text-xs text-gray-400">目的地</span>
                   <p className="font-medium">{formData.destination}</p>
+                  {formData.returnLocation && <p className="text-xs text-gray-500">还车: {formData.returnLocation}</p>}
                 </div>
                 <div>
-                  <span className="text-xs text-gray-400">随行人数</span>
-                  <p className="font-medium">{formData.passengerCount} 人</p>
+                  <span className="text-xs text-gray-400">行程 / 人数</span>
+                  <p className="font-medium">{roundTripLabel} · {formData.passengerCount}人</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 p-4">

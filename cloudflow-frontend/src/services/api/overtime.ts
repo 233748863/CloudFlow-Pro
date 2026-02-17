@@ -15,6 +15,15 @@ export interface OvertimeRequest {
   overtimeHours?: number;
   compensateType?: string;  // SALARY加班费 / LEAVE调休
   reason: string;
+  /** 加班工作内容 */
+  workContent?: string;
+  /** 预计产出/成果 */
+  expectedOutput?: string;
+  /** 是否需要用餐(0否 1是) */
+  needMeal?: number;
+  /** 加班地点(OFFICE办公室/HOME居家/OTHER其他) */
+  workLocation?: string;
+  /** 附件URL（多个用逗号分隔） */
   attachmentUrl?: string;
   status?: string;
   deptId?: number;

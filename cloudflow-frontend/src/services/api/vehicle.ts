@@ -33,9 +33,15 @@ export interface VehicleUsage {
   startTime: string;
   endTime: string;
   destination: string;
+  /** 还车地点 */
+  returnLocation?: string;
+  /** 是否往返(0单程 1往返) */
+  isRoundTrip?: number;
   reason: string;
   passengerCount: number;
   passengers?: string;
+  /** 附件URL（多个用逗号分隔） */
+  attachmentUrl?: string;
   startMileage?: number;
   endMileage?: number;
   /** 状态：0待审批 1已批准 2已驳回 3进行中 4已完成 5已取消 */

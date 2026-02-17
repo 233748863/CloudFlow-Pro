@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, FormDefinition, User, Role, StepDetail } from '../types';
-import { Briefcase, X, GitMerge, AlertTriangle, CornerUpLeft, Clock, CheckCircle2, XCircle, ArrowLeftCircle, UserPlus, Users, GitBranch, ChevronRight } from 'lucide-react';
+import { Briefcase, X, GitMerge, AlertTriangle, CornerUpLeft, Clock, CheckCircle2, XCircle, ArrowLeftCircle, UserPlus, Users, GitBranch, ChevronRight, Paperclip, FileText, Image as ImageIcon, Download, ExternalLink } from 'lucide-react';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { getUserList } from '../services/api/auth';
 import { completeTask, readTask, rejectTask, getProcessTrace } from '../services/api/workflow';
@@ -411,13 +411,33 @@ export const TaskHandleModal = ({
                             if (!task.formData || Object.keys(task.formData).length === 0) return null;
                             const fd = task.formData as Record<string, any>;
                             // 定义摘要优先提取的字段（按优先级排列，跳过 ID 类和系统字段）
-                            const summaryKeys = ['reason', 'description', 'destination', 'payeeName', 'leaveType', 'appealType', 'overtimeType', 'category', 'appealDate', 'startTime', 'startDate', 'leaveDays', 'tripDays', 'overtimeHours', 'totalAmount', 'amount'];
-                            const skipKeys = new Set(['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'userId', 'appealId', 'leaveId', 'overtimeId', 'tripId', 'claimId', 'paymentId']);
+                            const summaryKeys = [
+                                'reason', 'description', 'destination', 'payeeName',
+                                // 补卡/外勤
+                                'appealType', 'appealDate', 'checkType', 'address',
+                                // 请假
+                                'leaveType', 'leaveDays',
+                                // 加班
+                                'overtimeType', 'compensateType', 'workLocation', 'overtimeHours',
+                                // 出差
+                                'departure', 'transportType', 'tripDays', 'estimatedCost', 'accommodation',
+                                // 用车
+                                'vehiclePlate', 'isRoundTrip', 'passengerCount',
+                                // 报销/付款
+                                'category', 'startTime', 'startDate', 'totalAmount', 'amount',
+                            ];
+                            const skipKeys = new Set(['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'userId', 'appealId', 'leaveId', 'overtimeId', 'tripId', 'claimId', 'paymentId', 'delFlag', 'createBy', 'updateBy', 'createTime', 'updateTime', 'status', 'attachmentUrl', 'id', 'vehicleId', 'applicantId', 'driverId']);
                             // 枚举翻译（复用）
                             const enumQuick: Record<string, Record<string, string>> = {
                                 appealType: { MAKEUP: '补卡', FIELD: '外勤' },
+                                checkType: { '1': '签到', '2': '签退' },
                                 leaveType: { ANNUAL: '年假', SICK: '病假', PERSONAL: '事假', MATERNITY: '产假', MARRIAGE: '婚假', BEREAVEMENT: '丧假', OTHER: '其他' },
                                 overtimeType: { WORKDAY: '工作日', WEEKEND: '周末', HOLIDAY: '节假日' },
+                                compensateType: { SALARY: '加班费', LEAVE: '调休' },
+                                workLocation: { OFFICE: '办公室', HOME: '居家', OTHER: '其他' },
+                                transportType: { PLANE: '飞机', TRAIN: '火车', CAR: '自驾', OTHER: '其他' },
+                                accommodation: { SELF: '自行安排', COMPANY: '公司安排', NONE: '无需住宿' },
+                                isRoundTrip: { '0': '单程', '1': '往返' },
                                 category: { TRANSPORT: '交通', MEAL: '餐饮', HOTEL: '住宿', OFFICE: '办公', OTHER: '其他' },
                             };
                             const parts: string[] = [];
@@ -536,8 +556,8 @@ export const TaskHandleModal = ({
                             <div className="grid grid-cols-2 gap-3">
                                 {Object.entries(task.formData)
                                     .filter(([key]) => {
-                                        // 过滤掉系统内部字段，只展示业务字段
-                                        const systemKeys = ['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId'];
+                                        // 过滤掉系统内部字段和附件字段（附件单独渲染），只展示业务字段
+                                        const systemKeys = ['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'attachmentUrl'];
                                         return !systemKeys.includes(key);
                                     })
                                     .map(([key, value]) => {
@@ -558,6 +578,10 @@ export const TaskHandleModal = ({
                                             appealDate: '补卡日期',
                                             appealTime: '补卡时间',
                                             checkType: '打卡类型',
+                                            originalRecordId: '原始考勤记录',
+                                            originalStatus: '原始打卡状态',
+                                            witnessName: '证明人',
+                                            location: '外勤经纬度',
                                             address: '外勤地址',
                                             // 请假
                                             leaveNo: '请假单号',
@@ -572,12 +596,35 @@ export const TaskHandleModal = ({
                                             overtimeType: '加班类型',
                                             overtimeHours: '加班时长(小时)',
                                             compensateType: '补偿方式',
+                                            workContent: '加班工作内容',
+                                            expectedOutput: '预计产出/成果',
+                                            needMeal: '是否需要用餐',
+                                            workLocation: '加班地点',
                                             // 出差
                                             tripNo: '出差单号',
+                                            departure: '出发地',
                                             destination: '目的地',
                                             tripDays: '出差天数',
                                             estimatedCost: '预计费用',
                                             transportType: '交通方式',
+                                            accommodation: '住宿安排',
+                                            contactPhone: '联系电话',
+                                            emergencyContact: '紧急联系人',
+                                            emergencyPhone: '紧急联系人电话',
+                                            companions: '同行人员',
+                                            itinerary: '行程安排',
+                                            // 用车
+                                            vehiclePlate: '车牌号',
+                                            applicantName: '申请人',
+                                            driverName: '驾驶员',
+                                            returnLocation: '还车地点',
+                                            isRoundTrip: '是否往返',
+                                            passengerCount: '乘客人数',
+                                            passengers: '乘客',
+                                            startMileage: '出发里程',
+                                            endMileage: '返回里程',
+                                            actualStartTime: '实际出发时间',
+                                            actualEndTime: '实际返回时间',
                                             // 报销
                                             claimNo: '报销单号',
                                             totalAmount: '总金额',
@@ -603,10 +650,15 @@ export const TaskHandleModal = ({
                                         const enumMap: Record<string, Record<string, string>> = {
                                             appealType: { MAKEUP: '补卡', FIELD: '外勤' },
                                             checkType: { '1': '签到', '2': '签退' },
+                                            originalStatus: { LATE: '迟到', EARLY: '早退', ABSENT: '缺卡', ABNORMAL: '异常' },
                                             leaveType: { ANNUAL: '年假', SICK: '病假', PERSONAL: '事假', MATERNITY: '产假', MARRIAGE: '婚假', BEREAVEMENT: '丧假', OTHER: '其他' },
                                             overtimeType: { WORKDAY: '工作日', WEEKEND: '周末', HOLIDAY: '节假日' },
                                             compensateType: { SALARY: '加班费', LEAVE: '调休' },
+                                            needMeal: { '0': '否', '1': '是' },
+                                            workLocation: { OFFICE: '办公室', HOME: '居家', OTHER: '其他' },
                                             transportType: { PLANE: '飞机', TRAIN: '火车', CAR: '自驾', OTHER: '其他' },
+                                            accommodation: { SELF: '自行安排', COMPANY: '公司安排', NONE: '无需住宿' },
+                                            isRoundTrip: { '0': '单程', '1': '往返' },
                                             paymentType: { TRANSFER: '转账', CHECK: '支票', CASH: '现金' },
                                             category: { TRANSPORT: '交通', MEAL: '餐饮', HOTEL: '住宿', OFFICE: '办公', OTHER: '其他' },
                                         };
@@ -636,6 +688,94 @@ export const TaskHandleModal = ({
                                     })
                                 }
                             </div>
+
+                            {/* 附件展示区域 - 从 formData 中提取 attachmentUrl 渲染为可查看/下载的文件列表 */}
+                            {(() => {
+                                const fd = task.formData as Record<string, any>;
+                                const attachmentUrl = fd?.attachmentUrl;
+                                if (!attachmentUrl || typeof attachmentUrl !== 'string' || !attachmentUrl.trim()) return null;
+
+                                // 解析附件列表（多个用逗号分隔）
+                                const files = attachmentUrl.split(',').filter(Boolean).map(url => {
+                                    const trimmed = url.trim();
+                                    const name = decodeURIComponent(trimmed.split('/').pop() || '附件');
+                                    const isImg = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(trimmed);
+                                    return { url: trimmed, name, isImg };
+                                });
+
+                                if (files.length === 0) return null;
+
+                                return (
+                                    <div className="mt-3 pt-3 border-t border-slate-100">
+                                        <h5 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                                            <Paperclip size={12} />
+                                            附件 ({files.length})
+                                        </h5>
+                                        <div className="space-y-1.5">
+                                            {files.map((file, idx) => (
+                                                <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 hover:border-indigo-300 transition-colors group">
+                                                    {/* 文件图标 */}
+                                                    {file.isImg ? (
+                                                        <ImageIcon size={16} className="text-blue-500 flex-shrink-0" />
+                                                    ) : (
+                                                        <FileText size={16} className="text-slate-500 flex-shrink-0" />
+                                                    )}
+                                                    {/* 文件名 */}
+                                                    <span className="text-xs text-slate-700 truncate flex-1" title={file.name}>
+                                                        {file.name}
+                                                    </span>
+                                                    {/* 操作按钮 */}
+                                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                                        {/* 图片可预览（新窗口打开） */}
+                                                        <a
+                                                            href={file.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                                                            title={file.isImg ? '预览图片' : '查看文件'}
+                                                            onClick={e => e.stopPropagation()}
+                                                        >
+                                                            <ExternalLink size={14} />
+                                                        </a>
+                                                        {/* 下载按钮 */}
+                                                        <a
+                                                            href={file.url}
+                                                            download={file.name}
+                                                            className="p-1 text-slate-400 hover:text-emerald-600 transition-colors"
+                                                            title="下载"
+                                                            onClick={e => e.stopPropagation()}
+                                                        >
+                                                            <Download size={14} />
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {/* 图片缩略图预览 */}
+                                        {files.some(f => f.isImg) && (
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {files.filter(f => f.isImg).map((file, idx) => (
+                                                    <a
+                                                        key={idx}
+                                                        href={file.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="block w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all"
+                                                        title={file.name}
+                                                    >
+                                                        <img
+                                                            src={file.url}
+                                                            alt={file.name}
+                                                            className="w-full h-full object-cover"
+                                                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                        />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 

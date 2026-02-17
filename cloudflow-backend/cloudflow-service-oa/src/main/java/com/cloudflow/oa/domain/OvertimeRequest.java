@@ -58,6 +58,18 @@ public class OvertimeRequest implements Serializable {
     /** 加班事由 */
     private String reason;
 
+    /** 加班工作内容 */
+    private String workContent;
+
+    /** 预计产出/成果 */
+    private String expectedOutput;
+
+    /** 是否需要用餐(0否 1是) */
+    private Integer needMeal;
+
+    /** 加班地点(OFFICE办公室/HOME居家/OTHER其他) */
+    private String workLocation;
+
     /** 附件URL */
     private String attachmentUrl;
 
