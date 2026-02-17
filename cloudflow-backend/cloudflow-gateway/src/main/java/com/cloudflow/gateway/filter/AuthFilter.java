@@ -15,11 +15,20 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
+/**
+ * 网关认证过滤器
+ * 
+ * 改造说明（参考 RuoYi-Cloud-Plus 的 Sa-Token Session 共享思路）：
+ * - 网关验证 Token 后，只传递 X-Auth-Token（JWT 中解析出的 UUID）给下游服务
+ * - 不再传递 X-User-Id、X-User-Name、X-User-Roles、X-User-Dept-Name 等明文 Header
+ * - 下游服务通过 X-Auth-Token 从 Redis 读取完整用户信息，避免 Header 伪造和中文编码问题
+ * - 仅保留 X-User-Tenant-Id（纯数字，无编码问题，且租户过滤需要尽早生效）
+ * 
+ * @author CloudFlow
+ */
 @Component
 public class AuthFilter implements GlobalFilter, Ordered {
 
@@ -61,24 +70,20 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
         
-        // 处理角色信息
-        String rolesStr = "";
-        Object rolesObj = loginUser.get("roles");
-        if (rolesObj instanceof Collection) {
-            rolesStr = String.join(",", (Collection<String>) rolesObj);
-        }
+        // 从 loginUser 中获取 Token UUID（登录时存入 Redis 的 UUID）
+        String authToken = (String) loginUser.get("token");
         
-        // 将用户信息传递给下游
+        // 获取租户ID（纯数字，无编码问题）
+        String tenantId = loginUser.containsKey("tenantId") 
+                ? String.valueOf(loginUser.get("tenantId")) 
+                : (request.getHeaders().getFirst("X-Tenant-Id") != null 
+                    ? request.getHeaders().getFirst("X-Tenant-Id") : "100000");
+
+        // 只传递 Token UUID 和租户ID，不再传递明文用户信息
+        // 下游服务的 UserContextInterceptor 会通过 X-Auth-Token 从 Redis 读取完整用户信息
         ServerHttpRequest mutableReq = request.mutate()
-                .header("X-User-Name", (String) loginUser.get("username"))
-                .header("X-User-Id", String.valueOf(loginUser.get("userId")))
-                .header("X-User-Roles", rolesStr)
-                .header("X-User-Dept-Id", String.valueOf(loginUser.get("deptId")))
-                .header("X-User-Dept-Name", encodeDeptName(loginUser.get("deptName")))
-                // 如果 Token 中有租户ID，优先使用；否则检查请求头中的 X-Tenant-Id
-                .header("X-User-Tenant-Id", loginUser.containsKey("tenantId") 
-                        ? String.valueOf(loginUser.get("tenantId")) 
-                        : (request.getHeaders().getFirst("X-Tenant-Id") != null ? request.getHeaders().getFirst("X-Tenant-Id") : "100000"))
+                .header("X-Auth-Token", authToken)
+                .header("X-User-Tenant-Id", tenantId)
                 .build();
 
         return chain.filter(exchange.mutate().request(mutableReq).build());
@@ -90,21 +95,6 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String body = "{\"code\":401,\"msg\":\"未授权或Token已过期\"}";
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
-    }
-
-    /**
-     * 对部门名称进行 URL 编码，确保中文字符能安全传递到 HTTP header
-     * 下游服务的 UserContextInterceptor 会进行解码
-     */
-    private String encodeDeptName(Object deptName) {
-        if (deptName == null) {
-            return "";
-        }
-        try {
-            return java.net.URLEncoder.encode(String.valueOf(deptName), "UTF-8");
-        } catch (Exception e) {
-            return String.valueOf(deptName);
-        }
     }
 
     @Override

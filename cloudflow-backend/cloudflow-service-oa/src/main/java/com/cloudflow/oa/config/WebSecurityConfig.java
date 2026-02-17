@@ -1,5 +1,6 @@
 package com.cloudflow.oa.config;
 
+import com.cloudflow.common.security.filter.SecurityContextFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,8 +15,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * OA 服务 Spring Security 配置
  * 
  * 禁用默认的表单登录（防止重定向到 /login），使用无状态会话模式。
- * 认证由网关 AuthFilter 统一处理，下游服务通过 SecurityContextFilter 
- * 从请求头中提取用户信息。
+ * 认证由网关 AuthFilter 统一处理，下游服务通过 SecurityContextFilter
+ * 从 X-Auth-Token + Redis 读取用户信息并填充 Spring Security Context。
  */
 @Configuration
 @EnableWebSecurity

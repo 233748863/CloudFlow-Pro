@@ -24,8 +24,9 @@ import org.springframework.context.annotation.FilterType;
             // Servlet 依赖类（Gateway 是 WebFlux 环境，不支持 Servlet API）
             "com\\.cloudflow\\.common\\.core\\.exception\\.GlobalExceptionHandler",
             "com\\.cloudflow\\.common\\.core\\.aspect\\.RequestLogAspect",
-            "com\\.cloudflow\\.common\\.core\\.interceptor\\.UserContextInterceptor",
-            "com\\.cloudflow\\.common\\.config\\.WebMvcConfig",
+            "com\\.cloudflow\\.common\\.security\\.interceptor\\.UserContextInterceptor",
+            "com\\.cloudflow\\.common\\.security\\.config\\.SecurityWebMvcConfig",
+            "com\\.cloudflow\\.common\\.security\\.filter\\.SecurityContextFilter",
             "com\\.cloudflow\\.common\\.tenant\\.TenantInterceptor",
             // MyBatis 相关（Gateway 不需要数据库）
             "com\\.cloudflow\\.common\\.config\\.MybatisPlusConfig",

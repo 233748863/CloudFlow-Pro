@@ -4,8 +4,20 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 
-@SpringBootApplication(scanBasePackages = "com.cloudflow", exclude = DataSourceAutoConfiguration.class)
+@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
+@ComponentScan(
+    basePackages = "com.cloudflow",
+    excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = {
+            // Auth 服务没有 spring-security 依赖，排除依赖 Spring Security 的类
+            "com\\.cloudflow\\.common\\.security\\.filter\\.SecurityContextFilter",
+            "com\\.cloudflow\\.common\\.security\\.config\\.SecurityFilterAutoConfig"
+        })
+    }
+)
 @MapperScan("com.cloudflow.auth.mapper")
 public class AuthApplication {
     public static void main(String[] args) {

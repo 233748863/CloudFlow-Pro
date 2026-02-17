@@ -2,6 +2,7 @@ package com.cloudflow.common.core.context;
 
 import com.alibaba.ttl.TransmittableThreadLocal;
 
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -18,6 +19,8 @@ public class UserContext {
     private static final ThreadLocal<Long> USER_DEPT_ID = new TransmittableThreadLocal<>();
     private static final ThreadLocal<String> USER_DEPT_NAME = new TransmittableThreadLocal<>();
     private static final ThreadLocal<Long> USER_TENANT_ID = new TransmittableThreadLocal<>();
+    private static final ThreadLocal<Set<String>> USER_PERMISSIONS = new TransmittableThreadLocal<>();
+    private static final ThreadLocal<String> AUTH_TOKEN = new TransmittableThreadLocal<>();
 
     public static void setUserId(Long userId) {
         USER_ID.set(userId);
@@ -67,6 +70,26 @@ public class UserContext {
         return USER_TENANT_ID.get();
     }
 
+    public static void setPermissions(Set<String> permissions) {
+        USER_PERMISSIONS.set(permissions);
+    }
+
+    public static Set<String> getPermissions() {
+        Set<String> perms = USER_PERMISSIONS.get();
+        return perms != null ? perms : Collections.emptySet();
+    }
+
+    public static void setAuthToken(String token) {
+        AUTH_TOKEN.set(token);
+    }
+
+    /**
+     * 获取当前请求的认证 Token UUID（用于 Feign 服务间调用传递）
+     */
+    public static String getAuthToken() {
+        return AUTH_TOKEN.get();
+    }
+
     /**
      * 清除所有用户上下文信息
      * 必须在请求结束时调用，避免内存泄漏
@@ -78,5 +101,7 @@ public class UserContext {
         USER_DEPT_ID.remove();
         USER_DEPT_NAME.remove();
         USER_TENANT_ID.remove();
+        USER_PERMISSIONS.remove();
+        AUTH_TOKEN.remove();
     }
 }

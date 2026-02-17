@@ -29,6 +29,8 @@ public class ContextTaskDecorator implements TaskDecorator {
         Long deptId = UserContext.getDeptId();
         String deptName = UserContext.getDeptName();
         Long tenantId = UserContext.getTenantId();
+        Set<String> permissions = UserContext.getPermissions();
+        String authToken = UserContext.getAuthToken();
         Long tenantContextId = TenantContext.getTenantId();
 
         return () -> {
@@ -40,6 +42,8 @@ public class ContextTaskDecorator implements TaskDecorator {
                 if (deptId != null) UserContext.setDeptId(deptId);
                 if (deptName != null) UserContext.setDeptName(deptName);
                 if (tenantId != null) UserContext.setTenantId(tenantId);
+                if (permissions != null && !permissions.isEmpty()) UserContext.setPermissions(permissions);
+                if (authToken != null) UserContext.setAuthToken(authToken);
                 if (tenantContextId != null) TenantContext.setTenantId(tenantContextId);
 
                 // 3. 执行任务

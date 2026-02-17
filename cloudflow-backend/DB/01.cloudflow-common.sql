@@ -88,6 +88,7 @@ CREATE TABLE sys_user (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        COMMENT '更新时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  avatar            VARCHAR(500)    DEFAULT '' COMMENT '头像地址',
   PRIMARY KEY (user_id),
   KEY idx_user_tenant (tenant_id),
   UNIQUE KEY uk_user_name_tenant (user_name, tenant_id)
@@ -243,15 +244,15 @@ INSERT INTO sys_role VALUES(4, 100000, 'HR',      'hr',       4, '3', 2, NULL, '
 INSERT INTO sys_role VALUES(5, 100000, 'EMPLOYEE','employee', 5, '2', 4, NULL, '0', '0', 'admin', sysdate(), '', null, '普通员工，仅能发起申请');
 
 -- 4. 初始化用户数据 (密码统一为: 123456, 存储格式为 BCrypt(SHA256(明文密码)))
-INSERT INTO sys_user VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '超级管理员');
-INSERT INTO sys_user VALUES(2,  100000, 101, 'li', '李经理', 'li@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '研发部经理');
-INSERT INTO sys_user VALUES(3,  100000, 102, 'wang', '王财务', 'wang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '财务专员');
-INSERT INTO sys_user VALUES(4,  100000, 103, 'zhao', '赵HR', 'zhao@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, 'HR经理');
-INSERT INTO sys_user VALUES(5,  100000, 101, 'zhang', '张三', 'zhang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '研发工程师');
-INSERT INTO sys_user VALUES(6,  100000, 104, 'liu', '刘法务', 'liu@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '法务总监');
-INSERT INTO sys_user VALUES(7,  100000, 105, 'chen', '陈IT', 'chen@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '系统管理员');
-INSERT INTO sys_user VALUES(8,  100000, 106, 'test_fe', '前端测试', 'test_fe@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '前端组员工');
-INSERT INTO sys_user VALUES(9,  100000, 107, 'test_be', '后端测试', 'test_be@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '后端组员工');
+INSERT INTO sys_user VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '超级管理员', '');
+INSERT INTO sys_user VALUES(2,  100000, 101, 'li', '李经理', 'li@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '研发部经理', '');
+INSERT INTO sys_user VALUES(3,  100000, 102, 'wang', '王财务', 'wang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '财务专员', '');
+INSERT INTO sys_user VALUES(4,  100000, 103, 'zhao', '赵HR', 'zhao@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, 'HR经理', '');
+INSERT INTO sys_user VALUES(5,  100000, 101, 'zhang', '张三', 'zhang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '研发工程师', '');
+INSERT INTO sys_user VALUES(6,  100000, 104, 'liu', '刘法务', 'liu@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '法务总监', '');
+INSERT INTO sys_user VALUES(7,  100000, 105, 'chen', '陈IT', 'chen@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '系统管理员', '');
+INSERT INTO sys_user VALUES(8,  100000, 106, 'test_fe', '前端测试', 'test_fe@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '前端组员工', '');
+INSERT INTO sys_user VALUES(9,  100000, 107, 'test_be', '后端测试', 'test_be@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', sysdate(), '', null, '后端组员工', '');
 
 -- 5. 初始化用户角色关联
 INSERT INTO sys_user_role VALUES(1, 1, 100000);

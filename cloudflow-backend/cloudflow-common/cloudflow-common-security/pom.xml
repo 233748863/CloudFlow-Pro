@@ -26,6 +26,15 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Spring Security（provided，SecurityContextFilter 需要填充 SecurityContext） -->
+        <!-- 下游服务（OA、workflow）自行引入 spring-boot-starter-security -->
+        <!-- 网关通过 excludeFilters 排除 SecurityContextFilter，不会加载此依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

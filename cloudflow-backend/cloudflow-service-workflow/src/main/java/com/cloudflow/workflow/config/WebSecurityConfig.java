@@ -1,5 +1,6 @@
 package com.cloudflow.workflow.config;
 
+import com.cloudflow.common.security.filter.SecurityContextFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,8 +12,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * 启用方法级安全性 (RBAC)
- * 使用标准 Spring Security 过滤器链 (Spring Boot 3.x / Security 6.x)
+ * 工作流服务 Spring Security 配置
+ * 
+ * 启用方法级安全性 (RBAC)，使用统一版 SecurityContextFilter
+ * 从 X-Auth-Token + Redis 读取用户信息并填充 Spring Security Context。
  */
 @Configuration
 @EnableWebSecurity
