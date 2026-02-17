@@ -22,14 +22,19 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * CloudFlow Auth模块数据权限处理器实现
- * 根据用户角色的数据权限类型计算可访问的部门列表
+ * CloudFlow Auth模块数据权限处理器实现（已废弃）
+ * 
+ * 此实现依赖 auth 模块的 Mapper，仅在 auth 服务中可用。
+ * 已被 {@link com.cloudflow.common.datascope.RedisDataScopeHandle} 替代，
+ * 新实现从 UserContext 读取登录时预计算的权限信息，所有微服务通用。
  * 
  * @author CloudFlow
  * @date 2026-02-12
+ * @deprecated 使用 RedisDataScopeHandle 替代
  */
 @Slf4j
-@Component
+@Deprecated
+// @Component  // 已废弃，由 RedisDataScopeHandle 替代
 public class AuthDataScopeHandleImpl implements DataScopeHandle {
     
     @Autowired

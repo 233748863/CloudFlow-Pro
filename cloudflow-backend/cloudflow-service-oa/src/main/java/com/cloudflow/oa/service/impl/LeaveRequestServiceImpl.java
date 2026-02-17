@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.oa.domain.LeaveRequest;
 import com.cloudflow.oa.mapper.LeaveRequestMapper;
 import com.cloudflow.oa.service.ILeaveRequestService;
@@ -51,6 +52,10 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
         }
         // 排除已删除
         wrapper.and(w -> w.isNull(LeaveRequest::getDelFlag).or().ne(LeaveRequest::getDelFlag, "2"));
+
+        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
+        DataScopeHelper.apply(wrapper, LeaveRequest::getUserId, LeaveRequest::getDeptId);
+
         // 按创建时间倒序
         wrapper.orderByDesc(LeaveRequest::getCreateTime);
 

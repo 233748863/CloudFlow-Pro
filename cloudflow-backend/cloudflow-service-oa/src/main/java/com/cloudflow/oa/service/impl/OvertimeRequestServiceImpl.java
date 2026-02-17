@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.oa.domain.OvertimeRequest;
 import com.cloudflow.oa.mapper.OvertimeRequestMapper;
 import com.cloudflow.oa.service.IOvertimeRequestService;
@@ -46,6 +47,10 @@ public class OvertimeRequestServiceImpl extends ServiceImpl<OvertimeRequestMappe
             wrapper.eq(OvertimeRequest::getStatus, query.getStatus());
         }
         wrapper.and(w -> w.isNull(OvertimeRequest::getDelFlag).or().ne(OvertimeRequest::getDelFlag, "2"));
+
+        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
+        DataScopeHelper.apply(wrapper, OvertimeRequest::getUserId, OvertimeRequest::getDeptId);
+
         wrapper.orderByDesc(OvertimeRequest::getCreateTime);
         return page(new Page<>(pageNum, pageSize), wrapper);
     }

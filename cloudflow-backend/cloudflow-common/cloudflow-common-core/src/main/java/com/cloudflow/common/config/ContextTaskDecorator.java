@@ -5,6 +5,7 @@ import com.cloudflow.common.tenant.TenantContext;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.lang.NonNull;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -31,6 +32,8 @@ public class ContextTaskDecorator implements TaskDecorator {
         Long tenantId = UserContext.getTenantId();
         Set<String> permissions = UserContext.getPermissions();
         String authToken = UserContext.getAuthToken();
+        Integer dsType = UserContext.getDsType();
+        List<Long> dsDeptIds = UserContext.getDsDeptIds();
         Long tenantContextId = TenantContext.getTenantId();
 
         return () -> {
@@ -44,6 +47,8 @@ public class ContextTaskDecorator implements TaskDecorator {
                 if (tenantId != null) UserContext.setTenantId(tenantId);
                 if (permissions != null && !permissions.isEmpty()) UserContext.setPermissions(permissions);
                 if (authToken != null) UserContext.setAuthToken(authToken);
+                if (dsType != null) UserContext.setDsType(dsType);
+                if (dsDeptIds != null && !dsDeptIds.isEmpty()) UserContext.setDsDeptIds(dsDeptIds);
                 if (tenantContextId != null) TenantContext.setTenantId(tenantContextId);
 
                 // 3. 执行任务

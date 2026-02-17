@@ -134,6 +134,25 @@ public class SecurityContextFilter extends OncePerRequestFilter {
             }
             UserContext.setPermissions(permissions);
         }
+
+        // 数据权限类型（0全部 1自定义 2本级及下级 3本级 4本人）
+        Object dsTypeObj = loginUser.get("dsType");
+        if (dsTypeObj != null) {
+            if (dsTypeObj instanceof Number) {
+                UserContext.setDsType(((Number) dsTypeObj).intValue());
+            }
+        }
+
+        // 数据权限可访问的部门ID列表
+        Object dsDeptIdsObj = loginUser.get("dsDeptIds");
+        if (dsDeptIdsObj instanceof Collection) {
+            List<Long> dsDeptIds = new ArrayList<>();
+            for (Object id : (Collection<?>) dsDeptIdsObj) {
+                Long val = toLong(id);
+                if (val != null) dsDeptIds.add(val);
+            }
+            UserContext.setDsDeptIds(dsDeptIds);
+        }
     }
 
     /**

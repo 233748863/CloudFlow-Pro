@@ -3,6 +3,7 @@ package com.cloudflow.common.core.context;
 import com.alibaba.ttl.TransmittableThreadLocal;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -21,6 +22,10 @@ public class UserContext {
     private static final ThreadLocal<Long> USER_TENANT_ID = new TransmittableThreadLocal<>();
     private static final ThreadLocal<Set<String>> USER_PERMISSIONS = new TransmittableThreadLocal<>();
     private static final ThreadLocal<String> AUTH_TOKEN = new TransmittableThreadLocal<>();
+    /** 数据权限类型（0全部 1自定义 2本级及下级 3本级 4本人） */
+    private static final ThreadLocal<Integer> USER_DS_TYPE = new TransmittableThreadLocal<>();
+    /** 数据权限可访问的部门ID列表（登录时预计算） */
+    private static final ThreadLocal<List<Long>> USER_DS_DEPT_IDS = new TransmittableThreadLocal<>();
 
     public static void setUserId(Long userId) {
         USER_ID.set(userId);
@@ -90,6 +95,29 @@ public class UserContext {
         return AUTH_TOKEN.get();
     }
 
+    public static void setDsType(Integer dsType) {
+        USER_DS_TYPE.set(dsType);
+    }
+
+    /**
+     * 获取数据权限类型（0全部 1自定义 2本级及下级 3本级 4本人）
+     */
+    public static Integer getDsType() {
+        return USER_DS_TYPE.get();
+    }
+
+    public static void setDsDeptIds(List<Long> deptIds) {
+        USER_DS_DEPT_IDS.set(deptIds);
+    }
+
+    /**
+     * 获取数据权限可访问的部门ID列表
+     */
+    public static List<Long> getDsDeptIds() {
+        List<Long> ids = USER_DS_DEPT_IDS.get();
+        return ids != null ? ids : Collections.emptyList();
+    }
+
     /**
      * 清除所有用户上下文信息
      * 必须在请求结束时调用，避免内存泄漏
@@ -103,5 +131,7 @@ public class UserContext {
         USER_TENANT_ID.remove();
         USER_PERMISSIONS.remove();
         AUTH_TOKEN.remove();
+        USER_DS_TYPE.remove();
+        USER_DS_DEPT_IDS.remove();
     }
 }

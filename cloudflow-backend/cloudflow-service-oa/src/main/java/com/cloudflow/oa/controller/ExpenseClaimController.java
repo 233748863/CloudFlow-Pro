@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.service.IExpenseClaimService;
@@ -38,8 +39,12 @@ public class ExpenseClaimController {
         wrapper.eq(status != null, BizExpenseClaim::getStatus, status)
                .eq(category != null, BizExpenseClaim::getCategory, category)
                .eq(userId != null, BizExpenseClaim::getUserId, userId)
-               .eq(BizExpenseClaim::getDelFlag, "0")
-               .orderByDesc(BizExpenseClaim::getCreateTime);
+               .eq(BizExpenseClaim::getDelFlag, "0");
+
+        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
+        DataScopeHelper.apply(wrapper, BizExpenseClaim::getUserId, BizExpenseClaim::getDeptId);
+
+        wrapper.orderByDesc(BizExpenseClaim::getCreateTime);
         
         return R.ok(expenseClaimService.page(page, wrapper));
     }

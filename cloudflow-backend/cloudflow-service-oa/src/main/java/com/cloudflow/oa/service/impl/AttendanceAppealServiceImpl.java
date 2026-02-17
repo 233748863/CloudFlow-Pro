@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.oa.domain.AttendanceAppeal;
 import com.cloudflow.oa.mapper.AttendanceAppealMapper;
 import com.cloudflow.oa.service.IAttendanceAppealService;
@@ -47,6 +48,10 @@ public class AttendanceAppealServiceImpl extends ServiceImpl<AttendanceAppealMap
         }
         // 排除已删除
         wrapper.and(w -> w.isNull(AttendanceAppeal::getDelFlag).or().ne(AttendanceAppeal::getDelFlag, "2"));
+
+        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
+        DataScopeHelper.apply(wrapper, AttendanceAppeal::getUserId, AttendanceAppeal::getDeptId);
+
         wrapper.orderByDesc(AttendanceAppeal::getCreateTime);
         return page(new Page<>(pageNum, pageSize), wrapper);
     }

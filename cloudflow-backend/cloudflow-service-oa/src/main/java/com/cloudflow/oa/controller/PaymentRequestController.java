@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.service.IPaymentRequestService;
@@ -39,8 +40,12 @@ public class PaymentRequestController {
         wrapper.eq(status != null, BizPaymentRequest::getStatus, status)
                .eq(paymentType != null, BizPaymentRequest::getPaymentType, paymentType)
                .eq(userId != null, BizPaymentRequest::getUserId, userId)
-               .eq(BizPaymentRequest::getDelFlag, "0")
-               .orderByDesc(BizPaymentRequest::getCreateTime);
+               .eq(BizPaymentRequest::getDelFlag, "0");
+
+        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
+        DataScopeHelper.apply(wrapper, BizPaymentRequest::getUserId, BizPaymentRequest::getDeptId);
+
+        wrapper.orderByDesc(BizPaymentRequest::getCreateTime);
         
         return R.ok(paymentRequestService.page(page, wrapper));
     }

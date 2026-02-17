@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.oa.domain.BusinessTrip;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
 import com.cloudflow.oa.service.IBusinessTripService;
@@ -46,6 +47,10 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             wrapper.like(BusinessTrip::getDestination, query.getDestination());
         }
         wrapper.and(w -> w.isNull(BusinessTrip::getDelFlag).or().ne(BusinessTrip::getDelFlag, "2"));
+
+        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
+        DataScopeHelper.apply(wrapper, BusinessTrip::getUserId, BusinessTrip::getDeptId);
+
         wrapper.orderByDesc(BusinessTrip::getCreateTime);
         return page(new Page<>(pageNum, pageSize), wrapper);
     }

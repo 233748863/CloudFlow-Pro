@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.oa.domain.DutySchedule;
 import com.cloudflow.oa.mapper.DutyScheduleMapper;
 import com.cloudflow.oa.service.IDutyScheduleService;
@@ -44,6 +45,10 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
             wrapper.eq(DutySchedule::getDutyDate, query.getDutyDate());
         }
         wrapper.and(w -> w.isNull(DutySchedule::getDelFlag).or().ne(DutySchedule::getDelFlag, "2"));
+
+        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
+        DataScopeHelper.apply(wrapper, DutySchedule::getUserId, DutySchedule::getDeptId);
+
         wrapper.orderByDesc(DutySchedule::getDutyDate);
         return page(new Page<>(pageNum, pageSize), wrapper);
     }
