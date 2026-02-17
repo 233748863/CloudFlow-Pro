@@ -302,7 +302,7 @@ public class AuthController {
 
     /**
      * 计算用户的数据权限信息（登录时一次性算好存入 Redis）
-     * 复用 AuthDataScopeHandleImpl 的逻辑，避免下游服务需要查 auth 库
+     * 下游服务通过 RedisDataScopeHandle 从 UserContext 读取，无需查 auth 库
      * 
      * @param userId 用户ID
      * @param deptId 用户部门ID
