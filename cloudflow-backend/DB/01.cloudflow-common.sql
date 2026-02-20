@@ -318,6 +318,11 @@ INSERT INTO sys_menu VALUES(604, '源码生成',   6, 5, '/code',               
 INSERT INTO sys_menu VALUES(605, '租户管理',   6, 6, '/system/tenant',      'pages/system/TenantList',      NULL, 0, 0, 'C', '0', '0', 'system:tenant:list',         'Building2',       'admin', sysdate(), '', null, '租户管理');
 INSERT INTO sys_menu VALUES(606, '操作日志',   6, 7, '/system/log',         'pages/system/OperationLogPage', NULL, 0, 0, 'C', '0', '0', 'system:log:list',           'ScrollText',      'admin', sysdate(), '', null, '操作日志');
 INSERT INTO sys_menu VALUES(607, '审计日志',   6, 8, '/system/audit-log',   'pages/system/AuditLogPage',    NULL, 0, 0, 'C', '0', '0', 'system:audit:list',          'ClipboardList',   'admin', sysdate(), '', null, '审计日志');
+INSERT INTO sys_menu VALUES(608, '岗位管理',   6, 9, '/system/post',        'pages/system/PostList',        NULL, 0, 0, 'C', '0', '0', 'system:post:list',           'Landmark',        'admin', sysdate(), '', null, '岗位管理');
+INSERT INTO sys_menu VALUES(609, '参数配置',   6, 10, '/system/config',     'pages/system/ConfigList',      NULL, 0, 0, 'C', '0', '0', 'system:config:list',         'SlidersHorizontal','admin', sysdate(), '', null, '参数配置');
+INSERT INTO sys_menu VALUES(610, '缓存监控',   6, 11, '/system/cache',      'pages/system/CacheMonitor',    NULL, 0, 0, 'C', '0', '0', 'system:cache:list',          'DatabaseZap',     'admin', sysdate(), '', null, '缓存监控');
+INSERT INTO sys_menu VALUES(611, '字典管理',   6, 12, '/system/dict',       'pages/admin/DictPage',         NULL, 0, 0, 'C', '0', '0', 'system:dict:list',           'BookOpen',        'admin', sysdate(), '', null, '字典管理');
+INSERT INTO sys_menu VALUES(612, '流程分类',   4, 5, '/workflow/category',  'pages/admin/ProcessCategoryPage', NULL, 0, 0, 'C', '0', '0', 'workflow:category:list',  'FolderTree',      'admin', sysdate(), '', null, '流程分类管理');
 
 -- 办公协同(parent_id=2)扩展菜单：补卡申请、加班申请、出差申请、通讯录
 INSERT INTO sys_menu VALUES(203, '补卡申请',   2, 4, '/office/attendance-appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'office:attendance:appeal',  'ClipboardEdit',   'admin', sysdate(), '', null, '补卡/外勤申请');
@@ -611,6 +616,40 @@ INSERT INTO `sys_dict_data` (`dict_sort`, `dict_label`, `dict_value`, `dict_type
 (4, '住宿费', 'ACCOMMODATION', 'oa_expense_type', 'default'),
 (5, '办公用品', 'OFFICE', 'oa_expense_type', 'default'),
 (6, '其他', 'OTHER', 'oa_expense_type', 'default');
+
+-- =========================================================
+-- 八、系统参数配置
+-- =========================================================
+
+-- 15. 系统参数配置表
+DROP TABLE IF EXISTS sys_config;
+CREATE TABLE sys_config (
+  config_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '参数主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  config_name       VARCHAR(100)    DEFAULT '' COMMENT '参数名称',
+  config_key        VARCHAR(100)    DEFAULT '' COMMENT '参数键名',
+  config_value      VARCHAR(500)    DEFAULT '' COMMENT '参数键值',
+  config_type       CHAR(1)         DEFAULT 'N' COMMENT '系统内置（Y是 N否）',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        COMMENT '更新时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (config_id),
+  UNIQUE KEY uk_config_key_tenant (config_key, tenant_id),
+  KEY idx_config_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='系统参数配置表';
+
+-- 12. 初始化系统参数数据
+INSERT INTO sys_config VALUES(1, 100000, '用户管理-账号初始密码',       'sys.user.initPassword',        '123456',   'Y', 'admin', sysdate(), '', null, '初始化密码 123456');
+INSERT INTO sys_config VALUES(2, 100000, '用户管理-密码最小长度',       'sys.user.password.minLength',   '6',        'Y', 'admin', sysdate(), '', null, '密码最小长度限制');
+INSERT INTO sys_config VALUES(3, 100000, '用户管理-密码最大长度',       'sys.user.password.maxLength',   '20',       'Y', 'admin', sysdate(), '', null, '密码最大长度限制');
+INSERT INTO sys_config VALUES(4, 100000, '用户管理-登录失败锁定次数',   'sys.user.login.maxRetry',       '5',        'Y', 'admin', sysdate(), '', null, '登录失败超过此次数将锁定账号');
+INSERT INTO sys_config VALUES(5, 100000, '用户管理-登录锁定时间(分钟)', 'sys.user.login.lockTime',       '10',       'Y', 'admin', sysdate(), '', null, '账号锁定持续时间');
+INSERT INTO sys_config VALUES(6, 100000, '系统管理-是否开启验证码',     'sys.captcha.enabled',           'true',     'Y', 'admin', sysdate(), '', null, '是否开启登录验证码功能');
+INSERT INTO sys_config VALUES(7, 100000, '系统管理-是否开启用户注册',   'sys.account.registerUser',      'false',    'Y', 'admin', sysdate(), '', null, '是否开启注册用户功能');
+INSERT INTO sys_config VALUES(8, 100000, '文件上传-单文件大小限制(MB)', 'sys.upload.maxFileSize',        '50',       'Y', 'admin', sysdate(), '', null, '单个文件上传大小限制');
+INSERT INTO sys_config VALUES(9, 100000, '文件上传-允许的文件类型',     'sys.upload.allowedTypes',       'jpg,jpeg,png,gif,bmp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar', 'Y', 'admin', sysdate(), '', null, '允许上传的文件扩展名');
 
 SET FOREIGN_KEY_CHECKS = 1;
 

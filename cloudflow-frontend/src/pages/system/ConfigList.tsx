@@ -1,0 +1,198 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Search, X, Loader2, Lock } from 'lucide-react';
+import { toast } from 'sonner';
+import { getConfigList, addConfig, updateConfig, deleteConfig, type SysConfig } from '../../services/api/system';
+
+export const ConfigList = () => {
+  const [configs, setConfigs] = useState<SysConfig[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<SysConfig | null>(null);
+  const [formData, setFormData] = useState<SysConfig>({
+    configName: '', configKey: '', configValue: '', configType: 'N', remark: '',
+  });
+
+  useEffect(() => { fetchConfigs(); }, []);
+
+  const fetchConfigs = async () => {
+    setLoading(true);
+    try {
+      const res: any = await getConfigList({ configName: searchTerm || undefined });
+      const list = Array.isArray(res) ? res : (res?.records || res?.rows || []);
+      setConfigs(list);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchConfigs(); };
+
+  const handleOpenModal = (config?: SysConfig) => {
+    if (config) {
+      setEditingConfig(config);
+      setFormData({ ...config });
+    } else {
+      setEditingConfig(null);
+      setFormData({ configName: '', configKey: '', configValue: '', configType: 'N', remark: '' });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.configName.trim()) { toast.error('请输入参数名称'); return; }
+    if (!formData.configKey.trim()) { toast.error('请输入参数键名'); return; }
+    if (!formData.configValue.trim()) { toast.error('请输入参数键值'); return; }
+    try {
+      if (editingConfig) {
+        await updateConfig({ ...formData, configId: editingConfig.configId });
+        toast.success('参数更新成功');
+      } else {
+        await addConfig(formData);
+        toast.success('参数创建成功');
+      }
+      setIsModalOpen(false);
+      fetchConfigs();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDelete = async (config: SysConfig) => {
+    // 系统内置参数不允许删除
+    if (config.configType === 'Y') {
+      toast.error('系统内置参数不允许删除');
+      return;
+    }
+    if (!window.confirm('确认删除该参数配置吗？')) return;
+    try {
+      await deleteConfig([config.configId!]);
+      toast.success('参数删除成功');
+      fetchConfigs();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const isEdit = !!editingConfig;
+
+  return (
+    <div className="p-6 h-full flex flex-col bg-slate-50">
+      {/* 标题栏 */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">参数配置</h1>
+        <button onClick={() => handleOpenModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
+          <Plus size={18} /> 新增参数
+        </button>
+      </div>
+
+      {/* 搜索栏 */}
+      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+        <form onSubmit={handleSearch} className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input type="text" placeholder="搜索参数名称..." className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors">搜索</button>
+        </form>
+      </div>
+
+      {/* 表格 */}
+      <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数名称</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数键名</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数键值</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">类型</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">创建时间</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {loading ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2" size={18} />加载中...</td></tr>
+              ) : configs.length === 0 ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500">暂无数据</td></tr>
+              ) : configs.map(config => (
+                <tr key={config.configId} className="hover:bg-slate-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{config.configId}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{config.configName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-mono">{config.configKey}</td>
+                  <td className="px-6 py-4 text-sm text-slate-700 max-w-xs truncate" title={config.configValue}>{config.configValue}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.configType === 'Y' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {config.configType === 'Y' ? '内置' : '自定义'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{config.createTime || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
+                    <button onClick={() => handleOpenModal(config)} className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"><Edit size={16} /> 编辑</button>
+                    {config.configType === 'Y' ? (
+                      <span className="text-slate-300 flex items-center gap-1 cursor-not-allowed"><Lock size={16} /> 内置</span>
+                    ) : (
+                      <button onClick={() => handleDelete(config)} className="text-red-600 hover:text-red-900 flex items-center gap-1"><Trash2 size={16} /> 删除</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 新增/编辑弹窗 */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-slate-800">{isEdit ? '编辑参数' : '新增参数'}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">参数名称 <span className="text-red-500">*</span></label>
+                <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.configName} onChange={e => setFormData({ ...formData, configName: e.target.value })} placeholder="如: 用户初始密码" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">参数键名 <span className="text-red-500">*</span></label>
+                  <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono" value={formData.configKey} onChange={e => setFormData({ ...formData, configKey: e.target.value })} placeholder="如: sys.user.initPassword" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">系统内置</label>
+                  <div className="flex gap-4 pt-2">
+                    {[['Y', '是'], ['N', '否']].map(([v, l]) => (
+                      <label key={v} className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" checked={formData.configType === v} onChange={() => setFormData({ ...formData, configType: v })} className="accent-indigo-600" />
+                        <span className="text-sm">{l}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">参数键值 <span className="text-red-500">*</span></label>
+                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none font-mono" rows={3} value={formData.configValue} onChange={e => setFormData({ ...formData, configValue: e.target.value })} placeholder="参数值" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
+                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none" rows={2} value={formData.remark || ''} onChange={e => setFormData({ ...formData, remark: e.target.value })} placeholder="备注信息" />
+              </div>
+            </form>
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
+              <button type="button" onClick={e => handleSubmit(e as any)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">{isEdit ? '保存修改' : '立即创建'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

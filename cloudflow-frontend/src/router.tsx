@@ -59,6 +59,9 @@ const VisitorPage = React.lazy(() => import('./pages/VisitorPage'));
 const DutySchedulePage = React.lazy(() => import('./pages/DutySchedulePage'));
 const DictPage = React.lazy(() => import('./pages/admin/DictPage'));
 const ProcessCategoryPage = React.lazy(() => import('./pages/admin/ProcessCategoryPage'));
+const PostList = React.lazy(() => import('./pages/system/PostList').then(module => ({ default: module.PostList })));
+const ConfigList = React.lazy(() => import('./pages/system/ConfigList').then(module => ({ default: module.ConfigList })));
+const CacheMonitor = React.lazy(() => import('./pages/system/CacheMonitor').then(module => ({ default: module.CacheMonitor })));
 
 
 const Loading = () => (
@@ -243,6 +246,19 @@ const desktopRoutes = [
           {
             path: '/workflow/category',
             element: <Suspense fallback={<Loading />}><ProcessCategoryPage /></Suspense>,
+          },
+          // === 新增系统管理路由 ===
+          {
+            path: '/system/post',
+            element: <Suspense fallback={<Loading />}><PostList /></Suspense>,
+          },
+          {
+            path: '/system/config',
+            element: <Suspense fallback={<Loading />}><ConfigList /></Suspense>,
+          },
+          {
+            path: '/system/cache',
+            element: <Suspense fallback={<Loading />}><CacheMonitor /></Suspense>,
           },
         ],
       },

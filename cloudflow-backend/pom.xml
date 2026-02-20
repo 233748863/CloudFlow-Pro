@@ -38,6 +38,7 @@
         <httpclient5.version>5.2.1</httpclient5.version>
         <dynamic-ds.version>4.3.1</dynamic-ds.version>
         <javers.version>7.6.2</javers.version>
+        <easyexcel.version>3.3.4</easyexcel.version>
     </properties>
 
     <dependencyManagement>
@@ -87,6 +88,62 @@
             <dependency>
                 <groupId>com.cloudflow</groupId>
                 <artifactId>cloudflow-common-data</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-datasource</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-log</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-audit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-idempotent</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-ratelimiter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-encrypt</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- 新增模块 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-excel</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-oss</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-sse</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-job</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-seata</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -176,53 +233,18 @@
                 <version>${dynamic-ds.version}</version>
             </dependency>
 
-            <!-- 内部模块：多数据源公共模块 -->
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-datasource</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- 内部模块：操作日志公共模块 -->
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-log</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- 内部模块：审计日志公共模块 -->
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-audit</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- 内部模块：防重复提交 -->
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-idempotent</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- 内部模块：接口限流 -->
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-ratelimiter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- 内部模块：数据加密 -->
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-encrypt</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
             <!-- Javers 对象差异比较（审计模块使用） -->
             <dependency>
                 <groupId>org.javers</groupId>
                 <artifactId>javers-core</artifactId>
                 <version>${javers.version}</version>
+            </dependency>
+
+            <!-- EasyExcel -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>easyexcel</artifactId>
+                <version>${easyexcel.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -3,7 +3,8 @@ import {
   Users, PlayCircle, ShieldCheck, ChevronRight, ChevronDown, FormInput, Code, Megaphone,
   Calendar, Monitor, Rocket, Briefcase, Building2, Wrench, FolderOpen, Car,
   ClipboardCheck, Package, FileArchive, MailOpen, ScrollText, ClipboardList,
-  ClipboardEdit, Clock, Plane, BookUser, UserCheck, CalendarClock
+  ClipboardEdit, Clock, Plane, BookUser, UserCheck, CalendarClock,
+  Landmark, SlidersHorizontal, DatabaseZap, BookOpen, FolderTree
 } from 'lucide-react';
 
 // 图标名称到组件的映射
@@ -44,6 +45,12 @@ export const iconMap: Record<string, React.ElementType> = {
   'BookUser': BookUser,
   'UserCheck': UserCheck,
   'CalendarClock': CalendarClock,
+  // 系统管理扩展图标
+  'Landmark': Landmark,
+  'SlidersHorizontal': SlidersHorizontal,
+  'DatabaseZap': DatabaseZap,
+  'BookOpen': BookOpen,
+  'FolderTree': FolderTree,
 };
 
 // 获取图标组件，如果找不到则返回默认图标

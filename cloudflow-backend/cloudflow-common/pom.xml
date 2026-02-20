@@ -24,6 +24,11 @@
         <module>cloudflow-common-idempotent</module>
         <module>cloudflow-common-ratelimiter</module>
         <module>cloudflow-common-encrypt</module>
+        <module>cloudflow-common-excel</module>
+        <module>cloudflow-common-oss</module>
+        <module>cloudflow-common-sse</module>
+        <module>cloudflow-common-job</module>
+        <module>cloudflow-common-seata</module>
     </modules>
 
 </project>
