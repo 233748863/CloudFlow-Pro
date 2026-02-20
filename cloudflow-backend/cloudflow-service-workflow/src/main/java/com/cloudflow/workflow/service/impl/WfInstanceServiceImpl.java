@@ -1,0 +1,670 @@
+package com.cloudflow.workflow.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.workflow.domain.*;
+import com.cloudflow.workflow.domain.enums.WfProcessStatus;
+import com.cloudflow.workflow.domain.enums.WfTaskStatus;
+import com.cloudflow.workflow.event.WorkflowEventPublisher;
+import com.cloudflow.workflow.exception.WorkflowException;
+import com.cloudflow.workflow.listener.GlobalListenerDispatcher;
+import com.cloudflow.workflow.mapper.*;
+import com.cloudflow.workflow.security.WorkflowSecurityUtils;
+import com.cloudflow.workflow.service.*;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+/**
+ * 流程实例管理服务实现
+ * 从 WorkflowServiceImpl 拆分而来，负责流程的启动、撤回、暂停、恢复、查询等操作
+ * 参考 RuoYi-Cloud-Plus IFlwInstanceService 设计
+ *
+ * @author CloudFlow
+ */
+@Service
+public class WfInstanceServiceImpl implements IWfInstanceService {
+
+    private static final Logger log = LoggerFactory.getLogger(WfInstanceServiceImpl.class);
+
+    @Autowired
+    private RedissonClient redissonClient;
+    @Autowired
+    private WfProcessInstanceMapper processInstanceMapper;
+    @Autowired
+    private WfProcessDefinitionMapper processDefinitionMapper;
+    @Autowired
+    private WfTaskMapper taskMapper;
+    @Autowired
+    private WfTaskHistoryMapper taskHistoryMapper;
+    @Autowired
+    private WorkflowPermissionService permissionService;
+    @Autowired
+    private RateLimiterService rateLimiterService;
+    @Autowired
+    private WorkflowAuditService auditService;
+    @Autowired
+    private WorkflowSecurityUtils securityUtils;
+    @Autowired
+    private ISysNoticeService sysNoticeService;
+    @Autowired
+    private INodeExecutionService nodeExecutionService;
+    @Autowired
+    private WorkflowEventPublisher workflowEventPublisher;
+    @Autowired
+    private GlobalListenerDispatcher globalListenerDispatcher;
+
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables) {
+        Long currentUserId = UserContext.getUserId();
+        String currentUserName = UserContext.getUserName();
+        log.info("[startProcess] 开始发起流程, processDefKey={}, userId={}", processDefKey, currentUserId);
+
+        if (!StringUtils.hasText(processDefKey)) {
+            throw WorkflowException.validationError("流程定义Key不能为空");
+        }
+
+        rateLimiterService.checkStartProcessLimit(currentUserId != null ? currentUserId : 0L);
+
+        // 查找已发布的最新版本
+        WfProcessDefinition def = processDefinitionMapper.selectOne(
+            new LambdaQueryWrapper<WfProcessDefinition>()
+                .eq(WfProcessDefinition::getProcessKey, processDefKey)
+                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+                .orderByDesc(WfProcessDefinition::getVersion)
+                .last("LIMIT 1")
+        );
+        if (def == null) {
+            throw WorkflowException.processNotFound(processDefKey);
+        }
+
+        // 权限校验：仅管理员可管理流程定义，普通用户可发起
+        // checkDefinitionPermission 用于定义管理，发起流程无需特殊权限
+
+        // 创建流程实例
+        WfProcessInstance instance = new WfProcessInstance();
+        instance.setInstanceId(UUID.randomUUID().toString());
+        instance.setProcessDefKey(processDefKey);
+        instance.setBusinessKey(businessKey);
+        instance.setStartUserId(currentUserId);
+        instance.setStartUserName(currentUserName);
+        instance.setStatus(WfProcessStatus.RUNNING.getCode());
+        instance.setStartTime(new Date());
+
+        // 生成流程编号
+        String processNo = generateProcessNo(processDefKey);
+        instance.setProcessNo(processNo);
+
+        // 设置标题
+        String title = def.getProcessName();
+        if (variables != null && variables.containsKey("_title")) {
+            title = String.valueOf(variables.get("_title"));
+        }
+        instance.setTitle(securityUtils.sanitizeXss(title));
+
+        // 序列化变量
+        if (variables != null && !variables.isEmpty()) {
+            try {
+                instance.setVariables(objectMapper.writeValueAsString(variables));
+            } catch (Exception e) {
+                log.warn("[startProcess] 序列化变量失败: {}", e.getMessage());
+            }
+        }
+
+        processInstanceMapper.insert(instance);
+
+        // 发布流程启动事件
+        workflowEventPublisher.publishProcessStarted(instance);
+
+        // P2-9: 全局监听器 — 流程创建阶段回调（在第一个节点执行前）
+        globalListenerDispatcher.fireCreate(instance, variables);
+
+        // 解析流程模型并执行第一个节点
+        try {
+            if (StringUtils.hasText(def.getModelJson())) {
+                WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                // 跳过 START 节点，执行 next
+                WfNodeConfig firstNode = root;
+                if ("START".equals(root.getType()) && root.getNext() != null) {
+                    firstNode = root.getNext();
+                }
+                nodeExecutionService.runNode(instance, firstNode, variables != null ? variables : new HashMap<>(), 0, root);
+            }
+        } catch (WorkflowException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[startProcess] 流程启动失败: {}", e.getMessage(), e);
+            throw new WorkflowException("START_FAILED", "流程启动失败: " + e.getMessage(), e);
+        }
+
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_START, instance.getInstanceId(),
+            "processDefKey=" + processDefKey + ", processNo=" + processNo);
+
+        Map<String, String> result = new HashMap<>();
+        result.put("instanceId", instance.getInstanceId());
+        result.put("processNo", processNo);
+        return R.ok(result);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> recallProcess(String instanceId) {
+        log.info("[recallProcess] 开始撤回流程, instanceId={}", instanceId);
+
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+
+        // 只有发起人可以撤回
+        Long currentUserId = UserContext.getUserId();
+        if (!instance.getStartUserId().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
+            throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有流程发起人可以撤回");
+        }
+
+        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+            throw WorkflowException.invalidState("只有运行中的流程可以撤回");
+        }
+
+        // 检查是否只在第一个审批节点（未被审批过）
+        List<WfTaskHistory> histories = taskHistoryMapper.selectList(
+            new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getInstanceId, instanceId)
+                .orderByAsc(WfTaskHistory::getCreateTime)
+        );
+        if (histories != null && !histories.isEmpty()) {
+            throw WorkflowException.invalidState("流程已有审批记录，无法撤回");
+        }
+
+        // 删除所有待办任务
+        taskMapper.delete(new LambdaQueryWrapper<WfTask>().eq(WfTask::getInstanceId, instanceId));
+
+        // 更新实例状态
+        instance.setStatus(WfProcessStatus.REVOKED.getCode());
+        instance.setEndTime(new Date());
+        processInstanceMapper.updateById(instance);
+
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId, "");
+        return R.ok();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> pauseProcess(String instanceId) {
+        log.info("[pauseProcess] 暂停流程, instanceId={}", instanceId);
+
+        permissionService.checkDefinitionPermission("暂停流程");
+
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+            throw WorkflowException.invalidState("只有运行中的流程可以暂停");
+        }
+
+        instance.setStatus(WfProcessStatus.SUSPENDED.getCode());
+        processInstanceMapper.updateById(instance);
+
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_PAUSE, instanceId, "");
+        return R.ok();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> resumeProcess(String instanceId) {
+        log.info("[resumeProcess] 恢复流程, instanceId={}", instanceId);
+
+        permissionService.checkDefinitionPermission("恢复流程");
+
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+        if (!WfProcessStatus.SUSPENDED.getCode().equals(instance.getStatus())) {
+            throw WorkflowException.invalidState("只有暂停中的流程可以恢复");
+        }
+
+        instance.setStatus(WfProcessStatus.RUNNING.getCode());
+        processInstanceMapper.updateById(instance);
+
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_RESUME, instanceId, "");
+        return R.ok();
+    }
+
+    @Override
+    public WfProcessInstance getProcessInstance(String instanceId) {
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+        return instance;
+    }
+
+    @Override
+    public Map<String, Object> getProcessTrace(String instanceId) {
+        log.info("[getProcessTrace] 查询流程追踪, instanceId={}", instanceId);
+
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+
+        // 查询历史记录
+        List<WfTaskHistory> histories = taskHistoryMapper.selectList(
+            new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getInstanceId, instanceId)
+                .orderByAsc(WfTaskHistory::getCreateTime)
+        );
+
+        // 查询当前活动任务
+        List<WfTask> activeTasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, instanceId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+
+        // 已完成节点
+        List<String> finishedNodeKeys = histories.stream()
+            .map(WfTaskHistory::getNodeKey)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+
+        // 活动节点
+        List<String> activeNodeKeys = activeTasks.stream()
+            .map(WfTask::getNodeKey)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+
+        // 构建历史详情
+        List<Map<String, Object>> historyDetails = new ArrayList<>();
+        for (WfTaskHistory h : histories) {
+            Map<String, Object> detail = new HashMap<>();
+            detail.put("nodeKey", h.getNodeKey());
+            detail.put("nodeName", h.getNodeName());
+            detail.put("operatorId", h.getOperatorId());
+            detail.put("operatorName", h.getOperatorName());
+            detail.put("action", h.getAction());
+            detail.put("comment", h.getComment());
+            detail.put("createTime", h.getCreateTime());
+            detail.put("durationSeconds", h.getDurationSeconds());
+            historyDetails.add(detail);
+        }
+
+        // 构建活动任务详情
+        List<Map<String, Object>> activeDetails = new ArrayList<>();
+        for (WfTask t : activeTasks) {
+            Map<String, Object> detail = new HashMap<>();
+            detail.put("taskId", t.getTaskId());
+            detail.put("nodeKey", t.getNodeKey());
+            detail.put("nodeName", t.getNodeName());
+            detail.put("assignee", t.getAssignee());
+            detail.put("createTime", t.getCreateTime());
+            activeDetails.add(detail);
+        }
+
+        // 构建步骤详情
+        List<Map<String, Object>> stepsDetail = null;
+        try {
+            WfProcessDefinition def = processDefinitionMapper.selectOne(
+                new LambdaQueryWrapper<WfProcessDefinition>()
+                    .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                    .orderByDesc(WfProcessDefinition::getVersion)
+                    .last("LIMIT 1")
+            );
+            if (def != null && StringUtils.hasText(def.getModelJson())) {
+                WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
+                String currentNodeKey = activeNodeKeys.isEmpty() ? null : activeNodeKeys.get(0);
+                stepsDetail = nodeExecutionService.buildAllStepsDetail(steps, histories, currentNodeKey);
+            }
+        } catch (Exception e) {
+            log.warn("[getProcessTrace] 构建步骤详情失败: {}", e.getMessage());
+        }
+
+        // 检测并行分支
+        List<Map<String, Object>> parallelBranches = new ArrayList<>();
+        if (activeNodeKeys.size() > 1) {
+            for (WfTask t : activeTasks) {
+                Map<String, Object> branch = new HashMap<>();
+                branch.put("nodeKey", t.getNodeKey());
+                branch.put("nodeName", t.getNodeName());
+                branch.put("assignee", t.getAssignee());
+                parallelBranches.add(branch);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("instanceId", instanceId);
+        result.put("status", instance.getStatus());
+        result.put("finished", finishedNodeKeys);
+        result.put("active", activeNodeKeys);
+        result.put("historyDetails", historyDetails);
+        result.put("activeDetails", activeDetails);
+        result.put("parallelBranches", parallelBranches);
+        if (stepsDetail != null) {
+            result.put("stepsDetail", stepsDetail);
+        }
+        return result;
+    }
+
+    @Override
+    public PageResult<WfProcessInstance> getMyInstances(Long userId, PageQuery pageQuery) {
+        Page<WfProcessInstance> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
+        LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(WfProcessInstance::getStartUserId, userId);
+
+        String status = (String) pageQuery.getParams().get("status");
+        if (StringUtils.hasText(status)) {
+            queryWrapper.eq(WfProcessInstance::getStatus, status);
+        }
+
+        String keyword = (String) pageQuery.getParams().get("keyword");
+        if (StringUtils.hasText(keyword)) {
+            queryWrapper.and(w -> w
+                .like(WfProcessInstance::getTitle, keyword)
+                .or()
+                .like(WfProcessInstance::getProcessNo, keyword)
+            );
+        }
+
+        queryWrapper.orderByDesc(WfProcessInstance::getStartTime);
+
+        Page<WfProcessInstance> resultPage = processInstanceMapper.selectPage(page, queryWrapper);
+        return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables) {
+        log.info("[continueFromTimerNode] 定时节点到期, instanceId={}, nodeKey={}", instanceId, nodeKey);
+
+        RLock lock = redissonClient.getLock("lock:timer:" + instanceId + ":" + nodeKey);
+        try {
+            if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
+                WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+                if (instance == null || !WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
+                    log.warn("[continueFromTimerNode] 实例不存在或非运行状态, instanceId={}", instanceId);
+                    return;
+                }
+
+                WfProcessDefinition def = processDefinitionMapper.selectOne(
+                    new LambdaQueryWrapper<WfProcessDefinition>()
+                        .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                        .orderByDesc(WfProcessDefinition::getVersion)
+                        .last("LIMIT 1")
+                );
+
+                if (def != null && StringUtils.hasText(def.getModelJson())) {
+                    WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                    WfNodeConfig timerNode = nodeExecutionService.findNode(root, nodeKey);
+                    if (timerNode != null) {
+                        nodeExecutionService.advanceAfterNode(instance, timerNode, nodeKey, variables, 0, root);
+                    }
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("[continueFromTimerNode] 被中断", e);
+        } catch (Exception e) {
+            log.error("[continueFromTimerNode] 定时节点流转失败: {}", e.getMessage(), e);
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    // ==================== P1-6: 流程图渲染数据 ====================
+
+    @Override
+    public Map<String, Object> getFlowchartData(String instanceId) {
+        log.info("[getFlowchartData] 获取流程图数据, instanceId={}", instanceId);
+
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+
+        // 查询流程定义获取模型JSON
+        WfProcessDefinition def = processDefinitionMapper.selectOne(
+            new LambdaQueryWrapper<WfProcessDefinition>()
+                .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                .orderByDesc(WfProcessDefinition::getVersion)
+                .last("LIMIT 1")
+        );
+        if (def == null || !StringUtils.hasText(def.getModelJson())) {
+            throw WorkflowException.processNotFound(instance.getProcessDefKey());
+        }
+
+        // 查询运行时状态
+        List<WfTaskHistory> histories = taskHistoryMapper.selectList(
+            new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getInstanceId, instanceId)
+                .orderByAsc(WfTaskHistory::getCreateTime)
+        );
+        List<WfTask> activeTasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, instanceId)
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+
+        // 已完成节点Key集合
+        Set<String> finishedNodeKeys = histories.stream()
+            .map(WfTaskHistory::getNodeKey)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        // 活动节点Key集合
+        Set<String> activeNodeKeys = activeTasks.stream()
+            .map(WfTask::getNodeKey)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        // 解析模型JSON，递归构建节点和连线
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        List<Map<String, Object>> edges = new ArrayList<>();
+
+        try {
+            WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+            int[] position = {0}; // 用于自动布局的Y坐标计数器
+            buildFlowchartNodes(root, nodes, edges, finishedNodeKeys, activeNodeKeys, instance.getStatus(), position, null);
+        } catch (Exception e) {
+            log.error("[getFlowchartData] 解析流程模型失败: {}", e.getMessage(), e);
+            throw new WorkflowException("PARSE_FAILED", "解析流程模型失败", e);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("instanceId", instanceId);
+        result.put("processStatus", instance.getStatus());
+        result.put("nodes", nodes);
+        result.put("edges", edges);
+        return result;
+    }
+
+    /**
+     * 递归构建流程图节点和连线
+     *
+     * @param node             当前节点配置
+     * @param nodes            节点列表（输出）
+     * @param edges            连线列表（输出）
+     * @param finishedNodeKeys 已完成节点Key集合
+     * @param activeNodeKeys   活动节点Key集合
+     * @param processStatus    流程实例状态
+     * @param position         Y坐标计数器（自动布局）
+     * @param parentId         父节点ID（用于生成连线）
+     */
+    private void buildFlowchartNodes(WfNodeConfig node, List<Map<String, Object>> nodes,
+                                     List<Map<String, Object>> edges, Set<String> finishedNodeKeys,
+                                     Set<String> activeNodeKeys, String processStatus,
+                                     int[] position, String parentId) {
+        if (node == null) return;
+
+        String nodeId = node.getId();
+        String nodeType = node.getType();
+
+        // 确定节点运行时状态
+        String status;
+        if (finishedNodeKeys.contains(nodeId)) {
+            status = "completed";
+        } else if (activeNodeKeys.contains(nodeId)) {
+            status = "active";
+        } else if ("END".equals(nodeType) && "COMPLETED".equals(processStatus)) {
+            status = "completed";
+        } else if ("START".equals(nodeType)) {
+            status = "completed"; // 开始节点始终已完成
+        } else {
+            status = "pending";
+        }
+
+        // 构建节点数据
+        Map<String, Object> nodeData = new HashMap<>();
+        nodeData.put("id", nodeId);
+        nodeData.put("type", nodeType);
+        nodeData.put("label", node.getTitle());
+        nodeData.put("status", status);
+        nodeData.put("x", 250); // 默认X坐标（居中）
+        nodeData.put("y", position[0] * 120 + 60); // 按顺序纵向排列
+        // icon 存储在 props Map 中
+        if (node.getProps() != null && node.getProps().get("icon") != null) {
+            nodeData.put("icon", node.getProps().get("icon"));
+        }
+        if (node.getApproverType() != null) {
+            nodeData.put("approverType", node.getApproverType());
+        }
+        nodes.add(nodeData);
+        position[0]++;
+
+        // 生成从父节点到当前节点的连线
+        if (parentId != null) {
+            Map<String, Object> edge = new HashMap<>();
+            edge.put("id", parentId + "->" + nodeId);
+            edge.put("source", parentId);
+            edge.put("target", nodeId);
+            // 连线状态：如果目标节点已完成或活动，则连线高亮
+            edge.put("status", "completed".equals(status) || "active".equals(status) ? "active" : "pending");
+            edges.add(edge);
+        }
+
+        // 处理分支（条件网关/并行网关）
+        if (node.getBranches() != null && !node.getBranches().isEmpty()) {
+            for (WfNodeConfig branch : node.getBranches()) {
+                buildFlowchartNodes(branch, nodes, edges, finishedNodeKeys, activeNodeKeys, processStatus, position, nodeId);
+            }
+        }
+
+        // 处理下一个节点
+        if (node.getNext() != null) {
+            buildFlowchartNodes(node.getNext(), nodes, edges, finishedNodeKeys, activeNodeKeys, processStatus, position, nodeId);
+        }
+    }
+
+    // ==================== P1-7: 作废流程 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> invalidateProcess(String instanceId, String reason) {
+        log.info("[invalidateProcess] 作废流程, instanceId={}, reason={}", instanceId, reason);
+
+        // 权限校验：仅管理员可作废
+        permissionService.checkDefinitionPermission("作废流程");
+
+        if (!StringUtils.hasText(reason)) {
+            throw WorkflowException.validationError("作废原因不能为空");
+        }
+
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+
+        // 只有运行中或暂停中的流程可以作废
+        String currentStatus = instance.getStatus();
+        if (!WfProcessStatus.RUNNING.getCode().equals(currentStatus)
+                && !WfProcessStatus.SUSPENDED.getCode().equals(currentStatus)) {
+            throw WorkflowException.invalidState("只有运行中或暂停中的流程可以作废，当前状态: " + currentStatus);
+        }
+
+        // 1. 删除所有待办任务
+        List<WfTask> pendingTasks = taskMapper.selectList(
+            new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, instanceId)
+                .in(WfTask::getStatus, Arrays.asList(
+                    WfTaskStatus.TODO.getCode(),
+                    WfTaskStatus.SUSPENDED.getCode(),
+                    WfTaskStatus.DELEGATED.getCode()))
+        );
+        for (WfTask task : pendingTasks) {
+            // 记录任务作废历史
+            WfTaskHistory h = new WfTaskHistory();
+            h.setHistoryId(UUID.randomUUID().toString());
+            h.setTaskId(task.getTaskId());
+            h.setInstanceId(instanceId);
+            h.setNodeKey(task.getNodeKey());
+            h.setNodeName(task.getNodeName());
+            h.setOperatorId(UserContext.getUserId());
+            h.setOperatorName(UserContext.getUserName());
+            h.setAction("INVALIDATE");
+            h.setComment("流程作废: " + securityUtils.sanitizeXss(reason));
+            h.setCreateTime(new Date());
+            taskHistoryMapper.insert(h);
+
+            taskMapper.deleteById(task.getTaskId());
+        }
+
+        // 2. 更新实例状态为INVALIDATED
+        instance.setStatus(WfProcessStatus.INVALIDATED.getCode());
+        instance.setEndTime(new Date());
+        processInstanceMapper.updateById(instance);
+
+        // 3. 记录审计日志
+        auditService.log(WorkflowAuditService.AuditAction.PROCESS_INVALIDATE, instanceId,
+            "reason=" + reason + ", deletedTasks=" + pendingTasks.size());
+
+        // 4. 通知流程发起人
+        if (instance.getStartUserId() != null) {
+            Long adminUserId = UserContext.getUserId();
+            String adminUserName = UserContext.getUserName();
+            sysNoticeService.sendNotice(instance.getStartUserId(), "流程作废通知",
+                String.format("您发起的流程 [%s] 已被管理员作废，原因：%s", instance.getTitle(), reason),
+                "SYSTEM", adminUserId != null ? adminUserId : 0L, adminUserName != null ? adminUserName : "系统");
+        }
+
+        log.info("[invalidateProcess] 流程作废完成, 删除{}个待办任务", pendingTasks.size());
+        return R.ok(Map.of("deletedTasks", pendingTasks.size()));
+    }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 生成流程编号
+     */
+    private String generateProcessNo(String processDefKey) {
+        String prefix = processDefKey.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        if (prefix.length() > 6) prefix = prefix.substring(0, 6);
+        String datePart = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
+        String randomPart = String.format("%04d", new Random().nextInt(10000));
+        return prefix + datePart + randomPart;
+    }
+}

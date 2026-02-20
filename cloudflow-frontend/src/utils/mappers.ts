@@ -34,6 +34,8 @@ interface BackendTask {
   nextNodeName?: string;
   nextAssigneeName?: string;
   stepsDetail?: StepDetail[];
+  /** 节点级按钮权限列表（后端 enrichTodoTasks 注入） */
+  buttonPermissions?: string[];
 }
 
 /** 后端流程实例数据结构（我的申请） */
@@ -95,6 +97,8 @@ export const mapBackendTaskToFrontend = (t: BackendTask): Task => ({
   nextNodeName: t.nextNodeName,
   nextAssigneeName: t.nextAssigneeName,
   stepsDetail: t.stepsDetail || undefined,
+  // P0-7: 节点级按钮权限（后端从流程定义节点配置中提取）
+  buttonPermissions: t.buttonPermissions || undefined,
 });
 
 export const mapBackendInstanceToTask = (inst: BackendInstance): Task => ({

@@ -400,6 +400,144 @@ export async function batchMarkCopyAsRead(copyIds: number[]): Promise<void> {
   return request.post('/workflow/copy/batch-read', { copyIds });
 }
 
+// ==================== P1 增强功能 API ====================
+
+/**
+ * 加签请求参数
+ */
+export interface AddSignRequest {
+  taskId: string;
+  signType: 'BEFORE' | 'AFTER' | 'PARALLEL'; // 前加签/后加签/并行加签
+  userIds: number[];
+  userNames: string[];
+  reason?: string;
+}
+
+/**
+ * 减签请求参数
+ */
+export interface RemoveSignRequest {
+  taskId: string;
+  userIds: number[];
+  reason?: string;
+}
+
+/**
+ * 委派任务请求参数
+ */
+export interface DelegateTaskRequest {
+  taskId: string;
+  toUserId: number;
+  toUserName: string;
+  mode: 'TRANSFER' | 'DELEGATE'; // 直接转办 / 委派后回到委派人
+  reason?: string;
+}
+
+/**
+ * 作废流程请求参数
+ */
+export interface InvalidateProcessRequest {
+  instanceId: string;
+  reason: string;
+}
+
+/**
+ * 流程图节点
+ */
+export interface FlowchartNode {
+  id: string;
+  type: string;
+  label: string;
+  status?: 'completed' | 'active' | 'pending';
+  x: number;
+  y: number;
+  icon?: string;
+  approverType?: string;
+  approverValue?: string;
+  condition?: string;
+}
+
+/**
+ * 流程图连线
+ */
+export interface FlowchartEdge {
+  id: string;
+  source: string;
+  target: string;
+  status?: 'active' | 'pending';
+  label?: string;
+}
+
+/**
+ * 流程图数据（实例级别，含运行时状态）
+ */
+export interface FlowchartData {
+  instanceId: string;
+  processStatus: string;
+  nodes: FlowchartNode[];
+  edges: FlowchartEdge[];
+}
+
+/**
+ * 流程图结构（定义级别，仅结构）
+ */
+export interface FlowchartStructure {
+  definitionId: string;
+  processKey: string;
+  processName: string;
+  version: number;
+  nodes: FlowchartNode[];
+  edges: FlowchartEdge[];
+}
+
+/**
+ * P1-4: 加签
+ */
+export async function addSign(data: AddSignRequest): Promise<string> {
+  logApiCall('POST', '/workflow/enhance/task/addSign', data);
+  return request.post('/workflow/enhance/task/addSign', data);
+}
+
+/**
+ * P1-4: 减签
+ */
+export async function removeSign(data: RemoveSignRequest): Promise<number> {
+  logApiCall('POST', '/workflow/enhance/task/removeSign', data);
+  return request.post('/workflow/enhance/task/removeSign', data);
+}
+
+/**
+ * P1-5: 委派任务（支持直接转办和委派后回到委派人两种模式）
+ */
+export async function delegateTask(data: DelegateTaskRequest): Promise<void> {
+  logApiCall('POST', '/workflow/enhance/task/delegate', data);
+  return request.post('/workflow/enhance/task/delegate', data);
+}
+
+/**
+ * P1-6: 获取流程图数据（实例级别，含运行时状态）
+ */
+export async function getFlowchartData(instanceId: string): Promise<FlowchartData> {
+  logApiCall('GET', `/workflow/enhance/flowchart/${instanceId}`);
+  return request.get(`/workflow/enhance/flowchart/${instanceId}`);
+}
+
+/**
+ * P1-6: 获取流程图结构（定义级别，仅结构）
+ */
+export async function getFlowchartStructure(definitionId: string): Promise<FlowchartStructure> {
+  logApiCall('GET', `/workflow/enhance/flowchart/definition/${definitionId}`);
+  return request.get(`/workflow/enhance/flowchart/definition/${definitionId}`);
+}
+
+/**
+ * P1-7: 作废流程
+ */
+export async function invalidateProcess(data: InvalidateProcessRequest): Promise<{ deletedTasks: number }> {
+  logApiCall('POST', '/workflow/enhance/instance/invalidate', data);
+  return request.post('/workflow/enhance/instance/invalidate', data);
+}
+
 // ==================== 导出所有 API ====================
 
 export default {
@@ -445,4 +583,12 @@ export default {
   getCopyUnreadCount,
   markCopyAsRead,
   batchMarkCopyAsRead,
+
+  // P1 增强功能
+  addSign,
+  removeSign,
+  delegateTask,
+  getFlowchartData,
+  getFlowchartStructure,
+  invalidateProcess,
 };

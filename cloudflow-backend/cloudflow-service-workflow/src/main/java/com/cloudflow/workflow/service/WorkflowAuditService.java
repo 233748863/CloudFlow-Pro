@@ -44,6 +44,9 @@ public class WorkflowAuditService {
         PROCESS_RECALL("流程撤回"),
         PROCESS_COMPLETE("流程完成"),
         PROCESS_REJECT("流程拒绝"),
+        PROCESS_PAUSE("流程暂停"),
+        PROCESS_RESUME("流程恢复"),
+        PROCESS_INVALIDATE("流程作废"),
         
         // 任务操作
         TASK_COMPLETE("任务完成"),

@@ -84,6 +84,75 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         return R.ok();
     }
 
+    // ==================== P1-5: 委派审批（委派后回到委派人） ====================
+
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> delegateWithReturn(String taskId, Long toUserId, String toUserName, String reason) {
+        log.info("[delegateWithReturn] taskId={}, toUserId={}", taskId, toUserId);
+        WfTask task = taskMapper.selectById(taskId);
+        if (task == null) { throw WorkflowException.taskNotFound(taskId); }
+
+        Long fromUserId = task.getAssignee();
+        String fromUserName = task.getAssigneeName();
+
+        // 1. 创建委派记录，状态为ACTIVE（等待被委派人处理后回到委派人）
+        WfTaskDelegation delegation = new WfTaskDelegation();
+        delegation.setDelegationId(UUID.randomUUID().toString());
+        delegation.setTaskId(taskId);
+        delegation.setInstanceId(task.getInstanceId());
+        delegation.setDelegationType("DELEGATE_RETURN"); // 委派后回到委派人模式
+        delegation.setFromUserId(fromUserId);
+        delegation.setFromUserName(fromUserName);
+        delegation.setToUserId(toUserId);
+        delegation.setToUserName(toUserName);
+        delegation.setReason(reason);
+        delegation.setStatus("ACTIVE"); // 等待被委派人处理
+        delegation.setStartTime(new Date());
+        delegation.setCreateTime(new Date());
+        delegationMapper.insert(delegation);
+
+        // 2. 将原任务挂起，记录委派信息到candidateRoles字段
+        task.setStatus("DELEGATED");
+        task.setCandidateRoles("DELEGATE_RETURN:" + delegation.getDelegationId());
+        taskMapper.updateById(task);
+
+        // 3. 创建新任务给被委派人
+        WfTask delegatedTask = new WfTask();
+        delegatedTask.setTaskId(UUID.randomUUID().toString());
+        delegatedTask.setInstanceId(task.getInstanceId());
+        delegatedTask.setNodeKey(task.getNodeKey());
+        delegatedTask.setNodeName(task.getNodeName() + "(委派)");
+        delegatedTask.setAssignee(toUserId);
+        delegatedTask.setAssigneeName(toUserName);
+        delegatedTask.setStatus("TODO");
+        delegatedTask.setPriority(task.getPriority());
+        delegatedTask.setCreateTime(new Date());
+        // 关联原任务，被委派人完成后用于回溯
+        delegatedTask.setCandidateRoles("DELEGATE_FROM:" + taskId + ":" + delegation.getDelegationId());
+        taskMapper.insert(delegatedTask);
+
+        // 4. 记录历史
+        WfTaskHistory h = new WfTaskHistory();
+        h.setHistoryId(UUID.randomUUID().toString());
+        h.setTaskId(taskId);
+        h.setInstanceId(task.getInstanceId());
+        h.setNodeKey(task.getNodeKey());
+        h.setNodeName(task.getNodeName());
+        h.setOperatorId(fromUserId);
+        h.setOperatorName(fromUserName);
+        h.setAction("DELEGATE_WITH_RETURN");
+        h.setComment("委派给 " + toUserName + "，原因：" + (reason != null ? reason : ""));
+        h.setCreateTime(new Date());
+        taskHistoryMapper.insert(h);
+
+        // 5. 通知被委派人
+        sendNotification("TASK_DELEGATE", toUserId, "委派任务通知",
+                String.format("用户 %s 将任务 [%s] 委派给您审批，完成后将回到委派人确认", fromUserName, task.getNodeName()));
+
+        log.info("[delegateWithReturn] 委派成功, delegationId={}, newTaskId={}", delegation.getDelegationId(), delegatedTask.getTaskId());
+        return R.ok(Map.of("delegationId", delegation.getDelegationId(), "delegatedTaskId", delegatedTask.getTaskId()));
+    }
+
     // ==================== P4.2: 加签 ====================
 
     @Transactional(rollbackFor = Exception.class)

@@ -15,8 +15,19 @@ public interface IWorkflowP4Service {
 
     // ==================== 审批流程增强 ====================
 
-    /** P4.1: 任务委托/转办 */
+    /** P4.1: 任务委托/转办（直接转办模式） */
     R<?> delegateTask(String taskId, Long toUserId, String toUserName, String reason);
+
+    /**
+     * P1-5: 委派审批（委派后回到委派人模式）
+     * 目标用户处理完成后，任务自动回到委派人进行最终确认
+     * @param taskId 任务ID
+     * @param toUserId 被委派人ID
+     * @param toUserName 被委派人名称
+     * @param reason 委派原因
+     * @return 结果
+     */
+    R<?> delegateWithReturn(String taskId, Long toUserId, String toUserName, String reason);
 
     /** P4.2: 加签（BEFORE/AFTER/PARALLEL） */
     R<?> addSign(String taskId, List<Long> userIds, List<String> userNames, String signType, String reason);

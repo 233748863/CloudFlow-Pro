@@ -6,7 +6,7 @@ import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.cloudflow.workflow.service.impl.WorkflowServiceImpl;
+import com.cloudflow.workflow.service.INodeExecutionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -43,7 +43,7 @@ public class TimerSchedulerService {
     private WfProcessDefinitionMapper processDefinitionMapper;
 
     @Autowired
-    private WorkflowServiceImpl workflowService;
+    private INodeExecutionService nodeExecutionService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -164,8 +164,8 @@ public class TimerSchedulerService {
                 return;
             }
             
-            // 继续执行流程
-            workflowService.runNode(instance, nextNode, variables, 0, root);
+            // 继续执行流程（委托给节点执行引擎）
+            nodeExecutionService.runNode(instance, nextNode, variables != null ? variables : new java.util.HashMap<>(), 0, root);
             
             log.info("[triggerTimer] 定时任务触发成功, instanceId={}, nodeKey={}", instanceId, nodeKey);
             

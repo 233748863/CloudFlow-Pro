@@ -10,13 +10,26 @@ import org.springframework.stereotype.Component;
 
 /**
  * 工作流事件发布器
- * 封装 Spring ApplicationEventPublisher，提供语义化的事件发布方法。
- * 在 WorkflowServiceImpl 的关键节点调用，将业务逻辑与事件处理解耦。
  *
- * 设计思路：
- * - 替代 poco-flow 中 Flowable 引擎的全局事件监听机制
- * - 通过 Spring Event 实现松耦合的事件驱动架构
- * - 事件发布失败不影响主流程（catch 异常后仅记录日志）
+ * 封装 Spring ApplicationEventPublisher，发布类型安全的工作流事件。
+ * 外部模块通过 @EventListener 按事件类型监听，无需了解内部实现。
+ *
+ * 事件层次结构：
+ *   BaseWorkflowEvent
+ *   ├── ProcessEvent（流程级）
+ *   │   ├── ProcessStartedEvent
+ *   │   ├── ProcessCompletedEvent
+ *   │   ├── ProcessRejectedEvent
+ *   │   ├── ProcessRevokedEvent
+ *   │   └── ProcessInvalidatedEvent
+ *   ├── TaskEvent（任务级）
+ *   │   ├── TaskAssignedEvent
+ *   │   └── TaskCompletedEvent
+ *   └── NodeEvent（节点级）
+ *       ├── NodeStartedEvent
+ *       └── NodeCompletedEvent
+ *
+ * 事件发布失败不影响主流程（catch 异常后仅记录日志）。
  */
 @Component
 public class WorkflowEventPublisher {
@@ -33,191 +46,209 @@ public class WorkflowEventPublisher {
 
     /**
      * 发布流程启动事件
-     * 对应 poco-flow 的 PROCESS_STARTED 事件
      */
     public void publishProcessStarted(WfProcessInstance instance) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.PROCESS_STARTED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .operatorId(instance.getStartUserId())
-                .operatorName(instance.getStartUserName())
-                .build());
+        publish(new ProcessStartedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                instance.getStartUserId(),
+                instance.getStartUserName(),
+                instance.getBusinessKey()
+        ));
     }
 
     /**
      * 发布流程完成事件
-     * 对应 poco-flow 的 PROCESS_COMPLETED 事件
      */
     public void publishProcessCompleted(WfProcessInstance instance) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.PROCESS_COMPLETED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .build());
+        Long operatorId = safeGetUserId();
+        String operatorName = safeGetUserName();
+        publish(new ProcessCompletedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                operatorId,
+                operatorName
+        ));
     }
 
     /**
      * 发布流程拒绝事件
-     * 对应 poco-flow 的 PROCESS_COMPLETED_WITH_TERMINATE_END_EVENT
      */
     public void publishProcessRejected(WfProcessInstance instance, String nodeName, String comment) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.PROCESS_REJECTED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .nodeName(nodeName)
-                .operatorId(UserContext.getUserId())
-                .operatorName(UserContext.getUserName())
-                .comment(comment)
-                .build());
+        publish(new ProcessRejectedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                UserContext.getUserId(),
+                UserContext.getUserName(),
+                nodeName,
+                comment
+        ));
     }
 
     /**
      * 发布流程撤回事件
      */
     public void publishProcessRevoked(WfProcessInstance instance) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.PROCESS_REVOKED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .operatorId(UserContext.getUserId())
-                .operatorName(UserContext.getUserName())
-                .build());
+        publish(new ProcessRevokedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                UserContext.getUserId(),
+                UserContext.getUserName()
+        ));
+    }
+
+    /**
+     * 发布流程作废事件
+     *
+     * @param instance     流程实例
+     * @param reason       作废原因
+     * @param deletedTasks 被删除的待办任务数量
+     */
+    public void publishProcessInvalidated(WfProcessInstance instance, String reason, int deletedTasks) {
+        publish(new ProcessInvalidatedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                safeGetUserId(),
+                safeGetUserName(),
+                reason,
+                deletedTasks
+        ));
     }
 
     // ==================== 节点级事件 ====================
 
     /**
      * 发布节点开始执行事件
-     * 对应 poco-flow 的 ACTIVITY_STARTED 事件
-     *
-     * @param instance 流程实例
-     * @param node     当前执行的节点配置
      */
     public void publishNodeStarted(WfProcessInstance instance, WfNodeConfig node) {
         if (node == null) return;
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.NODE_STARTED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .nodeKey(node.getId())
-                .nodeName(node.getTitle())
-                .nodeType(node.getType())
-                .build());
+        publish(new NodeStartedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                node.getId(),
+                node.getTitle(),
+                node.getType()
+        ));
     }
 
     /**
      * 发布节点执行完成事件
-     * 对应 poco-flow 的 ACTIVITY_COMPLETED 事件
-     *
-     * @param instance 流程实例
-     * @param node     完成的节点配置
      */
     public void publishNodeCompleted(WfProcessInstance instance, WfNodeConfig node) {
         if (node == null) return;
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.NODE_COMPLETED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .nodeKey(node.getId())
-                .nodeName(node.getTitle())
-                .nodeType(node.getType())
-                .build());
+        publishNodeCompleted(instance, node.getId(), node.getTitle(), node.getType(), 0L);
     }
 
     /**
-     * 发布节点执行完成事件（通过 nodeKey/nodeName/nodeType 参数）
-     * 用于在没有 WfNodeConfig 对象时发布事件
+     * 发布节点执行完成事件（通过参数）
      */
     public void publishNodeCompleted(WfProcessInstance instance, String nodeKey, String nodeName, String nodeType) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.NODE_COMPLETED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .nodeKey(nodeKey)
-                .nodeName(nodeName)
-                .nodeType(nodeType)
-                .build());
+        publishNodeCompleted(instance, nodeKey, nodeName, nodeType, 0L);
+    }
+
+    /**
+     * 发布节点执行完成事件（含耗时）
+     *
+     * @param instance   流程实例
+     * @param nodeKey    节点Key
+     * @param nodeName   节点名称
+     * @param nodeType   节点类型
+     * @param durationMs 节点执行耗时（毫秒）
+     */
+    public void publishNodeCompleted(WfProcessInstance instance, String nodeKey,
+                                      String nodeName, String nodeType, long durationMs) {
+        publish(new NodeCompletedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                nodeKey,
+                nodeName,
+                nodeType,
+                durationMs
+        ));
     }
 
     // ==================== 任务级事件 ====================
 
     /**
      * 发布任务分配事件
-     * 对应 poco-flow 的 TASK_ASSIGNED 事件
-     *
-     * @param instance   流程实例
-     * @param taskId     任务ID
-     * @param nodeKey    节点Key
-     * @param nodeName   节点名称
-     * @param assigneeId 被分配人ID
-     * @param assigneeName 被分配人姓名
      */
     public void publishTaskAssigned(WfProcessInstance instance, String taskId,
                                      String nodeKey, String nodeName,
                                      Long assigneeId, String assigneeName) {
-        publishTaskAssigned(instance, taskId, nodeKey, nodeName, "APPROVAL", assigneeId, assigneeName);
+        publish(new TaskAssignedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                taskId,
+                nodeKey,
+                nodeName,
+                assigneeId,
+                assigneeName
+        ));
     }
 
     /**
-     * 发布任务分配事件（指定节点类型）
-     * 支持 APPROVAL 和 MANUAL 等不同类型的任务节点
+     * 发布任务分配事件（指定节点类型，保持签名兼容）
      */
     public void publishTaskAssigned(WfProcessInstance instance, String taskId,
                                      String nodeKey, String nodeName, String nodeType,
                                      Long assigneeId, String assigneeName) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.TASK_ASSIGNED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .taskId(taskId)
-                .nodeKey(nodeKey)
-                .nodeName(nodeName)
-                .nodeType(nodeType != null ? nodeType : "APPROVAL")
-                .operatorId(assigneeId)
-                .operatorName(assigneeName)
-                .build());
+        // nodeType 信息已包含在节点配置中，TaskAssignedEvent 聚焦于任务分配本身
+        publish(new TaskAssignedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                taskId,
+                nodeKey,
+                nodeName,
+                assigneeId,
+                assigneeName
+        ));
     }
 
     /**
      * 发布任务完成事件
-     * 对应 poco-flow 的 TASK_COMPLETED 事件
      *
      * @param instance 流程实例
      * @param taskId   任务ID
      * @param nodeKey  节点Key
      * @param nodeName 节点名称
-     * @param action   操作动作（APPROVE / REJECT / DELEGATE）
+     * @param action   操作动作（APPROVE / REJECT / DELEGATE / RETURN）
      * @param comment  审批意见
      */
     public void publishTaskCompleted(WfProcessInstance instance, String taskId,
                                       String nodeKey, String nodeName,
                                       String action, String comment) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.TASK_COMPLETED)
-                .instanceId(instance.getInstanceId())
-                .processDefKey(instance.getProcessDefKey())
-                .taskId(taskId)
-                .nodeKey(nodeKey)
-                .nodeName(nodeName)
-                .nodeType("APPROVAL")
-                .operatorId(UserContext.getUserId())
-                .operatorName(UserContext.getUserName())
-                .action(action)
-                .comment(comment)
-                .build());
+        publish(new TaskCompletedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                taskId,
+                nodeKey,
+                nodeName,
+                UserContext.getUserId(),
+                UserContext.getUserName(),
+                action,
+                comment
+        ));
     }
 
-    // ==================== 变量变更事件 ====================
+    // ==================== 变量变更事件（暂保留日志记录） ====================
 
     /**
      * 发布变量变更事件
-     * 对应 poco-flow 的 VARIABLE_CREATED / VARIABLE_UPDATED / VARIABLE_DELETED 事件
-     *
-     * @param instanceId    流程实例ID
-     * @param processDefKey 流程定义Key
-     * @param changedVarsJson 变更的变量（JSON 格式）
+     * 当前仅记录日志，后续可扩展为独立事件类
      */
     public void publishVariableUpdated(String instanceId, String processDefKey, String changedVarsJson) {
-        publish(WorkflowEvent.builder(this, WorkflowEvent.EventType.VARIABLE_UPDATED)
-                .instanceId(instanceId)
-                .processDefKey(processDefKey)
-                .operatorId(UserContext.getUserId())
-                .operatorName(UserContext.getUserName())
-                .extraData(changedVarsJson)
-                .build());
+        log.debug("[WorkflowEventPublisher] 变量变更: instanceId={}, processDefKey={}, vars={}",
+                instanceId, processDefKey, changedVarsJson);
     }
 
     // ==================== 内部方法 ====================
@@ -225,14 +256,36 @@ public class WorkflowEventPublisher {
     /**
      * 安全发布事件，异常不影响主流程
      */
-    private void publish(WorkflowEvent event) {
+    private void publish(BaseWorkflowEvent event) {
         try {
-            log.debug("[WorkflowEventPublisher] 发布事件: {}", event);
+            log.debug("[WorkflowEventPublisher] 发布事件: {} instanceId={}",
+                    event.getClass().getSimpleName(), event.getInstanceId());
             eventPublisher.publishEvent(event);
         } catch (Exception e) {
-            // 事件发布失败不应影响主流程
-            log.error("[WorkflowEventPublisher] 事件发布失败: eventType={}, instanceId={}, error={}",
-                    event.getEventType(), event.getInstanceId(), e.getMessage(), e);
+            log.error("[WorkflowEventPublisher] 事件发布失败: type={}, instanceId={}, error={}",
+                    event.getClass().getSimpleName(), event.getInstanceId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 安全获取当前用户ID（定时任务等场景可能没有用户上下文）
+     */
+    private Long safeGetUserId() {
+        try {
+            return UserContext.getUserId();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 安全获取当前用户名
+     */
+    private String safeGetUserName() {
+        try {
+            return UserContext.getUserName();
+        } catch (Exception e) {
+            return null;
         }
     }
 }

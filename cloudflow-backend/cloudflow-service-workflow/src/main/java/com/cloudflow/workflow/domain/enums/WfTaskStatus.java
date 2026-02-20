@@ -8,7 +8,8 @@ public enum WfTaskStatus {
     COMPLETED("COMPLETED", "已完成"),
     REJECTED("REJECTED", "已驳回"),
     REVOKED("REVOKED", "已撤销"),
-    SUSPENDED("SUSPENDED", "已暂停");
+    SUSPENDED("SUSPENDED", "已暂停"),
+    DELEGATED("DELEGATED", "已委派");
 
     private final String code;
     private final String desc;
