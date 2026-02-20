@@ -6,6 +6,7 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +35,11 @@ public class SysAnnouncementController {
     }
 
     /**
-     * 发布公告 (仅管理员)
+     * 发布公告 (仅管理员/HR)
      */
     @SysLog("发布公告")
     @PostMapping("/publish")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
     public R<Boolean> publish(@RequestBody SysAnnouncement announcement) {
         announcement.setSenderId(UserContext.getUserId());
         announcement.setCreateBy(String.valueOf(UserContext.getUserId()));
@@ -45,9 +47,10 @@ public class SysAnnouncementController {
     }
     
     /**
-     * 获取管理列表（分页）
+     * 获取管理列表（分页）- 仅管理员/HR
      */
     @GetMapping("/manage-list")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
     public R<Map<String, Object>> getManageList(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String type,
@@ -58,37 +61,41 @@ public class SysAnnouncementController {
     }
     
     /**
-     * 编辑公告
+     * 编辑公告 - 仅管理员/HR
      */
     @SysLog("编辑公告")
     @PutMapping
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
     public R<Boolean> update(@RequestBody SysAnnouncement announcement) {
         return R.ok(announcementService.updateAnnouncement(announcement));
     }
     
     /**
-     * 删除公告
+     * 删除公告 - 仅管理员
      */
     @SysLog("删除公告")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<Boolean> delete(@PathVariable("id") Long id) {
         return R.ok(announcementService.removeById(id));
     }
     
     /**
-     * 撤销公告
+     * 撤销公告 - 仅管理员/HR
      */
     @SysLog("撤销公告")
     @PostMapping("/revoke/{id}")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
     public R<Boolean> revoke(@PathVariable("id") Long id) {
         return R.ok(announcementService.revokeAnnouncement(id));
     }
     
     /**
-     * 切换置顶状态
+     * 切换置顶状态 - 仅管理员/HR
      */
     @SysLog("切换公告置顶")
     @PostMapping("/toggle-top/{id}")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
     public R<Boolean> toggleTop(@PathVariable("id") Long id) {
         return R.ok(announcementService.toggleTop(id));
     }

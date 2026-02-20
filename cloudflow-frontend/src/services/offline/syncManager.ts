@@ -30,8 +30,8 @@ export interface SyncResult {
 export interface ConflictItem {
   id: string;
   type: string;
-  localData: any;
-  serverData: any;
+  localData: Record<string, unknown>;
+  serverData: Record<string, unknown>;
   resolution?: 'local' | 'server' | 'merge';
 }
 
@@ -40,7 +40,7 @@ type SyncEventListener = (event: SyncEvent) => void;
 
 interface SyncEvent {
   type: 'sync_start' | 'sync_complete' | 'sync_error' | 'conflict_detected' | 'action_synced' | 'status_change';
-  data?: any;
+  data?: unknown;
 }
 
 const MAX_RETRY_COUNT = 3;
@@ -137,8 +137,9 @@ class SyncManager {
 
       this.setStatus(result.failed > 0 ? 'error' : 'idle');
       this.emit({ type: 'sync_complete', data: result });
-    } catch (err: any) {
-      result.errors.push(err.message || '同步失败');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '同步失败';
+      result.errors.push(message);
       this.setStatus('error');
       this.emit({ type: 'sync_error', data: err });
     } finally {
@@ -183,17 +184,18 @@ class SyncManager {
         // 更新同步时间
         await updateSyncMeta('last_upload', new Date().toISOString());
       }
-    } catch (err: any) {
+    } catch (_batchErr: unknown) {
       // 网络错误时逐个重试
       for (const action of actions) {
         try {
           await this.syncSingleAction(action);
           result.synced++;
-        } catch (singleErr: any) {
+        } catch (singleErr: unknown) {
+          const errMsg = singleErr instanceof Error ? singleErr.message : '未知错误';
           if (action.retryCount >= MAX_RETRY_COUNT) {
             await updatePendingAction(action.id, { status: 'failed' });
             result.failed++;
-            result.errors.push(`操作 ${action.id} 同步失败: ${singleErr.message}`);
+            result.errors.push(`操作 ${action.id} 同步失败: ${errMsg}`);
           } else {
             await updatePendingAction(action.id, {
               retryCount: action.retryCount + 1,
@@ -290,8 +292,9 @@ class SyncManager {
           mergedData: c.resolution === 'merge' ? c.localData : undefined,
         })),
       });
-    } catch (err: any) {
-      throw new Error(`解决冲突失败: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '未知错误';
+      throw new Error(`解决冲突失败: ${message}`);
     }
   }
 

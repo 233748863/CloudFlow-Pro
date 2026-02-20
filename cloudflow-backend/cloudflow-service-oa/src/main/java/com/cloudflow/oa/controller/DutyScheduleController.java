@@ -7,6 +7,7 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.DutySchedule;
 import com.cloudflow.oa.service.IDutyScheduleService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,9 +49,10 @@ public class DutyScheduleController {
         return schedule != null ? R.ok(schedule) : R.fail("值班排班不存在");
     }
 
-    /** 新增排班 */
+    /** 新增排班 - 仅管理员/经理 */
     @SysLog("新增值班排班")
     @PostMapping
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
     public R add(@RequestBody DutySchedule schedule) {
         // 填充当前登录用户信息作为创建者
         schedule.setCreateBy(UserContext.getUserName());
@@ -58,9 +60,10 @@ public class DutyScheduleController {
         return R.result(dutyScheduleService.save(schedule));
     }
 
-    /** 批量新增排班 */
+    /** 批量新增排班 - 仅管理员/经理 */
     @SysLog("批量新增值班排班")
     @PostMapping("/batch")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
     public R addBatch(@RequestBody List<DutySchedule> schedules) {
         String currentUser = UserContext.getUserName();
         schedules.forEach(s -> {
@@ -70,9 +73,10 @@ public class DutyScheduleController {
         return R.result(dutyScheduleService.saveBatch(schedules));
     }
 
-    /** 修改排班 */
+    /** 修改排班 - 仅管理员/经理 */
     @SysLog("修改值班排班")
     @PutMapping
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
     public R edit(@RequestBody DutySchedule schedule) {
         if (schedule.getScheduleId() == null) {
             return R.fail("排班ID不能为空");
@@ -80,9 +84,10 @@ public class DutyScheduleController {
         return R.result(dutyScheduleService.updateById(schedule));
     }
 
-    /** 删除排班 */
+    /** 删除排班 - 仅管理员/经理 */
     @SysLog("删除值班排班")
     @DeleteMapping("/{ids}")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
     public R remove(@PathVariable("ids") List<Long> ids) {
         return R.result(dutyScheduleService.removeBatchByIds(ids));
     }

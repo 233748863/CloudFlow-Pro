@@ -204,6 +204,14 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Autowired
     private com.cloudflow.workflow.job.TaskReminderJob taskReminderJob;
 
+    /** P0-5: 任务统计服务（从本类拆分出去） */
+    @Autowired
+    private ITaskStatisticsService taskStatisticsService;
+
+    /** P0-5: 节点处理器工厂（从本类拆分出去，策略模式） */
+    @Autowired
+    private com.cloudflow.workflow.handler.NodeHandlerFactory nodeHandlerFactory;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -840,42 +848,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
             // 停止在此处，等待用户操作
             return;
 
-        } else if ("NOTIFICATION".equals(node.getType())) {
-            // 通知节点：发送通知消息后自动继续
-            handleNotificationNode(node, instance, variables);
-            // 自动节点完成后，先检查 branches（条件分支）再走 next
-            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
-            
-        } else if ("SCRIPT".equals(node.getType())) {
-            // 脚本节点：执行自动化脚本或API调用
-            handleScriptNode(node, instance, variables);
-            // 自动节点完成后，先检查 branches（条件分支）再走 next
-            // 支持前端模板中 SCRIPT 节点同时拥有 branches 和 next 的场景（如 IT故障处理模板）
-            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
-            
-        } else if ("TIMER".equals(node.getType())) {
-            // 定时节点：延迟或定时触发
-            handleTimerNode(node, instance, variables, depth, rootNode);
-            // 注意：定时节点不立即继续，而是通过定时任务触发
+        } else if (nodeHandlerFactory.supports(node.getType())) {
+            // P0-5: 通过节点处理器工厂分发（NOTIFICATION/SCRIPT/COPY/TIMER/SUBPROCESS/MANUAL 等）
+            Boolean shouldContinue = nodeHandlerFactory.handle(node, instance, variables);
+            if (Boolean.TRUE.equals(shouldContinue)) {
+                // 自动节点完成后，先检查 branches（条件分支）再走 next
+                advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
+            }
+            // shouldContinue=false 表示等待（如定时节点、人工任务），不继续流转
             return;
-            
-        } else if ("SUBPROCESS".equals(node.getType())) {
-            // 子流程节点：调用其他工作流
-            handleSubprocessNode(node, instance, variables);
-            // 自动节点完成后，先检查 branches（条件分支）再走 next
-            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
-            
-        } else if ("MANUAL".equals(node.getType())) {
-            // 人工任务节点：需要人工处理但不是审批
-            handleManualTaskNode(node, instance);
-            // 停止在此处，等待用户操作
-            return;
-
-        } else if ("COPY".equals(node.getType())) {
-            // 抄送节点：借鉴 poco-flow CopyServiceTask 设计
-            // 解析抄送人列表，为每个抄送人创建抄送记录，然后自动继续流转
-            handleCopyNode(node, instance, variables);
-            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
 
         } else if ("CONDITION".equals(node.getType()) || "GATEWAY".equals(node.getType())) {
             // 排他网关（条件）
@@ -1729,6 +1710,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
             // 填充流程步骤信息（当前步骤/总步骤/上一步/下一步）
             // 按 processDefKey 缓存已解析的步骤列表，避免重复解析
             Map<String, List<Map<String, String>>> stepsCache = new java.util.HashMap<>();
+            // P0-7: 按 processDefKey 缓存已解析的节点树（用于提取按钮权限）
+            Map<String, WfNodeConfig> rootNodeCache = new java.util.HashMap<>();
             // 批量查询历史记录
             List<WfTaskHistory> allHistories = taskHistoryMapper.selectList(
                 new LambdaQueryWrapper<WfTaskHistory>()
@@ -1751,12 +1734,25 @@ public class WorkflowServiceImpl implements IWorkflowService {
                             WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
                             steps = extractApprovalSteps(root);
                             stepsCache.put(processKey, steps);
+                            rootNodeCache.put(processKey, root);
                         }
                     }
                     
                     if (steps != null && !steps.isEmpty()) {
                         List<WfTaskHistory> histories = historiesByInstance.getOrDefault(task.getInstanceId(), new ArrayList<>());
                         enrichTaskStepInfo(task, steps, histories);
+                    }
+                    
+                    // P0-7: 从流程定义节点树中提取当前节点的按钮权限配置
+                    WfNodeConfig cachedRoot = rootNodeCache.get(processKey);
+                    if (cachedRoot != null && StringUtils.hasText(task.getNodeKey())) {
+                        WfNodeConfig currentNode = findNode(cachedRoot, task.getNodeKey());
+                        if (currentNode != null) {
+                            List<String> nodeButtons = extractNodeButtons(currentNode);
+                            if (nodeButtons != null && !nodeButtons.isEmpty()) {
+                                task.setButtonPermissions(nodeButtons);
+                            }
+                        }
                     }
                 } catch (Exception e) {
                     log.warn("[getTodoTasks] 填充步骤信息失败, taskId={}: {}", task.getTaskId(), e.getMessage());
@@ -2848,312 +2844,27 @@ public class WorkflowServiceImpl implements IWorkflowService {
     }
     
     /**
-     * 8.5: 任务统计详情 - 返回完整的统计信息
-     * 支持按时间段、状态、流程类型、处理人等多维度统计
+     * 8.5: 任务统计详情 - 委托给 TaskStatisticsService
      */
     @Override
     public Map<String, Object> getTaskStatistics(Long userId, java.time.LocalDateTime startTime, java.time.LocalDateTime endTime) {
-        log.info("[getTaskStatistics] 查询任务统计, userId={}, startTime={}, endTime={}", userId, startTime, endTime);
-        
-        Map<String, Object> stats = new HashMap<>();
-        
-        // 如果userId为空，从上下文获取
-        if (userId == null) {
-            userId = UserContext.getUserId();
-        }
-        
-        // 1. 按时间段统计
-        Map<String, Object> timePeriodStats = new HashMap<>();
-        
-        // 今日任务统计
-        java.time.LocalDateTime todayStart = java.time.LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
-        Long todayTodoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(todayStart))
-        );
-        timePeriodStats.put("todayTodo", todayTodoCount != null ? todayTodoCount : 0);
-        
-        // 本周任务统计
-        java.time.LocalDateTime weekStart = java.time.LocalDateTime.now().with(java.time.DayOfWeek.MONDAY).withHour(0).withMinute(0).withSecond(0);
-        Long weekTodoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(weekStart))
-        );
-        timePeriodStats.put("weekTodo", weekTodoCount != null ? weekTodoCount : 0);
-        
-        // 本月任务统计
-        java.time.LocalDateTime monthStart = java.time.LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
-        Long monthTodoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(monthStart))
-        );
-        timePeriodStats.put("monthTodo", monthTodoCount != null ? monthTodoCount : 0);
-        
-        stats.put("timePeriod", timePeriodStats);
-        
-        // 2. 按任务状态统计
-        Map<String, Object> statusStats = new HashMap<>();
-        
-        // 待办总数
-        Long todoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
-        statusStats.put("todo", todoCount != null ? todoCount : 0);
-        
-        // 已办总数（支持时间范围筛选）
-        LambdaQueryWrapper<WfTaskHistory> doneWrapper = new LambdaQueryWrapper<WfTaskHistory>()
-            .eq(WfTaskHistory::getOperatorId, userId);
-        if (startTime != null) {
-            doneWrapper.ge(WfTaskHistory::getCreateTime, java.sql.Timestamp.valueOf(startTime));
-        }
-        if (endTime != null) {
-            doneWrapper.le(WfTaskHistory::getCreateTime, java.sql.Timestamp.valueOf(endTime));
-        }
-        Long doneCount = taskHistoryMapper.selectCount(doneWrapper);
-        statusStats.put("done", doneCount != null ? doneCount : 0);
-        
-        // 超时任务数
-        Long timeoutCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .eq(WfTask::getIsTimeout, 1)
-        );
-        statusStats.put("timeout", timeoutCount != null ? timeoutCount : 0);
-        
-        stats.put("status", statusStats);
-        
-        // 3. 按流程类型统计
-        List<WfTask> userTasks = taskMapper.selectList(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
-        
-        Map<String, Long> processTypeStats = new HashMap<>();
-        if (!userTasks.isEmpty()) {
-            List<String> instanceIds = userTasks.stream()
-                .map(WfTask::getInstanceId)
-                .distinct()
-                .collect(Collectors.toList());
-            
-            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
-            Map<String, String> instanceDefKeyMap = instances.stream()
-                .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
-            
-            for (WfTask task : userTasks) {
-                String defKey = instanceDefKeyMap.getOrDefault(task.getInstanceId(), "unknown");
-                processTypeStats.merge(defKey, 1L, Long::sum);
-            }
-        }
-        stats.put("processType", processTypeStats);
-        
-        // 4. 按处理人统计（管理员视角）
-        if (permissionService.isAdmin(userId)) {
-            List<Map<String, Object>> assigneeStats = new ArrayList<>();
-            // 查询所有待办任务，按处理人分组
-            List<WfTask> allTasks = taskMapper.selectList(
-                new LambdaQueryWrapper<WfTask>()
-                    .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-            );
-            
-            Map<Long, Long> assigneeCountMap = allTasks.stream()
-                .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
-            
-            for (Map.Entry<Long, Long> entry : assigneeCountMap.entrySet()) {
-                Map<String, Object> assigneeStat = new HashMap<>();
-                assigneeStat.put("userId", entry.getKey());
-                assigneeStat.put("taskCount", entry.getValue());
-                
-                // 查询用户名称
-                SysUser user = sysUserMapper.selectById(entry.getKey());
-                if (user != null) {
-                    assigneeStat.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
-                }
-                assigneeStats.add(assigneeStat);
-            }
-            stats.put("assignees", assigneeStats);
-        }
-        
-        // 5. 平均处理时长（秒）
-        List<WfTaskHistory> histories = taskHistoryMapper.selectList(
-            new LambdaQueryWrapper<WfTaskHistory>()
-                .eq(WfTaskHistory::getOperatorId, userId)
-                .isNotNull(WfTaskHistory::getDurationSeconds)
-        );
-        
-        if (!histories.isEmpty()) {
-            double avgDuration = histories.stream()
-                .mapToInt(WfTaskHistory::getDurationSeconds)
-                .average()
-                .orElse(0.0);
-            stats.put("avgDurationSeconds", (long) avgDuration);
-            stats.put("avgDurationMinutes", (long) (avgDuration / 60));
-        } else {
-            stats.put("avgDurationSeconds", 0L);
-            stats.put("avgDurationMinutes", 0L);
-        }
-        
-        // 6. 任务完成率
-        Long totalAssigned = todoCount + doneCount;
-        if (totalAssigned > 0) {
-            double completionRate = (doneCount.doubleValue() / totalAssigned) * 100;
-            stats.put("completionRate", String.format("%.2f%%", completionRate));
-        } else {
-            stats.put("completionRate", "0.00%");
-        }
-        
-        // 7. 我发起的流程数
-        Long myInstanceCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>()
-                .eq(WfProcessInstance::getStartUserId, userId)
-        );
-        stats.put("myInstanceCount", myInstanceCount != null ? myInstanceCount : 0);
-        
-        log.info("[getTaskStatistics] 统计完成, userId={}, 待办={}, 已办={}", userId, todoCount, doneCount);
-        return stats;
+        return taskStatisticsService.getTaskStatistics(userId, startTime, endTime);
     }
     
     /**
-     * 8.4: 任务分组 - 按流程类型、状态、优先级、处理人等维度分组
-     * 支持多维度分组统计
+     * 8.4: 任务分组 - 委托给 TaskStatisticsService
      */
     @Override
     public Map<String, Object> getTaskGroups(Long userId) {
-        log.info("[getTaskGroups] 查询任务分组, userId={}", userId);
-        
-        // 如果userId为空，从上下文获取
-        if (userId == null) {
-            userId = UserContext.getUserId();
-        }
-        
-        Map<String, Object> groups = new HashMap<>();
-        
-        // 查询用户的所有待办任务
-        List<WfTask> tasks = taskMapper.selectList(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
-        
-        groups.put("total", tasks.size());
-        
-        if (tasks.isEmpty()) {
-            groups.put("byProcessType", new HashMap<>());
-            groups.put("byStatus", new HashMap<>());
-            groups.put("byPriority", new HashMap<>());
-            return groups;
-        }
-        
-        // 1. 按流程类型分组
-        List<String> instanceIds = tasks.stream()
-            .map(WfTask::getInstanceId)
-            .distinct()
-            .collect(Collectors.toList());
-        
-        List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
-        Map<String, String> instanceDefKeyMap = instances.stream()
-            .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
-        
-        Map<String, Long> byProcessType = new HashMap<>();
-        for (WfTask task : tasks) {
-            String defKey = instanceDefKeyMap.getOrDefault(task.getInstanceId(), "unknown");
-            byProcessType.merge(defKey, 1L, Long::sum);
-        }
-        groups.put("byProcessType", byProcessType);
-        
-        // 2. 按任务状态分组（虽然当前只查询了TODO状态，但为了扩展性保留此维度）
-        Map<String, Long> byStatus = tasks.stream()
-            .collect(Collectors.groupingBy(
-                task -> task.getStatus() != null ? task.getStatus() : "UNKNOWN",
-                Collectors.counting()
-            ));
-        groups.put("byStatus", byStatus);
-        
-        // 3. 按优先级分组
-        Map<String, Long> byPriority = tasks.stream()
-            .collect(Collectors.groupingBy(
-                task -> {
-                    String priority = task.getPriority();
-                    if (priority == null || priority.isEmpty()) {
-                        return "NORMAL";
-                    }
-                    return priority;
-                },
-                Collectors.counting()
-            ));
-        groups.put("byPriority", byPriority);
-        
-        // 4. 如果是管理员，提供按处理人分组的统计
-        if (permissionService.isAdmin(userId)) {
-            List<WfTask> allTasks = taskMapper.selectList(
-                new LambdaQueryWrapper<WfTask>()
-                    .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-            );
-            
-            Map<Long, Long> byAssignee = allTasks.stream()
-                .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
-            
-            // 转换为包含用户名的格式
-            List<Map<String, Object>> assigneeGroups = new ArrayList<>();
-            for (Map.Entry<Long, Long> entry : byAssignee.entrySet()) {
-                Map<String, Object> assigneeGroup = new HashMap<>();
-                assigneeGroup.put("userId", entry.getKey());
-                assigneeGroup.put("taskCount", entry.getValue());
-                
-                // 查询用户名称
-                SysUser user = sysUserMapper.selectById(entry.getKey());
-                if (user != null) {
-                    assigneeGroup.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
-                }
-                assigneeGroups.add(assigneeGroup);
-            }
-            groups.put("byAssignee", assigneeGroups);
-        }
-        
-        log.info("[getTaskGroups] 分组完成, userId={}, total={}, processTypes={}", 
-            userId, tasks.size(), byProcessType.size());
-        return groups;
+        return taskStatisticsService.getTaskGroups(userId);
     }
     
     /**
-     * 获取用户任务统计数量
+     * 获取用户任务统计数量 - 委托给 TaskStatisticsService
      */
     @Override
     public Map<String, Integer> getTasksCount(Long userId) {
-        Map<String, Integer> counts = new HashMap<>();
-        
-        // 待办总数
-        Long todoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
-        counts.put("todoCount", todoCount != null ? todoCount.intValue() : 0);
-        
-        // 已办总数
-        Long doneCount = taskHistoryMapper.selectCount(
-            new LambdaQueryWrapper<WfTaskHistory>()
-                .eq(WfTaskHistory::getOperatorId, userId)
-        );
-        counts.put("doneCount", doneCount != null ? doneCount.intValue() : 0);
-        
-        // 我发起的流程数
-        Long myInstanceCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>()
-                .eq(WfProcessInstance::getStartUserId, userId)
-        );
-        counts.put("myInstanceCount", myInstanceCount != null ? myInstanceCount.intValue() : 0);
-        
-        return counts;
+        return taskStatisticsService.getTasksCount(userId);
     }
 
     /**
@@ -4303,6 +4014,54 @@ public class WorkflowServiceImpl implements IWorkflowService {
             log.error("[handleCopyNode] 抄送节点执行失败, nodeKey={}, error={}", node.getId(), e.getMessage(), e);
             // 抄送失败不中断流程，继续执行
         }
+    }
+
+    /**
+     * P0-7: 从节点配置中提取按钮权限列表
+     * 从节点的 props.buttons 中读取配置，支持 JSON 数组格式
+     * 例如: props: { "buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"] }
+     * 如果未配置 buttons，返回 null（前端显示所有默认按钮，向后兼容）
+     * 
+     * @param node 流程节点配置
+     * @return 按钮权限列表，null 表示未配置（显示全部默认按钮）
+     */
+    private List<String> extractNodeButtons(WfNodeConfig node) {
+        if (node == null) return null;
+        
+        Map<String, Object> props = node.getProps();
+        if (props == null) return null;
+        
+        Object buttonsObj = props.get("buttons");
+        if (buttonsObj == null) return null;
+        
+        List<String> buttons = new ArrayList<>();
+        if (buttonsObj instanceof List) {
+            // 直接是 List 类型（Jackson 反序列化后的结果）
+            for (Object item : (List<?>) buttonsObj) {
+                if (item != null) {
+                    buttons.add(String.valueOf(item));
+                }
+            }
+        } else if (buttonsObj instanceof String) {
+            // 字符串格式，尝试解析为 JSON 数组
+            String buttonsStr = (String) buttonsObj;
+            if (StringUtils.hasText(buttonsStr)) {
+                try {
+                    List<String> parsed = objectMapper.readValue(buttonsStr, List.class);
+                    buttons.addAll(parsed);
+                } catch (Exception e) {
+                    // 尝试逗号分隔格式: "APPROVE,REJECT,RETURN"
+                    for (String btn : buttonsStr.split(",")) {
+                        String trimmed = btn.trim();
+                        if (!trimmed.isEmpty()) {
+                            buttons.add(trimmed);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return buttons.isEmpty() ? null : buttons;
     }
 
     /**

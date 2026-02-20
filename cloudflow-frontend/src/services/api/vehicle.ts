@@ -97,10 +97,34 @@ export interface ExpenseStats {
   lastMonthAmount: number;
 }
 
+/** 车辆查询参数 */
+export interface VehicleQuery extends PageQuery {
+  licensePlate?: string;
+  brand?: string;
+  status?: string;
+}
+
+/** 用车记录查询参数 */
+export interface UsageQuery extends PageQuery {
+  vehicleId?: number;
+  applicantId?: number;
+  status?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+/** 费用查询参数 */
+export interface ExpenseQuery extends PageQuery {
+  vehicleId?: number;
+  expenseType?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 // --- 车辆管理 API ---
 
 /** 获取车辆列表（分页） */
-export const getVehicleList = (query: any) => {
+export const getVehicleList = (query: VehicleQuery) => {
   return request.get('/oa/vehicle/list', { params: query }) as Promise<PageResult<SysVehicle>>;
 };
 
@@ -137,7 +161,7 @@ export const getVehicleStats = () => {
 // --- 用车申请 API ---
 
 /** 获取用车记录列表（分页） */
-export const getUsageList = (query: any) => {
+export const getUsageList = (query: UsageQuery) => {
   return request.get('/oa/vehicle/usage/list', { params: query }) as Promise<PageResult<VehicleUsage>>;
 };
 
@@ -169,7 +193,7 @@ export const cancelUsage = (id: number) => {
 // --- 费用管理 API ---
 
 /** 获取费用列表（分页） */
-export const getExpenseList = (query: any) => {
+export const getExpenseList = (query: ExpenseQuery) => {
   return request.get('/oa/vehicle/expense/list', { params: query }) as Promise<PageResult<VehicleExpense>>;
 };
 

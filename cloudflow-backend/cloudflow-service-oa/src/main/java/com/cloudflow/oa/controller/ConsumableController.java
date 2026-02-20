@@ -6,6 +6,7 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysConsumable;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,19 +47,21 @@ public class ConsumableController {
     }
 
     /**
-     * 新增耗材
+     * 新增耗材 - 仅管理员
      */
     @SysLog("新增耗材")
     @PostMapping
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R add(@RequestBody SysConsumable consumable) {
         return R.result(consumableService.save(consumable));
     }
 
     /**
-     * 修改耗材
+     * 修改耗材 - 仅管理员
      */
     @SysLog("修改耗材")
     @PutMapping
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R edit(@RequestBody SysConsumable consumable) {
         if (consumable.getConsumableId() == null) {
             return R.fail("耗材ID不能为空");
@@ -67,10 +70,11 @@ public class ConsumableController {
     }
 
     /**
-     * 删除耗材
+     * 删除耗材 - 仅管理员
      */
     @SysLog("删除耗材")
     @DeleteMapping("/{ids}")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R remove(@PathVariable("ids") List<Long> ids) {
         return R.result(consumableService.removeBatchByIds(ids));
     }
@@ -84,10 +88,11 @@ public class ConsumableController {
     }
 
     /**
-     * 入库操作
+     * 入库操作 - 仅管理员
      */
     @SysLog("耗材入库")
     @PostMapping("/{id}/add-stock")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R addStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
         Integer quantity = params.get("quantity");
         if (quantity == null || quantity <= 0) {
@@ -97,10 +102,11 @@ public class ConsumableController {
     }
 
     /**
-     * 出库操作
+     * 出库操作 - 仅管理员
      */
     @SysLog("耗材出库")
     @PostMapping("/{id}/reduce-stock")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R reduceStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
         Integer quantity = params.get("quantity");
         if (quantity == null || quantity <= 0) {

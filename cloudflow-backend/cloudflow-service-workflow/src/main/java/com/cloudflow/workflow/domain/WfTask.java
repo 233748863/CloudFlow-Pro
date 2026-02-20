@@ -112,6 +112,15 @@ public class WfTask implements Serializable {
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private java.util.List<java.util.Map<String, Object>> stepsDetail;
 
+    /**
+     * 节点级按钮权限列表 (非持久化)
+     * 从流程定义 model_json 中当前节点的 buttons 配置解析而来
+     * 可选值: APPROVE(同意), REJECT(拒绝), RETURN(驳回), DELEGATE(转办), ADD_SIGN(加签)
+     * 为 null 或空列表时，前端显示所有默认按钮（向后兼容）
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private java.util.List<String> buttonPermissions;
+
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }
 
@@ -270,5 +279,13 @@ public class WfTask implements Serializable {
 
     public void setTenantId(Long tenantId) {
         this.tenantId = tenantId;
+    }
+
+    public java.util.List<String> getButtonPermissions() {
+        return buttonPermissions;
+    }
+
+    public void setButtonPermissions(java.util.List<String> buttonPermissions) {
+        this.buttonPermissions = buttonPermissions;
     }
 }

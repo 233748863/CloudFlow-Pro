@@ -197,6 +197,27 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- 内部模块：防重复提交 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-idempotent</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- 内部模块：接口限流 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-ratelimiter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- 内部模块：数据加密 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-encrypt</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- Javers 对象差异比较（审计模块使用） -->
             <dependency>
                 <groupId>org.javers</groupId>

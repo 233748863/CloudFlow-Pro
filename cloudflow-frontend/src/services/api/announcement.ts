@@ -1,8 +1,30 @@
 import request from './request';
 import { Announcement } from '../../types';
 
+/** 阅读统计中的用户信息 */
+export interface ReadUser {
+  userId: number;
+  userName: string;
+  nickName?: string;
+  readTime?: string;
+}
+
+/** 阅读统计响应 */
+export interface ReadStatsResponse {
+  readCount: number;
+  readUsers: ReadUser[];
+}
+
+/** 管理列表分页响应 */
+export interface AnnouncementPageResult {
+  list: Announcement[];
+  total: number;
+  page: number;
+  size: number;
+}
+
 export const getMyAnnouncements = async (): Promise<Announcement[]> => {
-  const data: any = await request.get('/oa/announcement/my-list');
+  const data = await request.get<Announcement[]>('/oa/announcement/my-list');
   return Array.isArray(data) ? data : [];
 };
 
@@ -17,7 +39,7 @@ export const publishAnnouncement = async (data: Partial<Announcement>): Promise<
 };
 
 export const getAnnouncementList = async (): Promise<Announcement[]> => {
-  const data: any = await request.get('/oa/announcement/list');
+  const data = await request.get<Announcement[]>('/oa/announcement/list');
   return Array.isArray(data) ? data : [];
 };
 
@@ -28,9 +50,8 @@ export const getManageList = async (params: {
   status?: string;
   page?: number;
   size?: number;
-}): Promise<{ list: Announcement[]; total: number; page: number; size: number }> => {
-  const data: any = await request.get('/oa/announcement/manage-list', { params });
-  return data;
+}): Promise<AnnouncementPageResult> => {
+  return request.get<AnnouncementPageResult>('/oa/announcement/manage-list', { params });
 };
 
 // 编辑公告
@@ -58,7 +79,6 @@ export const toggleTop = async (id: number): Promise<boolean> => {
 };
 
 // 获取阅读统计
-export const getReadStats = async (id: number): Promise<{ readCount: number; readUsers: any[] }> => {
-  const data: any = await request.get(`/oa/announcement/read-stats/${id}`);
-  return data;
+export const getReadStats = async (id: number): Promise<ReadStatsResponse> => {
+  return request.get<ReadStatsResponse>(`/oa/announcement/read-stats/${id}`);
 };

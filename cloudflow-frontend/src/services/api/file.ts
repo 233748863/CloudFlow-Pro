@@ -1,4 +1,5 @@
 import request from './request';
+import type { PageQuery } from './auth';
 
 // 所有 /system/** 接口由 cloudflow-auth 服务提供
 // 网关路由: /auth/** → cloudflow-auth (StripPrefix=1)
@@ -13,7 +14,7 @@ export const uploadFile = (file: File) => {
   });
 };
 
-export const getFileList = (params?: any) => {
+export const getFileList = (params?: PageQuery) => {
   return request.get('/auth/system/file/list', { params });
 };
 

@@ -121,7 +121,7 @@ export const sanitizeJson = <T>(data: T): T => {
   }
   
   if (data !== null && typeof data === 'object') {
-    const cleaned: any = {};
+    const cleaned: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
       cleaned[key] = sanitizeJson(value);
     }

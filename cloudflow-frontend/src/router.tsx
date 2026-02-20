@@ -57,6 +57,8 @@ const BusinessTripPage = React.lazy(() => import('./pages/BusinessTripPage'));
 const ContactPage = React.lazy(() => import('./pages/ContactPage'));
 const VisitorPage = React.lazy(() => import('./pages/VisitorPage'));
 const DutySchedulePage = React.lazy(() => import('./pages/DutySchedulePage'));
+const DictPage = React.lazy(() => import('./pages/admin/DictPage'));
+const ProcessCategoryPage = React.lazy(() => import('./pages/admin/ProcessCategoryPage'));
 
 
 const Loading = () => (
@@ -233,6 +235,14 @@ const desktopRoutes = [
           {
             path: '/admin/duty-schedule',
             element: <Suspense fallback={<Loading />}><DutySchedulePage /></Suspense>,
+          },
+          {
+            path: '/system/dict',
+            element: <Suspense fallback={<Loading />}><DictPage /></Suspense>,
+          },
+          {
+            path: '/workflow/category',
+            element: <Suspense fallback={<Loading />}><ProcessCategoryPage /></Suspense>,
           },
         ],
       },

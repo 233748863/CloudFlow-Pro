@@ -10,10 +10,18 @@ export interface ApiResponse<T = any> {
 }
 
 // 扩展 AxiosRequestConfig 以支持静默模式
+// 扩展 AxiosInstance 方法签名，因为响应拦截器已解包 res.data，实际返回业务数据而非 AxiosResponse
 declare module 'axios' {
   export interface AxiosRequestConfig {
     /** 静默模式：不显示错误 toast 提示 */
     silent?: boolean;
+  }
+  export interface AxiosInstance {
+    get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+    post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+    put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+    delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+    patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
   }
 }
 

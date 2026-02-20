@@ -21,6 +21,9 @@
         <module>cloudflow-common-datasource</module>
         <module>cloudflow-common-log</module>
         <module>cloudflow-common-audit</module>
+        <module>cloudflow-common-idempotent</module>
+        <module>cloudflow-common-ratelimiter</module>
+        <module>cloudflow-common-encrypt</module>
     </modules>
 
 </project>

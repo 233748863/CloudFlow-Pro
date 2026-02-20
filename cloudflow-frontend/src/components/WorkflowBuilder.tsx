@@ -62,6 +62,27 @@ const hasEndNode = (root: WorkflowNode): boolean => {
   return false;
 };
 
+// 检查 targetId 是否是 ancestorId 的后代节点（在 ancestor 的子树中）
+// 用于拖拽时防止循环引用：不能把节点拖到自己的子节点中
+const isDescendantOf = (root: WorkflowNode, ancestorId: string, targetId: string): boolean => {
+  const ancestor = findNodeById(root, ancestorId);
+  if (!ancestor) return false;
+  const searchInSubtree = (node: WorkflowNode): boolean => {
+    if (node.next) {
+      if (node.next.id === targetId) return true;
+      if (searchInSubtree(node.next)) return true;
+    }
+    if (node.branches) {
+      for (const b of node.branches) {
+        if (b.id === targetId) return true;
+        if (searchInSubtree(b)) return true;
+      }
+    }
+    return false;
+  };
+  return searchInSubtree(ancestor);
+};
+
 // 查找指定节点的父节点（即 next 或 branches 中包含 targetId 的节点）
 const findParentOfNode = (root: WorkflowNode, targetId: string, parent: WorkflowNode | null = null): WorkflowNode | null => {
   if (root.id === targetId) return parent;
@@ -2171,29 +2192,52 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   };
 
   const handleDrop = (dragId: string, dropId: string) => {
+    // 基础校验：不能拖到自身
+    if (dragId === dropId) return;
+
     const dragNode = findNodeById(root, dragId);
     if (!dragNode) return;
-    
-    // 检查被拖拽的节点是否是分支节点
-    const checkIfBranchNode = (root: WorkflowNode, targetId: string): boolean => {
-      if (root.branches) {
-        for (const branch of root.branches) {
+
+    // 不能拖拽开始/结束节点
+    if (dragNode.type === NodeType.START || dragNode.type === NodeType.END) {
+      toast.error('开始和结束节点不能移动');
+      return;
+    }
+
+    // 检查被拖拽的节点是否是分支节点（条件分支不能独立移动）
+    const checkIfBranchNode = (node: WorkflowNode, targetId: string): boolean => {
+      if (node.branches) {
+        for (const branch of node.branches) {
           if (branch.id === targetId) return true;
           if (checkIfBranchNode(branch, targetId)) return true;
         }
       }
-      if (root.next) return checkIfBranchNode(root.next, targetId);
+      if (node.next) return checkIfBranchNode(node.next, targetId);
       return false;
     };
-    
-    // 如果是分支节点，警告用户
+
     if (checkIfBranchNode(root, dragId)) {
       toast.error('分支节点不能移动，这会破坏流程结构');
       return;
     }
-    
+
+    // 防止循环引用：不能把节点拖到自己的子树中
+    if (isDescendantOf(root, dragId, dropId)) {
+      toast.error('不能将节点移动到自己的子节点中，这会导致循环引用');
+      return;
+    }
+
+    // 检查是否是相邻节点的无意义移动（dragNode 已经紧跟在 dropId 后面）
+    const dropNode = findNodeById(root, dropId);
+    if (dropNode?.next?.id === dragId) {
+      toast.info('节点已在该位置，无需移动');
+      return;
+    }
+
+    // 执行移动：先从树中删除拖拽节点，再插入到目标位置后
     let newRoot = deleteNodeInTree(root, dragId);
     if (newRoot) {
+      // 移动时只移动节点本身，不带子树（next 断开）
       const nodeToInsert = { ...dragNode, next: undefined };
       newRoot = updateNodeInTree(newRoot, dropId, node => ({ ...node, next: { ...nodeToInsert, next: node.next } }));
       setRoot(newRoot);

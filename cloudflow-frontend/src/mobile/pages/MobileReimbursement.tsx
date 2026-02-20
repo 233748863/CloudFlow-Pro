@@ -161,8 +161,15 @@ export const MobileReimbursement: React.FC = () => {
           description: item.description,
         })),
       };
-      // 先创建报销单
-      await expenseClaimApi.add(claimData as any);
+      // 1. 先创建报销单（草稿）
+      const createRes: any = await expenseClaimApi.add(claimData as any);
+
+      // 2. 提交审批（启动工作流）
+      const claimId = createRes?.data?.id || createRes?.id;
+      if (claimId) {
+        await expenseClaimApi.submit(claimId);
+      }
+
       toast.success('报销申请已提交，等待审批');
       navigate('/dashboard');
     } catch (err: any) {

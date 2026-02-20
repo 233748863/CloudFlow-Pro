@@ -25,7 +25,13 @@ export const getRouters = async (): Promise<MenuItem[]> => {
 /**
  * 获取菜单列表（用于菜单管理页面）
  */
-export const getMenuList = async (params?: any) => {
+/** 菜单查询参数 */
+export interface MenuQuery {
+  menuName?: string;
+  status?: string;
+}
+
+export const getMenuList = async (params?: MenuQuery) => {
   return await request.get('/auth/system/menu/list', { params });
 };
 

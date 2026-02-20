@@ -187,6 +187,11 @@ export interface Task {
   currentNodeName?: string;
   /** 流程步骤详情列表（后端 buildStepDetail 构建） */
   stepsDetail?: StepDetail[];
+
+  /** P0-7: 节点级按钮权限列表，由后端从流程定义 props.buttons 中提取
+   * 可选值: APPROVE(同意), REJECT(拒绝), RETURN(驳回), DELEGATE(转办), ADD_SIGN(加签)
+   * 为 null/undefined 时显示所有默认按钮（向后兼容） */
+  buttonPermissions?: string[];
 }
 
 /**

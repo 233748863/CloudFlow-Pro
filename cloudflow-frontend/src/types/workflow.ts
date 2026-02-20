@@ -137,7 +137,12 @@ export interface ProcessTrace {
   active: string[];
   historyDetails?: ProcessTraceHistoryDetail[];
   activeDetails?: ProcessTraceActiveDetail[];
-  parallelBranches?: any[];
+  parallelBranches?: Array<{
+    branchId?: string;
+    branchName?: string;
+    nodeKeys?: string[];
+    status?: string;
+  }>;
 }
 
 /**
@@ -319,7 +324,7 @@ export class ApiError extends Error {
   constructor(
     public code: number,
     public msg: string,
-    public data?: any
+    public data?: unknown
   ) {
     super(msg);
     this.name = 'ApiError';

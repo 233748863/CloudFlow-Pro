@@ -803,17 +803,36 @@ export const TaskHandleModal = ({
                             value={comment}
                             onChange={e => setComment(e.target.value)}
                             />
-                            <div className="flex gap-2 justify-end">
-                            <button onClick={() => setRejectMode(true)} disabled={submitting} className="px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center gap-1">
-                              <CornerUpLeft size={14} />
-                              驳回
-                            </button>
-                            <button onClick={() => setDelegationMode(true)} disabled={submitting} className="px-3 py-1.5 border rounded text-xs disabled:opacity-50">转办</button>
-                            <button onClick={() => setConfirmAction('REJECTED')} disabled={submitting} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs disabled:opacity-50">拒绝</button>
-                            <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs shadow disabled:opacity-50">
-                              {submitting ? '处理中...' : '同意'}
-                            </button>
-                            </div>
+                            {/* P0-7: 根据 buttonPermissions 动态渲染按钮
+                             * 为 null/undefined/空数组时显示所有默认按钮（向后兼容）
+                             * 有值时仅显示权限列表中包含的按钮 */}
+                            {(() => {
+                              const bp = task.buttonPermissions;
+                              // 无权限配置时显示所有按钮（向后兼容）
+                              const showAll = !bp || bp.length === 0;
+                              const hasBtn = (code: string) => showAll || bp!.includes(code);
+                              return (
+                                <div className="flex gap-2 justify-end">
+                                  {hasBtn('RETURN') && (
+                                    <button onClick={() => setRejectMode(true)} disabled={submitting} className="px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center gap-1">
+                                      <CornerUpLeft size={14} />
+                                      驳回
+                                    </button>
+                                  )}
+                                  {hasBtn('DELEGATE') && (
+                                    <button onClick={() => setDelegationMode(true)} disabled={submitting} className="px-3 py-1.5 border rounded text-xs disabled:opacity-50">转办</button>
+                                  )}
+                                  {hasBtn('REJECT') && (
+                                    <button onClick={() => setConfirmAction('REJECTED')} disabled={submitting} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs disabled:opacity-50">拒绝</button>
+                                  )}
+                                  {hasBtn('APPROVE') && (
+                                    <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs shadow disabled:opacity-50">
+                                      {submitting ? '处理中...' : '同意'}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {/* 操作确认弹窗 */}
                             {confirmAction && (

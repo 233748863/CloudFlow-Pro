@@ -10,6 +10,7 @@ import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.service.IAssetService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletResponse;
@@ -80,19 +81,21 @@ public class AssetController {
     }
 
     /**
-     * 新增资产
+     * 新增资产 - 仅管理员
      */
     @SysLog("新增资产")
     @PostMapping
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R add(@RequestBody SysAsset asset) {
         return R.ok(assetService.save(asset));
     }
 
     /**
-     * 编辑资产
+     * 编辑资产 - 仅管理员
      */
     @SysLog("编辑资产")
     @PutMapping
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R update(@RequestBody SysAsset asset) {
         if (asset.getAssetId() == null) {
             return R.fail("资产ID不能为空");
@@ -101,10 +104,11 @@ public class AssetController {
     }
 
     /**
-     * 删除资产
+     * 删除资产 - 仅管理员
      */
     @SysLog("删除资产")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R delete(@PathVariable("id") Long id) {
         SysAsset asset = assetService.getById(id);
         if (asset == null) {
@@ -148,10 +152,11 @@ public class AssetController {
     }
 
     /**
-     * 资产报废
+     * 资产报废 - 仅管理员
      */
     @SysLog("资产报废")
     @PostMapping("/{id}/scrap")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R scrap(@PathVariable("id") Long id, @RequestParam(value = "remark", required = false) String remark) {
         assetService.scrapAsset(id, remark);
         return R.ok("已报废");

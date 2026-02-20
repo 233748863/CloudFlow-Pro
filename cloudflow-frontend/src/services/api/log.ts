@@ -75,37 +75,37 @@ export interface AuditLogQuery {
 
 /** 分页查询操作日志 */
 export const getSysLogPage = (params: SysLogQuery): Promise<PageResult<SysLog>> => {
-  return request.get('/auth/system/log/page', { params }) as any;
+  return request.get<PageResult<SysLog>>('/auth/system/log/page', { params });
 };
 
 /** 获取操作日志详情 */
 export const getSysLogDetail = (id: number): Promise<SysLog> => {
-  return request.get(`/auth/system/log/${id}`) as any;
+  return request.get<SysLog>(`/auth/system/log/${id}`);
 };
 
 /** 删除操作日志（批量） */
 export const deleteSysLogs = (ids: number[]): Promise<string> => {
-  return request.delete('/auth/system/log', { data: ids }) as any;
+  return request.delete<string>('/auth/system/log', { data: ids });
 };
 
 /** 获取操作日志趋势（最近30天） */
 export const getSysLogTrend = (): Promise<LogTrendItem[]> => {
-  return request.get('/auth/system/log/trend') as any;
+  return request.get<LogTrendItem[]>('/auth/system/log/trend');
 };
 
 // ==================== 审计日志 API ====================
 
 /** 分页查询审计日志 */
 export const getAuditLogPage = (params: AuditLogQuery): Promise<PageResult<SysAuditLog>> => {
-  return request.get('/auth/system/audit-log/page', { params }) as any;
+  return request.get<PageResult<SysAuditLog>>('/auth/system/audit-log/page', { params });
 };
 
 /** 获取审计日志详情 */
 export const getAuditLogDetail = (id: number): Promise<SysAuditLog> => {
-  return request.get(`/auth/system/audit-log/${id}`) as any;
+  return request.get<SysAuditLog>(`/auth/system/audit-log/${id}`);
 };
 
 /** 删除审计日志（批量） */
 export const deleteAuditLogs = (ids: number[]): Promise<string> => {
-  return request.delete('/auth/system/audit-log', { data: ids }) as any;
+  return request.delete<string>('/auth/system/audit-log', { data: ids });
 };

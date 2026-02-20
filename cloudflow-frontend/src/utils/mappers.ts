@@ -1,6 +1,66 @@
-import { User, Role, Task, TaskStatus } from '../types';
+import { User, Role, Task, TaskStatus, StepDetail } from '../types';
 
-export const mapBackendUserToFrontend = (u: any): User => ({
+/** 后端用户数据结构 */
+interface BackendUser {
+  userId: number | string;
+  userName: string;
+  nickName?: string;
+  email?: string;
+  role?: string;
+  status?: string;
+  avatar?: string;
+}
+
+/** 后端任务数据结构（待办任务） */
+interface BackendTask {
+  taskId: string;
+  instanceId?: string;
+  processDefKey?: string;
+  processName?: string;
+  nodeName?: string;
+  startUserId?: string;
+  startUserName?: string;
+  assignee?: string | number;
+  assigneeName?: string;
+  status?: string;
+  createTime?: string;
+  dueTime?: string;
+  formId?: string;
+  variables?: Record<string, unknown>;
+  currentStepIndex?: number;
+  totalSteps?: number;
+  previousNodeName?: string;
+  previousOperatorName?: string;
+  nextNodeName?: string;
+  nextAssigneeName?: string;
+  stepsDetail?: StepDetail[];
+}
+
+/** 后端流程实例数据结构（我的申请） */
+interface BackendInstance {
+  taskId?: string;
+  instanceId: string;
+  processDefKey?: string;
+  title?: string;
+  currentNodeName?: string;
+  startUserId?: string | number;
+  startUserName?: string;
+  assignee?: string | number;
+  assigneeName?: string;
+  status?: string;
+  startTime?: string;
+  formId?: string;
+  variables?: string | Record<string, unknown>;
+  currentStepIndex?: number;
+  totalSteps?: number;
+  previousNodeName?: string;
+  previousOperatorName?: string;
+  nextNodeName?: string;
+  nextAssigneeName?: string;
+  stepsDetail?: StepDetail[];
+}
+
+export const mapBackendUserToFrontend = (u: BackendUser): User => ({
   id: String(u.userId),
   name: u.nickName || u.userName,
   email: u.email || '',
@@ -9,7 +69,7 @@ export const mapBackendUserToFrontend = (u: any): User => ({
   avatar: u.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + u.userName
 });
 
-export const mapBackendTaskToFrontend = (t: any): Task => ({
+export const mapBackendTaskToFrontend = (t: BackendTask): Task => ({
   id: t.taskId,
   processInstanceId: t.instanceId,
   workflowId: t.processDefKey,
@@ -26,7 +86,7 @@ export const mapBackendTaskToFrontend = (t: any): Task => ({
   allowEdit: false,
   formId: t.formId || '', 
   formData: t.variables || {},
-  reason: t.variables?.reason || '',
+  reason: (t.variables?.reason as string) || '',
   // 流程步骤进度信息
   currentStepIndex: t.currentStepIndex,
   totalSteps: t.totalSteps,
@@ -37,7 +97,7 @@ export const mapBackendTaskToFrontend = (t: any): Task => ({
   stepsDetail: t.stepsDetail || undefined,
 });
 
-export const mapBackendInstanceToTask = (inst: any): Task => ({
+export const mapBackendInstanceToTask = (inst: BackendInstance): Task => ({
   id: inst.taskId || inst.instanceId, // 优先使用 taskId（用于审批操作），如果没有则使用 instanceId（用于显示）
   processInstanceId: inst.instanceId,
   workflowId: inst.processDefKey,
