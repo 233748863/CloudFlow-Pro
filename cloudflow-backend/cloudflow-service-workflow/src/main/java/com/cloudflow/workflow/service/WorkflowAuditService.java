@@ -55,6 +55,13 @@ public class WorkflowAuditService {
         TASK_URGE("任务催办"),
         TASK_READ("任务已读"),
         TASK_TIMEOUT("任务超时自动处理"),
+        TASK_ADD_SIGN("任务加签"),
+        TASK_REDUCTION_SIGN("任务减签"),
+        
+        // 流程控制操作
+        PROCESS_TERMINATE("流程终止"),
+        AUTO_APPROVE("自动审批"),
+        IGNORE_PERMISSION("忽略权限"),
         
         // 权限操作
         PERMISSION_DENIED("权限拒绝"),

@@ -78,6 +78,25 @@ logging:
 cloudflow:
   # 文件上传存储根路径
   profile: /data/cloudflow/profile
+
+  # ==================== 多租户配置 ====================
+  # 对应 TenantConfigProperties 类
+  # 所有服务共享此配置，控制 SQL 自动追加 tenant_id 条件
+  tenant:
+    # 是否启用多租户功能（false 时不注册 TenantLineInnerInterceptor）
+    enabled: true
+    # 租户字段名
+    column: tenant_id
+    # 默认租户ID（未登录或上下文无租户时使用）
+    default-tenant-id: 100000
+    # 忽略租户过滤的表（这些表不追加 WHERE tenant_id = ? 条件）
+    ignore-tables:
+      - sys_tenant
+      - sys_menu
+      - sys_dict_type
+      - sys_dict_data
+      - sys_config
+
   security:
     jwt:
       secret: cloudflow-jwt-secret-key-change-in-production-environment-min-32-chars

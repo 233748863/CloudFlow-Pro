@@ -20,9 +20,10 @@ import {
   Pause,
   Play,
   Settings,
+  StopCircle,
 } from 'lucide-react';
 import request from '@/services/api/request';
-import { pauseProcess, resumeProcess, getMyInstances } from '@/services/api/workflow';
+import { pauseProcess, resumeProcess, getMyInstances, terminateProcess } from '@/services/api/workflow';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
@@ -169,6 +170,9 @@ const WorkflowMonitor: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const [processingInstance, setProcessingInstance] = useState<string | null>(null);
+  const [terminateDialogOpen, setTerminateDialogOpen] = useState(false);
+  const [terminateInstanceId, setTerminateInstanceId] = useState<string | null>(null);
+  const [terminateReason, setTerminateReason] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
@@ -224,6 +228,41 @@ const WorkflowMonitor: React.FC = () => {
     } finally {
       setProcessingInstance(null);
     }
+  };
+
+  const handleTerminateClick = (instanceId: string) => {
+    setTerminateInstanceId(instanceId);
+    setTerminateReason('');
+    setTerminateDialogOpen(true);
+  };
+
+  const handleTerminateConfirm = async () => {
+    if (!terminateInstanceId) return;
+    if (!terminateReason.trim()) {
+      toast.error('请输入终止原因');
+      return;
+    }
+
+    setProcessingInstance(terminateInstanceId);
+    try {
+      await terminateProcess({ instanceId: terminateInstanceId, reason: terminateReason });
+      toast.success('流程已终止');
+      setTerminateDialogOpen(false);
+      setTerminateInstanceId(null);
+      setTerminateReason('');
+      await fetchData(); // 刷新数据
+    } catch (err) {
+      console.error('终止流程失败:', err);
+      toast.error(err instanceof Error ? err.message : '终止流程失败，请重试');
+    } finally {
+      setProcessingInstance(null);
+    }
+  };
+
+  const handleTerminateCancel = () => {
+    setTerminateDialogOpen(false);
+    setTerminateInstanceId(null);
+    setTerminateReason('');
   };
 
   useEffect(() => {
@@ -591,32 +630,43 @@ const WorkflowMonitor: React.FC = () => {
                         {new Date(instance.startTime).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handlePauseResume(instance.instanceId, instance.status)}
-                          disabled={processingInstance === instance.instanceId}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                            instance.status === 'RUNNING'
-                              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
-                        >
-                          {processingInstance === instance.instanceId ? (
-                            <>
-                              <RefreshCw className="w-3 h-3 animate-spin" />
-                              处理中...
-                            </>
-                          ) : instance.status === 'RUNNING' ? (
-                            <>
-                              <Pause className="w-3 h-3" />
-                              暂停
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-3 h-3" />
-                              恢复
-                            </>
-                          )}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handlePauseResume(instance.instanceId, instance.status)}
+                            disabled={processingInstance === instance.instanceId}
+                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                              instance.status === 'RUNNING'
+                                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}
+                          >
+                            {processingInstance === instance.instanceId ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                处理中...
+                              </>
+                            ) : instance.status === 'RUNNING' ? (
+                              <>
+                                <Pause className="w-3 h-3" />
+                                暂停
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-3 h-3" />
+                                恢复
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleTerminateClick(instance.instanceId)}
+                            disabled={processingInstance === instance.instanceId}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="强制终止流程"
+                          >
+                            <StopCircle className="w-3 h-3" />
+                            终止
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -629,6 +679,65 @@ const WorkflowMonitor: React.FC = () => {
               <p>当前没有运行中或暂停的流程实例</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 终止流程确认对话框 */}
+      {terminateDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">终止流程确认</h3>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              此操作将强制终止流程实例，删除所有待办任务，且无法恢复。请谨慎操作！
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                终止原因 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={terminateReason}
+                onChange={(e) => setTerminateReason(e.target.value)}
+                placeholder="请输入终止原因（必填）"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                rows={3}
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={handleTerminateCancel}
+                disabled={processingInstance === terminateInstanceId}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleTerminateConfirm}
+                disabled={processingInstance === terminateInstanceId || !terminateReason.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processingInstance === terminateInstanceId ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    终止中...
+                  </>
+                ) : (
+                  <>
+                    <StopCircle className="w-4 h-4" />
+                    确认终止
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

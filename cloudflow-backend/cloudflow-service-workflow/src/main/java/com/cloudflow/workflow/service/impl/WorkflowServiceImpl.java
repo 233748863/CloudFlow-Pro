@@ -102,6 +102,11 @@ public class WorkflowServiceImpl implements IWorkflowService {
         instanceService.continueFromTimerNode(instanceId, nodeKey, variables);
     }
 
+    @Override
+    public R<?> terminateProcess(String instanceId, String reason) {
+        return instanceService.terminateProcess(instanceId, reason);
+    }
+
     // ==================== 任务操作（委托给 IWfTaskService） ====================
 
     @Override

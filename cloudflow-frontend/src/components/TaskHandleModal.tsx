@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, FormDefinition, User, Role, StepDetail } from '../types';
-import { Briefcase, X, GitMerge, AlertTriangle, CornerUpLeft, Clock, CheckCircle2, XCircle, ArrowLeftCircle, UserPlus, Users, GitBranch, ChevronRight, Paperclip, FileText, Image as ImageIcon, Download, ExternalLink } from 'lucide-react';
+import { Briefcase, X, GitMerge, AlertTriangle, CornerUpLeft, Clock, CheckCircle2, XCircle, ArrowLeftCircle, UserPlus, UserMinus, Users, GitBranch, ChevronRight, Paperclip, FileText, Image as ImageIcon, Download, ExternalLink } from 'lucide-react';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { getUserList } from '../services/api/auth';
 import { completeTask, readTask, rejectTask, getProcessTrace } from '../services/api/workflow';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { ProcessTrace } from './ProcessTrace';
+import { SignatureModal } from './SignatureModal';
 import { toast } from 'sonner';
 
 export const TaskHandleModal = ({ 
@@ -40,6 +41,9 @@ export const TaskHandleModal = ({
   const [historyNodes, setHistoryNodes] = useState<Array<{key: string, name: string}>>([]);
   // 标记历史节点是否已加载完成，区分"未加载"和"加载完成但为空"
   const [historyNodesLoaded, setHistoryNodesLoaded] = useState(false);
+  // 加签/减签模态框状态
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [signatureMode, setSignatureMode] = useState<'add' | 'reduce'>('add');
 
   useEffect(() => {
     if (isOpen && task && task.assigneeId === currentUser.id) {
@@ -228,8 +232,23 @@ export const TaskHandleModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+    <>
+      {/* 加签/减签模态框 */}
+      <SignatureModal
+        isOpen={signatureModalOpen}
+        onClose={() => setSignatureModalOpen(false)}
+        onSuccess={() => {
+          setSignatureModalOpen(false);
+          onComplete(task);
+        }}
+        taskId={task.id}
+        mode={signatureMode}
+        currentUser={currentUser}
+      />
+
+      {/* 主任务处理模态框 */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="flex items-center gap-4">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -812,25 +831,50 @@ export const TaskHandleModal = ({
                               const showAll = !bp || bp.length === 0;
                               const hasBtn = (code: string) => showAll || bp!.includes(code);
                               return (
-                                <div className="flex gap-2 justify-end">
-                                  {hasBtn('RETURN') && (
-                                    <button onClick={() => setRejectMode(true)} disabled={submitting} className="px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center gap-1">
-                                      <CornerUpLeft size={14} />
-                                      驳回
+                                <>
+                                  {/* 加签/减签按钮行 */}
+                                  <div className="flex gap-2 mb-2">
+                                    <button 
+                                      onClick={() => { setSignatureMode('add'); setSignatureModalOpen(true); }} 
+                                      disabled={submitting}
+                                      className="flex-1 px-3 py-1.5 border border-indigo-200 text-indigo-600 rounded text-xs disabled:opacity-50 hover:bg-indigo-50 flex items-center justify-center gap-1"
+                                      title="会签节点可动态增加审批人"
+                                    >
+                                      <UserPlus size={14} />
+                                      加签
                                     </button>
-                                  )}
-                                  {hasBtn('DELEGATE') && (
-                                    <button onClick={() => setDelegationMode(true)} disabled={submitting} className="px-3 py-1.5 border rounded text-xs disabled:opacity-50">转办</button>
-                                  )}
-                                  {hasBtn('REJECT') && (
-                                    <button onClick={() => setConfirmAction('REJECTED')} disabled={submitting} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs disabled:opacity-50">拒绝</button>
-                                  )}
-                                  {hasBtn('APPROVE') && (
-                                    <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs shadow disabled:opacity-50">
-                                      {submitting ? '处理中...' : '同意'}
+                                    <button 
+                                      onClick={() => { setSignatureMode('reduce'); setSignatureModalOpen(true); }} 
+                                      disabled={submitting}
+                                      className="flex-1 px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center justify-center gap-1"
+                                      title="会签节点可动态减少审批人"
+                                    >
+                                      <UserMinus size={14} />
+                                      减签
                                     </button>
-                                  )}
-                                </div>
+                                  </div>
+                                  
+                                  {/* 主要操作按钮行 */}
+                                  <div className="flex gap-2 justify-end">
+                                    {hasBtn('RETURN') && (
+                                      <button onClick={() => setRejectMode(true)} disabled={submitting} className="px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center gap-1">
+                                        <CornerUpLeft size={14} />
+                                        驳回
+                                      </button>
+                                    )}
+                                    {hasBtn('DELEGATE') && (
+                                      <button onClick={() => setDelegationMode(true)} disabled={submitting} className="px-3 py-1.5 border rounded text-xs disabled:opacity-50">转办</button>
+                                    )}
+                                    {hasBtn('REJECT') && (
+                                      <button onClick={() => setConfirmAction('REJECTED')} disabled={submitting} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs disabled:opacity-50">拒绝</button>
+                                    )}
+                                    {hasBtn('APPROVE') && (
+                                      <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-indigo-600 text-white rounded text-xs shadow disabled:opacity-50">
+                                        {submitting ? '处理中...' : '同意'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
                               );
                             })()}
 
@@ -864,6 +908,7 @@ export const TaskHandleModal = ({
            )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

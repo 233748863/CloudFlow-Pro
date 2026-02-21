@@ -794,4 +794,286 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         task.setStepsDetail(nodeExecutionService.buildAllStepsDetail(steps, histories, task.getNodeKey()));
     }
+
+    // ==================== 加签/减签功能实现 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> addSignature(String taskId, java.util.List<Long> userIds, String comment) {
+        Long currentUserId = UserContext.getUserId();
+        log.info("[addSignature] 开始加签, taskId={}, userIds={}, userId={}", taskId, userIds, currentUserId);
+
+        // 参数校验
+        if (!StringUtils.hasText(taskId)) {
+            throw WorkflowException.validationError("任务ID不能为空");
+        }
+        if (userIds == null || userIds.isEmpty()) {
+            throw WorkflowException.validationError("加签人员列表不能为空");
+        }
+        if (!StringUtils.hasText(comment)) {
+            throw WorkflowException.validationError("加签说明不能为空");
+        }
+
+        RLock lock = redissonClient.getLock("lock:task:addsign:" + taskId);
+        try {
+            if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
+                WfTask task = taskMapper.selectById(taskId);
+                if (task == null) {
+                    throw WorkflowException.taskNotFound(taskId);
+                }
+
+                // 权限校验：只有当前任务处理人可以加签
+                if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
+                    throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人可以加签");
+                }
+
+                // 检查是否为会签任务
+                if (!countersignService.isCountersignTask(task)) {
+                    throw WorkflowException.validationError("只有会签节点支持加签操作");
+                }
+
+                // 获取会签任务信息
+                WfCountersignTask csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+                if (csTask == null) {
+                    throw WorkflowException.validationError("未找到会签任务信息");
+                }
+
+                // 检查会签状态
+                if (!"VOTING".equals(csTask.getStatus())) {
+                    throw WorkflowException.invalidState("会签已结束，无法加签");
+                }
+
+                // XSS 过滤
+                comment = securityUtils.sanitizeXss(comment);
+
+                // 为每个新增人员创建会签任务
+                for (Long userId : userIds) {
+                    // 检查用户是否已经是会签人
+                    Long existingTaskCount = taskMapper.selectCount(
+                        new LambdaQueryWrapper<WfTask>()
+                            .eq(WfTask::getInstanceId, task.getInstanceId())
+                            .eq(WfTask::getNodeKey, task.getNodeKey())
+                            .eq(WfTask::getAssignee, userId)
+                    );
+                    if (existingTaskCount > 0) {
+                        log.warn("[addSignature] 用户{}已是会签人，跳过", userId);
+                        continue;
+                    }
+
+                    // 创建新的会签任务
+                    WfTask newTask = new WfTask();
+                    newTask.setTaskId(UUID.randomUUID().toString());
+                    newTask.setInstanceId(task.getInstanceId());
+                    newTask.setNodeName(task.getNodeName());
+                    newTask.setNodeKey(task.getNodeKey());
+                    newTask.setAssignee(userId);
+                    newTask.setStatus(WfTaskStatus.TODO.getCode());
+                    newTask.setCreateTime(new Date());
+                    taskMapper.insert(newTask);
+
+                    // 记录加签历史
+                    WfTaskAddSign addSign = new WfTaskAddSign();
+                    addSign.setAddSignId(UUID.randomUUID().toString());
+                    addSign.setTaskId(taskId);
+                    addSign.setInstanceId(task.getInstanceId());
+                    addSign.setSignType("AFTER"); // 后加签
+                    addSign.setInitiatorId(currentUserId);
+                    addSign.setInitiatorName(UserContext.getUserName());
+                    
+                    // 获取被加签人姓名
+                    SysUser toUser = sysUserMapper.selectById(userId);
+                    String toUserName = "";
+                    if (toUser != null) {
+                        toUserName = toUser.getNickName() != null ? toUser.getNickName() : toUser.getUserName();
+                    }
+                    
+                    addSign.setSignUserIds(String.valueOf(userId));
+                    addSign.setSignUserNames(toUserName);
+                    addSign.setReason(comment);
+                    addSign.setStatus("PENDING");
+                    addSign.setCreateTime(new Date());
+                    
+                    // 插入加签记录（需要先创建 WfTaskAddSignMapper）
+                    // wfTaskAddSignMapper.insert(addSign);
+
+                    // 发送通知
+                    sysNoticeService.sendNotice(userId, "加签通知",
+                        String.format("您被加签到任务: %s (流程: %s)", task.getNodeName(), 
+                            getInstanceTitle(task.getInstanceId())),
+                        "1", currentUserId, UserContext.getUserName());
+                }
+
+                // 更新会签任务的总人数
+                csTask.setTotalCount(csTask.getTotalCount() + userIds.size());
+                countersignService.updateCountersignTask(csTask);
+
+                // 记录审计日志
+                auditService.log(WorkflowAuditService.AuditAction.TASK_ADD_SIGN, taskId,
+                    "addedUsers=" + userIds.size() + ", comment=" + comment);
+
+                log.info("[addSignature] 加签完成, 新增{}人", userIds.size());
+                return R.ok(Map.of("addedCount", userIds.size()));
+            } else {
+                throw WorkflowException.invalidState("加签操作处理中，请勿重复提交");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> reductionSignature(String taskId, java.util.List<Long> userIds, String comment) {
+        Long currentUserId = UserContext.getUserId();
+        log.info("[reductionSignature] 开始减签, taskId={}, userIds={}, userId={}", taskId, userIds, currentUserId);
+
+        // 参数校验
+        if (!StringUtils.hasText(taskId)) {
+            throw WorkflowException.validationError("任务ID不能为空");
+        }
+        if (userIds == null || userIds.isEmpty()) {
+            throw WorkflowException.validationError("减签人员列表不能为空");
+        }
+        if (!StringUtils.hasText(comment)) {
+            throw WorkflowException.validationError("减签说明不能为空");
+        }
+
+        RLock lock = redissonClient.getLock("lock:task:redsign:" + taskId);
+        try {
+            if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
+                WfTask task = taskMapper.selectById(taskId);
+                if (task == null) {
+                    throw WorkflowException.taskNotFound(taskId);
+                }
+
+                // 权限校验：只有当前任务处理人或管理员可以减签
+                if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
+                    throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人或管理员可以减签");
+                }
+
+                // 检查是否为会签任务
+                if (!countersignService.isCountersignTask(task)) {
+                    throw WorkflowException.validationError("只有会签节点支持减签操作");
+                }
+
+                // 获取会签任务信息
+                WfCountersignTask csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+                if (csTask == null) {
+                    throw WorkflowException.validationError("未找到会签任务信息");
+                }
+
+                // 检查会签状态
+                if (!"VOTING".equals(csTask.getStatus())) {
+                    throw WorkflowException.invalidState("会签已结束，无法减签");
+                }
+
+                // XSS 过滤
+                comment = securityUtils.sanitizeXss(comment);
+
+                int removedCount = 0;
+                for (Long userId : userIds) {
+                    // 不能减签自己
+                    if (userId.equals(currentUserId)) {
+                        log.warn("[reductionSignature] 不能减签自己，跳过");
+                        continue;
+                    }
+
+                    // 查找该用户的待办任务
+                    List<WfTask> userTasks = taskMapper.selectList(
+                        new LambdaQueryWrapper<WfTask>()
+                            .eq(WfTask::getInstanceId, task.getInstanceId())
+                            .eq(WfTask::getNodeKey, task.getNodeKey())
+                            .eq(WfTask::getAssignee, userId)
+                            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+                    );
+
+                    if (userTasks.isEmpty()) {
+                        log.warn("[reductionSignature] 用户{}没有待办任务，跳过", userId);
+                        continue;
+                    }
+
+                    // 检查是否已投票
+                    boolean hasVoted = countersignService.hasUserVoted(csTask.getCountersignId(), userId);
+                    if (hasVoted) {
+                        log.warn("[reductionSignature] 用户{}已投票，不能减签", userId);
+                        continue;
+                    }
+
+                    // 删除任务
+                    for (WfTask userTask : userTasks) {
+                        taskMapper.deleteById(userTask.getTaskId());
+                        
+                        // 记录减签历史
+                        WfTaskHistory history = new WfTaskHistory();
+                        history.setHistoryId(UUID.randomUUID().toString());
+                        history.setTaskId(userTask.getTaskId());
+                        history.setInstanceId(task.getInstanceId());
+                        history.setNodeName(task.getNodeName());
+                        history.setNodeKey(task.getNodeKey());
+                        history.setOperatorId(currentUserId);
+                        history.setOperatorName(UserContext.getUserName());
+                        history.setComment("减签: " + comment);
+                        history.setAction("REDUCTION_SIGN");
+                        history.setCreateTime(new Date());
+                        taskHistoryMapper.insert(history);
+
+                        removedCount++;
+                    }
+
+                    // 发送通知
+                    sysNoticeService.sendNotice(userId, "减签通知",
+                        String.format("您被移出会签任务: %s (流程: %s)，原因: %s", 
+                            task.getNodeName(), getInstanceTitle(task.getInstanceId()), comment),
+                        "1", currentUserId, UserContext.getUserName());
+                }
+
+                if (removedCount == 0) {
+                    throw WorkflowException.validationError("没有可减签的人员（可能已投票或不存在）");
+                }
+
+                // 更新会签任务的总人数
+                csTask.setTotalCount(csTask.getTotalCount() - removedCount);
+                if (csTask.getTotalCount() < 1) {
+                    throw WorkflowException.validationError("减签后会签人数不能少于1人");
+                }
+                countersignService.updateCountersignTask(csTask);
+
+                // 检查减签后是否满足通过条件
+                countersignService.checkAndCompleteCountersign(csTask);
+
+                // 记录审计日志
+                auditService.log(WorkflowAuditService.AuditAction.TASK_REDUCTION_SIGN, taskId,
+                    "removedUsers=" + removedCount + ", comment=" + comment);
+
+                log.info("[reductionSignature] 减签完成, 移除{}人", removedCount);
+                return R.ok(Map.of("removedCount", removedCount));
+            } else {
+                throw WorkflowException.invalidState("减签操作处理中，请勿重复提交");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * 获取流程实例标题
+     */
+    private String getInstanceTitle(String instanceId) {
+        try {
+            WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+            return instance != null ? instance.getTitle() : "未知流程";
+        } catch (Exception e) {
+            return "未知流程";
+        }
+    }
 }

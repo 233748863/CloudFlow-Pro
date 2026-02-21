@@ -104,4 +104,15 @@ public interface IWfInstanceService {
      * @return 结果
      */
     R<?> invalidateProcess(String instanceId, String reason);
+
+    /**
+     * P1-3: 终止流程实例
+     * 管理员强制终止异常流程，与作废的区别是用于异常流程处理
+     * 终止操作会：删除所有待办任务、更新实例状态为TERMINATED、记录审计日志
+     *
+     * @param instanceId 流程实例ID
+     * @param reason     终止原因（必填）
+     * @return 结果
+     */
+    R<?> terminateProcess(String instanceId, String reason);
 }

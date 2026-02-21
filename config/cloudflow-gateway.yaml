@@ -1,6 +1,11 @@
 # CloudFlow Gateway路由配置
 # 此配置文件应上传到Nacos配置中心
 
+# 网关层租户配置（TenantWebFilter / AuthFilter 使用）
+cloudflow:
+  tenant:
+    default-tenant-id: 100000
+
 spring:
   cloud:
     gateway:

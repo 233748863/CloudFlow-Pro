@@ -48,7 +48,8 @@ public class MybatisPlusConfig {
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
 
-        // 1. 多租户插件（最先执行）
+        // 1. 多租户插件（最先执行，仅在 enabled=true 时注册）
+        if (tenantProperties.isEnabled()) {
         interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new TenantLineHandler() {
             @Override
             public Expression getTenantId() {
@@ -80,6 +81,9 @@ public class MybatisPlusConfig {
                 return tenantProperties.getIgnoreTables().contains(tableName);
             }
         }));
+        } else {
+            log.info("多租户功能已禁用（cloudflow.tenant.enabled=false），不注册 TenantLineInnerInterceptor");
+        }
 
         // 2. 数据权限插件（如果存在 DataScopeHandle 实现）
         if (dataScopeHandle != null) {

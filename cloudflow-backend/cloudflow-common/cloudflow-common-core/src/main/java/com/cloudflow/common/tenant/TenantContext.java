@@ -58,6 +58,14 @@ public class TenantContext {
     }
 
     /**
+     * 仅清除跳过租户过滤标识，不影响租户ID
+     * 用于 @TenantIgnore 切面恢复上下文
+     */
+    public static void clearTenantSkip() {
+        TENANT_SKIP_FLAG.remove();
+    }
+
+    /**
      * 清除当前租户上下文（包括租户ID和跳过标识）
      * 必须在请求结束时调用，避免内存泄漏
      */

@@ -491,7 +491,33 @@ export interface FlowchartStructure {
 }
 
 /**
- * P1-4: 加签
+ * 加签（动态增加审批人）
+ * 仅支持会签节点，只有任务处理人可以加签
+ */
+export async function addSignature(taskId: string, userIds: number[], comment: string): Promise<void> {
+  logApiCall('POST', '/workflow/task/add-signature', { taskId, userIds, comment });
+  return request.post('/workflow/task/add-signature', {
+    taskId,
+    userIds,
+    comment
+  });
+}
+
+/**
+ * 减签（动态减少审批人）
+ * 仅支持会签节点，任务处理人或管理员可以减签
+ */
+export async function reductionSignature(taskId: string, userIds: number[], comment: string): Promise<void> {
+  logApiCall('POST', '/workflow/task/reduction-signature', { taskId, userIds, comment });
+  return request.post('/workflow/task/reduction-signature', {
+    taskId,
+    userIds,
+    comment
+  });
+}
+
+/**
+ * P1-4: 加签（旧版，保留兼容）
  */
 export async function addSign(data: AddSignRequest): Promise<string> {
   logApiCall('POST', '/workflow/enhance/task/addSign', data);
@@ -499,7 +525,7 @@ export async function addSign(data: AddSignRequest): Promise<string> {
 }
 
 /**
- * P1-4: 减签
+ * P1-4: 减签（旧版，保留兼容）
  */
 export async function removeSign(data: RemoveSignRequest): Promise<number> {
   logApiCall('POST', '/workflow/enhance/task/removeSign', data);
@@ -536,6 +562,22 @@ export async function getFlowchartStructure(definitionId: string): Promise<Flowc
 export async function invalidateProcess(data: InvalidateProcessRequest): Promise<{ deletedTasks: number }> {
   logApiCall('POST', '/workflow/enhance/instance/invalidate', data);
   return request.post('/workflow/enhance/instance/invalidate', data);
+}
+
+/**
+ * 终止流程请求参数
+ */
+export interface TerminateProcessRequest {
+  instanceId: string;
+  reason: string;
+}
+
+/**
+ * P1-3: 终止流程（管理员强制终止异常流程）
+ */
+export async function terminateProcess(data: TerminateProcessRequest): Promise<{ instanceId: string; deletedTasks: number; reason: string; message: string }> {
+  logApiCall('POST', '/workflow/instance/terminate', data);
+  return request.post('/workflow/instance/terminate', data);
 }
 
 // ==================== 导出所有 API ====================

@@ -14,6 +14,7 @@ import java.util.List;
  * 示例配置：
  * cloudflow:
  *   tenant:
+ *     enabled: true
  *     column: tenant_id
  *     ignore-tables:
  *       - sys_tenant
@@ -28,6 +29,13 @@ import java.util.List;
 @Component
 @ConfigurationProperties(prefix = "cloudflow.tenant")
 public class TenantConfigProperties {
+
+    /**
+     * 是否启用多租户功能，默认 true
+     * 设置为 false 时，TenantLineInnerInterceptor 不会注册，所有 SQL 不追加租户条件
+     * 适用于单租户部署或测试环境
+     */
+    private boolean enabled = true;
 
     /**
      * 租户字段名，默认 tenant_id

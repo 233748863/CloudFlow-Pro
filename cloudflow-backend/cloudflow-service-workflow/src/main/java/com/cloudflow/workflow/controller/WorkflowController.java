@@ -24,6 +24,9 @@ public class WorkflowController {
     @Autowired
     private WorkflowStatisticsService statisticsService;
 
+    @Autowired
+    private com.cloudflow.workflow.service.IWfTaskService wfTaskService;
+
     /**
      * 发起流程
      * 所有已认证用户均可发起流程
@@ -291,5 +294,97 @@ public class WorkflowController {
     @PreAuthorize("isAuthenticated()")
     public R<com.cloudflow.workflow.domain.WfProcessDefinition> getProcessDefinition(@PathVariable("definitionId") String definitionId) {
         return R.ok(workflowService.getProcessDefinition(definitionId));
+    }
+
+    // ==================== 加签/减签功能 ====================
+
+    /**
+     * 加签（动态增加审批人）
+     * 仅支持会签节点，只有任务处理人可以加签
+     * 
+     * @param body 请求体，包含：
+     *             - taskId: 任务ID（必填）
+     *             - userIds: 新增审批人ID列表（必填）
+     *             - comment: 加签说明（必填）
+     * @return 加签结果
+     */
+    @PostMapping("/task/add-signature")
+    @PreAuthorize("isAuthenticated()")
+    public R<?> addSignature(@RequestBody Map<String, Object> body) {
+        String taskId = (String) body.get("taskId");
+        @SuppressWarnings("unchecked")
+        List<Long> userIds = (List<Long>) body.get("userIds");
+        String comment = (String) body.get("comment");
+
+        if (taskId == null || taskId.isBlank()) {
+            return R.fail("任务ID不能为空");
+        }
+        if (userIds == null || userIds.isEmpty()) {
+            return R.fail("加签人员列表不能为空");
+        }
+        if (comment == null || comment.isBlank()) {
+            return R.fail("加签说明不能为空");
+        }
+
+        return wfTaskService.addSignature(taskId, userIds, comment);
+    }
+
+    /**
+     * 减签（动态减少审批人）
+     * 仅支持会签节点，任务处理人或管理员可以减签
+     * 
+     * @param body 请求体，包含：
+     *             - taskId: 任务ID（必填）
+     *             - userIds: 要移除的审批人ID列表（必填）
+     *             - comment: 减签说明（必填）
+     * @return 减签结果
+     */
+    @PostMapping("/task/reduction-signature")
+    @PreAuthorize("isAuthenticated()")
+    public R<?> reductionSignature(@RequestBody Map<String, Object> body) {
+        String taskId = (String) body.get("taskId");
+        @SuppressWarnings("unchecked")
+        List<Long> userIds = (List<Long>) body.get("userIds");
+        String comment = (String) body.get("comment");
+
+        if (taskId == null || taskId.isBlank()) {
+            return R.fail("任务ID不能为空");
+        }
+        if (userIds == null || userIds.isEmpty()) {
+            return R.fail("减签人员列表不能为空");
+        }
+        if (comment == null || comment.isBlank()) {
+            return R.fail("减签说明不能为空");
+        }
+
+        return wfTaskService.reductionSignature(taskId, userIds, comment);
+    }
+
+    // ==================== 流程终止功能 ====================
+
+    /**
+     * 终止流程
+     * 管理员强制终止异常流程，与作废的区别是用于异常流程处理
+     * 仅管理员可操作
+     * 
+     * @param body 请求体，包含：
+     *             - instanceId: 流程实例ID（必填）
+     *             - reason: 终止原因（必填）
+     * @return 终止结果
+     */
+    @PostMapping("/instance/terminate")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    public R<?> terminateProcess(@RequestBody Map<String, String> body) {
+        String instanceId = body.get("instanceId");
+        String reason = body.get("reason");
+
+        if (instanceId == null || instanceId.isBlank()) {
+            return R.fail("流程实例ID不能为空");
+        }
+        if (reason == null || reason.isBlank()) {
+            return R.fail("终止原因不能为空");
+        }
+
+        return workflowService.terminateProcess(instanceId, reason);
     }
 }

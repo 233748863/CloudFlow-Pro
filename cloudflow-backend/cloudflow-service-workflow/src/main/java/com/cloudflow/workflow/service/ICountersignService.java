@@ -30,4 +30,16 @@ public interface ICountersignService {
 
     /** 查询指定实例和节点的会签任务 */
     WfCountersignTask getCountersignByNode(String instanceId, String nodeKey);
+
+    /** 获取会签任务信息 */
+    WfCountersignTask getCountersignTask(String instanceId, String nodeKey);
+
+    /** 更新会签任务 */
+    void updateCountersignTask(WfCountersignTask csTask);
+
+    /** 检查用户是否已投票 */
+    boolean hasUserVoted(String countersignId, Long userId);
+
+    /** 检查并完成会签（减签后可能满足通过条件） */
+    void checkAndCompleteCountersign(WfCountersignTask csTask);
 }

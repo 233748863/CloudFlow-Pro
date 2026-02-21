@@ -199,4 +199,14 @@ public interface IWorkflowService {
      * @param variables  定时任务中保存的流程变量（会与实例变量合并）
      */
     void continueFromTimerNode(String instanceId, String nodeKey, Map<String, Object> variables);
+
+    /**
+     * 终止流程
+     * 管理员强制终止异常流程，与作废的区别是用于异常流程处理
+     * 
+     * @param instanceId 流程实例ID
+     * @param reason 终止原因
+     * @return 结果
+     */
+    R<?> terminateProcess(String instanceId, String reason);
 }

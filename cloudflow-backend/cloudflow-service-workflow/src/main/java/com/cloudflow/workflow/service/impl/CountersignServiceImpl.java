@@ -539,4 +539,93 @@ public class CountersignServiceImpl implements ICountersignService {
                 .last("LIMIT 1")
         );
     }
+
+    // ==================== 加签/减签辅助方法 ====================
+
+    /**
+     * 获取会签任务信息
+     */
+    @Override
+    public WfCountersignTask getCountersignTask(String instanceId, String nodeKey) {
+        return countersignTaskMapper.selectOne(
+            new LambdaQueryWrapper<WfCountersignTask>()
+                .eq(WfCountersignTask::getInstanceId, instanceId)
+                .eq(WfCountersignTask::getNodeKey, nodeKey)
+                .orderByDesc(WfCountersignTask::getCreateTime)
+                .last("LIMIT 1")
+        );
+    }
+
+    /**
+     * 更新会签任务
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateCountersignTask(WfCountersignTask csTask) {
+        if (csTask == null || csTask.getCountersignId() == null) {
+            throw WorkflowException.validationError("会签任务信息不能为空");
+        }
+        countersignTaskMapper.updateById(csTask);
+        log.info("[updateCountersignTask] 会签任务已更新, countersignId={}, totalCount={}",
+                csTask.getCountersignId(), csTask.getTotalCount());
+    }
+
+    /**
+     * 检查用户是否已投票
+     */
+    @Override
+    public boolean hasUserVoted(String countersignId, Long userId) {
+        if (countersignId == null || userId == null) {
+            return false;
+        }
+        Long count = countersignVoteMapper.selectCount(
+            new LambdaQueryWrapper<WfCountersignVote>()
+                .eq(WfCountersignVote::getCountersignId, countersignId)
+                .eq(WfCountersignVote::getVoterId, userId)
+        );
+        return count != null && count > 0;
+    }
+
+    /**
+     * 检查并完成会签（减签后可能满足通过条件）
+     * 
+     * 减签后，需要重新评估会签结果：
+     * - 如果减签后已满足通过条件，则自动完成会签
+     * - 如果减签后无法满足通过条件，则自动拒绝会签
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void checkAndCompleteCountersign(WfCountersignTask csTask) {
+        if (csTask == null) {
+            return;
+        }
+
+        // 只有投票中的会签才需要检查
+        if (!"VOTING".equals(csTask.getStatus())) {
+            return;
+        }
+
+        log.info("[checkAndCompleteCountersign] 检查会签状态, countersignId={}, totalCount={}, votedCount={}, approveCount={}",
+                csTask.getCountersignId(), csTask.getTotalCount(), csTask.getVotedCount(), csTask.getApproveCount());
+
+        // 重新评估会签结果
+        String result = evaluateCountersignResult(csTask);
+
+        // 如果会签已经可以结束（PASSED 或 REJECTED）
+        if (!"VOTING".equals(result)) {
+            csTask.setStatus(result);
+            csTask.setCompleteTime(new Date());
+            countersignTaskMapper.updateById(csTask);
+
+            // 清理剩余未投票的任务
+            cleanupRemainingTasks(csTask.getCountersignId());
+
+            log.info("[checkAndCompleteCountersign] 会签已自动完成, countersignId={}, result={}, approve={}/{}, reject={}/{}",
+                    csTask.getCountersignId(), result, csTask.getApproveCount(), csTask.getTotalCount(),
+                    csTask.getRejectCount(), csTask.getTotalCount());
+        } else {
+            log.info("[checkAndCompleteCountersign] 会签继续进行, countersignId={}, remaining={}",
+                    csTask.getCountersignId(), csTask.getTotalCount() - csTask.getVotedCount());
+        }
+    }
 }

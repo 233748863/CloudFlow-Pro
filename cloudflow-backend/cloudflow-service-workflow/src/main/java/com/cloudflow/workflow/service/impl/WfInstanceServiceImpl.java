@@ -667,4 +667,111 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         String randomPart = String.format("%04d", new Random().nextInt(10000));
         return prefix + datePart + randomPart;
     }
+
+    // ==================== P1-3: 终止流程 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public R<?> terminateProcess(String instanceId, String reason) {
+        log.info("[terminateProcess] 终止流程, instanceId={}, reason={}", instanceId, reason);
+
+        // 1. 权限校验 - 仅管理员可操作
+        Long currentUserId = UserContext.getUserId();
+        if (!permissionService.isAdmin(currentUserId)) {
+            auditService.logPermissionDenied(instanceId, "TERMINATE");
+            return R.fail("仅管理员可终止流程");
+        }
+
+        // 2. 参数校验
+        if (!StringUtils.hasText(instanceId)) {
+            return R.fail("流程实例ID不能为空");
+        }
+        if (!StringUtils.hasText(reason)) {
+            return R.fail("终止原因不能为空");
+        }
+
+        // XSS过滤
+        reason = securityUtils.sanitizeXss(reason);
+
+        // 3. 查询流程实例
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            return R.fail("流程实例不存在");
+        }
+
+        // 4. 状态校验
+        if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus()) &&
+            !WfProcessStatus.SUSPENDED.getCode().equals(instance.getStatus())) {
+            return R.fail("只能终止运行中或已暂停的流程，当前状态: " + instance.getStatus());
+        }
+
+        // 5. 使用分布式锁
+        RLock lock = redissonClient.getLock("lock:instance:" + instanceId);
+        try {
+            if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
+                // 6. 删除所有待办任务
+                int deletedTasks = taskMapper.delete(
+                    new LambdaQueryWrapper<WfTask>()
+                        .eq(WfTask::getInstanceId, instanceId)
+                        .in(WfTask::getStatus, WfTaskStatus.TODO.getCode(), WfTaskStatus.DELEGATED.getCode())
+                );
+
+                log.info("终止流程，删除待办任务: instanceId={}, count={}", instanceId, deletedTasks);
+
+                // 7. 更新流程实例状态
+                instance.setStatus("TERMINATED");
+                instance.setEndTime(new Date());
+                processInstanceMapper.updateById(instance);
+
+                // 8. 记录审计日志
+                auditService.log(
+                    WorkflowAuditService.AuditAction.PROCESS_TERMINATE,
+                    instanceId,
+                    String.format("管理员[%s]终止流程，原因: %s，删除任务数: %d",
+                        currentUserId, reason, deletedTasks)
+                );
+
+                // 9. 发布事件
+                try {
+                    workflowEventPublisher.publishProcessTerminated(instance, reason);
+                } catch (Exception e) {
+                    log.warn("发布终止事件失败: {}", e.getMessage());
+                }
+
+                // 10. 发送通知
+                try {
+                    if (instance.getStartUserId() != null) {
+                        sysNoticeService.sendNotice(instance.getStartUserId(), "流程终止通知",
+                            String.format("您发起的流程 [%s] 已被管理员终止，原因：%s", instance.getTitle(), reason),
+                            "SYSTEM", currentUserId, UserContext.getUserName());
+                    }
+                } catch (Exception e) {
+                    log.warn("发送终止通知失败: {}", e.getMessage());
+                }
+
+                log.info("流程终止成功: instanceId={}, deletedTasks={}, reason={}",
+                         instanceId, deletedTasks, reason);
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("instanceId", instanceId);
+                result.put("deletedTasks", deletedTasks);
+                result.put("reason", reason);
+                result.put("message", "流程已终止");
+                return R.ok(result);
+            } else {
+                return R.fail("系统繁忙，请稍后重试");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("终止流程被中断: instanceId={}", instanceId);
+            return R.fail("操作被中断");
+        } catch (Exception e) {
+            log.error("终止流程失败: instanceId={}, error={}", instanceId, e.getMessage(), e);
+            return R.fail("终止流程失败: " + e.getMessage());
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
 }

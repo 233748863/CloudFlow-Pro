@@ -64,4 +64,26 @@ public interface IWfTaskService {
      * @return 结果
      */
     R<?> urgeTask(String taskId, String reason);
+
+    /**
+     * 加签（动态增加审批人）
+     * 仅支持会签节点
+     *
+     * @param taskId  任务ID
+     * @param userIds 新增审批人ID列表
+     * @param comment 加签说明
+     * @return 结果
+     */
+    R<?> addSignature(String taskId, java.util.List<Long> userIds, String comment);
+
+    /**
+     * 减签（动态减少审批人）
+     * 仅支持会签节点
+     *
+     * @param taskId  任务ID
+     * @param userIds 要移除的审批人ID列表
+     * @param comment 减签说明
+     * @return 结果
+     */
+    R<?> reductionSignature(String taskId, java.util.List<Long> userIds, String comment);
 }
