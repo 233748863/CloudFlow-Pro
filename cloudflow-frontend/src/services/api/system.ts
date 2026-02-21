@@ -63,6 +63,7 @@ export interface SysConfig {
   configKey: string;
   configValue: string;
   configType: string; // Y: 系统内置, N: 非内置
+  configScope: string; // 0: 全局配置, 1: 租户配置
   createBy?: string;
   createTime?: string;
   updateBy?: string;

@@ -19,12 +19,37 @@ public class TokenService {
     
     @Autowired
     private SecurityProperties securityProperties;
+
+    @Autowired(required = false)
+    private SysConfigHelper sysConfigHelper;
     
     protected static final long MILLIS_SECOND = 1000;
     protected static final long MILLIS_MINUTE = 60 * MILLIS_SECOND;
 
     @Autowired
     private RedisCache redisCache;
+
+    /**
+     * 获取 Token 过期时间（分钟），优先从 sys_config 读取（全局配置）
+     */
+    private int getExpiration() {
+        if (sysConfigHelper != null) {
+            return sysConfigHelper.getGlobalInt("sys.security.token.expiration",
+                    securityProperties.getToken().getExpiration());
+        }
+        return securityProperties.getToken().getExpiration();
+    }
+
+    /**
+     * 获取 Token 刷新时间（分钟），优先从 sys_config 读取（全局配置）
+     */
+    private int getRefreshTime() {
+        if (sysConfigHelper != null) {
+            return sysConfigHelper.getGlobalInt("sys.security.token.refreshTime",
+                    securityProperties.getToken().getRefreshTime());
+        }
+        return securityProperties.getToken().getRefreshTime();
+    }
 
     /**
      * 创建令牌
@@ -38,17 +63,17 @@ public class TokenService {
         
         loginUser.put("token", token);
         loginUser.put("login_time", System.currentTimeMillis());
-        loginUser.put("expire_time", System.currentTimeMillis() + securityProperties.getToken().getExpiration() * MILLIS_MINUTE);
+        loginUser.put("expire_time", System.currentTimeMillis() + getExpiration() * MILLIS_MINUTE);
 
         String userKey = getTokenKey(token);
-        redisCache.setCacheObject(userKey, loginUser, securityProperties.getToken().getExpiration(), TimeUnit.MINUTES);
+        redisCache.setCacheObject(userKey, loginUser, getExpiration(), TimeUnit.MINUTES);
 
         // 反向索引（用户 -> Tokens 集合）
         if (userId != null) {
             String userTokensKey = CacheConstants.USER_TOKENS_KEY + userId;
             // 使用封装的 RedisCache 方法确保租户隔离
             redisCache.setCacheSet(userTokensKey, token);
-            redisCache.expire(userTokensKey, securityProperties.getToken().getExpiration(), TimeUnit.MINUTES);
+            redisCache.expire(userTokensKey, getExpiration(), TimeUnit.MINUTES);
         }
 
         // 生成 JWT，载荷放入 UUID
@@ -92,7 +117,7 @@ public class TokenService {
         long expireTime = ((Number) loginUser.get("expire_time")).longValue();
         long currentTime = System.currentTimeMillis();
         
-        long refreshThreshold = securityProperties.getToken().getRefreshTime() * MILLIS_MINUTE;
+        long refreshThreshold = getRefreshTime() * MILLIS_MINUTE;
         
         if (expireTime - currentTime <= refreshThreshold) {
             refreshToken(userKey, loginUser);
@@ -104,14 +129,14 @@ public class TokenService {
      */
     public void refreshToken(String userKey, Map<String, Object> loginUser) {
         loginUser.put("login_time", System.currentTimeMillis());
-        loginUser.put("expire_time", System.currentTimeMillis() + securityProperties.getToken().getExpiration() * MILLIS_MINUTE);
-        redisCache.setCacheObject(userKey, loginUser, securityProperties.getToken().getExpiration(), TimeUnit.MINUTES);
+        loginUser.put("expire_time", System.currentTimeMillis() + getExpiration() * MILLIS_MINUTE);
+        redisCache.setCacheObject(userKey, loginUser, getExpiration(), TimeUnit.MINUTES);
         
         // 刷新反向索引有效期
         Object userId = loginUser.get("userId");
         if (userId != null) {
              String userTokensKey = CacheConstants.USER_TOKENS_KEY + userId;
-             redisCache.expire(userTokensKey, securityProperties.getToken().getExpiration(), TimeUnit.MINUTES);
+             redisCache.expire(userTokensKey, getExpiration(), TimeUnit.MINUTES);
         }
     }
 

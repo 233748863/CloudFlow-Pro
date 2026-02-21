@@ -630,6 +630,7 @@ CREATE TABLE sys_config (
   config_key        VARCHAR(100)    DEFAULT '' COMMENT '参数键名',
   config_value      VARCHAR(500)    DEFAULT '' COMMENT '参数键值',
   config_type       CHAR(1)         DEFAULT 'N' COMMENT '系统内置（Y是 N否）',
+  config_scope      CHAR(1)         DEFAULT '1' COMMENT '配置作用域（0=全局 1=租户）',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -641,15 +642,122 @@ CREATE TABLE sys_config (
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='系统参数配置表';
 
 -- 12. 初始化系统参数数据
-INSERT INTO sys_config VALUES(1, 100000, '用户管理-账号初始密码',       'sys.user.initPassword',        '123456',   'Y', 'admin', sysdate(), '', null, '初始化密码 123456');
-INSERT INTO sys_config VALUES(2, 100000, '用户管理-密码最小长度',       'sys.user.password.minLength',   '6',        'Y', 'admin', sysdate(), '', null, '密码最小长度限制');
-INSERT INTO sys_config VALUES(3, 100000, '用户管理-密码最大长度',       'sys.user.password.maxLength',   '20',       'Y', 'admin', sysdate(), '', null, '密码最大长度限制');
-INSERT INTO sys_config VALUES(4, 100000, '用户管理-登录失败锁定次数',   'sys.user.login.maxRetry',       '5',        'Y', 'admin', sysdate(), '', null, '登录失败超过此次数将锁定账号');
-INSERT INTO sys_config VALUES(5, 100000, '用户管理-登录锁定时间(分钟)', 'sys.user.login.lockTime',       '10',       'Y', 'admin', sysdate(), '', null, '账号锁定持续时间');
-INSERT INTO sys_config VALUES(6, 100000, '系统管理-是否开启验证码',     'sys.captcha.enabled',           'true',     'Y', 'admin', sysdate(), '', null, '是否开启登录验证码功能');
-INSERT INTO sys_config VALUES(7, 100000, '系统管理-是否开启用户注册',   'sys.account.registerUser',      'false',    'Y', 'admin', sysdate(), '', null, '是否开启注册用户功能');
-INSERT INTO sys_config VALUES(8, 100000, '文件上传-单文件大小限制(MB)', 'sys.upload.maxFileSize',        '50',       'Y', 'admin', sysdate(), '', null, '单个文件上传大小限制');
-INSERT INTO sys_config VALUES(9, 100000, '文件上传-允许的文件类型',     'sys.upload.allowedTypes',       'jpg,jpeg,png,gif,bmp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar', 'Y', 'admin', sysdate(), '', null, '允许上传的文件扩展名');
+-- config_scope: 0=全局（所有租户共享） 1=租户（每个租户可独立配置）
+-- 用户管理配置（租户级：不同租户可设不同密码策略）
+INSERT INTO sys_config VALUES(1, 100000, '用户管理-账号初始密码',       'sys.user.initPassword',        '123456',   'Y', '1', 'admin', sysdate(), '', null, '初始化密码 123456');
+INSERT INTO sys_config VALUES(2, 100000, '用户管理-密码最小长度',       'sys.user.password.minLength',   '6',        'Y', '1', 'admin', sysdate(), '', null, '密码最小长度限制');
+INSERT INTO sys_config VALUES(3, 100000, '用户管理-密码最大长度',       'sys.user.password.maxLength',   '20',       'Y', '1', 'admin', sysdate(), '', null, '密码最大长度限制');
+INSERT INTO sys_config VALUES(4, 100000, '用户管理-登录失败锁定次数',   'sys.user.login.maxRetry',       '5',        'Y', '1', 'admin', sysdate(), '', null, '登录失败超过此次数将锁定账号');
+INSERT INTO sys_config VALUES(5, 100000, '用户管理-登录锁定时间(分钟)', 'sys.user.login.lockTime',       '10',       'Y', '1', 'admin', sysdate(), '', null, '账号锁定持续时间');
+-- 系统安全配置（全局：安全策略统一管控）
+INSERT INTO sys_config VALUES(6, 100000, '系统管理-是否开启验证码',     'sys.captcha.enabled',           'true',     'Y', '0', 'admin', sysdate(), '', null, '是否开启登录验证码功能');
+-- 注册开关（租户级：不同租户可独立控制）
+INSERT INTO sys_config VALUES(7, 100000, '系统管理-是否开启用户注册',   'sys.account.registerUser',      'false',    'Y', '1', 'admin', sysdate(), '', null, '是否开启注册用户功能');
+-- 文件上传配置（全局：安全策略统一管控）
+INSERT INTO sys_config VALUES(8, 100000, '文件上传-单文件大小限制(MB)', 'sys.upload.maxFileSize',        '50',       'Y', '0', 'admin', sysdate(), '', null, '单个文件上传大小限制');
+INSERT INTO sys_config VALUES(9, 100000, '文件上传-允许的文件类型',     'sys.upload.allowedTypes',       'jpg,jpeg,png,gif,bmp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar', 'Y', '0', 'admin', sysdate(), '', null, '允许上传的文件扩展名');
+
+-- 验证码配置（全局：安全策略统一管控）
+INSERT INTO sys_config VALUES(10, 100000, '验证码-滑块容错值(像素)',       'sys.captcha.tolerance',         '8',        'Y', '0', 'admin', sysdate(), '', null, '滑块验证码允许的像素偏差范围');
+INSERT INTO sys_config VALUES(11, 100000, '验证码-有效期(秒)',             'sys.captcha.ttl',               '300',      'Y', '0', 'admin', sysdate(), '', null, '验证码生成后的有效时间');
+INSERT INTO sys_config VALUES(12, 100000, '验证码-每日单IP验证次数限制',   'sys.captcha.dailyLimit',        '100',      'Y', '0', 'admin', sysdate(), '', null, '同一IP每天最多验证次数');
+INSERT INTO sys_config VALUES(13, 100000, '验证码-通过Token有效期(秒)',    'sys.captcha.passTokenTtl',      '120',      'Y', '0', 'admin', sysdate(), '', null, '验证通过后Token的有效时间');
+
+-- 考勤配置（租户级：不同租户上下班时间不同）
+INSERT INTO sys_config VALUES(14, 100000, '考勤管理-上班时间',             'sys.attendance.workStartTime',  '09:00',    'Y', '1', 'admin', sysdate(), '', null, '每日上班打卡时间，格式 HH:mm');
+INSERT INTO sys_config VALUES(15, 100000, '考勤管理-下班时间',             'sys.attendance.workEndTime',    '18:00',    'Y', '1', 'admin', sysdate(), '', null, '每日下班打卡时间，格式 HH:mm');
+INSERT INTO sys_config VALUES(16, 100000, '考勤管理-迟到阈值(分钟)',       'sys.attendance.lateThreshold',  '15',       'Y', '1', 'admin', sysdate(), '', null, '超过上班时间多少分钟算迟到');
+INSERT INTO sys_config VALUES(17, 100000, '考勤管理-早退阈值(分钟)',       'sys.attendance.earlyLeaveThreshold', '15',  'Y', '1', 'admin', sysdate(), '', null, '早于下班时间多少分钟算早退');
+INSERT INTO sys_config VALUES(18, 100000, '考勤管理-加班阈值(分钟)',       'sys.attendance.overtimeThreshold',   '30',  'Y', '1', 'admin', sysdate(), '', null, '超过下班时间多少分钟算加班');
+INSERT INTO sys_config VALUES(19, 100000, '考勤管理-打卡半径(米)',         'sys.attendance.checkInRadius',  '500',      'Y', '1', 'admin', sysdate(), '', null, '允许打卡的地理围栏半径');
+
+-- 公告配置（租户级）
+INSERT INTO sys_config VALUES(20, 100000, '公告管理-默认过期天数',         'sys.announcement.defaultExpireDays', '30',  'Y', '1', 'admin', sysdate(), '', null, '公告默认过期天数');
+INSERT INTO sys_config VALUES(21, 100000, '公告管理-最大附件大小(MB)',     'sys.announcement.maxAttachmentSize', '10',  'Y', '1', 'admin', sysdate(), '', null, '公告附件最大上传大小');
+
+-- 车辆管理配置（租户级）
+INSERT INTO sys_config VALUES(22, 100000, '车辆管理-最大预订天数',         'sys.vehicle.maxBookingDays',    '7',        'Y', '1', 'admin', sysdate(), '', null, '单次车辆预订最大天数');
+INSERT INTO sys_config VALUES(23, 100000, '车辆管理-提前预订小时数',       'sys.vehicle.advanceBookingHours', '2',      'Y', '1', 'admin', sysdate(), '', null, '需提前多少小时预订车辆');
+
+-- 会议室配置（租户级）
+INSERT INTO sys_config VALUES(24, 100000, '会议室-最大预订小时数',         'sys.meetingRoom.maxBookingHours', '4',      'Y', '1', 'admin', sysdate(), '', null, '单次会议室预订最大小时数');
+INSERT INTO sys_config VALUES(25, 100000, '会议室-自动释放分钟数',         'sys.meetingRoom.autoReleaseMinutes', '15',  'Y', '1', 'admin', sysdate(), '', null, '预订开始后未签到自动释放的分钟数');
+
+-- 资产管理配置（租户级）
+INSERT INTO sys_config VALUES(26, 100000, '资产管理-二维码前缀',           'sys.asset.qrCodePrefix',        'ASSET-',   'Y', '1', 'admin', sysdate(), '', null, '资产二维码编号前缀');
+INSERT INTO sys_config VALUES(27, 100000, '资产管理-折旧方法',             'sys.asset.depreciationMethod',  'STRAIGHT_LINE', 'Y', '1', 'admin', sysdate(), '', null, '资产折旧计算方法：STRAIGHT_LINE(直线法)');
+
+-- 工作流配置（全局：引擎级参数统一管控）
+INSERT INTO sys_config VALUES(28, 100000, '工作流-流程最大深度',           'sys.workflow.maxDepth',         '500',      'Y', '0', 'admin', sysdate(), '', null, '流程执行最大深度，防止循环流程导致堆栈溢出');
+INSERT INTO sys_config VALUES(29, 100000, '工作流-撤回时间窗口(小时)',     'sys.workflow.recallTimeoutHours', '24',     'Y', '1', 'admin', sysdate(), '', null, '流程提交后允许撤回的时间窗口，0表示不限制');
+INSERT INTO sys_config VALUES(30, 100000, '工作流-失败最大重试次数',       'sys.workflow.maxRetryCount',    '5',        'Y', '0', 'admin', sysdate(), '', null, '工作流节点执行失败后的最大重试次数');
+
+-- 日志配置（全局：基础设施统一管控）
+INSERT INTO sys_config VALUES(31, 100000, '日志管理-请求参数最大长度',     'sys.log.maxLength',             '2000',     'Y', '0', 'admin', sysdate(), '', null, '操作日志记录请求参数的最大字符长度');
+INSERT INTO sys_config VALUES(32, 100000, '日志管理-是否开启操作日志',     'sys.log.enabled',               'true',     'Y', '0', 'admin', sysdate(), '', null, '是否开启操作日志记录功能');
+INSERT INTO sys_config VALUES(33, 100000, '日志管理-是否记录请求报文体',   'sys.log.requestEnabled',        'true',     'Y', '0', 'admin', sysdate(), '', null, '是否记录请求参数到日志中');
+
+-- 安全认证配置（全局：Token策略统一管控）
+INSERT INTO sys_config VALUES(34, 100000, '安全认证-Token过期时间(分钟)',   'sys.security.token.expiration', '30',       'Y', '0', 'admin', sysdate(), '', null, 'JWT Token过期时间，单位分钟');
+INSERT INTO sys_config VALUES(35, 100000, '安全认证-Token刷新时间(分钟)',   'sys.security.token.refreshTime','20',       'Y', '0', 'admin', sysdate(), '', null, 'Token距过期不足此时间时自动刷新');
+
+-- 滑块验证码图片配置（全局）
+INSERT INTO sys_config VALUES(36, 100000, '验证码-背景图宽度(像素)',       'sys.captcha.width',             '300',      'Y', '0', 'admin', sysdate(), '', null, '滑块验证码背景图宽度');
+INSERT INTO sys_config VALUES(37, 100000, '验证码-背景图高度(像素)',       'sys.captcha.height',            '150',      'Y', '0', 'admin', sysdate(), '', null, '滑块验证码背景图高度');
+INSERT INTO sys_config VALUES(38, 100000, '验证码-拼图块大小(像素)',       'sys.captcha.puzzleSize',        '44',       'Y', '0', 'admin', sysdate(), '', null, '滑块验证码拼图块逻辑宽度');
+INSERT INTO sys_config VALUES(39, 100000, '验证码-圆弧半径(像素)',         'sys.captcha.circleRadius',      '8',        'Y', '0', 'admin', sysdate(), '', null, '滑块验证码凸出圆弧半径');
+
+-- 工作流引擎扩展配置（全局）
+INSERT INTO sys_config VALUES(40, 100000, '工作流-定时器扫描最大重试次数', 'sys.workflow.timerMaxRetry',     '3',        'Y', '0', 'admin', sysdate(), '', null, '定时器节点执行失败后的最大重试次数');
+INSERT INTO sys_config VALUES(41, 100000, '工作流-定时器重试间隔(分钟)',   'sys.workflow.timerRetryInterval','2',        'Y', '0', 'admin', sysdate(), '', null, '定时器节点重试间隔时间');
+INSERT INTO sys_config VALUES(42, 100000, '工作流-事务重试基数(秒)',       'sys.workflow.retryBaseInterval', '30',       'Y', '0', 'admin', sysdate(), '', null, '事务一致性重试间隔基数，采用指数退避');
+INSERT INTO sys_config VALUES(43, 100000, '工作流-异步状态过期(分钟)',     'sys.workflow.asyncStatusExpire', '10',       'Y', '0', 'admin', sysdate(), '', null, '异步工作流状态在Redis中的过期时间');
+INSERT INTO sys_config VALUES(44, 100000, '工作流-Nonce防重放过期(分钟)',  'sys.workflow.nonceExpireMinutes','5',        'Y', '0', 'admin', sysdate(), '', null, '请求Nonce防重放攻击的过期时间');
+
+-- 分布式锁配置（全局）
+INSERT INTO sys_config VALUES(45, 100000, '分布式锁-会签锁等待(秒)',       'sys.lock.countersign.waitSeconds',  '10',   'Y', '0', 'admin', sysdate(), '', null, '会签操作获取分布式锁的等待超时');
+INSERT INTO sys_config VALUES(46, 100000, '分布式锁-会签锁持有(秒)',       'sys.lock.countersign.leaseSeconds', '30',   'Y', '0', 'admin', sysdate(), '', null, '会签操作分布式锁的自动释放时间');
+INSERT INTO sys_config VALUES(47, 100000, '分布式锁-死锁检测超时(秒)',     'sys.lock.deadlockTimeoutThreshold', '60',   'Y', '0', 'admin', sysdate(), '', null, '锁持有超过此时间视为可能死锁');
+INSERT INTO sys_config VALUES(48, 100000, '分布式锁-死锁牺牲记录上限',     'sys.lock.maxVictimRecords',     '100',      'Y', '0', 'admin', sysdate(), '', null, '死锁牺牲记录最大保留数量');
+
+-- SSE实时推送配置（全局）
+INSERT INTO sys_config VALUES(49, 100000, 'SSE-连接超时时间(毫秒)',        'sys.sse.timeout',               '0',        'Y', '0', 'admin', sysdate(), '', null, 'SSE连接超时时间，0表示永不超时');
+
+-- 分页配置（全局）
+INSERT INTO sys_config VALUES(50, 100000, '分页-默认页码',                 'sys.page.defaultPageNum',       '1',        'Y', '0', 'admin', sysdate(), '', null, '分页查询默认起始页码');
+INSERT INTO sys_config VALUES(51, 100000, '分页-默认每页条数',             'sys.page.defaultPageSize',      '10',       'Y', '0', 'admin', sysdate(), '', null, '分页查询默认每页显示条数');
+
+-- 租户配置（全局）
+INSERT INTO sys_config VALUES(52, 100000, '租户-默认租户ID',               'sys.tenant.defaultId',          '100000',   'Y', '0', 'admin', sysdate(), '', null, '系统默认租户ID');
+INSERT INTO sys_config VALUES(53, 100000, '租户-默认用户数量限制',         'sys.tenant.defaultUserLimit',   '100',      'Y', '0', 'admin', sysdate(), '', null, '新建租户默认用户数量上限');
+INSERT INTO sys_config VALUES(54, 100000, '租户-默认存储空间(MB)',         'sys.tenant.defaultStorageLimit','10240',    'Y', '0', 'admin', sysdate(), '', null, '新建租户默认存储空间限制');
+
+-- OA补充配置（租户级）
+INSERT INTO sys_config VALUES(55, 100000, '公告管理-是否允许匿名阅读',     'sys.announcement.allowAnonymous','false',   'Y', '1', 'admin', sysdate(), '', null, '是否允许未登录用户查看公告');
+INSERT INTO sys_config VALUES(56, 100000, '资产管理-二维码大小(像素)',     'sys.asset.qrCodeSize',          '200',      'Y', '1', 'admin', sysdate(), '', null, '资产二维码图片尺寸');
+INSERT INTO sys_config VALUES(57, 100000, '资产管理-是否启用二维码',       'sys.asset.enableQrCode',        'true',     'Y', '1', 'admin', sysdate(), '', null, '是否为资产自动生成二维码');
+INSERT INTO sys_config VALUES(58, 100000, '车辆管理-是否允许并发预订',     'sys.vehicle.allowConcurrent',   'false',    'Y', '1', 'admin', sysdate(), '', null, '同一车辆是否允许时间段重叠预订');
+INSERT INTO sys_config VALUES(59, 100000, '车辆管理-油价更新Cron表达式',   'sys.vehicle.fuelPriceUpdateCron','0 0 2 * * ?','Y','1','admin', sysdate(), '', null, '油价自动更新定时任务Cron表达式');
+INSERT INTO sys_config VALUES(60, 100000, '会议室-提前预订小时数',         'sys.meetingRoom.advanceBookingHours','1',    'Y', '1', 'admin', sysdate(), '', null, '需提前多少小时预订会议室');
+INSERT INTO sys_config VALUES(61, 100000, '会议室-是否允许并发预订',       'sys.meetingRoom.allowConcurrent','false',   'Y', '1', 'admin', sysdate(), '', null, '同一会议室是否允许时间段重叠预订');
+
+-- 加密配置（全局：安全策略统一管控）
+INSERT INTO sys_config VALUES(62, 100000, '加密-是否启用字段加密',         'sys.encrypt.enabled',           'true',     'Y', '0', 'admin', sysdate(), '', null, '是否启用数据库字段加密功能');
+
+-- 数据权限配置（全局）
+INSERT INTO sys_config VALUES(63, 100000, '数据权限-部门字段名',           'sys.datascope.deptColumn',      'dept_id',  'Y', '0', 'admin', sysdate(), '', null, '数据权限过滤使用的部门字段名');
+INSERT INTO sys_config VALUES(64, 100000, '数据权限-用户字段名',           'sys.datascope.userColumn',      'create_by','Y', '0', 'admin', sysdate(), '', null, '数据权限过滤使用的用户字段名');
+
+-- 工作流Stream配置（全局）
+INSERT INTO sys_config VALUES(65, 100000, '工作流-Stream Key',             'sys.workflow.stream.key',       'workflow:stream:timeout', 'Y', '0', 'admin', sysdate(), '', null, 'Redis Stream消息队列Key名称');
+INSERT INTO sys_config VALUES(66, 100000, '工作流-Stream消费组',           'sys.workflow.stream.group',     'group:workflow:engine',   'Y', '0', 'admin', sysdate(), '', null, 'Redis Stream消费者组名称');
+
+-- 网关配置（全局）
+INSERT INTO sys_config VALUES(67, 100000, '网关-默认租户ID',               'sys.gateway.defaultTenantId',   '100000',   'Y', '0', 'admin', sysdate(), '', null, '请求未携带租户ID时使用的默认值');
+
+-- OSS对象存储配置（全局）
+INSERT INTO sys_config VALUES(68, 100000, 'OSS-是否启用HTTPS',             'sys.oss.isHttps',               'N',        'Y', '0', 'admin', sysdate(), '', null, '对象存储是否使用HTTPS协议');
+INSERT INTO sys_config VALUES(69, 100000, 'OSS-默认访问策略',              'sys.oss.accessPolicy',          '1',        'Y', '0', 'admin', sysdate(), '', null, '桶默认访问策略：0私有 1公共读 2公共读写');
 
 SET FOREIGN_KEY_CHECKS = 1;
 

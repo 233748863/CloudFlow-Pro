@@ -4,6 +4,8 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.audit.domain.SysAuditLogEntity;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.tenant.TenantConfigProperties;
+import cn.hutool.extra.spring.SpringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.javers.core.Changes;
@@ -45,10 +47,15 @@ public class DefaultAuditLogHandle implements IAuditLogHandle {
             return;
         }
 
-        // 获取租户ID
+        // 获取租户ID，降级使用 TenantConfigProperties 中的默认值
         Long tenantId = UserContext.getTenantId();
         if (tenantId == null) {
-            tenantId = 100000L;
+            try {
+                TenantConfigProperties tenantConfig = SpringUtil.getBean(TenantConfigProperties.class);
+                tenantId = tenantConfig.getDefaultTenantId();
+            } catch (Exception e) {
+                tenantId = 100000L;
+            }
         }
 
         // 将每个字段变更转换为审计日志记录

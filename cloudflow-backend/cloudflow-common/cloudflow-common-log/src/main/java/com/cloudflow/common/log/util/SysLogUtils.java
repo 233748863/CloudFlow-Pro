@@ -7,6 +7,7 @@ import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.http.HttpUtil;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.log.config.CloudFlowLogProperties;
+import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.log.domain.SysLogEntity;
 import com.cloudflow.common.log.enums.LogTypeEnum;
 import jakarta.servlet.http.HttpServletRequest;
@@ -61,9 +62,17 @@ public class SysLogUtils {
         // 获取服务名称
         sysLog.setServiceId(SpringUtil.getProperty("spring.application.name"));
 
-        // 获取租户ID
+        // 获取租户ID，降级使用 TenantConfigProperties 中的默认值
         Long tenantId = UserContext.getTenantId();
-        sysLog.setTenantId(tenantId != null ? tenantId : 100000L);
+        if (tenantId == null) {
+            try {
+                TenantConfigProperties tenantConfig = SpringUtil.getBean(TenantConfigProperties.class);
+                tenantId = tenantConfig.getDefaultTenantId();
+            } catch (Exception e) {
+                tenantId = 100000L;
+            }
+        }
+        sysLog.setTenantId(tenantId);
 
         // GET 参数脱敏处理
         CloudFlowLogProperties logProperties = SpringUtil.getBean(CloudFlowLogProperties.class);

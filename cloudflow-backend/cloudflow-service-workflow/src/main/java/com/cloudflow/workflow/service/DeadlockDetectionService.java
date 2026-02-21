@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.workflow.config.properties.WorkflowProperties;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -47,17 +48,11 @@ public class DeadlockDetectionService {
     /** 锁等待记录前缀 */
     private static final String LOCK_WAITER_PREFIX = "sys:lock:waiter:";
 
-    /** 锁超时阈值（秒），超过此时间未释放视为可能死锁 */
-    private static final int LOCK_TIMEOUT_THRESHOLD = 60;
-
     /** 死锁牺牲记录前缀 */
     private static final String DEADLOCK_VICTIM_PREFIX = "sys:deadlock:victim:";
 
     /** 死锁牺牲统计前缀 */
     private static final String DEADLOCK_STATS_KEY = "sys:deadlock:stats";
-
-    /** 最大牺牲记录保留数量 */
-    private static final int MAX_VICTIM_RECORDS = 100;
 
     /** 内存中的锁持有记录（用于快速检测） */
     private final Map<String, LockInfo> lockHolders = new ConcurrentHashMap<>();
@@ -70,6 +65,9 @@ public class DeadlockDetectionService {
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private WorkflowProperties workflowProperties;
 
     // ==================== 核心 API ====================
 
@@ -193,7 +191,9 @@ public class DeadlockDetectionService {
             LockInfo info = entry.getValue();
             long holdTime = (now - info.acquireTime) / 1000;
 
-            if (holdTime > LOCK_TIMEOUT_THRESHOLD) {
+            // 从配置读取死锁检测超时阈值（sys.workflow.lock.deadlockTimeout）
+            int timeoutThreshold = workflowProperties.getLock().getDeadlockTimeout();
+            if (holdTime > timeoutThreshold) {
                 timeoutLocks.add(entry.getKey());
                 log.warn("[detectTimeoutLocks] 锁超时, lockKey={}, holdTime={}s, holder={}", 
                     entry.getKey(), holdTime, info.threadId);
@@ -302,7 +302,7 @@ public class DeadlockDetectionService {
                 removeLockHolder(lockKey, null);
 
                 // TODO: 发送告警通知
-                sendDeadlockAlert("超时锁", lockKey, "锁持有时间超过 " + LOCK_TIMEOUT_THRESHOLD + " 秒");
+                sendDeadlockAlert("超时锁", lockKey, "锁持有时间超过 " + workflowProperties.getLock().getDeadlockTimeout() + " 秒");
             } catch (Exception e) {
                 log.error("[handleTimeoutLocks] 处理超时锁失败, lockKey={}, error={}", lockKey, e.getMessage());
             }
@@ -707,7 +707,8 @@ public class DeadlockDetectionService {
             // 按 eventId 倒序取最近的记录
             List<String> sortedKeys = keys.stream()
                     .sorted(Comparator.reverseOrder())
-                    .limit(Math.min(limit, MAX_VICTIM_RECORDS))
+                    // 从配置读取最大牺牲记录数（sys.workflow.lock.maxVictimRecords）
+                    .limit(Math.min(limit, workflowProperties.getLock().getMaxVictimRecords()))
                     .collect(Collectors.toList());
 
             for (String key : sortedKeys) {

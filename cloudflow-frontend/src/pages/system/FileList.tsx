@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { getFileList, uploadFile, deleteFile } from '../../services/api/file';
 import { toast } from 'sonner';
+import { useConfigInt } from '../../hooks/useSystemConfig';
+import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 
 interface SysFile {
   fileId: number;
@@ -29,6 +31,9 @@ export const FileList = () => {
     fileType: ''
   });
   const [uploading, setUploading] = useState(false);
+
+  // 从系统配置动态读取文件上传大小限制（MB）
+  const [maxFileSizeMB] = useConfigInt(SYS_UPLOAD_MAX_FILE_SIZE, 50);
 
   const fetchData = async () => {
     setLoading(true);
@@ -58,8 +63,8 @@ export const FileList = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("文件大小不能超过10MB");
+    if (file.size > maxFileSizeMB * 1024 * 1024) {
+      toast.error(`文件大小不能超过${maxFileSizeMB}MB`);
       return;
     }
 

@@ -48,6 +48,7 @@ public class TenantConfigProperties {
 
     /**
      * 默认租户ID（当上下文中没有租户ID时使用）
+     * 与数据库初始化数据保持一致，默认 100000
      */
-    private Long defaultTenantId = 1L;
+    private Long defaultTenantId = 100000L;
 }

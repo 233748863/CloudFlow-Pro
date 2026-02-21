@@ -1,6 +1,7 @@
 package com.cloudflow.gateway.filter;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -19,6 +20,10 @@ import reactor.core.publisher.Mono;
 public class TenantWebFilter implements WebFilter, Ordered {
     
     private static final String TENANT_HEADER = "X-Tenant-Id";
+
+    /** 默认租户ID，从配置文件读取，未配置时使用 100000 */
+    @Value("${cloudflow.tenant.default-tenant-id:100000}")
+    private String defaultTenantId;
     
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -32,9 +37,9 @@ public class TenantWebFilter implements WebFilter, Ordered {
                 .contextWrite(ctx -> ctx.put("tenantId", tenantId));
         } else {
             // 使用默认租户ID
-            log.debug("未找到租户ID，使用默认值: 100000");
+            log.debug("未找到租户ID，使用默认值: {}", defaultTenantId);
             return chain.filter(exchange)
-                .contextWrite(ctx -> ctx.put("tenantId", "100000"));
+                .contextWrite(ctx -> ctx.put("tenantId", defaultTenantId));
         }
     }
     

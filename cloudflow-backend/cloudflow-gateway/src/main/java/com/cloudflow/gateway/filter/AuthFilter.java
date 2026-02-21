@@ -2,6 +2,7 @@ package com.cloudflow.gateway.filter;
 
 import com.cloudflow.common.core.utils.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -36,6 +37,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
     
     @Autowired
     private TokenService tokenService;
+
+    /** 默认租户ID，从配置文件读取，未配置时使用 100000 */
+    @Value("${cloudflow.tenant.default-tenant-id:100000}")
+    private String defaultTenantId;
     
     // 白名单（WebSocket 认证由下游服务的 HandshakeInterceptor 处理，网关放行）
     private final List<String> whiteList = Arrays.asList(
@@ -77,7 +82,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String tenantId = loginUser.containsKey("tenantId") 
                 ? String.valueOf(loginUser.get("tenantId")) 
                 : (request.getHeaders().getFirst("X-Tenant-Id") != null 
-                    ? request.getHeaders().getFirst("X-Tenant-Id") : "100000");
+                    ? request.getHeaders().getFirst("X-Tenant-Id") : defaultTenantId);
 
         // 只传递 Token UUID 和租户ID，不再传递明文用户信息
         // 下游服务的 UserContextInterceptor 会通过 X-Auth-Token 从 Redis 读取完整用户信息

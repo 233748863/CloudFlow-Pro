@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X, Loader2, Lock } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, Loader2, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { getConfigList, addConfig, updateConfig, deleteConfig, type SysConfig } from '../../services/api/system';
+import { clearConfigCache } from '../../hooks/useSystemConfig';
 
 export const ConfigList = () => {
   const [configs, setConfigs] = useState<SysConfig[]>([]);
@@ -10,17 +11,39 @@ export const ConfigList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<SysConfig | null>(null);
   const [formData, setFormData] = useState<SysConfig>({
-    configName: '', configKey: '', configValue: '', configType: 'N', remark: '',
+    configName: '', configKey: '', configValue: '', configType: 'N', configScope: '1', remark: '',
   });
 
-  useEffect(() => { fetchConfigs(); }, []);
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(15);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  useEffect(() => { fetchConfigs(); }, [currentPage]);
 
   const fetchConfigs = async () => {
     setLoading(true);
     try {
-      const res: any = await getConfigList({ configName: searchTerm || undefined });
-      const list = Array.isArray(res) ? res : (res?.records || res?.rows || []);
-      setConfigs(list);
+      const res: any = await getConfigList({
+        configName: searchTerm || undefined,
+        pageNum: currentPage,
+        pageSize,
+      });
+      // 兼容分页和数组两种返回格式
+      if (res?.records) {
+        setConfigs(res.records);
+        setTotal(res.total || 0);
+      } else if (res?.rows) {
+        setConfigs(res.rows);
+        setTotal(res.total || 0);
+      } else if (Array.isArray(res)) {
+        setConfigs(res);
+        setTotal(res.length);
+      } else {
+        setConfigs([]);
+        setTotal(0);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -28,7 +51,11 @@ export const ConfigList = () => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchConfigs(); };
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1); // 搜索时重置到第一页
+    fetchConfigs();
+  };
 
   const handleOpenModal = (config?: SysConfig) => {
     if (config) {
@@ -36,7 +63,7 @@ export const ConfigList = () => {
       setFormData({ ...config });
     } else {
       setEditingConfig(null);
-      setFormData({ configName: '', configKey: '', configValue: '', configType: 'N', remark: '' });
+      setFormData({ configName: '', configKey: '', configValue: '', configType: 'N', configScope: '1', remark: '' });
     }
     setIsModalOpen(true);
   };
@@ -54,6 +81,8 @@ export const ConfigList = () => {
         await addConfig(formData);
         toast.success('参数创建成功');
       }
+      // 配置变更后清空前端缓存，确保其他组件读取到最新值
+      clearConfigCache();
       setIsModalOpen(false);
       fetchConfigs();
     } catch (e) {
@@ -71,10 +100,29 @@ export const ConfigList = () => {
     try {
       await deleteConfig([config.configId!]);
       toast.success('参数删除成功');
+      // 配置变更后清空前端缓存
+      clearConfigCache();
       fetchConfigs();
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // 生成页码按钮列表
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
   };
 
   const isEdit = !!editingConfig;
@@ -102,7 +150,7 @@ export const ConfigList = () => {
 
       {/* 表格 */}
       <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -111,15 +159,16 @@ export const ConfigList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数键名</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数键值</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">类型</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">作用域</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">创建时间</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2" size={18} />加载中...</td></tr>
+                <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2" size={18} />加载中...</td></tr>
               ) : configs.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500">暂无数据</td></tr>
+                <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500">暂无数据</td></tr>
               ) : configs.map(config => (
                 <tr key={config.configId} className="hover:bg-slate-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{config.configId}</td>
@@ -129,6 +178,11 @@ export const ConfigList = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.configType === 'Y' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
                       {config.configType === 'Y' ? '内置' : '自定义'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.configScope === '0' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                      {config.configScope === '0' ? '全局' : '租户'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{config.createTime || '-'}</td>
@@ -145,6 +199,51 @@ export const ConfigList = () => {
             </tbody>
           </table>
         </div>
+
+        {/* 分页栏 */}
+        <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+          <span className="text-sm text-slate-500">
+            共 {total} 条记录，第 {currentPage}/{totalPages} 页
+          </span>
+          <div className="flex items-center gap-1">
+            {/* 上一页 */}
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="p-1.5 rounded-md text-slate-500 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            {/* 页码按钮 */}
+            {getPageNumbers().map((page, idx) =>
+              typeof page === 'string' ? (
+                <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-sm">...</span>
+              ) : (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition-colors ${
+                    page === currentPage
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {page}
+                </button>
+              )
+            )}
+
+            {/* 下一页 */}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="p-1.5 rounded-md text-slate-500 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 新增/编辑弹窗 */}
@@ -160,17 +259,28 @@ export const ConfigList = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">参数名称 <span className="text-red-500">*</span></label>
                 <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.configName} onChange={e => setFormData({ ...formData, configName: e.target.value })} placeholder="如: 用户初始密码" />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">参数键名 <span className="text-red-500">*</span></label>
+                <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono" value={formData.configKey} onChange={e => setFormData({ ...formData, configKey: e.target.value })} placeholder="如: sys.user.initPassword" />
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">参数键名 <span className="text-red-500">*</span></label>
-                  <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono" value={formData.configKey} onChange={e => setFormData({ ...formData, configKey: e.target.value })} placeholder="如: sys.user.initPassword" />
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">系统内置</label>
                   <div className="flex gap-4 pt-2">
                     {[['Y', '是'], ['N', '否']].map(([v, l]) => (
                       <label key={v} className="flex items-center gap-1.5 cursor-pointer">
                         <input type="radio" checked={formData.configType === v} onChange={() => setFormData({ ...formData, configType: v })} className="accent-indigo-600" />
+                        <span className="text-sm">{l}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">作用域</label>
+                  <div className="flex gap-4 pt-2">
+                    {[['0', '全局'], ['1', '租户']].map(([v, l]) => (
+                      <label key={v} className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" checked={formData.configScope === v} onChange={() => setFormData({ ...formData, configScope: v })} className="accent-indigo-600" />
                         <span className="text-sm">{l}</span>
                       </label>
                     ))}

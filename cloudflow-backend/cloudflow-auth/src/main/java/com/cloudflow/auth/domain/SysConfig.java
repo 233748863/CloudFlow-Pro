@@ -33,6 +33,9 @@ public class SysConfig {
     /** 系统内置（Y=是 N=否），内置参数不允许删除 */
     private String configType;
 
+    /** 配置作用域（0=全局 1=租户） */
+    private String configScope;
+
     private String createBy;
 
     private Date createTime;

@@ -1,7 +1,9 @@
 package com.cloudflow.common.sse.core;
 
 import cn.hutool.core.collection.CollUtil;
+import com.cloudflow.common.core.utils.SysConfigHelper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -26,9 +28,13 @@ import java.util.function.Consumer;
 public class SseEmitterManager {
 
     /**
-     * SSE 连接超时时间（毫秒），0 表示永不超时
+     * SSE 连接超时默认值（毫秒），0 表示永不超时
+     * 可通过 sys_config 表 sys.sse.connectionTimeout 配置（单位：秒，0=永不超时）
      */
-    private static final long SSE_TIMEOUT = 0L;
+    private static final long DEFAULT_SSE_TIMEOUT = 0L;
+
+    @Autowired(required = false)
+    private SysConfigHelper sysConfigHelper;
 
     /**
      * 用户 SSE 连接池
@@ -47,7 +53,9 @@ public class SseEmitterManager {
         // 如果已有连接，先关闭旧连接
         disconnect(userId);
 
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
+        // 从配置读取 SSE 连接超时（sys.sse.connectionTimeout，单位秒，0=永不超时）
+        long timeoutMs = getSseTimeout();
+        SseEmitter emitter = new SseEmitter(timeoutMs);
 
         // 注册连接完成/超时/错误的回调
         emitter.onCompletion(() -> {
@@ -172,5 +180,22 @@ public class SseEmitterManager {
      */
     public java.util.Set<Long> getOnlineUserIds() {
         return userEmitters.keySet();
+    }
+
+    /**
+     * 获取 SSE 连接超时时间（毫秒）
+     * 从 sys_config 表读取 sys.sse.connectionTimeout（单位：秒），转换为毫秒
+     * 0 表示永不超时
+     */
+    private long getSseTimeout() {
+        if (sysConfigHelper != null) {
+            try {
+                int timeoutSeconds = sysConfigHelper.getGlobalInt("sys.sse.connectionTimeout", 0);
+                return timeoutSeconds > 0 ? timeoutSeconds * 1000L : DEFAULT_SSE_TIMEOUT;
+            } catch (Exception e) {
+                log.warn("读取 SSE 超时配置失败，使用默认值: {}", e.getMessage());
+            }
+        }
+        return DEFAULT_SSE_TIMEOUT;
     }
 }

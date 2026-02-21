@@ -17,10 +17,11 @@ public class RedisCache {
     // 需要忽略租户隔离的 Key 前缀 (如验证码、登录Token等)
     private static final String[] GLOBAL_PREFIXES = {
         "CAPTCHA:", 
-        "login_tokens:",   // 登录令牌缓存
-        "user_tokens:",    // 用户令牌集合缓存
-        "user_menus:",     // 用户菜单树缓存
-        "sys:config:"      // 系统配置通常全局共享
+        "login_tokens:",          // 登录令牌缓存
+        "user_tokens:",           // 用户令牌集合缓存
+        "user_menus:",            // 用户菜单树缓存
+        "sys:config:global:"      // 全局系统配置（不受租户隔离）
+        // 注意：租户级配置使用 "sys:config:tenant:" 前缀，走租户隔离
     };
 
     /**

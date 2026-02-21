@@ -8,6 +8,7 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.workflow.config.properties.WorkflowProperties;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -37,12 +38,6 @@ public class CountersignServiceImpl implements ICountersignService {
 
     /** 分布式锁前缀 */
     private static final String LOCK_PREFIX = "lock:countersign:";
-    
-    /** 锁等待超时（秒） */
-    private static final long LOCK_WAIT_SECONDS = 10;
-    
-    /** 锁持有超时（秒） */
-    private static final long LOCK_LEASE_SECONDS = 30;
 
     @Autowired
     private WfCountersignTaskMapper countersignTaskMapper;
@@ -55,6 +50,9 @@ public class CountersignServiceImpl implements ICountersignService {
 
     @Autowired
     private RedissonClient redissonClient;
+
+    @Autowired
+    private WorkflowProperties workflowProperties;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -196,7 +194,10 @@ public class CountersignServiceImpl implements ICountersignService {
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
-            if (!lock.tryLock(LOCK_WAIT_SECONDS, LOCK_LEASE_SECONDS, TimeUnit.SECONDS)) {
+            // 从配置读取锁等待和持有时间（sys.workflow.lock.countersignWait / countersignLease）
+            long waitSeconds = workflowProperties.getLock().getCountersignWait();
+            long leaseSeconds = workflowProperties.getLock().getCountersignLease();
+            if (!lock.tryLock(waitSeconds, leaseSeconds, TimeUnit.SECONDS)) {
                 throw WorkflowException.invalidState("会签投票繁忙，请稍后重试");
             }
 

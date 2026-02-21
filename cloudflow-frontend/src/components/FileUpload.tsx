@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, FileText, Image as ImageIcon, Loader2, Paperclip } from 'lucide-react';
 import { uploadFile } from '../services/api/file';
 import { toast } from 'sonner';
+import { useConfigInt, useConfigValue } from '../hooks/useSystemConfig';
+import { SYS_UPLOAD_MAX_FILE_SIZE, SYS_UPLOAD_ALLOWED_TYPES } from '../constants/sysConfig';
 
 /** 已上传文件信息 */
 interface UploadedFile {
@@ -32,12 +34,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   value = '',
   onChange,
   maxCount = 5,
-  accept = '.jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar',
+  accept,
   disabled = false,
-  hint = '支持图片、文档、压缩包等格式',
+  hint,
 }) => {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 从系统配置动态读取文件上传限制
+  const [maxFileSizeMB] = useConfigInt(SYS_UPLOAD_MAX_FILE_SIZE, 50);
+  const [allowedTypes] = useConfigValue(SYS_UPLOAD_ALLOWED_TYPES, 'jpg,jpeg,png,gif,bmp,doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip,rar');
+
+  // 如果外部未传入 accept，则根据系统配置生成
+  const resolvedAccept = accept ?? allowedTypes.split(',').map(t => `.${t.trim()}`).join(',');
+  // 如果外部未传入 hint，则根据配置动态生成
+  const resolvedHint = hint ?? `支持 ${allowedTypes} 格式，单文件不超过 ${maxFileSizeMB}MB`;
 
   // 解析当前已上传的文件列表
   const fileList: UploadedFile[] = value
@@ -66,9 +77,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const newUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        // 单文件大小限制 20MB
-        if (file.size > 20 * 1024 * 1024) {
-          toast.error(`文件 ${file.name} 超过20MB限制`);
+        // 单文件大小限制，从系统配置读取
+        if (file.size > maxFileSizeMB * 1024 * 1024) {
+          toast.error(`文件 ${file.name} 超过${maxFileSizeMB}MB限制`);
           continue;
         }
         const res: any = await uploadFile(file);
@@ -147,7 +158,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             ref={inputRef}
             type="file"
             className="hidden"
-            accept={accept}
+            accept={resolvedAccept}
             multiple={maxCount > 1}
             onChange={handleUpload}
             disabled={uploading || disabled}
@@ -167,8 +178,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       )}
 
       {/* 提示文字 */}
-      {hint && (
-        <p className="text-xs text-slate-400">{hint}</p>
+      {resolvedHint && (
+        <p className="text-xs text-slate-400">{resolvedHint}</p>
       )}
     </div>
   );

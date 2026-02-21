@@ -19,6 +19,13 @@
             <artifactId>cloudflow-common-core</artifactId>
         </dependency>
 
+        <!-- Redis模块（可选依赖，用于从sys_config读取日志配置） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-redis</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- MyBatis-Plus（日志本地入库） -->
         <dependency>
             <groupId>com.baomidou</groupId>
