@@ -9,69 +9,58 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 异常告警Mapper
- *
+ * 异常告警 Mapper
+ * 
  * @author CloudFlow Team
- * @since 2026-02-21
+ * @since 2026-02-22
  */
 @Mapper
 public interface AnomalyAlertMapper extends BaseMapper<AnomalyAlert> {
 
     /**
-     * 查询未解决的异常告警
-     *
-     * @param tenantId 租户ID
-     * @return 告警列表
+     * 根据日期统计数量
+     */
+    Integer countByDate(@Param("startDate") LocalDateTime startDate);
+
+    /**
+     * 统计未解决的异常数量
+     */
+    Integer countUnresolved();
+
+    /**
+     * 查询异常告警列表
+     */
+    List<AnomalyAlert> selectAnomalyAlerts(@Param("anomalyType") String anomalyType,
+                                          @Param("severity") String severity,
+                                          @Param("resolved") Boolean resolved);
+
+    /**
+     * 查询未解决的告警
      */
     List<AnomalyAlert> selectUnresolved(@Param("tenantId") Long tenantId);
 
     /**
-     * 查询指定类型的异常告警
-     *
-     * @param tenantId    租户ID
-     * @param anomalyType 异常类型
-     * @return 告警列表
+     * 按类型查询告警
      */
-    List<AnomalyAlert> selectByType(
-            @Param("tenantId") Long tenantId,
-            @Param("anomalyType") String anomalyType
-    );
+    List<AnomalyAlert> selectByType(@Param("tenantId") Long tenantId, 
+                                    @Param("type") String type);
 
     /**
-     * 查询指定严重程度的异常告警
-     *
-     * @param tenantId 租户ID
-     * @param severity 严重程度
-     * @return 告警列表
+     * 按严重程度查询告警
      */
-    List<AnomalyAlert> selectBySeverity(
-            @Param("tenantId") Long tenantId,
-            @Param("severity") String severity
-    );
+    List<AnomalyAlert> selectBySeverity(@Param("tenantId") Long tenantId, 
+                                        @Param("severity") String severity);
 
     /**
-     * 查询指定流程的异常告警
-     *
-     * @param tenantId      租户ID
-     * @param processDefKey 流程定义Key
-     * @return 告警列表
+     * 按流程定义Key查询告警
      */
-    List<AnomalyAlert> selectByProcessDefKey(
-            @Param("tenantId") Long tenantId,
-            @Param("processDefKey") String processDefKey
-    );
+    List<AnomalyAlert> selectByProcessDefKey(@Param("tenantId") Long tenantId, 
+                                             @Param("processDefKey") String processDefKey);
 
     /**
-     * 统计异常类型分布
-     *
-     * @param tenantId  租户ID
-     * @param startTime 开始时间
-     * @param endTime   结束时间
-     * @return 统计结果
+     * 查询异常类型统计
      */
-    List<AnomalyAlert> selectTypeStatistics(
-            @Param("tenantId") Long tenantId,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
-    );
+    List<AnomalyAlert> selectTypeStatistics(@Param("tenantId") Long tenantId,
+                                           @Param("startDate") LocalDateTime startDate,
+                                           @Param("endDate") LocalDateTime endDate);
 }

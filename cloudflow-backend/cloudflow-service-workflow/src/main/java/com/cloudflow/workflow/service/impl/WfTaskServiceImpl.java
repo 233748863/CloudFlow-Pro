@@ -550,7 +550,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         Map<String, Object> instanceVars = new HashMap<>();
         if (StringUtils.hasText(instance.getVariables())) {
             try {
-                instanceVars = objectMapper.readValue(instance.getVariables(), Map.class);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> parsedVars = objectMapper.readValue(instance.getVariables(), Map.class);
+                instanceVars = parsedVars;
             } catch (Exception e) { log.warn("[mergeVariables] 反序列化失败"); }
         }
         if (newVariables != null && !newVariables.isEmpty()) {
@@ -687,6 +689,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 if (StringUtils.hasText(instance.getVariables())) {
                     try {
+                        @SuppressWarnings("unchecked")
                         Map<String, Object> vars = objectMapper.readValue(instance.getVariables(), Map.class);
                         task.setVariables(vars);
                     } catch (Exception e) { /* 忽略 */ }

@@ -19,7 +19,7 @@ import java.util.Map;
  * 包含：加签/减签、委派优化、流程图数据、作废流程
  */
 @RestController
-@RequestMapping("/workflow/enhance")
+@RequestMapping("/enhance")
 public class WorkflowEnhanceController {
 
     @Autowired

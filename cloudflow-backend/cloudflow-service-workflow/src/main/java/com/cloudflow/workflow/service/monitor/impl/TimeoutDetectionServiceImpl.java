@@ -84,11 +84,11 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                 alert.setAlertType("TASK");
                 alert.setTargetId(task.getTaskId());
                 alert.setTargetName(task.getTaskName());
-                alert.setAssigneeId(task.getAssigneeId());
-                alert.setAssigneeName(task.getAssigneeName());
                 alert.setTimeoutLevel(level);
                 alert.setTimeoutDuration(task.getTotalDuration());
                 alert.setThreshold(getThresholdByLevel(level));
+                alert.setAssigneeId(task.getAssigneeId());
+                alert.setAssigneeName(task.getAssigneeName());
                 alert.setAlertTime(LocalDateTime.now());
                 alert.setNotificationSent("N");
                 alert.setEscalated("N");
@@ -311,7 +311,8 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
             sb.append(", 处理人=").append(alert.getAssigneeName());
         }
 
-        sb.append(", 超时时长=").append(formatDuration(alert.getTimeoutDuration()));
+        long hours = alert.getTimeoutDuration() / 3600000;
+        sb.append(", 超时时长=").append(hours).append("小时");
 
         return sb.toString();
     }

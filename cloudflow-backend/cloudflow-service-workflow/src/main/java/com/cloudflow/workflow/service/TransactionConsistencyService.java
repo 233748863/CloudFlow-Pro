@@ -344,6 +344,7 @@ public class TransactionConsistencyService {
      */
     private boolean retryProcessStart(WfTransactionMessage msg) {
         try {
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.readValue(msg.getContent(), Map.class);
             String instanceId = msg.getBusinessId();
             
@@ -387,6 +388,7 @@ public class TransactionConsistencyService {
      */
     private boolean retryNotification(WfTransactionMessage msg) {
         try {
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.readValue(msg.getContent(), Map.class);
             Long recipientId = Long.valueOf(data.get("recipientId").toString());
             String title = (String) data.get("title");

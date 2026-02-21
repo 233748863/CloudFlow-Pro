@@ -9,51 +9,45 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 超时告警Mapper
- *
+ * 超时告警 Mapper
+ * 
  * @author CloudFlow Team
- * @since 2026-02-21
+ * @since 2026-02-22
  */
 @Mapper
 public interface TimeoutAlertMapper extends BaseMapper<TimeoutAlert> {
 
     /**
-     * 查询未解决的超时告警
-     *
-     * @param tenantId 租户ID
-     * @return 告警列表
+     * 根据日期统计数量
+     */
+    Integer countByDate(@Param("startDate") LocalDateTime startDate);
+
+    /**
+     * 根据告警级别统计数量
+     */
+    Integer countByLevel(@Param("alertLevel") String alertLevel);
+
+    /**
+     * 查询超时告警列表
+     */
+    List<TimeoutAlert> selectTimeoutAlerts(@Param("alertType") String alertType,
+                                          @Param("alertLevel") String alertLevel,
+                                          @Param("resolved") Boolean resolved);
+
+    /**
+     * 查询未解决的告警
      */
     List<TimeoutAlert> selectUnresolved(@Param("tenantId") Long tenantId);
 
     /**
-     * 查询指定处理人的超时告警
-     *
-     * @param tenantId   租户ID
-     * @param assigneeId 处理人ID
-     * @return 告警列表
+     * 按级别查询告警
      */
-    List<TimeoutAlert> selectByAssignee(
-            @Param("tenantId") Long tenantId,
-            @Param("assigneeId") Long assigneeId
-    );
+    List<TimeoutAlert> selectByLevel(@Param("tenantId") Long tenantId, 
+                                     @Param("level") String level);
 
     /**
-     * 查询指定级别的超时告警
-     *
-     * @param tenantId     租户ID
-     * @param timeoutLevel 超时级别
-     * @return 告警列表
+     * 按处理人查询告警
      */
-    List<TimeoutAlert> selectByLevel(
-            @Param("tenantId") Long tenantId,
-            @Param("timeoutLevel") String timeoutLevel
-    );
-
-    /**
-     * 批量更新通知发送状态
-     *
-     * @param ids 告警ID列表
-     * @return 更新数量
-     */
-    int batchUpdateNotificationSent(@Param("ids") List<Long> ids);
+    List<TimeoutAlert> selectByAssignee(@Param("tenantId") Long tenantId, 
+                                        @Param("assigneeId") Long assigneeId);
 }

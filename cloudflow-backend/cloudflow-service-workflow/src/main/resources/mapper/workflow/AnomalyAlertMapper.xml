@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.AnomalyAlertMapper">
+
+    <resultMap id="AnomalyAlertResult" type="com.cloudflow.workflow.domain.monitor.AnomalyAlert">
+        <id property="id" column="id"/>
+        <result property="instanceId" column="instance_id"/>
+        <result property="processDefKey" column="process_def_key"/>
+        <result property="processName" column="process_name"/>
+        <result property="anomalyType" column="anomaly_type"/>
+        <result property="severity" column="severity"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="stackTrace" column="stack_trace"/>
+        <result property="resolved" column="resolved"/>
+        <result property="resolveNote" column="resolve_note"/>
+        <result property="resolveTime" column="resolve_time"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- 根据日期统计数量 -->
+    <select id="countByDate" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM wf_anomaly_alert
+        WHERE create_time >= #{startDate}
+    </select>
+
+    <!-- 统计未解决的异常数量 -->
+    <select id="countUnresolved" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM wf_anomaly_alert
+        WHERE resolved = 0 OR resolved IS NULL
+    </select>
+
+    <!-- 查询异常告警列表 -->
+    <select id="selectAnomalyAlerts" resultMap="AnomalyAlertResult">
+        SELECT 
+            id,
+            instance_id,
+            process_def_key,
+            process_name,
+            anomaly_type,
+            severity,
+            error_message,
+            stack_trace,
+            resolved,
+            resolve_note,
+            resolve_time,
+            create_time
+        FROM wf_anomaly_alert
+        <where>
+            <if test="anomalyType != null and anomalyType != ''">
+                AND anomaly_type = #{anomalyType}
+            </if>
+            <if test="severity != null and severity != ''">
+                AND severity = #{severity}
+            </if>
+            <if test="resolved != null">
+                <choose>
+                    <when test="resolved == true">
+                        AND resolved = 1
+                    </when>
+                    <otherwise>
+                        AND (resolved = 0 OR resolved IS NULL)
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="AnomalyAlertResult">
+        SELECT 
+            id,
+            instance_id,
+            process_def_key,
+            process_name,
+            anomaly_type,
+            severity,
+            error_message,
+            stack_trace,
+            resolved,
+            resolve_note,
+            resolve_time,
+            create_time
+        FROM wf_anomaly_alert
+        WHERE id = #{id}
+    </select>
+
+    <!-- 更新告警 -->
+    <update id="updateById">
+        UPDATE wf_anomaly_alert
+        SET resolved = #{resolved},
+            resolve_note = #{resolveNote},
+            resolve_time = #{resolveTime}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -60,13 +60,13 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setAnomalyType("EXECUTION_FAILED");
             alert.setInstanceId(instanceId);
             alert.setProcessDefKey(monitor.getProcessDefKey());
-            alert.setProcessDefName(monitor.getProcessDefName());
+            alert.setProcessName(monitor.getProcessDefName());
             alert.setErrorMessage(errorMessage);
             alert.setStackTrace(stackTrace);
             alert.setSeverity(determineSeverity(errorMessage));
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent("N");
-            alert.setResolved("N");
+            alert.setNotificationSent(false);
+            alert.setResolved(false);
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
@@ -153,8 +153,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setErrorMessage("任务没有候选人，无法分配");
             alert.setSeverity("HIGH");
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent("N");
-            alert.setResolved("N");
+            alert.setNotificationSent(false);
+            alert.setResolved(false);
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
@@ -217,7 +217,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             // 4. 严重级别发送短信
 
             // 更新通知状态
-            alert.setNotificationSent("Y");
+            alert.setNotificationSent(true);
             alert.setUpdateTime(LocalDateTime.now());
             anomalyAlertMapper.updateById(alert);
 
@@ -237,7 +237,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
                 return;
             }
 
-            alert.setResolved("Y");
+            alert.setResolved(true);
             alert.setResolveTime(LocalDateTime.now());
             alert.setResolveNote(solution);
             alert.setUpdateTime(LocalDateTime.now());
@@ -271,12 +271,12 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setAnomalyType("DEADLOCK");
             alert.setInstanceId(process.getInstanceId());
             alert.setProcessDefKey(process.getProcessDefKey());
-            alert.setProcessDefName(process.getProcessDefName());
+            alert.setProcessName(process.getProcessDefName());
             alert.setErrorMessage(reason);
             alert.setSeverity("CRITICAL");
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent("N");
-            alert.setResolved("N");
+            alert.setNotificationSent(false);
+            alert.setResolved(false);
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
@@ -308,12 +308,12 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setAnomalyType("DATA_INCONSISTENCY");
             alert.setInstanceId(process.getInstanceId());
             alert.setProcessDefKey(process.getProcessDefKey());
-            alert.setProcessDefName(process.getProcessDefName());
+            alert.setProcessName(process.getProcessDefName());
             alert.setErrorMessage(reason);
             alert.setSeverity("MEDIUM");
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent("N");
-            alert.setResolved("N");
+            alert.setNotificationSent(false);
+            alert.setResolved(false);
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 

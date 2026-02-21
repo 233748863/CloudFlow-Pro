@@ -19,7 +19,7 @@ import java.util.List;
  * @since 2026-02-22
  */
 @RestController
-@RequestMapping("/workflow/alert")
+@RequestMapping("/alert")
 @RequiredArgsConstructor
 public class AlertController {
 

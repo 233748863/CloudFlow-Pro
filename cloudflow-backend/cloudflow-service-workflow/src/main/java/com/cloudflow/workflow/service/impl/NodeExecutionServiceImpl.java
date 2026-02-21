@@ -585,6 +585,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             String branchesJson = step.get("branches");
             if (StringUtils.hasText(branchesJson)) {
                 try {
+                    @SuppressWarnings("unchecked")
                     List<List<Map<String, String>>> branchStepsList = objectMapper.readValue(branchesJson, List.class);
                     List<List<Map<String, Object>>> branchDetails = new ArrayList<>();
                     for (List<Map<String, String>> branchSteps : branchStepsList) {
@@ -730,11 +731,11 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     /**
      * 判断网关节点的聚合状态
      */
-    @SuppressWarnings("unchecked")
     private String determineGatewayStatus(Map<String, Object> gatewayDetail, String currentNodeKey, List<WfTaskHistory> histories) {
         Object branchesObj = gatewayDetail.get("branches");
         if (!(branchesObj instanceof List)) return "pending";
 
+        @SuppressWarnings("unchecked")
         List<List<Map<String, Object>>> branches = (List<List<Map<String, Object>>>) branchesObj;
         if (branches.isEmpty()) return "pending";
 
@@ -775,7 +776,9 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
         List<String> buttons = new ArrayList<>();
         if (buttonsObj instanceof List) {
-            for (Object item : (List<?>) buttonsObj) {
+            @SuppressWarnings("unchecked")
+            List<?> buttonsList = (List<?>) buttonsObj;
+            for (Object item : buttonsList) {
                 if (item != null) {
                     buttons.add(String.valueOf(item));
                 }
@@ -784,6 +787,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             String buttonsStr = (String) buttonsObj;
             if (StringUtils.hasText(buttonsStr)) {
                 try {
+                    @SuppressWarnings("unchecked")
                     List<String> parsed = objectMapper.readValue(buttonsStr, List.class);
                     buttons.addAll(parsed);
                 } catch (Exception e) {

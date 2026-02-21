@@ -14,7 +14,7 @@ import java.util.List;
  * @author CloudFlow
  */
 @RestController
-@RequestMapping("/workflow/category")
+@RequestMapping("/category")
 @RequiredArgsConstructor
 public class ProcessCategoryController {
 

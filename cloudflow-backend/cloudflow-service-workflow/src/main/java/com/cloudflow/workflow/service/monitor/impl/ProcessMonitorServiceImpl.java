@@ -149,8 +149,26 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
     }
 
     @Override
-    public ProcessMonitor getStatistics(String processDefKey, LocalDateTime startTime, LocalDateTime endTime) {
-        return processMonitorMapper.selectStatistics(SecurityUtils.getTenantId(), processDefKey, startTime, endTime);
+    public com.cloudflow.workflow.domain.vo.ProcessStatisticsVO getStatistics(String processDefKey, LocalDateTime startTime, LocalDateTime endTime) {
+        java.util.Map<String, Object> data = processMonitorMapper.selectStatistics(SecurityUtils.getTenantId(), processDefKey, startTime, endTime);
+        
+        com.cloudflow.workflow.domain.vo.ProcessStatisticsVO vo = new com.cloudflow.workflow.domain.vo.ProcessStatisticsVO();
+        vo.setTotalCount(data.get("totalCount") != null ? ((Number) data.get("totalCount")).longValue() : 0L);
+        vo.setCompletedCount(data.get("completedCount") != null ? ((Number) data.get("completedCount")).longValue() : 0L);
+        vo.setRunningCount(data.get("runningCount") != null ? ((Number) data.get("runningCount")).longValue() : 0L);
+        vo.setFailedCount(data.get("failedCount") != null ? ((Number) data.get("failedCount")).longValue() : 0L);
+        vo.setAvgDuration(data.get("avgDuration") != null ? ((Number) data.get("avgDuration")).longValue() : 0L);
+        vo.setMaxDuration(data.get("maxDuration") != null ? ((Number) data.get("maxDuration")).longValue() : 0L);
+        vo.setMinDuration(data.get("minDuration") != null ? ((Number) data.get("minDuration")).longValue() : 0L);
+        
+        // 计算成功率
+        if (vo.getTotalCount() > 0) {
+            vo.setSuccessRate(vo.getCompletedCount() * 100.0 / vo.getTotalCount());
+        } else {
+            vo.setSuccessRate(0.0);
+        }
+        
+        return vo;
     }
 
     @Override
@@ -177,9 +195,14 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
     private void updatePerformanceStats(ProcessMonitor monitor) {
         try {
             LocalDate statDate = monitor.getStartTime().toLocalDate();
-            PerformanceStats stats = performanceStatsMapper.selectOrCreate(
-                    monitor.getTenantId(), statDate, monitor.getProcessDefKey()
-            );
+            
+            // 查询或创建统计记录
+            LambdaQueryWrapper<PerformanceStats> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(PerformanceStats::getTenantId, monitor.getTenantId())
+                    .eq(PerformanceStats::getStatDate, statDate)
+                    .eq(PerformanceStats::getProcessDefKey, monitor.getProcessDefKey());
+            
+            PerformanceStats stats = performanceStatsMapper.selectOne(wrapper);
 
             if (stats == null) {
                 // 创建新的统计记录
@@ -187,7 +210,7 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
                 stats.setTenantId(monitor.getTenantId());
                 stats.setStatDate(statDate);
                 stats.setProcessDefKey(monitor.getProcessDefKey());
-                stats.setProcessDefName(monitor.getProcessDefName());
+                stats.setProcessName(monitor.getProcessDefName());
                 stats.setTotalCount(0);
                 stats.setCompletedCount(0);
                 stats.setFailedCount(0);
@@ -220,7 +243,7 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
             if (stats.getId() == null) {
                 performanceStatsMapper.insert(stats);
             } else {
-                performanceStatsMapper.updateStats(stats);
+                performanceStatsMapper.updateById(stats);
             }
 
             log.debug("更新性能统计: processDefKey={}, date={}", monitor.getProcessDefKey(), statDate);

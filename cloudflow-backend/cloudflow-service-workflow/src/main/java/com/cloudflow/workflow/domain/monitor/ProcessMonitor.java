@@ -3,108 +3,90 @@ package com.cloudflow.workflow.domain.monitor;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-
 import java.time.LocalDateTime;
 
 /**
- * 流程执行监控实体
- *
+ * 流程监控记录
+ * 对应 wf_process_monitor 表
+ * 
  * @author CloudFlow Team
- * @since 2026-02-21
+ * @since 2026-02-22
  */
 @Data
 @TableName("wf_process_monitor")
 public class ProcessMonitor {
-
-    /**
-     * 主键ID
-     */
     @TableId(type = IdType.AUTO)
     private Long id;
-
-    /**
-     * 租户ID
-     */
+    
+    /** 租户ID */
     private Long tenantId;
-
-    /**
-     * 流程实例ID
-     */
+    
+    /** 流程实例ID */
     private String instanceId;
-
-    /**
-     * 流程定义ID
-     */
+    
+    /** 流程定义ID */
     private String processDefId;
-
-    /**
-     * 流程定义Key
-     */
+    
+    /** 流程定义Key */
     private String processDefKey;
-
-    /**
-     * 流程定义名称
-     */
+    
+    /** 流程定义名称 */
     private String processDefName;
-
-    /**
-     * 业务键
-     */
+    
+    /** 流程名称 */
+    private String processName;
+    
+    /** 业务Key */
     private String businessKey;
-
-    /**
-     * 开始时间
-     */
-    private LocalDateTime startTime;
-
-    /**
-     * 结束时间
-     */
-    private LocalDateTime endTime;
-
-    /**
-     * 执行时长(毫秒)
-     */
-    private Long duration;
-
-    /**
-     * 状态：RUNNING/COMPLETED/FAILED/TERMINATED
-     */
+    
+    /** 流程状态 */
     private String status;
-
-    /**
-     * 已执行节点数量
-     */
+    
+    /** 开始时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime startTime;
+    
+    /** 结束时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime endTime;
+    
+    /** 持续时间(毫秒) */
+    private Long duration;
+    
+    /** 持续时间(毫秒) - 别名 */
+    private Long durationMs;
+    
+    /** 节点数量 */
     private Integer nodeCount;
-
-    /**
-     * 已完成任务数量
-     */
+    
+    /** 任务数量 */
     private Integer taskCount;
-
-    /**
-     * 错误信息
-     */
-    private String errorMessage;
-
-    /**
-     * 发起人ID
-     */
+    
+    /** 已完成任务数量 */
+    private Integer completedTaskCount;
+    
+    /** 发起人ID */
     private Long startUserId;
-
-    /**
-     * 发起人姓名
-     */
+    
+    /** 发起人用户名 */
     private String startUserName;
-
-    /**
-     * 创建时间
-     */
+    
+    /** 发起人 */
+    private String initiator;
+    
+    /** 发起人名称 */
+    private String initiatorName;
+    
+    /** 错误信息 */
+    private String errorMessage;
+    
+    /** 创建时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
-
-    /**
-     * 更新时间
-     */
+    
+    /** 更新时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
 }

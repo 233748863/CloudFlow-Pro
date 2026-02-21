@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.PerformanceStatsMapper">
+
+    <resultMap id="PerformanceStatsResult" type="com.cloudflow.workflow.domain.monitor.PerformanceStats">
+        <id property="id" column="id"/>
+        <result property="statDate" column="stat_date"/>
+        <result property="processDefKey" column="process_def_key"/>
+        <result property="processName" column="process_name"/>
+        <result property="totalCount" column="total_count"/>
+        <result property="completedCount" column="completed_count"/>
+        <result property="timeoutCount" column="timeout_count"/>
+        <result property="anomalyCount" column="anomaly_count"/>
+        <result property="avgDurationMs" column="avg_duration_ms"/>
+        <result property="minDurationMs" column="min_duration_ms"/>
+        <result property="maxDurationMs" column="max_duration_ms"/>
+        <result property="successRate" column="success_rate"/>
+        <result property="timeoutRate" column="timeout_rate"/>
+        <result property="anomalyRate" column="anomaly_rate"/>
+    </resultMap>
+
+    <!-- 查询性能统计数据 -->
+    <select id="selectPerformanceStats" resultMap="PerformanceStatsResult">
+        SELECT 
+            id,
+            stat_date,
+            process_def_key,
+            process_name,
+            total_count,
+            completed_count,
+            timeout_count,
+            anomaly_count,
+            avg_duration_ms,
+            min_duration_ms,
+            max_duration_ms,
+            success_rate,
+            timeout_rate,
+            anomaly_rate
+        FROM wf_performance_stats
+        <where>
+            <if test="startDate != null">
+                AND stat_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND stat_date &lt;= #{endDate}
+            </if>
+            <if test="processDefKey != null and processDefKey != ''">
+                AND process_def_key = #{processDefKey}
+            </if>
+        </where>
+        ORDER BY stat_date DESC
+    </select>
+
+</mapper>

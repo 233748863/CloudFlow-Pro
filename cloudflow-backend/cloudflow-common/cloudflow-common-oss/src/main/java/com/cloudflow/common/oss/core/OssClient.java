@@ -134,8 +134,11 @@ public class OssClient {
             inputStream = new ByteArrayInputStream(IoUtil.readBytes(inputStream));
         }
         try {
-            // 创建异步请求体
-            BlockingInputStreamAsyncRequestBody body = BlockingInputStreamAsyncRequestBody.forBlockingInputStream(length);
+            // 创建异步请求体 - 使用正确的API
+            BlockingInputStreamAsyncRequestBody body = 
+                BlockingInputStreamAsyncRequestBody.builder()
+                    .contentLength(length)
+                    .build();
 
             // 执行上传
             Upload upload = transferManager.upload(x -> {

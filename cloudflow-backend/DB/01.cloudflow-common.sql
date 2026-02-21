@@ -334,6 +334,10 @@ INSERT INTO sys_menu VALUES(206, '通讯录',     2, 7, '/office/contact',      
 INSERT INTO sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', sysdate(), '', null, '访客预约管理');
 INSERT INTO sys_menu VALUES(507, '值班排班',   5, 8, '/admin/duty-schedule',      'pages/DutySchedulePage',       NULL, 0, 0, 'C', '0', '0', 'admin:duty:list',           'CalendarClock',   'admin', sysdate(), '', null, '值班排班管理');
 
+-- 流程管理(parent_id=4)扩展菜单：Phase 2 监控告警功能（2026-02-22新增）
+INSERT INTO sys_menu VALUES(700, '告警管理',   4, 5, '/workflow/alerts',          'pages/AlertList',              NULL, 0, 0, 'C', '0', '0', 'workflow:alert:list',       'Bell',            'admin', sysdate(), '', null, '查看和处理超时告警和异常告警');
+INSERT INTO sys_menu VALUES(701, '性能统计',   4, 6, '/workflow/performance',     'pages/PerformanceStats',       NULL, 0, 0, 'C', '0', '0', 'workflow:performance:view', 'BarChart3',       'admin', sysdate(), '', null, '查看流程执行性能统计和趋势分析');
+
 -- 7. 初始化岗位数据
 INSERT INTO sys_post VALUES(1, 100000, 'ceo',      '董事长',     1, '0', 'admin', sysdate(), '', null, '公司最高管理者');
 INSERT INTO sys_post VALUES(2, 100000, 'manager',   '部门经理',   2, '0', 'admin', sysdate(), '', null, '部门负责人');
@@ -395,6 +399,9 @@ INSERT INTO sys_role_menu VALUES(2, 206, 100000);
 -- 行政管理扩展菜单
 INSERT INTO sys_role_menu VALUES(2, 506, 100000);
 INSERT INTO sys_role_menu VALUES(2, 507, 100000);
+-- Phase 2 监控告警菜单
+INSERT INTO sys_role_menu VALUES(2, 700, 100000);
+INSERT INTO sys_role_menu VALUES(2, 701, 100000);
 
 -- FINANCE (role_id=3): 工作台 + 办公协同 + 流程中心
 INSERT INTO sys_role_menu VALUES(3, 1, 100000);
@@ -413,6 +420,10 @@ INSERT INTO sys_role_menu VALUES(3, 203, 100000);
 INSERT INTO sys_role_menu VALUES(3, 204, 100000);
 INSERT INTO sys_role_menu VALUES(3, 205, 100000);
 INSERT INTO sys_role_menu VALUES(3, 206, 100000);
+-- Phase 2 监控告警菜单（仅查看）
+INSERT INTO sys_role_menu VALUES(3, 4, 100000);
+INSERT INTO sys_role_menu VALUES(3, 401, 100000);
+INSERT INTO sys_role_menu VALUES(3, 701, 100000);
 
 -- HR (role_id=4): 工作台 + 办公协同 + 流程中心 + 流程管理 + 行政管理
 INSERT INTO sys_role_menu VALUES(4, 1, 100000);
@@ -441,6 +452,9 @@ INSERT INTO sys_role_menu VALUES(4, 205, 100000);
 INSERT INTO sys_role_menu VALUES(4, 206, 100000);
 INSERT INTO sys_role_menu VALUES(4, 506, 100000);
 INSERT INTO sys_role_menu VALUES(4, 507, 100000);
+-- Phase 2 监控告警菜单
+INSERT INTO sys_role_menu VALUES(4, 700, 100000);
+INSERT INTO sys_role_menu VALUES(4, 701, 100000);
 
 -- EMPLOYEE (role_id=5): 工作台 + 办公协同 + 流程中心（仅基础功能）
 INSERT INTO sys_role_menu VALUES(5, 1, 100000);
@@ -459,6 +473,9 @@ INSERT INTO sys_role_menu VALUES(5, 203, 100000);
 INSERT INTO sys_role_menu VALUES(5, 204, 100000);
 INSERT INTO sys_role_menu VALUES(5, 205, 100000);
 INSERT INTO sys_role_menu VALUES(5, 206, 100000);
+-- Phase 2 监控告警菜单（仅查看流程监控）
+INSERT INTO sys_role_menu VALUES(5, 4, 100000);
+INSERT INTO sys_role_menu VALUES(5, 401, 100000);
 
 -- =========================================================
 -- 六、操作日志与审计日志

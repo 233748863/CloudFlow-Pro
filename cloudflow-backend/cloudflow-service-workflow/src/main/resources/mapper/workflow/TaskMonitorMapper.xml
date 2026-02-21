@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.TaskMonitorMapper">
+
+    <resultMap id="TaskMonitorResult" type="com.cloudflow.workflow.domain.monitor.TaskMonitor">
+        <id property="id" column="id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="taskId" column="task_id"/>
+        <result property="instanceId" column="instance_id"/>
+        <result property="nodeKey" column="node_key"/>
+        <result property="taskName" column="task_name"/>
+        <result property="assigneeId" column="assignee_id"/>
+        <result property="assigneeName" column="assignee_name"/>
+        <result property="createTimeTask" column="create_time_task"/>
+        <result property="claimTime" column="claim_time"/>
+        <result property="completeTime" column="complete_time"/>
+        <result property="waitDuration" column="wait_duration"/>
+        <result property="handleDuration" column="handle_duration"/>
+        <result property="totalDuration" column="total_duration"/>
+        <result property="status" column="status"/>
+        <result property="action" column="action"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!-- 根据任务ID查询监控记录 -->
+    <select id="selectByTaskId" resultMap="TaskMonitorResult">
+        SELECT 
+            id, tenant_id, task_id, instance_id, node_key, task_name,
+            assignee_id, assignee_name, create_time_task, claim_time, complete_time,
+            wait_duration, handle_duration, total_duration, status, action,
+            create_time, update_time
+        FROM wf_task_monitor
+        WHERE task_id = #{taskId}
+    </select>
+
+    <!-- 查询流程实例的所有任务监控记录 -->
+    <select id="selectByInstanceId" resultMap="TaskMonitorResult">
+        SELECT 
+            id, tenant_id, task_id, instance_id, node_key, task_name,
+            assignee_id, assignee_name, create_time_task, claim_time, complete_time,
+            wait_duration, handle_duration, total_duration, status, action,
+            create_time, update_time
+        FROM wf_task_monitor
+        WHERE instance_id = #{instanceId}
+        ORDER BY create_time_task ASC
+    </select>
+
+    <!-- 查询指定处理人的任务监控记录 -->
+    <select id="selectByAssignee" resultMap="TaskMonitorResult">
+        SELECT 
+            id, tenant_id, task_id, instance_id, node_key, task_name,
+            assignee_id, assignee_name, create_time_task, claim_time, complete_time,
+            wait_duration, handle_duration, total_duration, status, action,
+            create_time, update_time
+        FROM wf_task_monitor
+        WHERE tenant_id = #{tenantId}
+        AND assignee_id = #{assigneeId}
+        ORDER BY create_time_task DESC
+    </select>
+
+    <!-- 查询超时的任务 -->
+    <select id="selectTimeoutTasks" resultMap="TaskMonitorResult">
+        SELECT 
+            id, tenant_id, task_id, instance_id, node_key, task_name,
+            assignee_id, assignee_name, create_time_task, claim_time, complete_time,
+            wait_duration, handle_duration, total_duration, status, action,
+            create_time, update_time
+        FROM wf_task_monitor
+        WHERE tenant_id = #{tenantId}
+        AND status IN ('PENDING', 'CLAIMED')
+        AND TIMESTAMPDIFF(SECOND, create_time_task, NOW()) * 1000 > #{threshold}
+        ORDER BY create_time_task ASC
+    </select>
+
+    <!-- 统计任务执行情况 -->
+    <select id="selectTaskStatistics" resultMap="TaskMonitorResult">
+        SELECT 
+            COUNT(*) as id,
+            AVG(wait_duration) as wait_duration,
+            AVG(handle_duration) as handle_duration,
+            AVG(total_duration) as total_duration,
+            SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as assignee_id,
+            SUM(CASE WHEN status = 'TIMEOUT' THEN 1 ELSE 0 END) as tenant_id
+        FROM wf_task_monitor
+        WHERE tenant_id = #{tenantId}
+        <if test="startTime != null">
+            AND create_time_task >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND create_time_task &lt;= #{endTime}
+        </if>
+    </select>
+
+</mapper>

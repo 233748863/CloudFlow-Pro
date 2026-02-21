@@ -63,16 +63,20 @@ public class TimerSchedulerService {
                     long currentTime = System.currentTimeMillis();
                     
                     // 从Redis有序集合中获取所有到期的定时任务
-                    Set<Object> expiredTimers = redisCache.getCacheZSetByScoreRange(
+                    Set<Object> expiredTimersRaw = redisCache.getCacheZSetByScoreRange(
                         "sys:wf:timers", 0, currentTime);
                     
-                    if (expiredTimers == null || expiredTimers.isEmpty()) {
+                    if (expiredTimersRaw == null || expiredTimersRaw.isEmpty()) {
                         return;
                     }
                     
-                    log.info("[scanAndTriggerTimers] 发现 {} 个到期的定时任务", expiredTimers.size());
+                    log.info("[scanAndTriggerTimers] 发现 {} 个到期的定时任务", expiredTimersRaw.size());
                     
-                    for (Object timerKeyObj : expiredTimers) {
+                    for (Object timerKeyObj : expiredTimersRaw) {
+                        if (!(timerKeyObj instanceof String)) {
+                            log.warn("[scanAndTriggerTimers] 跳过非字符串类型的定时任务键: {}", timerKeyObj);
+                            continue;
+                        }
                         String timerKey = (String) timerKeyObj;
                         try {
                             triggerTimer(timerKey);
@@ -110,10 +114,23 @@ public class TimerSchedulerService {
                 return;
             }
             
-            String instanceId = (String) timerData.get("instanceId");
-            String nodeKey = (String) timerData.get("nodeKey");
-            String nextNodeKey = (String) timerData.get("nextNodeKey");
-            Map<String, Object> variables = (Map<String, Object>) timerData.get("variables");
+            Object instanceIdObj = timerData.get("instanceId");
+            Object nodeKeyObj = timerData.get("nodeKey");
+            Object nextNodeKeyObj = timerData.get("nextNodeKey");
+            Object variablesObj = timerData.get("variables");
+            
+            if (!(instanceIdObj instanceof String) || !(nodeKeyObj instanceof String)) {
+                log.warn("[triggerTimer] 定时任务数据格式错误, timerKey={}", timerKey);
+                cleanup(timerKey);
+                return;
+            }
+            
+            String instanceId = (String) instanceIdObj;
+            String nodeKey = (String) nodeKeyObj;
+            String nextNodeKey = nextNodeKeyObj instanceof String ? (String) nextNodeKeyObj : null;
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> variables = variablesObj instanceof Map ? (Map<String, Object>) variablesObj : null;
             
             log.info("[triggerTimer] 触发定时任务, instanceId={}, nodeKey={}, nextNodeKey={}", 
                 instanceId, nodeKey, nextNodeKey);
@@ -217,13 +234,16 @@ public class TimerSchedulerService {
     public void cancelTimersForInstance(String instanceId) {
         try {
             // 查找该实例的所有定时任务
-            Set<Object> allTimers = redisCache.getCacheZSetByScoreRange("sys:wf:timers", Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
+            Set<Object> allTimersRaw = redisCache.getCacheZSetByScoreRange("sys:wf:timers", Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
             
-            if (allTimers == null || allTimers.isEmpty()) {
+            if (allTimersRaw == null || allTimersRaw.isEmpty()) {
                 return;
             }
             
-            for (Object timerKeyObj : allTimers) {
+            for (Object timerKeyObj : allTimersRaw) {
+                if (!(timerKeyObj instanceof String)) {
+                    continue;
+                }
                 String timerKey = (String) timerKeyObj;
                 if (timerKey.contains(instanceId)) {
                     cleanup(timerKey);

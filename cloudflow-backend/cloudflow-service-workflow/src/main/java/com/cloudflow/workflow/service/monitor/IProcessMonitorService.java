@@ -91,7 +91,7 @@ public interface IProcessMonitorService {
      * @param endTime       结束时间
      * @return 统计结果
      */
-    ProcessMonitor getStatistics(String processDefKey, LocalDateTime startTime, LocalDateTime endTime);
+    com.cloudflow.workflow.domain.vo.ProcessStatisticsVO getStatistics(String processDefKey, LocalDateTime startTime, LocalDateTime endTime);
 
     /**
      * 清理过期监控数据
