@@ -392,4 +392,13 @@ public class SysUserServiceImpl implements ISysUserService {
     public String selectUserRoleGroup(String userName) {
         return "";
     }
+
+    @Override
+    public List<SysUser> selectUserByIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        return sysUserMapper.selectBatchIds(userIds);
+    }
 }

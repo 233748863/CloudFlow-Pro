@@ -759,6 +759,47 @@ INSERT INTO sys_config VALUES(67, 100000, '网关-默认租户ID',              
 INSERT INTO sys_config VALUES(68, 100000, 'OSS-是否启用HTTPS',             'sys.oss.isHttps',               'N',        'Y', '0', 'admin', sysdate(), '', null, '对象存储是否使用HTTPS协议');
 INSERT INTO sys_config VALUES(69, 100000, 'OSS-默认访问策略',              'sys.oss.accessPolicy',          '1',        'Y', '0', 'admin', sysdate(), '', null, '桶默认访问策略：0私有 1公共读 2公共读写');
 
+-- =========================================================
+-- Phase 2: 性能优化与监控告警配置（全局）
+-- =========================================================
+
+-- 异步线程池配置 - 工作流执行器
+INSERT INTO sys_config VALUES(70, 100000, '异步-工作流核心线程数',         'sys.workflow.async.workflow.corePoolSize',    '10',  'Y', '0', 'admin', sysdate(), '', null, '工作流异步执行器核心线程数');
+INSERT INTO sys_config VALUES(71, 100000, '异步-工作流最大线程数',         'sys.workflow.async.workflow.maxPoolSize',     '20',  'Y', '0', 'admin', sysdate(), '', null, '工作流异步执行器最大线程数');
+INSERT INTO sys_config VALUES(72, 100000, '异步-工作流队列容量',           'sys.workflow.async.workflow.queueCapacity',   '200', 'Y', '0', 'admin', sysdate(), '', null, '工作流异步执行器队列容量');
+
+-- 异步线程池配置 - 通知执行器
+INSERT INTO sys_config VALUES(73, 100000, '异步-通知核心线程数',           'sys.workflow.async.notification.corePoolSize', '5',  'Y', '0', 'admin', sysdate(), '', null, '通知异步执行器核心线程数');
+INSERT INTO sys_config VALUES(74, 100000, '异步-通知最大线程数',           'sys.workflow.async.notification.maxPoolSize',  '10', 'Y', '0', 'admin', sysdate(), '', null, '通知异步执行器最大线程数');
+INSERT INTO sys_config VALUES(75, 100000, '异步-通知队列容量',             'sys.workflow.async.notification.queueCapacity','100','Y', '0', 'admin', sysdate(), '', null, '通知异步执行器队列容量');
+
+-- 异步线程池配置 - 审计执行器
+INSERT INTO sys_config VALUES(76, 100000, '异步-审计核心线程数',           'sys.workflow.async.audit.corePoolSize',       '3',  'Y', '0', 'admin', sysdate(), '', null, '审计异步执行器核心线程数');
+INSERT INTO sys_config VALUES(77, 100000, '异步-审计最大线程数',           'sys.workflow.async.audit.maxPoolSize',        '5',  'Y', '0', 'admin', sysdate(), '', null, '审计异步执行器最大线程数');
+INSERT INTO sys_config VALUES(78, 100000, '异步-审计队列容量',             'sys.workflow.async.audit.queueCapacity',      '500','Y', '0', 'admin', sysdate(), '', null, '审计异步执行器队列容量');
+
+-- Redis缓存配置
+INSERT INTO sys_config VALUES(79, 100000, '缓存-流程定义TTL(秒)',          'sys.workflow.cache.definition.ttl',           '3600','Y', '0', 'admin', sysdate(), '', null, '流程定义缓存过期时间（1小时）');
+INSERT INTO sys_config VALUES(80, 100000, '缓存-表单定义TTL(秒)',          'sys.workflow.cache.form.ttl',                 '3600','Y', '0', 'admin', sysdate(), '', null, '表单定义缓存过期时间（1小时）');
+INSERT INTO sys_config VALUES(81, 100000, '缓存-用户信息TTL(秒)',          'sys.workflow.cache.user.ttl',                 '1800','Y', '0', 'admin', sysdate(), '', null, '用户信息缓存过期时间（30分钟）');
+
+-- 流程监控配置
+INSERT INTO sys_config VALUES(82, 100000, '监控-数据保留天数',             'sys.workflow.monitor.retentionDays',          '90',  'Y', '0', 'admin', sysdate(), '', null, '流程监控数据保留天数');
+INSERT INTO sys_config VALUES(83, 100000, '监控-采样间隔(秒)',             'sys.workflow.monitor.sampleInterval',         '60',  'Y', '0', 'admin', sysdate(), '', null, '流程监控数据采样间隔');
+
+-- 超时告警配置
+INSERT INTO sys_config VALUES(84, 100000, '告警-超时检测间隔(分钟)',       'sys.workflow.alert.timeout.checkInterval',    '5',   'Y', '0', 'admin', sysdate(), '', null, '超时任务检测间隔');
+INSERT INTO sys_config VALUES(85, 100000, '告警-超时提醒阈值(小时)',       'sys.workflow.alert.timeout.warningHours',     '24',  'Y', '0', 'admin', sysdate(), '', null, '任务超时提醒阈值');
+INSERT INTO sys_config VALUES(86, 100000, '告警-超时严重阈值(小时)',       'sys.workflow.alert.timeout.criticalHours',    '72',  'Y', '0', 'admin', sysdate(), '', null, '任务超时严重告警阈值');
+
+-- 异常检测配置
+INSERT INTO sys_config VALUES(87, 100000, '告警-异常检测间隔(分钟)',       'sys.workflow.alert.anomaly.checkInterval',    '10',  'Y', '0', 'admin', sysdate(), '', null, '异常流程检测间隔');
+INSERT INTO sys_config VALUES(88, 100000, '告警-失败重试阈值',             'sys.workflow.alert.anomaly.retryThreshold',   '3',   'Y', '0', 'admin', sysdate(), '', null, '流程失败重试次数告警阈值');
+
+-- 性能优化配置
+INSERT INTO sys_config VALUES(89, 100000, '性能-批量查询大小',             'sys.workflow.performance.batchSize',          '100', 'Y', '0', 'admin', sysdate(), '', null, '批量查询单次最大记录数');
+INSERT INTO sys_config VALUES(90, 100000, '性能-慢查询阈值(毫秒)',         'sys.workflow.performance.slowQueryThreshold', '1000','Y', '0', 'admin', sysdate(), '', null, '慢查询告警阈值');
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================

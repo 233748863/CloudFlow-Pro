@@ -5,8 +5,10 @@ import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -60,5 +62,22 @@ public class SysUserController {
     @HasPermission("system:user:remove")
     public R<?> remove(@PathVariable("userIds") Long[] userIds) {
         return R.ok(userService.deleteUserByIds(userIds));
+    }
+
+    /**
+     * 批量查询用户信息
+     * 
+     * @param userIds 用户ID列表
+     * @return 用户信息列表
+     */
+    @PostMapping("/batch")
+    @HasPermission("system:user:query")
+    public R<List<SysUser>> batchGetUsers(@RequestBody List<Long> userIds) {
+        if (CollectionUtils.isEmpty(userIds)) {
+            return R.ok(Collections.emptyList());
+        }
+        
+        List<SysUser> users = userService.selectUserByIds(userIds);
+        return R.ok(users);
     }
 }

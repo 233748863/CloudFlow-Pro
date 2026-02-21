@@ -68,6 +68,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     private WorkflowEventPublisher workflowEventPublisher;
     @Autowired
     private GlobalListenerDispatcher globalListenerDispatcher;
+    @Autowired
+    private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -131,6 +133,21 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         processInstanceMapper.insert(instance);
+
+        // 记录流程监控
+        try {
+            processMonitorService.recordProcessStart(
+                instance.getInstanceId(),
+                def.getProcessKey(),
+                processDefKey,
+                def.getProcessName(),
+                businessKey,
+                currentUserId,
+                currentUserName
+            );
+        } catch (Exception e) {
+            log.warn("[startProcess] 记录流程监控失败: {}", e.getMessage());
+        }
 
         // 发布流程启动事件
         workflowEventPublisher.publishProcessStarted(instance);

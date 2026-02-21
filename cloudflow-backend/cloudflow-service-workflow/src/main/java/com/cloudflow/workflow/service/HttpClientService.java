@@ -3,16 +3,18 @@ package com.cloudflow.workflow.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.hc.core5.http.protocol.HttpContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -60,15 +62,27 @@ public class HttpClientService {
                 }
             }
             
-            // 执行请求 (使用新的非过时方法，明确指定HttpContext类型)
-            try (CloseableHttpResponse response = httpClient.execute(request, (HttpContext) null)) {
+            // 使用 ResponseHandler 执行请求（推荐方式）
+            HttpClientResponseHandler<ApiResponse> responseHandler = response -> {
                 int statusCode = response.getCode();
-                String responseBody = EntityUtils.toString(response.getEntity());
+                HttpEntity entity = response.getEntity();
+                String responseBody = "";
+                
+                if (entity != null) {
+                    try {
+                        responseBody = EntityUtils.toString(entity);
+                    } catch (org.apache.hc.core5.http.ParseException e) {
+                        log.warn("解析响应体失败: {}", e.getMessage());
+                        responseBody = "解析响应失败";
+                    }
+                }
                 
                 log.info("[executeRequest] HTTP 请求完成, statusCode={}", statusCode);
                 
                 return new ApiResponse(statusCode, responseBody, statusCode >= 200 && statusCode < 300);
-            }
+            };
+            
+            return httpClient.execute(request, responseHandler);
             
         } catch (Exception e) {
             log.error("[executeRequest] HTTP 请求失败: {}", e.getMessage(), e);

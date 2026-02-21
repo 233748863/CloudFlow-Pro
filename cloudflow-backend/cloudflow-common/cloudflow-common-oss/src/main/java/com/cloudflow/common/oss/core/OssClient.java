@@ -135,10 +135,7 @@ public class OssClient {
         }
         try {
             // 创建异步请求体
-            BlockingInputStreamAsyncRequestBody body = BlockingInputStreamAsyncRequestBody.builder()
-                    .contentLength(length)
-                    .subscribeTimeout(Duration.ofSeconds(120))
-                    .build();
+            BlockingInputStreamAsyncRequestBody body = BlockingInputStreamAsyncRequestBody.forBlockingInputStream(length);
 
             // 执行上传
             Upload upload = transferManager.upload(x -> {

@@ -89,6 +89,10 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     private TaskReminderJob taskReminderJob;
     @Autowired
     private GlobalListenerDispatcher globalListenerDispatcher;
+    @Autowired
+    private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
+    @Autowired
+    private com.cloudflow.workflow.service.monitor.IAnomalyDetectionService anomalyDetectionService;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -316,6 +320,17 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         instance.setStatus(status);
         instance.setEndTime(new Date());
         processInstanceMapper.updateById(instance);
+
+        // 记录流程结束监控
+        try {
+            String errorMessage = null;
+            if ("FAILED".equals(status) || "TERMINATED".equals(status)) {
+                errorMessage = "流程" + ("FAILED".equals(status) ? "失败" : "终止");
+            }
+            processMonitorService.recordProcessEnd(instance.getInstanceId(), status, errorMessage);
+        } catch (Exception e) {
+            log.warn("[completeInstance] 记录流程结束监控失败: {}", e.getMessage());
+        }
 
         if (WfProcessStatus.COMPLETED.getCode().equals(status)) {
             workflowEventPublisher.publishProcessCompleted(instance);

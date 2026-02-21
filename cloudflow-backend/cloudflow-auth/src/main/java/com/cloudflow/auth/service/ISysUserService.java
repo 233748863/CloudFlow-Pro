@@ -27,4 +27,12 @@ public interface ISysUserService {
      * 清除指定用户的缓存
      */
     void evictUserCache(String username);
+
+    /**
+     * 根据用户ID列表批量查询用户
+     * 
+     * @param userIds 用户ID列表
+     * @return 用户列表
+     */
+    List<SysUser> selectUserByIds(List<Long> userIds);
 }

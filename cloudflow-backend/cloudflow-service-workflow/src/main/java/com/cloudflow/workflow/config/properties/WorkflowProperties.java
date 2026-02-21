@@ -34,7 +34,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "cloudflow.workflow")
 public class WorkflowProperties {
 
-    @Autowired
+    @Autowired(required = false)
     private SysConfigHelper sysConfigHelper;
 
     private Stream stream = new Stream();
@@ -51,6 +51,11 @@ public class WorkflowProperties {
      */
     @PostConstruct
     public void loadFromSysConfig() {
+        if (sysConfigHelper == null) {
+            log.warn("SysConfigHelper未注入，工作流配置使用默认值");
+            return;
+        }
+
         try {
             // === 全局配置 ===
             // 流程深度限制（防止循环流程堆栈溢出）

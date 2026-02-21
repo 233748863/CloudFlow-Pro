@@ -235,6 +235,7 @@ public class WorkflowSecurityUtils {
     /**
      * S.6: 批量清理 Map 中的 XSS
      */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> sanitizeMapXss(Map<String, Object> data) {
         if (data == null) {
             return null;
@@ -245,6 +246,7 @@ public class WorkflowSecurityUtils {
             if (value instanceof String) {
                 sanitized.put(entry.getKey(), sanitizeXss((String) value));
             } else if (value instanceof Map) {
+                // 类型检查已通过 instanceof，这里的转换是安全的
                 sanitized.put(entry.getKey(), sanitizeMapXss((Map<String, Object>) value));
             } else {
                 sanitized.put(entry.getKey(), value);

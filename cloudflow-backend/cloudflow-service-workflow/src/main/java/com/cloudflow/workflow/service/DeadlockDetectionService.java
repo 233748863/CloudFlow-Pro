@@ -68,6 +68,9 @@ public class DeadlockDetectionService {
 
     @Autowired
     private WorkflowProperties workflowProperties;
+    
+    @Autowired
+    private ISysNoticeService sysNoticeService;
 
     // ==================== 核心 API ====================
 
@@ -301,7 +304,8 @@ public class DeadlockDetectionService {
                 // 清理记录
                 removeLockHolder(lockKey, null);
 
-                // TODO: 发送告警通知
+                // 发送死锁告警（已实现：日志记录）
+                // 扩展点：外部通知渠道（钉钉、企业微信、邮件）
                 sendDeadlockAlert("超时锁", lockKey, "锁持有时间超过 " + workflowProperties.getLock().getDeadlockTimeout() + " 秒");
             } catch (Exception e) {
                 log.error("[handleTimeoutLocks] 处理超时锁失败, lockKey={}, error={}", lockKey, e.getMessage());
@@ -626,10 +630,40 @@ public class DeadlockDetectionService {
 
     /**
      * 发送死锁告警
+     * 集成系统通知服务，发送告警到管理员
      */
     private void sendDeadlockAlert(String type, String detail, String message) {
-        // TODO: 集成告警系统（钉钉、邮件、短信等）
-        log.error("[DEADLOCK ALERT] type={}, detail={}, message={}", type, detail, message);
+        try {
+            // 记录日志
+            log.error("[DEADLOCK ALERT] type={}, detail={}, message={}", type, detail, message);
+            
+            // 构建告警标题和内容
+            String title = String.format("[死锁告警] %s", type);
+            String content = String.format(
+                "检测到死锁情况：\n" +
+                "类型：%s\n" +
+                "详情：%s\n" +
+                "说明：%s\n" +
+                "时间：%s",
+                type, detail, message,
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            );
+            
+            // 发送系统通知给管理员（userId=1为系统管理员）
+            // 实际项目中应该从配置或数据库读取管理员列表
+            sysNoticeService.sendNotice(
+                1L,  // 管理员用户ID
+                title,
+                content,
+                "SYSTEM",  // 通知类型：系统通知
+                0L,  // 发送者ID：系统
+                "系统"  // 发送者名称
+            );
+            
+            log.info("[sendDeadlockAlert] 死锁告警已发送, type={}", type);
+        } catch (Exception e) {
+            log.error("[sendDeadlockAlert] 发送告警失败: {}", e.getMessage(), e);
+        }
     }
 
     // ==================== 监控接口 ====================
