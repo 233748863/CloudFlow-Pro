@@ -223,6 +223,9 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
                 stats.setUpdateTime(LocalDateTime.now());
             }
 
+            // P2修复: 保存更新前的totalCount用于计算平均时长
+            int oldTotalCount = stats.getTotalCount();
+
             // 更新统计数据
             stats.setTotalCount(stats.getTotalCount() + 1);
 
@@ -234,7 +237,7 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
 
             // 更新执行时长统计
             if (monitor.getDuration() != null) {
-                updateDurationStats(stats, monitor.getDuration());
+                updateDurationStats(stats, monitor.getDuration(), oldTotalCount);
             }
 
             stats.setUpdateTime(LocalDateTime.now());
@@ -255,8 +258,12 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
 
     /**
      * 更新执行时长统计
+     * 
+     * @param stats 统计对象
+     * @param duration 本次执行时长
+     * @param oldTotalCount 更新前的总数
      */
-    private void updateDurationStats(PerformanceStats stats, Long duration) {
+    private void updateDurationStats(PerformanceStats stats, Long duration, int oldTotalCount) {
         // 更新最大时长
         if (duration > stats.getMaxDuration()) {
             stats.setMaxDuration(duration);
@@ -267,8 +274,8 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
             stats.setMinDuration(duration);
         }
 
-        // 计算平均时长
-        Long totalDuration = stats.getAvgDuration() * (stats.getTotalCount() - 1) + duration;
+        // P2修复: 使用更新前的totalCount计算平均时长
+        Long totalDuration = stats.getAvgDuration() * oldTotalCount + duration;
         stats.setAvgDuration(totalDuration / stats.getTotalCount());
     }
 

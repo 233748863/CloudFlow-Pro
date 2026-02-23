@@ -59,6 +59,9 @@ public class CountersignServiceImpl implements ICountersignService {
     @Autowired
     private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
 
+    @Autowired
+    private com.cloudflow.workflow.job.TaskReminderJob taskReminderJob;
+
     /**
      * 创建会签任务
      * 
@@ -259,6 +262,13 @@ public class CountersignServiceImpl implements ICountersignService {
             }
 
             countersignTaskMapper.updateById(csTask);
+
+            // P2修复: 取消任务提醒
+            try {
+                taskReminderJob.cancelReminders(taskId);
+            } catch (Exception e) {
+                log.warn("[vote] 取消任务提醒失败, taskId={}: {}", taskId, e.getMessage());
+            }
 
             // 10. 删除当前投票人的任务
             taskMapper.deleteById(taskId);

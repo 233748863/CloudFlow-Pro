@@ -70,6 +70,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     private GlobalListenerDispatcher globalListenerDispatcher;
     @Autowired
     private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
+    @Autowired
+    private WfCountersignTaskMapper countersignTaskMapper;
+    @Autowired
+    private WfCountersignVoteMapper countersignVoteMapper;
+    @Autowired(required = false)
+    private TimerSchedulerService timerSchedulerService;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -726,19 +732,67 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         RLock lock = redissonClient.getLock("lock:instance:" + instanceId);
         try {
             if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
-                // 6. 删除所有待办任务
+                // P1修复: 删除所有未完成的任务（包括SUSPENDED状态）
                 int deletedTasks = taskMapper.delete(
                     new LambdaQueryWrapper<WfTask>()
                         .eq(WfTask::getInstanceId, instanceId)
-                        .in(WfTask::getStatus, WfTaskStatus.TODO.getCode(), WfTaskStatus.DELEGATED.getCode())
+                        .in(WfTask::getStatus, 
+                            WfTaskStatus.TODO.getCode(), 
+                            WfTaskStatus.DELEGATED.getCode(),
+                            WfTaskStatus.SUSPENDED.getCode())
                 );
 
                 log.info("终止流程，删除待办任务: instanceId={}, count={}", instanceId, deletedTasks);
+
+                // P1修复: 清理会签相关数据
+                try {
+                    List<WfCountersignTask> csTasks = countersignTaskMapper.selectList(
+                        new LambdaQueryWrapper<WfCountersignTask>()
+                            .eq(WfCountersignTask::getInstanceId, instanceId)
+                            .eq(WfCountersignTask::getStatus, "VOTING")
+                    );
+                    
+                    for (WfCountersignTask csTask : csTasks) {
+                        // 删除会签投票记录
+                        countersignVoteMapper.delete(
+                            new LambdaQueryWrapper<WfCountersignVote>()
+                                .eq(WfCountersignVote::getCountersignId, csTask.getCountersignId())
+                        );
+                        
+                        // 更新会签任务状态为已终止
+                        csTask.setStatus("TERMINATED");
+                        csTask.setCompleteTime(new Date());
+                        countersignTaskMapper.updateById(csTask);
+                    }
+                    
+                    if (!csTasks.isEmpty()) {
+                        log.info("终止流程，清理会签数据: instanceId={}, count={}", instanceId, csTasks.size());
+                    }
+                } catch (Exception e) {
+                    log.warn("清理会签数据失败: instanceId={}, error={}", instanceId, e.getMessage());
+                }
+
+                // P1修复: 取消定时器任务
+                try {
+                    if (timerSchedulerService != null) {
+                        timerSchedulerService.cancelTimersForInstance(instanceId);
+                        log.info("终止流程，取消定时器: instanceId={}", instanceId);
+                    }
+                } catch (Exception e) {
+                    log.warn("取消定时器失败: instanceId={}, error={}", instanceId, e.getMessage());
+                }
 
                 // 7. 更新流程实例状态
                 instance.setStatus("TERMINATED");
                 instance.setEndTime(new Date());
                 processInstanceMapper.updateById(instance);
+
+                // P1修复: 更新流程监控状态
+                try {
+                    processMonitorService.recordProcessEnd(instanceId, "TERMINATED", "管理员终止: " + reason);
+                } catch (Exception e) {
+                    log.warn("更新流程监控失败: instanceId={}, error={}", instanceId, e.getMessage());
+                }
 
                 // 8. 记录审计日志
                 auditService.log(

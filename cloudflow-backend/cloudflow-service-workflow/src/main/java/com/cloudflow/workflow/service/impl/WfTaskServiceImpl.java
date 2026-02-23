@@ -817,38 +817,52 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.validationError("加签说明不能为空");
         }
 
-        RLock lock = redissonClient.getLock("lock:task:addsign:" + taskId);
+        WfTask task = taskMapper.selectById(taskId);
+        if (task == null) {
+            throw WorkflowException.taskNotFound(taskId);
+        }
+
+        // 权限校验：只有当前任务处理人可以加签
+        if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
+            throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人可以加签");
+        }
+
+        // 检查是否为会签任务
+        if (!countersignService.isCountersignTask(task)) {
+            throw WorkflowException.validationError("只有会签节点支持加签操作");
+        }
+
+        // 获取会签任务信息
+        WfCountersignTask csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+        if (csTask == null) {
+            throw WorkflowException.validationError("未找到会签任务信息");
+        }
+
+        // 检查会签状态
+        if (!"VOTING".equals(csTask.getStatus())) {
+            throw WorkflowException.invalidState("会签已结束，无法加签");
+        }
+
+        // P0修复: 顺序签署模式不支持加签
+        if ("SEQUENTIAL".equals(csTask.getSignType())) {
+            throw WorkflowException.validationError("顺序签署模式不支持加签操作");
+        }
+
+        // XSS 过滤
+        comment = securityUtils.sanitizeXss(comment);
+
+        // P0修复: 使用与投票相同的分布式锁，确保并发安全
+        String countersignId = csTask.getCountersignId();
+        RLock lock = redissonClient.getLock("lock:countersign:" + countersignId);
         try {
             if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
-                WfTask task = taskMapper.selectById(taskId);
-                if (task == null) {
-                    throw WorkflowException.taskNotFound(taskId);
+                // 锁内重新查询会签任务，确保数据最新
+                csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+                if (csTask == null || !"VOTING".equals(csTask.getStatus())) {
+                    throw WorkflowException.invalidState("会签状态已变更，无法加签");
                 }
 
-                // 权限校验：只有当前任务处理人可以加签
-                if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
-                    throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人可以加签");
-                }
-
-                // 检查是否为会签任务
-                if (!countersignService.isCountersignTask(task)) {
-                    throw WorkflowException.validationError("只有会签节点支持加签操作");
-                }
-
-                // 获取会签任务信息
-                WfCountersignTask csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
-                if (csTask == null) {
-                    throw WorkflowException.validationError("未找到会签任务信息");
-                }
-
-                // 检查会签状态
-                if (!"VOTING".equals(csTask.getStatus())) {
-                    throw WorkflowException.invalidState("会签已结束，无法加签");
-                }
-
-                // XSS 过滤
-                comment = securityUtils.sanitizeXss(comment);
-
+                int addedCount = 0;
                 // 为每个新增人员创建会签任务
                 for (Long userId : userIds) {
                     // 检查用户是否已经是会签人
@@ -872,7 +886,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     newTask.setAssignee(userId);
                     newTask.setStatus(WfTaskStatus.TODO.getCode());
                     newTask.setCreateTime(new Date());
+                    newTask.setCandidateRoles("CS:" + countersignId);
                     taskMapper.insert(newTask);
+
+                    addedCount++;
 
                     // 记录加签历史
                     WfTaskAddSign addSign = new WfTaskAddSign();
@@ -906,16 +923,20 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         "1", currentUserId, UserContext.getUserName());
                 }
 
+                if (addedCount == 0) {
+                    throw WorkflowException.validationError("没有可加签的人员（可能已是会签人）");
+                }
+
                 // 更新会签任务的总人数
-                csTask.setTotalCount(csTask.getTotalCount() + userIds.size());
+                csTask.setTotalCount(csTask.getTotalCount() + addedCount);
                 countersignService.updateCountersignTask(csTask);
 
                 // 记录审计日志
                 auditService.log(WorkflowAuditService.AuditAction.TASK_ADD_SIGN, taskId,
-                    "addedUsers=" + userIds.size() + ", comment=" + comment);
+                    "addedUsers=" + addedCount + ", comment=" + comment);
 
-                log.info("[addSignature] 加签完成, 新增{}人", userIds.size());
-                return R.ok(Map.of("addedCount", userIds.size()));
+                log.info("[addSignature] 加签完成, 新增{}人", addedCount);
+                return R.ok(Map.of("addedCount", addedCount));
             } else {
                 throw WorkflowException.invalidState("加签操作处理中，请勿重复提交");
             }
@@ -946,37 +967,50 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.validationError("减签说明不能为空");
         }
 
-        RLock lock = redissonClient.getLock("lock:task:redsign:" + taskId);
+        WfTask task = taskMapper.selectById(taskId);
+        if (task == null) {
+            throw WorkflowException.taskNotFound(taskId);
+        }
+
+        // 权限校验：只有当前任务处理人或管理员可以减签
+        if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
+            throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人或管理员可以减签");
+        }
+
+        // 检查是否为会签任务
+        if (!countersignService.isCountersignTask(task)) {
+            throw WorkflowException.validationError("只有会签节点支持减签操作");
+        }
+
+        // 获取会签任务信息
+        WfCountersignTask csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+        if (csTask == null) {
+            throw WorkflowException.validationError("未找到会签任务信息");
+        }
+
+        // 检查会签状态
+        if (!"VOTING".equals(csTask.getStatus())) {
+            throw WorkflowException.invalidState("会签已结束，无法减签");
+        }
+
+        // P1修复: 顺序签署模式不支持减签
+        if ("SEQUENTIAL".equals(csTask.getSignType())) {
+            throw WorkflowException.validationError("顺序签署模式不支持减签操作");
+        }
+
+        // XSS 过滤
+        comment = securityUtils.sanitizeXss(comment);
+
+        // P0修复: 使用与投票相同的分布式锁，确保并发安全
+        String countersignId = csTask.getCountersignId();
+        RLock lock = redissonClient.getLock("lock:countersign:" + countersignId);
         try {
             if (lock.tryLock(5, 10, TimeUnit.SECONDS)) {
-                WfTask task = taskMapper.selectById(taskId);
-                if (task == null) {
-                    throw WorkflowException.taskNotFound(taskId);
+                // 锁内重新查询会签任务，确保数据最新
+                csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
+                if (csTask == null || !"VOTING".equals(csTask.getStatus())) {
+                    throw WorkflowException.invalidState("会签状态已变更，无法减签");
                 }
-
-                // 权限校验：只有当前任务处理人或管理员可以减签
-                if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
-                    throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人或管理员可以减签");
-                }
-
-                // 检查是否为会签任务
-                if (!countersignService.isCountersignTask(task)) {
-                    throw WorkflowException.validationError("只有会签节点支持减签操作");
-                }
-
-                // 获取会签任务信息
-                WfCountersignTask csTask = countersignService.getCountersignTask(task.getInstanceId(), task.getNodeKey());
-                if (csTask == null) {
-                    throw WorkflowException.validationError("未找到会签任务信息");
-                }
-
-                // 检查会签状态
-                if (!"VOTING".equals(csTask.getStatus())) {
-                    throw WorkflowException.invalidState("会签已结束，无法减签");
-                }
-
-                // XSS 过滤
-                comment = securityUtils.sanitizeXss(comment);
 
                 int removedCount = 0;
                 for (Long userId : userIds) {
@@ -1046,7 +1080,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 }
                 countersignService.updateCountersignTask(csTask);
 
-                // 检查减签后是否满足通过条件
+                // P1修复: 检查减签后是否满足通过或失败条件
                 countersignService.checkAndCompleteCountersign(csTask);
 
                 // 记录审计日志
