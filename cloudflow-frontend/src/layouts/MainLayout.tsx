@@ -267,8 +267,8 @@ export const MainLayout = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-8 overflow-y-auto relative">
-          <div className="max-w-7xl mx-auto h-full animate-fade-in">
+        <main className="flex-1 p-4 md:p-6 overflow-y-auto relative">
+          <div className="h-full animate-fade-in">
              <Outlet />
           </div>
         </main>
