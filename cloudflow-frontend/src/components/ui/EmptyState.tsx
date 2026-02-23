@@ -27,22 +27,22 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 px-4 text-center', className)}>
       {icon && (
-        <div className="mb-4 text-slate-400">
+        <div className="mb-5 p-4 bg-slate-50/80 rounded-full text-slate-400 ring-1 ring-slate-100 shadow-sm">
           {icon}
         </div>
       )}
-      <h3 className="text-lg font-semibold text-slate-900 mb-2">
+      <h3 className="text-lg font-semibold text-slate-800 mb-1.5">
         {title}
       </h3>
       {description && (
-        <p className="text-sm text-slate-600 mb-6 max-w-md">
+        <p className="text-sm text-slate-500 mb-6 max-w-md leading-relaxed">
           {description}
         </p>
       )}
       {action && (
         <button
           onClick={action.onClick}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.98]"
         >
           {action.label}
         </button>

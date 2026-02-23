@@ -49,14 +49,14 @@ export const DialogContent = ({ children, className = '' }: { children: React.Re
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in-0" onClick={() => onOpenChange(false)} />
-      <div className={`fixed z-50 grid w-full gap-4 border bg-white p-6 shadow-lg duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-lg md:w-full sm:max-w-lg ${className}`}>
+      <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm transition-opacity animate-in fade-in-0" onClick={() => onOpenChange(false)} />
+      <div className={`fixed z-50 grid w-full gap-4 border border-slate-200 bg-white p-6 shadow-2xl duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-xl md:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar ${className}`}>
         {children}
         <button
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          className="absolute right-4 top-4 rounded-full p-1.5 opacity-70 transition-all hover:bg-slate-100 hover:opacity-100 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:pointer-events-none"
           onClick={() => onOpenChange(false)}
         >
-          <span className="sr-only">Close</span>
+          <span className="sr-only">关闭</span>
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
         </button>
       </div>
@@ -69,11 +69,11 @@ export const DialogHeader = ({ className = '', ...props }: React.HTMLAttributes<
 );
 
 export const DialogTitle = ({ className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h2 className={`text-lg font-semibold leading-none tracking-tight ${className}`} {...props} />
+  <h2 className={`text-xl font-semibold leading-none tracking-tight text-slate-800 ${className}`} {...props} />
 );
 
 export const DialogDescription = ({ className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={`text-sm text-slate-500 ${className}`} {...props} />
+  <p className={`text-sm text-slate-500 mt-1.5 ${className}`} {...props} />
 );
 
 export const DialogFooter = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (

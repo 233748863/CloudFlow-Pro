@@ -53,7 +53,7 @@ export const Tabs = ({
  */
 export const TabsList = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   return (
-    <div className={`inline-flex h-10 items-center justify-center rounded-md bg-slate-100 p-1 text-slate-500 ${className}`}>
+    <div className={`inline-flex h-10 items-center justify-center rounded-lg bg-slate-100/80 p-1 text-slate-500 shadow-inner ${className}`}>
       {children}
     </div>
   );
@@ -77,9 +77,9 @@ export const TabsTrigger = ({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-white transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
         isActive 
-          ? 'bg-white text-slate-950 shadow-sm' 
+          ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50' 
           : 'hover:bg-slate-200/50 hover:text-slate-900'
       } ${className}`}
       onClick={() => onValueChange(value)}

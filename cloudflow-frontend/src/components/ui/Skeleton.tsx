@@ -21,17 +21,17 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   height,
   animation = 'pulse',
 }) => {
-  const baseClasses = 'bg-slate-200';
+  const baseClasses = 'bg-slate-200/60';
   
   const variantClasses = {
-    text: 'rounded',
+    text: 'rounded-md',
     circular: 'rounded-full',
-    rectangular: 'rounded-md',
+    rectangular: 'rounded-lg',
   };
 
   const animationClasses = {
     pulse: 'animate-pulse',
-    wave: 'animate-shimmer bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%]',
+    wave: 'animate-shimmer bg-gradient-to-r from-slate-200/60 via-slate-100/60 to-slate-200/60 bg-[length:200%_100%]',
     none: '',
   };
 

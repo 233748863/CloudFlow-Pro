@@ -147,8 +147,11 @@ export const MainLayout = () => {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500">加载中...</div>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 animate-pulse">
+          <GitMerge size={24} className="text-white" />
+        </div>
+        <div className="text-slate-500 font-medium text-sm animate-pulse">正在加载系统资源...</div>
       </div>
     );
   }
@@ -167,7 +170,7 @@ export const MainLayout = () => {
         {/* User Profile Mini */}
         <div className="px-6 py-4 border-b border-slate-50">
            <div className="flex items-center gap-3">
-              <img src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.name} className="w-10 h-10 rounded-full border border-slate-200" alt=""/>
+              <img src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.name} className="w-10 h-10 rounded-full border border-slate-200 object-cover" alt={user.name} />
               <div>
                  <div className="text-sm font-bold text-slate-800">{user.name}</div>
                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">{user.role}</div>
@@ -231,8 +234,8 @@ export const MainLayout = () => {
         </nav>
         
         <div className="p-4 border-t border-slate-100">
-           <button onClick={logout} className="flex items-center gap-2 text-slate-500 hover:text-red-600 text-xs font-medium px-2 transition-colors">
-              <LogOut size={14}/> 退出登录
+           <button onClick={logout} className="w-full flex items-center justify-center gap-2 text-slate-500 hover:text-red-600 hover:bg-red-50 text-sm font-medium px-4 py-2.5 rounded-lg transition-all">
+              <LogOut size={16}/> 退出登录
            </button>
         </div>
       </aside>
@@ -255,11 +258,11 @@ export const MainLayout = () => {
             <TenantSwitcher />
             <button 
               onClick={() => navigate('/office/announcement')}
-              className="relative text-slate-500 hover:text-slate-700 z-50"
+              className="relative text-slate-500 hover:text-indigo-600 transition-colors z-50 p-1.5 rounded-full hover:bg-indigo-50"
             >
               <Bell size={20} />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold z-50">
+                <span className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-bold z-50 border-2 border-white shadow-sm">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
