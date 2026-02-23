@@ -732,10 +732,10 @@ INSERT INTO sys_config VALUES(43, 100000, '工作流-异步状态过期(分钟)'
 INSERT INTO sys_config VALUES(44, 100000, '工作流-Nonce防重放过期(分钟)',  'sys.workflow.nonceExpireMinutes','5',        'Y', '0', 'admin', sysdate(), '', null, '请求Nonce防重放攻击的过期时间');
 
 -- 分布式锁配置（全局）
-INSERT INTO sys_config VALUES(45, 100000, '分布式锁-会签锁等待(秒)',       'sys.lock.countersign.waitSeconds',  '10',   'Y', '0', 'admin', sysdate(), '', null, '会签操作获取分布式锁的等待超时');
-INSERT INTO sys_config VALUES(46, 100000, '分布式锁-会签锁持有(秒)',       'sys.lock.countersign.leaseSeconds', '30',   'Y', '0', 'admin', sysdate(), '', null, '会签操作分布式锁的自动释放时间');
-INSERT INTO sys_config VALUES(47, 100000, '分布式锁-死锁检测超时(秒)',     'sys.lock.deadlockTimeoutThreshold', '60',   'Y', '0', 'admin', sysdate(), '', null, '锁持有超过此时间视为可能死锁');
-INSERT INTO sys_config VALUES(48, 100000, '分布式锁-死锁牺牲记录上限',     'sys.lock.maxVictimRecords',     '100',      'Y', '0', 'admin', sysdate(), '', null, '死锁牺牲记录最大保留数量');
+INSERT INTO sys_config VALUES(45, 100000, '分布式锁-会签锁等待(秒)',       'sys.workflow.lock.countersignWait',  '10',   'Y', '0', 'admin', sysdate(), '', null, '会签操作获取分布式锁的等待超时');
+INSERT INTO sys_config VALUES(46, 100000, '分布式锁-会签锁持有(秒)',       'sys.workflow.lock.countersignLease', '30',   'Y', '0', 'admin', sysdate(), '', null, '会签操作分布式锁的自动释放时间');
+INSERT INTO sys_config VALUES(47, 100000, '分布式锁-死锁检测超时(秒)',     'sys.workflow.lock.deadlockTimeout', '60',   'Y', '0', 'admin', sysdate(), '', null, '锁持有超过此时间视为可能死锁');
+INSERT INTO sys_config VALUES(48, 100000, '分布式锁-死锁牺牲记录上限',     'sys.workflow.lock.maxVictimRecords',     '100',      'Y', '0', 'admin', sysdate(), '', null, '死锁牺牲记录最大保留数量');
 
 -- SSE实时推送配置（全局）
 INSERT INTO sys_config VALUES(49, 100000, 'SSE-连接超时时间(毫秒)',        'sys.sse.timeout',               '0',        'Y', '0', 'admin', sysdate(), '', null, 'SSE连接超时时间，0表示永不超时');

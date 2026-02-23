@@ -801,5 +801,357 @@ INSERT INTO wf_process_copy (
  1, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY));
 
 -- =========================================================
+-- 七、流程执行监控（Phase 2: 性能与监控）
+-- =========================================================
+
+-- 22. 流程执行监控表
+DROP TABLE IF EXISTS wf_process_monitor;
+CREATE TABLE wf_process_monitor (
+    id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+    instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+    process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
+    process_def_key   VARCHAR(64)     NOT NULL COMMENT '流程定义Key',
+    process_def_name  VARCHAR(100)    NOT NULL COMMENT '流程定义名称',
+    business_key      VARCHAR(100)    DEFAULT NULL COMMENT '业务键',
+    start_time        DATETIME        NOT NULL COMMENT '开始时间',
+    end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
+    duration          BIGINT(20)      DEFAULT NULL COMMENT '执行时长(毫秒)',
+    status            VARCHAR(20)     NOT NULL COMMENT '状态：RUNNING/COMPLETED/FAILED/TERMINATED',
+    node_count        INT(11)         DEFAULT 0 COMMENT '已执行节点数量',
+    task_count        INT(11)         DEFAULT 0 COMMENT '已完成任务数量',
+    error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
+    start_user_id     BIGINT(20)      DEFAULT NULL COMMENT '发起人ID',
+    start_user_name   VARCHAR(50)     DEFAULT NULL COMMENT '发起人姓名',
+    create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_instance (instance_id),
+    KEY idx_tenant (tenant_id),
+    KEY idx_process_def (process_def_key),
+    KEY idx_status (status),
+    KEY idx_start_time (start_time),
+    KEY idx_duration (duration)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程执行监控表';
+
+-- 23. 节点执行监控表
+DROP TABLE IF EXISTS wf_node_monitor;
+CREATE TABLE wf_node_monitor (
+    id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+    instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+    node_id           VARCHAR(64)     NOT NULL COMMENT '节点ID',
+    node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key',
+    node_name         VARCHAR(100)    NOT NULL COMMENT '节点名称',
+    node_type         VARCHAR(20)     NOT NULL COMMENT '节点类型',
+    start_time        DATETIME        NOT NULL COMMENT '开始时间',
+    end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
+    duration          BIGINT(20)      DEFAULT NULL COMMENT '执行时长(毫秒)',
+    status            VARCHAR(20)     NOT NULL COMMENT '状态：RUNNING/COMPLETED/FAILED/SKIPPED',
+    error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
+    retry_count       INT(11)         DEFAULT 0 COMMENT '重试次数',
+    create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_tenant (tenant_id),
+    KEY idx_instance (instance_id),
+    KEY idx_node (node_key),
+    KEY idx_status (status),
+    KEY idx_start_time (start_time),
+    KEY idx_duration (duration)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='节点执行监控表';
+
+-- 24. 任务执行监控表
+DROP TABLE IF EXISTS wf_task_monitor;
+CREATE TABLE wf_task_monitor (
+    id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+    task_id           VARCHAR(64)     NOT NULL COMMENT '任务ID',
+    instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+    node_key          VARCHAR(64)     NOT NULL COMMENT '节点Key',
+    task_name         VARCHAR(100)    NOT NULL COMMENT '任务名称',
+    assignee_id       BIGINT(20)      DEFAULT NULL COMMENT '处理人ID',
+    assignee_name     VARCHAR(50)     DEFAULT NULL COMMENT '处理人姓名',
+    create_time_task  DATETIME        NOT NULL COMMENT '任务创建时间',
+    claim_time        DATETIME        DEFAULT NULL COMMENT '认领时间',
+    complete_time     DATETIME        DEFAULT NULL COMMENT '完成时间',
+    wait_duration     BIGINT(20)      DEFAULT NULL COMMENT '等待时长(毫秒)',
+    handle_duration   BIGINT(20)      DEFAULT NULL COMMENT '处理时长(毫秒)',
+    total_duration    BIGINT(20)      DEFAULT NULL COMMENT '总时长(毫秒)',
+    status            VARCHAR(20)     NOT NULL COMMENT '状态：PENDING/CLAIMED/COMPLETED/TIMEOUT',
+    action            VARCHAR(20)     DEFAULT NULL COMMENT '操作：APPROVE/REJECT/TRANSFER/DELEGATE',
+    create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_task (task_id),
+    KEY idx_tenant (tenant_id),
+    KEY idx_instance (instance_id),
+    KEY idx_assignee (assignee_id),
+    KEY idx_status (status),
+    KEY idx_create_time (create_time_task),
+    KEY idx_total_duration (total_duration)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务执行监控表';
+
+-- =========================================================
+-- 八、超时告警
+-- =========================================================
+
+-- 25. 超时告警记录表
+DROP TABLE IF EXISTS wf_timeout_alert;
+CREATE TABLE wf_timeout_alert (
+    id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+    alert_type        VARCHAR(20)     NOT NULL COMMENT '告警类型：TASK/PROCESS',
+    target_id         VARCHAR(64)     NOT NULL COMMENT '目标ID（任务ID或流程实例ID）',
+    target_name       VARCHAR(100)    NOT NULL COMMENT '目标名称',
+    timeout_level     VARCHAR(20)     NOT NULL COMMENT '超时级别：REMIND/WARNING/CRITICAL',
+    timeout_duration  BIGINT(20)      NOT NULL COMMENT '超时时长(毫秒)',
+    threshold         BIGINT(20)      NOT NULL COMMENT '阈值(毫秒)',
+    assignee_id       BIGINT(20)      DEFAULT NULL COMMENT '处理人ID',
+    assignee_name     VARCHAR(50)     DEFAULT NULL COMMENT '处理人姓名',
+    alert_time        DATETIME        NOT NULL COMMENT '告警时间',
+    notification_sent CHAR(1)         DEFAULT 'N' COMMENT '是否已发送通知（Y是 N否）',
+    escalated         CHAR(1)         DEFAULT 'N' COMMENT '是否已升级（Y是 N否）',
+    resolved          CHAR(1)         DEFAULT 'N' COMMENT '是否已解决（Y是 N否）',
+    resolve_time      DATETIME        DEFAULT NULL COMMENT '解决时间',
+    create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_tenant (tenant_id),
+    KEY idx_alert_type (alert_type),
+    KEY idx_target (target_id),
+    KEY idx_timeout_level (timeout_level),
+    KEY idx_assignee (assignee_id),
+    KEY idx_alert_time (alert_time),
+    KEY idx_resolved (resolved)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='超时告警记录表';
+
+-- =========================================================
+-- 九、异常检测
+-- =========================================================
+
+-- 26. 异常流程记录表
+DROP TABLE IF EXISTS wf_anomaly_alert;
+CREATE TABLE wf_anomaly_alert (
+    id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+    anomaly_type      VARCHAR(30)     NOT NULL COMMENT '异常类型：EXECUTION_FAILED/DEADLOCK/INFINITE_LOOP/NO_ASSIGNEE/PERMISSION_ERROR/DATA_INCONSISTENCY',
+    instance_id       VARCHAR(64)     NOT NULL COMMENT '流程实例ID',
+    process_def_key   VARCHAR(64)     NOT NULL COMMENT '流程定义Key',
+    process_def_name  VARCHAR(100)    NOT NULL COMMENT '流程定义名称',
+    node_key          VARCHAR(64)     DEFAULT NULL COMMENT '节点Key',
+    node_name         VARCHAR(100)    DEFAULT NULL COMMENT '节点名称',
+    task_id           VARCHAR(64)     DEFAULT NULL COMMENT '任务ID',
+    error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
+    stack_trace       TEXT            DEFAULT NULL COMMENT '堆栈跟踪',
+    severity          VARCHAR(20)     NOT NULL COMMENT '严重程度：LOW/MEDIUM/HIGH/CRITICAL',
+    alert_time        DATETIME        NOT NULL COMMENT '告警时间',
+    notification_sent CHAR(1)         DEFAULT 'N' COMMENT '是否已发送通知（Y是 N否）',
+    resolved          CHAR(1)         DEFAULT 'N' COMMENT '是否已解决（Y是 N否）',
+    resolve_time      DATETIME        DEFAULT NULL COMMENT '解决时间',
+    resolve_note      TEXT            DEFAULT NULL COMMENT '解决说明',
+    create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_tenant (tenant_id),
+    KEY idx_anomaly_type (anomaly_type),
+    KEY idx_instance (instance_id),
+    KEY idx_process_def (process_def_key),
+    KEY idx_severity (severity),
+    KEY idx_alert_time (alert_time),
+    KEY idx_resolved (resolved)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异常流程记录表';
+
+-- =========================================================
+-- 十、监控统计
+-- =========================================================
+
+-- 27. 流程性能统计表（按天汇总）
+DROP TABLE IF EXISTS wf_performance_stats;
+CREATE TABLE wf_performance_stats (
+    id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+    stat_date         DATE            NOT NULL COMMENT '统计日期',
+    process_def_key   VARCHAR(64)     NOT NULL COMMENT '流程定义Key',
+    process_def_name  VARCHAR(100)    NOT NULL COMMENT '流程定义名称',
+    total_count       INT(11)         DEFAULT 0 COMMENT '总流程数',
+    completed_count   INT(11)         DEFAULT 0 COMMENT '完成数',
+    failed_count      INT(11)         DEFAULT 0 COMMENT '失败数',
+    avg_duration      BIGINT(20)      DEFAULT 0 COMMENT '平均执行时长(毫秒)',
+    max_duration      BIGINT(20)      DEFAULT 0 COMMENT '最大执行时长(毫秒)',
+    min_duration      BIGINT(20)      DEFAULT 0 COMMENT '最小执行时长(毫秒)',
+    timeout_count     INT(11)         DEFAULT 0 COMMENT '超时数',
+    anomaly_count     INT(11)         DEFAULT 0 COMMENT '异常数',
+    create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_stat (tenant_id, stat_date, process_def_key),
+    KEY idx_tenant (tenant_id),
+    KEY idx_stat_date (stat_date),
+    KEY idx_process_def (process_def_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程性能统计表';
+
+-- =========================================================
+-- 十一、发布增强功能（Phase 1）
+-- =========================================================
+
+-- 28. 发布窗口配置表
+DROP TABLE IF EXISTS wf_deploy_window;
+CREATE TABLE wf_deploy_window (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  window_name       VARCHAR(100)    NOT NULL COMMENT '窗口名称',
+  window_type       VARCHAR(20)     NOT NULL COMMENT '窗口类型：DAILY/WEEKLY/MONTHLY/CUSTOM',
+  start_time        TIME            DEFAULT NULL COMMENT '开始时间（时分秒）',
+  end_time          TIME            DEFAULT NULL COMMENT '结束时间（时分秒）',
+  week_days         VARCHAR(50)     DEFAULT NULL COMMENT '星期几（1-7，逗号分隔）',
+  month_days        VARCHAR(100)    DEFAULT NULL COMMENT '每月几号（1-31，逗号分隔）',
+  is_enabled        TINYINT(1)      DEFAULT 1 COMMENT '是否启用',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '描述',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_window_type (window_type),
+  KEY idx_is_enabled (is_enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布窗口配置表';
+
+-- 29. 发布通知表
+DROP TABLE IF EXISTS wf_deploy_notification;
+CREATE TABLE wf_deploy_notification (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  deploy_id         BIGINT(20)      NOT NULL COMMENT '发布记录ID',
+  notification_type VARCHAR(20)     NOT NULL COMMENT '通知类型：EMAIL/SMS/WEBSOCKET/WECHAT',
+  recipient_type    VARCHAR(20)     NOT NULL COMMENT '接收人类型：USER/ROLE/DEPT',
+  recipient_value   VARCHAR(500)    NOT NULL COMMENT '接收人值（ID列表，逗号分隔）',
+  title             VARCHAR(200)    DEFAULT NULL COMMENT '通知标题',
+  content           TEXT            DEFAULT NULL COMMENT '通知内容',
+  send_status       VARCHAR(20)     DEFAULT 'PENDING' COMMENT '发送状态：PENDING/SUCCESS/FAILED',
+  send_time         DATETIME        DEFAULT NULL COMMENT '发送时间',
+  error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_deploy_id (deploy_id),
+  KEY idx_send_status (send_status),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布通知表';
+
+-- 30. 发布审批流程表
+DROP TABLE IF EXISTS wf_deploy_approval;
+CREATE TABLE wf_deploy_approval (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  deploy_id         BIGINT(20)      NOT NULL COMMENT '发布记录ID',
+  approval_status   VARCHAR(20)     DEFAULT 'PENDING' COMMENT '审批状态：PENDING/APPROVED/REJECTED/CANCELLED',
+  current_step      INT             DEFAULT 1 COMMENT '当前步骤',
+  total_steps       INT             DEFAULT 1 COMMENT '总步骤数',
+  start_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '开始时间',
+  end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_deploy_id (deploy_id),
+  KEY idx_approval_status (approval_status),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布审批流程表';
+
+-- 31. 审批步骤表
+DROP TABLE IF EXISTS wf_deploy_approval_step;
+CREATE TABLE wf_deploy_approval_step (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  approval_id       BIGINT(20)      NOT NULL COMMENT '审批流程ID',
+  step_no           INT             NOT NULL COMMENT '步骤序号',
+  step_name         VARCHAR(100)    DEFAULT NULL COMMENT '步骤名称',
+  approver_type     VARCHAR(20)     NOT NULL COMMENT '审批人类型：USER/ROLE/DEPT',
+  approver_value    VARCHAR(500)    NOT NULL COMMENT '审批人值（ID列表）',
+  approval_mode     VARCHAR(20)     DEFAULT 'ANY' COMMENT '审批模式：ANY/ALL/SEQUENCE',
+  step_status       VARCHAR(20)     DEFAULT 'PENDING' COMMENT '步骤状态：PENDING/APPROVED/REJECTED',
+  approver_id       BIGINT(20)      DEFAULT NULL COMMENT '实际审批人ID',
+  approver_name     VARCHAR(64)     DEFAULT NULL COMMENT '实际审批人姓名',
+  approval_time     DATETIME        DEFAULT NULL COMMENT '审批时间',
+  approval_comment  VARCHAR(500)    DEFAULT NULL COMMENT '审批意见',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_approval_id (approval_id),
+  KEY idx_step_status (step_status),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批步骤表';
+
+-- 32. 流程版本快照表
+DROP TABLE IF EXISTS wf_process_version_snapshot;
+CREATE TABLE wf_process_version_snapshot (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
+  process_key       VARCHAR(64)     NOT NULL COMMENT '流程Key',
+  version           INT             NOT NULL COMMENT '版本号',
+  snapshot_data     LONGTEXT        NOT NULL COMMENT '快照数据（完整的流程定义JSON）',
+  bpmn_xml          LONGTEXT        DEFAULT NULL COMMENT 'BPMN XML（如果有）',
+  form_config       TEXT            DEFAULT NULL COMMENT '表单配置快照',
+  node_config       TEXT            DEFAULT NULL COMMENT '节点配置快照',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_process_version (process_def_id, version),
+  KEY idx_process_key (process_key),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程版本快照表';
+
+-- 33. 回滚历史表
+DROP TABLE IF EXISTS wf_deploy_rollback_history;
+CREATE TABLE wf_deploy_rollback_history (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  original_deploy_id BIGINT(20)     NOT NULL COMMENT '原发布记录ID',
+  rollback_deploy_id BIGINT(20)     NOT NULL COMMENT '回滚后的发布记录ID',
+  process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
+  from_version      INT             NOT NULL COMMENT '回滚前版本',
+  to_version        INT             NOT NULL COMMENT '回滚到版本',
+  rollback_type     VARCHAR(20)     DEFAULT 'MANUAL' COMMENT '回滚类型：MANUAL/AUTO',
+  rollback_reason   VARCHAR(500)    DEFAULT NULL COMMENT '回滚原因',
+  rollback_by       BIGINT(20)      NOT NULL COMMENT '回滚操作人ID',
+  rollback_by_name  VARCHAR(64)     DEFAULT NULL COMMENT '回滚操作人姓名',
+  rollback_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '回滚时间',
+  success           TINYINT(1)      DEFAULT 1 COMMENT '是否成功',
+  error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
+  PRIMARY KEY (id),
+  KEY idx_original_deploy (original_deploy_id),
+  KEY idx_rollback_deploy (rollback_deploy_id),
+  KEY idx_process_def_id (process_def_id),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回滚历史表';
+
+-- 34. 发布影响分析表
+DROP TABLE IF EXISTS wf_deploy_impact;
+CREATE TABLE wf_deploy_impact (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  deploy_id         BIGINT(20)      NOT NULL COMMENT '发布记录ID',
+  impact_type       VARCHAR(30)     NOT NULL COMMENT '影响类型：RUNNING_INSTANCE/PENDING_TASK/FORM_CHANGE/NODE_CHANGE/PERMISSION_CHANGE',
+  impact_level      VARCHAR(20)     NOT NULL COMMENT '影响级别：LOW/MEDIUM/HIGH/CRITICAL',
+  impact_count      INT             DEFAULT 0 COMMENT '影响数量',
+  impact_detail     TEXT            DEFAULT NULL COMMENT '影响详情（JSON格式）',
+  mitigation_plan   TEXT            DEFAULT NULL COMMENT '缓解方案',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_deploy_id (deploy_id),
+  KEY idx_impact_type (impact_type),
+  KEY idx_impact_level (impact_level),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布影响分析表';
+
+-- =========================================================
+-- 初始化数据 - 发布窗口
+-- =========================================================
+
+INSERT INTO wf_deploy_window (tenant_id, window_name, window_type, start_time, end_time, week_days, is_enabled, description) VALUES
+(100000, '工作日发布窗口', 'WEEKLY', '09:00:00', '18:00:00', '1,2,3,4,5', 1, '周一至周五的工作时间可以发布'),
+(100000, '周末维护窗口', 'WEEKLY', '00:00:00', '23:59:59', '6,7', 0, '周末维护窗口（默认禁用）');
+
+-- =========================================================
 -- 脚本执行完成
 -- =========================================================
