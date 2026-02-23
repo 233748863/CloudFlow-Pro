@@ -1006,12 +1006,13 @@ CREATE TABLE wf_deploy_window (
   end_time          TIME            DEFAULT NULL COMMENT '结束时间（时分秒）',
   week_days         VARCHAR(50)     DEFAULT NULL COMMENT '星期几（1-7，逗号分隔）',
   month_days        VARCHAR(100)    DEFAULT NULL COMMENT '每月几号（1-31，逗号分隔）',
+  custom_dates      TEXT            DEFAULT NULL COMMENT '自定义日期列表（JSON格式，CUSTOM类型使用）',
   is_enabled        TINYINT(1)      DEFAULT 1 COMMENT '是否启用',
   description       VARCHAR(500)    DEFAULT NULL COMMENT '描述',
-  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
-  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  created_by        BIGINT(20)      DEFAULT NULL COMMENT '创建者ID',
+  created_time      DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_by        BIGINT(20)      DEFAULT NULL COMMENT '更新者ID',
+  updated_time      DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   KEY idx_tenant_id (tenant_id),
   KEY idx_window_type (window_type),
@@ -1045,18 +1046,23 @@ CREATE TABLE wf_deploy_approval (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   deploy_id         BIGINT(20)      NOT NULL COMMENT '发布记录ID',
+  submitter_id      BIGINT(20)      NOT NULL COMMENT '提交人ID',
+  submitter_name    VARCHAR(64)     DEFAULT NULL COMMENT '提交人姓名',
   approval_status   VARCHAR(20)     DEFAULT 'PENDING' COMMENT '审批状态：PENDING/APPROVED/REJECTED/CANCELLED',
   current_step      INT             DEFAULT 1 COMMENT '当前步骤',
   total_steps       INT             DEFAULT 1 COMMENT '总步骤数',
   start_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '开始时间',
   end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
+  submit_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
   create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   KEY idx_deploy_id (deploy_id),
+  KEY idx_submitter_id (submitter_id),
   KEY idx_approval_status (approval_status),
-  KEY idx_tenant_id (tenant_id)
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_submit_time (submit_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布审批流程表';
 
 -- 31. 审批步骤表
@@ -1069,6 +1075,7 @@ CREATE TABLE wf_deploy_approval_step (
   step_name         VARCHAR(100)    DEFAULT NULL COMMENT '步骤名称',
   approver_type     VARCHAR(20)     NOT NULL COMMENT '审批人类型：USER/ROLE/DEPT',
   approver_value    VARCHAR(500)    NOT NULL COMMENT '审批人值（ID列表）',
+  approver_ids      VARCHAR(500)    NOT NULL COMMENT '审批人ID列表（逗号分隔，用于FIND_IN_SET查询）',
   approval_mode     VARCHAR(20)     DEFAULT 'ANY' COMMENT '审批模式：ANY/ALL/SEQUENCE',
   step_status       VARCHAR(20)     DEFAULT 'PENDING' COMMENT '步骤状态：PENDING/APPROVED/REJECTED',
   approver_id       BIGINT(20)      DEFAULT NULL COMMENT '实际审批人ID',
@@ -1148,9 +1155,9 @@ CREATE TABLE wf_deploy_impact (
 -- 初始化数据 - 发布窗口
 -- =========================================================
 
-INSERT INTO wf_deploy_window (tenant_id, window_name, window_type, start_time, end_time, week_days, is_enabled, description) VALUES
-(100000, '工作日发布窗口', 'WEEKLY', '09:00:00', '18:00:00', '1,2,3,4,5', 1, '周一至周五的工作时间可以发布'),
-(100000, '周末维护窗口', 'WEEKLY', '00:00:00', '23:59:59', '6,7', 0, '周末维护窗口（默认禁用）');
+INSERT INTO wf_deploy_window (tenant_id, window_name, window_type, start_time, end_time, week_days, month_days, custom_dates, is_enabled, description) VALUES
+(100000, '工作日发布窗口', 'WEEKLY', '09:00:00', '18:00:00', '1,2,3,4,5', NULL, NULL, 1, '周一至周五的工作时间可以发布'),
+(100000, '周末维护窗口', 'WEEKLY', '00:00:00', '23:59:59', '6,7', NULL, NULL, 0, '周末维护窗口（默认禁用）');
 
 -- =========================================================
 -- 脚本执行完成
