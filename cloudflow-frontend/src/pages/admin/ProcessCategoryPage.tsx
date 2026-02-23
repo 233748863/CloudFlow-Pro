@@ -5,6 +5,10 @@ import {
   FolderTree, Plus, Pencil, Trash2, ChevronRight, ChevronDown,
   Layers, Briefcase, Users, DollarSign, Building2, FolderKanban
 } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
+import { Card } from '../../components/ui/card';
 
 /** 图标映射 */
 const iconMap: Record<string, React.ReactNode> = {
@@ -204,27 +208,33 @@ const ProcessCategoryPage: React.FC = () => {
 
           {/* 操作按钮 */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              className="p-1 text-gray-400 hover:text-indigo-600 rounded"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-7 h-7 text-slate-400 hover:text-indigo-600"
               title="添加子分类"
               onClick={(e) => { e.stopPropagation(); handleAdd(node.categoryId!); }}
             >
               <Plus className="w-3.5 h-3.5" />
-            </button>
-            <button
-              className="p-1 text-gray-400 hover:text-blue-600 rounded"
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-7 h-7 text-slate-400 hover:text-blue-600"
               title="编辑"
               onClick={(e) => { e.stopPropagation(); handleEdit(node.categoryId!); }}
             >
               <Pencil className="w-3.5 h-3.5" />
-            </button>
-            <button
-              className="p-1 text-gray-400 hover:text-red-600 rounded"
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-7 h-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
               title="删除"
               onClick={(e) => { e.stopPropagation(); handleDelete(node.categoryId!, node.categoryName!); }}
             >
               <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -249,30 +259,30 @@ const ProcessCategoryPage: React.FC = () => {
           <FolderTree className="w-6 h-6 text-indigo-600" />
           <h1 className="text-xl font-semibold text-gray-800">流程分类管理</h1>
         </div>
-        <button
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+        <Button
+          className="flex items-center gap-2"
           onClick={() => handleAdd(0)}
         >
           <Plus className="w-4 h-4" />
           新增顶级分类
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-6">
         {/* 左侧：分类树 */}
-        <div className="w-[480px] bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <Card className="w-[480px] p-4">
           <h2 className="text-sm font-medium text-gray-500 mb-3">分类结构</h2>
           {treeData.length === 0 ? (
-            <div className="text-center text-gray-400 py-12 text-sm">暂无分类数据</div>
+            <div className="text-center text-slate-400 py-12 text-sm">暂无分类数据</div>
           ) : (
             <div className="space-y-0.5">
               {treeData.map(node => renderTreeNode(node))}
             </div>
           )}
-        </div>
+        </Card>
 
         {/* 右侧：详情面板 */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <Card className="flex-1 p-6">
           {selectedNode ? (
             <div>
               <div className="flex items-center gap-3 mb-6">
@@ -309,44 +319,40 @@ const ProcessCategoryPage: React.FC = () => {
                 )}
               </div>
               <div className="flex gap-3 mt-6">
-                <button
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                <Button
                   onClick={() => handleEdit(selectedNode.categoryId!)}
                 >
                   编辑分类
-                </button>
-                <button
-                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => handleAdd(selectedNode.categoryId!)}
                 >
                   添加子分类
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
               <FolderTree className="w-12 h-12 mb-3 opacity-30" />
               <p className="text-sm">请在左侧选择一个分类查看详情</p>
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* 新增/编辑模态框 */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-[520px] max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800">
-                {isEdit ? '编辑分类' : '新增分类'}
-              </h3>
-            </div>
-            <div className="px-6 py-4 space-y-4">
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>{isEdit ? '编辑分类' : '新增分类'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
               {/* 父分类 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">父分类</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">父分类</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
                   value={form.parentId || 0}
                   onChange={e => setForm({ ...form, parentId: Number(e.target.value) })}
                 >
@@ -363,12 +369,10 @@ const ProcessCategoryPage: React.FC = () => {
 
               {/* 分类名称 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   分类名称 <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                <Input
                   placeholder="请输入分类名称"
                   value={form.categoryName || ''}
                   onChange={e => setForm({ ...form, categoryName: e.target.value })}
@@ -377,12 +381,11 @@ const ProcessCategoryPage: React.FC = () => {
 
               {/* 分类编码 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   分类编码 <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                <Input
+                  className="font-mono"
                   placeholder="如: oa_leave"
                   value={form.categoryCode || ''}
                   onChange={e => setForm({ ...form, categoryCode: e.target.value })}
@@ -392,9 +395,9 @@ const ProcessCategoryPage: React.FC = () => {
               {/* 图标 + 排序 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">图标标识</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">图标标识</label>
                   <select
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
                     value={form.icon || ''}
                     onChange={e => setForm({ ...form, icon: e.target.value })}
                   >
@@ -408,10 +411,9 @@ const ProcessCategoryPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">排序号</label>
-                  <input
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">排序号</label>
+                  <Input
                     type="number"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={form.sortOrder ?? 0}
                     onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) })}
                   />
@@ -420,7 +422,7 @@ const ProcessCategoryPage: React.FC = () => {
 
               {/* 状态 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">状态</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -449,9 +451,9 @@ const ProcessCategoryPage: React.FC = () => {
 
               {/* 备注 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">备注</label>
                 <textarea
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all placeholder:text-slate-400 hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
                   rows={3}
                   placeholder="可选"
                   value={form.remark || ''}
@@ -460,25 +462,22 @@ const ProcessCategoryPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 底部按钮 */}
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+            <DialogFooter>
+              <Button
+                variant="outline"
                 onClick={() => setModalOpen(false)}
               >
                 取消
-              </button>
-              <button
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm disabled:opacity-50"
+              </Button>
+              <Button
                 onClick={handleSubmit}
                 disabled={loading}
               >
                 {loading ? '提交中...' : '确定'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

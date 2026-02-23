@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -60,6 +61,11 @@ public class TokenService {
     public String createToken(Map<String, Object> loginUser) {
         String token = UUID.randomUUID().toString();
         Object userId = loginUser.get("userId");
+        
+        // 在创建新 token 之前，先删除该用户的所有旧 token（实现单点登录）
+        if (userId != null) {
+            deleteUserTokens(userId);
+        }
         
         loginUser.put("token", token);
         loginUser.put("login_time", System.currentTimeMillis());
@@ -154,6 +160,33 @@ public class TokenService {
             }
             redisCache.deleteObject(userKey);
         }
+    }
+    
+    /**
+     * 删除用户的所有 token（用于单点登录：新登录时踢掉旧会话）
+     * 
+     * @param userId 用户ID
+     */
+    private void deleteUserTokens(Object userId) {
+        if (userId == null) {
+            return;
+        }
+        
+        String userTokensKey = CacheConstants.USER_TOKENS_KEY + userId;
+        
+        // 获取该用户的所有 token
+        Set<Object> tokens = redisCache.getCacheSet(userTokensKey);
+        
+        if (tokens != null && !tokens.isEmpty()) {
+            // 删除每个 token 对应的登录信息
+            for (Object token : tokens) {
+                String tokenKey = getTokenKey(token.toString());
+                redisCache.deleteObject(tokenKey);
+            }
+        }
+        
+        // 删除用户 token 集合
+        redisCache.deleteObject(userTokensKey);
     }
 
     /**

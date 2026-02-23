@@ -124,6 +124,16 @@ public class RedisCache {
     }
 
     /**
+     * 获取Set中的所有值
+     *
+     * @param key 缓存键值
+     * @return Set集合
+     */
+    public Set<Object> getCacheSet(final String key) {
+        return redisTemplate.opsForSet().members(getTenantKey(key));
+    }
+
+    /**
      * 移除Set中的值
      *
      * @param key   缓存键值
