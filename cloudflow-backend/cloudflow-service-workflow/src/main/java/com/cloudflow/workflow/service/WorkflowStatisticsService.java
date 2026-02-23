@@ -1,6 +1,10 @@
 package com.cloudflow.workflow.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
@@ -77,12 +81,7 @@ public class WorkflowStatisticsService {
             overview.put("tasks", Map.of("total", totalTasks, "todo", todoTasks));
 
             // 3. 今日统计
-            Calendar cal = Calendar.getInstance();
-            cal.set(Calendar.HOUR_OF_DAY, 0);
-            cal.set(Calendar.MINUTE, 0);
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            Date todayStart = cal.getTime();
+            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
 
             Long todayStarted = processInstanceMapper.selectCount(
                 new LambdaQueryWrapper<WfProcessInstance>()
@@ -154,7 +153,7 @@ public class WorkflowStatisticsService {
 
             if (!completedList.isEmpty()) {
                 double avgDurationHours = completedList.stream()
-                    .mapToLong(i -> i.getEndTime().getTime() - i.getStartTime().getTime())
+                    .mapToLong(i -> Duration.between(i.getStartTime(), i.getEndTime()).toMillis())
                     .average()
                     .orElse(0) / (1000.0 * 3600);
                 analysis.put("avgDurationHours", Math.round(avgDurationHours * 100.0) / 100.0);
@@ -164,25 +163,20 @@ public class WorkflowStatisticsService {
 
             // 4. 最近7天趋势
             List<Map<String, Object>> dailyTrend = new ArrayList<>();
-            Calendar cal = Calendar.getInstance();
+            LocalDate today = LocalDate.now();
             for (int i = 6; i >= 0; i--) {
-                Calendar dayStart = (Calendar) cal.clone();
-                dayStart.add(Calendar.DAY_OF_MONTH, -i);
-                dayStart.set(Calendar.HOUR_OF_DAY, 0);
-                dayStart.set(Calendar.MINUTE, 0);
-                dayStart.set(Calendar.SECOND, 0);
-
-                Calendar dayEnd = (Calendar) dayStart.clone();
-                dayEnd.add(Calendar.DAY_OF_MONTH, 1);
+                LocalDate targetDate = today.minusDays(i);
+                LocalDateTime dayStart = targetDate.atStartOfDay();
+                LocalDateTime dayEnd = targetDate.plusDays(1).atStartOfDay();
 
                 long dayCount = allInstances.stream()
                     .filter(inst -> inst.getStartTime() != null
-                        && !inst.getStartTime().before(dayStart.getTime())
-                        && inst.getStartTime().before(dayEnd.getTime()))
+                        && !inst.getStartTime().isBefore(dayStart)
+                        && inst.getStartTime().isBefore(dayEnd))
                     .count();
 
                 Map<String, Object> dayData = new HashMap<>();
-                dayData.put("date", new java.text.SimpleDateFormat("MM-dd").format(dayStart.getTime()));
+                dayData.put("date", targetDate.format(DateTimeFormatter.ofPattern("MM-dd")));
                 dayData.put("count", dayCount);
                 dailyTrend.add(dayData);
             }
@@ -265,12 +259,7 @@ public class WorkflowStatisticsService {
             metrics.put("allTaskCount", allTasks);
 
             // === 今日统计 ===
-            Calendar cal = Calendar.getInstance();
-            cal.set(Calendar.HOUR_OF_DAY, 0);
-            cal.set(Calendar.MINUTE, 0);
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            Date todayStart = cal.getTime();
+            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
 
             Long todayInstances = processInstanceMapper.selectCount(
                 new LambdaQueryWrapper<WfProcessInstance>()
@@ -294,7 +283,7 @@ public class WorkflowStatisticsService {
             metrics.put("actionCounters", actionCounters);
 
             // 今日操作计数
-            String todayStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
+            String todayStr = DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now());
             Map<String, Object> todayCounters = new HashMap<>();
             for (WorkflowAuditService.AuditAction action : WorkflowAuditService.AuditAction.values()) {
                 String dailyKey = "sys:wf:metrics:daily:" + action.name() + ":" + todayStr;
@@ -307,7 +296,7 @@ public class WorkflowStatisticsService {
 
             // === 系统健康检查 ===
             Map<String, Object> health = new HashMap<>();
-            health.put("timestamp", new Date());
+            health.put("timestamp", LocalDateTime.now());
             health.put("status", "UP");
 
             // 检查数据库连接

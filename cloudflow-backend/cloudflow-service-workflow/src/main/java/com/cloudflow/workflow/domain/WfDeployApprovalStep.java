@@ -3,6 +3,7 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 流程发布审批步骤实体
@@ -45,8 +46,10 @@ public class WfDeployApprovalStep {
     private String approvalComment;
 
     /** 审批时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime approvalTime;
 
     @TableField(fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdTime;
 }

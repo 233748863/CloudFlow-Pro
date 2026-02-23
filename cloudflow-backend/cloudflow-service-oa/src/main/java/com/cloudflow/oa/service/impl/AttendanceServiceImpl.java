@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import cn.hutool.core.date.DateUtil;
+import java.time.LocalDateTime;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -143,18 +144,18 @@ public class AttendanceServiceImpl extends ServiceImpl<SysAttendanceRecordMapper
         // 4. 判断迟到/早退/严重迟到/旷工
         if ("1".equals(record.getType())) {
             // 签到逻辑
-            String checkInTimeStr = DateUtil.format(new Date(), "yyyy-MM-dd") + " " + rule.getCheckInTime();
-            Date shouldCheckIn = DateUtil.parse(checkInTimeStr);
+            LocalDateTime now = LocalDateTime.now();
+            String checkInTimeStr = DateUtil.format(now, "yyyy-MM-dd") + " " + rule.getCheckInTime();
+            LocalDateTime shouldCheckIn = DateUtil.parseLocalDateTime(checkInTimeStr);
             
             // 弹性时间
             if (rule.getElasticMinutes() != null && rule.getElasticMinutes() > 0) {
-                shouldCheckIn = DateUtil.offsetMinute(shouldCheckIn, rule.getElasticMinutes());
+                shouldCheckIn = shouldCheckIn.plusMinutes(rule.getElasticMinutes());
             }
             
-            Date now = new Date();
-            if (now.after(shouldCheckIn)) {
+            if (now.isAfter(shouldCheckIn)) {
                 // 计算迟到分钟数
-                long lateMinutes = (now.getTime() - shouldCheckIn.getTime()) / (1000 * 60);
+                long lateMinutes = java.time.Duration.between(shouldCheckIn, now).toMinutes();
                 
                 // 判断旷工（迟到超过阈值）
                 if (rule.getAbsentMinutes() != null && lateMinutes >= rule.getAbsentMinutes()) {
@@ -177,11 +178,11 @@ public class AttendanceServiceImpl extends ServiceImpl<SysAttendanceRecordMapper
             }
         } else if ("2".equals(record.getType())) {
             // 签退逻辑
-            String checkOutTimeStr = DateUtil.format(new Date(), "yyyy-MM-dd") + " " + rule.getCheckOutTime();
-            Date shouldCheckOut = DateUtil.parse(checkOutTimeStr);
+            LocalDateTime now = LocalDateTime.now();
+            String checkOutTimeStr = DateUtil.format(now, "yyyy-MM-dd") + " " + rule.getCheckOutTime();
+            LocalDateTime shouldCheckOut = DateUtil.parseLocalDateTime(checkOutTimeStr);
             
-            Date now = new Date();
-            if (now.before(shouldCheckOut)) {
+            if (now.isBefore(shouldCheckOut)) {
                 record.setStatus("3"); // 早退
                 log.info("用户{}在下班时间前签退，标记为早退", record.getUserId());
             } else {
@@ -189,7 +190,7 @@ public class AttendanceServiceImpl extends ServiceImpl<SysAttendanceRecordMapper
                 
                 // 判断加班
                 if (rule.getOvertimeEnabled() != null && rule.getOvertimeEnabled() == 1) {
-                    long overtimeMinutes = (now.getTime() - shouldCheckOut.getTime()) / (1000 * 60);
+                    long overtimeMinutes = java.time.Duration.between(shouldCheckOut, now).toMinutes();
                     int minOt = rule.getOvertimeMinMinutes() != null ? rule.getOvertimeMinMinutes() : 30;
                     if (overtimeMinutes >= minOt) {
                         record.setRemark("加班 " + overtimeMinutes + " 分钟");
@@ -200,7 +201,7 @@ public class AttendanceServiceImpl extends ServiceImpl<SysAttendanceRecordMapper
         }
 
         record.setUserId(UserContext.getUserId());
-        record.setCreateTime(new Date());
+        record.setCreateTime(LocalDateTime.now());
         record.setTenantId(UserContext.getTenantId());
         
         // 如果位置和Wi-Fi都不在范围内且未被标记为外勤，补充标记
@@ -247,7 +248,7 @@ public class AttendanceServiceImpl extends ServiceImpl<SysAttendanceRecordMapper
         if (rule.getRuleId() != null) {
             // 更新
             rule.setUpdateBy(UserContext.getUserName());
-            rule.setUpdateTime(new Date());
+            rule.setUpdateTime(LocalDateTime.now());
             return ruleMapper.updateById(rule) > 0;
         } else {
             // 新增 - 检查是否已有规则
@@ -256,12 +257,12 @@ public class AttendanceServiceImpl extends ServiceImpl<SysAttendanceRecordMapper
                 // 已有规则，执行更新
                 rule.setRuleId(existing.getRuleId());
                 rule.setUpdateBy(UserContext.getUserName());
-                rule.setUpdateTime(new Date());
+                rule.setUpdateTime(LocalDateTime.now());
                 return ruleMapper.updateById(rule) > 0;
             } else {
                 // 新增规则
                 rule.setCreateBy(UserContext.getUserName());
-                rule.setCreateTime(new Date());
+                rule.setCreateTime(LocalDateTime.now());
                 if (rule.getEnabled() == null) {
                     rule.setEnabled(1);
                 }

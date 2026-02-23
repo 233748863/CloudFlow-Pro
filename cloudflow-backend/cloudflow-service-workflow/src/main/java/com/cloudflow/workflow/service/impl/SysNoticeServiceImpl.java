@@ -8,7 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -47,7 +48,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
             message.put("content", content);
             message.put("senderId", senderId);
             message.put("senderName", senderName);
-            message.put("timestamp", new Date());
+            message.put("timestamp", LocalDateTime.now());
 
             // 通过 WebSocket 实时推送
             webSocketHandler.sendMessage(userId, message);

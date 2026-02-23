@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 日程事件实体
@@ -23,10 +23,10 @@ public class SysScheduleEvent {
     private String description;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
-    private Date startTime;
+    private LocalDateTime startTime;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
-    private Date endTime;
+    private LocalDateTime endTime;
     
     private Boolean isAllDay;
     
@@ -45,10 +45,10 @@ public class SysScheduleEvent {
     private String attendees;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
-    private Date createTime;
+    private LocalDateTime createTime;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
-    private Date updateTime;
+    private LocalDateTime updateTime;
     
     @TableLogic
     private String delFlag;

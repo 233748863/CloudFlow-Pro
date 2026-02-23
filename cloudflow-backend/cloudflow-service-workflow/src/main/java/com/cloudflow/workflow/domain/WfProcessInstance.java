@@ -3,7 +3,8 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 工作流实例实体类
@@ -38,10 +39,14 @@ public class WfProcessInstance implements Serializable {
     private String status;
 
     /** 开始时间 */
-    private Date startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime startTime;
 
     /** 结束时间 */
-    private Date endTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime endTime;
 
     /** 流程变量 (JSON) */
     private String variables;
@@ -68,10 +73,12 @@ public class WfProcessInstance implements Serializable {
     
     /** 创建时间 */
     @TableField(fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
     
     /** 更新时间 */
     @TableField(fill = FieldFill.UPDATE)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
     
     /** 删除标记 */
@@ -270,19 +277,19 @@ public class WfProcessInstance implements Serializable {
         this.status = status;
     }
 
-    public Date getStartTime() {
+    public LocalDateTime getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(Date startTime) {
+    public void setStartTime(LocalDateTime startTime) {
         this.startTime = startTime;
     }
 
-    public Date getEndTime() {
+    public LocalDateTime getEndTime() {
         return endTime;
     }
 
-    public void setEndTime(Date endTime) {
+    public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
 

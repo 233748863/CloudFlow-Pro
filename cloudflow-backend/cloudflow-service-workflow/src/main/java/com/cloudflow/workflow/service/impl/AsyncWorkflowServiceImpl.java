@@ -18,7 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.Duration;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.UUID;
 
 /**
@@ -198,7 +200,7 @@ public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
             snapshot.setInstanceId(instanceId);
             snapshot.setStatus(instance.getStatus());
             snapshot.setVariables(instance.getVariables());
-            snapshot.setCreateTime(new Date());
+            snapshot.setCreateTime(LocalDateTime.now());
             // 4. 可选：压缩快照数据（预留扩展点）
             // snapshot.setCompressed(true);
             // snapshot.setData(compress(snapshotData));
@@ -235,8 +237,8 @@ public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
             
             // 2. 计算流程执行时长
             if (instance.getStartTime() != null && instance.getEndTime() != null) {
-                long duration = instance.getEndTime().getTime() - instance.getStartTime().getTime();
-                log.debug("流程执行时长: instanceId={}, duration={}ms", instanceId, duration);
+                long durationMs = Duration.between(instance.getStartTime(), instance.getEndTime()).toMillis();
+                log.debug("流程执行时长: instanceId={}, duration={}ms", instanceId, durationMs);
             }
             
             // 3. 更新流程监控统计（通过监控服务）

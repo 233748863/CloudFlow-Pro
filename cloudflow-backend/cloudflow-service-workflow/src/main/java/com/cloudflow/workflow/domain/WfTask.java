@@ -1,9 +1,10 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 任务实体类
@@ -38,10 +39,14 @@ public class WfTask implements Serializable {
     private String status;
 
     /** 创建时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
 
     /** 截止时间 */
-    private Date dueTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime dueTime;
 
     /** 4.1/P4.11: 任务优先级 (URGENT/HIGH/NORMAL/LOW) */
     private String priority;
@@ -82,7 +87,9 @@ public class WfTask implements Serializable {
 
     /** 8.C: 已读时间 (不存储在数据库，由getTodoTasks填充) */
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
-    private Date readTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime readTime;
 
     /** 当前步骤序号 (从1开始，非持久化) */
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
@@ -124,8 +131,8 @@ public class WfTask implements Serializable {
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }
 
-    public Date getReadTime() { return readTime; }
-    public void setReadTime(Date readTime) { this.readTime = readTime; }
+    public LocalDateTime getReadTime() { return readTime; }
+    public void setReadTime(LocalDateTime readTime) { this.readTime = readTime; }
 
     public Integer getCurrentStepIndex() { return currentStepIndex; }
     public void setCurrentStepIndex(Integer currentStepIndex) { this.currentStepIndex = currentStepIndex; }
@@ -225,19 +232,19 @@ public class WfTask implements Serializable {
         this.status = status;
     }
 
-    public Date getCreateTime() {
+    public LocalDateTime getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(Date createTime) {
+    public void setCreateTime(LocalDateTime createTime) {
         this.createTime = createTime;
     }
 
-    public Date getDueTime() {
+    public LocalDateTime getDueTime() {
         return dueTime;
     }
 
-    public void setDueTime(Date dueTime) {
+    public void setDueTime(LocalDateTime dueTime) {
         this.dueTime = dueTime;
     }
 

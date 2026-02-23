@@ -6,9 +6,10 @@
         <id property="id" column="id"/>
         <result property="statDate" column="stat_date"/>
         <result property="processDefKey" column="process_def_key"/>
-        <result property="processName" column="process_name"/>
+        <result property="processName" column="process_def_name"/>
         <result property="totalCount" column="total_count"/>
         <result property="completedCount" column="completed_count"/>
+        <result property="failedCount" column="failed_count"/>
         <result property="timeoutCount" column="timeout_count"/>
         <result property="anomalyCount" column="anomaly_count"/>
         <result property="avgDurationMs" column="avg_duration_ms"/>
@@ -25,17 +26,18 @@
             id,
             stat_date,
             process_def_key,
-            process_name,
+            process_def_name,
             total_count,
             completed_count,
+            failed_count,
             timeout_count,
             anomaly_count,
-            avg_duration_ms,
-            min_duration_ms,
-            max_duration_ms,
-            success_rate,
-            timeout_rate,
-            anomaly_rate
+            avg_duration as avg_duration_ms,
+            min_duration as min_duration_ms,
+            max_duration as max_duration_ms,
+            CASE WHEN total_count > 0 THEN ROUND((completed_count * 100.0 / total_count), 2) ELSE 0 END as success_rate,
+            CASE WHEN total_count > 0 THEN ROUND((timeout_count * 100.0 / total_count), 2) ELSE 0 END as timeout_rate,
+            CASE WHEN total_count > 0 THEN ROUND((anomaly_count * 100.0 / total_count), 2) ELSE 0 END as anomaly_rate
         FROM wf_performance_stats
         <where>
             <if test="startDate != null">

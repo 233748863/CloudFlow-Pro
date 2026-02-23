@@ -13,7 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,7 +40,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
         notice.setRecipientId(recipientId);
         notice.setSenderId(senderId);
         notice.setStatus("0"); // Unread
-        notice.setCreateTime(new Date());
+        notice.setCreateTime(LocalDateTime.now());
         notice.setCreateBy(senderName);
         
         noticeMapper.insert(notice);
@@ -68,7 +69,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
         SysNotice notice = new SysNotice();
         notice.setNoticeId(noticeId);
         notice.setStatus("1");
-        notice.setUpdateTime(new Date());
+        notice.setUpdateTime(LocalDateTime.now());
         noticeMapper.updateById(notice);
     }
 

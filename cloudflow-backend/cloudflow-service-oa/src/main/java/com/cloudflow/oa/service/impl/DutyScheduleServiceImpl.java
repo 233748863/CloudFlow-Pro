@@ -15,7 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 
 /**
@@ -79,7 +80,7 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
             return false;
         }
         schedule.setStatus("CHECKED_IN");
-        schedule.setCheckInTime(new Date());
+        schedule.setCheckInTime(LocalDateTime.now());
         return updateById(schedule);
     }
 
@@ -92,7 +93,7 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
             return false;
         }
         schedule.setStatus("COMPLETED");
-        schedule.setCheckOutTime(new Date());
+        schedule.setCheckOutTime(LocalDateTime.now());
         return updateById(schedule);
     }
 

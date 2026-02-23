@@ -17,9 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 import java.util.Map;
 
@@ -159,7 +161,7 @@ public class SyncServiceImpl implements ISyncService {
         try {
             // 解析上次同步时间
             LocalDateTime lastSync = LocalDateTime.parse(lastSyncTime, DATE_FORMATTER);
-            Date lastSyncDate = java.sql.Timestamp.valueOf(lastSync);
+            LocalDateTime lastSyncDate = lastSync;
 
             // 获取增量任务数据
             // 注意：任务数据在工作流服务中，这里返回空列表
@@ -176,7 +178,7 @@ public class SyncServiceImpl implements ISyncService {
                     noticeService.getMyNotices(userId, pageQuery);
             
             for (SysNotice notice : noticeResult.getRows()) {
-                if (notice.getCreateTime().after(lastSyncDate)) {
+                if (notice.getCreateTime().isAfter(lastSyncDate)) {
                     SyncDownloadDTO.MessageData messageData = new SyncDownloadDTO.MessageData();
                     messageData.setNoticeId(notice.getNoticeId());
                     messageData.setTitle(notice.getNoticeTitle());
@@ -194,7 +196,7 @@ public class SyncServiceImpl implements ISyncService {
             List<SysAnnouncement> announcementList = announcementService.getMyAnnouncements(userId);
             
             for (SysAnnouncement announcement : announcementList) {
-                if (announcement.getCreateTime().after(lastSyncDate)) {
+                if (announcement.getCreateTime().isAfter(lastSyncDate)) {
                     SyncDownloadDTO.AnnouncementData announcementData = new SyncDownloadDTO.AnnouncementData();
                     announcementData.setId(announcement.getAnnouncementId());
                     announcementData.setTitle(announcement.getTitle());
@@ -326,13 +328,12 @@ public class SyncServiceImpl implements ISyncService {
     /**
      * 解析日期字符串
      */
-    private Date parseDate(String dateStr) {
+    private LocalDateTime parseDate(String dateStr) {
         if (dateStr == null) {
             return null;
         }
         try {
-            LocalDateTime localDateTime = LocalDateTime.parse(dateStr, DATE_FORMATTER);
-            return java.sql.Timestamp.valueOf(localDateTime);
+            return LocalDateTime.parse(dateStr, DATE_FORMATTER);
         } catch (Exception e) {
             log.error("解析日期失败: {}", dateStr, e);
             return null;

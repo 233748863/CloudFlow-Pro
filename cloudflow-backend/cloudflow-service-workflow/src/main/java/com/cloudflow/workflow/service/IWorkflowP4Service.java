@@ -3,7 +3,8 @@ package com.cloudflow.workflow.service;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.R;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,7 @@ public interface IWorkflowP4Service {
 
     /** P4.5: 设置审批代理 */
     R<?> setProxy(Long userId, String userName, Long proxyUserId, String proxyUserName,
-                  Date startTime, Date endTime, String reason);
+                  LocalDateTime startTime, LocalDateTime endTime, String reason);
 
     /** P4.5: 取消审批代理 */
     R<?> cancelProxy(Long userId);

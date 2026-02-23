@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 值班排班实体类
@@ -33,7 +33,7 @@ public class DutySchedule implements Serializable {
 
     /** 值班日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date dutyDate;
+    private LocalDateTime dutyDate;
 
     /** 班次(DAY白班/NIGHT夜班/FULL全天) */
     private String shiftType;
@@ -70,11 +70,11 @@ public class DutySchedule implements Serializable {
 
     /** 签到时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date checkInTime;
+    private LocalDateTime checkInTime;
 
     /** 签退时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date checkOutTime;
+    private LocalDateTime checkOutTime;
 
     /** 状态(SCHEDULED/CHECKED_IN/COMPLETED/SWAPPED/CANCELLED) */
     private String status;
@@ -93,12 +93,12 @@ public class DutySchedule implements Serializable {
 
     /** 创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
 
     /** 更新者 */
     private String updateBy;
 
     /** 更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
 }

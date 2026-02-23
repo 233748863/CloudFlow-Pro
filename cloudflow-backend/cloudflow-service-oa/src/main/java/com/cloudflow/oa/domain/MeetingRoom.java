@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 会议室实体
@@ -37,12 +37,12 @@ public class MeetingRoom {
     private String createBy;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
     
     private String updateBy;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
     
     @TableLogic
     private String delFlag;

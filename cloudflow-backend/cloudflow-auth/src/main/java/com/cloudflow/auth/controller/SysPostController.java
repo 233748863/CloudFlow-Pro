@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 
 /**
@@ -65,7 +66,7 @@ public class SysPostController {
         if (!postService.checkPostCodeUnique(post)) {
             return R.fail("新增岗位'" + post.getPostName() + "'失败，岗位编码已存在");
         }
-        post.setCreateTime(new Date());
+        post.setCreateTime(LocalDateTime.now());
         postService.save(post);
         return R.ok();
     }
@@ -78,7 +79,7 @@ public class SysPostController {
         if (!postService.checkPostCodeUnique(post)) {
             return R.fail("修改岗位'" + post.getPostName() + "'失败，岗位编码已存在");
         }
-        post.setUpdateTime(new Date());
+        post.setUpdateTime(LocalDateTime.now());
         postService.updateById(post);
         return R.ok();
     }

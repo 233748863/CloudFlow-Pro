@@ -28,7 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -100,7 +101,7 @@ public class WfFormServiceImpl implements IWfFormService {
             definition.setVersion(1);
             definition.setVersionLock(0);
             definition.setIsLatest(1);
-            definition.setCreateTime(new Date());
+            definition.setCreateTime(LocalDateTime.now());
             formDefinitionMapper.insert(definition);
             log.info("[saveFormDefinition] 表单定义创建成功, formId={}", definition.getFormId());
         }

@@ -3,7 +3,8 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import java.util.List;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 public interface ISysScheduleService extends IService<SysScheduleEvent> {
 
@@ -25,7 +26,7 @@ public interface ISysScheduleService extends IService<SysScheduleEvent> {
     /**
      * 检查冲突
      */
-    boolean checkConflict(Long roomId, Date start, Date end);
+    boolean checkConflict(Long roomId, LocalDateTime start, LocalDateTime end);
     
     /**
      * 获取会议室一周的预订（周视图日历用）

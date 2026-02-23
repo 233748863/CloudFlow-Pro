@@ -1,13 +1,14 @@
 package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 报销明细实体类
@@ -31,7 +32,9 @@ public class BizExpenseItem implements Serializable {
     private BigDecimal amount;
 
     /** 费用发生日期 */
-    private Date expenseDate;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime expenseDate;
 
     /** 费用说明 */
     private String description;

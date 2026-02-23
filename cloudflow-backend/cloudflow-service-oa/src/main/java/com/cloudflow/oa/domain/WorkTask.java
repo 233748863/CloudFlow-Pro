@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 协作任务实体类
@@ -40,7 +40,7 @@ public class WorkTask {
     private String status;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date dueDate;
+    private LocalDateTime dueDate;
     
     /**
      * JSON数组字符串
@@ -52,12 +52,12 @@ public class WorkTask {
     private String createBy;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
     
     private String updateBy;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
     
     @TableLogic
     private String delFlag;

@@ -44,6 +44,8 @@ const VehicleBooking = React.lazy(() => import('@/pages/admin/vehicle/VehicleBoo
 const VehicleUsageList = React.lazy(() => import('./pages/admin/vehicle/VehicleUsageList'));
 const WorkflowMonitor = React.lazy(() => import('./pages/WorkflowMonitor').then(module => ({ default: module.default })));
 const DeployManagement = React.lazy(() => import('./pages/DeployManagement').then(module => ({ default: module.DeployManagement })));
+const AlertList = React.lazy(() => import('./pages/AlertList'));
+const PerformanceStats = React.lazy(() => import('./pages/PerformanceStats'));
 const ExpenseClaimPage = React.lazy(() => import('./pages/ExpenseClaimPage'));
 const PaymentRequestPage = React.lazy(() => import('./pages/PaymentRequestPage').then(module => ({ default: module.PaymentRequestPage })));
 const CopyListPage = React.lazy(() => import('./pages/CopyListPage').then(module => ({ default: module.CopyListPage })));
@@ -137,6 +139,14 @@ const desktopRoutes = [
           {
             path: '/workflow/deploy',
             element: <Suspense fallback={<Loading />}><DeployManagement /></Suspense>,
+          },
+          {
+            path: '/workflow/alerts',
+            element: <Suspense fallback={<Loading />}><AlertList /></Suspense>,
+          },
+          {
+            path: '/workflow/performance',
+            element: <Suspense fallback={<Loading />}><PerformanceStats /></Suspense>,
           },
           {
             path: '/forms',

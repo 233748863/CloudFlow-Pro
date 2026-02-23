@@ -1,10 +1,11 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 5.I: 会签投票记录
@@ -39,5 +40,7 @@ public class WfCountersignVote {
     private String comment;
     
     /** 投票时间 */
-    private Date voteTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime voteTime;
 }

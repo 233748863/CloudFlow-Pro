@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -87,9 +87,9 @@ public class FrontendErrorLog implements Serializable {
      */
     @JsonAlias("timestamp")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
-    private Date clientTime;
+    private LocalDateTime clientTime;
 
     /** 服务端接收时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
 }

@@ -557,19 +557,19 @@ INSERT INTO `wf_process_category` (`category_id`, `parent_id`, `category_name`, 
 -- =========================================================
 
 INSERT INTO wf_form_definition (form_id, form_name, fields_json, create_time) VALUES 
-('form_reimburse', '通用报销申请', '[{"id": "f1", "type": "SELECT", "label": "费用类型", "required": true, "options": ["差旅费", "招待费", "办公费", "团建费"]}, {"id": "f2", "type": "NUMBER", "label": "报销金额", "required": true}, {"id": "f3", "type": "DATE", "label": "发生日期", "required": true}, {"id": "f4", "type": "TEXTAREA", "label": "费用明细说明", "required": true}]', sysdate());
+('form_reimburse', '通用报销申请', '[{"id": "f1", "type": "SELECT", "label": "费用类型", "required": true, "options": ["差旅费", "招待费", "办公费", "团建费"]}, {"id": "f2", "type": "NUMBER", "label": "报销金额", "required": true}, {"id": "f3", "type": "DATE", "label": "发生日期", "required": true}, {"id": "f4", "type": "TEXTAREA", "label": "费用明细说明", "required": true}]', NOW());
 
 INSERT INTO wf_form_definition (form_id, form_name, fields_json, create_time) VALUES 
-('form_payment', '对公付款申请', '[{"id": "p1", "type": "TEXT", "label": "收款方名称", "required": true}, {"id": "p2", "type": "TEXT", "label": "银行账号", "required": true, "regex": "^\\\\d{10,20}$", "errorMsg": "请输入正确的银行账号"}, {"id": "p3", "type": "NUMBER", "label": "付款金额", "required": true}, {"id": "p4", "type": "TEXT", "label": "合同编号", "required": false}]', sysdate());
+('form_payment', '对公付款申请', '[{"id": "p1", "type": "TEXT", "label": "收款方名称", "required": true}, {"id": "p2", "type": "TEXT", "label": "银行账号", "required": true, "regex": "^\\\\d{10,20}$", "errorMsg": "请输入正确的银行账号"}, {"id": "p3", "type": "NUMBER", "label": "付款金额", "required": true}, {"id": "p4", "type": "TEXT", "label": "合同编号", "required": false}]', NOW());
 
 INSERT INTO wf_form_definition (form_id, form_name, fields_json, create_time) VALUES 
-('form_leave', '请假申请单', '[{"id": "l1", "type": "SELECT", "label": "请假类型", "required": true, "options": ["年假", "事假", "病假", "婚假", "产假"]}, {"id": "l2", "type": "DATE", "label": "开始时间", "required": true}, {"id": "l3", "type": "DATE", "label": "结束时间", "required": true}, {"id": "l4", "type": "NUMBER", "label": "共计天数", "required": true}, {"id": "l5", "type": "TEXTAREA", "label": "请假事由", "required": true}]', sysdate());
+('form_leave', '请假申请单', '[{"id": "l1", "type": "SELECT", "label": "请假类型", "required": true, "options": ["年假", "事假", "病假", "婚假", "产假"]}, {"id": "l2", "type": "DATE", "label": "开始时间", "required": true}, {"id": "l3", "type": "DATE", "label": "结束时间", "required": true}, {"id": "l4", "type": "NUMBER", "label": "共计天数", "required": true}, {"id": "l5", "type": "TEXTAREA", "label": "请假事由", "required": true}]', NOW());
 
 INSERT INTO wf_form_definition (form_id, form_name, fields_json, create_time) VALUES 
-('form_recruit', '人员招聘需求', '[{"id": "r1", "type": "TEXT", "label": "招聘岗位", "required": true}, {"id": "r2", "type": "NUMBER", "label": "需求人数", "required": true}, {"id": "r3", "type": "SELECT", "label": "期望职级", "required": true, "options": ["P5", "P6", "P7", "P8"]}, {"id": "r4", "type": "TEXTAREA", "label": "岗位职责要求", "required": true}, {"id": "r5", "type": "NUMBER", "label": "薪资预算(k)", "required": true}]', sysdate());
+('form_recruit', '人员招聘需求', '[{"id": "r1", "type": "TEXT", "label": "招聘岗位", "required": true}, {"id": "r2", "type": "NUMBER", "label": "需求人数", "required": true}, {"id": "r3", "type": "SELECT", "label": "期望职级", "required": true, "options": ["P5", "P6", "P7", "P8"]}, {"id": "r4", "type": "TEXTAREA", "label": "岗位职责要求", "required": true}, {"id": "r5", "type": "NUMBER", "label": "薪资预算(k)", "required": true}]', NOW());
 
 INSERT INTO wf_form_definition (form_id, form_name, fields_json, create_time) VALUES 
-('form_contract', '合同审批单', '[{"id": "c1", "type": "TEXT", "label": "合同名称", "required": true}, {"id": "c2", "type": "TEXT", "label": "对方单位", "required": true}, {"id": "c3", "type": "NUMBER", "label": "合同金额", "required": true}, {"id": "c4", "type": "SELECT", "label": "合同类型", "required": true, "options": ["采购合同", "销售合同", "服务协议"]}, {"id": "c5", "type": "TEXTAREA", "label": "主要条款摘要", "required": true}]', sysdate());
+('form_contract', '合同审批单', '[{"id": "c1", "type": "TEXT", "label": "合同名称", "required": true}, {"id": "c2", "type": "TEXT", "label": "对方单位", "required": true}, {"id": "c3", "type": "NUMBER", "label": "合同金额", "required": true}, {"id": "c4", "type": "SELECT", "label": "合同类型", "required": true, "options": ["采购合同", "销售合同", "服务协议"]}, {"id": "c5", "type": "TEXTAREA", "label": "主要条款摘要", "required": true}]', NOW());
 
 -- =========================================================
 -- 初始化数据 - 流程定义
@@ -580,19 +580,19 @@ INSERT INTO wf_form_definition (form_id, form_name, fields_json, create_time) VA
 -- 未配置或为空数组时，前端显示所有默认按钮（向后兼容）
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
-('wf_reimburse', '财务报销流程', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"id": "root", "type": "START", "title": "提交报销", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级", "icon": "briefcase", "approverType": "DIRECT_LEADER", "props": {"buttons": ["APPROVE", "RETURN"]}, "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务主管", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount < 1000"}, {"id": "b2", "type": "APPROVAL", "title": "财务总监", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount >= 1000"}], "next": {"id": "end", "type": "END", "title": "打款"}}}}', sysdate());
+('wf_reimburse', '财务报销流程', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"id": "root", "type": "START", "title": "提交报销", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级", "icon": "briefcase", "approverType": "DIRECT_LEADER", "props": {"buttons": ["APPROVE", "RETURN"]}, "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务主管", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount < 1000"}, {"id": "b2", "type": "APPROVAL", "title": "财务总监", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount >= 1000"}], "next": {"id": "end", "type": "END", "title": "打款"}}}}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
-('wf_leave', '员工请假流程', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"id": "root", "type": "START", "title": "提交请假", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理", "icon": "briefcase", "approverType": "DEPT_MANAGER", "props": {"buttons": ["APPROVE", "RETURN"]}, "next": {"id": "gw_leave", "type": "CONDITION", "title": "天数校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "HR备案", "icon": "file-box", "approverType": "ROLE", "approverValue": "HR", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "days <= 3"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "days > 3"}], "next": {"id": "end", "type": "END", "title": "归档"}}}}', sysdate());
+('wf_leave', '员工请假流程', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"id": "root", "type": "START", "title": "提交请假", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理", "icon": "briefcase", "approverType": "DEPT_MANAGER", "props": {"buttons": ["APPROVE", "RETURN"]}, "next": {"id": "gw_leave", "type": "CONDITION", "title": "天数校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "HR备案", "icon": "file-box", "approverType": "ROLE", "approverValue": "HR", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "days <= 3"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "days > 3"}], "next": {"id": "end", "type": "END", "title": "归档"}}}}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
-('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"id": "root", "type": "START", "title": "起草合同", "next": {"id": "n1", "type": "APPROVAL", "title": "法务&财务会签审核", "icon": "scale", "signType": "ALL", "approverType": "USERS", "approverValue": "1", "props": {"buttons": ["APPROVE", "REJECT"]}, "next": {"id": "n2", "type": "APPROVAL", "title": "总经理签发", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN"]}, "next": {"id": "end", "type": "END", "title": "盖章归档"}}}}', sysdate());
+('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"id": "root", "type": "START", "title": "起草合同", "next": {"id": "n1", "type": "APPROVAL", "title": "法务&财务会签审核", "icon": "scale", "signType": "ALL", "approverType": "USERS", "approverValue": "1", "props": {"buttons": ["APPROVE", "REJECT"]}, "next": {"id": "n2", "type": "APPROVAL", "title": "总经理签发", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN"]}, "next": {"id": "end", "type": "END", "title": "盖章归档"}}}}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
-('wf_recruit', '人员招聘流程', 'biz_recruit', 1, 'PUBLISHED', 1, 'form_recruit', '{"id": "root", "type": "START", "title": "提交招聘需求", "next": {"id": "n1", "type": "APPROVAL", "title": "部门总监审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "props": {"buttons": ["APPROVE", "RETURN"]}, "next": {"id": "n2", "type": "APPROVAL", "title": "HR审核", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "props": {"buttons": ["APPROVE", "REJECT", "DELEGATE"]}, "next": {"id": "n3", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "next": {"id": "end", "type": "END", "title": "开始招聘"}}}}}', sysdate());
+('wf_recruit', '人员招聘流程', 'biz_recruit', 1, 'PUBLISHED', 1, 'form_recruit', '{"id": "root", "type": "START", "title": "提交招聘需求", "next": {"id": "n1", "type": "APPROVAL", "title": "部门总监审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "props": {"buttons": ["APPROVE", "RETURN"]}, "next": {"id": "n2", "type": "APPROVAL", "title": "HR审核", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "props": {"buttons": ["APPROVE", "REJECT", "DELEGATE"]}, "next": {"id": "n3", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "next": {"id": "end", "type": "END", "title": "开始招聘"}}}}}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES 
-('wf_payment', '对公付款流程', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"id": "root", "type": "START", "title": "提交付款申请", "next": {"id": "n1", "type": "APPROVAL", "title": "财务主管审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "RETURN", "DELEGATE"]}, "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务总监审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount < 50000"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount >= 50000"}], "next": {"id": "end", "type": "END", "title": "财务打款"}}}}', sysdate());
+('wf_payment', '对公付款流程', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"id": "root", "type": "START", "title": "提交付款申请", "next": {"id": "n1", "type": "APPROVAL", "title": "财务主管审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "RETURN", "DELEGATE"]}, "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务总监审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount < 50000"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "props": {"buttons": ["APPROVE", "REJECT", "RETURN", "DELEGATE"]}, "condition": "amount >= 50000"}], "next": {"id": "end", "type": "END", "title": "财务打款"}}}}', NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -603,32 +603,34 @@ SET FOREIGN_KEY_CHECKS = 1;
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_attendance_appeal', '补卡/外勤审批流程', 'attendance_appeal', 1, 'PUBLISHED', 1, 'OA',
  '{"id": "root", "type": "START", "title": "提交申请", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级审批", "icon": "briefcase", "approverType": "DIRECT_LEADER", "next": {"id": "end", "type": "END", "title": "归档"}}}',
- sysdate());
+ NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_overtime_request', '加班审批流程', 'overtime_request', 1, 'PUBLISHED', 1, 'OA',
  '{"id": "root", "type": "START", "title": "提交加班申请", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级审批", "icon": "briefcase", "approverType": "DIRECT_LEADER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR备案", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "end", "type": "END", "title": "归档"}}}}',
- sysdate());
+ NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_expense_claim', '报销审批流程', 'expense_claim', 1, 'PUBLISHED', 1, 'OA',
  '{"id": "root", "type": "START", "title": "提交报销", "next": {"id": "n1", "type": "APPROVAL", "title": "直属上级审批", "icon": "briefcase", "approverType": "DIRECT_LEADER", "next": {"id": "n2", "type": "APPROVAL", "title": "财务审核", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "next": {"id": "end", "type": "END", "title": "打款"}}}}',
- sysdate());
+ NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_leave_request', '请假审批流程', 'leave_request', 1, 'PUBLISHED', 1, 'OA',
  '{"id": "root", "type": "START", "title": "提交请假", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR备案", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "end", "type": "END", "title": "归档"}}}}',
- sysdate());
+ NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_payment_request', '付款审批流程', 'payment_request', 1, 'PUBLISHED', 1, 'OA',
  '{"id": "root", "type": "START", "title": "提交付款申请", "next": {"id": "n1", "type": "APPROVAL", "title": "财务主管审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "next": {"id": "gw1", "type": "CONDITION", "title": "金额校验", "branches": [{"id": "b1", "type": "APPROVAL", "title": "财务总监审批", "icon": "credit-card", "approverType": "ROLE", "approverValue": "FINANCE", "condition": "amount < 50000"}, {"id": "b2", "type": "APPROVAL", "title": "总经理审批", "icon": "shield", "approverType": "ROLE", "approverValue": "ADMIN", "condition": "amount >= 50000"}], "next": {"id": "end", "type": "END", "title": "财务打款"}}}}',
- sysdate());
+ NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_business_trip', '出差审批流程', 'business_trip', 1, 'PUBLISHED', 1, 'OA',
  '{"id": "root", "type": "START", "title": "提交出差申请", "next": {"id": "n1", "type": "APPROVAL", "title": "部门经理审批", "icon": "briefcase", "approverType": "DEPT_MANAGER", "next": {"id": "n2", "type": "APPROVAL", "title": "HR备案", "icon": "users", "approverType": "ROLE", "approverValue": "HR", "next": {"id": "end", "type": "END", "title": "归档"}}}}',
- sysdate());
+ NOW());
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================
 -- 测试数据

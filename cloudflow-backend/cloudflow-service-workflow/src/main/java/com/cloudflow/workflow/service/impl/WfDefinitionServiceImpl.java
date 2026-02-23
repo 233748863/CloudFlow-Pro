@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
@@ -117,7 +118,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         definition.setVersionLock(0);
         definition.setIsLatest(1);
         definition.setStatus("DRAFT");
-        definition.setCreateTime(new Date());
+        definition.setCreateTime(LocalDateTime.now());
 
         processDefinitionMapper.insert(definition);
         log.info("[saveProcessDefinition] 流程定义保存成功, definitionId={}, version={}", definition.getDefinitionId(), version);

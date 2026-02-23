@@ -1,6 +1,8 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -138,10 +140,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 history.setOperatorName(UserContext.getUserName());
                 history.setComment(comment);
                 history.setAction(action);
-                history.setCreateTime(new Date());
+                history.setCreateTime(LocalDateTime.now());
 
                 if (task.getCreateTime() != null) {
-                    long durationSeconds = (System.currentTimeMillis() - task.getCreateTime().getTime()) / 1000;
+                    long durationSeconds = java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds();
                     history.setDurationSeconds((int) durationSeconds);
                 }
                 taskHistoryMapper.insert(history);
@@ -273,7 +275,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         history.setOperatorName(UserContext.getUserName());
         history.setComment(comment);
         history.setAction("REJECT_TO_" + targetNodeKey);
-        history.setCreateTime(new Date());
+        history.setCreateTime(LocalDateTime.now());
 
         try {
             Map<String, Object> rejectDetail = new HashMap<>();
@@ -287,7 +289,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         if (task.getCreateTime() != null) {
-            long durationSeconds = (System.currentTimeMillis() - task.getCreateTime().getTime()) / 1000;
+            long durationSeconds = java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds();
             history.setDurationSeconds((int) durationSeconds);
         }
         taskHistoryMapper.insert(history);
@@ -372,19 +374,15 @@ public class WfTaskServiceImpl implements IWfTaskService {
         // 时间范围筛选
         if (StringUtils.hasText(startTimeFrom)) {
             try {
-                Date fromDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(startTimeFrom);
+                LocalDateTime fromDate = java.time.LocalDate.parse(startTimeFrom, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
                 queryWrapper.ge(WfTask::getCreateTime, fromDate);
             } catch (Exception e) { log.warn("[getTodoTasks] 解析开始时间失败"); }
         }
         if (StringUtils.hasText(startTimeTo)) {
             try {
-                Date toDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(startTimeTo);
-                Calendar cal = Calendar.getInstance();
-                cal.setTime(toDate);
-                cal.set(Calendar.HOUR_OF_DAY, 23);
-                cal.set(Calendar.MINUTE, 59);
-                cal.set(Calendar.SECOND, 59);
-                queryWrapper.le(WfTask::getCreateTime, cal.getTime());
+                LocalDateTime toDate = java.time.LocalDate.parse(startTimeTo, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
+                LocalDateTime endOfDay = toDate.withHour(23).withMinute(59).withSecond(59);
+                queryWrapper.le(WfTask::getCreateTime, endOfDay);
             } catch (Exception e) { log.warn("[getTodoTasks] 解析结束时间失败"); }
         }
 
@@ -416,7 +414,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             WfTaskRead read = new WfTaskRead();
             read.setTaskId(taskId);
             read.setUserId(userId);
-            read.setReadTime(new Date());
+            read.setReadTime(LocalDateTime.now());
             taskReadMapper.insert(read);
         }
     }
@@ -448,7 +446,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         urge.setSenderId(currentUserId);
         urge.setRecipientId(task.getAssignee());
         urge.setReason(reason);
-        urge.setCreateTime(new Date());
+        urge.setCreateTime(LocalDateTime.now());
         taskUrgeMapper.insert(urge);
 
         sysNoticeService.sendNotice(task.getAssignee(), "任务催办提醒",
@@ -471,7 +469,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         newTask.setNodeKey(task.getNodeKey());
         newTask.setAssignee(Long.valueOf(delegateUserId));
         newTask.setStatus(WfTaskStatus.TODO.getCode());
-        newTask.setCreateTime(new Date());
+        newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
 
         sysNoticeService.sendNotice(Long.valueOf(delegateUserId), "任务转办通知",
@@ -503,9 +501,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         history.setOperatorName(userName);
         history.setComment(comment);
         history.setAction("COUNTERSIGN_" + voteResult);
-        history.setCreateTime(new Date());
+        history.setCreateTime(LocalDateTime.now());
         if (task.getCreateTime() != null) {
-            history.setDurationSeconds((int) ((System.currentTimeMillis() - task.getCreateTime().getTime()) / 1000));
+            history.setDurationSeconds((int) java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds());
         }
         taskHistoryMapper.insert(history);
 
@@ -885,7 +883,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     newTask.setNodeKey(task.getNodeKey());
                     newTask.setAssignee(userId);
                     newTask.setStatus(WfTaskStatus.TODO.getCode());
-                    newTask.setCreateTime(new Date());
+                    newTask.setCreateTime(LocalDateTime.now());
                     newTask.setCandidateRoles("CS:" + countersignId);
                     taskMapper.insert(newTask);
 
@@ -911,7 +909,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     addSign.setSignUserNames(toUserName);
                     addSign.setReason(comment);
                     addSign.setStatus("PENDING");
-                    addSign.setCreateTime(new Date());
+                    addSign.setCreateTime(LocalDateTime.now());
                     
                     // 插入加签记录（需要先创建 WfTaskAddSignMapper）
                     // wfTaskAddSignMapper.insert(addSign);
@@ -1056,7 +1054,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         history.setOperatorName(UserContext.getUserName());
                         history.setComment("减签: " + comment);
                         history.setAction("REDUCTION_SIGN");
-                        history.setCreateTime(new Date());
+                        history.setCreateTime(LocalDateTime.now());
                         taskHistoryMapper.insert(history);
 
                         removedCount++;

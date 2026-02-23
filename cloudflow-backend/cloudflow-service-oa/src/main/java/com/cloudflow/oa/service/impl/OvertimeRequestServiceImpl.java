@@ -114,9 +114,9 @@ public class OvertimeRequestServiceImpl extends ServiceImpl<OvertimeRequestMappe
             variables.put("userId", overtime.getUserId());
             variables.put("userName", overtime.getUserName());
             variables.put("startTime", overtime.getStartTime() != null
-                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(overtime.getStartTime()) : null);
+                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(overtime.getStartTime()) : null);
             variables.put("endTime", overtime.getEndTime() != null
-                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(overtime.getEndTime()) : null);
+                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(overtime.getEndTime()) : null);
             variables.put("compensateType", overtime.getCompensateType());
             variables.put("reason", overtime.getReason());
             variables.put("deptName", overtime.getDeptName());

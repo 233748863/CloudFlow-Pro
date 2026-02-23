@@ -3,6 +3,7 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 流程发布通知记录实体
@@ -39,11 +40,13 @@ public class WfDeployNotification {
     private String sendStatus;
 
     /** 发送时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime sendTime;
 
     /** 错误信息 */
     private String errorMessage;
 
     @TableField(fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdTime;
 }

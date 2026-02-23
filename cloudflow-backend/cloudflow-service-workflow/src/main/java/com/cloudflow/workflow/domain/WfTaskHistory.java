@@ -1,9 +1,10 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 任务审批历史实体类
@@ -44,7 +45,9 @@ public class WfTaskHistory implements Serializable {
     private String action;
 
     /** 操作时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
     
     /** 审批耗时(秒) */
     private Integer durationSeconds;
@@ -124,11 +127,11 @@ public class WfTaskHistory implements Serializable {
         this.action = action;
     }
 
-    public Date getCreateTime() {
+    public LocalDateTime getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(Date createTime) {
+    public void setCreateTime(LocalDateTime createTime) {
         this.createTime = createTime;
     }
 

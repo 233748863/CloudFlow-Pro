@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.workflow.service.IWorkflowSagaService;
 
+import java.time.LocalDateTime;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
@@ -84,7 +85,7 @@ public class WorkflowSagaServiceImpl implements IWorkflowSagaService {
             WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
             if (instance != null) {
                 instance.setStatus("FAILED");
-                instance.setEndTime(new Date());
+                instance.setEndTime(LocalDateTime.now());
                 processInstanceMapper.updateById(instance);
                 log.info("[compensate] 实例状态已更新为FAILED, instanceId={}", instanceId);
             }
@@ -99,7 +100,7 @@ public class WorkflowSagaServiceImpl implements IWorkflowSagaService {
             compensationHistory.setComment("Saga补偿: " + reason);
             compensationHistory.setOperatorId(0L);
             compensationHistory.setOperatorName("SYSTEM");
-            compensationHistory.setCreateTime(new Date());
+            compensationHistory.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(compensationHistory);
 
             // 4. 清理 Redis 中的 Saga 日志

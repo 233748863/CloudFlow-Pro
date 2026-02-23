@@ -23,7 +23,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -160,7 +161,7 @@ public class TaskTimeoutJob {
             Map<String, Object> variables = new HashMap<>();
             variables.put("_autoProcessed", true);
             variables.put("_autoProcessReason", "任务超时自动通过");
-            variables.put("_autoProcessTime", new Date());
+            variables.put("_autoProcessTime", LocalDateTime.now());
             
             // 调用完整的流程引擎进行任务完成和流转
             // 这将触发完整的流程流转逻辑，包括：
@@ -212,7 +213,7 @@ public class TaskTimeoutJob {
             history.setOperatorName("系统自动处理");
             history.setComment("任务超时，系统自动通过（简化处理）");
             history.setAction("AUTO_PASS_FALLBACK");
-            history.setCreateTime(new Date());
+            history.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(history);
             
             // 2. 删除当前任务
@@ -227,7 +228,7 @@ public class TaskTimeoutJob {
             // 4. 如果没有其他待办任务，则完成流程
             if (remainingTasks == 0) {
                 instance.setStatus(WfProcessStatus.COMPLETED.getCode());
-                instance.setEndTime(new Date());
+                instance.setEndTime(LocalDateTime.now());
                 processInstanceMapper.updateById(instance);
                 log.info("[TaskTimeoutJob] 流程已自动完成（简化处理）, instanceId={}", instance.getInstanceId());
             }

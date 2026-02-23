@@ -1,9 +1,10 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * P4.2: 加签记录
@@ -45,8 +46,12 @@ public class WfTaskAddSign {
     private String status;
     
     /** 创建时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
     
     /** 完成时间 */
-    private Date completeTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime completeTime;
 }

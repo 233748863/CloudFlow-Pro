@@ -1,12 +1,13 @@
 package com.cloudflow.auth.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Data
 @TableName("sys_user")
@@ -24,10 +25,14 @@ public class SysUser implements Serializable {
     private String status;
     private String delFlag;
     private String loginIp;
-    private Date loginDate;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime loginDate;
     private Long tenantId;
     private String createBy;
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
     private String remark;
     
     /** 非数据库字段 */

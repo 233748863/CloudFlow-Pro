@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 访客预约实体类
@@ -54,7 +54,7 @@ public class Visitor implements Serializable {
 
     /** 预约来访日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date visitDate;
+    private LocalDateTime visitDate;
 
     /** 预计到达时间 */
     private String visitTimeStart;
@@ -64,11 +64,11 @@ public class Visitor implements Serializable {
 
     /** 实际到达时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date actualArrive;
+    private LocalDateTime actualArrive;
 
     /** 实际离开时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date actualLeave;
+    private LocalDateTime actualLeave;
 
     /** 访问区域 */
     private String visitArea;
@@ -99,12 +99,12 @@ public class Visitor implements Serializable {
 
     /** 创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
 
     /** 更新者 */
     private String updateBy;
 
     /** 更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
 }

@@ -9,6 +9,8 @@ cloudflow:
 spring:
   cloud:
     gateway:
+      # 启用懒加载路由，避免启动时检查所有服务实例
+      lazy-routes-initialization: true
       routes:
         # 认证服务路由
         - id: cloudflow-auth

@@ -4,7 +4,8 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * P4.22: 发布记录（已扩展支持回滚、审批、窗口）
@@ -38,6 +39,7 @@ public class WfDeployRecord {
     private String deployerName;
     
     /** 发布时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime deployTime;
     
     /** 发布说明 */
@@ -55,13 +57,6 @@ public class WfDeployRecord {
     /** Alias: deployerId -> deployBy */
     public Long getDeployerId() { return deployBy; }
     public void setDeployerId(Long deployerId) { this.deployBy = deployerId; }
-
-    /** 设置发布时间 (Date -> LocalDateTime 兼容，用于P4代码) */
-    public void setDeployTimeFromDate(Date date) {
-        if (date != null) {
-            this.deployTime = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-        }
-    }
     
     // ========== P2增强字段 ==========
     
@@ -78,6 +73,7 @@ public class WfDeployRecord {
     private Long rollbackBy;
     
     /** 回滚时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime rollbackTime;
     
     /** 关联的审批ID */
@@ -90,8 +86,10 @@ public class WfDeployRecord {
     private String impactAnalysis;
     
     @TableField(fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdTime;
     
     @TableField(fill = FieldFill.UPDATE)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedTime;
 }

@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 系统公告实体类
@@ -54,12 +54,12 @@ public class SysAnnouncement {
     private String createBy;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
     
     private String updateBy;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
     
     @TableLogic
     private String delFlag;
@@ -72,11 +72,11 @@ public class SysAnnouncement {
     
     /** 发布时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date publishTime;
+    private LocalDateTime publishTime;
     
     /** 过期时间(NULL表示永不过期) */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date expireTime;
+    private LocalDateTime expireTime;
     
     /**
      * 是否已读 (非数据库字段)

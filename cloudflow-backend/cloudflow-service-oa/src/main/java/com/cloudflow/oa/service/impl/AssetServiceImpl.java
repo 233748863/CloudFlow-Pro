@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import cn.hutool.extra.qrcode.QrCodeUtil;
+import java.time.LocalDateTime;
 import cn.hutool.extra.qrcode.QrConfig;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -203,7 +204,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
             assetLog.setOperatorId(SecurityUtils.getUserId());
             assetLog.setTargetId(targetId);
             assetLog.setRemark(remark);
-            assetLog.setCreateTime(new Date());
+            assetLog.setCreateTime(LocalDateTime.now());
             assetLogMapper.insert(assetLog);
             log.debug("资产{}日志记录成功，资产ID: {}", type, assetId);
         } catch (Exception e) {

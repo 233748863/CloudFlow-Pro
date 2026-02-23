@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
@@ -57,7 +58,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
         }
 
         Long tenantId = UserContext.getTenantId();
-        Date now = new Date();
+        LocalDateTime now = LocalDateTime.now();
 
         for (Long userId : uniqueUserIds) {
             WfProcessCopy copy = new WfProcessCopy();
@@ -138,7 +139,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
         }
 
         copy.setIsRead(1);
-        copy.setReadTime(new Date());
+        copy.setReadTime(LocalDateTime.now());
         processCopyMapper.updateById(copy);
         log.debug("[markAsRead] 标记已读成功, copyId={}", copyId);
     }
@@ -155,7 +156,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
                         .eq(WfProcessCopy::getUserId, userId)
                         .eq(WfProcessCopy::getIsRead, 0)
                         .set(WfProcessCopy::getIsRead, 1)
-                        .set(WfProcessCopy::getReadTime, new Date())
+                        .set(WfProcessCopy::getReadTime, LocalDateTime.now())
         );
         log.info("[batchMarkAsRead] 批量标记已读, userId={}, count={}", userId, copyIds.size());
     }

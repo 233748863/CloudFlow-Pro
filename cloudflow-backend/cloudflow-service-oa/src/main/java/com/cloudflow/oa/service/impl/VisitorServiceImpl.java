@@ -13,7 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.UUID;
 
 /**
@@ -72,7 +73,7 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
             return false;
         }
         visitor.setStatus("ARRIVED");
-        visitor.setActualArrive(new Date());
+        visitor.setActualArrive(LocalDateTime.now());
         // 如果还没有通行证编号，自动生成
         if (!StringUtils.hasText(visitor.getPassCode())) {
             visitor.setPassCode(generatePassCode());
@@ -89,7 +90,7 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
             return false;
         }
         visitor.setStatus("COMPLETED");
-        visitor.setActualLeave(new Date());
+        visitor.setActualLeave(LocalDateTime.now());
         return updateById(visitor);
     }
 

@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 车辆信息实体
@@ -35,10 +35,10 @@ public class SysVehicle {
     private BigDecimal mileage;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date purchaseDate;
+    private LocalDateTime purchaseDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date insuranceExpiry;
+    private LocalDateTime insuranceExpiry;
 
     private String location;
 
@@ -50,12 +50,12 @@ public class SysVehicle {
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
 
     private String updateBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
     
     /** 租户ID */
     private Long tenantId;

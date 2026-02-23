@@ -9,7 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 前端错误日志 Service 实现
@@ -24,7 +25,7 @@ public class FrontendErrorLogServiceImpl extends ServiceImpl<FrontendErrorLogMap
     public void reportError(FrontendErrorLog errorLog, String clientIp) {
         // 补充服务端信息
         errorLog.setClientIp(clientIp);
-        errorLog.setCreateTime(new Date());
+        errorLog.setCreateTime(LocalDateTime.now());
 
         // 尝试从上下文获取当前用户和租户信息（前端上报时可能未登录，所以用 try-catch 保护）
         try {

@@ -19,7 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Slf4j
 @Service
@@ -75,7 +76,7 @@ public class SysFileServiceImpl implements ISysFileService {
             sysFile.setUrl(url);
             sysFile.setFileSize(size);
             sysFile.setFileType(FileUtil.extName(originalFilename));
-            sysFile.setCreateTime(new Date());
+            sysFile.setCreateTime(LocalDateTime.now());
             sysFile.setCreateBy(UserContext.getUserName());
             sysFile.setDelFlag("0");
             

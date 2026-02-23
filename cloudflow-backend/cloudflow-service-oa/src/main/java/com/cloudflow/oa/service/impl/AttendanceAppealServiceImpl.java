@@ -115,7 +115,7 @@ public class AttendanceAppealServiceImpl extends ServiceImpl<AttendanceAppealMap
             // 补充完整的业务字段，供审批人在审批卡片和详情中查看
             variables.put("userName", appeal.getUserName());
             variables.put("appealDate", appeal.getAppealDate() != null
-                    ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(appeal.getAppealDate()) : null);
+                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd").format(appeal.getAppealDate()) : null);
             variables.put("appealTime", appeal.getAppealTime());
             variables.put("checkType", appeal.getCheckType());
             variables.put("reason", appeal.getReason());

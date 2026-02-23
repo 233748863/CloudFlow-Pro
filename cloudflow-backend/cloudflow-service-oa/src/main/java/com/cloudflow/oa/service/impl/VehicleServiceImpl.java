@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -43,15 +44,12 @@ public class VehicleServiceImpl extends ServiceImpl<SysVehicleMapper, SysVehicle
         stats.put("maintenance", allVehicles.stream().filter(v -> "4".equals(v.getStatus())).count());
         stats.put("scrapped", allVehicles.stream().filter(v -> "5".equals(v.getStatus())).count());
         // 保险即将到期（30天内）
-        Date now = new Date();
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(now);
-        cal.add(Calendar.DAY_OF_MONTH, 30);
-        Date thirtyDaysLater = cal.getTime();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime thirtyDaysLater = now.plusDays(30);
         long insuranceExpiringSoon = allVehicles.stream()
                 .filter(v -> v.getInsuranceExpiry() != null 
-                        && v.getInsuranceExpiry().after(now) 
-                        && v.getInsuranceExpiry().before(thirtyDaysLater))
+                        && v.getInsuranceExpiry().isAfter(now) 
+                        && v.getInsuranceExpiry().isBefore(thirtyDaysLater))
                 .count();
         stats.put("insuranceExpiringSoon", insuranceExpiringSoon);
         return stats;

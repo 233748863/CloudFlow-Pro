@@ -8,7 +8,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 出差申请实体类
@@ -46,11 +46,11 @@ public class BusinessTrip implements Serializable {
 
     /** 出差开始日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date startDate;
+    private LocalDateTime startDate;
 
     /** 出差结束日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date endDate;
+    private LocalDateTime endDate;
 
     /** 出差天数 */
     private BigDecimal tripDays;
@@ -105,12 +105,12 @@ public class BusinessTrip implements Serializable {
 
     /** 创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
 
     /** 更新者 */
     private String updateBy;
 
     /** 更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
 }

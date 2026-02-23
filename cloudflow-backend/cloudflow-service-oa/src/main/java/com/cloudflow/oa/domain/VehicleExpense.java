@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 车辆费用记录实体
@@ -29,7 +29,7 @@ public class VehicleExpense {
     private BigDecimal amount;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date expenseDate;
+    private LocalDateTime expenseDate;
 
     private String description;
 
@@ -38,7 +38,7 @@ public class VehicleExpense {
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
     
     /** 租户ID */
     private Long tenantId;

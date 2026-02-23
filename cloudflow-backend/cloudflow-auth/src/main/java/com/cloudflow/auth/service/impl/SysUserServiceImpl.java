@@ -25,7 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -199,7 +200,7 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int insertUser(SysUser user) {
-        user.setCreateTime(new Date());
+        user.setCreateTime(LocalDateTime.now());
 
         Long tenantId = UserContext.getTenantId();
         if (tenantId != null) {

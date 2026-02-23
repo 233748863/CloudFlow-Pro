@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 考勤打卡记录
@@ -23,7 +23,7 @@ public class SysAttendanceRecord {
     private String type;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date checkTime;
+    private LocalDateTime checkTime;
     
     /** 经纬度 (lat,lng) */
     private String location;
@@ -42,5 +42,5 @@ public class SysAttendanceRecord {
     private Long tenantId;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
 }

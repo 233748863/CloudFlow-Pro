@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.workflow.service.IWorkflowP4Service;
 
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -72,7 +73,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         delegation.setToUserName(toUserName);
         delegation.setReason(reason);
         delegation.setStatus("COMPLETED");
-        delegation.setCreateTime(new Date());
+        delegation.setCreateTime(LocalDateTime.now());
         delegationMapper.insert(delegation);
 
         task.setAssignee(toUserId);
@@ -107,8 +108,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         delegation.setToUserName(toUserName);
         delegation.setReason(reason);
         delegation.setStatus("ACTIVE"); // 等待被委派人处理
-        delegation.setStartTime(new Date());
-        delegation.setCreateTime(new Date());
+        delegation.setStartTime(LocalDateTime.now());
+        delegation.setCreateTime(LocalDateTime.now());
         delegationMapper.insert(delegation);
 
         // 2. 将原任务挂起，记录委派信息到candidateRoles字段
@@ -126,7 +127,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         delegatedTask.setAssigneeName(toUserName);
         delegatedTask.setStatus("TODO");
         delegatedTask.setPriority(task.getPriority());
-        delegatedTask.setCreateTime(new Date());
+        delegatedTask.setCreateTime(LocalDateTime.now());
         // 关联原任务，被委派人完成后用于回溯
         delegatedTask.setCandidateRoles("DELEGATE_FROM:" + taskId + ":" + delegation.getDelegationId());
         taskMapper.insert(delegatedTask);
@@ -142,7 +143,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         h.setOperatorName(fromUserName);
         h.setAction("DELEGATE_WITH_RETURN");
         h.setComment("委派给 " + toUserName + "，原因：" + (reason != null ? reason : ""));
-        h.setCreateTime(new Date());
+        h.setCreateTime(LocalDateTime.now());
         taskHistoryMapper.insert(h);
 
         // 5. 通知被委派人
@@ -172,7 +173,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         addSign.setInitiatorId(originalTask.getAssignee());
         addSign.setReason(reason);
         addSign.setStatus("PENDING");
-        addSign.setCreateTime(new Date());
+        addSign.setCreateTime(LocalDateTime.now());
         addSignMapper.insert(addSign);
 
         if ("BEFORE".equals(signType)) {
@@ -198,7 +199,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             t.setAssignee(userIds.get(i));
             t.setAssigneeName(userNames != null && i < userNames.size() ? userNames.get(i) : "");
             t.setStatus("TODO");
-            t.setCreateTime(new Date());
+            t.setCreateTime(LocalDateTime.now());
             taskMapper.insert(t);
             sendNotification("TASK_ASSIGN", userIds.get(i), "加签任务", "您收到" + label + "任务");
         }
@@ -208,7 +209,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> setProxy(Long userId, String userName, Long proxyUserId, String proxyUserName,
-                         Date startTime, Date endTime, String reason) {
+                         LocalDateTime startTime, LocalDateTime endTime, String reason) {
         log.info("[setProxy] userId={}, proxyUserId={}", userId, proxyUserId);
         Long cnt = delegationMapper.selectCount(new LambdaQueryWrapper<WfTaskDelegation>()
                 .eq(WfTaskDelegation::getFromUserId, userId)
@@ -227,7 +228,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         proxy.setStatus("ACTIVE");
         proxy.setStartTime(startTime);
         proxy.setEndTime(endTime);
-        proxy.setCreateTime(new Date());
+        proxy.setCreateTime(LocalDateTime.now());
         delegationMapper.insert(proxy);
 
         taskMapper.update(null, new LambdaUpdateWrapper<WfTask>()
@@ -263,7 +264,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             c.setUserName(userNames != null && i < userNames.size() ? userNames.get(i) : "");
             c.setCandidateType(type);
             c.setStatus("PENDING");
-            c.setCreateTime(new Date());
+            c.setCreateTime(LocalDateTime.now());
             candidateMapper.insert(c);
         }
     }
@@ -290,7 +291,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             task.setAssigneeName(userName);
             taskMapper.updateById(task);
             candidate.setStatus("CLAIMED");
-            candidate.setClaimTime(new Date());
+            candidate.setClaimTime(LocalDateTime.now());
             candidateMapper.updateById(candidate);
 
             candidateMapper.update(null, new LambdaUpdateWrapper<WfTaskCandidate>()
@@ -328,7 +329,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         newTask.setAssignee(history.getOperatorId());
         newTask.setAssigneeName(history.getOperatorName());
         newTask.setStatus("TODO");
-        newTask.setCreateTime(new Date());
+        newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
 
         WfTaskHistory wh = new WfTaskHistory();
@@ -341,7 +342,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         wh.setOperatorName(history.getOperatorName());
         wh.setAction("WITHDRAW");
         wh.setComment("撤回审批");
-        wh.setCreateTime(new Date());
+        wh.setCreateTime(LocalDateTime.now());
         taskHistoryMapper.insert(wh);
         return R.ok();
     }
@@ -369,7 +370,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         rh.setOperatorName(operatorName);
         rh.setAction("REJECT_TO_PREVIOUS");
         rh.setComment(comment);
-        rh.setCreateTime(new Date());
+        rh.setCreateTime(LocalDateTime.now());
         taskHistoryMapper.insert(rh);
 
         taskMapper.deleteById(taskId);
@@ -381,7 +382,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         newTask.setAssignee(prev.getOperatorId());
         newTask.setAssigneeName(prev.getOperatorName());
         newTask.setStatus("TODO");
-        newTask.setCreateTime(new Date());
+        newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
 
         sendNotification("TASK_REJECT", prev.getOperatorId(), "驳回通知",
@@ -404,7 +405,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         a.setFileSize(fileSize);
         a.setUploaderId(uploaderId);
         a.setUploaderName(uploaderName);
-        a.setUploadTime(new Date());
+        a.setUploadTime(LocalDateTime.now());
         attachmentMapper.insert(a);
         return R.ok(a.getAttachmentId());
     }
@@ -443,7 +444,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
                 h.setOperatorName(operatorName);
                 h.setAction(action);
                 h.setComment(comment);
-                h.setCreateTime(new Date());
+                h.setCreateTime(LocalDateTime.now());
                 taskHistoryMapper.insert(h);
                 taskMapper.deleteById(taskId);
                 success++;
@@ -483,7 +484,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             h.setOperatorName(originalTask.getAssigneeName());
             h.setAction("REMOVE_SIGN");
             h.setComment("减签: " + (reason != null ? reason : ""));
-            h.setCreateTime(new Date());
+            h.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(h);
 
             taskMapper.deleteById(t.getTaskId());
@@ -525,7 +526,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         subInstance.setStartUserId(parentInstance.getStartUserId());
         subInstance.setStartUserName(parentInstance.getStartUserName());
         subInstance.setStatus("RUNNING");
-        subInstance.setStartTime(new Date());
+        subInstance.setStartTime(LocalDateTime.now());
         subInstance.setPriority(parentInstance.getPriority()); // 继承父流程优先级
 
         if (variables != null) {
@@ -563,7 +564,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         h.setOperatorName(operatorName);
         h.setAction(action);
         h.setComment(comment);
-        h.setCreateTime(new Date());
+        h.setCreateTime(LocalDateTime.now());
 
         // 记录选择的路径到变量变更
         try {
@@ -702,7 +703,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         if (def == null) { throw WorkflowException.processNotFound(defId); }
         Map<String, Object> exportData = new HashMap<>();
         exportData.put("processDefinition", def);
-        exportData.put("exportTime", new Date());
+        exportData.put("exportTime", LocalDateTime.now());
         exportData.put("version", "1.0");
         return R.ok(exportData);
     }
@@ -747,7 +748,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         record.setDeployerName(deployerName);
         record.setDeployNote(deployNote);
         record.setChangeLog(changeLog);
-        record.setDeployTimeFromDate(new Date());
+        record.setDeployTime(LocalDateTime.now());
         deployRecordMapper.insert(record);
     }
 
@@ -804,8 +805,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         effect.setBeforeDuration(beforeDuration);
         effect.setAfterDuration(afterDuration);
         effect.setEffectiveness(calculateEffectiveness(beforeDuration, afterDuration));
-        effect.setUrgeTime(new Date());
-        effect.setCompleteTime(new Date());
+        effect.setUrgeTime(LocalDateTime.now());
+        effect.setCompleteTime(LocalDateTime.now());
         urgeEffectMapper.insert(effect);
     }
 
@@ -839,7 +840,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             log.setTitle(title);
             log.setContent(content);
             log.setStatus("PENDING");
-            log.setCreateTime(new Date());
+            log.setCreateTime(LocalDateTime.now());
             notificationLogMapper.insert(log);
             
             // 根据渠道发送通知（站内信、邮件、短信、WebSocket）

@@ -54,12 +54,24 @@ const ProcessCategoryPage: React.FC = () => {
         processCategoryApi.tree(),
         processCategoryApi.list(),
       ]);
-      setTreeData(treeRes?.data || []);
-      setFlatList(listRes?.data || []);
+      
+      // 处理树形数据,确保 children 是数组
+      const processTreeData = (items: ProcessCategory[]): ProcessCategory[] => {
+        return items.map(item => ({
+          ...item,
+          children: item.children || []
+        }));
+      };
+      
+      const treeData = processTreeData(treeRes || []);
+      setTreeData(treeData);
+      setFlatList(listRes || []);
+      
       // 默认展开所有顶级节点
-      const topIds = new Set<number>((treeRes?.data || []).map((c: ProcessCategory) => c.categoryId!));
+      const topIds = new Set<number>(treeData.map((c: ProcessCategory) => c.categoryId!));
       setExpandedKeys(topIds);
-    } catch {
+    } catch (error) {
+      console.error('加载分类数据失败:', error);
       toast.error('加载分类数据失败');
     }
   };
@@ -84,8 +96,7 @@ const ProcessCategoryPage: React.FC = () => {
   /** 打开编辑弹窗 */
   const handleEdit = async (id: number) => {
     try {
-      const res = await processCategoryApi.getInfo(id);
-      const data = res?.data;
+      const data = await processCategoryApi.getInfo(id);
       if (data) {
         setIsEdit(true);
         setForm(data);

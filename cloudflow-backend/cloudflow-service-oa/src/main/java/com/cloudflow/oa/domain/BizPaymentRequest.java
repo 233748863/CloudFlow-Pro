@@ -1,13 +1,14 @@
 package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 付款申请实体类
@@ -55,7 +56,9 @@ public class BizPaymentRequest implements Serializable {
     private String reason;
 
     /** 期望付款日期 */
-    private Date expectedDate;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime expectedDate;
 
     /** 附件URL */
     private String attachmentUrl;
@@ -76,11 +79,15 @@ public class BizPaymentRequest implements Serializable {
     private String createBy;
 
     /** 创建时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
 
     /** 更新者 */
     private String updateBy;
 
     /** 更新时间 */
-    private Date updateTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime updateTime;
 }

@@ -1,10 +1,11 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Data
 @TableName("wf_task_read")
@@ -19,5 +20,8 @@ public class WfTaskRead {
     
     private Long userId;
     
-    private Date readTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    
+    private LocalDateTime readTime;
 }

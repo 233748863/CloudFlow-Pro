@@ -1,9 +1,10 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * P4.6: 候选人记录
@@ -23,6 +24,10 @@ public class WfTaskCandidate {
     private String candidateType;
     /** 状态: PENDING, CLAIMED, CANCELLED */
     private String status;
-    private Date createTime;
-    private Date claimTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime claimTime;
 }

@@ -1,12 +1,13 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 流程抄送记录实体
@@ -55,10 +56,14 @@ public class WfProcessCopy {
     private Integer isRead;
 
     /** 已读时间 */
-    private Date readTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime readTime;
 
     /** 抄送时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
 
     // ========== 非数据库字段，用于列表展示 ==========
 

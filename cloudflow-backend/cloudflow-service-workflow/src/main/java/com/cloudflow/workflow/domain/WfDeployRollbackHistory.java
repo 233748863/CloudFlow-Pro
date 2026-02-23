@@ -3,6 +3,7 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 发布回滚历史实体
@@ -45,5 +46,6 @@ public class WfDeployRollbackHistory {
     private Long rollbackBy;
 
     /** 回滚时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime rollbackTime;
 }

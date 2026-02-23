@@ -1,6 +1,8 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -116,7 +118,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         instance.setStartUserId(currentUserId);
         instance.setStartUserName(currentUserName);
         instance.setStatus(WfProcessStatus.RUNNING.getCode());
-        instance.setStartTime(new Date());
+        instance.setStartTime(LocalDateTime.now());
 
         // 生成流程编号
         String processNo = generateProcessNo(processDefKey);
@@ -223,7 +225,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         // 更新实例状态
         instance.setStatus(WfProcessStatus.REVOKED.getCode());
-        instance.setEndTime(new Date());
+        instance.setEndTime(LocalDateTime.now());
         processInstanceMapper.updateById(instance);
 
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId, "");
@@ -650,7 +652,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             h.setOperatorName(UserContext.getUserName());
             h.setAction("INVALIDATE");
             h.setComment("流程作废: " + securityUtils.sanitizeXss(reason));
-            h.setCreateTime(new Date());
+            h.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(h);
 
             taskMapper.deleteById(task.getTaskId());
@@ -658,7 +660,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         // 2. 更新实例状态为INVALIDATED
         instance.setStatus(WfProcessStatus.INVALIDATED.getCode());
-        instance.setEndTime(new Date());
+        instance.setEndTime(LocalDateTime.now());
         processInstanceMapper.updateById(instance);
 
         // 3. 记录审计日志
@@ -686,7 +688,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     private String generateProcessNo(String processDefKey) {
         String prefix = processDefKey.toUpperCase().replaceAll("[^A-Z0-9]", "");
         if (prefix.length() > 6) prefix = prefix.substring(0, 6);
-        String datePart = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
+        String datePart = DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now());
         String randomPart = String.format("%04d", new Random().nextInt(10000));
         return prefix + datePart + randomPart;
     }
@@ -761,7 +763,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                         
                         // 更新会签任务状态为已终止
                         csTask.setStatus("TERMINATED");
-                        csTask.setCompleteTime(new Date());
+                        csTask.setCompleteTime(LocalDateTime.now());
                         countersignTaskMapper.updateById(csTask);
                     }
                     
@@ -784,7 +786,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
                 // 7. 更新流程实例状态
                 instance.setStatus("TERMINATED");
-                instance.setEndTime(new Date());
+                instance.setEndTime(LocalDateTime.now());
                 processInstanceMapper.updateById(instance);
 
                 // P1修复: 更新流程监控状态

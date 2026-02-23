@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 系统参数配置控制器
@@ -66,7 +67,7 @@ public class SysConfigController {
         if (!configService.checkConfigKeyUnique(config)) {
             return R.fail("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
-        config.setCreateTime(new Date());
+        config.setCreateTime(LocalDateTime.now());
         configService.save(config);
         return R.ok();
     }
@@ -79,7 +80,7 @@ public class SysConfigController {
         if (!configService.checkConfigKeyUnique(config)) {
             return R.fail("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
-        config.setUpdateTime(new Date());
+        config.setUpdateTime(LocalDateTime.now());
         configService.updateById(config);
         return R.ok();
     }

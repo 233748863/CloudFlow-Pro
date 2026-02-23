@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.workflow.service.ICountersignService;
 
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.exception.WorkflowException;
@@ -105,7 +106,7 @@ public class CountersignServiceImpl implements ICountersignService {
         csTask.setApproveCount(0);
         csTask.setRejectCount(0);
         csTask.setStatus("VOTING");
-        csTask.setCreateTime(new Date());
+        csTask.setCreateTime(LocalDateTime.now());
 
         // 顺序签署模式：存储有序审批人列表和当前索引
         if ("SEQUENTIAL".equals(signType)) {
@@ -130,7 +131,7 @@ public class CountersignServiceImpl implements ICountersignService {
             task.setNodeName(nodeName + " (顺序签署 1/" + assigneeIds.size() + ")");
             task.setAssignee(firstAssignee);
             task.setStatus("TODO");
-            task.setCreateTime(new Date());
+            task.setCreateTime(LocalDateTime.now());
             task.setCandidateRoles("CS:" + csTask.getCountersignId());
             taskMapper.insert(task);
 
@@ -146,7 +147,7 @@ public class CountersignServiceImpl implements ICountersignService {
                 task.setNodeName(nodeName + " (会签)");
                 task.setAssignee(assigneeId);
                 task.setStatus("TODO");
-                task.setCreateTime(new Date());
+                task.setCreateTime(LocalDateTime.now());
                 task.setCandidateRoles("CS:" + csTask.getCountersignId());
                 taskMapper.insert(task);
             }
@@ -239,7 +240,7 @@ public class CountersignServiceImpl implements ICountersignService {
             vote.setVoterName(voterName);
             vote.setVoteResult(voteResult);
             vote.setComment(comment);
-            vote.setVoteTime(new Date());
+            vote.setVoteTime(LocalDateTime.now());
             countersignVoteMapper.insert(vote);
 
             // 8. 更新会签计数（CAS 语义：基于当前值更新）
@@ -255,7 +256,7 @@ public class CountersignServiceImpl implements ICountersignService {
             csTask.setStatus(result);
 
             if (!"VOTING".equals(result)) {
-                csTask.setCompleteTime(new Date());
+                csTask.setCompleteTime(LocalDateTime.now());
                 log.info("[vote] 会签结束, countersignId={}, result={}, approve={}/{}, reject={}/{}",
                         countersignId, result, csTask.getApproveCount(), csTask.getTotalCount(),
                         csTask.getRejectCount(), csTask.getTotalCount());
@@ -412,7 +413,7 @@ public class CountersignServiceImpl implements ICountersignService {
                     + " (顺序签署 " + (nextIndex + 1) + "/" + csTask.getTotalCount() + ")");
             task.setAssignee(nextAssignee);
             task.setStatus("TODO");
-            task.setCreateTime(new Date());
+            task.setCreateTime(LocalDateTime.now());
             task.setCandidateRoles("CS:" + csTask.getCountersignId());
             taskMapper.insert(task);
 
@@ -624,7 +625,7 @@ public class CountersignServiceImpl implements ICountersignService {
         // 如果会签已经可以结束（PASSED 或 REJECTED）
         if (!"VOTING".equals(result)) {
             csTask.setStatus(result);
-            csTask.setCompleteTime(new Date());
+            csTask.setCompleteTime(LocalDateTime.now());
             countersignTaskMapper.updateById(csTask);
 
             // 清理剩余未投票的任务

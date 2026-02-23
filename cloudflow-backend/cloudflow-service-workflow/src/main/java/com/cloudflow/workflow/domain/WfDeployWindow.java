@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 流程发布窗口配置实体
@@ -78,6 +79,7 @@ public class WfDeployWindow {
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdTime;
     
     /**
@@ -90,5 +92,6 @@ public class WfDeployWindow {
      * 更新时间
      */
     @TableField(fill = FieldFill.UPDATE)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedTime;
 }

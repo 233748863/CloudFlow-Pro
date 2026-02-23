@@ -1,11 +1,12 @@
 package com.cloudflow.oa.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 固定资产
@@ -30,7 +31,10 @@ public class SysAsset {
     
     private BigDecimal price;
     
-    private Date purchaseDate;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    
+    private LocalDateTime purchaseDate;
     
     private Long ownerId;
     
@@ -42,5 +46,8 @@ public class SysAsset {
     
     private String createBy;
     
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    
+    private LocalDateTime createTime;
 }

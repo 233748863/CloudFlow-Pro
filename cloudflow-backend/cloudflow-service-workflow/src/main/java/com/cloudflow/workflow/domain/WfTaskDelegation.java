@@ -1,9 +1,10 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * P4.1/P4.5: 任务委托/转办/代理记录
@@ -45,11 +46,17 @@ public class WfTaskDelegation {
     private String status;
     
     /** 代理开始时间（仅代理模式） */
-    private Date startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime startTime;
     
     /** 代理结束时间（仅代理模式） */
-    private Date endTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime endTime;
     
     /** 创建时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
 }

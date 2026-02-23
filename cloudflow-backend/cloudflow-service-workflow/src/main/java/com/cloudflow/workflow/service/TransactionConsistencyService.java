@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Calendar;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -88,9 +88,9 @@ public class TransactionConsistencyService {
         msg.setStatus("PENDING");
         msg.setRetryCount(0);
         msg.setMaxRetryCount(DEFAULT_MAX_RETRY);
-        msg.setNextRetryTime(new Date());
-        msg.setCreateTime(new Date());
-        msg.setUpdateTime(new Date());
+        msg.setNextRetryTime(LocalDateTime.now());
+        msg.setCreateTime(LocalDateTime.now());
+        msg.setUpdateTime(LocalDateTime.now());
 
         messageMapper.insert(msg);
         log.debug("[recordMessage] 消息已记录, messageId={}, type={}, businessId={}", 
@@ -119,7 +119,7 @@ public class TransactionConsistencyService {
         WfTransactionMessage msg = messageMapper.selectById(messageId);
         if (msg != null) {
             msg.setStatus("SUCCESS");
-            msg.setUpdateTime(new Date());
+            msg.setUpdateTime(LocalDateTime.now());
             messageMapper.updateById(msg);
             log.debug("[markSuccess] 消息标记成功, messageId={}", messageId);
         }
@@ -133,7 +133,7 @@ public class TransactionConsistencyService {
         if (msg != null) {
             msg.setStatus("FAILED");
             msg.setErrorMessage(errorMessage);
-            msg.setUpdateTime(new Date());
+            msg.setUpdateTime(LocalDateTime.now());
             messageMapper.updateById(msg);
             log.warn("[markFailed] 消息标记失败, messageId={}, error={}", messageId, errorMessage);
         }
@@ -217,7 +217,7 @@ public class TransactionConsistencyService {
                     List<WfTransactionMessage> pendingMessages = messageMapper.selectList(
                         new LambdaQueryWrapper<WfTransactionMessage>()
                             .eq(WfTransactionMessage::getStatus, "PENDING")
-                            .le(WfTransactionMessage::getNextRetryTime, new Date())
+                            .le(WfTransactionMessage::getNextRetryTime, LocalDateTime.now())
                             .lt(WfTransactionMessage::getRetryCount, DEFAULT_MAX_RETRY)
                             .orderByAsc(WfTransactionMessage::getCreateTime)
                             .last("LIMIT 100")
@@ -267,7 +267,7 @@ public class TransactionConsistencyService {
             // 更新状态为处理中
             msg.setStatus("PROCESSING");
             msg.setRetryCount(msg.getRetryCount() + 1);
-            msg.setUpdateTime(new Date());
+            msg.setUpdateTime(LocalDateTime.now());
             messageMapper.updateById(msg);
 
             // 执行重试逻辑
@@ -275,14 +275,13 @@ public class TransactionConsistencyService {
 
             if (success) {
                 msg.setStatus("SUCCESS");
-                msg.setUpdateTime(new Date());
+                msg.setUpdateTime(LocalDateTime.now());
                 messageMapper.updateById(msg);
                 log.info("[retryMessage] 重试成功, messageId={}", msg.getMessageId());
             } else {
                 // 计算下次重试时间（指数退避）
                 int delaySeconds = RETRY_BASE_INTERVAL * (int) Math.pow(2, msg.getRetryCount());
-                Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.SECOND, delaySeconds);
+                LocalDateTime nextRetryTime = LocalDateTime.now().plusSeconds(delaySeconds);
 
                 if (msg.getRetryCount() >= msg.getMaxRetryCount()) {
                     msg.setStatus("FAILED");
@@ -291,16 +290,16 @@ public class TransactionConsistencyService {
                         msg.getMessageId(), msg.getBusinessType());
                 } else {
                     msg.setStatus("PENDING");
-                    msg.setNextRetryTime(cal.getTime());
+                    msg.setNextRetryTime(nextRetryTime);
                 }
-                msg.setUpdateTime(new Date());
+                msg.setUpdateTime(LocalDateTime.now());
                 messageMapper.updateById(msg);
             }
         } catch (Exception e) {
             log.error("[retryMessage] 重试异常, messageId={}, error={}", msg.getMessageId(), e.getMessage());
             msg.setStatus("PENDING");
             msg.setErrorMessage(e.getMessage());
-            msg.setUpdateTime(new Date());
+            msg.setUpdateTime(LocalDateTime.now());
             messageMapper.updateById(msg);
         } finally {
             try {
@@ -459,13 +458,12 @@ public class TransactionConsistencyService {
             // 尝试获取锁，最多等待1秒，锁定60秒后自动释放
             if (lock.tryLock(1, 60, TimeUnit.SECONDS)) {
                 try {
-                    Calendar cal = Calendar.getInstance();
-                    cal.add(Calendar.DAY_OF_MONTH, -7);
+                    LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
                     
                     int deleted = messageMapper.delete(
                         new LambdaQueryWrapper<WfTransactionMessage>()
                             .eq(WfTransactionMessage::getStatus, "SUCCESS")
-                            .lt(WfTransactionMessage::getUpdateTime, cal.getTime())
+                            .lt(WfTransactionMessage::getUpdateTime, sevenDaysAgo)
                     );
                     
                     if (deleted > 0) {
@@ -496,9 +494,9 @@ public class TransactionConsistencyService {
         
         msg.setRetryCount(0);
         msg.setStatus("PENDING");
-        msg.setNextRetryTime(new Date());
+        msg.setNextRetryTime(LocalDateTime.now());
         msg.setMaxRetryCount(DEFAULT_MAX_RETRY);
-        msg.setUpdateTime(new Date());
+        msg.setUpdateTime(LocalDateTime.now());
         messageMapper.updateById(msg);
         
         log.info("[manualRetry] 手动重试消息, messageId={}", messageId);

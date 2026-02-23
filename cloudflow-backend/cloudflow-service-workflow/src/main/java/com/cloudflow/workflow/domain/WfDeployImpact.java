@@ -3,6 +3,7 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 发布影响分析实体
@@ -36,5 +37,6 @@ public class WfDeployImpact {
     private String suggestion;
 
     @TableField(fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdTime;
 }

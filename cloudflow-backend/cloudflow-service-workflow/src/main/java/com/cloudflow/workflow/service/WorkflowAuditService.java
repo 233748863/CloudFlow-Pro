@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.core.context.UserContext;
+import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +10,8 @@ import org.springframework.stereotype.Service;
 
 import com.cloudflow.common.core.utils.RedisCache;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -92,7 +94,7 @@ public class WorkflowAuditService {
             String userName = UserContext.getUserName();
             
             Map<String, Object> auditEntry = new HashMap<>();
-            auditEntry.put("timestamp", new Date());
+            auditEntry.put("timestamp", LocalDateTime.now());
             auditEntry.put("action", action.name());
             auditEntry.put("actionDesc", action.getDescription());
             auditEntry.put("userId", userId);
@@ -170,7 +172,7 @@ public class WorkflowAuditService {
             
             // 每日计数
             String dailyKey = "sys:wf:metrics:daily:" + action.name() + ":" + 
-                new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
+                DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now());
             redisCache.increment(dailyKey);
             redisCache.expire(dailyKey, 30, java.util.concurrent.TimeUnit.DAYS);
         } catch (Exception e) {

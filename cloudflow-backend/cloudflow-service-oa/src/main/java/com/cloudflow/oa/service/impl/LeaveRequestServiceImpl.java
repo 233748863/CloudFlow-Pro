@@ -127,9 +127,9 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
             variables.put("userId", leave.getUserId());
             variables.put("userName", leave.getUserName());
             variables.put("startTime", leave.getStartTime() != null
-                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(leave.getStartTime()) : null);
+                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(leave.getStartTime()) : null);
             variables.put("endTime", leave.getEndTime() != null
-                    ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(leave.getEndTime()) : null);
+                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(leave.getEndTime()) : null);
             variables.put("reason", leave.getReason());
             variables.put("deptName", leave.getDeptName());
             req.put("variables", variables);

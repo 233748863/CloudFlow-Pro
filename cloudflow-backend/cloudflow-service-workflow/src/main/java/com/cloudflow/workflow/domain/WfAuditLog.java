@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 工作流审计日志实体
@@ -67,6 +68,7 @@ public class WfAuditLog implements Serializable {
     /**
      * 操作时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime actionTime;
 
     /**
@@ -103,5 +105,6 @@ public class WfAuditLog implements Serializable {
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
 }

@@ -8,7 +8,8 @@ import com.cloudflow.oa.service.IWorkTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 import java.util.Map;
 
@@ -48,7 +49,7 @@ public class WorkTaskController {
         workTask.setOwnerId(UserContext.getUserId());
         workTask.setDeptId(UserContext.getDeptId()); // 设置部门ID用于数据权限
         workTask.setCreateBy(String.valueOf(UserContext.getUserId()));
-        workTask.setCreateTime(new Date());
+        workTask.setCreateTime(LocalDateTime.now());
         // 默认负责人为自己
         if (workTask.getAssigneeId() == null) {
             workTask.setAssigneeId(UserContext.getUserId());
@@ -66,7 +67,7 @@ public class WorkTaskController {
     @PutMapping
     public R<Boolean> edit(@RequestBody WorkTask workTask) {
         workTask.setUpdateBy(String.valueOf(UserContext.getUserId()));
-        workTask.setUpdateTime(new Date());
+        workTask.setUpdateTime(LocalDateTime.now());
         return R.ok(workTaskService.updateById(workTask));
     }
 

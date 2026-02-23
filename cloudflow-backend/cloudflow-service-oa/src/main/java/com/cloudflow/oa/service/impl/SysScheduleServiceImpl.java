@@ -10,10 +10,12 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 
 @Service
@@ -33,22 +35,22 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
             event.setType("MEETING");
         }
         
-        event.setCreateTime(new Date());
+        event.setCreateTime(LocalDateTime.now());
         return save(event);
     }
 
     @Override
     public List<SysScheduleEvent> getMyEvents(Long userId, String startDateStr, String endDateStr) {
-        Date start = StringUtils.hasText(startDateStr) ? parseDate(startDateStr) : new Date();
-        Date end;
+        LocalDateTime start = StringUtils.hasText(startDateStr) ? parseDate(startDateStr) : LocalDateTime.now();
+        LocalDateTime end;
         if (StringUtils.hasText(endDateStr)) {
             end = parseDate(endDateStr);
-            // 如果传入的是纯日期格式（没有时间部分），将结束时间设为当天结束（即下一天00:00:00）
+            // 如果传入的是纯日期格式（没有时间部分），将结束时间设为当天结束
             if (!endDateStr.contains("T") && !endDateStr.contains(" ")) {
-                end = new Date(end.getTime() + 86400000L);
+                end = end.plusDays(1);
             }
         } else {
-            end = new Date(System.currentTimeMillis() + 86400000L * 30);
+            end = LocalDateTime.now().plusDays(30);
         }
         return baseMapper.getMyEvents(userId, start, end);
     }
@@ -59,21 +61,20 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
      * - 标准格式: 2026-01-31 16:00:00
      * - 仅日期: 2026-01-31
      */
-    private Date parseDate(String dateStr) {
+    private LocalDateTime parseDate(String dateStr) {
         try {
             // 1. 尝试 ISO 8601 格式 (前端默认发送的格式)
             if (dateStr.contains("T")) {
                 Instant instant = Instant.parse(dateStr);
-                return Date.from(instant);
+                return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
             }
             // 2. 尝试 yyyy-MM-dd HH:mm:ss 格式
             if (dateStr.contains(" ")) {
-                LocalDateTime ldt = LocalDateTime.parse(dateStr, DTF);
-                return Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
+                return LocalDateTime.parse(dateStr, DTF);
             }
             // 3. 尝试 yyyy-MM-dd 格式
             LocalDate ld = LocalDate.parse(dateStr, DATE_ONLY);
-            return Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant());
+            return ld.atStartOfDay();
         } catch (DateTimeParseException e) {
             throw new ServiceException("日期格式错误，支持的格式: ISO 8601, yyyy-MM-dd HH:mm:ss, yyyy-MM-dd");
         }
@@ -81,29 +82,29 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
 
     @Override
     public List<SysScheduleEvent> getRoomEvents(Long roomId, String date) {
-        Date dayStart = parseDate(date);
+        LocalDateTime dayStart = parseDate(date);
         // 当天结束时间 = 当天开始 + 24小时
-        Date dayEnd = new Date(dayStart.getTime() + 86400000L);
+        LocalDateTime dayEnd = dayStart.plusDays(1);
         return baseMapper.getRoomEvents(roomId, dayStart, dayEnd);
     }
 
     @Override
-    public boolean checkConflict(Long roomId, Date start, Date end) {
+    public boolean checkConflict(Long roomId, LocalDateTime start, LocalDateTime end) {
         List<SysScheduleEvent> conflicts = baseMapper.checkConflict(roomId, start, end);
         return !conflicts.isEmpty();
     }
 
     @Override
     public List<SysScheduleEvent> getRoomWeekEvents(Long roomId, String weekStart) {
-        Date start = parseDate(weekStart);
+        LocalDateTime start = parseDate(weekStart);
         // 一周 = 7天
-        Date end = new Date(start.getTime() + 86400000L * 7);
+        LocalDateTime end = start.plusWeeks(1);
         return baseMapper.getRoomEvents(roomId, start, end);
     }
 
     @Override
     public List<SysScheduleEvent> getMyBookings(Long userId, String status) {
-        Date now = new Date();
+        LocalDateTime now = LocalDateTime.now();
         if ("upcoming".equals(status)) {
             // 待开始：开始时间在未来
             return baseMapper.getMyUpcomingBookings(userId, now);
@@ -126,7 +127,7 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
             throw new ServiceException("无权取消此预订，只有创建者可以取消");
         }
         // 检查是否已经开始
-        if (event.getStartTime().before(new Date())) {
+        if (event.getStartTime().isBefore(LocalDateTime.now())) {
             throw new ServiceException("会议已开始，无法取消");
         }
         return removeById(eventId);
@@ -134,9 +135,9 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
 
     @Override
     public List<java.util.Map<String, Object>> getRoomUsageStats(String startDate, String endDate) {
-        Date start = StringUtils.hasText(startDate) ? parseDate(startDate) : 
-            Date.from(LocalDate.now().withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
-        Date end = StringUtils.hasText(endDate) ? parseDate(endDate) : new Date();
+        LocalDateTime start = StringUtils.hasText(startDate) ? parseDate(startDate) : 
+            LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime end = StringUtils.hasText(endDate) ? parseDate(endDate) : LocalDateTime.now();
         return baseMapper.getRoomUsageStats(start, end);
     }
 }

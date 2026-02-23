@@ -115,9 +115,9 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             variables.put("userId", trip.getUserId());
             variables.put("userName", trip.getUserName());
             variables.put("startDate", trip.getStartDate() != null
-                    ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(trip.getStartDate()) : null);
+                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd").format(trip.getStartDate()) : null);
             variables.put("endDate", trip.getEndDate() != null
-                    ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(trip.getEndDate()) : null);
+                    ? DateTimeFormatter.ofPattern("yyyy-MM-dd").format(trip.getEndDate()) : null);
             variables.put("transportType", trip.getTransportType());
             variables.put("reason", trip.getReason());
             variables.put("deptName", trip.getDeptName());

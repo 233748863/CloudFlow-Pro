@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.RedisCache;
@@ -214,7 +215,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         Long assigneeId = resolveAssignee(node, instance);
         task.setAssignee(assigneeId != null ? assigneeId : 1L);
         task.setStatus(WfTaskStatus.TODO.getCode());
-        task.setCreateTime(new Date());
+        task.setCreateTime(LocalDateTime.now());
         taskMapper.insert(task);
 
         // P2-9: 全局监听器 — 审批任务分配后回调
@@ -318,7 +319,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Override
     public void completeInstance(WfProcessInstance instance, String status) {
         instance.setStatus(status);
-        instance.setEndTime(new Date());
+        instance.setEndTime(LocalDateTime.now());
         processInstanceMapper.updateById(instance);
 
         // 记录流程结束监控
@@ -821,7 +822,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 new LambdaQueryWrapper<WfTask>().eq(WfTask::getInstanceId, instance.getInstanceId())
             );
             snapshot.setActiveTasks(objectMapper.writeValueAsString(activeTasks));
-            snapshot.setCreateTime(new Date());
+            snapshot.setCreateTime(LocalDateTime.now());
 
             snapshotMapper.insert(snapshot);
             log.debug("[saveProcessSnapshot] 快照保存成功, instanceId={}, nodeKey={}", instance.getInstanceId(), nodeKey);

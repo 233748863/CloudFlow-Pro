@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -45,7 +46,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
             SysAnnouncementRead read = new SysAnnouncementRead();
             read.setAnnouncementId(announcementId);
             read.setUserId(userId);
-            read.setReadTime(new Date());
+            read.setReadTime(LocalDateTime.now());
             readMapper.insert(read);
             return true;
         } catch (Exception e) {
@@ -57,8 +58,8 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     @Override
     public boolean publish(SysAnnouncement announcement) {
         announcement.setStatus("1"); // Published
-        announcement.setPublishTime(new Date());
-        announcement.setCreateTime(new Date());
+        announcement.setPublishTime(LocalDateTime.now());
+        announcement.setCreateTime(LocalDateTime.now());
         return save(announcement);
     }
     
@@ -94,7 +95,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     @Override
     @Transactional
     public boolean updateAnnouncement(SysAnnouncement announcement) {
-        announcement.setUpdateTime(new Date());
+        announcement.setUpdateTime(LocalDateTime.now());
         return updateById(announcement);
     }
     
@@ -104,7 +105,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
         SysAnnouncement announcement = getById(announcementId);
         if (announcement != null && "1".equals(announcement.getStatus())) {
             announcement.setStatus("2"); // 已撤销
-            announcement.setUpdateTime(new Date());
+            announcement.setUpdateTime(LocalDateTime.now());
             return updateById(announcement);
         }
         return false;
@@ -116,7 +117,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
         SysAnnouncement announcement = getById(announcementId);
         if (announcement != null) {
             announcement.setIsTop(announcement.getIsTop() == 1 ? 0 : 1);
-            announcement.setUpdateTime(new Date());
+            announcement.setUpdateTime(LocalDateTime.now());
             return updateById(announcement);
         }
         return false;

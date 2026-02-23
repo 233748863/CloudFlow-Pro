@@ -1,11 +1,12 @@
 package com.cloudflow.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 本地消息表 - 用于保证分布式事务最终一致性
@@ -42,13 +43,19 @@ public class WfTransactionMessage {
     private Integer maxRetryCount;
     
     /** 下次重试时间 */
-    private Date nextRetryTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime nextRetryTime;
     
     /** 创建时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
     
     /** 更新时间 */
-    private Date updateTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime updateTime;
     
     /** 错误信息 */
     private String errorMessage;

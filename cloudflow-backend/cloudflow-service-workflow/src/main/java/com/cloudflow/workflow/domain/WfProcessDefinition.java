@@ -3,7 +3,8 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 流程定义实体类
@@ -38,7 +39,9 @@ public class WfProcessDefinition implements Serializable {
     private String status;
 
     /** 创建时间 */
-    private Date createTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+
+    private LocalDateTime createTime;
     
     /** 启动权限类型 (ALL/ROLE/DEPT/USER) */
     private String startPermissionType;
@@ -74,6 +77,7 @@ public class WfProcessDefinition implements Serializable {
     
     /** 更新时间 */
     @TableField(fill = FieldFill.UPDATE)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
     
     /** 删除标记 */
@@ -145,11 +149,11 @@ public class WfProcessDefinition implements Serializable {
         this.status = status;
     }
 
-    public Date getCreateTime() {
+    public LocalDateTime getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(Date createTime) {
+    public void setCreateTime(LocalDateTime createTime) {
         this.createTime = createTime;
     }
 

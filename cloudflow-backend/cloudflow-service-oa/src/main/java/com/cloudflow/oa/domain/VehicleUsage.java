@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 用车申请与记录实体
@@ -27,10 +27,10 @@ public class VehicleUsage {
     private Long driverId;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date startTime;
+    private LocalDateTime startTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date endTime;
+    private LocalDateTime endTime;
 
     private String destination;
 
@@ -54,10 +54,10 @@ public class VehicleUsage {
     private BigDecimal endMileage;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date actualStartTime;
+    private LocalDateTime actualStartTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date actualEndTime;
+    private LocalDateTime actualEndTime;
 
     /** 状态（0待审批 1已批准 2已驳回 3进行中 4已完成 5已取消） */
     private String status;
@@ -70,12 +70,12 @@ public class VehicleUsage {
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date createTime;
+    private LocalDateTime createTime;
 
     private String updateBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private Date updateTime;
+    private LocalDateTime updateTime;
     
     /** 租户ID */
     private Long tenantId;

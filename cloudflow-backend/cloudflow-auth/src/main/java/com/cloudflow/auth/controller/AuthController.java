@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
 import cn.hutool.crypto.digest.BCrypt;
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.LoginBody;
 import com.cloudflow.auth.domain.RegisterBody;
@@ -77,7 +78,7 @@ public class AuthController {
         // 记录登录IP和时间
         String loginIp = getClientIp(request);
         user.setLoginIp(loginIp);
-        user.setLoginDate(new Date());
+        user.setLoginDate(LocalDateTime.now());
         sysUserMapper.updateById(user);
 
         // 通过 Spring Cache 获取用户完整信息（含角色+权限，自动缓存）
