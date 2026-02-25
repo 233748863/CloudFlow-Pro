@@ -5,6 +5,7 @@ import { login as apiLogin } from '@/services/api/auth';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { SliderCaptcha } from '@/components/SliderCaptcha';
+import { Button } from '@/components/ui/button';
 import { logger } from '@/utils/logger';
 
 export const Login = () => {
@@ -102,13 +103,13 @@ export const Login = () => {
         
         {error && <div className="text-red-400 text-sm text-center bg-red-500/10 p-2 rounded-lg">{error}</div>}
 
-        <button 
+        <Button
             type="submit"
             disabled={loading}
             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
             {loading ? <Loader2 className="animate-spin" size={20}/> : '登录系统'}
-        </button>
+        </Button>
       </form>
       
       <div className="mt-8 text-center text-slate-500 text-xs border-t border-white/10 pt-4">

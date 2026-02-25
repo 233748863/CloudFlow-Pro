@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Pencil, Trash2, Search, RotateCcw, Tag, X } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, Search, Tag } from 'lucide-react';
 import { dictTypeApi, dictDataApi, SysDictType, SysDictData } from '../../services/api/dict';
 import { toast } from 'sonner';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
+import { Card } from '../../components/ui/card';
 
 /** 字典管理页面 */
 export const DictPage: React.FC = () => {
@@ -143,36 +147,42 @@ export const DictPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-6">
       {/* 页面标题 */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <BookOpen className="text-indigo-600" /> 字典管理
-        </h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <BookOpen className="w-6 h-6 text-indigo-600" />
+          <h1 className="text-xl font-semibold text-gray-800">字典管理</h1>
+        </div>
       </div>
 
       <div className="flex gap-6">
         {/* 左侧：字典类型列表 */}
-        <div className="w-80 bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 self-start">
+        <Card className="w-80 shrink-0 self-start overflow-hidden">
+          {/* 头部：标题 + 新增按钮 */}
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">字典类型</h3>
-            <button onClick={handleAddType} className="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700" title="新增字典类型">
+            <Button size="icon" className="w-7 h-7" onClick={handleAddType} title="新增字典类型">
               <Plus size={14} />
-            </button>
+            </Button>
           </div>
-          {/* 搜索 */}
+
+          {/* 搜索框 */}
           <div className="p-3 border-b border-slate-100">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text" placeholder="搜索字典类型..." value={typeKeyword}
+              <Input
+                type="text"
+                placeholder="搜索字典类型..."
+                value={typeKeyword}
                 onChange={e => setTypeKeyword(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-1.5 text-sm"
+                className="pl-9 py-1.5 text-sm"
               />
             </div>
           </div>
+
           {/* 类型列表 */}
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
             {typeLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
@@ -194,23 +204,36 @@ export const DictPage: React.FC = () => {
                       <div className="text-xs text-slate-500 mt-0.5 font-mono">{item.dictType}</div>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
-                      <button onClick={e => { e.stopPropagation(); handleEditType(item); }} className="p-1 text-slate-400 hover:text-indigo-600" title="编辑">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-7 h-7 text-slate-400 hover:text-indigo-600"
+                        onClick={e => { e.stopPropagation(); handleEditType(item); }}
+                        title="编辑"
+                      >
                         <Pencil size={13} />
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); handleDeleteType(item); }} className="p-1 text-slate-400 hover:text-red-600" title="删除">
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-7 h-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                        onClick={e => { e.stopPropagation(); handleDeleteType(item); }}
+                        title="删除"
+                      >
                         <Trash2 size={13} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
               ))
             )}
           </div>
-        </div>
+        </Card>
 
         {/* 右侧：字典数据列表 */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden self-start">
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <Card className="flex-1 overflow-hidden self-start">
+          {/* 头部 */}
+          <div className="p-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-slate-700">
                 {selectedType ? `${selectedType.dictName} 的字典数据` : '请选择左侧字典类型'}
@@ -218,12 +241,13 @@ export const DictPage: React.FC = () => {
               {selectedType && <span className="text-xs text-slate-500 font-mono">{selectedType.dictType}</span>}
             </div>
             {selectedType && (
-              <button onClick={handleAddData} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-indigo-700 text-sm">
+              <Button size="sm" onClick={handleAddData} className="flex items-center gap-1.5">
                 <Plus size={14} /> 新增数据
-              </button>
+              </Button>
             )}
           </div>
 
+          {/* 数据内容区 */}
           {!selectedType ? (
             <div className="text-center py-20 text-slate-400">
               <Tag size={48} className="mx-auto mb-3 opacity-20" />
@@ -241,7 +265,7 @@ export const DictPage: React.FC = () => {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-50 text-left">
+                <tr className="bg-slate-50/80 text-left">
                   <th className="px-4 py-3 text-xs font-semibold text-slate-600">排序</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-600">标签</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-600">键值</th>
@@ -253,7 +277,7 @@ export const DictPage: React.FC = () => {
               </thead>
               <tbody>
                 {dictDataList.map(item => (
-                  <tr key={item.dictCode} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={item.dictCode} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
                     <td className="px-4 py-3 text-sm text-slate-600">{item.dictSort}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${listClassColors[item.listClass || 'default'] || listClassColors.default}`}>
@@ -269,127 +293,169 @@ export const DictPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500 max-w-[120px] truncate">{item.remark || '-'}</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleEditData(item)} className="text-indigo-600 hover:text-indigo-800 text-sm mr-3">编辑</button>
-                      <button onClick={() => handleDeleteData(item)} className="text-red-500 hover:text-red-700 text-sm">删除</button>
+                      <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800 mr-1" onClick={() => handleEditData(item)}>
+                        编辑
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteData(item)}>
+                        删除
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-        </div>
+        </Card>
       </div>
 
-      {/* 字典类型弹窗 */}
-      {typeModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setTypeModalOpen(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-800">{editingType ? '编辑字典类型' : '新增字典类型'}</h3>
-              <button onClick={() => setTypeModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+      {/* ========== 字典类型弹窗 ========== */}
+      <Dialog open={typeModalOpen} onOpenChange={setTypeModalOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{editingType ? '编辑字典类型' : '新增字典类型'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* 字典名称 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">字典名称 <span className="text-red-500">*</span></label>
+              <Input
+                value={typeForm.dictName}
+                onChange={e => setTypeForm({ ...typeForm, dictName: e.target.value })}
+                placeholder="如：用户性别"
+              />
             </div>
-            <div className="p-5 space-y-4">
+            {/* 类型标识 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">类型标识 <span className="text-red-500">*</span></label>
+              <Input
+                className="font-mono"
+                value={typeForm.dictType}
+                onChange={e => setTypeForm({ ...typeForm, dictType: e.target.value })}
+                placeholder="如：sys_user_sex"
+              />
+            </div>
+            {/* 状态 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">状态</label>
+              <select
+                value={typeForm.status}
+                onChange={e => setTypeForm({ ...typeForm, status: e.target.value })}
+                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+              >
+                <option value="0">正常</option>
+                <option value="1">停用</option>
+              </select>
+            </div>
+            {/* 备注 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">备注</label>
+              <Input
+                value={typeForm.remark}
+                onChange={e => setTypeForm({ ...typeForm, remark: e.target.value })}
+                placeholder="备注说明"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTypeModalOpen(false)}>取消</Button>
+            <Button onClick={handleSaveType}>确定</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========== 字典数据弹窗 ========== */}
+      <Dialog open={dataModalOpen} onOpenChange={setDataModalOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{editingData ? '编辑字典数据' : '新增字典数据'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* 数据标签 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">数据标签 <span className="text-red-500">*</span></label>
+              <Input
+                value={dataForm.dictLabel}
+                onChange={e => setDataForm({ ...dataForm, dictLabel: e.target.value })}
+                placeholder="如：男"
+              />
+            </div>
+            {/* 数据键值 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">数据键值 <span className="text-red-500">*</span></label>
+              <Input
+                className="font-mono"
+                value={dataForm.dictValue}
+                onChange={e => setDataForm({ ...dataForm, dictValue: e.target.value })}
+                placeholder="如：0"
+              />
+            </div>
+            {/* 排序号 + 样式 */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">字典名称 <span className="text-red-500">*</span></label>
-                <input type="text" value={typeForm.dictName} onChange={e => setTypeForm({ ...typeForm, dictName: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" placeholder="如：用户性别" />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">排序号</label>
+                <Input
+                  type="number"
+                  value={dataForm.dictSort}
+                  onChange={e => setDataForm({ ...dataForm, dictSort: Number(e.target.value) })}
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">类型标识 <span className="text-red-500">*</span></label>
-                <input type="text" value={typeForm.dictType} onChange={e => setTypeForm({ ...typeForm, dictType: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder="如：sys_user_sex" />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">样式</label>
+                <select
+                  value={dataForm.listClass}
+                  onChange={e => setDataForm({ ...dataForm, listClass: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+                >
+                  <option value="">默认</option>
+                  <option value="primary">主要</option>
+                  <option value="success">成功</option>
+                  <option value="warning">警告</option>
+                  <option value="danger">危险</option>
+                  <option value="info">信息</option>
+                </select>
               </div>
+            </div>
+            {/* 状态 + 是否默认 */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
-                <select value={typeForm.status} onChange={e => setTypeForm({ ...typeForm, status: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">状态</label>
+                <select
+                  value={dataForm.status}
+                  onChange={e => setDataForm({ ...dataForm, status: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+                >
                   <option value="0">正常</option>
                   <option value="1">停用</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
-                <input type="text" value={typeForm.remark} onChange={e => setTypeForm({ ...typeForm, remark: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" placeholder="备注说明" />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">是否默认</label>
+                <select
+                  value={dataForm.isDefault}
+                  onChange={e => setDataForm({ ...dataForm, isDefault: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+                >
+                  <option value="N">否</option>
+                  <option value="Y">是</option>
+                </select>
               </div>
             </div>
-            <div className="p-5 border-t border-slate-200 flex justify-end gap-3">
-              <button onClick={() => setTypeModalOpen(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">取消</button>
-              <button onClick={handleSaveType} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">确定</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 字典数据弹窗 */}
-      {dataModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDataModalOpen(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-800">{editingData ? '编辑字典数据' : '新增字典数据'}</h3>
-              <button onClick={() => setDataModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">数据标签 <span className="text-red-500">*</span></label>
-                <input type="text" value={dataForm.dictLabel} onChange={e => setDataForm({ ...dataForm, dictLabel: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" placeholder="如：男" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">数据键值 <span className="text-red-500">*</span></label>
-                <input type="text" value={dataForm.dictValue} onChange={e => setDataForm({ ...dataForm, dictValue: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono" placeholder="如：0" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">排序号</label>
-                  <input type="number" value={dataForm.dictSort} onChange={e => setDataForm({ ...dataForm, dictSort: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">样式</label>
-                  <select value={dataForm.listClass} onChange={e => setDataForm({ ...dataForm, listClass: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                    <option value="">默认</option>
-                    <option value="primary">主要</option>
-                    <option value="success">成功</option>
-                    <option value="warning">警告</option>
-                    <option value="danger">危险</option>
-                    <option value="info">信息</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
-                  <select value={dataForm.status} onChange={e => setDataForm({ ...dataForm, status: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                    <option value="0">正常</option>
-                    <option value="1">停用</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">是否默认</label>
-                  <select value={dataForm.isDefault} onChange={e => setDataForm({ ...dataForm, isDefault: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                    <option value="N">否</option>
-                    <option value="Y">是</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
-                <input type="text" value={dataForm.remark} onChange={e => setDataForm({ ...dataForm, remark: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" placeholder="备注说明" />
-              </div>
-            </div>
-            <div className="p-5 border-t border-slate-200 flex justify-end gap-3">
-              <button onClick={() => setDataModalOpen(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">取消</button>
-              <button onClick={handleSaveData} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">确定</button>
+            {/* 备注 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">备注</label>
+              <Input
+                value={dataForm.remark}
+                onChange={e => setDataForm({ ...dataForm, remark: e.target.value })}
+                placeholder="备注说明"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDataModalOpen(false)}>取消</Button>
+            <Button onClick={handleSaveData}>确定</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
