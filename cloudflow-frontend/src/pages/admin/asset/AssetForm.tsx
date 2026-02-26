@@ -180,7 +180,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
           onChange={(e) => handleChange('remark', e.target.value)}
           placeholder="可选备注信息"
           rows={3}
-          className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex min-h-[60px] w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-pink-400 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 

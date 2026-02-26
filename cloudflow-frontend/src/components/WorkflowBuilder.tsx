@@ -1211,7 +1211,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {/* 会签类型选择 */}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">会签类型</span>
-                <Select value={formData.signType || 'ALL'} onValueChange={v => setFormData({...formData, signType: v as 'ALL' | 'ANY' | 'PERCENT' | 'SEQUENTIAL'})}>
+                <Select value={formData.signType || 'ALL'} onValueChange={v => handleChange('signType', v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1235,15 +1235,15 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   <p className="text-[10px] text-slate-400 mt-1">💡 当同意人数达到该比例时流程通过</p>
                 </div>
               )}
-              {/* 审批人选择 */}
+              {/* 审批人选择 - 会签场景下隐藏"指定多人"选项，因为会签本身就是多人审批 */}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">审批方式</span>
-                <Select value={formData.approverType || 'ROLE'} onValueChange={v => setFormData({...formData, approverType: v as 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT'})}>
+                <Select value={formData.approverType === 'USERS' ? 'USER' : (formData.approverType || 'ROLE')} onValueChange={v => handleChange('approverType', v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (
+                      {Object.entries(APPROVER_TYPE_LABELS).filter(([k]) => k !== 'USERS').map(([k, v]) => (
                         <SelectItem key={k} value={k}>{v}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1253,24 +1253,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                 <ApproverValueSelector
                   type={formData.approverType === 'USERS' ? 'USER' : (formData.approverType || 'ROLE')}
                   value={formData.approverValue || ''}
-                  onChange={(val) => {
-                    // 会签节点：多选用户时自动切换为 USERS 类型，确保后端路由到 UsersAssignStrategy
-                    const hasMultiple = val.includes(',');
-                    const currentType = formData.approverType;
-                    if (currentType === 'USER' && hasMultiple) {
-                      // 一次性更新 approverType 和 approverValue，避免闭包覆盖
-                      const updates = { approverType: 'USERS' as const, approverValue: val };
-                      setFormData(prev => ({ ...prev, ...updates }));
-                      onUpdate(node.id, updates);
-                    } else if (currentType === 'USERS' && !hasMultiple && val) {
-                      // 只剩一个人时切回 USER
-                      const updates = { approverType: 'USER' as const, approverValue: val };
-                      setFormData(prev => ({ ...prev, ...updates }));
-                      onUpdate(node.id, updates);
-                    } else {
-                      handleChange('approverValue', val);
-                    }
-                  }}
+                  onChange={(val) => handleChange('approverValue', val)}
                   onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })}
                   multiple={true}
                 />
@@ -1289,7 +1272,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Bell size={12} /> 通知设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">接收人类型</span>
-                <Select value={formData.props?.recipientType || 'INITIATOR'} onValueChange={v => setFormData({...formData, props: {...formData.props, recipientType: v}})}>
+                <Select value={formData.props?.recipientType || 'INITIATOR'} onValueChange={v => handleChange('props', {...formData.props, recipientType: v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1330,7 +1313,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Code size={12} /> 脚本设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">脚本类型</span>
-                <Select value={formData.props?.scriptType || 'GROOVY'} onValueChange={v => setFormData({...formData, props: {...formData.props, scriptType: v}})}>
+                <Select value={formData.props?.scriptType || 'GROOVY'} onValueChange={v => handleChange('props', {...formData.props, scriptType: v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1364,7 +1347,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">请求方法</span>
-                    <Select value={formData.props?.apiMethod || 'GET'} onValueChange={v => setFormData({...formData, props: {...formData.props, apiMethod: v}})}>
+                    <Select value={formData.props?.apiMethod || 'GET'} onValueChange={v => handleChange('props', {...formData.props, apiMethod: v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1406,7 +1389,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Clock size={12} /> 定时设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">定时类型</span>
-                <Select value={formData.props?.timerType || 'DELAY'} onValueChange={v => setFormData({...formData, props: {...formData.props, timerType: v}})}>
+                <Select value={formData.props?.timerType || 'DELAY'} onValueChange={v => handleChange('props', {...formData.props, timerType: v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1470,7 +1453,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Send size={12} /> 抄送设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">抄送人类型</span>
-                <Select value={formData.approverType || 'USER'} onValueChange={v => setFormData({...formData, approverType: v as 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT'})}>
+                <Select value={formData.approverType || 'USER'} onValueChange={v => handleChange('approverType', v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1523,7 +1506,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               </div>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">处理人类型</span>
-                <Select value={formData.approverType || 'ROLE'} onValueChange={v => setFormData({...formData, approverType: v as 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT'})}>
+                <Select value={formData.approverType || 'ROLE'} onValueChange={v => handleChange('approverType', v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1581,7 +1564,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               )}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">任务优先级</span>
-                <Select value={formData.props?.priority || 'MEDIUM'} onValueChange={v => setFormData({...formData, props: {...formData.props, priority: v}})}>
+                <Select value={formData.props?.priority || 'MEDIUM'} onValueChange={v => handleChange('props', {...formData.props, priority: v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -1682,7 +1665,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
       )}
 
       {/* 节点卡片容器 - 独立的相对定位容器 */}
-      <div className="relative group">
+      <div className={`relative group ${showQuickAdd ? 'z-50' : ''}`}>
         {/* 节点卡片 */}
         <div
           className={`w-64 ${visual.bg} rounded-xl shadow-sm border-2 transition-all cursor-pointer relative z-10 ${

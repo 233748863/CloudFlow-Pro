@@ -149,11 +149,11 @@ export const DutySchedulePage: React.FC = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       {item.status === 'SCHEDULED' && (<>
-                        <button onClick={() => handleCheckIn(item.scheduleId!)} className="text-green-600 hover:text-green-800 p-1" title="签到"><LogIn size={16} /></button>
-                        <button onClick={() => openSwapDialog(item.scheduleId!)} className="text-purple-600 hover:text-purple-800 p-1" title="换班"><RefreshCw size={16} /></button>
+                        <button onClick={() => handleCheckIn(item.scheduleId!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><LogIn size={16} /> 签到</button>
+                        <button onClick={() => openSwapDialog(item.scheduleId!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><RefreshCw size={16} /> 换班</button>
                       </>)}
                       {item.status === 'CHECKED_IN' && (
-                        <button onClick={() => handleCheckOut(item.scheduleId!)} className="text-orange-600 hover:text-orange-800 p-1" title="签退"><LogOut size={16} /></button>
+                        <button onClick={() => handleCheckOut(item.scheduleId!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><LogOut size={16} /> 签退</button>
                       )}
                     </div>
                   </td>

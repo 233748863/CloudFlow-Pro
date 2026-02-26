@@ -206,7 +206,7 @@ export const AuditLogPage: React.FC = () => {
             value={auditName}
             onChange={e => setAuditName(e.target.value)}
             placeholder="请输入业务名称"
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
 
           <label className="text-sm text-slate-600">操作人</label>
@@ -215,7 +215,7 @@ export const AuditLogPage: React.FC = () => {
             value={createBy}
             onChange={e => setCreateBy(e.target.value)}
             placeholder="请输入操作人"
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-32 focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-32 focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
 
           <label className="text-sm text-slate-600">操作时间</label>
@@ -223,14 +223,14 @@ export const AuditLogPage: React.FC = () => {
             type="date"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
           <span className="text-slate-400">To</span>
           <input
             type="date"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
 
           <button

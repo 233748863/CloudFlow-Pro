@@ -102,7 +102,9 @@ export const DeployStatistics: React.FC = () => {
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={String(p.id || p.definitionId || p.processKey)}>{p.name || p.processName || p.processKey}</SelectItem>
+                      {processes.map(p => (
+                        <SelectItem key={String(p.id || p.definitionId || p.processKey)} value={String(p.id || p.definitionId || p.processKey)}>{p.name || p.processName || p.processKey}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
       </div>

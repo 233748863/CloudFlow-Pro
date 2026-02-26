@@ -51,23 +51,24 @@
     color: white !important;
   }
 
-  /* 统一所有表单元素的焦点环颜色为粉色 */
+  /* 统一原生表单元素的焦点环颜色为粉色 */
   input:focus,
   select:focus,
-  textarea:focus,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible {
+  textarea:focus {
     outline: none;
-    box-shadow: 0 0 0 2px #f9a8d4; /* tailwind pink-300 */
     border-color: #f472b6; /* tailwind pink-400 */
+  }
+
+  /* 仅对没有 Tailwind ring 的原生元素添加 box-shadow 焦点环 */
+  input:not([class*="ring"]):focus,
+  select:not([class*="ring"]):focus,
+  textarea:not([class*="ring"]):focus {
+    box-shadow: 0 0 0 2px #f9a8d4; /* tailwind pink-300 */
   }
 
   /* checkbox 和 radio 焦点样式 */
   input[type="checkbox"]:focus,
-  input[type="radio"]:focus,
-  input[type="checkbox"]:focus-visible,
-  input[type="radio"]:focus-visible {
+  input[type="radio"]:focus {
     outline: none;
     box-shadow: 0 0 0 2px #fbcfe8; /* tailwind pink-200 */
   }

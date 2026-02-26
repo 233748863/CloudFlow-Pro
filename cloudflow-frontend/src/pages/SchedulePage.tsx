@@ -292,7 +292,7 @@ export const SchedulePage = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">类型</label>
-                                <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
+                                <Select value={form.type} onValueChange={v => setForm({...form, type: v as 'MEETING' | 'WORK' | 'PERSONAL'})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>

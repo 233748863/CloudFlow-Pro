@@ -390,7 +390,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
             <div className="flex gap-2 items-center">
                 {/* 任务中心的类型筛选 */}
                 {type === 'pending' && (
-                    <Select value={filterType} onValueChange={v => setFilterType(v)}>
+                    <Select value={filterType} onValueChange={v => setFilterType(v as 'all' | 'process' | 'work')}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -411,7 +411,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {searchInput && searchInput !== keyword && (
@@ -449,7 +449,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             value={todoSearchInput}
                             onChange={(e) => setTodoSearchInput(e.target.value)}
                             onKeyDown={handleTodoSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {todoSearchInput && todoSearchInput !== todoKeyword && (
@@ -470,7 +470,9 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">全部流程类型</SelectItem>
-                      <SelectItem value={String(opt.key)}>{opt.name}</SelectItem>
+                      {todoProcessDefOptions.map(opt => (
+                        <SelectItem key={opt.key} value={String(opt.key)}>{opt.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                     )}
@@ -481,7 +483,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         placeholder="申请人姓名..."
                         value={todoStartUserName}
                         onChange={(e) => setTodoStartUserName(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                     />
 
                     {/* 时间范围筛选 */}
@@ -491,14 +493,14 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             type="date"
                             value={todoStartTimeFrom}
                             onChange={(e) => setTodoStartTimeFrom(e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                         <span className="text-slate-400">至</span>
                         <input
                             type="date"
                             value={todoStartTimeTo}
                             onChange={(e) => setTodoStartTimeTo(e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                     </div>
 
@@ -563,7 +565,9 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">全部流程类型</SelectItem>
-                      <SelectItem value={String(opt.key)}>{opt.name}</SelectItem>
+                      {processDefOptions.map(opt => (
+                        <SelectItem key={opt.key} value={String(opt.key)}>{opt.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                     )}
@@ -589,14 +593,14 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             type="date"
                             value={startTimeFrom}
                             onChange={(e) => handleTimeRangeChange(e.target.value, startTimeTo)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                         <span className="text-slate-400">至</span>
                         <input
                             type="date"
                             value={startTimeTo}
                             onChange={(e) => handleTimeRangeChange(startTimeFrom, e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                     </div>
                 </div>

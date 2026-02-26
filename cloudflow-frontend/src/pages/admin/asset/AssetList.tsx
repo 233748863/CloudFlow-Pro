@@ -612,7 +612,7 @@ const AssetList: React.FC = () => {
                 onChange={(e) => setRemarkText(e.target.value)}
                 placeholder={remarkAction === 'repair' ? '请输入送修原因...' : '请输入报废原因...'}
                 rows={3}
-                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex min-h-[60px] w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-pink-400"
               />
             </div>
             <div className="flex gap-2 justify-end">

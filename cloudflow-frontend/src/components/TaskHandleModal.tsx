@@ -331,7 +331,7 @@ export const TaskHandleModal = ({
                           驳回原因 <span className="text-red-500">*</span>
                         </label>
                         <textarea 
-                          className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400" 
+                          className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:rder-pink-400" 
                           placeholder="请填写驳回原因（必填）..."
                           rows={4}
                           value={rejectReason}

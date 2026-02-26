@@ -530,7 +530,7 @@ export const AnnouncementPage = () => {
                         <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">类型</label>
-                                <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
+<Select value={String(formData.type)} onValueChange={v => setFormData({...formData, type: v as AnnouncementType})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -543,7 +543,7 @@ export const AnnouncementPage = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">优先级</label>
-                                <Select value={formData.priority} onValueChange={v => setFormData({...formData, priority: v})}>
+<Select value={String(formData.priority)} onValueChange={v => setFormData({...formData, priority: v as 'M' | 'L' | 'H'})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
@@ -556,7 +556,7 @@ export const AnnouncementPage = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">发布范围</label>
-                                <Select value={formData.scopeType} onValueChange={v => setFormData({...formData, scopeType: v})}>
+<Select value={String(formData.scopeType)} onValueChange={v => setFormData({...formData, scopeType: v as AnnouncementScope})}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>

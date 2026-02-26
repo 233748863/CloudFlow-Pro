@@ -335,7 +335,7 @@ export const CopyListPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+              className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
             />
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             {searchInput && searchInput !== keyword && (
@@ -398,7 +398,9 @@ export const CopyListPage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">全部流程类型</SelectItem>
-                      <SelectItem value={String(opt.key)}>{opt.name}</SelectItem>
+                      {processDefOptions.map(opt => (
+                        <SelectItem key={opt.key} value={String(opt.key)}>{opt.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
         )}

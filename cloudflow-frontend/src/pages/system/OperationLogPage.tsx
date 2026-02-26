@@ -290,14 +290,14 @@ export const OperationLogPage: React.FC = () => {
             type="date"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
           <span className="text-slate-400">To</span>
           <input
             type="date"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
 
           <button

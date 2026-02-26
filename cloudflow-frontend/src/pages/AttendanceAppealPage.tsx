@@ -147,9 +147,9 @@ export const AttendanceAppealPage: React.FC = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {item.status === 'DRAFT' && (<>
-                        <button onClick={() => handleEdit(item.id!)} className="text-green-600 hover:text-green-800" title="编辑"><Edit size={16} /></button>
-                        <button onClick={() => handleSubmit(item.id!)} className="text-pink-500 hover:text-pink-700" title="提交"><Send size={16} /></button>
-                        <button onClick={() => handleDelete([item.id!])} className="text-red-600 hover:text-red-800" title="删除"><Trash2 size={16} /></button>
+                        <button onClick={() => handleEdit(item.id!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><Edit size={16} /> 编辑</button>
+                        <button onClick={() => handleSubmit(item.id!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><Send size={16} /> 提交</button>
+                        <button onClick={() => handleDelete([item.id!])} className="text-red-600 hover:text-red-900 flex items-center gap-1"><Trash2 size={16} /> 删除</button>
                       </>)}
                     </div>
                   </td>

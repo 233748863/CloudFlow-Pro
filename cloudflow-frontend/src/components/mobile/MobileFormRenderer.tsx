@@ -103,7 +103,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
     const inputClassName = `w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none transition-colors ${
       hasError
         ? 'border-red-300 bg-red-50 focus:border-red-500'
-        : 'border-slate-300 bg-white focus:border-pink-400'
+        : 'border-slate-300 bg-white focus:rder-pink-400'
     } ${readOnly ? 'bg-slate-50 text-slate-600' : ''}`;
 
     return (

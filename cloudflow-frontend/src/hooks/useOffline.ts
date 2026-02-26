@@ -44,18 +44,20 @@ export function useOffline(): UseOfflineReturn {
     const unsubscribe = syncManager.on((event) => {
       switch (event.type) {
         case 'status_change':
-          setSyncStatus(event.data);
+          setSyncStatus(event.data as SyncStatus);
           break;
         case 'sync_start':
           setIsSyncing(true);
           break;
-        case 'sync_complete':
+        case 'sync_complete': {
           setIsSyncing(false);
           refreshPendingCount();
-          if (event.data?.synced > 0) {
-            toast.success(`已同步 ${event.data.synced} 条数据`);
+          const result = event.data as SyncResult | undefined;
+          if (result?.synced && result.synced > 0) {
+            toast.success(`已同步 ${result.synced} 条数据`);
           }
           break;
+        }
         case 'sync_error':
           setIsSyncing(false);
           toast.error('数据同步失败，将稍后重试');

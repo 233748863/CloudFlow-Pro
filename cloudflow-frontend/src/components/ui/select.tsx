@@ -60,7 +60,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
   return (
     <button
       type="button"
-      className={`flex h-10 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors hover:border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`flex h-10 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors hover:border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 focus:border-slate-200 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       onClick={() => setOpen(!open)}
     >
       {children}

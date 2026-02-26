@@ -53,7 +53,7 @@ export const DialogContent = ({ children, className = '' }: { children: React.Re
       <div className={`fixed z-50 grid w-full gap-4 border border-slate-200 bg-white p-6 shadow-2xl duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-xl md:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto ${className}`}>
         {children}
         <button
-          className="absolute right-4 top-4 rounded-full p-1.5 opacity-70 transition-all hover:bg-slate-100 hover:opacity-100 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-pink-400 disabled:pointer-events-none"
+          className="absolute right-4 top-4 rounded-full p-1.5 opacity-70 transition-all hover:bg-slate-100 hover:opacity-100 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 disabled:pointer-events-none"
           onClick={() => onOpenChange(false)}
         >
           <span className="sr-only">关闭</span>

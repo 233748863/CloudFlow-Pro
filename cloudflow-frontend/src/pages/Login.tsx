@@ -79,7 +79,7 @@ export const Login = () => {
                     type="text" 
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-pink-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-pink-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:rder-pink-400 transition-all"
                     placeholder="请输入用户名 (如: admin)"
                     required
                 />
@@ -95,7 +95,7 @@ export const Login = () => {
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-pink-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-pink-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:rder-pink-400 transition-all"
                     placeholder="请输入密码"
                     required
                 />

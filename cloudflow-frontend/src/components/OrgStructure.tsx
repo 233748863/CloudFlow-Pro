@@ -266,8 +266,8 @@ export const OrgStructure = () => {
 
   const handleDeptSubmit = async (data: Partial<DeptItem>) => {
     try {
-      if (data.deptId) { await updateDept(data); toast.success('部门更新成功'); }
-      else { await addDept(data); toast.success('部门创建成功'); }
+      if (data.deptId) { await updateDept(data as any); toast.success('部门更新成功'); }
+      else { await addDept(data as any); toast.success('部门创建成功'); }
       setDeptFormVis(false); fetchDepts();
     } catch (e: any) { toast.error(e?.message || '操作失败'); }
   };
@@ -280,7 +280,7 @@ export const OrgStructure = () => {
 
   const handleChangeDept = async (userId: number, deptId: number) => {
     try {
-      await updateUser({ userId, deptId });
+      await updateUser({ userId, deptId } as any);
       toast.success('部门调整成功');
       setChangeDeptUser(null);
       fetchUsers(selDept?.deptId);
@@ -304,7 +304,7 @@ export const OrgStructure = () => {
       <div className="w-80 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col shadow-sm flex-shrink-0">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
           <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users size={18} className="text-pink-500" /> 组织架构</h3>
-          <button onClick={() => { setEditDept(null); setDefaultParentId(0); setDeptFormVis(true); }} className="p-1.5 rounded-lg hover:bg-pink-50 text-pink-500" title="新增部门"><Plus size={18} /></button>
+          <button onClick={() => { setEditDept(null); setDefaultParentId(0); setDeptFormVis(true); }} className="p-1.5 rounded-lg hover:bg-pink-50 text-pink-500 flex items-center gap-1 text-sm" title="新增部门"><Plus size={16} /> 新增</button>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {deptLoading ? (
@@ -371,10 +371,10 @@ export const OrgStructure = () => {
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${u.status === '0' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>{u.status === '0' ? '正常' : '停用'}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <button onClick={() => setDetailUser(u)} className="p-1.5 rounded hover:bg-pink-50 text-slate-400 hover:text-pink-500 mr-1" title="查看详情"><Eye size={14} /></button>
-                      <button onClick={() => setChangeDeptUser(u)} className="p-1.5 rounded hover:bg-amber-100 text-slate-400 hover:text-amber-600 mr-1" title="调整部门"><ArrowRightLeft size={14} /></button>
-                      <button onClick={() => { setDelUser(u); setDelUserVis(true); }} className="p-1.5 rounded hover:bg-red-100 text-slate-400 hover:text-red-600" title="删除"><Trash2 size={14} /></button>
+                    <td className="px-4 py-3 text-right flex items-center justify-end gap-3">
+                      <button onClick={() => setDetailUser(u)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1" title="查看详情"><Eye size={16} /> 详情</button>
+                      <button onClick={() => setChangeDeptUser(u)} className="text-amber-600 hover:text-amber-800 flex items-center gap-1" title="调整部门"><ArrowRightLeft size={16} /> 调岗</button>
+                      <button onClick={() => { setDelUser(u); setDelUserVis(true); }} className="text-red-600 hover:text-red-900 flex items-center gap-1" title="删除"><Trash2 size={16} /> 删除</button>
                     </td>
                   </tr>
                 ))}

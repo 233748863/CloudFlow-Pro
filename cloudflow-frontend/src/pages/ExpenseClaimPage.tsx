@@ -455,7 +455,7 @@ export const ExpenseClaimPage: React.FC = () => {
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">费用类型</label>
-                          <Select value={item.expenseType} onValueChange={v => setItem({...item, expenseType: v})}>
+                          <Select value={item.expenseType} onValueChange={v => updateItem(index, 'expenseType', v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>

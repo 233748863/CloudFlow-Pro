@@ -174,7 +174,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               placeholder="搜索用户姓名或账号..."
               value={searchKeyword}
               onChange={e => setSearchKeyword(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:rder-pink-400"
             />
           </div>
 
@@ -237,7 +237,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               {mode === 'add' ? '加签' : '减签'}说明 <span className="text-red-500">*</span>
             </label>
             <textarea
-              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400"
+              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:rder-pink-400"
               placeholder={`请填写${mode === 'add' ? '加签' : '减签'}原因（必填）...`}
               rows={3}
               value={comment}
