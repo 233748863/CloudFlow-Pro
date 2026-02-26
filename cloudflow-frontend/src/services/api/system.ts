@@ -122,7 +122,31 @@ export const getCacheInfo = () => {
   return request.get<CacheInfo>('/auth/system/cache/info');
 };
 
-/** 获取缓存 Key 列表 */
-export const getCacheKeys = () => {
-  return request.get('/auth/system/cache/keys');
+/** 获取缓存 Key 列表（支持模式匹配） */
+export const getCacheKeys = (pattern?: string) => {
+  return request.get<string[]>('/auth/system/cache/keys', { params: { pattern: pattern || '*' } });
+};
+
+/** 缓存 Key 详情 */
+export interface CacheKeyDetail {
+  key: string;
+  type: string;
+  ttl: number;
+  value: any;
+  size?: number;
+}
+
+/** 获取指定 Key 的详细信息（值、类型、TTL） */
+export const getCacheKeyValue = (key: string) => {
+  return request.get<CacheKeyDetail>('/auth/system/cache/value', { params: { key } });
+};
+
+/** 删除指定的 Key */
+export const deleteCacheKey = (key: string) => {
+  return request.delete<boolean>('/auth/system/cache/key', { params: { key } });
+};
+
+/** 按前缀批量删除 Key */
+export const deleteCacheByPrefix = (prefix: string) => {
+  return request.delete<number>('/auth/system/cache/prefix', { params: { prefix } });
 };

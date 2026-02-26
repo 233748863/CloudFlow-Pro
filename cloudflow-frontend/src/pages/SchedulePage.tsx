@@ -10,6 +10,8 @@ import { Calendar, Plus, MapPin, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString, toLocalDatetimeString, toQueryDateString } from '../utils/dateFormat';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 
 export const SchedulePage = () => {
   const { user } = useAuth();
@@ -85,7 +87,7 @@ export const SchedulePage = () => {
 
   const getEventColor = (type: string) => {
       switch(type) {
-          case 'MEETING': return '#6366f1'; // Indigo
+          case 'MEETING': return '#ec4899'; // Pink
           case 'WORK': return '#10b981'; // Emerald
           case 'PERSONAL': return '#f59e0b'; // Amber
           default: return '#64748b'; // Slate
@@ -145,7 +147,7 @@ export const SchedulePage = () => {
             </h2>
             <div className="flex gap-2">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mr-4">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-400"></span>会议</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-500"></span>会议</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>工作</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span>个人</span>
                 </div>
@@ -164,6 +166,65 @@ export const SchedulePage = () => {
 
         <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <style>{`
+                /* FullCalendar 按钮粉色主题 */
+                .fc .fc-button-primary {
+                    background-color: #fff !important;
+                    border-color: #e2e8f0 !important;
+                    color: #475569 !important;
+                    font-weight: 500 !important;
+                    font-size: 0.8rem !important;
+                    padding: 0.35rem 0.75rem !important;
+                    border-radius: 0.5rem !important;
+                    transition: all 0.15s !important;
+                }
+                .fc .fc-button-primary:hover {
+                    background-color: #fdf2f8 !important;
+                    border-color: #f9a8d4 !important;
+                    color: #ec4899 !important;
+                }
+                .fc .fc-button-primary:not(:disabled).fc-button-active,
+                .fc .fc-button-primary:not(:disabled):active {
+                    background-color: #ec4899 !important;
+                    border-color: #ec4899 !important;
+                    color: #fff !important;
+                    box-shadow: 0 1px 3px rgba(236,72,153,0.3) !important;
+                }
+                .fc .fc-button-primary:focus {
+                    box-shadow: 0 0 0 2px rgba(236,72,153,0.25) !important;
+                }
+                .fc .fc-button-primary:disabled {
+                    opacity: 0.4 !important;
+                }
+                .fc .fc-button-group > .fc-button {
+                    border-radius: 0 !important;
+                }
+                .fc .fc-button-group > .fc-button:first-child {
+                    border-radius: 0.5rem 0 0 0.5rem !important;
+                }
+                .fc .fc-button-group > .fc-button:last-child {
+                    border-radius: 0 0.5rem 0.5rem 0 !important;
+                }
+                .fc .fc-today-button {
+                    border-radius: 0.5rem !important;
+                }
+                .fc .fc-toolbar-title {
+                    font-size: 1.15rem !important;
+                    font-weight: 700 !important;
+                    color: #1e293b !important;
+                }
+                .fc .fc-day-today {
+                    background-color: #fef9c3 !important;
+                }
+                .fc .fc-col-header-cell {
+                    background-color: #f8fafc !important;
+                    font-weight: 600 !important;
+                    color: #475569 !important;
+                    font-size: 0.8rem !important;
+                    padding: 0.5rem 0 !important;
+                }
+                .fc .fc-highlight {
+                    background-color: rgba(236,72,153,0.08) !important;
+                }
                 /* 月视图事件紧凑样式 */
                 .fc-dayGridMonth-view .fc-event {
                     border-radius: 3px !important;
@@ -282,9 +343,8 @@ export const SchedulePage = () => {
                     <div className="p-6 space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">主题</label>
-                            <input 
+                            <Input 
                                 type="text" 
-                                className="w-full border border-slate-300 rounded-lg p-2"
                                 value={form.title}
                                 onChange={e => setForm({...form, title: e.target.value})}
                             />
@@ -320,18 +380,18 @@ export const SchedulePage = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">开始时间</label>
-                                    <input 
+                                    <Input 
                                         type="datetime-local"
-                                        className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                                        className="text-xs"
                                         value={form.startTime ? toLocalDatetimeString(form.startTime) : ''}
                                         onChange={e => setForm({...form, startTime: toBackendDateString(e.target.value)})}
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">结束时间</label>
-                                    <input 
+                                    <Input 
                                         type="datetime-local"
-                                        className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                                        className="text-xs"
                                         value={form.endTime ? toLocalDatetimeString(form.endTime) : ''}
                                         onChange={e => setForm({...form, endTime: toBackendDateString(e.target.value)})}
                                     />
@@ -342,9 +402,9 @@ export const SchedulePage = () => {
                         {form.type === 'MEETING' && (
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">会议室 (暂未关联列表)</label>
-                                <input 
+                                <Input 
                                     type="text" 
-                                    className="w-full border border-slate-300 rounded-lg p-2 bg-slate-50"
+                                    className="bg-slate-50"
                                     disabled
                                     placeholder="请前往会议室管理页面预订"
                                 />
@@ -354,8 +414,8 @@ export const SchedulePage = () => {
 
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">描述</label>
-                            <textarea 
-                                className="w-full border border-slate-300 rounded-lg p-2 h-20"
+                            <Textarea 
+                                className="h-20"
                                 value={form.description || ''}
                                 onChange={e => setForm({...form, description: e.target.value})}
                             />
