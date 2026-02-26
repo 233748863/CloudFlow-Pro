@@ -3,6 +3,8 @@ import { Calendar, Plus, Search, RotateCcw, X, LogIn, LogOut, RefreshCw } from '
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 
 /** 值班排班页面 */
 export const DutySchedulePage: React.FC = () => {
@@ -184,7 +186,7 @@ export const DutySchedulePage: React.FC = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">排班标题</label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="如：2月16日值班" />
+                <Input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="如：2月16日值班" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -216,21 +218,21 @@ export const DutySchedulePage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">值班日期</label>
-                <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.dutyDate} onChange={e => setFormData({ ...formData, dutyDate: e.target.value })} />
+                <Input type="date" value={formData.dutyDate} onChange={e => setFormData({ ...formData, dutyDate: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">值班人姓名</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.userName || ''} onChange={e => setFormData({ ...formData, userName: e.target.value })} placeholder="请输入值班人" />
+                  <Input type="text" value={formData.userName || ''} onChange={e => setFormData({ ...formData, userName: e.target.value })} placeholder="请输入值班人" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">值班地点</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.location || ''} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="选填" />
+                  <Input type="text" value={formData.location || ''} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="选填" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">值班内容</label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-16" value={formData.dutyContent || ''} onChange={e => setFormData({ ...formData, dutyContent: e.target.value })} placeholder="选填" />
+                <Textarea className="h-16" value={formData.dutyContent || ''} onChange={e => setFormData({ ...formData, dutyContent: e.target.value })} placeholder="选填" />
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
@@ -252,11 +254,11 @@ export const DutySchedulePage: React.FC = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">替班人姓名</label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={swapData.backupUserName} onChange={e => setSwapData({ ...swapData, backupUserName: e.target.value })} placeholder="请输入替班人姓名" />
+                <Input type="text" value={swapData.backupUserName} onChange={e => setSwapData({ ...swapData, backupUserName: e.target.value })} placeholder="请输入替班人姓名" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">换班原因</label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={swapData.reason} onChange={e => setSwapData({ ...swapData, reason: e.target.value })} placeholder="请输入换班原因" />
+                <Textarea className="h-20" value={swapData.reason} onChange={e => setSwapData({ ...swapData, reason: e.target.value })} placeholder="请输入换班原因" />
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">

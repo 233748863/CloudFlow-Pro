@@ -4,6 +4,8 @@ import { attendanceAppealApi, AttendanceAppeal } from '../services/api/attendanc
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 
 /** 补卡/外勤申请页面 */
 export const AttendanceAppealPage: React.FC = () => {
@@ -195,14 +197,14 @@ export const AttendanceAppealPage: React.FC = () => {
               {/* 日期 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
-                <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.appealDate} onChange={e => setFormData({ ...formData, appealDate: e.target.value })} />
+                <Input type="date" value={formData.appealDate} onChange={e => setFormData({ ...formData, appealDate: e.target.value })} />
               </div>
               {/* 补卡专有字段 */}
               {formData.appealType === 'MAKEUP' && (<>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">补卡时间 <span className="text-red-500">*</span></label>
-                    <input type="time" className="w-full border border-slate-300 rounded-lg p-2" value={formData.appealTime || ''} onChange={e => setFormData({ ...formData, appealTime: e.target.value })} />
+                    <Input type="time" value={formData.appealTime || ''} onChange={e => setFormData({ ...formData, appealTime: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">打卡类型 <span className="text-red-500">*</span></label>
@@ -238,18 +240,18 @@ export const AttendanceAppealPage: React.FC = () => {
               {formData.appealType === 'FIELD' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">外勤地址 <span className="text-red-500">*</span></label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.address || ''} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="请输入外勤地址" />
+                  <Input type="text" value={formData.address || ''} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="请输入外勤地址" />
                 </div>
               )}
               {/* 证明人 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">证明人</label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.witnessName || ''} onChange={e => setFormData({ ...formData, witnessName: e.target.value })} placeholder="可填写知情同事姓名" />
+                <Input type="text" value={formData.witnessName || ''} onChange={e => setFormData({ ...formData, witnessName: e.target.value })} placeholder="可填写知情同事姓名" />
               </div>
               {/* 申请事由 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">申请事由 <span className="text-red-500">*</span></label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请详细描述补卡/外勤原因" />
+                <Textarea className="h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请详细描述补卡/外勤原因" />
               </div>
               {/* 附件上传 */}
               <div>

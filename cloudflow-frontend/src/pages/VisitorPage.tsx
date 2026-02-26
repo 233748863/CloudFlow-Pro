@@ -3,6 +3,8 @@ import { UserCheck, Plus, Search, RotateCcw, X, LogIn, LogOut, CheckCircle, XCir
 import { visitorApi, Visitor } from '../services/api/visitor';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 
 /** 访客管理页面 */
 export const VisitorPage: React.FC = () => {
@@ -84,7 +86,7 @@ export const VisitorPage: React.FC = () => {
                       <SelectItem value="COMPLETED">已离开</SelectItem>
                     </SelectContent>
                   </Select>
-          <input type="text" placeholder="搜索访客姓名" value={searchParams.visitorName} onChange={e => setSearchParams({ ...searchParams, visitorName: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <Input type="text" placeholder="搜索访客姓名" value={searchParams.visitorName} onChange={e => setSearchParams({ ...searchParams, visitorName: e.target.value })} />
           <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
           <button onClick={() => setSearchParams({ status: '', visitorName: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
@@ -161,40 +163,40 @@ export const VisitorPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">访客姓名</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.visitorName} onChange={e => setFormData({ ...formData, visitorName: e.target.value })} placeholder="请输入访客姓名" />
+                  <Input type="text" value={formData.visitorName} onChange={e => setFormData({ ...formData, visitorName: e.target.value })} placeholder="请输入访客姓名" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">访客电话</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.visitorPhone || ''} onChange={e => setFormData({ ...formData, visitorPhone: e.target.value })} placeholder="请输入电话" />
+                  <Input type="text" value={formData.visitorPhone || ''} onChange={e => setFormData({ ...formData, visitorPhone: e.target.value })} placeholder="请输入电话" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">访客单位</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.visitorCompany || ''} onChange={e => setFormData({ ...formData, visitorCompany: e.target.value })} placeholder="请输入单位" />
+                  <Input type="text" value={formData.visitorCompany || ''} onChange={e => setFormData({ ...formData, visitorCompany: e.target.value })} placeholder="请输入单位" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">来访人数</label>
-                  <input type="number" className="w-full border border-slate-300 rounded-lg p-2" value={formData.visitorCount || 1} onChange={e => setFormData({ ...formData, visitorCount: parseInt(e.target.value) || 1 })} min="1" />
+                  <Input type="number" value={formData.visitorCount || 1} onChange={e => setFormData({ ...formData, visitorCount: parseInt(e.target.value) || 1 })} min="1" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">来访日期</label>
-                  <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.visitDate} onChange={e => setFormData({ ...formData, visitDate: e.target.value })} />
+                  <Input type="date" value={formData.visitDate} onChange={e => setFormData({ ...formData, visitDate: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">车牌号</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.carPlate || ''} onChange={e => setFormData({ ...formData, carPlate: e.target.value })} placeholder="选填" />
+                  <Input type="text" value={formData.carPlate || ''} onChange={e => setFormData({ ...formData, carPlate: e.target.value })} placeholder="选填" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">被访人姓名</label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.hostName || ''} onChange={e => setFormData({ ...formData, hostName: e.target.value })} placeholder="请输入被访人姓名" />
+                <Input type="text" value={formData.hostName || ''} onChange={e => setFormData({ ...formData, hostName: e.target.value })} placeholder="请输入被访人姓名" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">来访事由</label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.visitReason} onChange={e => setFormData({ ...formData, visitReason: e.target.value })} placeholder="请输入来访事由" />
+                <Textarea className="h-20" value={formData.visitReason} onChange={e => setFormData({ ...formData, visitReason: e.target.value })} placeholder="请输入来访事由" />
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">

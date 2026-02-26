@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { Input } from './ui/input';
 
 interface Props {
   onSave: (form: FormDefinition) => void;
@@ -91,13 +92,13 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           {/* Preview Area */}
           <div className="pointer-events-none opacity-60">
             {field.type === 'TEXT' && (
-              <input className="w-full border border-slate-300 rounded px-3 py-2 text-sm" placeholder="输入框预览" />
+              <Input placeholder="输入框预览" disabled />
             )}
             {field.type === 'NUMBER' && (
-              <input type="number" className="w-full border border-slate-300 rounded px-3 py-2 text-sm" placeholder="0.00" />
+              <Input type="number" placeholder="0.00" disabled />
             )}
             {field.type === 'DATE' && (
-              <input type="date" className="w-full border border-slate-300 rounded px-3 py-2 text-sm" />
+              <Input type="date" disabled />
             )}
             {field.type === 'SELECT' && (
               <Select value="preview">

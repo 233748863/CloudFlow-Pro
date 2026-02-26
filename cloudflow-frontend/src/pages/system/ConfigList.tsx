@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Search, X, Loader2, Lock, ChevronLeft, ChevronRight
 import { toast } from 'sonner';
 import { getConfigList, addConfig, updateConfig, deleteConfig, type SysConfig } from '../../services/api/system';
 import { clearConfigCache } from '../../hooks/useSystemConfig';
+import { Input } from '../../components/ui/input';
 
 export const ConfigList = () => {
   const [configs, setConfigs] = useState<SysConfig[]>([]);
@@ -142,7 +143,7 @@ export const ConfigList = () => {
         <form onSubmit={handleSearch} className="flex gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input type="text" placeholder="搜索参数名称..." className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <Input type="text" placeholder="搜索参数名称..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
           <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors">搜索</button>
         </form>
@@ -257,11 +258,11 @@ export const ConfigList = () => {
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">参数名称 <span className="text-red-500">*</span></label>
-                <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none" value={formData.configName} onChange={e => setFormData({ ...formData, configName: e.target.value })} placeholder="如: 用户初始密码" />
+                <Input value={formData.configName} onChange={e => setFormData({ ...formData, configName: e.target.value })} placeholder="如: 用户初始密码" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">参数键名 <span className="text-red-500">*</span></label>
-                <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none font-mono" value={formData.configKey} onChange={e => setFormData({ ...formData, configKey: e.target.value })} placeholder="如: sys.user.initPassword" />
+                <Input className="font-mono" value={formData.configKey} onChange={e => setFormData({ ...formData, configKey: e.target.value })} placeholder="如: sys.user.initPassword" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

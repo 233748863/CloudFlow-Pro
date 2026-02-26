@@ -20,6 +20,7 @@ import { getRoleList, getUserList, getDeptTree } from '../services/api/auth';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { Input } from './ui/input';
 
 // ==================== 辅助函数 ====================
 
@@ -63,11 +64,16 @@ const hasEndNode = (root: WorkflowNode): boolean => {
   return false;
 };
 
-// 检查 targetId 是否是 ancestorId 的后代节点（在 ancestor 的子树中）
-// 用于拖拽时防止循环引用：不能把节点拖到自己的子节点中
+// 检查 targetId 是否在 ancestorId 的 branches 子树中
+// 用于拖拽时防止循环引用：不能把节点拖到自己的分支子树中
+// 注意：只检查 branches 子树，不检查 next 链。
+// 因为 deleteNodeInTree 删除 dragNode 时会把 dragNode.next 重新连接到前驱节点，
+// 所以 next 链上的节点在删除后仍然在树中，拖到 next 链上是安全的。
+// 但 branches 中的节点会随 dragNode 一起被移除，拖到 branches 内部会导致节点丢失。
 const isDescendantOf = (root: WorkflowNode, ancestorId: string, targetId: string): boolean => {
   const ancestor = findNodeById(root, ancestorId);
-  if (!ancestor) return false;
+  if (!ancestor || !ancestor.branches) return false;
+  // 在 branch 内部递归搜索（包括 branch 的 next 链和嵌套 branches）
   const searchInSubtree = (node: WorkflowNode): boolean => {
     if (node.next) {
       if (node.next.id === targetId) return true;
@@ -81,7 +87,12 @@ const isDescendantOf = (root: WorkflowNode, ancestorId: string, targetId: string
     }
     return false;
   };
-  return searchInSubtree(ancestor);
+  // 只从 ancestor 的 branches 开始搜索，不搜索 ancestor.next
+  for (const b of ancestor.branches) {
+    if (b.id === targetId) return true;
+    if (searchInSubtree(b)) return true;
+  }
+  return false;
 };
 
 // 查找指定节点的父节点（即 next 或 branches 中包含 targetId 的节点）
@@ -931,8 +942,7 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
         ) : (
           <>
             {roles.length > 5 && (
-              <input type="text" className="w-full border border-slate-200 rounded-lg p-2 text-xs mb-2"
-                placeholder="搜索角色..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+              <Input className="text-xs mb-2" placeholder="搜索角色..." value={searchText} onChange={e => setSearchText(e.target.value)} />
             )}
             <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
               {filtered.length === 0 ? (
@@ -985,8 +995,7 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
           <div className="text-xs text-slate-400 py-2 text-center">加载中...</div>
         ) : (
           <>
-            <input type="text" className="w-full border border-slate-200 rounded-lg p-2 text-xs mb-2"
-              placeholder="搜索人员..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+            <Input className="text-xs mb-2" placeholder="搜索人员..." value={searchText} onChange={e => setSearchText(e.target.value)} />
             <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
               {filtered.length === 0 ? (
                 <div className="text-xs text-slate-400 py-3 text-center">暂无人员数据</div>
@@ -1040,8 +1049,7 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
         ) : (
           <>
             {depts.length > 5 && (
-              <input type="text" className="w-full border border-slate-200 rounded-lg p-2 text-xs mb-2"
-                placeholder="搜索部门..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+              <Input className="text-xs mb-2" placeholder="搜索部门..." value={searchText} onChange={e => setSearchText(e.target.value)} />
             )}
             <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
               {filtered.length === 0 ? (
@@ -1138,8 +1146,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
             <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Settings size={12} /> 基础信息</label>
             <div>
               <span className="text-xs text-slate-400 mb-1 block">名称</span>
-              <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none transition-all"
-                value={formData.title} onChange={e => handleChange('title', e.target.value)} placeholder="请输入节点名称" />
+              <Input value={formData.title} onChange={e => handleChange('title', e.target.value)} placeholder="请输入节点名称" />
             </div>
           </div>
           {node.type === NodeType.APPROVAL && (
@@ -1227,8 +1234,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {formData.signType === 'PERCENT' && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">通过比例 (%)</span>
-                  <input type="number" min="1" max="100"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
+                  <Input type="number" min={1} max={100}
                     placeholder="例如: 60"
                     value={formData.passPercent || ''}
                     onChange={e => handleChange('passPercent', parseInt(e.target.value) || 0)} />
@@ -1293,8 +1299,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               )}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">通知标题</span>
-                <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                  placeholder="例如: 您有新的审批任务"
+                <Input placeholder="例如: 您有新的审批任务"
                   value={formData.props?.notificationTitle || ''} 
                   onChange={e => handleChange('props', { ...formData.props, notificationTitle: e.target.value })} />
               </div>
@@ -1340,8 +1345,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                 <>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">API URL</span>
-                    <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono"
-                      placeholder="https://api.example.com/endpoint"
+                    <Input className="font-mono" placeholder="https://api.example.com/endpoint"
                       value={formData.props?.apiUrl || ''} 
                       onChange={e => handleChange('props', { ...formData.props, apiUrl: e.target.value })} />
                   </div>
@@ -1402,8 +1406,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {formData.props?.timerType === 'DELAY' && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">延迟时间（分钟）</span>
-                  <input type="number" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                    placeholder="例如: 60"
+                  <Input type="number" placeholder="例如: 60"
                     min="1"
                     value={formData.props?.delayMinutes || ''} 
                     onChange={e => handleChange('props', { ...formData.props, delayMinutes: parseInt(e.target.value) || 0 })} />
@@ -1413,8 +1416,8 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {formData.props?.timerType === 'SCHEDULE' && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">定时时间</span>
-                  <input type="datetime-local" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                    value={formData.props?.scheduleTime || ''} 
+                  <Input type="datetime-local"
+                    value={formData.props?.scheduleTime || ''}
                     onChange={e => handleChange('props', { ...formData.props, scheduleTime: e.target.value })} />
                   <p className="text-[10px] text-slate-400 mt-1">💡 流程将在指定时间点自动继续</p>
                 </div>
@@ -1426,8 +1429,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Workflow size={12} /> 子流程设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">子流程ID</span>
-                <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                  placeholder="输入子流程的ID"
+                <Input placeholder="输入子流程的ID"
                   value={formData.props?.subprocessId || ''} 
                   onChange={e => handleChange('props', { ...formData.props, subprocessId: e.target.value })} />
                 <p className="text-[10px] text-slate-400 mt-1">💡 将调用指定的子流程</p>
@@ -1596,8 +1598,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
             <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><FileText size={12} /> 条件设置</label>
             <div>
               <span className="text-xs text-slate-400 mb-1 block">触发条件</span>
-              <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono bg-slate-50"
-                placeholder="例如: amount > 5000" value={formData.condition || ''} onChange={e => handleChange('condition', e.target.value)} />
+              <Input className="font-mono bg-slate-50" placeholder="例如: amount > 5000" value={formData.condition || ''} onChange={e => handleChange('condition', e.target.value)} />
               <p className="text-[10px] text-slate-400 mt-1">💡 示例：amount &gt; 5000 或 days &gt;= 3<br/>可用字段：amount(金额)、days(天数)、deptId(部门)</p>
             </div>
           </div>
@@ -2143,9 +2144,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       const endParent = findParentOfNode(root, parentId);
       if (endParent) {
         // 在 END 的父节点上操作：parent.next = newNode, newNode.next = END
+        // 使用 node.next（updater 中的最新引用）而非外部 targetNode，确保数据一致性
         setRoot(updateNodeInTree(root, endParent.id, node => ({
           ...node,
-          next: { ...newNode, next: targetNode }
+          next: { ...newNode, next: node.next }
         })));
         return;
       }
@@ -2227,12 +2229,32 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       return;
     }
 
-    // 执行移动：先从树中删除拖拽节点，再插入到目标位置后
+    // 执行移动：先从树中删除拖拽节点，再插入到目标位置
     let newRoot = deleteNodeInTree(root, dragId);
     if (newRoot) {
       // 移动时只移动节点本身，不带子树（next 断开）
       const nodeToInsert = { ...dragNode, next: undefined };
-      newRoot = updateNodeInTree(newRoot, dropId, node => ({ ...node, next: { ...nodeToInsert, next: node.next } }));
+
+      // 特殊处理：拖拽到 END 节点时，插入到 END 之前而非之后
+      const dropTarget = findNodeById(newRoot, dropId);
+      if (dropTarget && dropTarget.type === NodeType.END) {
+        const endParent = findParentOfNode(newRoot, dropId);
+        if (endParent) {
+          // 在 END 的父节点和 END 之间插入：parent.next = newNode, newNode.next = END
+          newRoot = updateNodeInTree(newRoot, endParent.id, node => ({
+            ...node,
+            next: { ...nodeToInsert, next: node.next }
+          }));
+        } else {
+          // 防御性处理：END 没有父节点（理论上不会发生），回退到普通插入
+          toast.error('无法在结束节点前插入');
+          return;
+        }
+      } else {
+        // 普通情况：插入到目标节点之后
+        newRoot = updateNodeInTree(newRoot, dropId, node => ({ ...node, next: { ...nodeToInsert, next: node.next } }));
+      }
+
       setRoot(newRoot);
       toast.success('节点已移动');
     }

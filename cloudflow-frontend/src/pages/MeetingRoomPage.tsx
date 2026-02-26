@@ -14,6 +14,8 @@ import {
 import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -269,9 +271,9 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
       <div className="p-2 border-b border-slate-100">
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-2 text-slate-400" />
-          <input
+          <Input
             type="text"
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-pink-400 focus:outline-none"
+            className="pl-8 py-1.5 text-sm"
             placeholder="搜索部门或人员..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -681,25 +683,21 @@ const RoomFormModal: React.FC<{
         <div className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">会议室名称 <span className="text-red-500">*</span></label>
-            <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
-              value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
+            <Input type="text" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">位置 <span className="text-red-500">*</span></label>
-              <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
-                value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="例如：3楼东侧" />
+              <Input type="text" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="例如：3楼东侧" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">容纳人数 <span className="text-red-500">*</span></label>
-              <input type="number" min={1} className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
-                value={form.capacity || ''} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} placeholder="例如：50" />
+              <Input type="number" min={1} value={form.capacity || ''} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} placeholder="例如：50" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">设备配置</label>
-            <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
-              value={equipmentInput} onChange={e => setEquipmentInput(e.target.value)} placeholder="多个设备用逗号分隔，例如：投影仪, 白板, 音响" />
+            <Input type="text" value={equipmentInput} onChange={e => setEquipmentInput(e.target.value)} placeholder="多个设备用逗号分隔，例如：投影仪, 白板, 音响" />
             <p className="text-xs text-slate-400 mt-1">多个设备用逗号分隔</p>
           </div>
           <div>
@@ -1066,12 +1064,12 @@ export const MeetingRoomPage = () => {
             <div className="flex items-center gap-4">
               <div className="flex-1 relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
+                <Input
                   type="text"
                   placeholder="搜索会议室名称或位置..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:outline-none"
+                  className="pl-10"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -1379,9 +1377,8 @@ export const MeetingRoomPage = () => {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">会议主题 <span className="text-red-500">*</span></label>
-                <input
+                <Input
                   type="text"
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                   value={bookingForm.title}
                   onChange={e => setBookingForm({ ...bookingForm, title: e.target.value })}
                   placeholder="例如：项目评审会议"
@@ -1390,27 +1387,24 @@ export const MeetingRoomPage = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
-                  <input
+                  <Input
                     type="date"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                     value={bookingForm.date}
                     onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
-                  <input
+                  <Input
                     type="time"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                     value={bookingForm.startTime}
                     onChange={e => setBookingForm({ ...bookingForm, startTime: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
-                  <input
+                  <Input
                     type="time"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                     value={bookingForm.endTime}
                     onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}
                   />
@@ -1418,8 +1412,8 @@ export const MeetingRoomPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">会议描述</label>
-                <textarea
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
+                <Textarea
+                  className="h-20"
                   rows={3}
                   value={bookingForm.description}
                   onChange={e => setBookingForm({ ...bookingForm, description: e.target.value })}

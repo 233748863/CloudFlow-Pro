@@ -5,6 +5,8 @@ import { FileUpload } from '../components/FileUpload';
 import { toBackendDateString, toLocalDatetimeString } from '../utils/dateFormat';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 
 /** 加班申请页面 */
 export const OvertimePage: React.FC = () => {
@@ -234,11 +236,11 @@ export const OvertimePage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
-                  <input type="datetime-local" className="w-full border border-slate-300 rounded-lg p-2" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
+                  <Input type="datetime-local" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
-                  <input type="datetime-local" className="w-full border border-slate-300 rounded-lg p-2" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} />
+                  <Input type="datetime-local" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} />
                 </div>
               </div>
               {/* 加班地点 & 是否用餐 */}
@@ -272,17 +274,17 @@ export const OvertimePage: React.FC = () => {
               {/* 加班事由 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">加班事由 <span className="text-red-500">*</span></label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-16" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请简要说明加班原因" />
+                <Textarea className="h-16" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请简要说明加班原因" />
               </div>
               {/* 加班工作内容 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">工作内容 <span className="text-red-500">*</span></label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.workContent || ''} onChange={e => setFormData({ ...formData, workContent: e.target.value })} placeholder="请详细描述加班期间的工作内容" />
+                <Textarea className="h-20" value={formData.workContent || ''} onChange={e => setFormData({ ...formData, workContent: e.target.value })} placeholder="请详细描述加班期间的工作内容" />
               </div>
               {/* 预计产出 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">预计产出/成果</label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.expectedOutput || ''} onChange={e => setFormData({ ...formData, expectedOutput: e.target.value })} placeholder="如：完成XX模块开发、提交XX报告等" />
+                <Input type="text" value={formData.expectedOutput || ''} onChange={e => setFormData({ ...formData, expectedOutput: e.target.value })} placeholder="如：完成XX模块开发、提交XX报告等" />
               </div>
               {/* 附件上传 */}
               <div>

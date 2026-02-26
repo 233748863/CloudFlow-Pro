@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Users, ChevronRight, ChevronDown, Building2, Loader2, Plus, Edit2, Trash2, X, Search, AlertTriangle, ChevronUp, Eye, ArrowRightLeft } from 'lucide-react';
 import { getDeptTree, addDept, updateDept, deleteDept, getUserList, updateUser, deleteUser } from '../services/api/auth';
 import { toast } from 'sonner';
+import { Input } from './ui/input';
 
 interface DeptItem { deptId: number; parentId: number; deptName: string; orderNum: number; leader: string; phone: string; email: string; status: string; ancestors?: string; children?: DeptItem[]; }
 interface UserItem { userId: number; userName: string; nickName: string; email: string; phonenumber: string; sex: string; status: string; deptId: number; deptName?: string; role?: string; createTime?: string; remark?: string; }
@@ -56,26 +57,26 @@ const DeptFormModal: React.FC<{ visible: boolean; onClose: () => void; onSubmit:
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">部门名称 <span className="text-red-500">*</span></label>
-            <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.deptName || ''} onChange={e => setForm({ ...form, deptName: e.target.value })} placeholder="请输入部门名称" />
+            <Input value={form.deptName || ''} onChange={e => setForm({ ...form, deptName: e.target.value })} placeholder="请输入部门名称" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">排序</label>
-              <input type="number" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.orderNum ?? 0} onChange={e => setForm({ ...form, orderNum: parseInt(e.target.value) || 0 })} />
+              <Input type="number" value={form.orderNum ?? 0} onChange={e => setForm({ ...form, orderNum: parseInt(e.target.value) || 0 })} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">负责人</label>
-              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.leader || ''} onChange={e => setForm({ ...form, leader: e.target.value })} placeholder="负责人" />
+              <Input value={form.leader || ''} onChange={e => setForm({ ...form, leader: e.target.value })} placeholder="负责人" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">电话</label>
-              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="电话" />
+              <Input value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="电话" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">邮箱</label>
-              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="邮箱" />
+              <Input value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="邮箱" />
             </div>
           </div>
           <div>
@@ -329,7 +330,7 @@ export const OrgStructure = () => {
           </div>
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input className="pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:outline-none w-48" placeholder="搜索用户..." value={userSearch} onChange={e => setUserSearch(e.target.value)} />
+            <Input className="pl-9 w-48" placeholder="搜索用户..." value={userSearch} onChange={e => setUserSearch(e.target.value)} />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">

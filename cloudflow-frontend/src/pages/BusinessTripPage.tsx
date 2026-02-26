@@ -4,6 +4,8 @@ import { businessTripApi, BusinessTrip } from '../services/api/businessTrip';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 
 /** 出差申请页面 */
 export const BusinessTripPage: React.FC = () => {
@@ -105,7 +107,7 @@ export const BusinessTripPage: React.FC = () => {
                       <SelectItem value="REJECTED">已驳回</SelectItem>
                     </SelectContent>
                   </Select>
-          <input type="text" placeholder="搜索目的地" value={searchParams.destination} onChange={e => setSearchParams({ ...searchParams, destination: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <Input type="text" placeholder="搜索目的地" value={searchParams.destination} onChange={e => setSearchParams({ ...searchParams, destination: e.target.value })} />
           <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
           <button onClick={() => setSearchParams({ status: '', destination: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
@@ -180,22 +182,22 @@ export const BusinessTripPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">出发地 <span className="text-red-500">*</span></label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.departure || ''} onChange={e => setFormData({ ...formData, departure: e.target.value })} placeholder="如：北京" />
+                  <Input type="text" value={formData.departure || ''} onChange={e => setFormData({ ...formData, departure: e.target.value })} placeholder="如：北京" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">目的地 <span className="text-red-500">*</span></label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} placeholder="如：上海" />
+                  <Input type="text" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} placeholder="如：上海" />
                 </div>
               </div>
               {/* 日期 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始日期 <span className="text-red-500">*</span></label>
-                  <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
+                  <Input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">结束日期 <span className="text-red-500">*</span></label>
-                  <input type="date" className="w-full border border-slate-300 rounded-lg p-2" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
+                  <Input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
                 </div>
               </div>
               {/* 交通方式 & 住宿安排 */}
@@ -232,38 +234,38 @@ export const BusinessTripPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">预计费用(元)</label>
-                  <input type="number" className="w-full border border-slate-300 rounded-lg p-2" value={formData.estimatedCost || ''} onChange={e => setFormData({ ...formData, estimatedCost: parseFloat(e.target.value) || 0 })} placeholder="0.00" step="0.01" min="0" />
+                  <Input type="number" value={formData.estimatedCost || ''} onChange={e => setFormData({ ...formData, estimatedCost: parseFloat(e.target.value) || 0 })} placeholder="0.00" step="0.01" min="0" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">关联项目</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.projectName || ''} onChange={e => setFormData({ ...formData, projectName: e.target.value })} placeholder="如：XX项目客户拜访" />
+                  <Input type="text" value={formData.projectName || ''} onChange={e => setFormData({ ...formData, projectName: e.target.value })} placeholder="如：XX项目客户拜访" />
                 </div>
               </div>
               {/* 联系电话 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">出差期间联系电话</label>
-                <input type="tel" className="w-full border border-slate-300 rounded-lg p-2" value={formData.contactPhone || ''} onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} placeholder="请输入手机号" />
+                <Input type="tel" value={formData.contactPhone || ''} onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} placeholder="请输入手机号" />
               </div>
               {/* 紧急联系人 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">紧急联系人</label>
-                  <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.emergencyContact || ''} onChange={e => setFormData({ ...formData, emergencyContact: e.target.value })} placeholder="姓名" />
+                  <Input type="text" value={formData.emergencyContact || ''} onChange={e => setFormData({ ...formData, emergencyContact: e.target.value })} placeholder="姓名" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">紧急联系人电话</label>
-                  <input type="tel" className="w-full border border-slate-300 rounded-lg p-2" value={formData.emergencyPhone || ''} onChange={e => setFormData({ ...formData, emergencyPhone: e.target.value })} placeholder="电话" />
+                  <Input type="tel" value={formData.emergencyPhone || ''} onChange={e => setFormData({ ...formData, emergencyPhone: e.target.value })} placeholder="电话" />
                 </div>
               </div>
               {/* 同行人员 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">同行人员</label>
-                <input type="text" className="w-full border border-slate-300 rounded-lg p-2" value={formData.companions || ''} onChange={e => setFormData({ ...formData, companions: e.target.value })} placeholder="如：张三、李四" />
+                <Input type="text" value={formData.companions || ''} onChange={e => setFormData({ ...formData, companions: e.target.value })} placeholder="如：张三、李四" />
               </div>
               {/* 出差事由 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">出差事由 <span className="text-red-500">*</span></label>
-                <textarea className="w-full border border-slate-300 rounded-lg p-2 h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请详细描述出差目的和工作安排" />
+                <Textarea className="h-20" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="请详细描述出差目的和工作安排" />
               </div>
               {/* 附件上传 */}
               <div>

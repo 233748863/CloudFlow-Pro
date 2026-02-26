@@ -44,6 +44,13 @@
     accent-color: #ec4899; /* tailwind pink-500 */
   }
 
+  /* 全局表单元素 hover 边框高亮 */
+  input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([type="file"]):not([class*="border-none"]):not([class*="bg-transparent"]):hover,
+  select:hover,
+  textarea:hover {
+    border-color: #f9a8d4; /* tailwind pink-300 */
+  }
+
   /* 下拉框选中项样式 */
   option:checked,
   option:hover {
@@ -64,6 +71,14 @@
   select:not([class*="ring"]):focus,
   textarea:not([class*="ring"]):focus {
     box-shadow: 0 0 0 2px #f9a8d4; /* tailwind pink-300 */
+  }
+
+  /* checkbox 和 radio hover 样式 */
+  input[type="checkbox"]:hover,
+  input[type="radio"]:hover {
+    cursor: pointer;
+    filter: brightness(0.95);
+    box-shadow: 0 0 0 2px #fce7f3; /* tailwind pink-100 */
   }
 
   /* checkbox 和 radio 焦点样式 */
