@@ -271,7 +271,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
         {/* Slider Button */}
         <div 
           className={`absolute top-0 h-10 flex items-center justify-center cursor-pointer shadow-sm border border-slate-200 transition-colors z-20 rounded-sm
-            ${isDragging ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white hover:bg-slate-50 text-slate-500'}
+            ${isDragging ? 'bg-pink-500 border-pink-500 text-white' : 'bg-white hover:bg-slate-50 text-slate-500'}
             ${status === 'success' ? '!bg-emerald-500 !border-emerald-500 !text-white' : ''}
             ${status === 'fail' ? '!bg-red-500 !border-red-500 !text-white' : ''}
           `}
@@ -285,7 +285,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
         
         {/* Progress Bar */}
         <div 
-          className={`absolute top-0 left-0 h-full bg-indigo-100 border-y border-indigo-200/50 transition-all rounded-bl-lg
+          className={`absolute top-0 left-0 h-full bg-pink-50 border-y border-pink-100/50 transition-all rounded-bl-lg
             ${status === 'success' ? '!bg-emerald-100 !border-emerald-200' : ''}
             ${status === 'fail' ? '!bg-red-100 !border-red-200' : ''}
           `}

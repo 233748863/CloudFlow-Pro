@@ -153,7 +153,7 @@ const ConsumablePage: React.FC = () => {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Package className="text-indigo-600" size={28} />
+          <Package className="text-pink-500" size={28} />
           <div>
             <h1 className="text-2xl font-bold text-slate-900">耗材管理</h1>
             <p className="text-sm text-slate-500">管理办公耗材的库存、入库和出库</p>
@@ -161,7 +161,7 @@ const ConsumablePage: React.FC = () => {
         </div>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-2 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors"
         >
           <Plus size={18} />
           新增耗材
@@ -179,7 +179,7 @@ const ConsumablePage: React.FC = () => {
               onChange={e => setSearchName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
               placeholder="搜索耗材名称..."
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
             />
           </div>
           <button
@@ -195,7 +195,7 @@ const ConsumablePage: React.FC = () => {
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-indigo-600" />
+            <Loader2 size={32} className="animate-spin text-pink-500" />
           </div>
         ) : list.length === 0 ? (
           <div className="text-center py-20 text-slate-400">
@@ -257,7 +257,7 @@ const ConsumablePage: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleEdit(item)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
                         title="编辑"
                       >
                         <Pencil size={18} />
@@ -306,7 +306,7 @@ const ConsumablePage: React.FC = () => {
 
       {/* 新增/编辑弹窗 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-slate-900 mb-4">
               {currentItem?.consumableId ? '编辑耗材' : '新增耗材'}
@@ -321,7 +321,7 @@ const ConsumablePage: React.FC = () => {
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                   placeholder="请输入耗材名称"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -332,7 +332,7 @@ const ConsumablePage: React.FC = () => {
                     value={formData.model || ''}
                     onChange={e => setFormData({ ...formData, model: e.target.value })}
                     placeholder="如 A4"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                   />
                 </div>
                 <div>
@@ -342,7 +342,7 @@ const ConsumablePage: React.FC = () => {
                     value={formData.unit || ''}
                     onChange={e => setFormData({ ...formData, unit: e.target.value })}
                     placeholder="如 个/箱/包"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                   />
                 </div>
               </div>
@@ -354,7 +354,7 @@ const ConsumablePage: React.FC = () => {
                     min={0}
                     value={formData.quantity ?? 0}
                     onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                   />
                 </div>
                 <div>
@@ -364,7 +364,7 @@ const ConsumablePage: React.FC = () => {
                     min={0}
                     value={formData.lowStockThreshold ?? 10}
                     onChange={e => setFormData({ ...formData, lowStockThreshold: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                   />
                 </div>
               </div>
@@ -379,7 +379,7 @@ const ConsumablePage: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={submitting}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting && <Loader2 size={16} className="animate-spin" />}
                 保存
@@ -391,7 +391,7 @@ const ConsumablePage: React.FC = () => {
 
       {/* 出入库弹窗 */}
       {showStockModal && currentItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowStockModal(false)}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowStockModal(false)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-slate-900 mb-2">
               {stockAction === 'add' ? '入库' : '出库'} - {currentItem.name}
@@ -409,7 +409,7 @@ const ConsumablePage: React.FC = () => {
                 max={stockAction === 'reduce' ? currentItem.quantity : undefined}
                 value={stockQuantity}
                 onChange={e => setStockQuantity(parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
               />
             </div>
             <div className="flex gap-3 mt-6">

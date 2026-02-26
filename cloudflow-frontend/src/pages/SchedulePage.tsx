@@ -9,6 +9,7 @@ import { getMyEvents, createEvent, deleteEvent, getMeetingRooms } from '../servi
 import { Calendar, Plus, MapPin, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString, toLocalDatetimeString, toQueryDateString } from '../utils/dateFormat';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 export const SchedulePage = () => {
   const { user } = useAuth();
@@ -139,12 +140,12 @@ export const SchedulePage = () => {
     <div className="h-full flex flex-col space-y-4">
         <div className="flex justify-between items-center shrink-0">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Calendar className="text-indigo-600" />
+                <Calendar className="text-pink-500" />
                 我的日程
             </h2>
             <div className="flex gap-2">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mr-4">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500"></span>会议</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-400"></span>会议</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>工作</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span>个人</span>
                 </div>
@@ -153,7 +154,7 @@ export const SchedulePage = () => {
                         setForm({ title: '', type: 'PERSONAL', isAllDay: false, startTime: toBackendDateString(new Date()), endTime: toBackendDateString(new Date()) });
                         setIsModalOpen(true);
                     }}
-                    className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-1"
+                    className="bg-pink-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-pink-600 flex items-center gap-1"
                 >
                     <Plus size={16} />
                     新建日程
@@ -273,7 +274,7 @@ export const SchedulePage = () => {
 
         {/* Create Modal */}
         {isModalOpen && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col">
                     <div className="p-6 border-b border-slate-100">
                         <h3 className="text-lg font-bold text-slate-800">新建日程</h3>
@@ -291,15 +292,16 @@ export const SchedulePage = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">类型</label>
-                                <select 
-                                    className="w-full border border-slate-300 rounded-lg p-2"
-                                    value={form.type}
-                                    onChange={e => setForm({...form, type: e.target.value as any})}
-                                >
-                                    <option value="PERSONAL">个人事务</option>
-                                    <option value="WORK">工作安排</option>
-                                    <option value="MEETING">会议预订</option>
-                                </select>
+                                <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERSONAL">个人事务</SelectItem>
+                      <SelectItem value="WORK">工作安排</SelectItem>
+                      <SelectItem value="MEETING">会议预订</SelectItem>
+                    </SelectContent>
+                  </Select>
                             </div>
                             <div className="flex items-center mt-6">
                                 <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
@@ -307,7 +309,7 @@ export const SchedulePage = () => {
                                         type="checkbox"
                                         checked={form.isAllDay}
                                         onChange={e => setForm({...form, isAllDay: e.target.checked})}
-                                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                                        className="rounded text-pink-500 focus:ring-pink-400"
                                     />
                                     全天事件
                                 </label>
@@ -368,7 +370,7 @@ export const SchedulePage = () => {
                         </button>
                         <button 
                             onClick={handleSubmit}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                            className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600"
                         >
                             保存
                         </button>

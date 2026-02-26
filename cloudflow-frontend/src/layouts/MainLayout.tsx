@@ -148,7 +148,7 @@ export const MainLayout = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 animate-pulse">
+        <div className="w-12 h-12 bg-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-pink-200 animate-pulse">
           <GitMerge size={24} className="text-white" />
         </div>
         <div className="text-slate-500 font-medium text-sm animate-pulse">正在加载系统资源...</div>
@@ -161,7 +161,7 @@ export const MainLayout = () => {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 fixed h-full z-20 flex flex-col transition-all">
         <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-100">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-indigo-200 shadow-lg">
+          <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center text-white shadow-pink-200 shadow-lg">
             <GitMerge size={18} />
           </div>
           <span className="font-bold text-slate-800 text-lg tracking-tight">CloudFlow</span>
@@ -179,7 +179,7 @@ export const MainLayout = () => {
         </div>
 
         {/* Two-level Navigation */}
-        <nav className="p-3 flex-1 overflow-y-auto custom-scrollbar">
+        <nav className="p-3 flex-1 overflow-y-auto">
           {menuTree.map(group => (
             <div key={group.id} className="mb-1">
               {/* Group Header (一级菜单) */}
@@ -192,7 +192,7 @@ export const MainLayout = () => {
                 `}
               >
                 <div className="flex items-center gap-2.5">
-                  <group.icon size={17} className={expandedGroups.includes(group.id) ? 'text-indigo-500' : 'text-slate-400'} />
+                  <group.icon size={17} className={expandedGroups.includes(group.id) ? 'text-pink-500' : 'text-slate-400'} />
                   <span>{group.label}</span>
                 </div>
                 <ChevronRight
@@ -216,13 +216,13 @@ export const MainLayout = () => {
                       onClick={() => child.path && navigate(child.path)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all
                         ${isActive(child.path)
-                          ? 'bg-indigo-50 text-indigo-700'
+                          ? 'bg-pink-50 text-pink-700'
                           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}
                       `}
                     >
                       <child.icon
                         size={15}
-                        className={isActive(child.path) ? 'text-indigo-500' : 'text-slate-400'}
+                        className={isActive(child.path) ? 'text-pink-500' : 'text-slate-400'}
                       />
                       {child.label}
                     </button>
@@ -258,7 +258,7 @@ export const MainLayout = () => {
             <TenantSwitcher />
             <button 
               onClick={() => navigate('/office/announcement')}
-              className="relative text-slate-500 hover:text-indigo-600 transition-colors z-50 p-1.5 rounded-full hover:bg-indigo-50"
+              className="relative text-slate-500 hover:text-pink-600 transition-colors z-50 p-1.5 rounded-full hover:bg-pink-50"
             >
               <Bell size={20} />
               {unreadCount > 0 && (

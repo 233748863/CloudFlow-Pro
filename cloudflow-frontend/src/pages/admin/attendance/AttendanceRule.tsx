@@ -219,7 +219,7 @@ const AttendanceRulePage: React.FC = () => {
                   disabled={!editing}
                   className={`px-4 py-2 rounded-md border transition-colors ${
                     workDays.includes(day.value)
-                      ? 'bg-blue-500 text-white border-blue-500'
+                      ? 'bg-pink-400 text-white border-pink-400'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   } ${!editing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                 >

@@ -18,7 +18,7 @@ const AuditDetailModal: React.FC<{ log: SysAuditLog | null; onClose: () => void 
   if (!log) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
       <div
         className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl"
         onClick={e => e.stopPropagation()}
@@ -37,7 +37,7 @@ const AuditDetailModal: React.FC<{ log: SysAuditLog | null; onClose: () => void 
           </div>
           <div>
             <span className="text-slate-500">变更字段：</span>
-            <span className="text-indigo-600 font-medium">{log.auditField || '-'}</span>
+            <span className="text-pink-500 font-medium">{log.auditField || '-'}</span>
           </div>
           <div>
             <span className="text-slate-500">操作人：</span>
@@ -206,7 +206,7 @@ export const AuditLogPage: React.FC = () => {
             value={auditName}
             onChange={e => setAuditName(e.target.value)}
             placeholder="请输入业务名称"
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
           />
 
           <label className="text-sm text-slate-600">操作人</label>
@@ -215,7 +215,7 @@ export const AuditLogPage: React.FC = () => {
             value={createBy}
             onChange={e => setCreateBy(e.target.value)}
             placeholder="请输入操作人"
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-32 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-32 focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
           />
 
           <label className="text-sm text-slate-600">操作时间</label>
@@ -223,19 +223,19 @@ export const AuditLogPage: React.FC = () => {
             type="date"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
           />
           <span className="text-slate-400">To</span>
           <input
             type="date"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
           />
 
           <button
             onClick={handleSearch}
-            className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+            className="flex items-center gap-1.5 bg-pink-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-pink-600 transition"
           >
             <Search size={14} /> 查询
           </button>
@@ -308,7 +308,7 @@ export const AuditLogPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-slate-700 font-medium">{log.auditName || '-'}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 text-xs font-medium">
+                      <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-500 text-xs font-medium">
                         {log.auditField || '-'}
                       </span>
                     </td>
@@ -324,7 +324,7 @@ export const AuditLogPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleViewDetail(log.auditId)}
-                          className="text-indigo-500 hover:text-indigo-700 text-xs flex items-center gap-0.5"
+                          className="text-pink-400 hover:text-pink-600 text-xs flex items-center gap-0.5"
                         >
                           <Eye size={13} /> 详情
                         </button>
@@ -370,7 +370,7 @@ export const AuditLogPage: React.FC = () => {
                     onClick={() => goPage(p)}
                     className={`w-8 h-8 rounded text-sm ${
                       p === (query.pageNum || 1)
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-pink-500 text-white'
                         : 'hover:bg-slate-100'
                     }`}
                   >

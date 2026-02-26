@@ -5,6 +5,7 @@ import { RefreshCw, Search, ChevronLeft, ChevronRight, Eye, CheckCheck, Mail, Ma
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { toast } from 'sonner';
 import { ProcessTrace } from '../components/ProcessTrace';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 /** 每页条数 */
 const PAGE_SIZE = 12;
@@ -256,7 +257,7 @@ export const CopyListPage: React.FC = () => {
   /** 流程状态标签样式 */
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'RUNNING': return 'bg-indigo-50 text-indigo-600';
+      case 'RUNNING': return 'bg-pink-50 text-pink-500';
       case 'COMPLETED': return 'bg-emerald-50 text-emerald-600';
       case 'REJECTED': return 'bg-red-50 text-red-600';
       case 'REVOKED': return 'bg-amber-50 text-amber-600';
@@ -304,7 +305,7 @@ export const CopyListPage: React.FC = () => {
         </div>
         <div className="flex flex-col items-center justify-center py-20 text-slate-400">
           <p className="mb-4">{error}</p>
-          <button onClick={() => fetchList()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+          <button onClick={() => fetchList()} className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600">
             重试
           </button>
         </div>
@@ -334,11 +335,11 @@ export const CopyListPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+              className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
             />
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             {searchInput && searchInput !== keyword && (
-              <button onClick={handleSearch} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-indigo-600 hover:text-indigo-700">
+              <button onClick={handleSearch} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600">
                 搜索
               </button>
             )}
@@ -348,7 +349,7 @@ export const CopyListPage: React.FC = () => {
           {selectedIds.size > 0 && (
             <button
               onClick={handleBatchMarkRead}
-              className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-1"
+              className="bg-pink-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-pink-600 flex items-center gap-1"
             >
               <CheckCheck size={16} />
               标记已读 ({selectedIds.size})
@@ -391,16 +392,15 @@ export const CopyListPage: React.FC = () => {
 
         {/* 流程类型筛选 */}
         {processDefOptions.length > 0 && (
-          <select
-            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-1.5"
-            value={processDefKey}
-            onChange={(e) => { setProcessDefKey(e.target.value); setPageNum(1); }}
-          >
-            <option value="">全部流程类型</option>
-            {processDefOptions.map(opt => (
-              <option key={opt.key} value={opt.key}>{opt.name}</option>
-            ))}
-          </select>
+          <Select value={processDefKey} onValueChange={v => setProcessDefKey(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部流程类型</SelectItem>
+                      <SelectItem value={String(opt.key)}>{opt.name}</SelectItem>
+                    </SelectContent>
+                  </Select>
         )}
 
         {/* 全选未读 */}
@@ -410,7 +410,7 @@ export const CopyListPage: React.FC = () => {
               type="checkbox"
               checked={allUnreadSelected}
               onChange={handleToggleSelectAll}
-              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="rounded border-slate-300 text-pink-500 focus:ring-pink-400"
             />
             全选未读
           </label>
@@ -441,7 +441,7 @@ export const CopyListPage: React.FC = () => {
               <div
                 key={record.id}
                 className={`bg-white border rounded-xl p-4 hover:shadow-md transition-all cursor-pointer flex items-start gap-4 ${
-                  record.isRead === 0 ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-200'
+                  record.isRead === 0 ? 'border-pink-100 bg-pink-50/30' : 'border-slate-200'
                 }`}
                 onClick={() => handleViewDetail(record)}
               >
@@ -452,7 +452,7 @@ export const CopyListPage: React.FC = () => {
                       type="checkbox"
                       checked={selectedIds.has(record.id)}
                       onChange={() => handleToggleSelect(record.id)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="rounded border-slate-300 text-pink-500 focus:ring-pink-400"
                     />
                   ) : (
                     <div className="w-4" />
@@ -462,7 +462,7 @@ export const CopyListPage: React.FC = () => {
                 {/* 已读/未读图标 */}
                 <div className="pt-0.5 shrink-0">
                   {record.isRead === 0 ? (
-                    <Mail size={20} className="text-indigo-500" />
+                    <Mail size={20} className="text-pink-400" />
                   ) : (
                     <MailOpen size={20} className="text-slate-300" />
                   )}
@@ -493,7 +493,7 @@ export const CopyListPage: React.FC = () => {
                   {record.isRead === 0 && (
                     <button
                       onClick={() => handleMarkRead(record)}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
+                      className="text-xs text-pink-500 hover:text-pink-600 px-2 py-1 rounded hover:bg-pink-50 transition-colors"
                     >
                       标记已读
                     </button>
@@ -538,7 +538,7 @@ export const CopyListPage: React.FC = () => {
                   onClick={() => setPageNum(page)}
                   className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
                     page === pageNum
-                      ? 'bg-indigo-600 text-white shadow'
+                      ? 'bg-pink-500 text-white shadow'
                       : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >

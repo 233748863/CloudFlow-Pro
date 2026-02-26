@@ -19,6 +19,7 @@ import { saveProcessDefinition, deployProcessDefinition } from '../services/api/
 import { getRoleList, getUserList, getDeptTree } from '../services/api/auth';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 
 // ==================== 辅助函数 ====================
 
@@ -129,9 +130,9 @@ const NODE_VISUAL: Record<string, {
     border: 'border-emerald-200', hoverBorder: 'hover:border-emerald-400', label: '开始'
   },
   [NodeType.APPROVAL]: {
-    icon: UserCheck, color: 'bg-indigo-500', bg: 'bg-white',
-    iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600',
-    border: 'border-indigo-200', hoverBorder: 'hover:border-indigo-400', label: '审批'
+    icon: UserCheck, color: 'bg-pink-400', bg: 'bg-white',
+    iconBg: 'bg-pink-50', iconColor: 'text-pink-500',
+    border: 'border-pink-100', hoverBorder: 'hover:border-pink-300', label: '审批'
   },
   [NodeType.CONDITION]: {
     icon: GitBranch, color: 'bg-amber-500', bg: 'bg-amber-50/80',
@@ -149,9 +150,9 @@ const NODE_VISUAL: Record<string, {
     border: 'border-slate-300', hoverBorder: 'hover:border-slate-500', label: '完成'
   },
   [NodeType.NOTIFICATION]: {
-    icon: Bell, color: 'bg-blue-500', bg: 'bg-blue-50/80',
-    iconBg: 'bg-blue-100', iconColor: 'text-blue-600',
-    border: 'border-blue-200', hoverBorder: 'hover:border-blue-400', label: '通知'
+    icon: Bell, color: 'bg-pink-400', bg: 'bg-pink-50/80',
+    iconBg: 'bg-pink-50', iconColor: 'text-pink-500',
+    border: 'border-pink-100', hoverBorder: 'hover:border-pink-300', label: '通知'
   },
   [NodeType.SCRIPT]: {
     icon: Code, color: 'bg-green-500', bg: 'bg-green-50/80',
@@ -204,7 +205,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   // ===== 行政办公 =====
   {
     id: 'leave', name: '请假审批', description: '员工提交 → 部门经理审批 → 完成', category: 'office',
-    icon: Calendar, color: 'text-blue-500 bg-blue-50',
+    icon: Calendar, color: 'text-pink-400 bg-pink-50',
     nodes: { id: 'start', type: NodeType.START, title: '提交请假', next: {
       id: 'n1', type: NodeType.APPROVAL, title: '部门经理审批', approverType: 'DEPT_MANAGER',
       next: { id: 'end', type: NodeType.END, title: '流程结束' }
@@ -341,7 +342,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     id: 'training', name: '培训申请', description: '提交培训 → 部门审批 → HR审核 → 完成', category: 'hr',
-    icon: GraduationCap, color: 'text-indigo-500 bg-indigo-50',
+    icon: GraduationCap, color: 'text-pink-400 bg-pink-50',
     nodes: { id: 'start', type: NodeType.START, title: '提交培训申请', next: {
       id: 'n1', type: NodeType.APPROVAL, title: '部门经理审批', approverType: 'DEPT_MANAGER', next: {
         id: 'n2', type: NodeType.APPROVAL, title: 'HR审核', approverType: 'ROLE', approverValue: 'HR',
@@ -439,7 +440,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     id: 'education', name: '课程审批', description: '教师提交 → 教研组审核 → 教务处审批 → 完成', category: 'industry',
-    icon: BookOpen, color: 'text-blue-600 bg-blue-50',
+    icon: BookOpen, color: 'text-pink-500 bg-pink-50',
     nodes: { id: 'start', type: NodeType.START, title: '提交课程方案', next: {
       id: 'n1', type: NodeType.APPROVAL, title: '教研组审核', approverType: 'DIRECT_LEADER', next: {
         id: 'n2', type: NodeType.APPROVAL, title: '教务处审批', approverType: 'ROLE', approverValue: 'MANAGER',
@@ -599,7 +600,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     id: 'sales_contract', name: '销售合同全流程', description: '销售审核 → 金额分级 → 法务审核 → 并行盖章 → 通知', category: 'sales',
-    icon: FileCheck, color: 'text-indigo-600 bg-indigo-50',
+    icon: FileCheck, color: 'text-pink-500 bg-pink-50',
     nodes: { id: 'start', type: NodeType.START, title: '提交合同审批', next: {
       id: 'sc_n1', type: NodeType.APPROVAL, title: '销售主管审核', approverType: 'DIRECT_LEADER',
       branches: [
@@ -636,7 +637,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     id: 'bidding', name: '招标采购流程', description: '需求审核 → 生成标书 → 等待投标 → 并行评标 → 审批', category: 'industry',
-    icon: ClipboardList, color: 'text-blue-700 bg-blue-50',
+    icon: ClipboardList, color: 'text-pink-600 bg-pink-50',
     nodes: { id: 'start', type: NodeType.START, title: '提交招标需求', next: {
       id: 'bid_n1', type: NodeType.APPROVAL, title: '采购部审核需求', approverType: 'ROLE', approverValue: 'ADMIN', next: {
         id: 'bid_n2', type: NodeType.SCRIPT, title: '自动生成招标文件',
@@ -699,7 +700,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     id: 'leave_advanced', name: '请假全流程', description: '天数判断 → 分级审批 → 子流程交接 → 定时提醒 → 通知', category: 'office',
-    icon: Calendar, color: 'text-blue-600 bg-blue-50',
+    icon: Calendar, color: 'text-pink-500 bg-pink-50',
     nodes: { id: 'start', type: NodeType.START, title: '提交请假申请', next: {
       id: 'la_n1', type: NodeType.APPROVAL, title: '直属上级审批', approverType: 'DIRECT_LEADER',
       branches: [
@@ -797,7 +798,7 @@ const TemplatePickerModal = ({ open, onClose, onSelect }: {
             <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                 activeCategory === cat.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-pink-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
               }`}>
               {cat.label}
@@ -810,18 +811,18 @@ const TemplatePickerModal = ({ open, onClose, onSelect }: {
           ))}
         </div>
         {/* 模板列表 */}
-        <div className="p-5 pt-2 grid grid-cols-2 gap-3 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-5 pt-2 grid grid-cols-2 gap-3 overflow-y-auto flex-1">
           {filtered.map(t => {
             const TIcon = t.icon;
             return (
               <button key={t.id} onClick={() => { onSelect(t); onClose(); }}
-                className="text-left p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-300 hover:shadow-md transition-all group">
+                className="text-left p-4 rounded-xl border-2 border-slate-100 hover:border-pink-200 hover:shadow-md transition-all group">
                 <div className="flex items-start gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${t.color} shrink-0`}>
                     <TIcon size={20} />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-semibold text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">{t.name}</div>
+                    <div className="font-semibold text-sm text-slate-700 group-hover:text-pink-500 transition-colors">{t.name}</div>
                     <div className="text-xs text-slate-400 mt-1 leading-relaxed">{t.description}</div>
                   </div>
                 </div>
@@ -941,10 +942,10 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
                 return (
                   <div key={r.roleId} onClick={() => toggleValue(r.roleKey)}
                     className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
-                      isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
+                      isSelected ? 'bg-pink-50 text-pink-600' : 'hover:bg-slate-50 text-slate-600'
                     }`}>
                     <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                      isSelected ? 'bg-pink-400 border-pink-400' : 'border-slate-300'
                     }`}>
                       {isSelected && <span className="text-white text-[10px]">✓</span>}
                     </div>
@@ -959,9 +960,9 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
                 {selectedValues.map(v => {
                   const role = roles.find(r => r.roleKey === v);
                   return (
-                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px]">
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-50 text-pink-600 rounded-full text-[10px]">
                       {role?.roleName || v}
-                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-indigo-900">×</button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-pink-700">×</button>
                     </span>
                   );
                 })}
@@ -995,10 +996,10 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
                 return (
                   <div key={u.userId} onClick={() => toggleValue(uid)}
                     className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
-                      isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
+                      isSelected ? 'bg-pink-50 text-pink-600' : 'hover:bg-slate-50 text-slate-600'
                     }`}>
                     <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                      isSelected ? 'bg-pink-400 border-pink-400' : 'border-slate-300'
                     }`}>
                       {isSelected && <span className="text-white text-[10px]">✓</span>}
                     </div>
@@ -1013,9 +1014,9 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
                 {selectedValues.map(v => {
                   const user = users.find(u => String(u.userId) === v);
                   return (
-                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px]">
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-50 text-pink-600 rounded-full text-[10px]">
                       {user?.nickName || user?.userName || v}
-                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-indigo-900">×</button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-pink-700">×</button>
                     </span>
                   );
                 })}
@@ -1051,10 +1052,10 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
                 return (
                   <div key={d.deptId} onClick={() => toggleValue(did)}
                     className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
-                      isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'
+                      isSelected ? 'bg-pink-50 text-pink-600' : 'hover:bg-slate-50 text-slate-600'
                     }`}>
                     <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300'
+                      isSelected ? 'bg-pink-400 border-pink-400' : 'border-slate-300'
                     }`}>
                       {isSelected && <span className="text-white text-[10px]">✓</span>}
                     </div>
@@ -1068,9 +1069,9 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
                 {selectedValues.map(v => {
                   const dept = depts.find(d => String(d.deptId) === v);
                   return (
-                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px]">
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-50 text-pink-600 rounded-full text-[10px]">
                       {dept?.deptName || v}
-                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-indigo-900">×</button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleValue(v); }} className="hover:text-pink-700">×</button>
                     </span>
                   );
                 })}
@@ -1121,7 +1122,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
           <X size={16} className="text-slate-400" />
         </button>
       </div>
-      <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
+      <div className="p-4 flex-1 overflow-y-auto">
         <div className="flex justify-between items-center mb-5">
           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${visual.iconBg} ${visual.iconColor}`}>
             {NODE_TYPE_LABELS[node.type] || node.type}
@@ -1137,7 +1138,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
             <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Settings size={12} /> 基础信息</label>
             <div>
               <span className="text-xs text-slate-400 mb-1 block">名称</span>
-              <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              <input type="text" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none transition-all"
                 value={formData.title} onChange={e => handleChange('title', e.target.value)} placeholder="请输入节点名称" />
             </div>
           </div>
@@ -1146,10 +1147,16 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><UserCheck size={12} /> 审批人设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">审批方式</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  value={formData.approverType || 'ROLE'} onChange={e => handleChange('approverType', e.target.value)}>
-                  {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-                </select>
+                <Select value={formData.approverType || 'ROLE'} onValueChange={v => handleChange('approverType', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
               </div>
               {(formData.approverType === 'ROLE') && (
                 <ApproverValueSelector
@@ -1185,15 +1192,15 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                 />
               )}
               {(formData.approverType === 'DIRECT_LEADER') && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                  <p className="text-xs text-blue-700 font-medium">直属上级</p>
-                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人的直属上级作为审批人。无需手动指定。</p>
+                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-600 font-medium">直属上级</p>
+                  <p className="text-[10px] text-pink-400 mt-0.5">系统将自动查找流程发起人的直属上级作为审批人。无需手动指定。</p>
                 </div>
               )}
               {(formData.approverType === 'DEPT_MANAGER') && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                  <p className="text-xs text-blue-700 font-medium">部门负责人</p>
-                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人所在部门的负责人作为审批人。无需手动指定。</p>
+                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-600 font-medium">部门负责人</p>
+                  <p className="text-[10px] text-pink-400 mt-0.5">系统将自动查找流程发起人所在部门的负责人作为审批人。无需手动指定。</p>
                 </div>
               )}
             </div>
@@ -1204,50 +1211,17 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {/* 会签类型选择 */}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">会签类型</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
-                  value={formData.signType || 'ALL'}
-                  onChange={e => {
-                    const newSignType = e.target.value;
-                    const hasBranches = formData.branches && formData.branches.length > 0;
-                    const applySignType = () => {
-                      // signType 和 passPercent 存到节点顶层，与后端 WfNodeConfig 对齐
-                      const updates: Partial<WorkflowNode> = {
-                        signType: newSignType as any,
-                      };
-                      // 会签是多人审批同一任务，不需要条件分支
-                      if (hasBranches) {
-                        updates.branches = undefined;
-                        updates.branchStrategy = undefined;
-                      }
-                      // 切换离开 PERCENT 时清除 passPercent
-                      if (formData.signType === 'PERCENT' && newSignType !== 'PERCENT') {
-                        updates.passPercent = undefined;
-                      }
-                      // 同步清理 props 中的旧数据（兼容迁移）
-                      if (formData.props?.signType || formData.props?.passPercent) {
-                        const cleanProps = { ...formData.props };
-                        delete cleanProps.signType;
-                        delete cleanProps.passPercent;
-                        updates.props = cleanProps;
-                      }
-                      setFormData(prev => ({ ...prev, ...updates }));
-                      onUpdate(node.id, updates);
-                    };
-                    // 如果有分支，弹确认对话框
-                    if (hasBranches) {
-                      onConfirmAction(
-                        `切换会签类型将清除当前 ${formData.branches!.length} 个分支及其下属节点，此操作不可撤销。是否继续？`,
-                        applySignType
-                      );
-                    } else {
-                      applySignType();
-                    }
-                  }}>
-                  <option value="ALL">全签（所有人同意）</option>
-                  <option value="ANY">或签（任一人同意）</option>
-                  <option value="PERCENT">比例签（按比例通过）</option>
-                  <option value="SEQUENTIAL">顺序签（按顺序逐个审批）</option>
-                </select>
+                <Select value={formData.signType || 'ALL'} onValueChange={v => setFormData({...formData, signType: v as 'ALL' | 'ANY' | 'PERCENT' | 'SEQUENTIAL'})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">全签（所有人同意）</SelectItem>
+                      <SelectItem value="ANY">或签（任一人同意）</SelectItem>
+                      <SelectItem value="PERCENT">比例签（按比例通过）</SelectItem>
+                      <SelectItem value="SEQUENTIAL">顺序签（按顺序逐个审批）</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
               {/* 比例签 - 通过百分比设置 */}
               {formData.signType === 'PERCENT' && (
@@ -1264,10 +1238,16 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {/* 审批人选择 */}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">审批方式</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-violet-500 outline-none"
-                  value={formData.approverType || 'ROLE'} onChange={e => handleChange('approverType', e.target.value)}>
-                  {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-                </select>
+                <Select value={formData.approverType || 'ROLE'} onValueChange={v => setFormData({...formData, approverType: v as 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT'})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
               </div>
               {(formData.approverType === 'ROLE' || formData.approverType === 'USER' || formData.approverType === 'USERS') && (
                 <ApproverValueSelector
@@ -1309,14 +1289,17 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Bell size={12} /> 通知设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">接收人类型</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={formData.props?.recipientType || 'INITIATOR'} 
-                  onChange={e => handleChange('props', { ...formData.props, recipientType: e.target.value })}>
-                  <option value="INITIATOR">发起人</option>
-                  <option value="ROLE">按角色</option>
-                  <option value="USER">指定人员</option>
-                  <option value="DEPT">按部门</option>
-                </select>
+                <Select value={formData.props?.recipientType || 'INITIATOR'} onValueChange={v => setFormData({...formData, props: {...formData.props, recipientType: v}})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INITIATOR">发起人</SelectItem>
+                      <SelectItem value="ROLE">按角色</SelectItem>
+                      <SelectItem value="USER">指定人员</SelectItem>
+                      <SelectItem value="DEPT">按部门</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
               {(formData.props?.recipientType === 'ROLE' || formData.props?.recipientType === 'USER' || formData.props?.recipientType === 'DEPT') && (
                 <ApproverValueSelector
@@ -1334,7 +1317,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               </div>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">通知内容</span>
-                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-blue-500 outline-none"
+                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-pink-400 outline-none"
                   placeholder="支持变量: ${initiator}, ${amount}, ${days} 等"
                   value={formData.props?.notificationContent || ''} 
                   onChange={e => handleChange('props', { ...formData.props, notificationContent: e.target.value })} />
@@ -1347,13 +1330,16 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Code size={12} /> 脚本设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">脚本类型</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                  value={formData.props?.scriptType || 'GROOVY'} 
-                  onChange={e => handleChange('props', { ...formData.props, scriptType: e.target.value })}>
-                  <option value="GROOVY">Groovy 脚本</option>
-                  <option value="JAVASCRIPT">JavaScript 脚本</option>
-                  <option value="API">HTTP API 调用</option>
-                </select>
+                <Select value={formData.props?.scriptType || 'GROOVY'} onValueChange={v => setFormData({...formData, props: {...formData.props, scriptType: v}})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GROOVY">Groovy 脚本</SelectItem>
+                      <SelectItem value="JAVASCRIPT">JavaScript 脚本</SelectItem>
+                      <SelectItem value="API">HTTP API 调用</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
               {(formData.props?.scriptType === 'GROOVY' || formData.props?.scriptType === 'JAVASCRIPT') && (
                 <div>
@@ -1378,14 +1364,17 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">请求方法</span>
-                    <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                      value={formData.props?.apiMethod || 'GET'} 
-                      onChange={e => handleChange('props', { ...formData.props, apiMethod: e.target.value })}>
-                      <option value="GET">GET</option>
-                      <option value="POST">POST</option>
-                      <option value="PUT">PUT</option>
-                      <option value="DELETE">DELETE</option>
-                    </select>
+                    <Select value={formData.props?.apiMethod || 'GET'} onValueChange={v => setFormData({...formData, props: {...formData.props, apiMethod: v}})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GET">GET</SelectItem>
+                      <SelectItem value="POST">POST</SelectItem>
+                      <SelectItem value="PUT">PUT</SelectItem>
+                      <SelectItem value="DELETE">DELETE</SelectItem>
+                    </SelectContent>
+                  </Select>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">请求头 (JSON)</span>
@@ -1417,12 +1406,15 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Clock size={12} /> 定时设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">定时类型</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                  value={formData.props?.timerType || 'DELAY'} 
-                  onChange={e => handleChange('props', { ...formData.props, timerType: e.target.value })}>
-                  <option value="DELAY">延迟执行</option>
-                  <option value="SCHEDULE">定时执行</option>
-                </select>
+                <Select value={formData.props?.timerType || 'DELAY'} onValueChange={v => setFormData({...formData, props: {...formData.props, timerType: v}})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DELAY">延迟执行</SelectItem>
+                      <SelectItem value="SCHEDULE">定时执行</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
               {formData.props?.timerType === 'DELAY' && (
                 <div>
@@ -1478,15 +1470,19 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Send size={12} /> 抄送设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">抄送人类型</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-500 outline-none"
-                  value={formData.approverType || 'USER'} onChange={e => handleChange('approverType', e.target.value)}>
-                  <option value="USER">指定人员</option>
-                  <option value="USERS">指定多人</option>
-                  <option value="ROLE">按角色</option>
-                  <option value="DEPT">按部门</option>
-                  <option value="DEPT_MANAGER">部门负责人</option>
-                  <option value="DIRECT_LEADER">直属上级</option>
-                </select>
+                <Select value={formData.approverType || 'USER'} onValueChange={v => setFormData({...formData, approverType: v as 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT'})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USER">指定人员</SelectItem>
+                      <SelectItem value="USERS">指定多人</SelectItem>
+                      <SelectItem value="ROLE">按角色</SelectItem>
+                      <SelectItem value="DEPT">按部门</SelectItem>
+                      <SelectItem value="DEPT_MANAGER">部门负责人</SelectItem>
+                      <SelectItem value="DIRECT_LEADER">直属上级</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
               {(formData.approverType === 'ROLE') && (
                 <ApproverValueSelector type="ROLE" value={formData.approverValue || ''} onChange={(val) => handleChange('approverValue', val)} onLabelChange={(label) => handleChange('props', { ...formData.props, approverLabel: label })} />
@@ -1527,11 +1523,16 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               </div>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">处理人类型</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-                  value={formData.approverType || 'ROLE'} 
-                  onChange={e => handleChange('approverType', e.target.value)}>
-                  {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-                </select>
+                <Select value={formData.approverType || 'ROLE'} onValueChange={v => setFormData({...formData, approverType: v as 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT'})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(APPROVER_TYPE_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
               </div>
               {(formData.approverType === 'ROLE') && (
                 <ApproverValueSelector
@@ -1567,36 +1568,45 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                 />
               )}
               {(formData.approverType === 'DIRECT_LEADER') && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                  <p className="text-xs text-blue-700 font-medium">直属上级</p>
-                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人的直属上级作为处理人。无需手动指定。</p>
+                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-600 font-medium">直属上级</p>
+                  <p className="text-[10px] text-pink-400 mt-0.5">系统将自动查找流程发起人的直属上级作为处理人。无需手动指定。</p>
                 </div>
               )}
               {(formData.approverType === 'DEPT_MANAGER') && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                  <p className="text-xs text-blue-700 font-medium">部门负责人</p>
-                  <p className="text-[10px] text-blue-500 mt-0.5">系统将自动查找流程发起人所在部门的负责人作为处理人。无需手动指定。</p>
+                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-600 font-medium">部门负责人</p>
+                  <p className="text-[10px] text-pink-400 mt-0.5">系统将自动查找流程发起人所在部门的负责人作为处理人。无需手动指定。</p>
                 </div>
               )}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">任务优先级</span>
-                <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                  value={formData.props?.priority || 'MEDIUM'} 
-                  onChange={e => handleChange('props', { ...formData.props, priority: e.target.value })}>
-                  <option value="LOW">低</option>
-                  <option value="MEDIUM">中</option>
-                  <option value="HIGH">高</option>
-                </select>
+                <Select value={formData.props?.priority || 'MEDIUM'} onValueChange={v => setFormData({...formData, props: {...formData.props, priority: v}})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOW">低</SelectItem>
+                      <SelectItem value="MEDIUM">中</SelectItem>
+                      <SelectItem value="HIGH">高</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
             </div>
           )}
           {(node.branches && node.branches.length > 0) && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><GitBranch size={12} /> 分支规则</label>
-              <select className="w-full border border-slate-200 rounded-lg p-2.5 text-sm"
-                value={formData.branchStrategy || 'EXCLUSIVE'} onChange={e => handleChange('branchStrategy', e.target.value)}>
-                {Object.entries(BRANCH_STRATEGY_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-              </select>
+              <Select value={formData.branchStrategy || 'EXCLUSIVE'} onValueChange={v => handleChange('branchStrategy', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(BRANCH_STRATEGY_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
             </div>
           )}
           <div className="space-y-3 pt-4 border-t border-slate-100">
@@ -1625,17 +1635,17 @@ const ConnectorDropZone = ({ parentId, isDraggingGlobal, onDrop }: {
   }
   return (
     <div className="flex flex-col items-center relative">
-      <div className={`h-10 w-0.5 transition-all ${isOver ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
+      <div className={`h-10 w-0.5 transition-all ${isOver ? 'bg-pink-400' : 'bg-slate-300'}`}></div>
       <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-12 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all cursor-pointer z-20 ${
-        isOver ? 'border-indigo-500 bg-indigo-50 scale-110 shadow-lg shadow-indigo-200' : 'border-slate-300 bg-white/80 hover:border-indigo-400 hover:bg-indigo-50/50'
+        isOver ? 'border-pink-400 bg-pink-50 scale-110 shadow-lg shadow-pink-100' : 'border-slate-300 bg-white/80 hover:border-pink-300 hover:bg-pink-50/50'
       }`}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setIsOver(true); }}
         onDragLeave={() => setIsOver(false)}
         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setIsOver(false); const dragId = e.dataTransfer.getData('nodeId'); if (dragId) onDrop(dragId, parentId); }}>
-        <Move size={14} className={isOver ? 'text-indigo-500' : 'text-slate-400'} />
-        <span className={`text-xs font-medium ${isOver ? 'text-indigo-600' : 'text-slate-400'}`}>{isOver ? '松开放置' : '拖到这里'}</span>
+        <Move size={14} className={isOver ? 'text-pink-400' : 'text-slate-400'} />
+        <span className={`text-xs font-medium ${isOver ? 'text-pink-500' : 'text-slate-400'}`}>{isOver ? '松开放置' : '拖到这里'}</span>
       </div>
-      <ArrowDown size={14} className={`-mt-1 mb-1 ${isOver ? 'text-indigo-500' : 'text-slate-300'}`} />
+      <ArrowDown size={14} className={`-mt-1 mb-1 ${isOver ? 'text-pink-400' : 'text-slate-300'}`} />
     </div>
   );
 };
@@ -1665,7 +1675,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
       {/* 拖拽放置提示 */}
       {isDragOver && !isDragging && isDraggingGlobal && (
         <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-30 animate-bounce">
-          <div className="bg-indigo-500 text-white text-xs px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
+          <div className="bg-pink-400 text-white text-xs px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
             <ArrowDown size={12} /> 放置到此节点后
           </div>
         </div>
@@ -1677,7 +1687,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
         <div
           className={`w-64 ${visual.bg} rounded-xl shadow-sm border-2 transition-all cursor-pointer relative z-10 ${
             isDragging ? 'opacity-40 scale-95 border-slate-300 rotate-1' :
-            isDragOver && isDraggingGlobal ? 'border-indigo-500 shadow-lg shadow-indigo-200 scale-105' :
+            isDragOver && isDraggingGlobal ? 'border-pink-400 shadow-lg shadow-pink-100 scale-105' :
             `${visual.border} ${visual.hoverBorder} hover:shadow-md`
           }`}
           onClick={() => { onSelect(node); setActiveQuickAddId(null); }}
@@ -1784,7 +1794,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
               className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
                 showQuickAdd 
                   ? 'bg-red-500 text-white rotate-45 scale-110' 
-                  : 'bg-indigo-600 text-white hover:scale-110 hover:shadow-lg'
+                  : 'bg-pink-500 text-white hover:scale-110 hover:shadow-lg'
               }`}
               title={showQuickAdd ? '关闭菜单' : '在此之前添加节点'}
             >
@@ -1792,7 +1802,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
             </button>
             {showQuickAdd && (
               <div 
-                className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-indigo-200 p-3 min-w-[200px] z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200"
+                className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-pink-100 p-3 min-w-[200px] z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200"
                 onClick={(e) => e.stopPropagation()}
                 onMouseEnter={(e) => { 
                   e.stopPropagation(); 
@@ -1806,13 +1816,13 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 style={{ pointerEvents: 'auto' }}
               >
                 <div className="text-xs text-slate-600 px-2 py-1 font-semibold mb-1 flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-indigo-500" />
+                  <Sparkles size={12} className="text-pink-400" />
                   选择节点类型
                 </div>
                 {([
-                  { type: NodeType.APPROVAL, icon: UserCheck, label: '审批节点', desc: '需要审批人处理', color: 'text-indigo-500', bg: 'hover:bg-indigo-50', border: 'hover:border-indigo-200' },
+                  { type: NodeType.APPROVAL, icon: UserCheck, label: '审批节点', desc: '需要审批人处理', color: 'text-pink-400', bg: 'hover:bg-pink-50', border: 'hover:border-pink-100' },
                   { type: NodeType.PARALLEL, icon: Layers, label: '会签节点', desc: '多人同时审批', color: 'text-violet-500', bg: 'hover:bg-violet-50', border: 'hover:border-violet-200' },
-                  { type: NodeType.NOTIFICATION, icon: Bell, label: '通知节点', desc: '发送通知消息', color: 'text-blue-500', bg: 'hover:bg-blue-50', border: 'hover:border-blue-200' },
+                  { type: NodeType.NOTIFICATION, icon: Bell, label: '通知节点', desc: '发送通知消息', color: 'text-pink-400', bg: 'hover:bg-pink-50', border: 'hover:border-pink-100' },
                   { type: NodeType.SCRIPT, icon: Code, label: '脚本节点', desc: '执行自动化脚本', color: 'text-green-500', bg: 'hover:bg-green-50', border: 'hover:border-green-200' },
                   { type: NodeType.TIMER, icon: Clock, label: '定时节点', desc: '延迟或定时触发', color: 'text-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200' },
                   { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
@@ -1862,7 +1872,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
               className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
                 showQuickAdd 
                   ? 'bg-red-500 text-white rotate-45 scale-110' 
-                  : 'bg-indigo-600 text-white hover:scale-110 hover:shadow-lg'
+                  : 'bg-pink-500 text-white hover:scale-110 hover:shadow-lg'
               }`}
               title={showQuickAdd ? '关闭菜单' : '添加节点'}
             >
@@ -1870,7 +1880,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
             </button>
             {showQuickAdd && (
               <div 
-                className="absolute top-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-indigo-200 p-3 min-w-[200px] z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
+                className="absolute top-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-pink-100 p-3 min-w-[200px] z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
                 onClick={(e) => e.stopPropagation()}
                 onMouseEnter={(e) => { 
                   e.stopPropagation(); 
@@ -1884,13 +1894,13 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                 style={{ pointerEvents: 'auto' }}
               >
                 <div className="text-xs text-slate-600 px-2 py-1 font-semibold mb-1 flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-indigo-500" />
+                  <Sparkles size={12} className="text-pink-400" />
                   选择节点类型
                 </div>
                 {([
-                  { type: NodeType.APPROVAL, icon: UserCheck, label: '审批节点', desc: '需要审批人处理', color: 'text-indigo-500', bg: 'hover:bg-indigo-50', border: 'hover:border-indigo-200' },
+                  { type: NodeType.APPROVAL, icon: UserCheck, label: '审批节点', desc: '需要审批人处理', color: 'text-pink-400', bg: 'hover:bg-pink-50', border: 'hover:border-pink-100' },
                   { type: NodeType.PARALLEL, icon: Layers, label: '会签节点', desc: '多人同时审批', color: 'text-violet-500', bg: 'hover:bg-violet-50', border: 'hover:border-violet-200' },
-                  { type: NodeType.NOTIFICATION, icon: Bell, label: '通知节点', desc: '发送通知消息', color: 'text-blue-500', bg: 'hover:bg-blue-50', border: 'hover:border-blue-200' },
+                  { type: NodeType.NOTIFICATION, icon: Bell, label: '通知节点', desc: '发送通知消息', color: 'text-pink-400', bg: 'hover:bg-pink-50', border: 'hover:border-pink-100' },
                   { type: NodeType.SCRIPT, icon: Code, label: '脚本节点', desc: '执行自动化脚本', color: 'text-green-500', bg: 'hover:bg-green-50', border: 'hover:border-green-200' },
                   { type: NodeType.TIMER, icon: Clock, label: '定时节点', desc: '延迟或定时触发', color: 'text-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200' },
                   { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
@@ -2285,7 +2295,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       {/* 工具栏 */}
       <div className="h-12 bg-white border-b px-4 flex items-center justify-between shadow-sm z-20">
         <div className="flex items-center gap-3">
-          <GitMerge size={16} className="text-indigo-600" />
+          <GitMerge size={16} className="text-pink-500" />
           <input value={workflowName} onChange={e => setWorkflowName(e.target.value)}
             className="text-sm font-bold text-slate-700 bg-transparent border-none focus:ring-0 focus:outline-none hover:bg-slate-50 px-2 py-1 rounded transition-colors"
             placeholder="请输入流程名称" />
@@ -2305,11 +2315,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
           <div className="h-6 w-px bg-slate-200"></div>
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-medium rounded-lg hover:bg-indigo-100 transition-colors">
+              className="flex items-center gap-1 px-3 py-1.5 bg-pink-50 text-pink-500 text-xs font-medium rounded-lg hover:bg-pink-50 transition-colors">
               <Save size={14} /> {saving ? '保存中...' : '保存'}
             </button>
             <button onClick={handleDeploy}
-              className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg shadow hover:bg-indigo-700 transition-colors">
+              className="flex items-center gap-1 px-3 py-1.5 bg-pink-500 text-white text-xs font-medium rounded-lg shadow hover:bg-pink-600 transition-colors">
               <UploadCloud size={14} /> 发布
             </button>
           </div>
@@ -2317,7 +2327,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       </div>
 
       {/* 画布 */}
-      <div ref={canvasRef} className={`flex-1 overflow-auto p-10 flex justify-center custom-scrollbar cursor-grab active:cursor-grabbing bg-grid-slate-100 relative transition-all duration-200 ${selectedNode ? 'mr-80' : ''}`}>
+      <div ref={canvasRef} className={`flex-1 overflow-auto p-10 flex justify-center cursor-grab active:cursor-grabbing bg-grid-slate-100 relative transition-all duration-200 ${selectedNode ? 'mr-80' : ''}`}>
         {/* 缩放控件 */}
         <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
           <button onClick={handleZoomOut} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="缩小"><ZoomOut size={16} /></button>
@@ -2329,7 +2339,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
 
         {/* 拖拽全局提示 */}
         {isDraggingGlobal && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-pink-500 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
             <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
           </div>
         )}

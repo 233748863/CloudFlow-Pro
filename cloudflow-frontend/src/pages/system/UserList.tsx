@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Search, X, Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { getUserList, addUser, updateUser, deleteUser, getRoleList, getDeptTree } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
@@ -27,14 +28,14 @@ const TreeSelect: React.FC<{ value: number | undefined; onChange: (v: number) =>
   const selected = flat.find(f => f.dept.deptId === value);
   return (
     <div className="relative">
-      <button type="button" className="w-full border border-slate-200 rounded-lg p-2.5 text-left text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none flex justify-between items-center bg-white" onClick={() => setOpen(!open)}>
+      <button type="button" className="w-full border border-slate-200 rounded-lg p-2.5 text-left text-sm focus:ring-2 focus:ring-pink-400 focus:outline-none flex justify-between items-center bg-white" onClick={() => setOpen(!open)}>
         <span className={selected ? 'text-slate-800' : 'text-slate-400'}>{selected ? selected.dept.deptName : placeholder}</span>
         {open ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
       </button>
       {open && (
         <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
           {flat.map(({ dept, level }) => (
-            <button key={dept.deptId} className={`w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 ${value === dept.deptId ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700'}`}
+            <button key={dept.deptId} className={`w-full text-left px-3 py-2 text-sm hover:bg-pink-50 ${value === dept.deptId ? 'bg-pink-50 text-pink-600 font-medium' : 'text-slate-700'}`}
               style={{ paddingLeft: `${level * 16 + 12}px` }} onClick={() => { onChange(dept.deptId); setOpen(false); }}>{dept.deptName}</button>
           ))}
           {flat.length === 0 && <div className="px-3 py-2 text-sm text-slate-400">暂无部门</div>}
@@ -212,7 +213,7 @@ export const UserList = () => {
         <h1 className="text-2xl font-bold text-slate-800">用户管理</h1>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+          className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
         >
           <Plus size={18} /> 新增用户
         </button>
@@ -226,7 +227,7 @@ export const UserList = () => {
             <input 
               type="text" 
               placeholder="搜索用户名..." 
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -269,7 +270,7 @@ export const UserList = () => {
                   <tr key={user.userId} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.userId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 flex items-center gap-2">
-                       <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 text-xs font-bold flex-shrink-0">
+                       <div className="w-7 h-7 bg-pink-50 rounded-full flex items-center justify-center text-pink-600 text-xs font-bold flex-shrink-0">
                          {(user.nickName || user.userName || '?')[0]}
                        </div>
                        {user.userName}
@@ -281,7 +282,7 @@ export const UserList = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.deptName || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {user.role ? (
-                            <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs">{user.role}</span>
+                            <span className="bg-pink-50 text-pink-600 px-2 py-0.5 rounded text-xs">{user.role}</span>
                         ) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -290,7 +291,7 @@ export const UserList = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                      <button onClick={() => handleOpenModal(user)} className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1">
+                      <button onClick={() => handleOpenModal(user)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1">
                         <Edit size={16} /> 编辑
                       </button>
                       <button onClick={() => handleDelete(user.userId)} className="text-red-600 hover:text-red-900 flex items-center gap-1">
@@ -320,7 +321,7 @@ export const UserList = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">昵称 <span className="text-red-500">*</span></label>
                   <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.nickName}
                     onChange={e => setFormData({...formData, nickName: e.target.value})}
                     placeholder="用户昵称"
@@ -329,7 +330,7 @@ export const UserList = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">用户名 {!isEdit && <span className="text-red-500">*</span>}</label>
                   <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.userName}
                     onChange={e => setFormData({...formData, userName: e.target.value})}
                     placeholder="用户名"
@@ -346,18 +347,19 @@ export const UserList = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">所属租户</label>
-                  <select
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                    value={formData.tenantId || ''}
-                    onChange={e => setFormData({...formData, tenantId: e.target.value ? Number(e.target.value) : undefined})}
-                  >
-                    <option value="">请选择租户</option>
-                    {tenants.map(tenant => (
-                      <option key={tenant.tenantId} value={tenant.tenantId}>
-                        {tenant.tenantName}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={formData.tenantId ? String(formData.tenantId) : ''} onValueChange={v => setFormData({...formData, tenantId: v ? Number(v) : undefined})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择租户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">请选择租户</SelectItem>
+                      {tenants.map(tenant => (
+                        <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
+                          {tenant.tenantName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -367,7 +369,7 @@ export const UserList = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">密码</label>
                   <input 
                     type="password" 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.password}
                     onChange={e => setFormData({...formData, password: e.target.value})}
                     placeholder="默认 123456"
@@ -380,7 +382,7 @@ export const UserList = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">手机</label>
                   <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.phonenumber}
                     onChange={e => setFormData({...formData, phonenumber: e.target.value})}
                     placeholder="手机号"
@@ -389,7 +391,7 @@ export const UserList = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">邮箱</label>
                   <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
                     placeholder="邮箱"
@@ -404,7 +406,7 @@ export const UserList = () => {
                   <div className="flex gap-4 pt-1">
                     {[['0', '男'], ['1', '女']].map(([v, l]) => (
                       <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" checked={formData.sex === v} onChange={() => setFormData({...formData, sex: v})} className="accent-indigo-600" />
+                        <input type="radio" checked={formData.sex === v} onChange={() => setFormData({...formData, sex: v})} className="accent-pink-500" />
                         <span className="text-sm">{l}</span>
                       </label>
                     ))}
@@ -415,7 +417,7 @@ export const UserList = () => {
                   <div className="flex gap-4 pt-1">
                     {[['0', '正常'], ['1', '停用']].map(([v, l]) => (
                       <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" checked={formData.status === v} onChange={() => setFormData({...formData, status: v})} className="accent-indigo-600" />
+                        <input type="radio" checked={formData.status === v} onChange={() => setFormData({...formData, status: v})} className="accent-pink-500" />
                         <span className="text-sm">{l}</span>
                       </label>
                     ))}
@@ -434,7 +436,7 @@ export const UserList = () => {
                       onClick={() => toggleRole(role.roleId)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                         selRoles.includes(role.roleId) 
-                        ? 'bg-indigo-100 text-indigo-700 border-indigo-300' 
+                        ? 'bg-pink-50 text-pink-600 border-pink-200' 
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
@@ -450,7 +452,7 @@ export const UserList = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
                 <textarea 
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none resize-none"
                   rows={2}
                   value={formData.remark}
                   onChange={e => setFormData({...formData, remark: e.target.value})}
@@ -470,7 +472,7 @@ export const UserList = () => {
               <button 
                 type="button"
                 onClick={(e) => handleSubmit(e as any)}
-                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
               >
                 {isEdit ? '保存修改' : '立即创建'}
               </button>

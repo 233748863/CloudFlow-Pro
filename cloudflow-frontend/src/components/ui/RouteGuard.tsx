@@ -46,7 +46,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
             <p className="text-sm text-slate-500">您没有访问此页面的权限</p>
             <button
               onClick={() => window.history.back()}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+              className="px-4 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600"
             >
               返回上一页
             </button>
@@ -71,7 +71,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
           <p className="text-sm text-slate-500">此页面需要特定角色才能访问</p>
           <button
             onClick={() => window.history.back()}
-            className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+            className="px-4 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600"
           >
             返回上一页
           </button>

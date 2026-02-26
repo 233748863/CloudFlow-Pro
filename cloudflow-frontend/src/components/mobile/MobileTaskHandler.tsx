@@ -116,7 +116,7 @@ export const MobileTaskHandler: React.FC<MobileTaskHandlerProps> = ({
               onChange={(e) => setComment(e.target.value)}
               placeholder="请输入审批意见（可选）"
               rows={3}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-pink-400 resize-none"
             />
           </div>
         )}

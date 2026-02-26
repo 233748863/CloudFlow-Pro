@@ -14,6 +14,7 @@ import {
   Download,
   Filter
 } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { 
   getPerformanceStats,
   PerformanceStats as PerformanceStatsType
@@ -166,16 +167,17 @@ const PerformanceStats: React.FC = () => {
 
           <div className="flex items-center space-x-2 ml-4">
             <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={selectedProcess}
-              onChange={(e) => setSelectedProcess(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="">所有流程类型</option>
-              {processTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
+            <Select value={selectedProcess} onValueChange={v => setSelectedProcess(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="所有流程类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">所有流程类型</SelectItem>
+                {processTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <button
@@ -194,9 +196,9 @@ const PerformanceStats: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">总流程数</span>
-            <BarChart3 className="w-5 h-5 text-blue-600" />
+            <BarChart3 className="w-5 h-5 text-pink-500" />
           </div>
-          <p className="text-3xl font-bold text-blue-600">{summary.totalCount}</p>
+          <p className="text-3xl font-bold text-pink-500">{summary.totalCount}</p>
           <p className="text-xs text-gray-500 mt-1">
             完成 {summary.completedCount} 个
           </p>
@@ -241,7 +243,7 @@ const PerformanceStats: React.FC = () => {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
               <p className="mt-2 text-sm text-gray-600">加载中...</p>
             </div>
           ) : stats.length > 0 ? (
@@ -289,7 +291,7 @@ const PerformanceStats: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {stat.processName}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-pink-500 font-medium">
                       {stat.totalCount}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600">

@@ -46,7 +46,7 @@ export const ContactPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <BookUser className="text-indigo-600" /> 企业通讯录
+          <BookUser className="text-pink-500" /> 企业通讯录
         </h2>
       </div>
 
@@ -57,7 +57,7 @@ export const ContactPage: React.FC = () => {
           <div className="space-y-1">
             <button
               onClick={() => { setSelectedDeptId(undefined); setPageNum(1); }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedDeptId ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedDeptId ? 'bg-pink-50 text-pink-600 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
             >
               全部部门
             </button>
@@ -65,7 +65,7 @@ export const ContactPage: React.FC = () => {
               <button
                 key={dept.dept_id}
                 onClick={() => { setSelectedDeptId(dept.dept_id); setPageNum(1); }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedDeptId === dept.dept_id ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedDeptId === dept.dept_id ? 'bg-pink-50 text-pink-600 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
               >
                 <Building2 size={14} className="inline mr-2 opacity-50" />
                 {dept.dept_name}
@@ -97,7 +97,7 @@ export const ContactPage: React.FC = () => {
           <div className="p-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
               </div>
             ) : contacts.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
@@ -110,7 +110,7 @@ export const ContactPage: React.FC = () => {
                   <div
                     key={contact.user_id}
                     onClick={() => handleViewUser(contact.user_id)}
-                    className="border border-slate-200 rounded-lg p-4 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer"
+                    className="border border-slate-200 rounded-lg p-4 hover:shadow-md hover:border-pink-100 transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <img
@@ -125,15 +125,15 @@ export const ContactPage: React.FC = () => {
                     </div>
                     <div className="mt-3 space-y-1.5">
                       <div className="flex items-center gap-2 text-xs text-slate-600">
-                        <Building2 size={12} className="text-slate-400" />
+                        <Building2 size={12} className="text-pink-400" />
                         <span>{contact.dept_name || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-600">
-                        <Phone size={12} className="text-slate-400" />
+                        <Phone size={12} className="text-pink-400" />
                         <span>{contact.phonenumber || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-600">
-                        <Mail size={12} className="text-slate-400" />
+                        <Mail size={12} className="text-pink-400" />
                         <span>{contact.email || '-'}</span>
                       </div>
                     </div>
@@ -157,12 +157,12 @@ export const ContactPage: React.FC = () => {
 
       {/* 用户详情弹窗 */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedUser(null)}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedUser(null)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="p-6 text-center">
               <img
                 src={selectedUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.nick_name}`}
-                className="w-20 h-20 rounded-full border-2 border-indigo-200 mx-auto mb-3"
+                className="w-20 h-20 rounded-full border-2 border-pink-100 mx-auto mb-3"
                 alt=""
               />
               <h3 className="text-lg font-bold text-slate-800">{selectedUser.nick_name}</h3>
@@ -170,24 +170,24 @@ export const ContactPage: React.FC = () => {
             </div>
             <div className="px-6 pb-6 space-y-3">
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <Building2 size={16} className="text-indigo-500" />
+                <Building2 size={16} className="text-pink-400" />
                 <div><div className="text-xs text-slate-500">部门</div><div className="text-sm text-slate-800">{selectedUser.dept_name || '-'}</div></div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <Phone size={16} className="text-indigo-500" />
+                <Phone size={16} className="text-pink-400" />
                 <div><div className="text-xs text-slate-500">电话</div><div className="text-sm text-slate-800">{selectedUser.phonenumber || '-'}</div></div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <Mail size={16} className="text-indigo-500" />
+                <Mail size={16} className="text-pink-400" />
                 <div><div className="text-xs text-slate-500">邮箱</div><div className="text-sm text-slate-800">{selectedUser.email || '-'}</div></div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <User size={16} className="text-indigo-500" />
+                <User size={16} className="text-pink-400" />
                 <div><div className="text-xs text-slate-500">用户名</div><div className="text-sm text-slate-800">{selectedUser.user_name || '-'}</div></div>
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 flex justify-end">
-              <button onClick={() => setSelectedUser(null)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">关闭</button>
+              <button onClick={() => setSelectedUser(null)} className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">关闭</button>
             </div>
           </div>
         </div>

@@ -177,7 +177,7 @@ const WorkflowMonitor: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <RefreshCw className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">加载监控数据中...</p>
         </div>
       </div>
@@ -210,7 +210,7 @@ const WorkflowMonitor: React.FC = () => {
           <button
             onClick={loadData}
             disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>刷新</span>
@@ -226,8 +226,8 @@ const WorkflowMonitor: React.FC = () => {
         <StatCard
           title="今日启动"
           value={overview?.todayStarted || 0}
-          icon={<Activity className="w-6 h-6 text-blue-600" />}
-          color="text-blue-600"
+          icon={<Activity className="w-6 h-6 text-pink-500" />}
+          color="text-pink-500"
         />
         <StatCard
           title="今日完成"
@@ -259,7 +259,7 @@ const WorkflowMonitor: React.FC = () => {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">运行中流程</span>
-              <span className="text-lg font-semibold text-blue-600">
+              <span className="text-lg font-semibold text-pink-500">
                 {overview?.runningCount || 0}
               </span>
             </div>
@@ -336,7 +336,7 @@ const WorkflowMonitor: React.FC = () => {
               {trend.map((item, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-2 text-sm text-gray-900">{item.date}</td>
-                  <td className="px-4 py-2 text-sm text-right text-blue-600">{item.started}</td>
+                  <td className="px-4 py-2 text-sm text-right text-pink-500">{item.started}</td>
                   <td className="px-4 py-2 text-sm text-right text-green-600">{item.completed}</td>
                   <td className="px-4 py-2 text-sm text-right text-yellow-600">{item.timeout}</td>
                   <td className="px-4 py-2 text-sm text-right text-red-600">{item.anomaly}</td>

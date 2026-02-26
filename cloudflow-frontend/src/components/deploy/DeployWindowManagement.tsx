@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Power, PowerOff, Clock, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import {
   DeployWindow,
   listDeployWindows,
@@ -133,7 +134,7 @@ export const DeployWindowManagement: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
       </div>
     );
   }
@@ -162,7 +163,7 @@ export const DeployWindowManagement: React.FC = () => {
             });
             setShowModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
         >
           <Plus className="w-4 h-4" />
           新建窗口
@@ -225,7 +226,7 @@ export const DeployWindowManagement: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleEdit(window)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-sm text-pink-500 bg-pink-50 rounded hover:bg-pink-50 transition-colors"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                   编辑
@@ -260,7 +261,7 @@ export const DeployWindowManagement: React.FC = () => {
 
       {/* 创建/编辑模态框 */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
@@ -276,7 +277,7 @@ export const DeployWindowManagement: React.FC = () => {
                     type="text"
                     value={formData.windowName}
                     onChange={e => setFormData({ ...formData, windowName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                     placeholder="例如：工作日发布窗口"
                   />
                 </div>
@@ -285,17 +286,16 @@ export const DeployWindowManagement: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     窗口类型 <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={formData.windowType}
-                    onChange={e => setFormData({ ...formData, windowType: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {WINDOW_TYPES.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={formData.windowType} onValueChange={v => setFormData({...formData, windowType: v as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WINDOW_TYPES.map(type => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -307,7 +307,7 @@ export const DeployWindowManagement: React.FC = () => {
                       type="time"
                       value={formData.startTime}
                       onChange={e => setFormData({ ...formData, startTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -318,7 +318,7 @@ export const DeployWindowManagement: React.FC = () => {
                       type="time"
                       value={formData.endTime}
                       onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -351,7 +351,7 @@ export const DeployWindowManagement: React.FC = () => {
                             }}
                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                               selected
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-pink-500 text-white'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                           >
@@ -371,7 +371,7 @@ export const DeployWindowManagement: React.FC = () => {
                     value={formData.description}
                     onChange={e => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                     placeholder="窗口说明..."
                   />
                 </div>
@@ -382,7 +382,7 @@ export const DeployWindowManagement: React.FC = () => {
                     id="isEnabled"
                     checked={formData.isEnabled}
                     onChange={e => setFormData({ ...formData, isEnabled: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-pink-500 border-gray-300 rounded focus:ring-pink-400"
                   />
                   <label htmlFor="isEnabled" className="text-sm text-gray-700">
                     启用此窗口
@@ -402,7 +402,7 @@ export const DeployWindowManagement: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
                 >
                   {editingWindow ? '更新' : '创建'}
                 </button>

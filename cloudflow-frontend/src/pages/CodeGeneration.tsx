@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SourceCodeViewer } from '../components/SourceCodeViewer';
 import { WorkflowDefinition, NodeType } from '../types';
 import { getProcessDefinitions } from '../services/api/workflow';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 export const CodeGeneration = () => {
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
@@ -28,16 +29,16 @@ export const CodeGeneration = () => {
     <div className="h-full flex flex-col gap-4">
       <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
          <label className="text-sm font-bold text-slate-700">选择流程:</label>
-         <select 
-            className="p-2 border rounded-lg min-w-[200px]"
-            onChange={(e) => {
-                const wf = workflows.find(w => w.key === e.target.value);
-                setSelectedWorkflow(wf || null);
-            }}
-            value={selectedWorkflow?.key || ''}
-         >
-             {workflows.map(w => <option key={w.key} value={w.key}>{w.name} ({w.key})</option>)}
-         </select>
+         <Select value={selectedWorkflow?.key || ""} onValueChange={v => setSelectedWorkflow(workflows.find(w => w.key === v) || null)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workflows.map(w => (
+                        <SelectItem key={w.key} value={String(w.key)}>{w.name} ({w.key})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
       </div>
 
       {selectedWorkflow ? (

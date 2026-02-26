@@ -16,6 +16,7 @@ import {
   Search,
   X
 } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { 
   getTimeoutAlerts,
   getAnomalyAlerts,
@@ -143,7 +144,7 @@ const AlertList: React.FC = () => {
         CRITICAL: { bg: 'bg-red-100', text: 'text-red-800', label: '严重' },
         HIGH: { bg: 'bg-orange-100', text: 'text-orange-800', label: '高' },
         MEDIUM: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '中' },
-        LOW: { bg: 'bg-blue-100', text: 'text-blue-800', label: '低' }
+        LOW: { bg: 'bg-pink-50', text: 'text-pink-700', label: '低' }
       };
       const severity = severityMap[anomalyAlert.severity] || severityMap.MEDIUM;
       return <span className={`px-2 py-1 text-xs font-medium ${severity.bg} ${severity.text} rounded`}>{severity.label}</span>;
@@ -168,7 +169,7 @@ const AlertList: React.FC = () => {
               onClick={() => setActiveTab('timeout')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'timeout'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-pink-400 text-pink-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -184,7 +185,7 @@ const AlertList: React.FC = () => {
               onClick={() => setActiveTab('anomaly')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'anomaly'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-pink-400 text-pink-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -206,38 +207,41 @@ const AlertList: React.FC = () => {
             <span className="text-sm font-medium text-gray-700">筛选:</span>
             
             {activeTab === 'timeout' ? (
-              <select
-                value={filters.alertLevel}
-                onChange={(e) => setFilters({ ...filters, alertLevel: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">所有级别</option>
-                <option value="WARNING">警告</option>
-                <option value="CRITICAL">严重</option>
-              </select>
+              <Select value={filters.alertLevel} onValueChange={v => setFilters({...filters, alertLevel: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">所有级别</SelectItem>
+                      <SelectItem value="WARNING">警告</SelectItem>
+                      <SelectItem value="CRITICAL">严重</SelectItem>
+                    </SelectContent>
+                  </Select>
             ) : (
-              <select
-                value={filters.severity}
-                onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">所有严重程度</option>
-                <option value="LOW">低</option>
-                <option value="MEDIUM">中</option>
-                <option value="HIGH">高</option>
-                <option value="CRITICAL">严重</option>
-              </select>
+              <Select value={filters.severity} onValueChange={v => setFilters({...filters, severity: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">所有严重程度</SelectItem>
+                      <SelectItem value="LOW">低</SelectItem>
+                      <SelectItem value="MEDIUM">中</SelectItem>
+                      <SelectItem value="HIGH">高</SelectItem>
+                      <SelectItem value="CRITICAL">严重</SelectItem>
+                    </SelectContent>
+                  </Select>
             )}
             
-            <select
-              value={filters.resolved}
-              onChange={(e) => setFilters({ ...filters, resolved: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="">所有状态</option>
-              <option value="false">未处理</option>
-              <option value="true">已处理</option>
-            </select>
+            <Select value={filters.resolved} onValueChange={v => setFilters({...filters, resolved: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">所有状态</SelectItem>
+                      <SelectItem value="false">未处理</SelectItem>
+                      <SelectItem value="true">已处理</SelectItem>
+                    </SelectContent>
+                  </Select>
           </div>
         </div>
 
@@ -245,7 +249,7 @@ const AlertList: React.FC = () => {
         <div className="p-6">
           {loading ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
               <p className="mt-2 text-sm text-gray-600">加载中...</p>
             </div>
           ) : (
@@ -281,7 +285,7 @@ const AlertList: React.FC = () => {
                           {!alert.notificationSent && (
                             <button
                               onClick={() => handleTimeout(alert.id, 'notify')}
-                              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                              className="px-3 py-1 text-sm bg-pink-500 text-white rounded hover:bg-pink-600"
                             >
                               发送通知
                             </button>
@@ -370,7 +374,7 @@ const AlertList: React.FC = () => {
 
       {/* 解决告警模态框 */}
       {showResolveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">解决异常告警</h3>
@@ -393,7 +397,7 @@ const AlertList: React.FC = () => {
                 value={resolveNote}
                 onChange={(e) => setResolveNote(e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                 placeholder="请输入解决方案和处理说明..."
               />
             </div>

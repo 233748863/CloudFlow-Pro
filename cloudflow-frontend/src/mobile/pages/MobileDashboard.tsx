@@ -117,7 +117,7 @@ export const MobileDashboard: React.FC = () => {
   });
 
   const quickActions = [
-    { label: '用车申请', path: '/vehicle/booking', color: 'bg-blue-100 text-blue-600' },
+    { label: '用车申请', path: '/vehicle/booking', color: 'bg-pink-50 text-pink-500' },
     { label: '请假', path: '/leave', color: 'bg-green-100 text-green-600' },
     { label: '报销', path: '/reimburse', color: 'bg-orange-100 text-orange-600' },
     { label: '会议室', path: '/meeting-room', color: 'bg-purple-100 text-purple-600' },
@@ -170,7 +170,7 @@ export const MobileDashboard: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-indigo-600 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载中...</p>
         </div>
       </div>
@@ -190,10 +190,10 @@ export const MobileDashboard: React.FC = () => {
         >
           <div className="bg-white rounded-full p-2 shadow-lg">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-indigo-600" size={24} />
+              <Loader2 className="animate-spin text-pink-500" size={24} />
             ) : (
               <RefreshCw
-                className="text-indigo-600 transition-transform"
+                className="text-pink-500 transition-transform"
                 size={24}
                 style={{
                   transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)`,
@@ -264,20 +264,20 @@ export const MobileDashboard: React.FC = () => {
         </div>
 
         {/* Stats Card */}
-        <Card className="bg-indigo-600 text-white border-none shadow-indigo-200 shadow-lg">
+        <Card className="bg-pink-500 text-white border-none shadow-pink-100 shadow-lg">
           <CardContent className="p-4 flex justify-between items-center">
             <button onClick={() => navigate('/tasks')} className="text-center flex-1">
-              <div className="text-indigo-100 text-sm">待办任务</div>
+              <div className="text-pink-50 text-sm">待办任务</div>
               <div className="text-3xl font-bold mt-1">{stats.pendingTasks}</div>
             </button>
-            <div className="h-10 w-[1px] bg-indigo-400"></div>
+            <div className="h-10 w-[1px] bg-pink-300"></div>
             <button onClick={() => navigate('/schedule')} className="text-center flex-1">
-              <div className="text-indigo-100 text-sm">今日日程</div>
+              <div className="text-pink-50 text-sm">今日日程</div>
               <div className="text-3xl font-bold mt-1">{stats.todaySchedules}</div>
             </button>
-            <div className="h-10 w-[1px] bg-indigo-400"></div>
+            <div className="h-10 w-[1px] bg-pink-300"></div>
             <button onClick={() => navigate('/messages')} className="text-center flex-1">
-              <div className="text-indigo-100 text-sm">消息</div>
+              <div className="text-pink-50 text-sm">消息</div>
               <div className="text-3xl font-bold mt-1">{stats.unreadMessages}</div>
             </button>
           </CardContent>
@@ -289,7 +289,7 @@ export const MobileDashboard: React.FC = () => {
             <h2 className="font-bold text-slate-800">待办事项</h2>
             <button
               onClick={() => navigate('/tasks')}
-              className="text-xs text-indigo-600 flex items-center"
+              className="text-xs text-pink-500 flex items-center"
               aria-label="查看全部待办事项"
             >
               查看全部 <ChevronRight size={12} />
@@ -318,7 +318,7 @@ export const MobileDashboard: React.FC = () => {
                       {task.deadline && <span>· 截止：{task.deadline}</span>}
                     </div>
                     {task.processName && (
-                      <span className="inline-block mt-1 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">
+                      <span className="inline-block mt-1 text-[10px] bg-pink-50 text-pink-500 px-1.5 py-0.5 rounded">
                         {task.processName}
                       </span>
                     )}
@@ -344,7 +344,7 @@ export const MobileDashboard: React.FC = () => {
             <h2 className="font-bold text-slate-800">今日日程</h2>
             <button
               onClick={() => navigate('/schedule')}
-              className="text-xs text-indigo-600 flex items-center"
+              className="text-xs text-pink-500 flex items-center"
               aria-label="查看全部日程"
             >
               查看全部 <ChevronRight size={12} />
@@ -357,11 +357,11 @@ export const MobileDashboard: React.FC = () => {
                 return (
                   <div
                     key={event.eventId}
-                    className="bg-indigo-50 p-3 rounded-lg border-l-4 border-indigo-500 flex items-start gap-3"
+                    className="bg-pink-50 p-3 rounded-lg border-l-4 border-pink-400 flex items-start gap-3"
                   >
                     <div className="text-center min-w-[3rem]">
-                      <div className="text-xs text-indigo-600 font-bold">{time}</div>
-                      <div className="text-xs text-indigo-400">{period}</div>
+                      <div className="text-xs text-pink-500 font-bold">{time}</div>
+                      <div className="text-xs text-pink-300">{period}</div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-slate-800 text-sm truncate">

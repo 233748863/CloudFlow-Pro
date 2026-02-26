@@ -13,7 +13,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
 
   const columns = [
     { id: WorkTaskStatus.TODO, title: '待处理', color: 'bg-slate-100', borderColor: 'border-slate-200' },
-    { id: WorkTaskStatus.DOING, title: '进行中', color: 'bg-blue-50', borderColor: 'border-blue-200' },
+    { id: WorkTaskStatus.DOING, title: '进行中', color: 'bg-pink-50', borderColor: 'border-pink-100' },
     { id: WorkTaskStatus.DONE, title: '已完成', color: 'bg-emerald-50', borderColor: 'border-emerald-200' }
   ];
 
@@ -94,7 +94,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskMove, onTaskC
                         {task.priority === 2 ? '高优先级' : task.priority === 1 ? '中优先级' : '低优先级'}
                      </span>
                      {task.type === 'PROCESS' && (
-                         <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">审批</span>
+                         <span className="text-[10px] bg-pink-50 text-pink-500 px-1.5 py-0.5 rounded">审批</span>
                      )}
                   </div>
 

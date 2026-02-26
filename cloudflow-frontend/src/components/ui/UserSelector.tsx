@@ -90,8 +90,8 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         className={`min-h-[38px] px-3 py-2 border rounded-lg bg-white cursor-pointer transition-colors ${
           disabled
             ? 'bg-slate-50 cursor-not-allowed'
-            : 'hover:border-indigo-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100'
-        } ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-300'}`}
+            : 'hover:border-pink-300 focus-within:border-pink-400 focus-within:ring-2 focus-within:ring-pink-50'
+        } ${isOpen ? 'border-pink-400 ring-2 ring-pink-50' : 'border-slate-300'}`}
       >
         {selectedUsers.length === 0 ? (
           <span className="text-slate-400 text-sm">{placeholder}</span>
@@ -100,13 +100,13 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
             {selectedUsers.map((user) => (
               <span
                 key={user.id}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-md"
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-50 text-pink-600 text-xs rounded-md"
               >
                 {user.name}
                 {!disabled && (
                   <button
                     onClick={(e) => handleRemove(user.id, e)}
-                    className="hover:bg-indigo-200 rounded-full p-0.5"
+                    className="hover:bg-pink-100 rounded-full p-0.5"
                   >
                     <X size={12} />
                   </button>
@@ -129,7 +129,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索用户..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-indigo-500"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-pink-400"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -149,11 +149,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                     key={user.id}
                     onClick={() => handleToggle(user.id)}
                     className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                      isSelected ? 'bg-pink-50' : 'hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-medium">
+                      <div className="w-8 h-8 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center text-sm font-medium">
                         {user.name[0]}
                       </div>
                       <div>
@@ -163,7 +163,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                         )}
                       </div>
                     </div>
-                    {isSelected && <Check className="text-indigo-600" size={16} />}
+                    {isSelected && <Check className="text-pink-500" size={16} />}
                   </div>
                 );
               })

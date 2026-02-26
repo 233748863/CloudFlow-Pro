@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RotateCcw, Trash2, Eye, X, RefreshCw, Download } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   getSysLogPage, getSysLogTrend, getSysLogDetail, deleteSysLogs,
@@ -48,7 +49,7 @@ const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
     <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
       <div className="flex items-center justify-end gap-4 mb-2 text-xs text-slate-500">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-blue-400 inline-block" /> 成功
+          <span className="w-3 h-3 rounded-full bg-pink-300 inline-block" /> 成功
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full bg-slate-400 inline-block" /> 失败
@@ -100,9 +101,9 @@ const DetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = ({ lo
   const items = [
     { label: '请求时间', value: log.createTime, color: 'text-orange-500' },
     { label: '操作人', value: log.createBy },
-    { label: '请求地址', value: log.requestUri, color: 'text-blue-500' },
+    { label: '请求地址', value: log.requestUri, color: 'text-pink-400' },
     { label: 'IP地址', value: log.remoteAddr },
-    { label: '请求方式', value: log.method, color: 'text-blue-500' },
+    { label: '请求方式', value: log.method, color: 'text-pink-400' },
     { label: '客户端', value: log.serviceId },
     { label: '耗时', value: log.time ? `${log.time}/ms` : '-' },
     { label: '浏览器', value: log.userAgent },
@@ -110,7 +111,7 @@ const DetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = ({ lo
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
       <div
         className="bg-slate-800 text-white rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl"
         onClick={e => e.stopPropagation()}
@@ -273,34 +274,35 @@ export const OperationLogPage: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 p-4">
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-sm text-slate-600">类型</label>
-          <select
-            value={logType}
-            onChange={e => setLogType(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
-          >
-            <option value="">请选择类型</option>
-            <option value="0">正常</option>
-            <option value="9">错误</option>
-          </select>
+          <Select value={logType} onValueChange={v => setLogType(v)}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="请选择类型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部</SelectItem>
+              <SelectItem value="0">正常</SelectItem>
+              <SelectItem value="9">错误</SelectItem>
+            </SelectContent>
+          </Select>
 
           <label className="text-sm text-slate-600">请求时间</label>
           <input
             type="date"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
           />
           <span className="text-slate-400">To</span>
           <input
             type="date"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
           />
 
           <button
             onClick={handleSearch}
-            className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+            className="flex items-center gap-1.5 bg-pink-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-pink-600 transition"
           >
             <Search size={14} /> 查询
           </button>
@@ -391,7 +393,7 @@ export const OperationLogPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleViewDetail(log.logId)}
-                          className="text-indigo-500 hover:text-indigo-700 text-xs flex items-center gap-0.5"
+                          className="text-pink-400 hover:text-pink-600 text-xs flex items-center gap-0.5"
                         >
                           <Eye size={13} /> 详情
                         </button>
@@ -437,7 +439,7 @@ export const OperationLogPage: React.FC = () => {
                     onClick={() => goPage(p)}
                     className={`w-8 h-8 rounded text-sm ${
                       p === (query.pageNum || 1)
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-pink-500 text-white'
                         : 'hover:bg-slate-100'
                     }`}
                   >

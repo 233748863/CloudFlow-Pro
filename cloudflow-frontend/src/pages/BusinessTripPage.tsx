@@ -3,6 +3,7 @@ import { Plane, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip } from
 import { businessTripApi, BusinessTrip } from '../services/api/businessTrip';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 /** 出差申请页面 */
 export const BusinessTripPage: React.FC = () => {
@@ -75,7 +76,7 @@ export const BusinessTripPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
-      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' }, PENDING: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' }, PENDING: { bg: 'bg-pink-50', text: 'text-pink-500' },
       APPROVED: { bg: 'bg-green-100', text: 'text-green-600' }, REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
       CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
     };
@@ -86,17 +87,26 @@ export const BusinessTripPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Plane className="text-indigo-600" /> 出差申请</h2>
-        <button onClick={handleAdd} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700"><Plus size={18} />新增申请</button>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Plane className="text-pink-500" /> 出差申请</h2>
+        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增申请</button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <select value={searchParams.status} onChange={e => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部状态</option><option value="DRAFT">草稿</option><option value="PENDING">审批中</option><option value="APPROVED">已通过</option><option value="REJECTED">已驳回</option>
-          </select>
+          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="DRAFT">草稿</SelectItem>
+                      <SelectItem value="PENDING">审批中</SelectItem>
+                      <SelectItem value="APPROVED">已通过</SelectItem>
+                      <SelectItem value="REJECTED">已驳回</SelectItem>
+                    </SelectContent>
+                  </Select>
           <input type="text" placeholder="搜索目的地" value={searchParams.destination} onChange={e => setSearchParams({ ...searchParams, destination: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"><Search size={16} />搜索</button>
+          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
           <button onClick={() => setSearchParams({ status: '', destination: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
 
@@ -118,7 +128,7 @@ export const BusinessTripPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
               ) : list.map(item => (
@@ -130,13 +140,13 @@ export const BusinessTripPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm">{transportMap[item.transportType || ''] || '-'}</td>
                   <td className="px-4 py-3 text-sm">{accommodationMap[item.accommodation || ''] || '-'}</td>
                   <td className="px-4 py-3 text-sm">¥{item.estimatedCost?.toFixed(2) || '0.00'}</td>
-                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-indigo-500" /> : <span className="text-slate-300">-</span>}</td>
+                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-pink-400" /> : <span className="text-slate-300">-</span>}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {item.status === 'DRAFT' && (<>
                         <button onClick={() => handleEdit(item.id!)} className="text-green-600 hover:text-green-800"><Edit size={16} /></button>
-                        <button onClick={() => handleSubmit(item.id!)} className="text-indigo-600 hover:text-indigo-800"><Send size={16} /></button>
+                        <button onClick={() => handleSubmit(item.id!)} className="text-pink-500 hover:text-pink-700"><Send size={16} /></button>
                         <button onClick={() => handleDelete([item.id!])} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
                       </>)}
                     </div>
@@ -159,7 +169,7 @@ export const BusinessTripPage: React.FC = () => {
 
       {/* 新增/编辑对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-slate-800">{current ? '编辑出差申请' : '新增出差申请'}</h3>
@@ -192,15 +202,30 @@ export const BusinessTripPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">交通方式</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.transportType || 'TRAIN'} onChange={e => setFormData({ ...formData, transportType: e.target.value })}>
-                    <option value="PLANE">飞机</option><option value="TRAIN">火车</option><option value="CAR">自驾</option><option value="OTHER">其他</option>
-                  </select>
+                  <Select value={formData.transportType || 'TRAIN'} onValueChange={v => setFormData({...formData, transportType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLANE">飞机</SelectItem>
+                      <SelectItem value="TRAIN">火车</SelectItem>
+                      <SelectItem value="CAR">自驾</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">住宿安排</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.accommodation || 'SELF'} onChange={e => setFormData({ ...formData, accommodation: e.target.value })}>
-                    <option value="SELF">自行安排</option><option value="COMPANY">公司安排</option><option value="NONE">无需住宿</option>
-                  </select>
+                  <Select value={formData.accommodation || 'SELF'} onValueChange={v => setFormData({...formData, accommodation: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SELF">自行安排</SelectItem>
+                      <SelectItem value="COMPANY">公司安排</SelectItem>
+                      <SelectItem value="NONE">无需住宿</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               {/* 预计费用 & 关联项目 */}
@@ -253,7 +278,7 @@ export const BusinessTripPage: React.FC = () => {
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2 sticky bottom-0">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
-              <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
+              <button onClick={handleSave} className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">保存</button>
             </div>
           </div>
         </div>

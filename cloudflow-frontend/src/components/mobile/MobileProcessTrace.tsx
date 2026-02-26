@@ -28,8 +28,8 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
     label: '已完成',
   },
   active: {
-    icon: <Clock size={18} className="text-blue-500 animate-pulse" />,
-    color: 'border-blue-500 bg-blue-50',
+    icon: <Clock size={18} className="text-pink-400 animate-pulse" />,
+    color: 'border-pink-400 bg-pink-50',
     label: '处理中',
   },
   pending: {
@@ -121,7 +121,7 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
           <h2 className="text-base font-semibold text-slate-800">流程轨迹</h2>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
         </div>
       </div>
     );
@@ -137,7 +137,7 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4">
           <AlertCircle className="text-red-500" size={32} />
           <p className="text-sm text-red-500">{error}</p>
-          <button onClick={loadTrace} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg">
+          <button onClick={loadTrace} className="px-4 py-2 bg-pink-500 text-white text-sm rounded-lg">
             重新加载
           </button>
         </div>
@@ -180,7 +180,7 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
                       <span className="text-sm font-medium text-slate-800 truncate">{node.name}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
                         node.status === 'finished' ? 'bg-green-100 text-green-700' :
-                        node.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                        node.status === 'active' ? 'bg-pink-50 text-pink-600' :
                         node.status === 'rejected' ? 'bg-red-100 text-red-700' :
                         'bg-slate-100 text-slate-600'
                       }`}>

@@ -5,6 +5,7 @@ import {
   Download, RefreshCw
 } from 'lucide-react';
 import { getFileList, uploadFile, deleteFile } from '../../services/api/file';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
@@ -103,7 +104,7 @@ export const FileList = () => {
     const t = type.toLowerCase();
     if (['jpg', 'png', 'jpeg', 'gif', 'bmp'].includes(t)) return <ImageIcon className="text-purple-500" size={20} />;
     if (['pdf'].includes(t)) return <FileText className="text-red-500" size={20} />;
-    if (['doc', 'docx'].includes(t)) return <FileText className="text-blue-500" size={20} />;
+    if (['doc', 'docx'].includes(t)) return <FileText className="text-pink-400" size={20} />;
     if (['xls', 'xlsx'].includes(t)) return <FileText className="text-green-500" size={20} />;
     return <FileIcon className="text-slate-500" size={20} />;
   };
@@ -117,7 +118,7 @@ export const FileList = () => {
         </div>
         <div className="flex gap-3">
           <label className={`
-            flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-colors cursor-pointer shadow-lg shadow-indigo-500/20
+            flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-xl hover:bg-pink-400 transition-colors cursor-pointer shadow-lg shadow-pink-400/20
             ${uploading ? 'opacity-70 cursor-not-allowed' : ''}
           `}>
             <Upload size={18} />
@@ -134,27 +135,26 @@ export const FileList = () => {
           <input 
             type="text" 
             placeholder="搜索文件名..." 
-            className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-pink-400/20 focus:border-pink-400 transition-all"
             value={params.fileName}
             onChange={e => setParams({ ...params, fileName: e.target.value })}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
           />
         </div>
         
-        <div className="relative">
-            <select 
-                className="pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none text-slate-600"
-                value={params.fileType}
-                onChange={e => setParams({ ...params, fileType: e.target.value })}
-            >
-                <option value="">所有类型</option>
-                <option value="png">PNG 图片</option>
-                <option value="jpg">JPG 图片</option>
-                <option value="pdf">PDF 文档</option>
-                <option value="docx">Word 文档</option>
-                <option value="xlsx">Excel 表格</option>
-            </select>
-        </div>
+        <Select value={params.fileType} onValueChange={v => setParams({ ...params, fileType: v })}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="所有类型" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">所有类型</SelectItem>
+            <SelectItem value="png">PNG 图片</SelectItem>
+            <SelectItem value="jpg">JPG 图片</SelectItem>
+            <SelectItem value="pdf">PDF 文档</SelectItem>
+            <SelectItem value="docx">Word 文档</SelectItem>
+            <SelectItem value="xlsx">Excel 表格</SelectItem>
+          </SelectContent>
+        </Select>
 
         <button 
           onClick={handleSearch}
@@ -232,7 +232,7 @@ export const FileList = () => {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                            className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"
+                            className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-pink-500 rounded-lg transition-colors"
                             title="下载"
                         >
                             <Download size={16} />

@@ -76,23 +76,23 @@ export const Dashboard = () => {
       label: '待办审批',
       value: pendingCount,
       icon: <CheckCircle2 size={20} />,
-      iconBg: 'bg-indigo-50',
-      iconColor: 'text-indigo-600',
+      iconBg: 'bg-pink-50',
+      iconColor: 'text-pink-600',
       path: '/tasks',
     },
     {
       label: '我的申请',
       value: myAppsCount,
       icon: <FileText size={20} />,
-      iconBg: 'bg-blue-50',
-      iconColor: 'text-blue-600',
+      iconBg: 'bg-pink-50',
+      iconColor: 'text-pink-500',
       path: '/my-apps',
     },
   ];
 
   /** 快捷入口 */
   const shortcuts = [
-    { label: '发起流程', icon: <PlayCircle size={18} />, path: '/workplace', color: 'text-indigo-600 bg-indigo-50' },
+    { label: '发起流程', icon: <PlayCircle size={18} />, path: '/workplace', color: 'text-pink-600 bg-pink-50' },
     { label: '抄送我的', icon: <MailOpen size={18} />, path: '/my-copies', color: 'text-amber-600 bg-amber-50' },
     { label: '我的日程', icon: <Calendar size={18} />, path: '/schedule', color: 'text-emerald-600 bg-emerald-50' },
     { label: '公告中心', icon: <Megaphone size={18} />, path: '/announcement', color: 'text-rose-600 bg-rose-50' },
@@ -101,11 +101,11 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* 欢迎横幅 */}
-      <Card className="p-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-none shadow-lg shadow-indigo-200/50">
+      <Card className="p-6 bg-gradient-to-r from-pink-500 to-rose-500 text-white border-none shadow-lg shadow-pink-200/50">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold mb-1">{greeting}，{user.name}</h2>
-            <p className="text-indigo-100 text-sm">
+            <p className="text-pink-100 text-sm">
               您有 <span className="font-semibold text-white">{pendingCount}</span> 个审批任务待处理，系统运行正常。
             </p>
           </div>

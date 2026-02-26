@@ -184,7 +184,7 @@ export const TenantList = () => {
         <h1 className="text-2xl font-bold text-slate-800">租户管理</h1>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+          className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
         >
           <Plus size={18} /> 新增租户
         </button>
@@ -198,7 +198,7 @@ export const TenantList = () => {
             <input 
               type="text" 
               placeholder="搜索租户名称..." 
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -242,8 +242,8 @@ export const TenantList = () => {
                     <tr key={tenant.tenantId} className="hover:bg-slate-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Building2 size={20} className="text-indigo-600" />
+                          <div className="w-10 h-10 bg-pink-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Building2 size={20} className="text-pink-500" />
                           </div>
                           <div>
                             <div className="text-sm font-medium text-slate-900">{tenant.tenantName}</div>
@@ -305,7 +305,7 @@ export const TenantList = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
                         <button 
                           onClick={() => handleOpenModal(tenant)} 
-                          className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                          className="text-pink-500 hover:text-pink-700 flex items-center gap-1"
                         >
                           <Edit size={16} /> 编辑
                         </button>
@@ -343,7 +343,7 @@ export const TenantList = () => {
                   租户名称 <span className="text-red-500">*</span>
                 </label>
                 <input 
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                   value={formData.tenantName}
                   onChange={e => setFormData({...formData, tenantName: e.target.value})}
                   placeholder="请输入租户名称"
@@ -355,7 +355,7 @@ export const TenantList = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系人</label>
                   <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.contactName}
                     onChange={e => setFormData({...formData, contactName: e.target.value})}
                     placeholder="联系人姓名"
@@ -364,7 +364,7 @@ export const TenantList = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系电话</label>
                   <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.contactPhone}
                     onChange={e => setFormData({...formData, contactPhone: e.target.value})}
                     placeholder="联系电话"
@@ -378,7 +378,7 @@ export const TenantList = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系邮箱</label>
                   <input 
                     type="email"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.contactEmail}
                     onChange={e => setFormData({...formData, contactEmail: e.target.value})}
                     placeholder="联系邮箱"
@@ -387,7 +387,7 @@ export const TenantList = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">域名</label>
                   <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.domain}
                     onChange={e => setFormData({...formData, domain: e.target.value})}
                     placeholder="example.com"
@@ -401,7 +401,7 @@ export const TenantList = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">用户数量限制</label>
                   <input 
                     type="number"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.userLimit}
                     onChange={e => setFormData({...formData, userLimit: parseInt(e.target.value) || 0})}
                     placeholder="100"
@@ -412,7 +412,7 @@ export const TenantList = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">存储空间限制 (MB)</label>
                   <input 
                     type="number"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.storageLimit}
                     onChange={e => setFormData({...formData, storageLimit: parseInt(e.target.value) || 0})}
                     placeholder="10240"
@@ -427,7 +427,7 @@ export const TenantList = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">到期时间</label>
                   <input 
                     type="date"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.expireTime}
                     onChange={e => setFormData({...formData, expireTime: e.target.value})}
                   />
@@ -441,7 +441,7 @@ export const TenantList = () => {
                           type="radio" 
                           checked={formData.status === v} 
                           onChange={() => setFormData({...formData, status: v})} 
-                          className="accent-indigo-600" 
+                          className="accent-pink-500" 
                         />
                         <span className="text-sm">{l}</span>
                       </label>
@@ -454,7 +454,7 @@ export const TenantList = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
                 <textarea 
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none resize-none"
                   rows={3}
                   value={formData.remark}
                   onChange={e => setFormData({...formData, remark: e.target.value})}
@@ -474,7 +474,7 @@ export const TenantList = () => {
               <button 
                 type="button"
                 onClick={(e) => handleSubmit(e as any)}
-                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
               >
                 {isEdit ? '保存修改' : '立即创建'}
               </button>

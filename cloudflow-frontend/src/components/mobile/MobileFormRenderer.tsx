@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FormDefinition, FormField } from '../../types';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 
 interface MobileFormRendererProps {
   formDef: FormDefinition;
@@ -102,7 +103,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
     const inputClassName = `w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none transition-colors ${
       hasError
         ? 'border-red-300 bg-red-50 focus:border-red-500'
-        : 'border-slate-300 bg-white focus:border-indigo-500'
+        : 'border-slate-300 bg-white focus:border-pink-400'
     } ${readOnly ? 'bg-slate-50 text-slate-600' : ''}`;
 
     return (
@@ -145,19 +146,17 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
         )}
 
         {field.type === 'SELECT' && (
-          <select
-            value={val || ''}
-            onChange={(e) => handleChange(field.id, e.target.value)}
-            disabled={readOnly}
-            className={inputClassName}
-          >
-            <option value="">请选择</option>
-            {field.options?.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+          <Select value={val || ''} onValueChange={v => handleChange(field.id, v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="请选择" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">请选择</SelectItem>
+              {(field.options || []).map((opt, idx) => (
+                <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
 
         {field.type === 'TEXTAREA' && (
@@ -210,7 +209,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
           <div className="sticky bottom-0 px-4 py-3 bg-white border-t border-slate-200 safe-area-bottom">
             <button
               type="submit"
-              className="w-full py-3 bg-indigo-600 text-white text-base font-medium rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
+              className="w-full py-3 bg-pink-500 text-white text-base font-medium rounded-lg hover:bg-pink-600 active:bg-pink-700 transition-colors"
             >
               提交
             </button>

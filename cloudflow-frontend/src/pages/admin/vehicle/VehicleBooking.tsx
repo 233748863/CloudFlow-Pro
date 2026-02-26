@@ -35,21 +35,21 @@ const VehicleCard: React.FC<{
     onClick={onSelect}
     className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
       selected
-        ? 'border-blue-500 bg-blue-50/50 shadow-md ring-1 ring-blue-200'
+        ? 'border-pink-400 bg-pink-50/50 shadow-md ring-1 ring-pink-100'
         : 'border-gray-200 hover:border-gray-300 bg-white'
     }`}
   >
     {/* 选中标记 */}
     {selected && (
       <div className="absolute top-2 right-2">
-        <CheckCircle size={20} className="text-blue-500" />
+        <CheckCircle size={20} className="text-pink-400" />
       </div>
     )}
     {/* 车辆图标 */}
     <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
-      selected ? 'bg-blue-100' : 'bg-gray-100'
+      selected ? 'bg-pink-50' : 'bg-gray-100'
     }`}>
-      <Car size={20} className={selected ? 'text-blue-600' : 'text-gray-500'} />
+      <Car size={20} className={selected ? 'text-pink-500' : 'text-gray-500'} />
     </div>
     {/* 车牌号 */}
     <p className="font-mono font-bold text-base">{vehicle.licensePlate}</p>
@@ -84,8 +84,8 @@ const StepIndicator: React.FC<{ current: number; steps: string[] }> = ({ current
       <React.Fragment key={i}>
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-            i < current ? 'bg-blue-500 text-white' :
-            i === current ? 'bg-blue-500 text-white ring-4 ring-blue-100' :
+            i < current ? 'bg-pink-400 text-white' :
+            i === current ? 'bg-pink-400 text-white ring-4 ring-pink-50' :
             'bg-gray-200 text-gray-500'
           }`}>
             {i < current ? <CheckCircle size={16} /> : i + 1}
@@ -207,7 +207,7 @@ export const VehicleBooking: React.FC = () => {
     return (
       <div className="flex items-center justify-center p-16">
         <div className="text-center space-y-3">
-          <Loader2 className="animate-spin mx-auto text-blue-500" size={32} />
+          <Loader2 className="animate-spin mx-auto text-pink-400" size={32} />
           <p className="text-gray-500">正在加载可用车辆...</p>
         </div>
       </div>
@@ -345,8 +345,8 @@ export const VehicleBooking: React.FC = () => {
           <CardContent className="space-y-5">
             {/* 已选车辆提示 */}
             {selectedVehicle && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <Car size={18} className="text-blue-600" />
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-pink-50 border border-pink-100">
+                <Car size={18} className="text-pink-500" />
                 <span className="text-sm">
                   已选车辆：
                   <span className="font-mono font-bold ml-1">{selectedVehicle.licensePlate}</span>
@@ -426,11 +426,11 @@ export const VehicleBooking: React.FC = () => {
                 行程类型
               </Label>
               <div className="flex gap-4">
-                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 0 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}`}>
+                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 0 ? 'border-pink-400 bg-pink-50 text-pink-600' : 'border-gray-200 hover:border-gray-300'}`}>
                   <input type="radio" name="roundTrip" className="hidden" checked={formData.isRoundTrip === 0} onChange={() => setFormData({ ...formData, isRoundTrip: 0 })} />
                   <span className="text-sm font-medium">单程</span>
                 </label>
-                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 1 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}`}>
+                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 1 ? 'border-pink-400 bg-pink-50 text-pink-600' : 'border-gray-200 hover:border-gray-300'}`}>
                   <input type="radio" name="roundTrip" className="hidden" checked={formData.isRoundTrip === 1} onChange={() => setFormData({ ...formData, isRoundTrip: 1 })} />
                   <span className="text-sm font-medium">往返</span>
                 </label>
@@ -443,7 +443,7 @@ export const VehicleBooking: React.FC = () => {
                 用车事由 <span className="text-red-500">*</span>
               </Label>
               <textarea
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 min-h-[80px] resize-none"
                 placeholder="请详细描述用车事由..."
                 required
                 value={formData.reason}

@@ -14,7 +14,7 @@ export const DeployManagement: React.FC = () => {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Settings className="w-7 h-7 text-blue-600" />
+          <Settings className="w-7 h-7 text-pink-500" />
           <div>
             <h1 className="text-2xl font-bold text-gray-800">发布管理</h1>
             <p className="text-sm text-gray-500 mt-1">流程发布窗口、审批、回滚和统计管理</p>

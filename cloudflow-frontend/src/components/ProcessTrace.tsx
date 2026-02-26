@@ -59,7 +59,7 @@ const NodeIcon = ({ type, title, status }: { type: string, title: string, status
   const baseClasses = "w-8 h-8 rounded-full flex items-center justify-center z-10 transition-all duration-500";
   const statusClasses = {
     finished: "bg-emerald-100 text-emerald-600 ring-2 ring-emerald-500",
-    active: "bg-indigo-100 text-indigo-600 ring-2 ring-indigo-500 animate-pulse",
+    active: "bg-pink-50 text-pink-500 ring-2 ring-pink-400 animate-pulse",
     pending: "bg-slate-100 text-slate-400 ring-2 ring-slate-200"
   };
 
@@ -77,8 +77,8 @@ const getActionStyle = (action: string) => {
     'REJECT': { label: '拒绝', color: 'text-red-700', bgColor: 'bg-red-50' },
     'DELEGATE': { label: '转办', color: 'text-purple-700', bgColor: 'bg-purple-50' },
     'RETURN': { label: '驳回', color: 'text-amber-700', bgColor: 'bg-amber-50' },
-    'START': { label: '发起', color: 'text-blue-700', bgColor: 'bg-blue-50' },
-    'SUBMIT': { label: '提交', color: 'text-blue-700', bgColor: 'bg-blue-50' },
+    'START': { label: '发起', color: 'text-pink-600', bgColor: 'bg-pink-50' },
+    'SUBMIT': { label: '提交', color: 'text-pink-600', bgColor: 'bg-pink-50' },
     'COMPLETE': { label: '完成', color: 'text-emerald-700', bgColor: 'bg-emerald-50' },
   };
   // 尝试匹配，支持中文动作名
@@ -181,7 +181,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
           <NodeIcon type={node.type} title={node.title} status={status} />
           
           <div className={`mt-2 px-3 py-1.5 rounded-lg border text-xs font-medium max-w-[140px] text-center transition-colors
-             ${status === 'active' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 
+             ${status === 'active' ? 'bg-pink-50 border-pink-100 text-pink-600 shadow-sm' : 
                status === 'finished' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
                'bg-white border-slate-200 text-slate-500'}
           `}>
@@ -194,7 +194,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             )}
             {/* 活动节点显示当前处理人 */}
             {nodeActive && (
-              <div className="text-[9px] mt-0.5 text-indigo-500">
+              <div className="text-[9px] mt-0.5 text-pink-400">
                 待: {nodeActive.assigneeName || '待认领'}
               </div>
             )}
@@ -280,7 +280,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                 </div>
                 <div className="text-xs text-slate-500 space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <User size={11} className="text-slate-400" />
+                    <User size={11} className="text-pink-400" />
                     <span>{item.operatorName || '系统'}</span>
                     <span className="text-slate-300">·</span>
                     <span>{formatTime(item.completeTime || item.createTime)}</span>
@@ -295,7 +295,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
                   )}
                   {item.duration && (
                     <div className="flex items-center gap-2">
-                      <Clock size={11} className="text-slate-400" />
+                      <Clock size={11} className="text-pink-400" />
                       <span className="text-slate-400">耗时 {item.duration}</span>
                     </div>
                   )}
@@ -309,7 +309,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
         {activeItems.map((item, idx) => (
           <div key={`active-${idx}`} className="flex gap-3 relative">
             <div className="flex flex-col items-center flex-shrink-0 w-8">
-              <div className="w-3 h-3 rounded-full bg-indigo-500 ring-2 ring-indigo-100 z-10 mt-1.5 animate-pulse" />
+              <div className="w-3 h-3 rounded-full bg-pink-400 ring-2 ring-pink-50 z-10 mt-1.5 animate-pulse" />
               {idx < activeItems.length - 1 && (
                 <div className="w-0.5 flex-1 bg-slate-200 min-h-[40px]" />
               )}
@@ -317,13 +317,13 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             
             <div className="flex-1 pb-4">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-semibold text-indigo-700">{item.nodeName}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-50 text-indigo-600 animate-pulse">
+                <span className="text-sm font-semibold text-pink-600">{item.nodeName}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-pink-50 text-pink-500 animate-pulse">
                   处理中
                 </span>
               </div>
               <div className="text-xs text-slate-500 flex items-center gap-2">
-                <User size={11} className="text-indigo-400" />
+                <User size={11} className="text-pink-300" />
                 <span>待处理: {item.assigneeName || '待认领'}</span>
                 {item.createTime && (
                   <>
@@ -342,7 +342,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   if (loading) {
     return (
       <div className="p-10 flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
         <p className="text-sm text-slate-500">加载流程轨迹中...</p>
       </div>
     );
@@ -385,7 +385,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             {diagramExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {diagramExpanded && (
-            <div className="bg-slate-50 p-6 overflow-auto max-h-[400px] flex justify-center custom-scrollbar">
+            <div className="bg-slate-50 p-6 overflow-auto max-h-[400px] flex justify-center">
               {renderNode(rootNode)}
             </div>
           )}

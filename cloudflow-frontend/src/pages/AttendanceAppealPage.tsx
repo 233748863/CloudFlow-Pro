@@ -3,6 +3,7 @@ import { ClipboardCheck, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Papercl
 import { attendanceAppealApi, AttendanceAppeal } from '../services/api/attendanceAppeal';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 /** 补卡/外勤申请页面 */
 export const AttendanceAppealPage: React.FC = () => {
@@ -66,7 +67,7 @@ export const AttendanceAppealPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
-      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' }, PENDING: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' }, PENDING: { bg: 'bg-pink-50', text: 'text-pink-500' },
       APPROVED: { bg: 'bg-green-100', text: 'text-green-600' }, REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
       CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
     };
@@ -78,22 +79,37 @@ export const AttendanceAppealPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <ClipboardCheck className="text-indigo-600" /> 补卡/外勤申请
+          <ClipboardCheck className="text-pink-500" /> 补卡/外勤申请
         </h2>
-        <button onClick={handleAdd} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700"><Plus size={18} />新增申请</button>
+        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增申请</button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         {/* 搜索栏 */}
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <select value={searchParams.status} onChange={e => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部状态</option>
-            <option value="DRAFT">草稿</option><option value="PENDING">审批中</option><option value="APPROVED">已通过</option><option value="REJECTED">已驳回</option>
-          </select>
-          <select value={searchParams.appealType} onChange={e => setSearchParams({ ...searchParams, appealType: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部类型</option><option value="MAKEUP">补卡</option><option value="FIELD">外勤</option>
-          </select>
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"><Search size={16} />搜索</button>
+          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="DRAFT">草稿</SelectItem>
+                      <SelectItem value="PENDING">审批中</SelectItem>
+                      <SelectItem value="APPROVED">已通过</SelectItem>
+                      <SelectItem value="REJECTED">已驳回</SelectItem>
+                    </SelectContent>
+                  </Select>
+          <Select value={searchParams.appealType} onValueChange={v => setSearchParams({...searchParams, appealType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部类型</SelectItem>
+                      <SelectItem value="MAKEUP">补卡</SelectItem>
+                      <SelectItem value="FIELD">外勤</SelectItem>
+                    </SelectContent>
+                  </Select>
+          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
           <button onClick={() => setSearchParams({ status: '', appealType: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
 
@@ -115,7 +131,7 @@ export const AttendanceAppealPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
               ) : list.map(item => (
@@ -126,13 +142,13 @@ export const AttendanceAppealPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-slate-600">{item.appealType === 'MAKEUP' ? `${item.appealTime || ''} (${checkTypeMap[item.checkType || ''] || ''})` : (item.address || '-')}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{originalStatusMap[item.originalStatus || ''] || '-'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{item.reason}</td>
-                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-indigo-500" /> : <span className="text-slate-300">-</span>}</td>
+                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-pink-400" /> : <span className="text-slate-300">-</span>}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {item.status === 'DRAFT' && (<>
                         <button onClick={() => handleEdit(item.id!)} className="text-green-600 hover:text-green-800" title="编辑"><Edit size={16} /></button>
-                        <button onClick={() => handleSubmit(item.id!)} className="text-indigo-600 hover:text-indigo-800" title="提交"><Send size={16} /></button>
+                        <button onClick={() => handleSubmit(item.id!)} className="text-pink-500 hover:text-pink-700" title="提交"><Send size={16} /></button>
                         <button onClick={() => handleDelete([item.id!])} className="text-red-600 hover:text-red-800" title="删除"><Trash2 size={16} /></button>
                       </>)}
                     </div>
@@ -156,7 +172,7 @@ export const AttendanceAppealPage: React.FC = () => {
 
       {/* 新增/编辑对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-slate-800">{current ? '编辑申请' : '新增申请'}</h3>
@@ -166,9 +182,15 @@ export const AttendanceAppealPage: React.FC = () => {
               {/* 申请类型 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">申请类型 <span className="text-red-500">*</span></label>
-                <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.appealType} onChange={e => setFormData({ ...formData, appealType: e.target.value })}>
-                  <option value="MAKEUP">补卡</option><option value="FIELD">外勤</option>
-                </select>
+                <Select value={formData.appealType} onValueChange={v => setFormData({...formData, appealType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MAKEUP">补卡</SelectItem>
+                      <SelectItem value="FIELD">外勤</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
               {/* 日期 */}
               <div>
@@ -184,21 +206,32 @@ export const AttendanceAppealPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">打卡类型 <span className="text-red-500">*</span></label>
-                    <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.checkType || '1'} onChange={e => setFormData({ ...formData, checkType: e.target.value })}>
-                      <option value="1">签到</option><option value="2">签退</option>
-                    </select>
+                    <Select value={formData.checkType || '1'} onValueChange={v => setFormData({...formData, checkType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">签到</SelectItem>
+                      <SelectItem value="2">签退</SelectItem>
+                    </SelectContent>
+                  </Select>
                   </div>
                 </div>
                 {/* 原始打卡状态 */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">原始打卡状态</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.originalStatus || ''} onChange={e => setFormData({ ...formData, originalStatus: e.target.value })}>
-                    <option value="">请选择</option>
-                    <option value="LATE">迟到</option>
-                    <option value="EARLY">早退</option>
-                    <option value="ABSENT">缺卡</option>
-                    <option value="ABNORMAL">异常</option>
-                  </select>
+                  <Select value={formData.originalStatus || ''} onValueChange={v => setFormData({...formData, originalStatus: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">请选择</SelectItem>
+                      <SelectItem value="LATE">迟到</SelectItem>
+                      <SelectItem value="EARLY">早退</SelectItem>
+                      <SelectItem value="ABSENT">缺卡</SelectItem>
+                      <SelectItem value="ABNORMAL">异常</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </>)}
               {/* 外勤专有字段 */}
@@ -231,7 +264,7 @@ export const AttendanceAppealPage: React.FC = () => {
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2 sticky bottom-0">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
-              <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
+              <button onClick={handleSave} className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">保存</button>
             </div>
           </div>
         </div>

@@ -121,7 +121,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             >
               {/* 文件图标 */}
               {isImage(file.url) ? (
-                <ImageIcon size={16} className="text-blue-500 flex-shrink-0" />
+                <ImageIcon size={16} className="text-pink-400 flex-shrink-0" />
               ) : (
                 <FileText size={16} className="text-slate-500 flex-shrink-0" />
               )}
@@ -150,7 +150,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         <label
           className={`
             flex items-center gap-2 px-3 py-2 border-2 border-dashed border-slate-300 rounded-lg
-            cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors
+            cursor-pointer hover:border-pink-300 hover:bg-pink-50/50 transition-colors
             ${uploading ? 'opacity-60 cursor-not-allowed' : ''}
           `}
         >
@@ -164,9 +164,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             disabled={uploading || disabled}
           />
           {uploading ? (
-            <Loader2 size={16} className="animate-spin text-indigo-500" />
+            <Loader2 size={16} className="animate-spin text-pink-400" />
           ) : (
-            <Paperclip size={16} className="text-slate-400" />
+            <Paperclip size={16} className="text-pink-400" />
           )}
           <span className="text-sm text-slate-500">
             {uploading ? '上传中...' : '点击上传附件'}

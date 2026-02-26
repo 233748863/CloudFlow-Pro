@@ -129,7 +129,7 @@ export const Workplace = () => {
          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
             <input 
-              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-64 focus:ring-2 focus:ring-indigo-500 outline-none" 
+              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-64 focus:ring-2 focus:ring-pink-400 outline-none" 
               placeholder="搜索流程..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -139,10 +139,10 @@ export const Workplace = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredWorkflows.map(wf => (
-          <div key={wf.id} className="group bg-white border border-slate-200 hover:border-indigo-500 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg cursor-pointer relative overflow-hidden" onClick={() => handleStartClick(wf)}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
+          <div key={wf.id} className="group bg-white border border-slate-200 hover:border-pink-400 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg cursor-pointer relative overflow-hidden" onClick={() => handleStartClick(wf)}>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-pink-50 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
             <div className="relative z-10 flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-pink-50 text-pink-500 rounded-xl flex items-center justify-center">
                  {wf.key.includes('reimburse') || wf.key.includes('payment') ? <DollarSign size={24}/> : 
                   wf.key.includes('leave') ? <Clock size={24}/> :
                   wf.key.includes('it') ? <Monitor size={24}/> :
@@ -150,9 +150,9 @@ export const Workplace = () => {
                   <GitMerge size={24} />
                  }
               </div>
-              <ArrowRightCircle size={24} className="text-slate-300 group-hover:text-indigo-600 transition-colors"/>
+              <ArrowRightCircle size={24} className="text-slate-300 group-hover:text-pink-500 transition-colors"/>
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{wf.name}</h3>
+            <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-pink-500 transition-colors">{wf.name}</h3>
             <p className="text-xs text-slate-500 line-clamp-2">Key: {wf.key}</p>
             <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
               <FormInput size={12}/> 绑定表单: {wf.formId ? '已配置' : '无'}

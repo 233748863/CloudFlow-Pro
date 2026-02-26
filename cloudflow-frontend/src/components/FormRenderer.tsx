@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FormDefinition } from '../types';
 import { FileText, X, AlertTriangle, Send } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 
 export const FormRenderer = ({ 
   formDef, 
@@ -98,12 +99,12 @@ export const FormRenderer = ({
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden max-w-2xl mx-auto animate-fade-in-up">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
         <h3 className="font-bold text-slate-800 flex items-center gap-2">
-          <FileText size={18} className="text-indigo-600"/>
+          <FileText size={18} className="text-pink-500"/>
           填写: {formDef.name}
         </h3>
         <button onClick={onCancel}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
       </div>
-      <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+      <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
         {formDef.fields.map(field => (
           <div key={field.id} id={`field-${field.id}`} className="space-y-1">
             <label className="block text-sm font-bold text-slate-700">
@@ -111,7 +112,7 @@ export const FormRenderer = ({
             </label>
             {field.type === 'TEXTAREA' ? (
               <textarea
-                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition-all ${
                   errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
                 }`}
                 rows={3}
@@ -119,20 +120,21 @@ export const FormRenderer = ({
                 onChange={e => handleChange(field.id, e.target.value)}
               />
             ) : field.type === 'SELECT' ? (
-              <select 
-                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white ${
-                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
-                }`}
-                onChange={e => handleChange(field.id, e.target.value)}
-                defaultValue=""
-              >
-                <option value="" disabled>请选择</option>
-                {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
+              <Select value={formData[field.id] || ""} onValueChange={v => handleChange(field.id, v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">请选择</SelectItem>
+                  {(field.options || []).map((opt, idx) => (
+                    <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <input
                 type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
-                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition-all ${
                   errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
                 }`}
                 placeholder={field.placeholder}
@@ -149,7 +151,7 @@ export const FormRenderer = ({
       </div>
       <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
         <button onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium">取消</button>
-        <button onClick={handleSubmit} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md shadow-indigo-200">
+        <button onClick={handleSubmit} className="px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 text-sm font-medium shadow-md shadow-pink-100">
           <Send size={16} className="inline mr-2"/> 提交申请
         </button>
       </div>

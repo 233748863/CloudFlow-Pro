@@ -201,7 +201,7 @@ export const MobileMeetingRoom: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-indigo-600 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载会议室...</p>
         </div>
       </div>
@@ -242,7 +242,7 @@ export const MobileMeetingRoom: React.FC = () => {
                 {selectedRoom.facilities.map(facility => (
                   <span
                     key={facility}
-                    className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded"
+                    className="text-xs bg-pink-50 text-pink-500 px-2 py-1 rounded"
                   >
                     {facility}
                   </span>
@@ -262,7 +262,7 @@ export const MobileMeetingRoom: React.FC = () => {
               value={bookingForm.date}
               onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
               min={format(new Date(), 'yyyy-MM-dd')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
             />
           </div>
 
@@ -279,7 +279,7 @@ export const MobileMeetingRoom: React.FC = () => {
                   type="time"
                   value={bookingForm.startTime}
                   onChange={e => setBookingForm({ ...bookingForm, startTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                 />
               </div>
               <div>
@@ -288,7 +288,7 @@ export const MobileMeetingRoom: React.FC = () => {
                   type="time"
                   value={bookingForm.endTime}
                   onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                 />
               </div>
             </div>
@@ -304,7 +304,7 @@ export const MobileMeetingRoom: React.FC = () => {
               value={bookingForm.purpose}
               onChange={e => setBookingForm({ ...bookingForm, purpose: e.target.value })}
               placeholder="请输入会议主题"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
             />
           </div>
 
@@ -320,7 +320,7 @@ export const MobileMeetingRoom: React.FC = () => {
               onChange={e => setBookingForm({ ...bookingForm, attendees: parseInt(e.target.value) || 1 })}
               min="1"
               max={selectedRoom.capacity}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
             />
             <p className="text-xs text-slate-500 mt-1">
               该会议室最多容纳 {selectedRoom.capacity} 人
@@ -331,7 +331,7 @@ export const MobileMeetingRoom: React.FC = () => {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>
@@ -361,10 +361,10 @@ export const MobileMeetingRoom: React.FC = () => {
         >
           <div className="bg-white rounded-full p-2 shadow-lg">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-indigo-600" size={24} />
+              <Loader2 className="animate-spin text-pink-500" size={24} />
             ) : (
               <RefreshCw
-                className="text-indigo-600 transition-transform"
+                className="text-pink-500 transition-transform"
                 size={24}
                 style={{ transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)` }}
               />
@@ -394,7 +394,7 @@ export const MobileMeetingRoom: React.FC = () => {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="搜索会议室名称或位置"
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
           />
         </div>
       </div>

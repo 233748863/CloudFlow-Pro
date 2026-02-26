@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Search, RotateCcw, X, LogIn, LogOut, RefreshCw } from 'lucide-react';
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 /** 值班排班页面 */
 export const DutySchedulePage: React.FC = () => {
@@ -68,7 +69,7 @@ export const DutySchedulePage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
-      SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-600' }, CHECKED_IN: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+      SCHEDULED: { bg: 'bg-pink-50', text: 'text-pink-500' }, CHECKED_IN: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
       COMPLETED: { bg: 'bg-green-100', text: 'text-green-600' }, SWAPPED: { bg: 'bg-purple-100', text: 'text-purple-600' },
       CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
     };
@@ -79,19 +80,36 @@ export const DutySchedulePage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-indigo-600" /> 值班排班</h2>
-        <button onClick={handleAdd} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700"><Plus size={18} />新增排班</button>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-pink-500" /> 值班排班</h2>
+        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增排班</button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <select value={searchParams.status} onChange={e => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部状态</option><option value="SCHEDULED">已排班</option><option value="CHECKED_IN">已签到</option><option value="COMPLETED">已完成</option><option value="SWAPPED">已换班</option>
-          </select>
-          <select value={searchParams.scheduleType} onChange={e => setSearchParams({ ...searchParams, scheduleType: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部类型</option><option value="DAILY">日常值班</option><option value="HOLIDAY">节假日值班</option><option value="EMERGENCY">应急值班</option>
-          </select>
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"><Search size={16} />搜索</button>
+          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="SCHEDULED">已排班</SelectItem>
+                      <SelectItem value="CHECKED_IN">已签到</SelectItem>
+                      <SelectItem value="COMPLETED">已完成</SelectItem>
+                      <SelectItem value="SWAPPED">已换班</SelectItem>
+                    </SelectContent>
+                  </Select>
+          <Select value={searchParams.scheduleType} onValueChange={v => setSearchParams({...searchParams, scheduleType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部类型</SelectItem>
+                      <SelectItem value="DAILY">日常值班</SelectItem>
+                      <SelectItem value="HOLIDAY">节假日值班</SelectItem>
+                      <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                    </SelectContent>
+                  </Select>
+          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
           <button onClick={() => setSearchParams({ status: '', scheduleType: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
 
@@ -112,7 +130,7 @@ export const DutySchedulePage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">暂无排班记录</td></tr>
               ) : list.map(item => (
@@ -157,7 +175,7 @@ export const DutySchedulePage: React.FC = () => {
 
       {/* 新增排班对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-800">新增排班</h3>
@@ -171,15 +189,29 @@ export const DutySchedulePage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">值班类型</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.scheduleType} onChange={e => setFormData({ ...formData, scheduleType: e.target.value })}>
-                    <option value="DAILY">日常值班</option><option value="HOLIDAY">节假日值班</option><option value="EMERGENCY">应急值班</option>
-                  </select>
+                  <Select value={formData.scheduleType} onValueChange={v => setFormData({...formData, scheduleType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DAILY">日常值班</SelectItem>
+                      <SelectItem value="HOLIDAY">节假日值班</SelectItem>
+                      <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">班次</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.shiftType || 'DAY'} onChange={e => setFormData({ ...formData, shiftType: e.target.value })}>
-                    <option value="DAY">白班</option><option value="NIGHT">夜班</option><option value="FULL">全天</option>
-                  </select>
+                  <Select value={formData.shiftType || 'DAY'} onValueChange={v => setFormData({...formData, shiftType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DAY">白班</SelectItem>
+                      <SelectItem value="NIGHT">夜班</SelectItem>
+                      <SelectItem value="FULL">全天</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>
@@ -203,7 +235,7 @@ export const DutySchedulePage: React.FC = () => {
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
-              <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
+              <button onClick={handleSave} className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">保存</button>
             </div>
           </div>
         </div>
@@ -211,7 +243,7 @@ export const DutySchedulePage: React.FC = () => {
 
       {/* 换班对话框 */}
       {showSwapDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-800">换班申请</h3>

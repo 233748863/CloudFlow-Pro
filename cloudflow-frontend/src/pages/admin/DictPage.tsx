@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { Card } from '../../components/ui/card';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 
 /** 字典管理页面 */
 export const DictPage: React.FC = () => {
@@ -139,7 +140,7 @@ export const DictPage: React.FC = () => {
   // 样式标签颜色映射
   const listClassColors: Record<string, string> = {
     default: 'bg-slate-100 text-slate-700',
-    primary: 'bg-indigo-100 text-indigo-700',
+    primary: 'bg-pink-100 text-pink-700',
     success: 'bg-green-100 text-green-700',
     warning: 'bg-amber-100 text-amber-700',
     danger: 'bg-red-100 text-red-700',
@@ -151,7 +152,7 @@ export const DictPage: React.FC = () => {
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <BookOpen className="w-6 h-6 text-indigo-600" />
+          <BookOpen className="w-6 h-6 text-pink-600" />
           <h1 className="text-xl font-semibold text-gray-800">字典管理</h1>
         </div>
       </div>
@@ -182,10 +183,10 @@ export const DictPage: React.FC = () => {
           </div>
 
           {/* 类型列表 */}
-          <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+          <div className="max-h-[600px] overflow-y-auto">
             {typeLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500"></div>
               </div>
             ) : filteredTypes.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-sm">暂无字典类型</div>
@@ -195,7 +196,7 @@ export const DictPage: React.FC = () => {
                   key={item.dictId}
                   onClick={() => setSelectedType(item)}
                   className={`px-4 py-3 border-b border-slate-50 cursor-pointer transition-colors group ${
-                    selectedType?.dictId === item.dictId ? 'bg-indigo-50 border-l-2 border-l-indigo-600' : 'hover:bg-slate-50'
+                    selectedType?.dictId === item.dictId ? 'bg-pink-50 border-l-2 border-l-pink-500' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -207,7 +208,7 @@ export const DictPage: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="w-7 h-7 text-slate-400 hover:text-indigo-600"
+                        className="w-7 h-7 text-slate-400 hover:text-pink-600"
                         onClick={e => { e.stopPropagation(); handleEditType(item); }}
                         title="编辑"
                       >
@@ -255,7 +256,7 @@ export const DictPage: React.FC = () => {
             </div>
           ) : dataLoading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
             </div>
           ) : dictDataList.length === 0 ? (
             <div className="text-center py-16 text-slate-400">
@@ -293,7 +294,7 @@ export const DictPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500 max-w-[120px] truncate">{item.remark || '-'}</td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800 mr-1" onClick={() => handleEditData(item)}>
+                      <Button variant="ghost" size="sm" className="text-pink-600 hover:text-pink-800 mr-1" onClick={() => handleEditData(item)}>
                         编辑
                       </Button>
                       <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteData(item)}>
@@ -337,14 +338,15 @@ export const DictPage: React.FC = () => {
             {/* 状态 */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">状态</label>
-              <select
-                value={typeForm.status}
-                onChange={e => setTypeForm({ ...typeForm, status: e.target.value })}
-                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
-              >
-                <option value="0">正常</option>
-                <option value="1">停用</option>
-              </select>
+              <Select value={typeForm.status} onValueChange={v => setTypeForm({ ...typeForm, status: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">正常</SelectItem>
+                  <SelectItem value="1">停用</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             {/* 备注 */}
             <div>
@@ -401,43 +403,46 @@ export const DictPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">样式</label>
-                <select
-                  value={dataForm.listClass}
-                  onChange={e => setDataForm({ ...dataForm, listClass: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
-                >
-                  <option value="">默认</option>
-                  <option value="primary">主要</option>
-                  <option value="success">成功</option>
-                  <option value="warning">警告</option>
-                  <option value="danger">危险</option>
-                  <option value="info">信息</option>
-                </select>
+                <Select value={dataForm.listClass} onValueChange={v => setDataForm({ ...dataForm, listClass: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="默认" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">默认</SelectItem>
+                    <SelectItem value="primary">主要</SelectItem>
+                    <SelectItem value="success">成功</SelectItem>
+                    <SelectItem value="warning">警告</SelectItem>
+                    <SelectItem value="danger">危险</SelectItem>
+                    <SelectItem value="info">信息</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {/* 状态 + 是否默认 */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">状态</label>
-                <select
-                  value={dataForm.status}
-                  onChange={e => setDataForm({ ...dataForm, status: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
-                >
-                  <option value="0">正常</option>
-                  <option value="1">停用</option>
-                </select>
+                <Select value={dataForm.status} onValueChange={v => setDataForm({ ...dataForm, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">正常</SelectItem>
+                    <SelectItem value="1">停用</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">是否默认</label>
-                <select
-                  value={dataForm.isDefault}
-                  onChange={e => setDataForm({ ...dataForm, isDefault: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
-                >
-                  <option value="N">否</option>
-                  <option value="Y">是</option>
-                </select>
+                <Select value={dataForm.isDefault} onValueChange={v => setDataForm({ ...dataForm, isDefault: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="N">否</SelectItem>
+                    <SelectItem value="Y">是</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {/* 备注 */}

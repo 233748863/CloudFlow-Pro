@@ -1,22 +1,6 @@
 @import "tailwindcss";
 
 @layer utilities {
-  /* 自定义全局滚动条样式 */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1; /* tailwind slate-300 */
-    border-radius: 20px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8; /* tailwind slate-400 */
-  }
-  
   /* 隐藏滚动条但保留滚动功能 */
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
@@ -27,16 +11,71 @@
   }
 }
 
+/* 全局统一滚动条样式 - 所有可滚动元素 */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1; /* tailwind slate-300 */
+  border-radius: 20px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8; /* tailwind slate-400 */
+}
+
+/* Firefox 滚动条样式 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
 @layer base {
   body {
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     scroll-behavior: smooth;
   }
   
+  /* 统一原生表单控件的主题色为粉色 */
+  input, select, textarea {
+    accent-color: #ec4899; /* tailwind pink-500 */
+  }
+
+  /* 下拉框选中项样式 */
+  option:checked,
+  option:hover {
+    background-color: #ec4899 !important; /* tailwind pink-500 */
+    color: white !important;
+  }
+
+  /* 统一所有表单元素的焦点环颜色为粉色 */
+  input:focus,
+  select:focus,
+  textarea:focus,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #f9a8d4; /* tailwind pink-300 */
+    border-color: #f472b6; /* tailwind pink-400 */
+  }
+
+  /* checkbox 和 radio 焦点样式 */
+  input[type="checkbox"]:focus,
+  input[type="radio"]:focus,
+  input[type="checkbox"]:focus-visible,
+  input[type="radio"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #fbcfe8; /* tailwind pink-200 */
+  }
+
   /* 全局文本选择样式优化 */
   ::selection {
-    background-color: #e0e7ff; /* tailwind indigo-100 */
-    color: #3730a3; /* tailwind indigo-800 */
+    background-color: #fce7f3; /* tailwind pink-100 */
+    color: #9d174d; /* tailwind pink-800 */
   }
   
   /* 移动端安全区域支持 */

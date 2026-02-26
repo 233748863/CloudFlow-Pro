@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { Card } from '../../components/ui/card';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 
 /** 图标映射 */
 const iconMap: Record<string, React.ReactNode> = {
@@ -169,7 +170,7 @@ const ProcessCategoryPage: React.FC = () => {
         {/* 节点行 */}
         <div
           className={`flex items-center py-2 px-3 cursor-pointer rounded-lg transition-colors group
-            ${isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-600' : 'hover:bg-gray-50'}`}
+            ${isSelected ? 'bg-pink-50 border-l-2 border-l-pink-500' : 'hover:bg-gray-50'}`}
           style={{ paddingLeft: `${level * 24 + 12}px` }}
           onClick={() => setSelectedId(node.categoryId!)}
         >
@@ -189,7 +190,7 @@ const ProcessCategoryPage: React.FC = () => {
           </button>
 
           {/* 图标 */}
-          <span className="mr-2 text-indigo-500">{renderIcon(node.icon)}</span>
+          <span className="mr-2 text-pink-500">{renderIcon(node.icon)}</span>
 
           {/* 名称 */}
           <span className="flex-1 text-sm font-medium text-gray-700 truncate">
@@ -211,7 +212,7 @@ const ProcessCategoryPage: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="w-7 h-7 text-slate-400 hover:text-indigo-600"
+              className="w-7 h-7 text-slate-400 hover:text-pink-600"
               title="添加子分类"
               onClick={(e) => { e.stopPropagation(); handleAdd(node.categoryId!); }}
             >
@@ -220,7 +221,7 @@ const ProcessCategoryPage: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="w-7 h-7 text-slate-400 hover:text-blue-600"
+              className="w-7 h-7 text-slate-400 hover:text-pink-500"
               title="编辑"
               onClick={(e) => { e.stopPropagation(); handleEdit(node.categoryId!); }}
             >
@@ -256,7 +257,7 @@ const ProcessCategoryPage: React.FC = () => {
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <FolderTree className="w-6 h-6 text-indigo-600" />
+          <FolderTree className="w-6 h-6 text-pink-600" />
           <h1 className="text-xl font-semibold text-gray-800">流程分类管理</h1>
         </div>
         <Button
@@ -286,7 +287,7 @@ const ProcessCategoryPage: React.FC = () => {
           {selectedNode ? (
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <span className="text-indigo-500">{renderIcon(selectedNode.icon)}</span>
+                <span className="text-pink-500">{renderIcon(selectedNode.icon)}</span>
                 <h2 className="text-lg font-semibold text-gray-800">{selectedNode.categoryName}</h2>
                 <span className={`text-xs px-2 py-0.5 rounded ${
                   selectedNode.status === '0' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -351,20 +352,21 @@ const ProcessCategoryPage: React.FC = () => {
               {/* 父分类 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">父分类</label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
-                  value={form.parentId || 0}
-                  onChange={e => setForm({ ...form, parentId: Number(e.target.value) })}
-                >
-                  <option value={0}>顶级分类</option>
-                  {flatList
-                    .filter(c => c.categoryId !== form.categoryId)
-                    .map(c => (
-                      <option key={c.categoryId} value={c.categoryId}>
-                        {c.categoryName} ({c.categoryCode})
-                      </option>
-                    ))}
-                </select>
+                <Select value={String(form.parentId || 0)} onValueChange={v => setForm({ ...form, parentId: Number(v) })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择父分类" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">顶级分类</SelectItem>
+                    {flatList
+                      .filter(c => c.categoryId !== form.categoryId)
+                      .map(c => (
+                        <SelectItem key={c.categoryId} value={String(c.categoryId)}>
+                          {c.categoryName} ({c.categoryCode})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* 分类名称 */}
@@ -396,19 +398,20 @@ const ProcessCategoryPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">图标标识</label>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
-                    value={form.icon || ''}
-                    onChange={e => setForm({ ...form, icon: e.target.value })}
-                  >
-                    <option value="">无</option>
-                    <option value="briefcase">briefcase 公文包</option>
-                    <option value="users">users 用户</option>
-                    <option value="dollar-sign">dollar-sign 财务</option>
-                    <option value="building">building 行政</option>
-                    <option value="folder-kanban">folder-kanban 项目</option>
-                    <option value="layers">layers 通用</option>
-                  </select>
+                  <Select value={form.icon || ''} onValueChange={v => setForm({ ...form, icon: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="无" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">无</SelectItem>
+                      <SelectItem value="briefcase">briefcase 公文包</SelectItem>
+                      <SelectItem value="users">users 用户</SelectItem>
+                      <SelectItem value="dollar-sign">dollar-sign 财务</SelectItem>
+                      <SelectItem value="building">building 行政</SelectItem>
+                      <SelectItem value="folder-kanban">folder-kanban 项目</SelectItem>
+                      <SelectItem value="layers">layers 通用</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">排序号</label>
@@ -431,7 +434,7 @@ const ProcessCategoryPage: React.FC = () => {
                       value="0"
                       checked={form.status === '0'}
                       onChange={() => setForm({ ...form, status: '0' })}
-                      className="text-indigo-600"
+                      className="text-pink-500"
                     />
                     正常
                   </label>
@@ -442,7 +445,7 @@ const ProcessCategoryPage: React.FC = () => {
                       value="1"
                       checked={form.status === '1'}
                       onChange={() => setForm({ ...form, status: '1' })}
-                      className="text-indigo-600"
+                      className="text-pink-500"
                     />
                     停用
                   </label>
@@ -453,7 +456,7 @@ const ProcessCategoryPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">备注</label>
                 <textarea
-                  className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all placeholder:text-slate-400 hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+                  className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all placeholder:text-slate-400 hover:border-pink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1"
                   rows={3}
                   placeholder="可选"
                   value={form.remark || ''}

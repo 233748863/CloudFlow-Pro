@@ -40,7 +40,7 @@ import {
 /** 状态配置映射 */
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   '1': { label: '可用', color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: <CheckCircle size={14} /> },
-  '2': { label: '已预约', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: <Clock size={14} /> },
+  '2': { label: '已预约', color: 'text-pink-600', bg: 'bg-pink-50 border-pink-100', icon: <Clock size={14} /> },
   '3': { label: '使用中', color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200', icon: <Car size={14} /> },
   '4': { label: '维修中', color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200', icon: <Wrench size={14} /> },
   '5': { label: '已报废', color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: <XCircle size={14} /> },
@@ -65,7 +65,7 @@ const StatCard: React.FC<{
   <div
     onClick={onClick}
     className={`relative overflow-hidden rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
-      active ? 'ring-2 ring-blue-500 border-blue-300 shadow-md' : 'border-gray-200 hover:border-gray-300'
+      active ? 'ring-2 ring-pink-400 border-pink-200 shadow-md' : 'border-gray-200 hover:border-gray-300'
     }`}
   >
     <div className="flex items-center justify-between">
@@ -296,8 +296,8 @@ const VehicleList: React.FC = () => {
           />
           <StatCard
             title="已预约" value={stats.booked}
-            icon={<Clock size={20} className="text-blue-600" />}
-            color="bg-blue-100"
+            icon={<Clock size={20} className="text-pink-500" />}
+            color="bg-pink-50"
             onClick={() => handleFilterByStatus('2')}
             active={query.status === '2'}
           />
@@ -409,7 +409,7 @@ const VehicleList: React.FC = () => {
                   <TableRow>
                     <TableCell colSpan={10} className="text-center h-32">
                       <div className="flex items-center justify-center gap-2 text-gray-400">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-blue-500" />
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-pink-400" />
                         加载中...
                       </div>
                     </TableCell>
@@ -492,7 +492,7 @@ const VehicleList: React.FC = () => {
                           <Button
                             variant="ghost" size="sm"
                             onClick={() => handleViewDetail(vehicle)}
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                            className="h-8 w-8 p-0 text-gray-500 hover:text-pink-500"
                             title="查看详情"
                           >
                             <Eye size={15} />
@@ -685,7 +685,7 @@ const VehicleList: React.FC = () => {
                 <div className="space-y-1.5">
                   <Label>备注</Label>
                   <textarea
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 min-h-[80px] resize-none"
                     placeholder="其他备注信息..."
                     value={formData.remark || ''}
                     onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
@@ -715,8 +715,8 @@ const VehicleList: React.FC = () => {
           {detailVehicle && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 pb-3 border-b">
-                <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Car size={24} className="text-blue-600" />
+                <div className="w-12 h-12 rounded-lg bg-pink-50 flex items-center justify-center">
+                  <Car size={24} className="text-pink-500" />
                 </div>
                 <div>
                   <p className="font-mono text-lg font-bold">{detailVehicle.licensePlate}</p>

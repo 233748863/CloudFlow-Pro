@@ -37,7 +37,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
           <button 
             onClick={handleGenerate}
             disabled={generatedCode.loading}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-md"
+            className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600 disabled:opacity-50 transition-all shadow-md"
           >
             {generatedCode.loading ? <Loader2 size={16} className="animate-spin"/> : <Code size={16} />}
             {generatedCode.loading ? 'AI 正在编写代码...' : '生成代码'}
@@ -49,21 +49,21 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
         <div className="flex bg-[#252526] border-b border-[#333]">
           <button 
             onClick={() => setActiveTab('java')}
-            className={`px-4 py-3 text-sm flex items-center gap-2 border-r border-[#333] transition-colors ${activeTab === 'java' ? 'bg-[#1e1e1e] text-white border-t-2 border-t-indigo-500' : 'text-slate-400 hover:bg-[#2d2d2d]'}`}
+            className={`px-4 py-3 text-sm flex items-center gap-2 border-r border-[#333] transition-colors ${activeTab === 'java' ? 'bg-[#1e1e1e] text-white border-t-2 border-t-pink-400' : 'text-slate-400 hover:bg-[#2d2d2d]'}`}
           >
             <span className="w-2 h-2 rounded-full bg-orange-500"/> WorkflowService.java
           </button>
           <button 
             onClick={() => setActiveTab('sql')}
-            className={`px-4 py-3 text-sm flex items-center gap-2 border-r border-[#333] transition-colors ${activeTab === 'sql' ? 'bg-[#1e1e1e] text-white border-t-2 border-t-blue-500' : 'text-slate-400 hover:bg-[#2d2d2d]'}`}
+            className={`px-4 py-3 text-sm flex items-center gap-2 border-r border-[#333] transition-colors ${activeTab === 'sql' ? 'bg-[#1e1e1e] text-white border-t-2 border-t-pink-400' : 'text-slate-400 hover:bg-[#2d2d2d]'}`}
           >
-            <span className="w-2 h-2 rounded-full bg-blue-500"/> schema.sql
+            <span className="w-2 h-2 rounded-full bg-pink-400"/> schema.sql
           </button>
         </div>
         
-        <div className="flex-1 overflow-auto p-4 custom-scrollbar relative">
+        <div className="flex-1 overflow-auto p-4 relative">
           <pre className="font-mono text-sm leading-relaxed">
-            <code className={activeTab === 'java' ? 'text-indigo-300' : 'text-emerald-300'}>
+            <code className={activeTab === 'java' ? 'text-pink-200' : 'text-emerald-300'}>
               {activeTab === 'java' ? generatedCode.java : generatedCode.sql}
             </code>
           </pre>

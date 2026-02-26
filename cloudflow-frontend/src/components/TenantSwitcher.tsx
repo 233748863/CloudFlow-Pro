@@ -108,7 +108,7 @@ export const TenantSwitcher: React.FC = () => {
                     disabled={switching}
                     className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${
                       tenant.tenantId === user.tenantId
-                        ? 'bg-indigo-50 text-indigo-700'
+                        ? 'bg-pink-50 text-pink-600'
                         : 'text-slate-700 hover:bg-slate-50'
                     } ${switching ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
@@ -117,7 +117,7 @@ export const TenantSwitcher: React.FC = () => {
                       <span>{tenant.tenantName}</span>
                     </div>
                     {tenant.tenantId === user.tenantId && (
-                      <Check size={14} className="text-indigo-600" />
+                      <Check size={14} className="text-pink-500" />
                     )}
                   </button>
                 ))}

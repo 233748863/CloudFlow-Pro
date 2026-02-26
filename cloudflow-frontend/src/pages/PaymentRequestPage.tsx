@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye } from 'lucide-react';
 import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 export const PaymentRequestPage: React.FC = () => {
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
@@ -159,7 +160,7 @@ export const PaymentRequestPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string }> = {
       DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' },
-      PENDING: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      PENDING: { bg: 'bg-pink-50', text: 'text-pink-500' },
       APPROVED: { bg: 'bg-green-100', text: 'text-green-600' },
       REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
       PAID: { bg: 'bg-purple-100', text: 'text-purple-600' },
@@ -191,30 +192,32 @@ export const PaymentRequestPage: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         <div className="p-4 border-b border-slate-200 bg-slate-50">
           <div className="flex gap-3">
-            <select
-              value={searchParams.status}
-              onChange={(e) => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })}
-              className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">全部状态</option>
-              <option value="DRAFT">草稿</option>
-              <option value="PENDING">审批中</option>
-              <option value="APPROVED">已通过</option>
-              <option value="REJECTED">已驳回</option>
-              <option value="PAID">已打款</option>
-            </select>
+            <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="DRAFT">草稿</SelectItem>
+                      <SelectItem value="PENDING">审批中</SelectItem>
+                      <SelectItem value="APPROVED">已通过</SelectItem>
+                      <SelectItem value="REJECTED">已驳回</SelectItem>
+                      <SelectItem value="PAID">已打款</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-            <select
-              value={searchParams.paymentType}
-              onChange={(e) => setSearchParams({ ...searchParams, paymentType: e.target.value, pageNum: 1 })}
-              className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">全部类型</option>
-              <option value="TRANSFER">转账</option>
-              <option value="CASH">现金</option>
-              <option value="CHECK">支票</option>
-              <option value="OTHER">其他</option>
-            </select>
+            <Select value={searchParams.paymentType} onValueChange={v => setSearchParams({...searchParams, paymentType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部类型</SelectItem>
+                      <SelectItem value="TRANSFER">转账</SelectItem>
+                      <SelectItem value="CASH">现金</SelectItem>
+                      <SelectItem value="CHECK">支票</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
 
             <button
               onClick={handleSearch}
@@ -284,7 +287,7 @@ export const PaymentRequestPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleView(item.id!)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-pink-500 hover:text-pink-700"
                           title="查看"
                         >
                           <Eye size={16} />
@@ -300,7 +303,7 @@ export const PaymentRequestPage: React.FC = () => {
                             </button>
                             <button
                               onClick={() => handleSubmit(item.id!)}
-                              className="text-indigo-600 hover:text-indigo-800"
+                              className="text-pink-500 hover:text-pink-700"
                               title="提交"
                             >
                               <Send size={16} />
@@ -347,7 +350,7 @@ export const PaymentRequestPage: React.FC = () => {
 
       {/* 新增/编辑对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-800">
@@ -406,16 +409,17 @@ export const PaymentRequestPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">付款方式</label>
-                  <select
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.paymentType}
-                    onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
-                  >
-                    <option value="TRANSFER">转账</option>
-                    <option value="CASH">现金</option>
-                    <option value="CHECK">支票</option>
-                    <option value="OTHER">其他</option>
-                  </select>
+                  <Select value={formData.paymentType} onValueChange={v => setFormData({...formData, paymentType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TRANSFER">转账</SelectItem>
+                      <SelectItem value="CASH">现金</SelectItem>
+                      <SelectItem value="CHECK">支票</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">期望付款日期</label>
@@ -469,7 +473,7 @@ export const PaymentRequestPage: React.FC = () => {
 
       {/* 详情查看对话框 */}
       {showDetailDialog && viewPayment && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-slate-100 flex justify-between items-start">
               <div>
@@ -541,7 +545,7 @@ export const PaymentRequestPage: React.FC = () => {
                     href={viewPayment.attachmentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                    className="text-sm text-pink-500 hover:text-pink-700 underline"
                   >
                     查看附件
                   </a>

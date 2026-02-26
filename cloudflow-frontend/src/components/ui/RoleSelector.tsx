@@ -92,8 +92,8 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={`min-h-[38px] px-3 py-2 border rounded-lg bg-white cursor-pointer transition-colors ${
-          disabled ? 'bg-slate-50 cursor-not-allowed' : 'hover:border-indigo-400'
-        } ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-300'}`}
+          disabled ? 'bg-slate-50 cursor-not-allowed' : 'hover:border-pink-300'
+        } ${isOpen ? 'border-pink-400 ring-2 ring-pink-50' : 'border-slate-300'}`}
       >
         {selectedRoles.length === 0 ? (
           <span className="text-slate-400 text-sm">{placeholder}</span>
@@ -127,7 +127,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索角色..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-indigo-500"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-pink-400"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>

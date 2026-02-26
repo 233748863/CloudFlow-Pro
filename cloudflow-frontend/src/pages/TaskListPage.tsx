@@ -13,6 +13,7 @@ import { EmptyTasks, EmptyError } from '../components/ui/EmptyState';
 import { toast } from 'sonner';
 import { usePolling } from '../hooks/usePolling';
 import { logTask } from '../lib/logger';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 // 每页条数
 const PAGE_SIZE = 12;
@@ -372,13 +373,13 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                         <button 
                             onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-pink-500' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <LayoutList size={18} />
                         </button>
                         <button 
                             onClick={() => setViewMode('board')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'board' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'board' ? 'bg-white shadow text-pink-500' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <Kanban size={18} />
                         </button>
@@ -389,15 +390,16 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
             <div className="flex gap-2 items-center">
                 {/* 任务中心的类型筛选 */}
                 {type === 'pending' && (
-                    <select 
-                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2"
-                        value={filterType}
-                        onChange={(e) => setFilterType(e.target.value as any)}
-                    >
-                        <option value="all">全部任务</option>
-                        <option value="process">流程审批</option>
-                        <option value="work">协作待办</option>
-                    </select>
+                    <Select value={filterType} onValueChange={v => setFilterType(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部任务</SelectItem>
+                      <SelectItem value="process">流程审批</SelectItem>
+                      <SelectItem value="work">协作待办</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
 
                 {/* "我的申请"搜索框 */}
@@ -409,13 +411,13 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {searchInput && searchInput !== keyword && (
                             <button
                                 onClick={handleSearch}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-indigo-600 hover:text-indigo-700"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600"
                             >
                                 搜索
                             </button>
@@ -447,13 +449,13 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             value={todoSearchInput}
                             onChange={(e) => setTodoSearchInput(e.target.value)}
                             onKeyDown={handleTodoSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {todoSearchInput && todoSearchInput !== todoKeyword && (
                             <button
                                 onClick={handleTodoSearch}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-indigo-600 hover:text-indigo-700"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600"
                             >
                                 搜索
                             </button>
@@ -462,16 +464,15 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
                     {/* 流程类型筛选 */}
                     {todoProcessDefOptions.length > 0 && (
-                        <select
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-1.5"
-                            value={todoProcessDefKey}
-                            onChange={(e) => setTodoProcessDefKey(e.target.value)}
-                        >
-                            <option value="">全部流程类型</option>
-                            {todoProcessDefOptions.map(opt => (
-                                <option key={opt.key} value={opt.key}>{opt.name}</option>
-                            ))}
-                        </select>
+                        <Select value={todoProcessDefKey} onValueChange={v => setTodoProcessDefKey(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部流程类型</SelectItem>
+                      <SelectItem value={String(opt.key)}>{opt.name}</SelectItem>
+                    </SelectContent>
+                  </Select>
                     )}
 
                     {/* 申请人搜索 */}
@@ -480,7 +481,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         placeholder="申请人姓名..."
                         value={todoStartUserName}
                         onChange={(e) => setTodoStartUserName(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                     />
 
                     {/* 时间范围筛选 */}
@@ -490,14 +491,14 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             type="date"
                             value={todoStartTimeFrom}
                             onChange={(e) => setTodoStartTimeFrom(e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                         <span className="text-slate-400">至</span>
                         <input
                             type="date"
                             value={todoStartTimeTo}
                             onChange={(e) => setTodoStartTimeTo(e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                     </div>
 
@@ -523,7 +524,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
                         {([
                             { key: 'ALL', label: '全部', color: '' },
-                            { key: 'RUNNING', label: '进行中', color: 'text-indigo-600' },
+                            { key: 'RUNNING', label: '进行中', color: 'text-pink-500' },
                             { key: 'COMPLETED', label: '已完成', color: 'text-emerald-600' },
                             { key: 'REJECTED', label: '已拒绝', color: 'text-red-600' },
                             { key: 'REVOKED', label: '已撤回', color: 'text-amber-600' },
@@ -556,30 +557,30 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* 流程类型筛选 */}
                     {processDefOptions.length > 0 && (
-                        <select
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-1.5"
-                            value={processDefKey}
-                            onChange={(e) => handleProcessDefKeyChange(e.target.value)}
-                        >
-                            <option value="">全部流程类型</option>
-                            {processDefOptions.map(opt => (
-                                <option key={opt.key} value={opt.key}>{opt.name}</option>
-                            ))}
-                        </select>
+                        <Select value={processDefKey} onValueChange={v => setProcessDefKey(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部流程类型</SelectItem>
+                      <SelectItem value={String(opt.key)}>{opt.name}</SelectItem>
+                    </SelectContent>
+                  </Select>
                     )}
 
                     {/* 优先级筛选 */}
-                    <select
-                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-1.5"
-                        value={priorityFilter}
-                        onChange={(e) => handlePriorityChange(e.target.value)}
-                    >
-                        <option value="">全部优先级</option>
-                        <option value="URGENT">紧急</option>
-                        <option value="HIGH">高</option>
-                        <option value="NORMAL">普通</option>
-                        <option value="LOW">低</option>
-                    </select>
+                    <Select value={priorityFilter} onValueChange={v => setPriorityFilter(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部优先级</SelectItem>
+                      <SelectItem value="URGENT">紧急</SelectItem>
+                      <SelectItem value="HIGH">高</SelectItem>
+                      <SelectItem value="NORMAL">普通</SelectItem>
+                      <SelectItem value="LOW">低</SelectItem>
+                    </SelectContent>
+                  </Select>
 
                     {/* 时间范围筛选 */}
                     <div className="flex items-center gap-1.5 text-sm">
@@ -588,14 +589,14 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             type="date"
                             value={startTimeFrom}
                             onChange={(e) => handleTimeRangeChange(e.target.value, startTimeTo)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                         <span className="text-slate-400">至</span>
                         <input
                             type="date"
                             value={startTimeTo}
                             onChange={(e) => handleTimeRangeChange(startTimeFrom, e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                     </div>
                 </div>
@@ -634,7 +635,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                                              <div className="flex justify-between items-start mb-2">
                                                  <h4 className="font-bold text-slate-800">{t.title}</h4>
                                                  <span className={`text-xs px-2 py-1 rounded font-medium 
-                                                     ${t.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                     ${t.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : 'bg-pink-50 text-pink-500'}`}>
                                                      {t.statusLabel}
                                                  </span>
                                              </div>
@@ -691,7 +692,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                                 onClick={() => setPageNum(page)}
                                 className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
                                     page === pageNum
-                                        ? 'bg-indigo-600 text-white shadow'
+                                        ? 'bg-pink-500 text-white shadow'
                                         : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                             >

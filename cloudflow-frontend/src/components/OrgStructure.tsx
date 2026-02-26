@@ -22,15 +22,15 @@ const TreeSelect: React.FC<{ value: number | undefined; onChange: (v: number) =>
   const selected = flat.find(f => f.dept.deptId === value);
   return (
     <div className="relative">
-      <button type="button" className="w-full border border-slate-300 rounded-lg p-2 text-left text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none flex justify-between items-center" onClick={() => setOpen(!open)}>
+      <button type="button" className="w-full border border-slate-300 rounded-lg p-2 text-left text-sm focus:ring-2 focus:ring-pink-400 focus:outline-none flex justify-between items-center" onClick={() => setOpen(!open)}>
         <span>{selected ? selected.dept.deptName : (value === 0 && showRoot ? '顶级部门' : placeholder)}</span>
         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>
       {open && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-          {showRoot && <button className={`w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 ${value === 0 ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700'}`} onClick={() => { onChange(0); setOpen(false); }}>顶级部门</button>}
+          {showRoot && <button className={`w-full text-left px-3 py-2 text-sm hover:bg-pink-50 ${value === 0 ? 'bg-pink-50 text-pink-600 font-medium' : 'text-slate-700'}`} onClick={() => { onChange(0); setOpen(false); }}>顶级部门</button>}
           {flat.map(({ dept, level }) => (
-            <button key={dept.deptId} className={`w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 ${value === dept.deptId ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700'}`} style={{ paddingLeft: `${level * 16 + 12}px` }} onClick={() => { onChange(dept.deptId); setOpen(false); }}>{dept.deptName}</button>
+            <button key={dept.deptId} className={`w-full text-left px-3 py-2 text-sm hover:bg-pink-50 ${value === dept.deptId ? 'bg-pink-50 text-pink-600 font-medium' : 'text-slate-700'}`} style={{ paddingLeft: `${level * 16 + 12}px` }} onClick={() => { onChange(dept.deptId); setOpen(false); }}>{dept.deptName}</button>
           ))}
         </div>
       )}
@@ -56,26 +56,26 @@ const DeptFormModal: React.FC<{ visible: boolean; onClose: () => void; onSubmit:
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">部门名称 <span className="text-red-500">*</span></label>
-            <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" value={form.deptName || ''} onChange={e => setForm({ ...form, deptName: e.target.value })} placeholder="请输入部门名称" />
+            <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.deptName || ''} onChange={e => setForm({ ...form, deptName: e.target.value })} placeholder="请输入部门名称" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">排序</label>
-              <input type="number" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" value={form.orderNum ?? 0} onChange={e => setForm({ ...form, orderNum: parseInt(e.target.value) || 0 })} />
+              <input type="number" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.orderNum ?? 0} onChange={e => setForm({ ...form, orderNum: parseInt(e.target.value) || 0 })} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">负责人</label>
-              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" value={form.leader || ''} onChange={e => setForm({ ...form, leader: e.target.value })} placeholder="负责人" />
+              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.leader || ''} onChange={e => setForm({ ...form, leader: e.target.value })} placeholder="负责人" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">电话</label>
-              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="电话" />
+              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="电话" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">邮箱</label>
-              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="邮箱" />
+              <input className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="邮箱" />
             </div>
           </div>
           <div>
@@ -83,7 +83,7 @@ const DeptFormModal: React.FC<{ visible: boolean; onClose: () => void; onSubmit:
             <div className="flex gap-4">
               {[['0', '正常'], ['1', '停用']].map(([v, l]) => (
                 <label key={v} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" checked={form.status === v} onChange={() => setForm({ ...form, status: v })} className="accent-indigo-600" />
+                  <input type="radio" checked={form.status === v} onChange={() => setForm({ ...form, status: v })} className="accent-pink-500" />
                   <span className="text-sm">{l}</span>
                 </label>
               ))}
@@ -92,7 +92,7 @@ const DeptFormModal: React.FC<{ visible: boolean; onClose: () => void; onSubmit:
         </div>
         <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
-          <button onClick={() => { if (!form.deptName?.trim()) { toast.error('请输入部门名称'); return; } onSubmit(form); }} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">确定</button>
+          <button onClick={() => { if (!form.deptName?.trim()) { toast.error('请输入部门名称'); return; } onSubmit(form); }} className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600">确定</button>
         </div>
       </div>
     </div>
@@ -121,7 +121,7 @@ const UserDetailModal: React.FC<{ visible: boolean; onClose: () => void; user: U
         </div>
         <div className="p-5">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 text-xl font-bold">
+            <div className="w-14 h-14 bg-pink-50 rounded-full flex items-center justify-center text-pink-600 text-xl font-bold">
               {(user.nickName || user.userName || '?')[0]}
             </div>
             <div>
@@ -135,7 +135,7 @@ const UserDetailModal: React.FC<{ visible: boolean; onClose: () => void; user: U
                 <span className="w-20 text-xs text-slate-400 flex-shrink-0">{f.label}</span>
                 <span className="text-sm text-slate-800">
                   {'isRole' in f && f.isRole && f.value !== '-' ? (
-                    <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs">{f.value}</span>
+                    <span className="bg-pink-50 text-pink-600 px-2 py-0.5 rounded text-xs">{f.value}</span>
                   ) : 'isStatus' in f && f.isStatus ? (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${f.value === '正常' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>{f.value}</span>
                   ) : f.value}
@@ -165,7 +165,7 @@ const ChangeDeptModal: React.FC<{ visible: boolean; onClose: () => void; onSubmi
         </div>
         <div className="p-5 space-y-4">
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 text-sm font-bold">
+            <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center text-pink-600 text-sm font-bold">
               {(user.nickName || user.userName || '?')[0]}
             </div>
             <div>
@@ -180,7 +180,7 @@ const ChangeDeptModal: React.FC<{ visible: boolean; onClose: () => void; onSubmi
         </div>
         <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
-          <button onClick={() => { if (!newDeptId) { toast.error('请选择目标部门'); return; } onSubmit(user.userId, newDeptId); }} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">确认调整</button>
+          <button onClick={() => { if (!newDeptId) { toast.error('请选择目标部门'); return; } onSubmit(user.userId, newDeptId); }} className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600">确认调整</button>
         </div>
       </div>
     </div>
@@ -212,17 +212,17 @@ const DeptNode: React.FC<{ dept: DeptItem; level?: number; selectedId: number | 
   const sel = selectedId === dept.deptId;
   return (
     <div className="select-none">
-      <div className={`group flex items-center gap-2 py-1.5 px-2 rounded cursor-pointer transition-colors ${sel ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-700'}`} style={{ paddingLeft: `${level * 20 + 8}px` }}>
+      <div className={`group flex items-center gap-2 py-1.5 px-2 rounded cursor-pointer transition-colors ${sel ? 'bg-pink-50 text-pink-600' : 'hover:bg-slate-50 text-slate-700'}`} style={{ paddingLeft: `${level * 20 + 8}px` }}>
         <button onClick={e => { e.stopPropagation(); setExp(!exp); }} className="w-4 h-4 flex items-center justify-center">
           {has ? (exp ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />) : <span className="w-3.5" />}
         </button>
         <div className="flex-1 flex items-center gap-2 min-w-0" onClick={() => onSelect(dept)}>
-          <Building2 size={15} className={sel ? 'text-indigo-600' : 'text-slate-400'} />
+          <Building2 size={15} className={sel ? 'text-pink-500' : 'text-slate-400'} />
           <span className="text-sm font-medium truncate">{dept.deptName}</span>
           {dept.status === '1' && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 rounded">停用</span>}
         </div>
         <div className="hidden group-hover:flex items-center gap-0.5">
-          <button onClick={e => { e.stopPropagation(); onAddChild(dept); }} className="p-1 rounded hover:bg-indigo-100 text-slate-400 hover:text-indigo-600" title="新增子部门"><Plus size={13} /></button>
+          <button onClick={e => { e.stopPropagation(); onAddChild(dept); }} className="p-1 rounded hover:bg-pink-50 text-slate-400 hover:text-pink-500" title="新增子部门"><Plus size={13} /></button>
           <button onClick={e => { e.stopPropagation(); onEdit(dept); }} className="p-1 rounded hover:bg-amber-100 text-slate-400 hover:text-amber-600" title="编辑"><Edit2 size={13} /></button>
           <button onClick={e => { e.stopPropagation(); onDel(dept); }} className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-600" title="删除"><Trash2 size={13} /></button>
         </div>
@@ -303,8 +303,8 @@ export const OrgStructure = () => {
     <div className="flex h-full gap-6">
       <div className="w-80 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col shadow-sm flex-shrink-0">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users size={18} className="text-indigo-600" /> 组织架构</h3>
-          <button onClick={() => { setEditDept(null); setDefaultParentId(0); setDeptFormVis(true); }} className="p-1.5 rounded-lg hover:bg-indigo-100 text-indigo-600" title="新增部门"><Plus size={18} /></button>
+          <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users size={18} className="text-pink-500" /> 组织架构</h3>
+          <button onClick={() => { setEditDept(null); setDefaultParentId(0); setDeptFormVis(true); }} className="p-1.5 rounded-lg hover:bg-pink-50 text-pink-500" title="新增部门"><Plus size={18} /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {deptLoading ? (
@@ -325,11 +325,11 @@ export const OrgStructure = () => {
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <h3 className="font-bold text-slate-800">{selDept ? selDept.deptName : '全部人员'}</h3>
-            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{filteredUsers.length} 人</span>
+            <span className="text-xs bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full">{filteredUsers.length} 人</span>
           </div>
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input className="pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none w-48" placeholder="搜索用户..." value={userSearch} onChange={e => setUserSearch(e.target.value)} />
+            <input className="pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:outline-none w-48" placeholder="搜索用户..." value={userSearch} onChange={e => setUserSearch(e.target.value)} />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -355,7 +355,7 @@ export const OrgStructure = () => {
                   <tr key={u.userId} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 text-sm font-bold">{(u.nickName || u.userName || '?')[0]}</div>
+                        <div className="w-8 h-8 bg-pink-50 rounded-full flex items-center justify-center text-pink-600 text-sm font-bold">{(u.nickName || u.userName || '?')[0]}</div>
                         <div>
                           <div className="text-sm font-medium text-slate-800">{u.nickName || '-'}</div>
                           {u.email && <div className="text-xs text-slate-400">{u.email}</div>}
@@ -366,13 +366,13 @@ export const OrgStructure = () => {
                     <td className="px-4 py-3 text-sm text-slate-600">{u.deptName || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{u.phonenumber || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">
-                      {u.role ? <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs">{u.role}</span> : '-'}
+                      {u.role ? <span className="bg-pink-50 text-pink-600 px-2 py-0.5 rounded text-xs">{u.role}</span> : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${u.status === '0' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>{u.status === '0' ? '正常' : '停用'}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => setDetailUser(u)} className="p-1.5 rounded hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 mr-1" title="查看详情"><Eye size={14} /></button>
+                      <button onClick={() => setDetailUser(u)} className="p-1.5 rounded hover:bg-pink-50 text-slate-400 hover:text-pink-500 mr-1" title="查看详情"><Eye size={14} /></button>
                       <button onClick={() => setChangeDeptUser(u)} className="p-1.5 rounded hover:bg-amber-100 text-slate-400 hover:text-amber-600 mr-1" title="调整部门"><ArrowRightLeft size={14} /></button>
                       <button onClick={() => { setDelUser(u); setDelUserVis(true); }} className="p-1.5 rounded hover:bg-red-100 text-slate-400 hover:text-red-600" title="删除"><Trash2 size={14} /></button>
                     </td>

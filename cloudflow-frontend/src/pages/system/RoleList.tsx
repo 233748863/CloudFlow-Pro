@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Shield, ChevronRight, ChevronDown } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList, getDeptTree } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
@@ -211,7 +212,7 @@ export const RoleList = () => {
                     type="checkbox"
                     checked={currentIds.includes(node.menuId)}
                     onChange={() => toggleDeptCheck(node.menuId)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-slate-300 text-pink-500 focus:ring-pink-400"
                   />
                   <span className="text-sm text-slate-700">{node.menuName}</span>
               </div>
@@ -236,7 +237,7 @@ export const RoleList = () => {
                     type="checkbox"
                     checked={formData.menuIds.includes(node.menuId)}
                     onChange={() => toggleMenuCheck(node.menuId)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-slate-300 text-pink-500 focus:ring-pink-400"
                   />
                   <span className="text-sm text-slate-700">{node.menuName}</span>
               </div>
@@ -283,7 +284,7 @@ export const RoleList = () => {
         <h1 className="text-2xl font-bold text-slate-800">角色管理</h1>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+          className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
         >
           <Plus size={18} /> 新增角色
         </button>
@@ -318,7 +319,7 @@ export const RoleList = () => {
                   <tr key={role.roleId} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{role.roleId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 flex items-center gap-2">
-                       <Shield size={16} className="text-indigo-500"/>
+                       <Shield size={16} className="text-pink-400"/>
                        {role.roleName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono text-xs">{role.roleKey}</td>
@@ -332,7 +333,7 @@ export const RoleList = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                      <button onClick={() => handleOpenModal(role)} className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1">
+                      <button onClick={() => handleOpenModal(role)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1">
                         <Edit size={16} /> 编辑
                       </button>
                       <button onClick={() => handleDelete(role.roleId)} className="text-red-600 hover:text-red-900 flex items-center gap-1">
@@ -349,7 +350,7 @@ export const RoleList = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="font-bold text-slate-800">{editingRole ? '编辑角色' : '新增角色'}</h3>
@@ -358,13 +359,13 @@ export const RoleList = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">角色名称</label>
                 <input 
                   type="text" 
                   required
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                   value={formData.roleName}
                   onChange={e => setFormData({...formData, roleName: e.target.value})}
                   placeholder="如: 系统管理员"
@@ -376,7 +377,7 @@ export const RoleList = () => {
                 <input 
                   type="text" 
                   required
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                   value={formData.roleKey}
                   onChange={e => setFormData({...formData, roleKey: e.target.value})}
                   placeholder="如: ADMIN"
@@ -389,7 +390,7 @@ export const RoleList = () => {
                   <input 
                     type="number" 
                     required
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.roleSort}
                     onChange={e => setFormData({...formData, roleSort: parseInt(e.target.value)})}
                   />
@@ -397,46 +398,49 @@ export const RoleList = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">所属租户</label>
-                  <select
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                    value={formData.tenantId || ''}
-                    onChange={e => setFormData({...formData, tenantId: e.target.value ? Number(e.target.value) : undefined})}
-                  >
-                    <option value="">请选择租户</option>
-                    {tenants.map(tenant => (
-                      <option key={tenant.tenantId} value={tenant.tenantId}>
-                        {tenant.tenantName}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={formData.tenantId ? String(formData.tenantId) : ''} onValueChange={v => setFormData({...formData, tenantId: v ? Number(v) : undefined})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择租户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">请选择租户</SelectItem>
+                      {tenants.map(tenant => (
+                        <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
+                          {tenant.tenantName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
-                <select
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                  value={formData.status}
-                  onChange={e => setFormData({...formData, status: e.target.value})}
-                >
-                  <option value="0">正常</option>
-                  <option value="1">停用</option>
-                </select>
+                <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">正常</SelectItem>
+                    <SelectItem value="1">停用</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">数据权限范围</label>
-                <select
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                  value={formData.dsType}
-                  onChange={e => setFormData({...formData, dsType: parseInt(e.target.value), dsScope: parseInt(e.target.value) === 1 ? formData.dsScope : ''})}
-                >
-                  <option value={0}>全部数据权限</option>
-                  <option value={1}>自定义数据权限</option>
-                  <option value={2}>本部门及下级部门数据</option>
-                  <option value={3}>本部门数据</option>
-                  <option value={4}>仅本人数据</option>
-                </select>
+                <Select value={String(formData.dsType)} onValueChange={v => { const val = parseInt(v); setFormData({...formData, dsType: val, dsScope: val === 1 ? formData.dsScope : ''}); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择数据权限" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">全部数据权限</SelectItem>
+                    <SelectItem value="1">自定义数据权限</SelectItem>
+                    <SelectItem value="2">本部门及下级部门数据</SelectItem>
+                    <SelectItem value="3">本部门数据</SelectItem>
+                    <SelectItem value="4">仅本人数据</SelectItem>
+                  </SelectContent>
+                </Select>
                 <p className="mt-1 text-xs text-slate-500">
                   {formData.dsType === 0 && '可以查看所有数据'}
                   {formData.dsType === 1 && '可以查看指定部门的数据'}
@@ -472,7 +476,7 @@ export const RoleList = () => {
                 </button>
                 <button 
                   type="submit"
-                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                  className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
                 >
                   {editingRole ? '保存修改' : '立即创建'}
                 </button>

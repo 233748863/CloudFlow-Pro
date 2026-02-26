@@ -66,20 +66,20 @@ export const CacheMonitor = () => {
       {/* 标题栏 */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">缓存监控</h1>
-        <button onClick={fetchCacheInfo} disabled={loading} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors disabled:opacity-50">
+        <button onClick={fetchCacheInfo} disabled={loading} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors disabled:opacity-50">
           <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> 刷新
         </button>
       </div>
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="animate-spin text-indigo-600" size={32} />
+          <Loader2 className="animate-spin text-pink-500" size={32} />
         </div>
       ) : (
         <>
           {/* 概览卡片 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <StatCard icon={<Server size={24} className="text-indigo-600" />} label="Redis 版本" value={redisVersion} color="bg-indigo-50" />
+            <StatCard icon={<Server size={24} className="text-pink-500" />} label="Redis 版本" value={redisVersion} color="bg-pink-50" />
             <StatCard icon={<Database size={24} className="text-emerald-600" />} label="已用内存" value={usedMemoryHuman} color="bg-emerald-50" />
             <StatCard icon={<Activity size={24} className="text-amber-600" />} label="连接客户端" value={connectedClients} color="bg-amber-50" />
             <StatCard icon={<Key size={24} className="text-rose-600" />} label="Key 数量" value={dbSize} color="bg-rose-50" />
@@ -134,7 +134,7 @@ export const CacheMonitor = () => {
                             <span className="text-slate-500">{cmd.value.toLocaleString()}</span>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-indigo-500 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            <div className="bg-pink-400 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                           </div>
                         </div>
                       );

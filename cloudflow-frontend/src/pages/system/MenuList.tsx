@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, ChevronRight, ChevronDown, Folder, File, Layout } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { getMenuList, addMenu, updateMenu, deleteMenu } from '../../services/api/auth';
 
@@ -153,7 +154,7 @@ export const MenuList = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                       <span className={`px-2 py-0.5 rounded text-xs ${
-                          node.menuType === 'M' ? 'bg-blue-100 text-blue-700' :
+                          node.menuType === 'M' ? 'bg-pink-50 text-pink-600' :
                           node.menuType === 'C' ? 'bg-green-100 text-green-700' :
                           'bg-slate-200 text-slate-600'
                       }`}>
@@ -161,10 +162,10 @@ export const MenuList = () => {
                       </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                      <button onClick={() => handleOpenModal(node)} className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1">
+                      <button onClick={() => handleOpenModal(node)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1">
                           <Edit size={16} /> 编辑
                       </button>
-                      <button onClick={() => handleOpenModal(undefined, node.menuId)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1">
+                      <button onClick={() => handleOpenModal(undefined, node.menuId)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1">
                           <Plus size={16} /> 新增
                       </button>
                       <button onClick={() => handleDelete(node.menuId)} className="text-red-600 hover:text-red-900 flex items-center gap-1">
@@ -183,7 +184,7 @@ export const MenuList = () => {
         <h1 className="text-2xl font-bold text-slate-800">菜单管理</h1>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+          className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
         >
           <Plus size={18} /> 新增菜单
         </button>
@@ -223,7 +224,7 @@ export const MenuList = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="font-bold text-slate-800">{editingMenu ? '编辑菜单' : '新增菜单'}</h3>
@@ -232,19 +233,20 @@ export const MenuList = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">上级菜单</label>
-                <select
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white"
-                  value={formData.parentId}
-                  onChange={e => setFormData({...formData, parentId: parseInt(e.target.value)})}
-                >
-                    <option value="0">主目录</option>
+                <Select value={String(formData.parentId)} onValueChange={v => setFormData({...formData, parentId: parseInt(v)})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="主目录" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">主目录</SelectItem>
                     {flatMenus.filter(m => m.menuType !== 'F' && m.menuId !== editingMenu?.menuId).map(m => (
-                        <option key={m.menuId} value={m.menuId}>{m.menuName}</option>
+                      <SelectItem key={m.menuId} value={String(m.menuId)}>{m.menuName}</SelectItem>
                     ))}
-                </select>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -272,7 +274,7 @@ export const MenuList = () => {
                 <input 
                   type="text" 
                   required
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                   value={formData.menuName}
                   onChange={e => setFormData({...formData, menuName: e.target.value})}
                 />
@@ -283,7 +285,7 @@ export const MenuList = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">图标</label>
                     <input 
                       type="text" 
-                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                       value={formData.icon}
                       onChange={e => setFormData({...formData, icon: e.target.value})}
                       placeholder="Lucide Icon Name"
@@ -296,7 +298,7 @@ export const MenuList = () => {
                 <input 
                   type="number" 
                   required
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                   value={formData.orderNum}
                   onChange={e => setFormData({...formData, orderNum: parseInt(e.target.value)})}
                 />
@@ -307,7 +309,7 @@ export const MenuList = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">路由地址</label>
                     <input 
                       type="text" 
-                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                       value={formData.path}
                       onChange={e => setFormData({...formData, path: e.target.value})}
                       placeholder="sys/user"
@@ -320,7 +322,7 @@ export const MenuList = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">组件路径</label>
                     <input 
                       type="text" 
-                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                       value={formData.component}
                       onChange={e => setFormData({...formData, component: e.target.value})}
                       placeholder="system/UserList"
@@ -333,7 +335,7 @@ export const MenuList = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">权限字符</label>
                     <input 
                       type="text" 
-                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                       value={formData.perms}
                       onChange={e => setFormData({...formData, perms: e.target.value})}
                       placeholder="system:user:list"
@@ -343,14 +345,15 @@ export const MenuList = () => {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
-                <select
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                  value={formData.status}
-                  onChange={e => setFormData({...formData, status: e.target.value})}
-                >
-                  <option value="0">正常</option>
-                  <option value="1">停用</option>
-                </select>
+                <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">正常</SelectItem>
+                    <SelectItem value="1">停用</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="pt-4 flex justify-end gap-3">
@@ -363,7 +366,7 @@ export const MenuList = () => {
                 </button>
                 <button 
                   type="submit"
-                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                  className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
                 >
                   {editingMenu ? '保存修改' : '立即创建'}
                 </button>

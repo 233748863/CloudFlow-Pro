@@ -159,7 +159,7 @@ export const DeployApprovalManagement: React.FC = () => {
           onClick={() => setActiveView('pending')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeView === 'pending'
-              ? 'bg-white text-blue-600 shadow-sm'
+              ? 'bg-white text-pink-500 shadow-sm'
               : 'text-gray-600 hover:text-gray-800'
           }`}
         >
@@ -174,7 +174,7 @@ export const DeployApprovalManagement: React.FC = () => {
           onClick={() => setActiveView('submitted')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeView === 'submitted'
-              ? 'bg-white text-blue-600 shadow-sm'
+              ? 'bg-white text-pink-500 shadow-sm'
               : 'text-gray-600 hover:text-gray-800'
           }`}
         >
@@ -185,7 +185,7 @@ export const DeployApprovalManagement: React.FC = () => {
       {/* 审批列表 */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
         </div>
       ) : approvals.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
@@ -274,7 +274,7 @@ export const DeployApprovalManagement: React.FC = () => {
 
       {/* 审批详情模态框 */}
       {detailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -380,7 +380,7 @@ export const DeployApprovalManagement: React.FC = () => {
 
       {/* 审批操作模态框 */}
       {approveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
@@ -396,7 +396,7 @@ export const DeployApprovalManagement: React.FC = () => {
                   value={comment}
                   onChange={e => setComment(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                   placeholder={approveModal.action === 'APPROVE' ? '同意（可选）' : '请填写驳回原因'}
                 />
               </div>

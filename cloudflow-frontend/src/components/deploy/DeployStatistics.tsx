@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { getDeployStatistics } from '@/services/api/deployEnhancement';
 import { getProcessDefinitions } from '@/services/api/workflow';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 
 interface DeployStats {
   totalDeploys: number;
@@ -96,23 +97,20 @@ export const DeployStatistics: React.FC = () => {
       {/* 流程选择 */}
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-gray-700">选择流程:</label>
-        <select
-          value={selectedProcess}
-          onChange={e => setSelectedProcess(e.target.value)}
-          className="flex-1 max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          {processes.map(p => (
-            <option key={p.id || p.definitionId} value={p.id || p.definitionId || p.processKey}>
-              {p.name || p.processName || p.processKey}
-            </option>
-          ))}
-        </select>
+        <Select value={selectedProcess} onValueChange={v => setSelectedProcess(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={String(p.id || p.definitionId || p.processKey)}>{p.name || p.processName || p.processKey}</SelectItem>
+                    </SelectContent>
+                  </Select>
       </div>
 
       {/* 统计卡片 */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
         </div>
       ) : stats ? (
         <>
@@ -122,10 +120,10 @@ export const DeployStatistics: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">总发布次数</p>
-                  <p className="text-3xl font-bold text-blue-600">{stats.totalDeploys}</p>
+                  <p className="text-3xl font-bold text-pink-500">{stats.totalDeploys}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-blue-100">
-                  <Package className="w-6 h-6 text-blue-600" />
+                <div className="p-3 rounded-xl bg-pink-50">
+                  <Package className="w-6 h-6 text-pink-500" />
                 </div>
               </div>
             </div>
@@ -239,7 +237,7 @@ export const DeployStatistics: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-700">版本信息</h3>
               </div>
               <div className="space-y-4">
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4">
+                <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-600">当前版本</span>
                     <span className="text-2xl font-bold text-purple-600">v{stats.latestVersion}</span>
@@ -282,7 +280,7 @@ export const DeployStatistics: React.FC = () => {
           </div>
 
           {/* 建议和提示 */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-6">
+          <div className="bg-gradient-to-r from-pink-50 to-pink-50 rounded-xl border border-pink-50 p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">发布建议</h3>
             <div className="space-y-2 text-sm text-gray-600">
               {parseFloat(calculateSuccessRate()) < 70 && (

@@ -16,7 +16,7 @@ export const MobileProfile: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-indigo-600 text-white p-6 pb-20">
+      <div className="bg-pink-500 text-white p-6 pb-20">
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => navigate(-1)} className="p-2">
             <ChevronLeft size={24} />
@@ -31,7 +31,7 @@ export const MobileProfile: React.FC = () => {
             <User size={40} />
           </div>
           <h2 className="text-xl font-bold">{user?.name || '用户'}</h2>
-          <p className="text-indigo-100 text-sm mt-1">{user?.username}</p>
+          <p className="text-pink-50 text-sm mt-1">{user?.username}</p>
         </div>
       </div>
 
@@ -39,8 +39,8 @@ export const MobileProfile: React.FC = () => {
       <div className="px-4 -mt-12">
         <div className="bg-white rounded-2xl shadow-lg p-4 space-y-4">
           <div className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-              <Mail size={20} className="text-indigo-600" />
+            <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center">
+              <Mail size={20} className="text-pink-500" />
             </div>
             <div className="flex-1">
               <div className="text-xs text-slate-500">邮箱</div>

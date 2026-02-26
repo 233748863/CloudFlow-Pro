@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserCheck, Plus, Search, RotateCcw, X, LogIn, LogOut, CheckCircle, XCircle } from 'lucide-react';
 import { visitorApi, Visitor } from '../services/api/visitor';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 /** 访客管理页面 */
 export const VisitorPage: React.FC = () => {
@@ -54,7 +55,7 @@ export const VisitorPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
-      PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-700' }, CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-700' }, CONFIRMED: { bg: 'bg-pink-50', text: 'text-pink-500' },
       ARRIVED: { bg: 'bg-green-100', text: 'text-green-600' }, COMPLETED: { bg: 'bg-slate-100', text: 'text-slate-600' },
       CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
     };
@@ -65,17 +66,26 @@ export const VisitorPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><UserCheck className="text-indigo-600" /> 访客管理</h2>
-        <button onClick={handleAdd} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700"><Plus size={18} />新增预约</button>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><UserCheck className="text-pink-500" /> 访客管理</h2>
+        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增预约</button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <select value={searchParams.status} onChange={e => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部状态</option><option value="PENDING">待确认</option><option value="CONFIRMED">已确认</option><option value="ARRIVED">已到访</option><option value="COMPLETED">已离开</option>
-          </select>
+          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="PENDING">待确认</SelectItem>
+                      <SelectItem value="CONFIRMED">已确认</SelectItem>
+                      <SelectItem value="ARRIVED">已到访</SelectItem>
+                      <SelectItem value="COMPLETED">已离开</SelectItem>
+                    </SelectContent>
+                  </Select>
           <input type="text" placeholder="搜索访客姓名" value={searchParams.visitorName} onChange={e => setSearchParams({ ...searchParams, visitorName: e.target.value })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"><Search size={16} />搜索</button>
+          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
           <button onClick={() => setSearchParams({ status: '', visitorName: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
 
@@ -95,7 +105,7 @@ export const VisitorPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">暂无访客记录</td></tr>
               ) : list.map(item => (
@@ -105,12 +115,12 @@ export const VisitorPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-slate-600">{item.visitDate}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{item.hostName || '-'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{item.visitReason}</td>
-                  <td className="px-4 py-3 text-sm text-indigo-600 font-mono">{item.passCode || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-pink-500 font-mono">{item.passCode || '-'}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'PENDING')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       {item.status === 'PENDING' && (
-                        <button onClick={() => handleConfirm(item.visitorId!)} className="text-blue-600 hover:text-blue-800 p-1" title="确认"><CheckCircle size={16} /></button>
+                        <button onClick={() => handleConfirm(item.visitorId!)} className="text-pink-500 hover:text-pink-700 p-1" title="确认"><CheckCircle size={16} /></button>
                       )}
                       {(item.status === 'PENDING' || item.status === 'CONFIRMED') && (
                         <button onClick={() => handleCheckIn(item.visitorId!)} className="text-green-600 hover:text-green-800 p-1" title="签到"><LogIn size={16} /></button>
@@ -141,7 +151,7 @@ export const VisitorPage: React.FC = () => {
 
       {/* 新增预约对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-800">新增访客预约</h3>
@@ -189,7 +199,7 @@ export const VisitorPage: React.FC = () => {
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
-              <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
+              <button onClick={handleSave} className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">保存</button>
             </div>
           </div>
         </div>

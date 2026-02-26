@@ -18,7 +18,7 @@ interface LeaveForm {
 }
 
 const leaveTypes: { value: LeaveType; label: string; color: string }[] = [
-  { value: 'annual', label: '年假', color: 'bg-blue-100 text-blue-600' },
+  { value: 'annual', label: '年假', color: 'bg-pink-50 text-pink-500' },
   { value: 'sick', label: '病假', color: 'bg-red-100 text-red-600' },
   { value: 'personal', label: '事假', color: 'bg-orange-100 text-orange-600' },
   { value: 'maternity', label: '产假', color: 'bg-pink-100 text-pink-600' },
@@ -153,15 +153,15 @@ export const MobileLeaveRequest: React.FC = () => {
             <div
               key={s}
               className={`flex-1 h-1.5 rounded-full transition-colors ${
-                s <= step ? 'bg-indigo-600' : 'bg-slate-200'
+                s <= step ? 'bg-pink-500' : 'bg-slate-200'
               }`}
             />
           ))}
         </div>
         <div className="flex justify-between mt-2 text-xs text-slate-500">
-          <span className={step >= 1 ? 'text-indigo-600 font-medium' : ''}>选择类型</span>
-          <span className={step >= 2 ? 'text-indigo-600 font-medium' : ''}>填写详情</span>
-          <span className={step >= 3 ? 'text-indigo-600 font-medium' : ''}>确认提交</span>
+          <span className={step >= 1 ? 'text-pink-500 font-medium' : ''}>选择类型</span>
+          <span className={step >= 2 ? 'text-pink-500 font-medium' : ''}>填写详情</span>
+          <span className={step >= 3 ? 'text-pink-500 font-medium' : ''}>确认提交</span>
         </div>
       </div>
 
@@ -180,7 +180,7 @@ export const MobileLeaveRequest: React.FC = () => {
                   onClick={() => setForm({ ...form, type: type.value })}
                   className={`py-3 px-2 rounded-lg text-sm font-medium border-2 transition-all ${
                     form.type === type.value
-                      ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                      ? 'border-pink-500 bg-pink-50 text-pink-500'
                       : 'border-slate-200 text-slate-600'
                   }`}
                 >
@@ -203,7 +203,7 @@ export const MobileLeaveRequest: React.FC = () => {
                   type="date"
                   value={form.startDate}
                   onChange={e => setForm({ ...form, startDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                 />
               </div>
               <div>
@@ -213,13 +213,13 @@ export const MobileLeaveRequest: React.FC = () => {
                   value={form.endDate}
                   onChange={e => setForm({ ...form, endDate: e.target.value })}
                   min={form.startDate}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
                 />
               </div>
             </div>
             {leaveDays > 0 && (
-              <div className="mt-3 p-2 bg-indigo-50 rounded-lg text-center">
-                <span className="text-sm text-indigo-600 font-medium">
+              <div className="mt-3 p-2 bg-pink-50 rounded-lg text-center">
+                <span className="text-sm text-pink-500 font-medium">
                   共 {leaveDays} 天
                 </span>
               </div>
@@ -228,7 +228,7 @@ export const MobileLeaveRequest: React.FC = () => {
 
           <button
             onClick={handleNext}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium"
+            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium"
           >
             下一步
           </button>
@@ -249,7 +249,7 @@ export const MobileLeaveRequest: React.FC = () => {
               onChange={e => setForm({ ...form, reason: e.target.value })}
               placeholder="请详细说明请假原因"
               rows={4}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
             />
           </div>
 
@@ -263,7 +263,7 @@ export const MobileLeaveRequest: React.FC = () => {
               value={form.contact}
               onChange={e => setForm({ ...form, contact: e.target.value })}
               placeholder="请输入手机号码"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
             />
           </div>
 
@@ -277,13 +277,13 @@ export const MobileLeaveRequest: React.FC = () => {
               onChange={e => setForm({ ...form, handover: e.target.value })}
               placeholder="请说明工作交接安排（选填）"
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
             />
           </div>
 
           <button
             onClick={handleNext}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium"
+            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium"
           >
             下一步
           </button>
@@ -312,7 +312,7 @@ export const MobileLeaveRequest: React.FC = () => {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-100">
                 <span className="text-sm text-slate-500">请假天数</span>
-                <span className="text-sm font-semibold text-indigo-600">{leaveDays} 天</span>
+                <span className="text-sm font-semibold text-pink-500">{leaveDays} 天</span>
               </div>
               <div className="py-2 border-b border-slate-100">
                 <span className="text-sm text-slate-500 block mb-1">请假原因</span>
@@ -334,7 +334,7 @@ export const MobileLeaveRequest: React.FC = () => {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>

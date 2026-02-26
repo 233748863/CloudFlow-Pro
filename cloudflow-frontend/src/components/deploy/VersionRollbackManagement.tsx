@@ -22,6 +22,7 @@ import {
   analyzeDeployImpact,
 } from '@/services/api/deployEnhancement';
 import { getProcessDefinitions } from '@/services/api/workflow';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 
 const IMPACT_LEVEL_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   LOW: { label: '低', color: 'text-green-600 bg-green-50', icon: CheckCircle },
@@ -184,17 +185,14 @@ export const VersionRollbackManagement: React.FC = () => {
       {/* 流程选择 */}
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-gray-700">选择流程:</label>
-        <select
-          value={selectedProcess}
-          onChange={e => setSelectedProcess(e.target.value)}
-          className="flex-1 max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          {processes.map(p => (
-            <option key={p.id || p.definitionId} value={p.id || p.definitionId || p.processKey}>
-              {p.name || p.processName || p.processKey}
-            </option>
-          ))}
-        </select>
+        <Select value={selectedProcess} onValueChange={v => setSelectedProcess(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={String(p.id || p.definitionId || p.processKey)}>{p.name || p.processName || p.processKey}</SelectItem>
+                    </SelectContent>
+                  </Select>
       </div>
 
       {/* 视图切换 */}
@@ -203,7 +201,7 @@ export const VersionRollbackManagement: React.FC = () => {
           onClick={() => setActiveView('versions')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeView === 'versions'
-              ? 'bg-white text-blue-600 shadow-sm'
+              ? 'bg-white text-pink-500 shadow-sm'
               : 'text-gray-600 hover:text-gray-800'
           }`}
         >
@@ -213,7 +211,7 @@ export const VersionRollbackManagement: React.FC = () => {
           onClick={() => setActiveView('history')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeView === 'history'
-              ? 'bg-white text-blue-600 shadow-sm'
+              ? 'bg-white text-pink-500 shadow-sm'
               : 'text-gray-600 hover:text-gray-800'
           }`}
         >
@@ -224,7 +222,7 @@ export const VersionRollbackManagement: React.FC = () => {
       {/* 内容区域 */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
         </div>
       ) : activeView === 'versions' ? (
         <div className="space-y-3">
@@ -266,7 +264,7 @@ export const VersionRollbackManagement: React.FC = () => {
                     </button>
                     <button
                       onClick={() => handlePrepareRollback(version)}
-                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-pink-500 bg-pink-50 rounded hover:bg-pink-50 transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       回滚
@@ -332,7 +330,7 @@ export const VersionRollbackManagement: React.FC = () => {
 
       {/* 快照详情模态框 */}
       {snapshotModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -404,7 +402,7 @@ export const VersionRollbackManagement: React.FC = () => {
 
       {/* 回滚确认模态框 */}
       {rollbackModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
@@ -431,7 +429,7 @@ export const VersionRollbackManagement: React.FC = () => {
                           影响数量: {impact.impactCount}
                         </div>
                         {impact.suggestion && (
-                          <div className="text-sm text-blue-600 mt-1">
+                          <div className="text-sm text-pink-500 mt-1">
                             建议: {impact.suggestion}
                           </div>
                         )}
@@ -459,7 +457,7 @@ export const VersionRollbackManagement: React.FC = () => {
                   value={rollbackReason}
                   onChange={e => setRollbackReason(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                   placeholder="请详细说明回滚原因..."
                 />
               </div>
@@ -472,7 +470,7 @@ export const VersionRollbackManagement: React.FC = () => {
                     id="forceRollback"
                     checked={forceRollback}
                     onChange={e => setForceRollback(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-pink-500 border-gray-300 rounded focus:ring-pink-400"
                   />
                   <label htmlFor="forceRollback" className="text-sm text-gray-700">
                     我了解风险，强制执行回滚
@@ -497,7 +495,7 @@ export const VersionRollbackManagement: React.FC = () => {
                     !rollbackReason.trim() ||
                     (rollbackModal.impact && !rollbackModal.impact.allowDeploy && !forceRollback)
                   }
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="flex items-center justify-center gap-2">
                     <RotateCcw className="w-4 h-4" />

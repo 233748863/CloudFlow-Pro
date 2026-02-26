@@ -4,6 +4,7 @@ import { overtimeApi, OvertimeRequest } from '../services/api/overtime';
 import { FileUpload } from '../components/FileUpload';
 import { toBackendDateString, toLocalDatetimeString } from '../utils/dateFormat';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 /** 加班申请页面 */
 export const OvertimePage: React.FC = () => {
@@ -91,7 +92,7 @@ export const OvertimePage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string }> = {
-      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' }, PENDING: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' }, PENDING: { bg: 'bg-pink-50', text: 'text-pink-500' },
       APPROVED: { bg: 'bg-green-100', text: 'text-green-600' }, REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
       CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
     };
@@ -102,19 +103,36 @@ export const OvertimePage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Clock className="text-indigo-600" /> 加班申请</h2>
-        <button onClick={handleAdd} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700"><Plus size={18} />新增申请</button>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Clock className="text-pink-500" /> 加班申请</h2>
+        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增申请</button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <select value={searchParams.status} onChange={e => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部状态</option><option value="DRAFT">草稿</option><option value="PENDING">审批中</option><option value="APPROVED">已通过</option><option value="REJECTED">已驳回</option>
-          </select>
-          <select value={searchParams.overtimeType} onChange={e => setSearchParams({ ...searchParams, overtimeType: e.target.value, pageNum: 1 })} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-            <option value="">全部类型</option><option value="WORKDAY">工作日</option><option value="WEEKEND">周末</option><option value="HOLIDAY">节假日</option>
-          </select>
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"><Search size={16} />搜索</button>
+          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="DRAFT">草稿</SelectItem>
+                      <SelectItem value="PENDING">审批中</SelectItem>
+                      <SelectItem value="APPROVED">已通过</SelectItem>
+                      <SelectItem value="REJECTED">已驳回</SelectItem>
+                    </SelectContent>
+                  </Select>
+          <Select value={searchParams.overtimeType} onValueChange={v => setSearchParams({...searchParams, overtimeType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部类型</SelectItem>
+                      <SelectItem value="WORKDAY">工作日</SelectItem>
+                      <SelectItem value="WEEKEND">周末</SelectItem>
+                      <SelectItem value="HOLIDAY">节假日</SelectItem>
+                    </SelectContent>
+                  </Select>
+          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
           <button onClick={() => setSearchParams({ status: '', overtimeType: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
 
@@ -136,7 +154,7 @@ export const OvertimePage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div></td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>
               ) : list.length === 0 ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500">暂无数据</td></tr>
               ) : list.map(item => (
@@ -148,13 +166,13 @@ export const OvertimePage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-slate-900 font-medium">{item.overtimeHours || '-'}</td>
                   <td className="px-4 py-3 text-sm">{locationMap[item.workLocation || ''] || '-'}</td>
                   <td className="px-4 py-3 text-sm">{compensateMap[item.compensateType || ''] || '-'}</td>
-                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-indigo-500" /> : <span className="text-slate-300">-</span>}</td>
+                  <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-pink-400" /> : <span className="text-slate-300">-</span>}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {item.status === 'DRAFT' && (<>
                         <button onClick={() => handleEdit(item.id!)} className="text-green-600 hover:text-green-800"><Edit size={16} /></button>
-                        <button onClick={() => handleSubmit(item.id!)} className="text-indigo-600 hover:text-indigo-800"><Send size={16} /></button>
+                        <button onClick={() => handleSubmit(item.id!)} className="text-pink-500 hover:text-pink-700"><Send size={16} /></button>
                         <button onClick={() => handleDelete([item.id!])} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
                       </>)}
                     </div>
@@ -177,7 +195,7 @@ export const OvertimePage: React.FC = () => {
 
       {/* 新增/编辑对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-slate-800">{current ? '编辑加班申请' : '新增加班申请'}</h3>
@@ -188,15 +206,28 @@ export const OvertimePage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">加班类型 <span className="text-red-500">*</span></label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.overtimeType} onChange={e => setFormData({ ...formData, overtimeType: e.target.value })}>
-                    <option value="WORKDAY">工作日</option><option value="WEEKEND">周末</option><option value="HOLIDAY">节假日</option>
-                  </select>
+                  <Select value={formData.overtimeType} onValueChange={v => setFormData({...formData, overtimeType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="WORKDAY">工作日</SelectItem>
+                      <SelectItem value="WEEKEND">周末</SelectItem>
+                      <SelectItem value="HOLIDAY">节假日</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">补偿方式</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.compensateType || 'SALARY'} onChange={e => setFormData({ ...formData, compensateType: e.target.value })}>
-                    <option value="SALARY">加班费</option><option value="LEAVE">调休</option>
-                  </select>
+                  <Select value={formData.compensateType || 'SALARY'} onValueChange={v => setFormData({...formData, compensateType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SALARY">加班费</SelectItem>
+                      <SelectItem value="LEAVE">调休</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               {/* 时间 */}
@@ -214,15 +245,28 @@ export const OvertimePage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">加班地点</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.workLocation || 'OFFICE'} onChange={e => setFormData({ ...formData, workLocation: e.target.value })}>
-                    <option value="OFFICE">办公室</option><option value="HOME">居家</option><option value="OTHER">其他</option>
-                  </select>
+                  <Select value={formData.workLocation || 'OFFICE'} onValueChange={v => setFormData({...formData, workLocation: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OFFICE">办公室</SelectItem>
+                      <SelectItem value="HOME">居家</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">是否需要用餐</label>
-                  <select className="w-full border border-slate-300 rounded-lg p-2" value={formData.needMeal ?? 0} onChange={e => setFormData({ ...formData, needMeal: parseInt(e.target.value) })}>
-                    <option value={0}>否</option><option value={1}>是</option>
-                  </select>
+                  <Select value={formData.needMeal ?? 0} onValueChange={v => setFormData({...formData, needMeal: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={String(0)}>否</SelectItem>
+                      <SelectItem value={String(1)}>是</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               {/* 加班事由 */}
@@ -253,7 +297,7 @@ export const OvertimePage: React.FC = () => {
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2 sticky bottom-0">
               <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
-              <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">保存</button>
+              <button onClick={handleSave} className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">保存</button>
             </div>
           </div>
         </div>

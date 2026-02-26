@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -191,14 +192,14 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
             onClick={() => toggleDept(node)}
             className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
               allSelected
-                ? 'bg-indigo-600 border-indigo-600'
+                ? 'bg-pink-500 border-pink-500'
                 : partialSelected
-                  ? 'bg-indigo-200 border-indigo-400'
-                  : 'border-slate-300 hover:border-indigo-400'
+                  ? 'bg-pink-100 border-pink-300'
+                  : 'border-slate-300 hover:border-pink-300'
             }`}
           >
             {allSelected && <CheckCircle2 size={10} className="text-white" />}
-            {partialSelected && !allSelected && <div className="w-2 h-0.5 bg-indigo-600 rounded" />}
+            {partialSelected && !allSelected && <div className="w-2 h-0.5 bg-pink-500 rounded" />}
           </button>
           <Building2 size={14} className="text-amber-500 shrink-0 ml-1" />
           <span className="text-sm font-medium text-slate-700 flex-1 truncate" onClick={() => toggleExpand(node.deptId)}>
@@ -219,7 +220,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
                 <span className="w-5" />
                 <button
                   className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                    selectedIds.includes(user.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 hover:border-indigo-400'
+                    selectedIds.includes(user.id) ? 'bg-pink-500 border-pink-500' : 'border-slate-300 hover:border-pink-300'
                   }`}
                 >
                   {selectedIds.includes(user.id) && <CheckCircle2 size={10} className="text-white" />}
@@ -252,9 +253,9 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
         <div className="p-2 border-b border-slate-100 bg-slate-50/50">
           <div className="flex flex-wrap gap-1">
             {selectedUsers.slice(0, 10).map(u => (
-              <span key={u.id} className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-xs">
+              <span key={u.id} className="inline-flex items-center gap-1 bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full text-xs">
                 {u.name}
-                <button onClick={(e) => { e.stopPropagation(); toggleUser(u.id); }} className="text-indigo-400 hover:text-indigo-600">
+                <button onClick={(e) => { e.stopPropagation(); toggleUser(u.id); }} className="text-pink-300 hover:text-pink-500">
                   <X size={10} />
                 </button>
               </span>
@@ -270,7 +271,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
           <Search size={14} className="absolute left-2.5 top-2 text-slate-400" />
           <input
             type="text"
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-2 focus:ring-pink-400 focus:outline-none"
             placeholder="搜索部门或人员..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -285,7 +286,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
         )}
       </div>
       <div className="px-3 py-1.5 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
-        已选择 <span className="font-medium text-indigo-600">{selectedUsers.length}</span> 人
+        已选择 <span className="font-medium text-pink-500">{selectedUsers.length}</span> 人
       </div>
     </div>
   );
@@ -342,7 +343,7 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
   const statusStyles: Record<string, { bg: string; text: string }> = {
     ongoing: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
     ended: { bg: 'bg-slate-50', text: 'text-slate-400' },
-    upcoming: { bg: 'bg-indigo-50/50', text: 'text-indigo-600' },
+    upcoming: { bg: 'bg-pink-50/50', text: 'text-pink-500' },
   };
 
   return (
@@ -353,7 +354,7 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
         const style = statusStyles[status];
         return (
           <div key={i} className={`flex items-center gap-2 text-xs ${style.bg} rounded px-2 py-1`}>
-            <Clock size={10} className={`${status === 'ongoing' ? 'text-emerald-500' : status === 'ended' ? 'text-slate-400' : 'text-indigo-500'} shrink-0`} />
+            <Clock size={10} className={`${status === 'ongoing' ? 'text-emerald-500' : status === 'ended' ? 'text-slate-400' : 'text-pink-400'} shrink-0`} />
             <span className={`${style.text} font-medium whitespace-nowrap`}>{fmt(b.startTime)}-{fmt(b.endTime)}</span>
             <span className={`${status === 'ended' ? 'text-slate-400 line-through' : 'text-slate-600'} truncate`}>{b.title}</span>
             {status === 'ongoing' && <span className="text-emerald-600 text-[10px] font-bold shrink-0">进行中</span>}
@@ -532,7 +533,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <div>
@@ -550,7 +551,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
             <span className="text-sm font-medium text-slate-700">
               {currentWeekStart.getFullYear()}年{currentWeekStart.getMonth() + 1}月
             </span>
-            <button onClick={goToToday} className="px-3 py-1 text-sm bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
+            <button onClick={goToToday} className="px-3 py-1 text-sm bg-pink-50 text-pink-500 rounded-lg hover:bg-pink-50">
               今天
             </button>
           </div>
@@ -564,21 +565,21 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-50 border border-emerald-200 inline-block"></span> 空闲可选</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 border border-red-200 inline-block"></span> 已预订</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-50 border border-slate-200 inline-block"></span> 已过期</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-200 border border-indigo-400 inline-block"></span> 拖动选中</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-pink-100 border border-pink-300 inline-block"></span> 拖动选中</span>
           <span className="ml-auto text-slate-400">💡 按住鼠标拖动可快速选择连续时间段</span>
         </div>
 
         <div className="flex-1 overflow-auto p-4">
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
             </div>
           ) : (
             <div className="min-w-[800px]">
               <div className="grid grid-cols-8 gap-2 mb-2">
                 <div className="text-xs font-medium text-slate-500 text-center">时间</div>
                 {weekDays.map((day, i) => (
-                  <div key={i} className={`text-xs font-medium text-center py-2 rounded-lg ${isToday(day) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600'}`}>
+                  <div key={i} className={`text-xs font-medium text-center py-2 rounded-lg ${isToday(day) ? 'bg-pink-50 text-pink-500' : 'text-slate-600'}`}>
                     {formatDate(day)}
                   </div>
                 ))}
@@ -610,7 +611,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
                             : isPast
                               ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
                               : inDragRange
-                                ? 'bg-indigo-200 text-indigo-800 ring-2 ring-indigo-400'
+                                ? 'bg-pink-100 text-pink-700 ring-2 ring-pink-300'
                                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
                         }`}
                         title={
@@ -671,7 +672,7 @@ const RoomFormModal: React.FC<{
   const isEdit = room && room.roomId;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col animate-in fade-in zoom-in duration-200">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <h3 className="text-lg font-bold text-slate-800">{isEdit ? '编辑会议室' : '新增会议室'}</h3>
@@ -680,39 +681,43 @@ const RoomFormModal: React.FC<{
         <div className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">会议室名称 <span className="text-red-500">*</span></label>
-            <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
               value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">位置 <span className="text-red-500">*</span></label>
-              <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                 value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="例如：3楼东侧" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">容纳人数 <span className="text-red-500">*</span></label>
-              <input type="number" min={1} className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              <input type="number" min={1} className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                 value={form.capacity || ''} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} placeholder="例如：50" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">设备配置</label>
-            <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            <input type="text" className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
               value={equipmentInput} onChange={e => setEquipmentInput(e.target.value)} placeholder="多个设备用逗号分隔，例如：投影仪, 白板, 音响" />
             <p className="text-xs text-slate-400 mt-1">多个设备用逗号分隔</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
-            <select className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              value={form.status || '1'} onChange={e => setForm({ ...form, status: e.target.value as '1' | '0' })}>
-              <option value="1">可用</option>
-              <option value="0">维护中</option>
-            </select>
+            <Select value={form.status || '1'} onValueChange={v => setForm({...form, status: v as '0' | '1'})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">可用</SelectItem>
+                      <SelectItem value="0">维护中</SelectItem>
+                    </SelectContent>
+                  </Select>
           </div>
         </div>
         <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:text-slate-800">取消</button>
-          <button onClick={handleSubmit} className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 font-medium flex items-center gap-2">
+          <button onClick={handleSubmit} className="bg-pink-500 text-white px-6 py-2 rounded-lg hover:bg-pink-600 font-medium flex items-center gap-2">
             <CheckCircle2 size={16} />{isEdit ? '保存修改' : '确认新增'}
           </button>
         </div>
@@ -727,7 +732,7 @@ const DeleteConfirmModal: React.FC<{
 }> = ({ visible, roomName, onClose, onConfirm }) => {
   if (!visible) return null;
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-sm flex flex-col animate-in fade-in zoom-in duration-200">
         <div className="p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-2">确认删除</h3>
@@ -988,7 +993,7 @@ export const MeetingRoomPage = () => {
     const end = new Date(booking.endTime);
     
     if (now < start) {
-      return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">待开始</span>;
+      return <span className="px-2 py-0.5 bg-pink-50 text-pink-600 text-xs rounded-full">待开始</span>;
     } else if (now >= start && now <= end) {
       return <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">进行中</span>;
     } else {
@@ -1002,13 +1007,13 @@ export const MeetingRoomPage = () => {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Monitor className="text-indigo-600" />会议室资源
+            <Monitor className="text-pink-500" />会议室资源
           </h2>
           <div className="flex bg-slate-100 rounded-lg p-1">
             <button
               onClick={() => setActiveTab('rooms')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'rooms' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                activeTab === 'rooms' ? 'bg-white text-pink-500 shadow-sm' : 'text-slate-600 hover:text-slate-800'
               }`}
             >
               <Monitor size={16} className="inline mr-1" />会议室列表
@@ -1016,7 +1021,7 @@ export const MeetingRoomPage = () => {
             <button
               onClick={() => setActiveTab('my-bookings')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'my-bookings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                activeTab === 'my-bookings' ? 'bg-white text-pink-500 shadow-sm' : 'text-slate-600 hover:text-slate-800'
               }`}
             >
               <CalendarDays size={16} className="inline mr-1" />我的预订
@@ -1024,7 +1029,7 @@ export const MeetingRoomPage = () => {
             <button
               onClick={() => setActiveTab('stats')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                activeTab === 'stats' ? 'bg-white text-pink-500 shadow-sm' : 'text-slate-600 hover:text-slate-800'
               }`}
             >
               <BarChart3 size={16} className="inline mr-1" />使用统计
@@ -1036,7 +1041,7 @@ export const MeetingRoomPage = () => {
             <button 
               onClick={() => setManageMode(!manageMode)}
               className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
-                manageMode ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                manageMode ? 'bg-pink-500 text-white hover:bg-pink-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <Settings size={16} />{manageMode ? '退出管理' : '管理模式'}
@@ -1066,28 +1071,29 @@ export const MeetingRoomPage = () => {
                   placeholder="搜索会议室名称或位置..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:outline-none"
                 />
               </div>
               <div className="flex items-center gap-2">
                 <Filter size={16} className="text-slate-500" />
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
-                  className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                >
-                  <option value="all">全部状态</option>
-                  <option value="available">空闲</option>
-                  <option value="in-use">使用中</option>
-                  <option value="maintenance">维护中</option>
-                </select>
+                <Select value={statusFilter} onValueChange={v => setStatusFilter(v as 'all' | RoomRealtimeStatus)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="available">空闲</SelectItem>
+                      <SelectItem value="in-use">使用中</SelectItem>
+                      <SelectItem value="maintenance">维护中</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
             </div>
           </div>
 
           {loading && (
             <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
             </div>
           )}
 
@@ -1102,7 +1108,7 @@ export const MeetingRoomPage = () => {
                   <p className="text-slate-400 text-sm mb-6">点击"管理模式"后可新增会议室</p>
                   <button 
                     onClick={() => { setManageMode(true); handleAddRoom(); }}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 inline-flex items-center gap-2"
+                    className="bg-pink-500 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-pink-600 inline-flex items-center gap-2"
                   >
                     <Plus size={16} />新增第一个会议室
                   </button>
@@ -1123,7 +1129,7 @@ export const MeetingRoomPage = () => {
                       <div className="absolute top-3 left-3 z-10 flex gap-2">
                         <button 
                           onClick={() => handleEditRoom(room)} 
-                          className="bg-white/90 backdrop-blur-sm text-indigo-600 p-2 rounded-lg shadow-sm hover:bg-indigo-50 border border-slate-200" 
+                          className="bg-white/90 backdrop-blur-sm text-pink-500 p-2 rounded-lg shadow-sm hover:bg-pink-50 border border-slate-200" 
                           title="编辑"
                         >
                           <Pencil size={14} />
@@ -1147,8 +1153,8 @@ export const MeetingRoomPage = () => {
                     <div className="p-5">
                       <h3 className="text-lg font-bold text-slate-800 mb-1">{room.name}</h3>
                       <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
-                        <span className="flex items-center gap-1"><MapPin size={12} /> {room.location}</span>
-                        <span className="flex items-center gap-1"><Users size={12} /> {room.capacity}人</span>
+                        <span className="flex items-center gap-1"><MapPin size={12} className="text-pink-400" /> {room.location}</span>
+                        <span className="flex items-center gap-1"><Users size={12} className="text-pink-400" /> {room.capacity}人</span>
                       </div>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {parseEquipment(room.equipment).map((eq: string, i: number) => (
@@ -1174,7 +1180,7 @@ export const MeetingRoomPage = () => {
                               });
                             }} 
                             disabled={realtimeStatus === 'maintenance'}
-                            className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-medium hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 bg-pink-50 text-pink-500 py-2 rounded-lg font-medium hover:bg-pink-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             立即预订
                           </button>
@@ -1192,7 +1198,7 @@ export const MeetingRoomPage = () => {
                         <div className="flex gap-2">
                           <button 
                             onClick={() => handleEditRoom(room)} 
-                            className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-medium hover:bg-indigo-100 flex items-center justify-center gap-1"
+                            className="flex-1 bg-pink-50 text-pink-500 py-2 rounded-lg font-medium hover:bg-pink-50 flex items-center justify-center gap-1"
                           >
                             <Pencil size={14} />编辑
                           </button>
@@ -1219,15 +1225,16 @@ export const MeetingRoomPage = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <div className="flex items-center gap-2">
               <Filter size={16} className="text-slate-500" />
-              <select
-                value={bookingsFilter}
-                onChange={e => setBookingsFilter(e.target.value as typeof bookingsFilter)}
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                <option value="upcoming">待开始</option>
-                <option value="past">已结束</option>
-                <option value="all">全部</option>
-              </select>
+              <Select value={bookingsFilter} onValueChange={v => setBookingsFilter(v as 'all' | 'upcoming' | 'past')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="upcoming">待开始</SelectItem>
+                      <SelectItem value="past">已结束</SelectItem>
+                      <SelectItem value="all">全部</SelectItem>
+                    </SelectContent>
+                  </Select>
             </div>
           </div>
 
@@ -1254,11 +1261,11 @@ export const MeetingRoomPage = () => {
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-600">
                           <span className="flex items-center gap-1">
-                            <Monitor size={14} className="text-indigo-500" />
+                            <Monitor size={14} className="text-pink-400" />
                             {room?.name || `会议室 ${booking.roomId}`}
                           </span>
                           <span className="flex items-center gap-1">
-                            <MapPin size={14} className="text-slate-400" />
+                            <MapPin size={14} className="text-pink-400" />
                             {room?.location || '-'}
                           </span>
                         </div>
@@ -1320,7 +1327,7 @@ export const MeetingRoomPage = () => {
                         <tr key={index} className="hover:bg-slate-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <Monitor size={16} className="text-indigo-500 mr-2" />
+                              <Monitor size={16} className="text-pink-400 mr-2" />
                               <span className="text-sm font-medium text-slate-800">{stat.roomName}</span>
                             </div>
                           </td>
@@ -1338,7 +1345,7 @@ export const MeetingRoomPage = () => {
                             <div className="flex items-center gap-2">
                               <div className="flex-1 bg-slate-100 rounded-full h-2 max-w-[100px]">
                                 <div 
-                                  className="bg-indigo-600 h-2 rounded-full" 
+                                  className="bg-pink-500 h-2 rounded-full" 
                                   style={{ width: `${Math.min(parseFloat(utilizationRate), 100)}%` }}
                                 />
                               </div>
@@ -1358,7 +1365,7 @@ export const MeetingRoomPage = () => {
 
       {/* 预订弹窗 */}
       {selectedRoom && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <div>
@@ -1374,7 +1381,7 @@ export const MeetingRoomPage = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">会议主题 <span className="text-red-500">*</span></label>
                 <input
                   type="text"
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                   value={bookingForm.title}
                   onChange={e => setBookingForm({ ...bookingForm, title: e.target.value })}
                   placeholder="例如：项目评审会议"
@@ -1385,7 +1392,7 @@ export const MeetingRoomPage = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
                   <input
                     type="date"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                     value={bookingForm.date}
                     onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
                   />
@@ -1394,7 +1401,7 @@ export const MeetingRoomPage = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
                   <input
                     type="time"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                     value={bookingForm.startTime}
                     onChange={e => setBookingForm({ ...bookingForm, startTime: e.target.value })}
                   />
@@ -1403,7 +1410,7 @@ export const MeetingRoomPage = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
                   <input
                     type="time"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                     value={bookingForm.endTime}
                     onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}
                   />
@@ -1412,7 +1419,7 @@ export const MeetingRoomPage = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">会议描述</label>
                 <textarea
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                   rows={3}
                   value={bookingForm.description}
                   onChange={e => setBookingForm({ ...bookingForm, description: e.target.value })}
@@ -1430,7 +1437,7 @@ export const MeetingRoomPage = () => {
               <button onClick={() => setSelectedRoom(null)} className="px-4 py-2 text-slate-600 hover:text-slate-800">
                 取消
               </button>
-              <button onClick={handleBooking} className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 font-medium flex items-center gap-2">
+              <button onClick={handleBooking} className="bg-pink-500 text-white px-6 py-2 rounded-lg hover:bg-pink-600 font-medium flex items-center gap-2">
                 <CheckCircle2 size={16} />确认预订
               </button>
             </div>

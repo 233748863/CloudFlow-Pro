@@ -157,9 +157,9 @@ export const MobileVehicleBooking: React.FC = () => {
       <div className="p-4 pb-20">
         {/* Progress */}
         <div className="flex mb-8">
-          <div className={`flex-1 h-1 ${step >= 1 ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
-          <div className={`flex-1 h-1 ${step >= 2 ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
-          <div className={`flex-1 h-1 ${step >= 3 ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
+          <div className={`flex-1 h-1 ${step >= 1 ? 'bg-pink-500' : 'bg-slate-200'}`}></div>
+          <div className={`flex-1 h-1 ${step >= 2 ? 'bg-pink-500' : 'bg-slate-200'}`}></div>
+          <div className={`flex-1 h-1 ${step >= 3 ? 'bg-pink-500' : 'bg-slate-200'}`}></div>
         </div>
 
         {step === 1 && (
@@ -167,7 +167,7 @@ export const MobileVehicleBooking: React.FC = () => {
             <h2 className="text-xl font-bold">选择车辆与时间</h2>
             {loading ? (
               <div className="flex justify-center items-center py-8">
-                <Loader2 className="animate-spin text-indigo-600" size={32} />
+                <Loader2 className="animate-spin text-pink-500" size={32} />
               </div>
             ) : (
               <div className="space-y-4">
@@ -297,7 +297,7 @@ export const MobileVehicleBooking: React.FC = () => {
                 上一步
               </Button>
               <Button 
-                className="flex-1 h-12 bg-indigo-600" 
+                className="flex-1 h-12 bg-pink-500" 
                 onClick={handleSubmit}
                 disabled={submitting}
               >

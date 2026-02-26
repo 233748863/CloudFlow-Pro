@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Bell, Megaphone, AlertCircle, Eye, Plus, Edit, Trash2, X, Pin, Users, Search, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 export const AnnouncementPage = () => {
   const { user } = useAuth();
@@ -200,8 +201,8 @@ export const AnnouncementPage = () => {
 
   const getTypeIcon = (type: AnnouncementType) => {
       switch(type) {
-          case AnnouncementType.NOTIFICATION: return <Bell size={18} className="text-blue-500" />;
-          case AnnouncementType.ANNOUNCEMENT: return <Megaphone size={18} className="text-indigo-500" />;
+          case AnnouncementType.NOTIFICATION: return <Bell size={18} className="text-pink-400" />;
+          case AnnouncementType.ANNOUNCEMENT: return <Megaphone size={18} className="text-pink-400" />;
           case AnnouncementType.URGENT: return <AlertCircle size={18} className="text-red-500" />;
           default: return <Bell size={18} />;
       }
@@ -226,14 +227,14 @@ export const AnnouncementPage = () => {
     <div className="space-y-6">
         <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Megaphone className="text-indigo-600" />
+                <Megaphone className="text-pink-500" />
                 公告中心
             </h2>
             
             {(user.role === Role.ADMIN || user.role === Role.HR) && (
                 <button 
                     onClick={() => { resetForm(); setIsModalOpen(true); }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                    className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
                 >
                     <Plus size={18} />
                     发布公告
@@ -245,7 +246,7 @@ export const AnnouncementPage = () => {
             <div className="flex border-b border-slate-200 pt-2 overflow-visible relative z-10">
                 <button 
                     onClick={() => setActiveTab('unread')}
-                    className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 relative ${activeTab === 'unread' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                    className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 relative ${activeTab === 'unread' ? 'border-pink-500 text-pink-500' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 >
                     未读消息
                     {unreadCount > 0 && (
@@ -256,14 +257,14 @@ export const AnnouncementPage = () => {
                 </button>
                 <button 
                     onClick={() => setActiveTab('read')}
-                    className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'read' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                    className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'read' ? 'border-pink-500 text-pink-500' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 >
                     历史消息
                 </button>
                 {(user.role === Role.ADMIN || user.role === Role.HR) && (
                     <button 
                         onClick={() => setActiveTab('manage')}
-                        className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'manage' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                        className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'manage' ? 'border-pink-500 text-pink-500' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                     >
                         公告管理
                     </button>
@@ -279,31 +280,33 @@ export const AnnouncementPage = () => {
                                 placeholder="搜索标题..."
                                 value={searchTitle}
                                 onChange={(e) => setSearchTitle(e.target.value)}
-                                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-400 focus:outline-none"
                             />
-                            <select
-                                value={filterType}
-                                onChange={(e) => setFilterType(e.target.value)}
-                                className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                            >
-                                <option value="">所有类型</option>
-                                <option value="1">通知</option>
-                                <option value="2">公告</option>
-                                <option value="3">紧急</option>
-                            </select>
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                            >
-                                <option value="">所有状态</option>
-                                <option value="0">草稿</option>
-                                <option value="1">已发布</option>
-                                <option value="2">已撤销</option>
-                            </select>
+                            <Select value={filterType} onValueChange={v => setFilterType(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">所有类型</SelectItem>
+                      <SelectItem value="1">通知</SelectItem>
+                      <SelectItem value="2">公告</SelectItem>
+                      <SelectItem value="3">紧急</SelectItem>
+                    </SelectContent>
+                  </Select>
+                            <Select value={filterStatus} onValueChange={v => setFilterStatus(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">所有状态</SelectItem>
+                      <SelectItem value="0">草稿</SelectItem>
+                      <SelectItem value="1">已发布</SelectItem>
+                      <SelectItem value="2">已撤销</SelectItem>
+                    </SelectContent>
+                  </Select>
                             <button
                                 onClick={handleSearch}
-                                className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"
+                                className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"
                             >
                                 <Search size={16} />
                                 搜索
@@ -350,7 +353,7 @@ export const AnnouncementPage = () => {
                                         <td className="px-4 py-3">
                                             <button
                                                 onClick={() => handleViewStats(item.announcementId)}
-                                                className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1"
+                                                className="text-pink-500 hover:text-pink-700 text-sm flex items-center gap-1"
                                             >
                                                 <Users size={14} />
                                                 查看
@@ -363,7 +366,7 @@ export const AnnouncementPage = () => {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => handleRead(item)}
-                                                    className="text-blue-600 hover:text-blue-800"
+                                                    className="text-pink-500 hover:text-pink-700"
                                                     title="查看"
                                                 >
                                                     <Eye size={16} />
@@ -440,7 +443,7 @@ export const AnnouncementPage = () => {
                                 <div 
                                     key={item.announcementId}
                                     onClick={() => handleRead(item)}
-                                    className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex gap-4 items-start group ${!item.isRead ? 'bg-indigo-50/30' : ''}`}
+                                    className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex gap-4 items-start group ${!item.isRead ? 'bg-pink-50/30' : ''}`}
                                 >
                                     <div className="mt-1 flex-shrink-0">
                                         {getTypeIcon(item.type)}
@@ -467,7 +470,7 @@ export const AnnouncementPage = () => {
         </div>
 
         {selectedAnnouncement && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-start">
                         <div>
@@ -496,7 +499,7 @@ export const AnnouncementPage = () => {
                     <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
                         <button 
                             onClick={() => setSelectedAnnouncement(null)}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+                            className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
                         >
                             关闭
                         </button>
@@ -506,7 +509,7 @@ export const AnnouncementPage = () => {
         )}
 
         {isModalOpen && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
                     <div className="p-6 border-b border-slate-100">
                         <h3 className="text-lg font-bold text-slate-800">
@@ -518,7 +521,7 @@ export const AnnouncementPage = () => {
                             <label className="block text-sm font-medium text-slate-700 mb-1">标题</label>
                             <input 
                                 type="text" 
-                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
                                 value={formData.title || ''}
                                 onChange={e => setFormData({...formData, title: e.target.value})}
                                 placeholder="请输入公告标题"
@@ -527,39 +530,42 @@ export const AnnouncementPage = () => {
                         <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">类型</label>
-                                <select 
-                                    className="w-full border border-slate-300 rounded-lg p-2"
-                                    value={formData.type}
-                                    onChange={e => setFormData({...formData, type: e.target.value as any})}
-                                >
-                                    <option value={AnnouncementType.NOTIFICATION}>通知</option>
-                                    <option value={AnnouncementType.ANNOUNCEMENT}>公告</option>
-                                    <option value={AnnouncementType.URGENT}>紧急</option>
-                                </select>
+                                <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={String(AnnouncementType.NOTIFICATION)}>通知</SelectItem>
+                      <SelectItem value={String(AnnouncementType.ANNOUNCEMENT)}>公告</SelectItem>
+                      <SelectItem value={String(AnnouncementType.URGENT)}>紧急</SelectItem>
+                    </SelectContent>
+                  </Select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">优先级</label>
-                                <select 
-                                    className="w-full border border-slate-300 rounded-lg p-2"
-                                    value={formData.priority}
-                                    onChange={e => setFormData({...formData, priority: e.target.value as any})}
-                                >
-                                    <option value="L">低</option>
-                                    <option value="M">中</option>
-                                    <option value="H">高</option>
-                                </select>
+                                <Select value={formData.priority} onValueChange={v => setFormData({...formData, priority: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="L">低</SelectItem>
+                      <SelectItem value="M">中</SelectItem>
+                      <SelectItem value="H">高</SelectItem>
+                    </SelectContent>
+                  </Select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">发布范围</label>
-                                <select 
-                                    className="w-full border border-slate-300 rounded-lg p-2"
-                                    value={formData.scopeType}
-                                    onChange={e => setFormData({...formData, scopeType: e.target.value as any})}
-                                >
-                                    <option value={AnnouncementScope.ALL}>全员</option>
-                                    <option value={AnnouncementScope.DEPT}>部门</option>
-                                    <option value={AnnouncementScope.ROLE}>角色</option>
-                                </select>
+                                <Select value={formData.scopeType} onValueChange={v => setFormData({...formData, scopeType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={String(AnnouncementScope.ALL)}>全员</SelectItem>
+                      <SelectItem value={String(AnnouncementScope.DEPT)}>部门</SelectItem>
+                      <SelectItem value={String(AnnouncementScope.ROLE)}>角色</SelectItem>
+                    </SelectContent>
+                  </Select>
                             </div>
                         </div>
                         
@@ -595,7 +601,7 @@ export const AnnouncementPage = () => {
                                         type="checkbox" 
                                         checked={formData.isTop === 1}
                                         onChange={e => setFormData({...formData, isTop: e.target.checked ? 1 : 0})}
-                                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                        className="w-4 h-4 text-pink-500 border-slate-300 rounded focus:ring-pink-400"
                                     />
                                     <label className="ml-2 text-sm text-slate-700">设为置顶</label>
                                 </div>
@@ -621,7 +627,7 @@ export const AnnouncementPage = () => {
                         </button>
                         <button 
                             onClick={handlePublish}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+                            className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
                         >
                             {modalMode === 'create' ? '发布' : '保存'}
                         </button>
@@ -631,7 +637,7 @@ export const AnnouncementPage = () => {
         )}
 
         {isStatsModalOpen && statsData && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                         <h3 className="text-lg font-bold text-slate-800">阅读统计</h3>
@@ -641,7 +647,7 @@ export const AnnouncementPage = () => {
                     </div>
                     <div className="p-6">
                         <div className="text-center mb-4">
-                            <div className="text-3xl font-bold text-indigo-600">{statsData.readCount}</div>
+                            <div className="text-3xl font-bold text-pink-500">{statsData.readCount}</div>
                             <div className="text-sm text-slate-500">已读人数</div>
                         </div>
                         {statsData.readUsers.length > 0 && (
@@ -661,7 +667,7 @@ export const AnnouncementPage = () => {
                     <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
                         <button 
                             onClick={() => setIsStatsModalOpen(false)}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+                            className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
                         >
                             关闭
                         </button>

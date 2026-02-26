@@ -48,7 +48,7 @@ const USAGE_STATUS: Record<string, { label: string; color: string; bg: string; i
   '0': { label: '待审批', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', icon: <Clock size={14} /> },
   '1': { label: '已批准', color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: <CheckCircle size={14} /> },
   '2': { label: '已驳回', color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: <XCircle size={14} /> },
-  '3': { label: '进行中', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: <Car size={14} /> },
+  '3': { label: '进行中', color: 'text-pink-600', bg: 'bg-pink-50 border-pink-100', icon: <Car size={14} /> },
   '4': { label: '已完成', color: 'text-gray-700', bg: 'bg-gray-50 border-gray-200', icon: <CheckCircle size={14} /> },
   '5': { label: '已取消', color: 'text-gray-400', bg: 'bg-gray-50 border-gray-200', icon: <Ban size={14} /> },
 };
@@ -56,7 +56,7 @@ const USAGE_STATUS: Record<string, { label: string; color: string; bg: string; i
 /** 费用类型配置 */
 const EXPENSE_TYPES: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   '1': { label: '油费', icon: <Fuel size={14} />, color: 'text-orange-600' },
-  '2': { label: '过路费', icon: <ArrowLeftRight size={14} />, color: 'text-blue-600' },
+  '2': { label: '过路费', icon: <ArrowLeftRight size={14} />, color: 'text-pink-500' },
   '3': { label: '停车费', icon: <ParkingCircle size={14} />, color: 'text-purple-600' },
   '4': { label: '维修保养', icon: <Wrench size={14} />, color: 'text-yellow-600' },
   '5': { label: '保险', icon: <Shield size={14} />, color: 'text-green-600' },
@@ -272,8 +272,8 @@ const VehicleUsageList: React.FC = () => {
         <StatCard
           title="本月费用"
           value={`¥ ${stats?.monthlyAmount?.toLocaleString() || 0}`}
-          icon={<DollarSign size={20} className="text-blue-600" />}
-          color="bg-blue-100"
+          icon={<DollarSign size={20} className="text-pink-500" />}
+          color="bg-pink-50"
           sub={stats?.lastMonthAmount ? `上月 ¥${stats.lastMonthAmount.toLocaleString()}` : undefined}
         />
         <StatCard
@@ -409,7 +409,7 @@ const VehicleUsageList: React.FC = () => {
                               </Button>
                               {/* 审批操作（仅待审批状态） */}
                               {u.status === '0' && (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-blue-600"
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-pink-500"
                                   onClick={() => handleOpenApprove(u)}>
                                   <CheckCircle size={13} /> 审批
                                 </Button>
@@ -645,7 +645,7 @@ const VehicleUsageList: React.FC = () => {
               <div className="space-y-1.5">
                 <Label>审批意见（可选）</Label>
                 <textarea
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px] resize-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 min-h-[60px] resize-none"
                   placeholder="请输入审批意见..."
                   value={approveRemark}
                   onChange={(e) => setApproveRemark(e.target.value)}

@@ -35,7 +35,7 @@ import { useMount } from '@/hooks/useMount';
 // 状态映射
 const STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
   '1': { label: '闲置', color: 'text-green-700', bgColor: 'bg-green-50 border-green-200' },
-  '2': { label: '在用', color: 'text-blue-700', bgColor: 'bg-blue-50 border-blue-200' },
+  '2': { label: '在用', color: 'text-pink-600', bgColor: 'bg-pink-50 border-pink-100' },
   '3': { label: '维修', color: 'text-yellow-700', bgColor: 'bg-yellow-50 border-yellow-200' },
   '4': { label: '报废', color: 'text-red-700', bgColor: 'bg-red-50 border-red-200' },
 };
@@ -306,11 +306,11 @@ const AssetList: React.FC = () => {
             </div>
             <p className="text-2xl font-bold mt-1 text-green-700">{stats.statusCount?.idle || 0}</p>
           </div>
-          <div className="rounded-lg border bg-blue-50 p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-sm text-blue-700">
+          <div className="rounded-lg border bg-pink-50 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-sm text-pink-600">
               <UserCheck className="w-4 h-4" /> 在用
             </div>
-            <p className="text-2xl font-bold mt-1 text-blue-700">{stats.statusCount?.inUse || 0}</p>
+            <p className="text-2xl font-bold mt-1 text-pink-600">{stats.statusCount?.inUse || 0}</p>
           </div>
           <div className="rounded-lg border bg-yellow-50 p-4 shadow-sm">
             <div className="flex items-center gap-2 text-sm text-yellow-700">
@@ -440,7 +440,7 @@ const AssetList: React.FC = () => {
                       </Button>
                       {/* 领用（仅闲置可用） */}
                       {asset.status === '1' && (
-                        <Button variant="ghost" size="sm" onClick={() => handleBorrow(asset)} title="领用" className="text-blue-600 hover:text-blue-700">
+                        <Button variant="ghost" size="sm" onClick={() => handleBorrow(asset)} title="领用" className="text-pink-500 hover:text-pink-600">
                           <UserCheck className="w-3.5 h-3.5" />
                         </Button>
                       )}

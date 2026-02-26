@@ -79,7 +79,7 @@ export const PostList = () => {
       {/* 标题栏 */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">岗位管理</h1>
-        <button onClick={() => handleOpenModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
+        <button onClick={() => handleOpenModal()} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors">
           <Plus size={18} /> 新增岗位
         </button>
       </div>
@@ -89,7 +89,7 @@ export const PostList = () => {
         <form onSubmit={handleSearch} className="flex gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input type="text" placeholder="搜索岗位名称..." className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="搜索岗位名称..." className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
           <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors">搜索</button>
         </form>
@@ -128,7 +128,7 @@ export const PostList = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{post.createTime || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                    <button onClick={() => handleOpenModal(post)} className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"><Edit size={16} /> 编辑</button>
+                    <button onClick={() => handleOpenModal(post)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><Edit size={16} /> 编辑</button>
                     <button onClick={() => handleDelete(post.postId!)} className="text-red-600 hover:text-red-900 flex items-center gap-1"><Trash2 size={16} /> 删除</button>
                   </td>
                 </tr>
@@ -150,24 +150,24 @@ export const PostList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">岗位编码 <span className="text-red-500">*</span></label>
-                  <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.postCode} onChange={e => setFormData({ ...formData, postCode: e.target.value })} placeholder="如: CEO, CTO" />
+                  <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none" value={formData.postCode} onChange={e => setFormData({ ...formData, postCode: e.target.value })} placeholder="如: CEO, CTO" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">岗位名称 <span className="text-red-500">*</span></label>
-                  <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.postName} onChange={e => setFormData({ ...formData, postName: e.target.value })} placeholder="岗位名称" />
+                  <input className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none" value={formData.postName} onChange={e => setFormData({ ...formData, postName: e.target.value })} placeholder="岗位名称" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">显示排序</label>
-                  <input type="number" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.postSort} onChange={e => setFormData({ ...formData, postSort: Number(e.target.value) })} />
+                  <input type="number" className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none" value={formData.postSort} onChange={e => setFormData({ ...formData, postSort: Number(e.target.value) })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
                   <div className="flex gap-4 pt-2">
                     {[['0', '正常'], ['1', '停用']].map(([v, l]) => (
                       <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" checked={formData.status === v} onChange={() => setFormData({ ...formData, status: v })} className="accent-indigo-600" />
+                        <input type="radio" checked={formData.status === v} onChange={() => setFormData({ ...formData, status: v })} className="accent-pink-500" />
                         <span className="text-sm">{l}</span>
                       </label>
                     ))}
@@ -176,12 +176,12 @@ export const PostList = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
-                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none" rows={2} value={formData.remark || ''} onChange={e => setFormData({ ...formData, remark: e.target.value })} placeholder="备注信息" />
+                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none resize-none" rows={2} value={formData.remark || ''} onChange={e => setFormData({ ...formData, remark: e.target.value })} placeholder="备注信息" />
               </div>
             </form>
             <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
               <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
-              <button type="button" onClick={e => handleSubmit(e as any)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">{isEdit ? '保存修改' : '立即创建'}</button>
+              <button type="button" onClick={e => handleSubmit(e as any)} className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm">{isEdit ? '保存修改' : '立即创建'}</button>
             </div>
           </div>
         </div>

@@ -116,7 +116,7 @@ export const MobileMessages: React.FC = () => {
       case 'task':
         return <CheckCircle size={16} className="text-green-500" />;
       default:
-        return <Mail size={16} className="text-indigo-500" />;
+        return <Mail size={16} className="text-pink-400" />;
     }
   };
 
@@ -191,7 +191,7 @@ export const MobileMessages: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <Loader2 className="animate-spin text-indigo-600 mx-auto mb-3" size={32} />
+          <Loader2 className="animate-spin text-pink-500 mx-auto mb-3" size={32} />
           <p className="text-sm text-slate-500">加载消息...</p>
         </div>
       </div>
@@ -211,10 +211,10 @@ export const MobileMessages: React.FC = () => {
         >
           <div className="bg-white rounded-full p-2 shadow-lg">
             {isRefreshing ? (
-              <Loader2 className="animate-spin text-indigo-600" size={24} />
+              <Loader2 className="animate-spin text-pink-500" size={24} />
             ) : (
               <RefreshCw
-                className="text-indigo-600 transition-transform"
+                className="text-pink-500 transition-transform"
                 size={24}
                 style={{ transform: `rotate(${Math.min((pullDistance / 80) * 360, 360)}deg)` }}
               />
@@ -253,7 +253,7 @@ export const MobileMessages: React.FC = () => {
             onClick={() => setActiveTab(tab)}
             className={`py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-pink-500 text-pink-500'
                 : 'border-transparent text-slate-500'
             }`}
           >
@@ -273,7 +273,7 @@ export const MobileMessages: React.FC = () => {
               key={message.id}
               onClick={() => handleOpenMessage(message)}
               className={`bg-white rounded-lg p-4 shadow-sm border transition-colors active:bg-slate-50 ${
-                message.isRead ? 'border-slate-100' : 'border-indigo-200 bg-indigo-50/30'
+                message.isRead ? 'border-slate-100' : 'border-pink-100 bg-pink-50/30'
               }`}
               role="button"
               tabIndex={0}
@@ -290,7 +290,7 @@ export const MobileMessages: React.FC = () => {
                       {message.title}
                     </h3>
                     {!message.isRead && (
-                      <span className="flex-shrink-0 w-2 h-2 bg-indigo-600 rounded-full mt-1.5"></span>
+                      <span className="flex-shrink-0 w-2 h-2 bg-pink-500 rounded-full mt-1.5"></span>
                     )}
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 mb-2">{message.content}</p>

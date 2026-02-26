@@ -172,7 +172,7 @@ export const FormDesign = () => {
           <h3 className="font-semibold text-slate-900">表单列表</h3>
           <button
             onClick={handleCreateNew}
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            className="px-3 py-1 text-sm bg-pink-500 text-white rounded hover:bg-pink-600 transition-colors"
           >
             新建
           </button>
@@ -188,7 +188,7 @@ export const FormDesign = () => {
                 onClick={() => setSelectedForm(form)}
                 className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
                   selectedForm.id === form.id
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    ? 'bg-pink-50 text-pink-600 border border-pink-100'
                     : 'hover:bg-slate-50 text-slate-700'
                 }`}
               >
@@ -206,7 +206,7 @@ export const FormDesign = () => {
           <p className="text-xs text-slate-400 font-medium">下一步</p>
           <button
             onClick={() => navigate('/workflow')}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-left"
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-pink-500 bg-pink-50 hover:bg-pink-50 rounded-lg transition-colors text-left"
           >
             <GitMerge size={14} />
             <span className="flex-1">绑定到流程</span>

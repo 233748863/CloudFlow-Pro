@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Receipt, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, FileText } from 'lucide-react';
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '../services/api/expense';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 export const ExpenseClaimPage: React.FC = () => {
   const [claims, setClaims] = useState<ExpenseClaim[]>([]);
@@ -204,7 +205,7 @@ export const ExpenseClaimPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string }> = {
       DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' },
-      PENDING: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      PENDING: { bg: 'bg-pink-50', text: 'text-pink-500' },
       APPROVED: { bg: 'bg-green-100', text: 'text-green-600' },
       REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
       PAID: { bg: 'bg-purple-100', text: 'text-purple-600' },
@@ -221,12 +222,12 @@ export const ExpenseClaimPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Receipt className="text-indigo-600" />
+          <Receipt className="text-pink-500" />
           报销申请
         </h2>
         <button
           onClick={handleAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+          className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
         >
           <Plus size={18} />
           新增报销申请
@@ -236,35 +237,37 @@ export const ExpenseClaimPage: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         <div className="p-4 border-b border-slate-200 bg-slate-50">
           <div className="flex gap-3">
-            <select
-              value={searchParams.status}
-              onChange={(e) => setSearchParams({ ...searchParams, status: e.target.value, pageNum: 1 })}
-              className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">全部状态</option>
-              <option value="DRAFT">草稿</option>
-              <option value="PENDING">审批中</option>
-              <option value="APPROVED">已通过</option>
-              <option value="REJECTED">已驳回</option>
-              <option value="PAID">已打款</option>
-            </select>
+            <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="DRAFT">草稿</SelectItem>
+                      <SelectItem value="PENDING">审批中</SelectItem>
+                      <SelectItem value="APPROVED">已通过</SelectItem>
+                      <SelectItem value="REJECTED">已驳回</SelectItem>
+                      <SelectItem value="PAID">已打款</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-            <select
-              value={searchParams.category}
-              onChange={(e) => setSearchParams({ ...searchParams, category: e.target.value, pageNum: 1 })}
-              className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">全部类别</option>
-              <option value="TRAVEL">差旅</option>
-              <option value="OFFICE">办公</option>
-              <option value="ENTERTAINMENT">招待</option>
-              <option value="TRANSPORT">交通</option>
-              <option value="OTHER">其他</option>
-            </select>
+            <Select value={searchParams.category} onValueChange={v => setSearchParams({...searchParams, category: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">全部类别</SelectItem>
+                      <SelectItem value="TRAVEL">差旅</SelectItem>
+                      <SelectItem value="OFFICE">办公</SelectItem>
+                      <SelectItem value="ENTERTAINMENT">招待</SelectItem>
+                      <SelectItem value="TRANSPORT">交通</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
 
             <button
               onClick={handleSearch}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm"
+              className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"
             >
               <Search size={16} />
               搜索
@@ -297,7 +300,7 @@ export const ExpenseClaimPage: React.FC = () => {
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500"></div>
                       <span className="ml-2">加载中...</span>
                     </div>
                   </td>
@@ -328,7 +331,7 @@ export const ExpenseClaimPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleView(item.id!)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-pink-500 hover:text-pink-700"
                           title="查看"
                         >
                           <Eye size={16} />
@@ -344,7 +347,7 @@ export const ExpenseClaimPage: React.FC = () => {
                             </button>
                             <button
                               onClick={() => handleSubmit(item.id!)}
-                              className="text-indigo-600 hover:text-indigo-800"
+                              className="text-pink-500 hover:text-pink-700"
                               title="提交"
                             >
                               <Send size={16} />
@@ -391,7 +394,7 @@ export const ExpenseClaimPage: React.FC = () => {
 
       {/* 新增/编辑对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-800">
@@ -402,17 +405,18 @@ export const ExpenseClaimPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">报销类别</label>
-                  <select
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <option value="TRAVEL">差旅</option>
-                    <option value="OFFICE">办公</option>
-                    <option value="ENTERTAINMENT">招待</option>
-                    <option value="TRANSPORT">交通</option>
-                    <option value="OTHER">其他</option>
-                  </select>
+                  <Select value={formData.category} onValueChange={v => setFormData({...formData, category: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TRAVEL">差旅</SelectItem>
+                      <SelectItem value="OFFICE">办公</SelectItem>
+                      <SelectItem value="ENTERTAINMENT">招待</SelectItem>
+                      <SelectItem value="TRANSPORT">交通</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">总金额</label>
@@ -440,7 +444,7 @@ export const ExpenseClaimPage: React.FC = () => {
                   <label className="block text-sm font-medium text-slate-700">报销明细</label>
                   <button
                     onClick={addItem}
-                    className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
+                    className="bg-pink-500 text-white px-3 py-1 rounded text-sm hover:bg-pink-600"
                   >
                     添加明细
                   </button>
@@ -451,18 +455,19 @@ export const ExpenseClaimPage: React.FC = () => {
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">费用类型</label>
-                          <select
-                            className="w-full border border-slate-300 rounded p-2 text-sm"
-                            value={item.expenseType}
-                            onChange={(e) => updateItem(index, 'expenseType', e.target.value)}
-                          >
-                            <option value="TRANSPORT">交通</option>
-                            <option value="ACCOMMODATION">住宿</option>
-                            <option value="MEAL">餐饮</option>
-                            <option value="COMMUNICATION">通讯</option>
-                            <option value="OFFICE_SUPPLIES">办公用品</option>
-                            <option value="OTHER">其他</option>
-                          </select>
+                          <Select value={item.expenseType} onValueChange={v => setItem({...item, expenseType: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TRANSPORT">交通</SelectItem>
+                      <SelectItem value="ACCOMMODATION">住宿</SelectItem>
+                      <SelectItem value="MEAL">餐饮</SelectItem>
+                      <SelectItem value="COMMUNICATION">通讯</SelectItem>
+                      <SelectItem value="OFFICE_SUPPLIES">办公用品</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">金额（元）</label>
@@ -519,7 +524,7 @@ export const ExpenseClaimPage: React.FC = () => {
               </button>
               <button
                 onClick={handleSave}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+                className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
               >
                 保存
               </button>
@@ -530,7 +535,7 @@ export const ExpenseClaimPage: React.FC = () => {
 
       {/* 详情查看对话框 */}
       {showDetailDialog && viewClaim && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-slate-100 flex justify-between items-start">
               <div>
@@ -614,7 +619,7 @@ export const ExpenseClaimPage: React.FC = () => {
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
               <button
                 onClick={() => setShowDetailDialog(false)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+                className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
               >
                 关闭
               </button>

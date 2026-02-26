@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Check, ChevronDown } from 'lucide-react';
 
+// Select 上下文，管理打开状态、选中值、标签映射
 const SelectContext = React.createContext<{
   value?: string;
   onValueChange?: (value: string) => void;
@@ -14,9 +16,14 @@ const SelectContext = React.createContext<{
   registerLabel: () => {},
 });
 
+/**
+ * Select 根组件
+ * 管理下拉框的打开/关闭状态和选中值
+ */
 export const Select = ({ children, value, onValueChange }: { children: React.ReactNode; value?: string; onValueChange?: (value: string) => void }) => {
   const [open, setOpen] = useState(false);
   const [labels, setLabels] = useState<Record<string, React.ReactNode>>({});
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const registerLabel = useCallback((val: string, label: React.ReactNode) => {
     setLabels((prev) => {
@@ -25,56 +32,96 @@ export const Select = ({ children, value, onValueChange }: { children: React.Rea
     });
   }, []);
 
+  // 点击外部区域关闭下拉框
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
   return (
     <SelectContext.Provider value={{ value, onValueChange, open, setOpen, labels, registerLabel }}>
-      <div className="relative">{children}</div>
+      <div className="relative" ref={containerRef}>{children}</div>
     </SelectContext.Provider>
   );
 };
 
+/**
+ * SelectTrigger - 触发按钮
+ * 点击展开/收起下拉列表
+ */
 export const SelectTrigger = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   const { setOpen, open } = React.useContext(SelectContext);
   return (
     <button
       type="button"
-      className={`flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`flex h-10 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors hover:border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       onClick={() => setOpen(!open)}
     >
       {children}
+      <ChevronDown size={16} className={`ml-2 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
     </button>
   );
 };
 
+/**
+ * SelectValue - 显示当前选中值
+ * 未选中时显示 placeholder
+ */
 export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
   const { value, labels } = React.useContext(SelectContext);
-  return <span>{value ? labels[value] || value : placeholder}</span>;
+  return <span className={value ? 'text-slate-900' : 'text-slate-400'}>{value ? labels[value] || value : placeholder}</span>;
 };
 
+/**
+ * SelectContent - 下拉列表容器
+ * 仅在 open 状态下渲染
+ */
 export const SelectContent = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   const { open } = React.useContext(SelectContext);
   if (!open) return null;
   return (
-    <div className={`absolute z-50 min-w-[8rem] overflow-hidden rounded-md border border-slate-200 bg-white text-slate-950 shadow-md animate-in fade-in-80 ${className} top-full mt-1 w-full`}>
+    <div className={`absolute z-50 min-w-[8rem] max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg ${className} top-full mt-1 w-full`}>
       <div className="p-1">{children}</div>
     </div>
   );
 };
 
+/**
+ * SelectItem - 下拉选项
+ * 选中项显示粉色背景和勾选图标
+ */
 export const SelectItem: React.FC<{ children: React.ReactNode; value: string; className?: string }> = ({ children, value, className = '' }) => {
-  const { onValueChange, setOpen, registerLabel } = React.useContext(SelectContext);
-  
+  const { value: selectedValue, onValueChange, setOpen, registerLabel } = React.useContext(SelectContext);
+  const isSelected = selectedValue === value;
+
   useEffect(() => {
     registerLabel(value, children);
   }, [value, children, registerLabel]);
 
   return (
     <div
-      className={`relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${className}`}
+      className={`relative flex w-full cursor-pointer items-center rounded-md py-2 pl-8 pr-2 text-sm transition-colors ${
+        isSelected
+          ? 'bg-pink-50 text-pink-700 font-medium'
+          : 'hover:bg-pink-50/60 text-slate-700'
+      } ${className}`}
       onClick={() => {
         onValueChange?.(value);
         setOpen(false);
       }}
     >
+      {/* 选中勾选标记 */}
+      {isSelected && (
+        <span className="absolute left-2 flex h-4 w-4 items-center justify-center">
+          <Check size={14} className="text-pink-500" />
+        </span>
+      )}
       {children}
     </div>
   );

@@ -124,7 +124,7 @@ const AttendanceCheckIn: React.FC = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center space-y-3 w-full">
-                <div className={`flex items-center ${loading ? 'text-blue-500' : 'text-red-500'}`}>
+                <div className={`flex items-center ${loading ? 'text-pink-400' : 'text-red-500'}`}>
                   <AlertCircle className="w-5 h-5 mr-1" />
                   <span>{loading ? "正在定位..." : (locationError || "正在定位...")}</span>
                 </div>
@@ -149,7 +149,7 @@ const AttendanceCheckIn: React.FC = () => {
           {/* 打卡按钮组 */}
           <div className="grid grid-cols-2 gap-6 w-full pt-4">
             <Button 
-              className="h-32 rounded-xl text-lg flex flex-col items-center justify-center bg-blue-600 hover:bg-blue-700 transition-all active:scale-95"
+              className="h-32 rounded-xl text-lg flex flex-col items-center justify-center bg-pink-500 hover:bg-pink-600 transition-all active:scale-95"
               onClick={() => handleCheckIn('1')}
               disabled={loading || !location}
             >
