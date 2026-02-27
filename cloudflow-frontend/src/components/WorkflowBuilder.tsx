@@ -2247,7 +2247,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       if (e.key === 'Delete' || e.key === 'Backspace') {
         // 如果焦点在输入框中，不触发删除
         const activeElement = document.activeElement;
-        if (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement || activeElement?.isContentEditable) {
+        if (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement || (activeElement && 'isContentEditable' in activeElement && activeElement.isContentEditable)) {
           return;
         }
         if (selectedNode && selectedNode.id !== root.id) {
