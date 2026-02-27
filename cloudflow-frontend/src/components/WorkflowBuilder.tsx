@@ -1131,26 +1131,29 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
   const PIcon = visual.icon;
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-50 flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200">
-      <div className="px-4 py-3 border-b flex justify-between items-center bg-gradient-to-r from-slate-50 to-white">
-        <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${visual.iconBg}`}>
-            <PIcon size={16} className={visual.iconColor} />
+    <div className="fixed right-0 top-0 h-full w-96 bg-white/90 backdrop-blur-2xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.25)] z-50 flex flex-col border-l border-slate-200/60 animate-in slide-in-from-right duration-300 ease-out">
+      <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${visual.iconBg} shadow-sm`}>
+            <PIcon size={20} className={visual.iconColor} />
           </div>
-          <h3 className="font-semibold text-slate-800">节点设置</h3>
+          <div>
+            <h3 className="font-bold text-slate-800 text-base">节点设置</h3>
+            <p className="text-xs text-slate-500 mt-0.5">配置 {NODE_TYPE_LABELS[node.type] || node.type} 的属性</p>
+          </div>
         </div>
-        <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-          <X size={16} className="text-slate-400" />
+        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+          <X size={18} />
         </button>
       </div>
-      <div className="p-4 flex-1 overflow-y-auto">
-        <div className="flex justify-between items-center mb-5">
-          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${visual.iconBg} ${visual.iconColor}`}>
+      <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex justify-between items-center mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100">
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${visual.iconBg} ${visual.iconColor}`}>
             {NODE_TYPE_LABELS[node.type] || node.type}
           </span>
           {node.type !== NodeType.START && node.type !== NodeType.END && (
-            <button onClick={() => onDelete(node.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="删除节点">
-              <Trash2 size={15} />
+            <button onClick={() => onDelete(node.id)} className="text-red-500 hover:bg-red-50 hover:text-red-600 px-3 py-1.5 rounded-lg transition-colors text-xs font-medium flex items-center gap-1" title="删除节点">
+              <Trash2 size={14} /> 删除节点
             </button>
           )}
         </div>
@@ -1628,7 +1631,7 @@ const ConnectorDropZone = ({ parentId, isDraggingGlobal, onDrop }: {
 }) => {
   const [isOver, setIsOver] = useState(false);
   if (!isDraggingGlobal) {
-    return (<div className="flex flex-col items-center"><div className="h-8 w-0.5 bg-slate-300"></div><ArrowDown size={14} className="text-slate-300 -mt-1 mb-1" /></div>);
+    return (<div className="flex flex-col items-center"><div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div><ArrowDown size={14} className="text-slate-300 -mt-1 mb-1 transition-colors duration-300 group-hover/node:text-slate-400" /></div>);
   }
   return (
     <div className="flex flex-col items-center relative">
@@ -1649,17 +1652,19 @@ const ConnectorDropZone = ({ parentId, isDraggingGlobal, onDrop }: {
 
 // ==================== 节点组件 ====================
 
-const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDraggingGlobal, setDraggingGlobal, activeQuickAddId, setActiveQuickAddId, hoveredNodeId, setHoveredNodeId }: {
+const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDraggingGlobal, setDraggingGlobal, activeQuickAddId, setActiveQuickAddId, hoveredNodeId, setHoveredNodeId, selectedNodeId }: {
   node: WorkflowNode; onAddNext: (parentId: string, type?: NodeType) => void;
   onAddBranch: (parentId: string) => void; onSelect: (node: WorkflowNode) => void;
   onDrop: (dragId: string, dropId: string) => void; onCopy: (nodeId: string) => void;
   isDraggingGlobal: boolean; setDraggingGlobal: (v: boolean) => void;
   activeQuickAddId: string | null; setActiveQuickAddId: (id: string | null) => void;
   hoveredNodeId: string | null; setHoveredNodeId: (id: string | null) => void;
+  selectedNodeId: string | null;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const showQuickAdd = activeQuickAddId === node.id;
+  const isSelected = selectedNodeId === node.id;
   const visual = getNodeVisual(node.type);
   const NIcon = visual.icon;
   const canDrag = node.type !== NodeType.START && node.type !== NodeType.END;
@@ -1668,7 +1673,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
   const canShowHover = !activeQuickAddId || activeQuickAddId === node.id;
 
   return (
-    <div className="flex flex-col items-center relative">
+    <div className="flex flex-col items-center relative group/node animate-in fade-in zoom-in-95 duration-300 ease-out">
       {/* 拖拽放置提示 */}
       {isDragOver && !isDragging && isDraggingGlobal && (
         <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-30 animate-bounce">
@@ -1682,11 +1687,12 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
       <div className={`relative group ${showQuickAdd ? 'z-50' : ''}`}>
         {/* 节点卡片 */}
         <div
-          className={`w-64 ${visual.bg} rounded-xl shadow-sm border-2 transition-all cursor-pointer relative z-10 ${
+          className={`w-64 ${visual.bg} rounded-xl shadow-md border-2 transition-all duration-300 cursor-pointer relative z-10 ${
             isDragging ? 'opacity-40 scale-95 border-slate-300 rotate-1' :
-            isDragOver && isDraggingGlobal ? 'border-pink-400 shadow-lg shadow-pink-100 scale-105' :
-            `${visual.border} ${visual.hoverBorder} hover:shadow-md`
-          }`}
+            isDragOver && isDraggingGlobal ? 'border-pink-400 shadow-xl shadow-pink-100 scale-105' :
+            isSelected ? `border-pink-500 ring-4 ring-pink-100 ring-offset-2 shadow-xl scale-[1.02] ${visual.bg}` :
+            `${visual.border} ${visual.hoverBorder} hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]`
+          } active:scale-95 active:shadow-sm`}
           onClick={() => { onSelect(node); setActiveQuickAddId(null); }}
           onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
           onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
@@ -1788,10 +1794,10 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
               onClick={(e) => { e.stopPropagation(); setActiveQuickAddId(showQuickAdd ? null : node.id); }}
               onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
               onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                 showQuickAdd 
-                  ? 'bg-red-500 text-white rotate-45 scale-110' 
-                  : 'bg-pink-500 text-white hover:scale-110 hover:shadow-lg'
+                  ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-lg' 
+                  : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-110 hover:rotate-90 hover:shadow-lg active:scale-95'
               }`}
               title={showQuickAdd ? '关闭菜单' : '在此之前添加节点'}
             >
@@ -1866,10 +1872,10 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
               onClick={(e) => { e.stopPropagation(); setActiveQuickAddId(showQuickAdd ? null : node.id); }}
               onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
               onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                 showQuickAdd 
-                  ? 'bg-red-500 text-white rotate-45 scale-110' 
-                  : 'bg-pink-500 text-white hover:scale-110 hover:shadow-lg'
+                  ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-lg' 
+                  : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-110 hover:rotate-90 hover:shadow-lg active:scale-95'
               }`}
               title={showQuickAdd ? '关闭菜单' : '添加节点'}
             >
@@ -1950,7 +1956,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
       {node.branches && node.branches.length > 0 && (
         <div className="flex flex-col items-center w-full mt-6">
           {/* 从父节点到分支点的垂直连接线 */}
-          <div className="h-6 w-0.5 bg-slate-400"></div>
+          <div className="h-6 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
           
           {/* 分支点 - 菱形指示器 */}
           <div className="w-3 h-3 bg-amber-500 rotate-45 border-2 border-white shadow-md z-10"></div>
@@ -1958,7 +1964,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
           {/* 分支容器 */}
           <div className="flex gap-12 relative pt-6">
             {/* 水平连接线 - 连接所有分支 */}
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-400" style={{ 
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400" style={{ 
               left: `${100 / node.branches.length / 2}%`, 
               right: `${100 / node.branches.length / 2}%` 
             }}></div>
@@ -1966,7 +1972,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
             {node.branches.map((branch, index) => (
               <div key={branch.id} className="flex flex-col items-center relative">
                 {/* 从水平线到分支节点的垂直连接线 */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-slate-400 -mt-6"></div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400 -mt-6"></div>
                 
                 {/* 分支标签 - 更醒目的设计 */}
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-10">
@@ -1976,7 +1982,7 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                   </div>
                 </div>
                 
-                <FlowNode node={branch} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
+                <FlowNode node={branch} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
               </div>
             ))}
           </div>
@@ -1987,15 +1993,15 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
       {node.next && node.next.type !== NodeType.END && (
         <div className="flex flex-col items-center">
           <ConnectorDropZone parentId={node.id} isDraggingGlobal={isDraggingGlobal} onDrop={onDrop} />
-          <FlowNode node={node.next} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
+          <FlowNode node={node.next} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
         </div>
       )}
       {/* END 节点特殊处理：只显示连接线，不显示 ConnectorDropZone */}
       {node.next && node.next.type === NodeType.END && (
         <div className="flex flex-col items-center">
-          <div className="h-8 w-0.5 bg-slate-300"></div>
-          <ArrowDown size={14} className="text-slate-300 -mt-1 mb-1" />
-          <FlowNode node={node.next} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
+          <div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
+          <ArrowDown size={14} className="text-slate-300 -mt-1 mb-1 transition-colors duration-300 group-hover/node:text-slate-400" />
+          <FlowNode node={node.next} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
         </div>
       )}
 
@@ -2103,6 +2109,94 @@ interface WorkflowBuilderProps {
   availableUsers?: User[];
 }
 
+const WorkflowToolbar = ({
+  workflowName,
+  workflowKey,
+  onNameChange,
+  onKeyChange,
+  onSave,
+  onDeploy,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  onOpenTemplatePicker,
+  saving
+}: {
+  workflowName: string;
+  workflowKey: string;
+  onNameChange: (name: string) => void;
+  onKeyChange: (key: string) => void;
+  onSave: () => void;
+  onDeploy: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onOpenTemplatePicker: () => void;
+  saving: boolean;
+}) => {
+  return (
+    <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white shadow-sm shrink-0 h-16 z-20 relative">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+            <GitMerge size={18} className="text-pink-500" />
+          </div>
+          <Input
+            className="text-base font-bold !border-none !ring-0 !shadow-none p-1 w-64 bg-transparent hover:bg-slate-50 focus:bg-white rounded transition-colors"
+            value={workflowName}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder="未命名流程"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="font-mono bg-slate-100 text-slate-500 px-2 py-1 rounded border border-slate-200">
+            KEY
+          </span>
+          <Input
+            className="text-xs font-mono !border-none !ring-0 !shadow-none p-1 w-40 bg-transparent hover:bg-slate-50 focus:bg-white rounded transition-colors"
+            value={workflowKey}
+            onChange={(e) => onKeyChange(e.target.value)}
+            placeholder="process_key"
+          />
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onOpenTemplatePicker}
+          className="px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-pink-500 hover:border-pink-200 transition-all flex items-center gap-2 shadow-sm"
+        >
+          <Sparkles size={14} className="text-pink-500" />
+          模板库
+        </button>
+        <div className="w-px h-6 bg-slate-200 mx-1"></div>
+        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
+            <button onClick={onUndo} disabled={!canUndo} className={`p-1.5 rounded-md transition-all ${!canUndo ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900 active:scale-95'}`} title="撤销 (Ctrl+Z)"><Undo2 size={16} /></button>
+            <button onClick={onRedo} disabled={!canRedo} className={`p-1.5 rounded-md transition-all ${!canRedo ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900 active:scale-95'}`} title="重做 (Ctrl+Y)"><Redo2 size={16} /></button>
+        </div>
+        <div className="w-px h-6 bg-slate-200 mx-1"></div>
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2 disabled:opacity-70 shadow-sm active:scale-95"
+        >
+          {saving ? <div className="w-4 h-4 border-2 border-slate-700 border-t-transparent rounded-full animate-spin"></div> : <Save size={16} />}
+          {saving ? '保存中...' : '保存'}
+        </button>
+        <button
+          onClick={onDeploy}
+          disabled={saving}
+          className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg hover:from-pink-600 hover:to-rose-600 hover:shadow-md transition-all flex items-center gap-2 disabled:opacity-70 shadow-sm active:scale-95"
+        >
+          {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <UploadCloud size={16} />}
+          {saving ? '发布中...' : '发布'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onChange, onSave, availableForms, availableRoles, availableUsers }) => {
   const defaultRoot: WorkflowNode = {
     id: 'node_start', type: NodeType.START, title: '发起申请',
@@ -2134,6 +2228,37 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   useEffect(() => {
     if (onChange && workflow) onChange({ ...workflow, nodes: root, name: workflowName, key: workflowKey });
   }, [root, workflowName, workflowKey]);
+
+  // 键盘快捷键支持
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 撤销 Ctrl+Z
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (canUndo) undo();
+      }
+      // 重做 Ctrl+Y 或 Ctrl+Shift+Z
+      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || 
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
+        e.preventDefault();
+        if (canRedo) redo();
+      }
+      // 删除节点 Delete / Backspace
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // 如果焦点在输入框中，不触发删除
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement || activeElement?.isContentEditable) {
+          return;
+        }
+        if (selectedNode && selectedNode.id !== root.id) {
+          e.preventDefault(); // 防止 Backspace 导致页面回退
+          handleDeleteNode(selectedNode.id);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo, undo, redo, selectedNode, root]); // 依赖项包含 root 以确保 handleDeleteNode 获取最新状态
 
   const handleZoomIn = useCallback(() => setZoom(z => Math.min(z + 0.1, 2)), []);
   const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.1, 0.3)), []);
@@ -2393,42 +2518,23 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
 
   return (
     <div className="h-full flex flex-col bg-slate-100 overflow-hidden relative">
-      {/* 工具栏 */}
-      <div className="h-12 bg-white border-b px-4 flex items-center justify-between shadow-sm z-20">
-        <div className="flex items-center gap-3">
-          <GitMerge size={16} className="text-pink-500" />
-          <input value={workflowName} onChange={e => setWorkflowName(e.target.value)}
-            className="text-sm font-bold text-slate-700 bg-transparent border-none focus:ring-0 focus:outline-none hover:bg-slate-50 px-2 py-1 rounded transition-colors"
-            placeholder="请输入流程名称" />
-        </div>
-        <div className="flex items-center gap-3">
-          {/* 模板按钮 */}
-          <button onClick={() => setShowTemplates(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
-            <Sparkles size={14} /> 模板
-          </button>
-          <div className="h-6 w-px bg-slate-200"></div>
-          {/* 撤销/重做 */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-            <button onClick={undo} disabled={!canUndo} className={`p-1.5 rounded ${!canUndo ? 'text-slate-300' : 'text-slate-600 hover:bg-white hover:shadow-sm'}`} title="撤销"><Undo2 size={16} /></button>
-            <button onClick={redo} disabled={!canRedo} className={`p-1.5 rounded ${!canRedo ? 'text-slate-300' : 'text-slate-600 hover:bg-white hover:shadow-sm'}`} title="重做"><Redo2 size={16} /></button>
-          </div>
-          <div className="h-6 w-px bg-slate-200"></div>
-          <div className="flex gap-2">
-            <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-1 px-3 py-1.5 bg-pink-50 text-pink-500 text-xs font-medium rounded-lg hover:bg-pink-50 transition-colors">
-              <Save size={14} /> {saving ? '保存中...' : '保存'}
-            </button>
-            <button onClick={handleDeploy}
-              className="flex items-center gap-1 px-3 py-1.5 bg-pink-500 text-white text-xs font-medium rounded-lg shadow hover:bg-pink-600 transition-colors">
-              <UploadCloud size={14} /> 发布
-            </button>
-          </div>
-        </div>
-      </div>
+      <WorkflowToolbar
+        workflowName={workflowName}
+        workflowKey={workflowKey}
+        onNameChange={setWorkflowName}
+        onKeyChange={setWorkflowKey}
+        onSave={handleSave}
+        onDeploy={handleDeploy}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onOpenTemplatePicker={() => setShowTemplates(true)}
+        saving={saving}
+      />
 
       {/* 画布 */}
-      <div ref={canvasRef} className={`flex-1 overflow-auto p-10 flex justify-center cursor-grab active:cursor-grabbing bg-grid-slate-100 relative transition-all duration-200 ${selectedNode ? 'mr-80' : ''}`}>
+      <div ref={canvasRef} className={`flex-1 overflow-auto p-10 flex justify-center cursor-grab active:cursor-grabbing bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] relative transition-all duration-300 ease-out ${selectedNode ? 'mr-96' : ''}`}>
         {/* 缩放控件 */}
         <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
           <button onClick={handleZoomOut} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="缩小"><ZoomOut size={16} /></button>
@@ -2449,6 +2555,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
           onClick={() => setActiveQuickAddId(null)}>
           <FlowNode 
             node={root} 
+            selectedNodeId={selectedNode?.id}
             onAddNext={handleAddNext} 
             onAddBranch={handleAddBranch} 
             onSelect={setSelectedNode}
