@@ -2264,6 +2264,34 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.1, 0.3)), []);
   const handleZoomReset = useCallback(() => setZoom(1), []);
 
+  // 滚轮缩放支持 (Ctrl + Wheel)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // 只有按住 Ctrl 或 Meta 键时才触发缩放，避免影响正常滚动
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY;
+        setZoom(prev => {
+          // 向上滚动 (delta < 0) 是放大，向下滚动 (delta > 0) 是缩小
+          // 使用较小的步长以获得更平滑的体验
+          const step = 0.05;
+          const newZoom = delta < 0 ? prev + step : prev - step;
+          return Math.min(Math.max(newZoom, 0.3), 2);
+        });
+      }
+    };
+
+    // 使用 passive: false 以便能够调用 preventDefault
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   const handleCopyNode = useCallback((nodeId: string) => {
     const node = findNodeById(root, nodeId);
     if (!node || node.type === NodeType.START || node.type === NodeType.END) {
