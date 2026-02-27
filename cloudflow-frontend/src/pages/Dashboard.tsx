@@ -90,6 +90,12 @@ export const Dashboard = () => {
   const [recentApps, setRecentApps] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [readAnnouncementIds, setReadAnnouncementIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('read_announcements');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
   const [lt, setLt] = useState(true);
   const [la, setLa] = useState(true);
   const [lan, setLan] = useState(true);
@@ -120,8 +126,9 @@ export const Dashboard = () => {
       .then(r => setCopyCount(extractTotal(r))).catch(() => setCopyCount(0));
     request.get('/workflow/done', { params: { pageNum: 1, pageSize: 5 }, ...s })
       .then(r => setDoneCount(extractTotal(r))).catch(() => setDoneCount(0));
-    request.get('/oa/announcement/list', { params: { pageNum: 1, pageSize: 4, status: 'PUBLISHED' }, ...s })
-      .then(r => setAnnouncements(extractRows(r).slice(0, 4))).catch(() => setAnnouncements([])).finally(() => setLan(false));
+    // 公告列表 - 不限状态，获取最近的公告（常驻显示）
+    request.get('/oa/announcement/list', { params: { pageNum: 1, pageSize: 6 }, ...s })
+      .then(r => setAnnouncements(extractRows(r).slice(0, 6))).catch(() => setAnnouncements([])).finally(() => setLan(false));
     const today = new Date().toISOString().split('T')[0];
     request.get('/oa/schedule/list', { params: { pageNum: 1, pageSize: 5, startDate: today, endDate: today }, ...s })
       .then(r => setSchedules(extractRows(r).slice(0, 5))).catch(() => setSchedules([])).finally(() => setLs(false));
@@ -303,30 +310,61 @@ export const Dashboard = () => {
 
         {/* 右栏 */}
         <div className="space-y-6">
-          {/* 公告通知 */}
+          {/* 公告通知 - 常驻显示，带已读/未读标记 */}
           <Card className="border-none shadow-sm overflow-hidden">
             <div className="flex items-center justify-between p-5 pb-3">
               <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <div className="w-1 h-4 bg-rose-500 rounded-full" /> 公告通知
+                {announcements.filter(n => !readAnnouncementIds.has(String(n.id))).length > 0 && (
+                  <span className="px-1.5 py-0.5 text-xs font-bold bg-rose-100 text-rose-600 rounded-full">
+                    {announcements.filter(n => !readAnnouncementIds.has(String(n.id))).length}
+                  </span>
+                )}
               </h3>
               <button onClick={() => navigate('/announcement')} className="text-xs text-slate-400 hover:text-pink-500 flex items-center gap-0.5 transition-colors">更多 <ChevronRight size={14} /></button>
             </div>
             {lan ? <Skeleton /> : announcements.length > 0 ? (
               <div className="divide-y divide-slate-50">
-                {announcements.map((n, i) => (
-                  <div key={n.id || i} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors group" onClick={() => navigate('/announcement')}>
-                    <div className="mt-1 shrink-0"><Bell size={14} className="text-rose-400" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 truncate group-hover:text-pink-600 transition-colors">{n.title || '公告'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{n.createTime ? relTime(n.createTime) : ''}</p>
+                {announcements.map((n, i) => {
+                  const nId = String(n.id);
+                  const isRead = readAnnouncementIds.has(nId);
+                  return (
+                    <div
+                      key={n.id || i}
+                      className={`flex items-start gap-3 px-5 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors group ${isRead ? 'opacity-60' : ''}`}
+                      onClick={() => {
+                        // 标记为已读
+                        if (!isRead) {
+                          const newSet = new Set(readAnnouncementIds);
+                          newSet.add(nId);
+                          setReadAnnouncementIds(newSet);
+                          try { localStorage.setItem('read_announcements', JSON.stringify([...newSet])); } catch {}
+                        }
+                        navigate('/announcement');
+                      }}
+                    >
+                      <div className="mt-1 shrink-0 relative">
+                        <Bell size={14} className={isRead ? 'text-slate-300' : 'text-rose-400'} />
+                        {!isRead && <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm truncate group-hover:text-pink-600 transition-colors ${isRead ? 'font-normal text-slate-500' : 'font-medium text-slate-700'}`}>
+                          {n.title || '公告'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                          {n.createTime ? relTime(n.createTime) : ''}
+                          {isRead && <span className="text-slate-300">已读</span>}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-slate-400">
                 <Megaphone size={32} className="text-rose-200 mb-2" />
-                <p className="text-sm">暂无公告</p>
+                <p className="text-sm">暂无公告通知</p>
+                <p className="text-xs text-slate-300 mt-1">新公告发布后将在此显示</p>
               </div>
             )}
           </Card>
