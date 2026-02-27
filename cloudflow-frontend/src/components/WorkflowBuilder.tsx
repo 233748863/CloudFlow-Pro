@@ -2189,7 +2189,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     const newNode: WorkflowNode = {
       id: generateNodeId('node'), type: nodeType,
       title: getTitleByType(nodeType),
-      ...(nodeType === NodeType.APPROVAL || nodeType === NodeType.PARALLEL ? { approverType: 'ROLE' as const } : {}),
+      ...(nodeType === NodeType.APPROVAL ? { approverType: 'ROLE' as const } : {}),
+      // 会签节点默认设置 signType='ALL'，避免后端校验器误判为并行网关要求必须有分支
+      ...(nodeType === NodeType.PARALLEL ? { approverType: 'ROLE' as const, signType: 'ALL' as const } : {}),
       ...(nodeType === NodeType.MANUAL ? { approverType: 'ROLE' as const } : {})
     };
 

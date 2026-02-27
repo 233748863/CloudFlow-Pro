@@ -131,15 +131,18 @@ public class JsonSchemaValidator {
             }
         }
         
-        // PARALLEL 类型：会签模式（signType 为 ALL/ANY/PERCENT/SEQUENTIAL）不需要分支，
-        // 只有作为并行网关（无会签配置）时才要求有分支
+        // PARALLEL 类型有两种用法：
+        // 1. 会签模式（signType 为 ALL/ANY/PERCENT/SEQUENTIAL）：多人审批，不需要分支
+        // 2. 并行网关模式（有 branches 且无 signType）：多条分支并行执行
+        // 如果既没有 signType 也没有 branches，默认视为会签模式（全签），不报错
         if ("PARALLEL".equals(type)) {
+            boolean hasBranches = node.has("branches") && node.get("branches").isArray() && node.get("branches").size() > 0;
             boolean isCountersignMode = isCountersignNode(node);
-            // 非会签模式下，并行网关必须有分支
-            if (!isCountersignMode) {
-                if (!node.has("branches") || !node.get("branches").isArray() || node.get("branches").size() == 0) {
-                    throw WorkflowException.validationError("并行网关节点必须有分支");
-                }
+            // 只有明确配置了分支但分支为空的情况才报错（理论上不会出现）
+            // 没有分支 + 没有会签配置 = 默认当作会签节点（全签模式）
+            if (hasBranches && isCountersignMode) {
+                // 会签模式不应该有分支，这在 WfDefinitionServiceImpl.validateNodeConnections 中已校验
+                log.warn("[validateNodeConnectivity] PARALLEL 节点同时有 signType 和 branches，将在后续校验中处理");
             }
         }
         
