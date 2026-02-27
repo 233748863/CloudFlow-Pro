@@ -137,39 +137,52 @@
 }
 
 /* Toast 通知滑入动画 */
-@keyframes slideIn {
+@keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(100%) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
   }
 }
 
-@keyframes slideOut {
+@keyframes slideOutRight {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+    max-height: 200px;
+    margin-bottom: 1rem;
   }
   to {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(100%) scale(0.9);
+    max-height: 0;
+    margin-bottom: 0;
+    padding: 0;
+    border: 0;
   }
 }
 
 /* Toast 通知样式优化 */
 .toast-notification {
-  animation: slideIn 0.3s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  border-radius: 0.75rem;
-  backdrop-filter: blur(10px);
+  /* 使用更平滑的 cubic-bezier 曲线 */
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* 优化模糊和阴影 */
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+    0 8px 10px -6px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+  /* 确保过渡平滑 */
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Toast 退出动画 */
+/* Toast 退出动画 - 增加高度和边距的过渡，实现无缝堆叠 */
 [data-sonner-toast][data-removed="true"] {
-  animation: slideOut 0.2s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  animation: slideOutRight 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  /* 确保退出时不会瞬间跳动 */
+  pointer-events: none;
 }
 
 /* Toast 悬停效果 */
