@@ -382,7 +382,7 @@ const VehicleList: React.FC = () => {
 
       {/* 数据表格 */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="!p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

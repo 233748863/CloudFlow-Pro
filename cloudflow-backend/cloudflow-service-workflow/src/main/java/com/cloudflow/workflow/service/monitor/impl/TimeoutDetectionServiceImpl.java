@@ -54,28 +54,31 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     public void detectTimeoutTasks() {
         try {
             log.info("开始检测超时任务");
-            Long tenantId = SecurityUtils.getTenantId();
+            // P2-fix-1: 定时任务无 SecurityContext，使用默认租户ID
+            Long tenantId = getScheduledTenantId();
 
             // 查询超时任务
             List<TaskMonitor> timeoutTasks = taskMonitorMapper.selectTimeoutTasks(tenantId, criticalThreshold);
 
             int alertCount = 0;
             for (TaskMonitor task : timeoutTasks) {
-                // 检查是否已存在未解决的告警
+                // 确定超时级别
+                String level = determineTimeoutLevel(task.getTotalDuration());
+                if (level == null) {
+                    continue; // 未达到提醒阈值
+                }
+
+                // P2-fix-5: 检查是否已存在未解决的告警，存在则尝试升级级别
                 LambdaQueryWrapper<TimeoutAlert> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(TimeoutAlert::getTenantId, tenantId)
                         .eq(TimeoutAlert::getAlertType, "TASK")
                         .eq(TimeoutAlert::getTargetId, task.getTaskId())
                         .eq(TimeoutAlert::getResolved, "N");
 
-                if (timeoutAlertMapper.selectCount(wrapper) > 0) {
-                    continue; // 已存在告警，跳过
-                }
-
-                // 确定超时级别
-                String level = determineTimeoutLevel(task.getTotalDuration());
-                if (level == null) {
-                    continue; // 未达到提醒阈值
+                TimeoutAlert existingAlert = timeoutAlertMapper.selectOne(wrapper);
+                if (existingAlert != null) {
+                    upgradeExistingAlert(existingAlert, level);
+                    continue;
                 }
 
                 // 创建告警记录
@@ -119,7 +122,8 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     public void detectTimeoutProcesses() {
         try {
             log.info("开始检测超时流程");
-            Long tenantId = SecurityUtils.getTenantId();
+            // P2-fix-1: 定时任务无 SecurityContext，使用默认租户ID
+            Long tenantId = getScheduledTenantId();
 
             // 查询运行中的流程
             List<ProcessMonitor> runningProcesses = processMonitorMapper.selectRunningProcesses(tenantId);
@@ -135,15 +139,17 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                     continue; // 未达到提醒阈值
                 }
 
-                // 检查是否已存在未解决的告警
+                // P2-fix-5: 检查是否已存在未解决的告警，存在则尝试升级级别
                 LambdaQueryWrapper<TimeoutAlert> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(TimeoutAlert::getTenantId, tenantId)
                         .eq(TimeoutAlert::getAlertType, "PROCESS")
                         .eq(TimeoutAlert::getTargetId, process.getInstanceId())
                         .eq(TimeoutAlert::getResolved, "N");
 
-                if (timeoutAlertMapper.selectCount(wrapper) > 0) {
-                    continue; // 已存在告警，跳过
+                TimeoutAlert existingAlert = timeoutAlertMapper.selectOne(wrapper);
+                if (existingAlert != null) {
+                    upgradeExistingAlert(existingAlert, level);
+                    continue;
                 }
 
                 // 创建告警记录
@@ -250,6 +256,46 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         } catch (Exception e) {
             log.error("解决超时告警失败: alertId={}", alertId, e);
             throw e;
+        }
+    }
+
+    /**
+     * P2-fix-1: 定时任务安全获取租户ID
+     * @Scheduled 方法没有 SecurityContext，直接调用 SecurityUtils 会 NPE
+     */
+    private Long getScheduledTenantId() {
+        try {
+            Long tenantId = SecurityUtils.getTenantId();
+            return tenantId != null ? tenantId : 100000L;
+        } catch (Exception e) {
+            return 100000L; // 默认租户ID
+        }
+    }
+
+    /**
+     * P2-fix-5: 检查并升级已有告警的级别
+     * 如果任务超时从 REMIND 升级到 WARNING 或 CRITICAL，更新已有告警
+     */
+    private void upgradeExistingAlert(TimeoutAlert existingAlert, String newLevel) {
+        String currentLevel = existingAlert.getTimeoutLevel();
+        int currentPriority = getLevelPriority(currentLevel);
+        int newPriority = getLevelPriority(newLevel);
+        if (newPriority > currentPriority) {
+            existingAlert.setTimeoutLevel(newLevel);
+            existingAlert.setThreshold(getThresholdByLevel(newLevel));
+            existingAlert.setUpdateTime(LocalDateTime.now());
+            timeoutAlertMapper.updateById(existingAlert);
+            log.warn("超时告警已升级: alertId={}, {} -> {}", existingAlert.getId(), currentLevel, newLevel);
+            sendTimeoutAlert(existingAlert);
+        }
+    }
+
+    private int getLevelPriority(String level) {
+        switch (level) {
+            case "CRITICAL": return 3;
+            case "WARNING": return 2;
+            case "REMIND": return 1;
+            default: return 0;
         }
     }
 

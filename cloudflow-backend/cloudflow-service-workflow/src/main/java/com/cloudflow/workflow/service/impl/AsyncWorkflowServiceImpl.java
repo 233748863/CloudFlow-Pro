@@ -147,26 +147,43 @@ public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
         long startTime = System.currentTimeMillis();
         
         try {
+            if (event == null) {
+                log.warn("异步发布工作流事件失败: event 为 null");
+                return;
+            }
+            
             log.debug("开始异步发布工作流事件: type={}, instanceId={}", 
                 event.getEventType(), 
                 event.getInstanceId());
             
-            // 实际的事件发布逻辑
-            // 1. 调用事件发布器（Spring事件机制）
-            workflowEventPublisher.publishProcessStarted(null);
+            // P2-fix-3: 从数据库加载流程实例，再调用对应的发布方法
+            String instanceId = event.getInstanceId();
+            WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+            if (instance == null) {
+                log.warn("异步发布事件时流程实例不存在: instanceId={}", instanceId);
+                return;
+            }
             
-            // 2. 通知所有监听器（由Spring自动处理）
-            
-            // 3. 记录事件日志
-            log.info("工作流事件已发布: type={}, instanceId={}", 
-                event.getEventType(), event.getInstanceId());
+            WorkflowEvent.EventType eventType = event.getEventType();
+            if (eventType == WorkflowEvent.EventType.PROCESS_STARTED) {
+                workflowEventPublisher.publishProcessStarted(instance);
+            } else if (eventType == WorkflowEvent.EventType.PROCESS_COMPLETED) {
+                workflowEventPublisher.publishProcessCompleted(instance);
+            } else if (eventType == WorkflowEvent.EventType.PROCESS_REVOKED) {
+                workflowEventPublisher.publishProcessRevoked(instance);
+            } else {
+                // TASK_ASSIGNED/TASK_COMPLETED/NODE_* 等事件需要更多上下文参数，
+                // 异步场景下仅记录日志，具体事件由同步调用方直接发布
+                log.info("异步事件分发跳过(需同步发布): type={}, instanceId={}", eventType, instanceId);
+            }
             
             long duration = System.currentTimeMillis() - startTime;
-            log.debug("异步发布工作流事件完成: type={}, 耗时={}ms", 
-                event.getEventType(), duration);
+            log.info("异步发布工作流事件完成: type={}, instanceId={}, 耗时={}ms", 
+                event.getEventType(), event.getInstanceId(), duration);
             
         } catch (Exception e) {
-            log.error("异步发布工作流事件失败: type={}", event.getEventType(), e);
+            log.error("异步发布工作流事件失败: type={}", 
+                event != null ? event.getEventType() : "null", e);
         }
     }
 

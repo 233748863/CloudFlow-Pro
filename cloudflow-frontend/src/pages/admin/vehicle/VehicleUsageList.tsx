@@ -344,7 +344,7 @@ const VehicleUsageList: React.FC = () => {
 
           {/* 用车记录表格 */}
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="!p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -491,7 +491,7 @@ const VehicleUsageList: React.FC = () => {
 
           {/* 费用表格 */}
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="!p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>

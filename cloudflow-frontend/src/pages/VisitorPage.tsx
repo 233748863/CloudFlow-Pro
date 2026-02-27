@@ -67,29 +67,29 @@ export const VisitorPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><UserCheck className="text-pink-500" /> 访客管理</h2>
-        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增预约</button>
+        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 shrink-0"><Plus size={18} />新增预约</button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">全部状态</SelectItem>
-                      <SelectItem value="PENDING">待确认</SelectItem>
-                      <SelectItem value="CONFIRMED">已确认</SelectItem>
-                      <SelectItem value="ARRIVED">已到访</SelectItem>
-                      <SelectItem value="COMPLETED">已离开</SelectItem>
-                    </SelectContent>
-                  </Select>
-          <Input type="text" placeholder="搜索访客姓名" value={searchParams.visitorName} onChange={e => setSearchParams({ ...searchParams, visitorName: e.target.value })} />
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
-          <button onClick={() => setSearchParams({ status: '', visitorName: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center gap-3">
+          <Select value={searchParams.status || 'all'} onValueChange={v => setSearchParams({...searchParams, status: v === 'all' ? '' : v})}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="PENDING">待确认</SelectItem>
+              <SelectItem value="CONFIRMED">已确认</SelectItem>
+              <SelectItem value="ARRIVED">已到访</SelectItem>
+              <SelectItem value="COMPLETED">已离开</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="text" placeholder="搜索访客姓名" className="w-56" value={searchParams.visitorName} onChange={e => setSearchParams({ ...searchParams, visitorName: e.target.value })} onKeyDown={e => e.key === 'Enter' && setSearchParams({ ...searchParams, pageNum: 1 })} />
+          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm shrink-0"><Search size={16} />搜索</button>
+          <button onClick={() => setSearchParams({ status: '', visitorName: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm shrink-0"><RotateCcw size={16} />重置</button>
         </div>
 
         <div className="flex-1 overflow-auto">

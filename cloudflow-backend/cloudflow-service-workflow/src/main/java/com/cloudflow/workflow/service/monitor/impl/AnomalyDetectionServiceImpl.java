@@ -86,7 +86,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     public void detectDeadlock() {
         try {
             log.info("开始检测死锁");
-            Long tenantId = SecurityUtils.getTenantId();
+            // P2-fix-6: 定时任务无 SecurityContext，安全获取租户ID
+            Long tenantId = getScheduledTenantId();
 
             // 查询长时间运行的流程
             List<ProcessMonitor> runningProcesses = processMonitorMapper.selectRunningProcesses(tenantId);
@@ -174,7 +175,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     public void detectDataInconsistency() {
         try {
             log.info("开始检测数据不一致");
-            Long tenantId = SecurityUtils.getTenantId();
+            // P2-fix-6: 定时任务无 SecurityContext，安全获取租户ID
+            Long tenantId = getScheduledTenantId();
 
             // 检查流程监控数据与实际流程状态的一致性
             List<ProcessMonitor> runningMonitors = processMonitorMapper.selectRunningProcesses(tenantId);
@@ -321,6 +323,19 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             sendAnomalyAlert(alert);
         } catch (Exception e) {
             log.error("创建数据不一致告警失败: instanceId={}", process.getInstanceId(), e);
+        }
+    }
+
+    /**
+     * P2-fix-6: 定时任务安全获取租户ID
+     * @Scheduled 方法没有 SecurityContext，直接调用 SecurityUtils 会 NPE
+     */
+    private Long getScheduledTenantId() {
+        try {
+            Long tenantId = SecurityUtils.getTenantId();
+            return tenantId != null ? tenantId : 100000L;
+        } catch (Exception e) {
+            return 100000L; // 默认租户ID
         }
     }
 
