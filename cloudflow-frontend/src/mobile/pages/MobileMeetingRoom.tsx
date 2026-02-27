@@ -5,6 +5,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
 import { format, addHours, startOfHour } from 'date-fns';
 import { getMeetingRooms, createEvent } from '@/services/api/schedule';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface MeetingRoom {
   id: number;
@@ -257,12 +258,12 @@ export const MobileMeetingRoom: React.FC = () => {
               <Calendar size={16} className="inline mr-1" />
               预订日期
             </label>
-            <input
+            <DatePicker
               type="date"
               value={bookingForm.date}
               onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
               min={format(new Date(), 'yyyy-MM-dd')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className="w-full"
             />
           </div>
 
@@ -275,20 +276,20 @@ export const MobileMeetingRoom: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">开始时间</label>
-                <input
+                <DatePicker
                   type="time"
                   value={bookingForm.startTime}
                   onChange={e => setBookingForm({ ...bookingForm, startTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  className="w-full"
                 />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">结束时间</label>
-                <input
+                <DatePicker
                   type="time"
                   value={bookingForm.endTime}
                   onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  className="w-full"
                 />
               </div>
             </div>

@@ -10,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui'
+import { DatePicker } from '@/components/ui/date-picker';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AssetFormProps {
   /** 编辑时传入已有资产数据 */
@@ -162,8 +164,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="purchaseDate">购入日期</Label>
-          <Input
-            id="purchaseDate"
+          <DatePicker
             type="date"
             value={formData.purchaseDate || ''}
             onChange={(e) => handleChange('purchaseDate', e.target.value)}
@@ -174,13 +175,12 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
       {/* 备注 */}
       <div className="grid gap-2">
         <Label htmlFor="remark">备注</Label>
-        <textarea
+        <Textarea
           id="remark"
           value={formData.remark || ''}
           onChange={(e) => handleChange('remark', e.target.value)}
           placeholder="可选备注信息"
           rows={3}
-          className="flex min-h-[60px] w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-pink-400 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 

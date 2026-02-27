@@ -80,13 +80,17 @@ export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
 
 /**
  * SelectContent - 下拉列表容器
- * 仅在 open 状态下渲染
+ * 始终渲染子元素以注册标签映射，关闭时隐藏
  */
 export const SelectContent = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   const { open } = React.useContext(SelectContext);
-  if (!open) return null;
   return (
-    <div className={`absolute z-50 min-w-[8rem] max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg ${className} top-full mt-1 w-full`}>
+    <div
+      className={`absolute z-50 min-w-[8rem] max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg ${className} top-full mt-1 w-full ${
+        open ? '' : 'invisible pointer-events-none h-0 overflow-hidden border-0 p-0 m-0'
+      }`}
+      style={open ? undefined : { position: 'absolute', width: 0, height: 0, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}
+    >
       <div className="p-1">{children}</div>
     </div>
   );

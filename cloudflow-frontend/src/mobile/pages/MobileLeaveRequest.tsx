@@ -5,6 +5,7 @@ import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import { toast } from 'sonner';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { leaveApi } from '@/services/api/leave';
+import { DatePicker } from '@/components/ui/date-picker';
 
 type LeaveType = 'annual' | 'sick' | 'personal' | 'maternity' | 'bereavement' | 'other';
 
@@ -199,21 +200,21 @@ export const MobileLeaveRequest: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">开始日期</label>
-                <input
+                <DatePicker
                   type="date"
                   value={form.startDate}
                   onChange={e => setForm({ ...form, startDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  className="w-full"
                 />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">结束日期</label>
-                <input
+                <DatePicker
                   type="date"
                   value={form.endDate}
                   onChange={e => setForm({ ...form, endDate: e.target.value })}
                   min={form.startDate}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  className="w-full"
                 />
               </div>
             </div>

@@ -21,8 +21,21 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Input } from './ui/input';
+import { DatePicker } from './ui/date-picker';
 
 // ==================== 辅助函数 ====================
+
+/**
+ * 生成唯一节点 ID
+ * 使用 crypto.randomUUID（浏览器原生支持）避免 Date.now() 在同一毫秒内产生重复 ID
+ */
+const generateNodeId = (prefix: string = 'node'): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
+  }
+  // 降级方案：时间戳 + 随机字符串
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
 
 const updateNodeInTree = (
   root: WorkflowNode, targetId: string, updater: (node: WorkflowNode) => WorkflowNode
@@ -1416,7 +1429,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {formData.props?.timerType === 'SCHEDULE' && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">定时时间</span>
-                  <Input type="datetime-local"
+                  <DatePicker type="datetime-local"
                     value={formData.props?.scheduleTime || ''}
                     onChange={e => handleChange('props', { ...formData.props, scheduleTime: e.target.value })} />
                   <p className="text-[10px] text-slate-400 mt-1">💡 流程将在指定时间点自动继续</p>
@@ -2027,6 +2040,49 @@ function validateWorkflow(root: WorkflowNode): string[] {
     if (node.branches) node.branches.forEach(checkParallel);
   };
   checkParallel(root);
+  // P1-12: 扩展校验，覆盖 NOTIFICATION/SCRIPT/TIMER/SUBPROCESS/MANUAL/COPY 节点的必填字段
+  const checkNodeProps = (node: WorkflowNode) => {
+    if (node.type === NodeType.NOTIFICATION) {
+      if (!node.props?.notificationTitle && !node.props?.notificationContent) {
+        errors.push(`通知节点"${node.title}"未配置通知标题或内容`);
+      }
+    }
+    if (node.type === NodeType.SCRIPT) {
+      const st = node.props?.scriptType;
+      if (st === 'API' && !node.props?.apiUrl) {
+        errors.push(`脚本节点"${node.title}"选择了 API 调用模式，但未配置 API URL`);
+      }
+      if ((st === 'GROOVY' || st === 'JAVASCRIPT') && !node.props?.scriptContent) {
+        errors.push(`脚本节点"${node.title}"未填写脚本内容`);
+      }
+    }
+    if (node.type === NodeType.TIMER) {
+      if (node.props?.timerType === 'DELAY' && (!node.props?.delayMinutes || node.props.delayMinutes <= 0)) {
+        errors.push(`定时节点"${node.title}"选择了延迟模式，但未设置有效的延迟时间`);
+      }
+      if (node.props?.timerType === 'SCHEDULE' && !node.props?.scheduleTime) {
+        errors.push(`定时节点"${node.title}"选择了定时模式，但未设置定时时间`);
+      }
+    }
+    if (node.type === NodeType.SUBPROCESS) {
+      if (!node.props?.subprocessId) {
+        errors.push(`子流程节点"${node.title}"未配置子流程 ID`);
+      }
+    }
+    if (node.type === NodeType.MANUAL) {
+      if (!node.approverType && !node.approverValue) {
+        errors.push(`人工任务节点"${node.title}"未配置处理人`);
+      }
+    }
+    if (node.type === NodeType.COPY) {
+      if (!node.approverType && !node.approverValue) {
+        errors.push(`抄送节点"${node.title}"未配置抄送人`);
+      }
+    }
+    if (node.next) checkNodeProps(node.next);
+    if (node.branches) node.branches.forEach(checkNodeProps);
+  };
+  checkNodeProps(root);
   const checkTitle = (node: WorkflowNode) => {
     if (!node.title || node.title.trim() === '') errors.push(`有节点缺少名称`);
     if (node.next) checkTitle(node.next);
@@ -2088,8 +2144,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     if (!node || node.type === NodeType.START || node.type === NodeType.END) {
       toast.error('此节点不可复制'); return;
     }
-    const copiedNode: WorkflowNode = { ...node, id: `node_${Date.now()}`, title: `${node.title} (副本)`, next: undefined,
-      branches: node.branches ? node.branches.map((b, i) => ({ ...b, id: `branch_${Date.now()}_${i}`, next: undefined })) : undefined
+    const copiedNode: WorkflowNode = { ...node, id: generateNodeId('node'), title: `${node.title} (副本)`, next: undefined,
+      branches: node.branches ? node.branches.map((b, i) => ({ ...b, id: generateNodeId('branch'), next: undefined })) : undefined
     };
     setRoot(updateNodeInTree(root, nodeId, n => ({ ...n, next: n.next ? { ...copiedNode, next: n.next } : copiedNode })));
     toast.success('节点已复制');
@@ -2107,7 +2163,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         onConfirm: () => {
           // 用户确认,删除后续节点并添加END节点
           const newNode: WorkflowNode = {
-            id: `node_${Date.now()}`, type: NodeType.END, title: '流程结束'
+            id: generateNodeId('node'), type: NodeType.END, title: '流程结束'
           };
           setRoot(updateNodeInTree(root, parentId, node => ({ ...node, next: newNode })));
           toast.success('已添加结束节点');
@@ -2131,7 +2187,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     };
     
     const newNode: WorkflowNode = {
-      id: `node_${Date.now()}`, type: nodeType,
+      id: generateNodeId('node'), type: nodeType,
       title: getTitleByType(nodeType),
       ...(nodeType === NodeType.APPROVAL || nodeType === NodeType.PARALLEL ? { approverType: 'ROLE' as const } : {}),
       ...(nodeType === NodeType.MANUAL ? { approverType: 'ROLE' as const } : {})
@@ -2159,7 +2215,17 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
 
   const handleAddBranch = (parentId: string) => {
     const parentNode = findNodeById(root, parentId);
-    const newBranch: WorkflowNode = { id: `branch_${Date.now()}`, type: NodeType.CONDITION, title: '新分支', condition: 'amount > 0' };
+
+    // P1-8: PARALLEL 节点处于会签模式时，禁止添加分支（两者语义互斥）
+    if (parentNode?.type === NodeType.PARALLEL) {
+      const signType = parentNode.signType;
+      if (signType && ['ALL', 'ANY', 'PERCENT', 'SEQUENTIAL'].includes(signType)) {
+        toast.error(`会签节点"${parentNode.title}"已配置${signType === 'ALL' ? '全签' : signType === 'ANY' ? '或签' : signType === 'PERCENT' ? '比例签' : '顺序签'}模式，不能同时添加分支。如需使用并行分支，请先在属性面板中移除会签配置。`);
+        return;
+      }
+    }
+
+    const newBranch: WorkflowNode = { id: generateNodeId('branch'), type: NodeType.CONDITION, title: '新分支', condition: 'amount > 0' };
     // 根据父节点类型决定默认分支策略
     const defaultStrategy = parentNode?.type === NodeType.PARALLEL ? 'PARALLEL' : 'EXCLUSIVE';
     setRoot(updateNodeInTree(root, parentId, node => ({ 
@@ -2181,7 +2247,22 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const handleDeleteNode = (id: string) => {
     if (id === root.id) { toast.error('开始节点不可删除'); return; }
     const node = findNodeById(root, id);
-    if (node?.type === NodeType.END) { toast.error('结束节点不可删除'); return; }
+    if (!node) return;
+    if (node.type === NodeType.END) { toast.error('结束节点不可删除'); return; }
+
+    // P0-2 修复：删除带分支的节点时，提示用户分支内容将丢失
+    if (node.branches && node.branches.length > 0) {
+      setConfirmDialog({
+        open: true,
+        message: `节点"${node.title}"包含 ${node.branches.length} 个分支，删除后分支内的所有节点将一并丢失。是否继续？`,
+        onConfirm: () => {
+          const newRoot = deleteNodeInTree(rootRef.current, id);
+          if (newRoot) { setRoot(newRoot); setSelectedNode(null); toast.success('节点及其分支已删除'); }
+        }
+      });
+      return;
+    }
+
     const newRoot = deleteNodeInTree(root, id);
     if (newRoot) { setRoot(newRoot); setSelectedNode(null); toast.success('节点已删除'); }
   };
@@ -2256,12 +2337,25 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       }
 
       setRoot(newRoot);
-      toast.success('节点已移动');
+      // P1-10: 明确提示用户仅移动了当前节点
+      toast.success('节点已移动（仅移动当前节点，后续节点保留在原位）');
     }
   };
 
   const handleApplyTemplate = (template: WorkflowTemplate) => {
-    setRoot(template.nodes);
+    // P1-11: 应用模板时递归重新生成所有节点 ID，避免不同流程定义共享相同 nodeKey
+    const regenerateIds = (node: WorkflowNode): WorkflowNode => {
+      const newNode: WorkflowNode = {
+        ...node,
+        id: node.type === NodeType.START ? generateNodeId('start') :
+            node.type === NodeType.END ? generateNodeId('end') :
+            generateNodeId('node'),
+      };
+      if (newNode.next) newNode.next = regenerateIds(newNode.next);
+      if (newNode.branches) newNode.branches = newNode.branches.map(b => regenerateIds(b));
+      return newNode;
+    };
+    setRoot(regenerateIds(template.nodes));
     setWorkflowName(template.name);
     toast.success(`已应用模板: ${template.name}`);
   };

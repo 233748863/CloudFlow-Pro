@@ -4,6 +4,7 @@ import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Input } from '../components/ui/input';
+import { DatePicker } from '../components/ui/date-picker';
 import { Textarea } from '../components/ui/textarea';
 
 /** 值班排班页面 */
@@ -218,7 +219,7 @@ export const DutySchedulePage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">值班日期</label>
-                <Input type="date" value={formData.dutyDate} onChange={e => setFormData({ ...formData, dutyDate: e.target.value })} />
+                <DatePicker type="date" value={formData.dutyDate} onChange={e => setFormData({ ...formData, dutyDate: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

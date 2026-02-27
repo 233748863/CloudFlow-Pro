@@ -82,10 +82,12 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         // XSS 防护
         definition.setProcessName(securityUtils.sanitizeXss(definition.getProcessName()));
 
-        // JSON 结构校验
+        // JSON 结构校验 + P0-5: 递归 XSS 过滤 modelJson 内所有节点文本字段
         if (StringUtils.hasText(definition.getModelJson())) {
             jsonSchemaValidator.validateProcessDefinitionJson(definition.getModelJson());
             validateModelIntegrity(definition.getModelJson());
+            // P0-5: 对 modelJson 内部节点的 title/condition/props 等字段做 XSS 过滤
+            definition.setModelJson(sanitizeModelJson(definition.getModelJson()));
         }
 
         // 权限校验
@@ -124,7 +126,12 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         log.info("[saveProcessDefinition] 流程定义保存成功, definitionId={}, version={}", definition.getDefinitionId(), version);
         auditService.log(WorkflowAuditService.AuditAction.DEFINITION_CREATE, definition.getDefinitionId(),
             "processKey=" + definition.getProcessKey() + ", version=" + version);
-        return R.ok(definition.getDefinitionId());
+        // P1-13: 返回结构化对象，前端通过 .id 获取 definitionId
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", definition.getDefinitionId());
+        result.put("version", version);
+        result.put("processKey", definition.getProcessKey());
+        return R.ok(result);
     }
 
     @Override
@@ -371,6 +378,64 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
     }
 
+    // ==================== P0-5: modelJson XSS 过滤 ====================
+
+    /**
+     * 递归清理 modelJson 中所有节点的文本字段，防止存储型 XSS
+     * 清理范围：title、condition、description 以及 props 中的所有字符串值
+     */
+    private String sanitizeModelJson(String modelJson) {
+        try {
+            WfNodeConfig root = objectMapper.readValue(modelJson, WfNodeConfig.class);
+            sanitizeNodeRecursive(root);
+            return objectMapper.writeValueAsString(root);
+        } catch (Exception e) {
+            log.warn("[sanitizeModelJson] XSS过滤失败，保留原始JSON: {}", e.getMessage());
+            return modelJson;
+        }
+    }
+
+    /**
+     * 递归清理单个节点及其子节点的文本字段
+     */
+    private void sanitizeNodeRecursive(WfNodeConfig node) {
+        if (node == null) return;
+
+        // 清理节点标题
+        if (StringUtils.hasText(node.getTitle())) {
+            node.setTitle(securityUtils.sanitizeXss(node.getTitle()));
+        }
+        // 清理条件表达式（仅过滤 HTML 标签，保留表达式语法）
+        if (StringUtils.hasText(node.getCondition())) {
+            node.setCondition(securityUtils.sanitizeXss(node.getCondition()));
+        }
+        // 清理描述
+        if (StringUtils.hasText(node.getDescription())) {
+            node.setDescription(securityUtils.sanitizeXss(node.getDescription()));
+        }
+        // 清理 props 中的所有字符串值
+        if (node.getProps() != null) {
+            Map<String, Object> sanitizedProps = new HashMap<>();
+            for (Map.Entry<String, Object> entry : node.getProps().entrySet()) {
+                if (entry.getValue() instanceof String) {
+                    sanitizedProps.put(entry.getKey(), securityUtils.sanitizeXss((String) entry.getValue()));
+                } else {
+                    sanitizedProps.put(entry.getKey(), entry.getValue());
+                }
+            }
+            node.setProps(sanitizedProps);
+        }
+
+        // 递归处理 next 节点
+        sanitizeNodeRecursive(node.getNext());
+        // 递归处理分支节点
+        if (node.getBranches() != null) {
+            for (WfNodeConfig branch : node.getBranches()) {
+                sanitizeNodeRecursive(branch);
+            }
+        }
+    }
+
     // ==================== 私有方法 ====================
 
     /**
@@ -407,6 +472,20 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         if ("MANUAL".equals(node.getType()) && !StringUtils.hasText(node.getApproverType())) {
             throw WorkflowException.validationError("人工任务节点 [" + node.getTitle() + "] 未配置处理人");
+        }
+        // P0-3: PARALLEL 节点会签模式与分支互斥校验
+        // 防止攻击者绕过前端直接提交同时包含 signType 和 branches 的 PARALLEL 节点
+        if ("PARALLEL".equals(node.getType())) {
+            String signType = node.getSignType();
+            boolean hasSignType = StringUtils.hasText(signType)
+                    && ("ALL".equals(signType) || "ANY".equals(signType)
+                        || "PERCENT".equals(signType) || "SEQUENTIAL".equals(signType));
+            boolean hasBranches = node.getBranches() != null && !node.getBranches().isEmpty();
+            if (hasSignType && hasBranches) {
+                throw WorkflowException.validationError(
+                    "并行节点 [" + node.getTitle() + "] 同时配置了会签模式(" + signType
+                    + ")和分支(" + node.getBranches().size() + "个)，两者互斥，请移除分支或取消会签配置");
+            }
         }
         validateNodeConnections(node.getNext(), visited, depth + 1);
         if (node.getBranches() != null) {

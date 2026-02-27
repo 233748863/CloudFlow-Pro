@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
+import { DatePicker } from '../components/ui/date-picker';
 
 /** 加班申请页面 */
 export const OvertimePage: React.FC = () => {
@@ -236,11 +237,11 @@ export const OvertimePage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
-                  <Input type="datetime-local" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
+                  <DatePicker type="datetime-local" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
-                  <Input type="datetime-local" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} />
+                  <DatePicker type="datetime-local" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} />
                 </div>
               </div>
               {/* 加班地点 & 是否用餐 */}

@@ -12,6 +12,7 @@ import { toBackendDateString, toLocalDatetimeString, toQueryDateString } from '.
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
+import { DatePicker } from '../components/ui/date-picker';
 
 export const SchedulePage = () => {
   const { user } = useAuth();
@@ -380,7 +381,7 @@ export const SchedulePage = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">开始时间</label>
-                                    <Input 
+                                    <DatePicker
                                         type="datetime-local"
                                         className="text-xs"
                                         value={form.startTime ? toLocalDatetimeString(form.startTime) : ''}
@@ -389,7 +390,7 @@ export const SchedulePage = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">结束时间</label>
-                                    <Input 
+                                    <DatePicker
                                         type="datetime-local"
                                         className="text-xs"
                                         value={form.endTime ? toLocalDatetimeString(form.endTime) : ''}

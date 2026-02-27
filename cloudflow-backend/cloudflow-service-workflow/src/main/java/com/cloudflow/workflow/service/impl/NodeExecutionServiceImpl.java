@@ -120,18 +120,28 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 WfNodeConfig gateway = findParentGateway(rootNode, node.getId());
                 if (gateway != null) {
                     String joinKey = "sys:wf:join:" + instance.getInstanceId() + ":" + gateway.getId();
-                    RLock joinLock = redissonClient.getLock("lock:join:" + gateway.getId());
+                    RLock joinLock = redissonClient.getLock("lock:join:" + instance.getInstanceId() + ":" + gateway.getId());
                     try {
                         if (joinLock.tryLock(5, 10, TimeUnit.SECONDS)) {
                             long count = redisCache.increment(joinKey);
                             if (count == 1) {
-                                redisCache.expire(joinKey, 1, TimeUnit.HOURS);
+                                // P1-14: 将过期时间从 1 小时延长到 24 小时，防止长时间分支执行导致计数器过期
+                                // 24 小时足以覆盖绝大多数业务场景，超过此时间的流程应通过 SLA 超时机制处理
+                                redisCache.expire(joinKey, 24, TimeUnit.HOURS);
                             }
                             int totalBranches = gateway.getBranches() != null ? gateway.getBranches().size() : 0;
-                            if (count < totalBranches) {
+                            // P1-14: 防御性检查 - 如果 count 超过 totalBranches，说明计数器可能被重置过
+                            if (count > totalBranches && totalBranches > 0) {
+                                log.warn("[runNode] 并行汇聚计数异常: instanceId={}, gatewayId={}, count={}, totalBranches={}，" +
+                                         "可能是 Redis key 过期后重新计数，强制继续执行",
+                                    instance.getInstanceId(), gateway.getId(), count, totalBranches);
+                                redisCache.deleteObject(joinKey);
+                                // 不 return，继续执行后续节点
+                            } else if (count < totalBranches) {
                                 return; // 等待其他分支
+                            } else {
+                                redisCache.deleteObject(joinKey);
                             }
-                            redisCache.deleteObject(joinKey);
                         } else {
                             throw new RuntimeException("获取并行网关锁超时");
                         }
@@ -260,6 +270,15 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             }
         }
         if (!branchTaken) {
+            // P1-9: 排他网关无分支匹配时记录警告日志，便于运维排查
+            if (branches != null && !branches.isEmpty()) {
+                List<String> conditions = branches.stream()
+                    .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
+                    .collect(Collectors.toList());
+                log.warn("[handleConditionGateway] 排他网关 '{}' (id={}) 的所有分支条件均不满足，走默认路径(next)。" +
+                         " instanceId={}, 分支条件={}, 当前变量={}",
+                    node.getTitle(), node.getId(), instance.getInstanceId(), conditions, variables);
+            }
             runNode(instance, node.getNext(), variables, depth + 1, rootNode);
         }
     }
@@ -292,13 +311,24 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 return;
             } else {
                 // EXCLUSIVE 或默认策略
+                boolean exclusiveBranchTaken = false;
                 for (WfNodeConfig branch : branches) {
                     if (evaluateCondition(branch.getCondition(), variables)) {
+                        exclusiveBranchTaken = true;
                         if (branch.getNext() != null) {
                             runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
                         }
                         return;
                     }
+                }
+                // P1-9: 排他网关无分支匹配时记录警告日志
+                if (!exclusiveBranchTaken) {
+                    List<String> conditions = branches.stream()
+                        .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
+                        .collect(Collectors.toList());
+                    log.warn("[advanceAfterNode] 排他网关 '{}' (id={}) 的所有分支条件均不满足，将走默认路径(next)。" +
+                             " instanceId={}, 分支条件={}, 当前变量={}",
+                        currentNode.getTitle(), currentNode.getId(), instance.getInstanceId(), conditions, variables);
                 }
             }
         }

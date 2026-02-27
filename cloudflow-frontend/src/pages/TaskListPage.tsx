@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { usePolling } from '../hooks/usePolling';
 import { logTask } from '../lib/logger';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 
 // 每页条数
 const PAGE_SIZE = 12;
@@ -489,18 +490,16 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     {/* 时间范围筛选 */}
                     <div className="flex items-center gap-1.5 text-sm">
                         <Calendar size={14} className="text-slate-400" />
-                        <input
+                        <DatePicker
                             type="date"
                             value={todoStartTimeFrom}
                             onChange={(e) => setTodoStartTimeFrom(e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                         <span className="text-slate-400">至</span>
-                        <input
+                        <DatePicker
                             type="date"
                             value={todoStartTimeTo}
                             onChange={(e) => setTodoStartTimeTo(e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                     </div>
 
@@ -589,18 +588,16 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     {/* 时间范围筛选 */}
                     <div className="flex items-center gap-1.5 text-sm">
                         <Calendar size={14} className="text-slate-400" />
-                        <input
+                        <DatePicker
                             type="date"
                             value={startTimeFrom}
                             onChange={(e) => handleTimeRangeChange(e.target.value, startTimeTo)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                         <span className="text-slate-400">至</span>
-                        <input
+                        <DatePicker
                             type="date"
                             value={startTimeTo}
                             onChange={(e) => handleTimeRangeChange(startTimeFrom, e.target.value)}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-2 py-1.5 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
                         />
                     </div>
                 </div>

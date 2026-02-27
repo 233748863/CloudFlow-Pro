@@ -255,7 +255,10 @@ public class ConditionExpressionEngine {
 
     /**
      * SpEL 表达式评估（兼容原有逻辑）
-     * 使用 SimpleEvaluationContext 防止 SpEL 注入攻击
+     * 安全措施（多层防御）：
+     * 1. 使用 SimpleEvaluationContext（禁止类型引用、构造函数、Bean 引用）
+     * 2. 表达式长度限制（防止 ReDoS 和资源耗尽）
+     * 3. 危险模式黑名单（拒绝明显的注入尝试）
      *
      * @param expression SpEL 表达式
      * @param variables  流程变量
@@ -265,7 +268,28 @@ public class ConditionExpressionEngine {
         if (!StringUtils.hasText(expression)) {
             return true;
         }
+
+        // P0-4 防御纵深：表达式长度限制
+        if (expression.length() > 500) {
+            log.warn("[ConditionExpressionEngine] SpEL表达式过长({}字符)，拒绝执行", expression.length());
+            return false;
+        }
+
+        // P0-4 防御纵深：拒绝包含危险模式的表达式
+        // 即使 SimpleEvaluationContext 已经阻止了这些操作，仍然在入口处拦截以记录告警
+        String lower = expression.toLowerCase();
+        if (lower.contains("t(") || lower.contains("runtime") || lower.contains("exec(")
+                || lower.contains("processbuilder") || lower.contains("classloader")
+                || lower.contains("forname") || lower.contains("getclass")
+                || lower.contains("java.lang") || lower.contains("java.io")
+                || lower.contains("java.net") || lower.contains("javax.")
+                || lower.contains("spring") || lower.contains("import ")) {
+            log.warn("[ConditionExpressionEngine] SpEL表达式包含危险模式，拒绝执行: {}", expression);
+            return false;
+        }
+
         try {
+            // SimpleEvaluationContext 是安全的：禁止类型引用(T())、构造函数(new)、Bean引用(@)
             SimpleEvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
             if (variables != null) {
                 variables.forEach(context::setVariable);

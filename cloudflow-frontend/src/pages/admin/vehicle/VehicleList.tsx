@@ -36,6 +36,8 @@ import {
   getVehicleList, addVehicle, updateVehicle, deleteVehicle,
   getVehicleStats, SysVehicle, VehicleStats
 } from '@/services/api/vehicle';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Textarea } from '@/components/ui/textarea';
 
 /** 状态配置映射 */
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
@@ -667,7 +669,7 @@ const VehicleList: React.FC = () => {
                   </div>
                   <div className="space-y-1.5">
                     <Label>购买日期</Label>
-                    <Input
+                    <DatePicker
                       type="date"
                       value={formData.purchaseDate || ''}
                       onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
@@ -675,7 +677,7 @@ const VehicleList: React.FC = () => {
                   </div>
                   <div className="space-y-1.5">
                     <Label>保险到期日</Label>
-                    <Input
+                    <DatePicker
                       type="date"
                       value={formData.insuranceExpiry || ''}
                       onChange={(e) => setFormData({ ...formData, insuranceExpiry: e.target.value })}
@@ -684,8 +686,8 @@ const VehicleList: React.FC = () => {
                 </div>
                 <div className="space-y-1.5">
                   <Label>备注</Label>
-                  <textarea
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 min-h-[80px] resize-none"
+                  <Textarea
+                    className="min-h-[80px] resize-none"
                     placeholder="其他备注信息..."
                     value={formData.remark || ''}
                     onChange={(e) => setFormData({ ...formData, remark: e.target.value })}

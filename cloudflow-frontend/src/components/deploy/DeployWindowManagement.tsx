@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Power, PowerOff, Clock, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { DatePicker } from '../ui/date-picker';
 import {
   DeployWindow,
   listDeployWindows,
@@ -303,22 +304,20 @@ export const DeployWindowManagement: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       开始时间 <span className="text-red-500">*</span>
                     </label>
-                    <input
+                    <DatePicker
                       type="time"
                       value={formData.startTime}
                       onChange={e => setFormData({ ...formData, startTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       结束时间 <span className="text-red-500">*</span>
                     </label>
-                    <input
+                    <DatePicker
                       type="time"
                       value={formData.endTime}
                       onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                     />
                   </div>
                 </div>

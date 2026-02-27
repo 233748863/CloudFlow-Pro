@@ -22,6 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Input } from './ui/input';
+import { DatePicker } from './ui/date-picker';
 
 interface Props {
   onSave: (form: FormDefinition) => void;
@@ -98,7 +99,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
               <Input type="number" placeholder="0.00" disabled />
             )}
             {field.type === 'DATE' && (
-              <Input type="date" disabled />
+              <DatePicker type="date" disabled />
             )}
             {field.type === 'SELECT' && (
               <Select value="preview">

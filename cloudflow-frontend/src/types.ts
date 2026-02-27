@@ -68,11 +68,6 @@ export enum NodeType {
   // 新增：支持自定义字符串类型（插件扩展）
 }
 
-export interface SLAConfig {
-  timeoutHours: number;
-  action: 'NOTIFY' | 'AUTO_PASS' | 'AUTO_REJECT';
-}
-
 export interface RetryConfig {
   maxAttempts: number;
   interval: number; // 秒
@@ -97,7 +92,9 @@ export interface WorkflowNode {
   outputs?: Record<string, string>; // { "contextVar": "result" }
 
   // 5. Resilience & Config
-  sla?: SLAConfig;
+  // P1-7: SLA 字段改为平铺，与后端 WfNodeConfig.slaHours/slaAction 对齐
+  slaHours?: number;        // SLA 超时小时数
+  slaAction?: 'AUTO_PASS' | 'AUTO_REJECT'; // SLA 超时动作
   retry?: RetryConfig;
   
   // 6. Plugin Properties (Flexible container)

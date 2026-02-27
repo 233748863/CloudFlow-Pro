@@ -5,6 +5,7 @@ import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Input } from '../components/ui/input';
+import { DatePicker } from '../components/ui/date-picker';
 import { Textarea } from '../components/ui/textarea';
 
 /** 补卡/外勤申请页面 */
@@ -197,14 +198,14 @@ export const AttendanceAppealPage: React.FC = () => {
               {/* 日期 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
-                <Input type="date" value={formData.appealDate} onChange={e => setFormData({ ...formData, appealDate: e.target.value })} />
+                <DatePicker type="date" value={formData.appealDate} onChange={e => setFormData({ ...formData, appealDate: e.target.value })} />
               </div>
               {/* 补卡专有字段 */}
               {formData.appealType === 'MAKEUP' && (<>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">补卡时间 <span className="text-red-500">*</span></label>
-                    <Input type="time" value={formData.appealTime || ''} onChange={e => setFormData({ ...formData, appealTime: e.target.value })} />
+                    <DatePicker type="time" value={formData.appealTime || ''} onChange={e => setFormData({ ...formData, appealTime: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">打卡类型 <span className="text-red-500">*</span></label>

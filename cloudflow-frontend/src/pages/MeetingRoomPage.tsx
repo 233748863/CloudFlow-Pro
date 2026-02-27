@@ -16,6 +16,7 @@ import { toBackendDateString } from '../utils/dateFormat';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
+import { DatePicker } from '../components/ui/date-picker';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -1387,7 +1388,7 @@ export const MeetingRoomPage = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
-                  <Input
+                  <DatePicker
                     type="date"
                     value={bookingForm.date}
                     onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })}
@@ -1395,7 +1396,7 @@ export const MeetingRoomPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
-                  <Input
+                  <DatePicker
                     type="time"
                     value={bookingForm.startTime}
                     onChange={e => setBookingForm({ ...bookingForm, startTime: e.target.value })}
@@ -1403,7 +1404,7 @@ export const MeetingRoomPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
-                  <Input
+                  <DatePicker
                     type="time"
                     value={bookingForm.endTime}
                     onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}

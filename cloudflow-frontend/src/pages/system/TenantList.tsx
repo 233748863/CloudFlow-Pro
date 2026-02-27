@@ -3,6 +3,9 @@ import { Plus, Edit, Trash2, Search, X, Building2, Users, HardDrive, Calendar, L
 import { toast } from 'sonner';
 import { getTenantList, addTenant, updateTenant, deleteTenant, changeTenantStatus } from '../../services/api/tenant';
 import { useMount } from '../../hooks/useMount';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { DatePicker } from '../../components/ui/date-picker';
 
 interface Tenant {
   tenantId: number;
@@ -195,10 +198,10 @@ export const TenantList = () => {
         <form onSubmit={handleSearch} className="flex gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
+            <Input 
               type="text" 
               placeholder="搜索租户名称..." 
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
+              className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -342,8 +345,7 @@ export const TenantList = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   租户名称 <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                <Input 
                   value={formData.tenantName}
                   onChange={e => setFormData({...formData, tenantName: e.target.value})}
                   placeholder="请输入租户名称"
@@ -354,8 +356,7 @@ export const TenantList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系人</label>
-                  <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                  <Input 
                     value={formData.contactName}
                     onChange={e => setFormData({...formData, contactName: e.target.value})}
                     placeholder="联系人姓名"
@@ -363,8 +364,7 @@ export const TenantList = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系电话</label>
-                  <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                  <Input 
                     value={formData.contactPhone}
                     onChange={e => setFormData({...formData, contactPhone: e.target.value})}
                     placeholder="联系电话"
@@ -376,9 +376,8 @@ export const TenantList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系邮箱</label>
-                  <input 
+                  <Input 
                     type="email"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.contactEmail}
                     onChange={e => setFormData({...formData, contactEmail: e.target.value})}
                     placeholder="联系邮箱"
@@ -386,8 +385,7 @@ export const TenantList = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">域名</label>
-                  <input 
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                  <Input 
                     value={formData.domain}
                     onChange={e => setFormData({...formData, domain: e.target.value})}
                     placeholder="example.com"
@@ -399,9 +397,8 @@ export const TenantList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">用户数量限制</label>
-                  <input 
+                  <Input 
                     type="number"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.userLimit}
                     onChange={e => setFormData({...formData, userLimit: parseInt(e.target.value) || 0})}
                     placeholder="100"
@@ -410,9 +407,8 @@ export const TenantList = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">存储空间限制 (MB)</label>
-                  <input 
+                  <Input 
                     type="number"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.storageLimit}
                     onChange={e => setFormData({...formData, storageLimit: parseInt(e.target.value) || 0})}
                     placeholder="10240"
@@ -425,9 +421,8 @@ export const TenantList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">到期时间</label>
-                  <input 
+                  <DatePicker 
                     type="date"
-                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                     value={formData.expireTime}
                     onChange={e => setFormData({...formData, expireTime: e.target.value})}
                   />
@@ -453,8 +448,8 @@ export const TenantList = () => {
               {/* 备注 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
-                <textarea 
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none resize-none"
+                <Textarea 
+                  className="resize-none"
                   rows={3}
                   value={formData.remark}
                   onChange={e => setFormData({...formData, remark: e.target.value})}

@@ -13,6 +13,7 @@ import {
   Switch,
   Textarea
 } from '@/components/ui';
+import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 
 const WEEKDAYS = [
@@ -188,7 +189,7 @@ const AttendanceRulePage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>上班时间 *</Label>
-                <Input
+                <DatePicker
                   type="time"
                   value={rule?.checkInTime || ''}
                   onChange={e => setRule(prev => prev ? { ...prev, checkInTime: e.target.value } : null)}
@@ -197,7 +198,7 @@ const AttendanceRulePage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label>下班时间 *</Label>
-                <Input
+                <DatePicker
                   type="time"
                   value={rule?.checkOutTime || ''}
                   onChange={e => setRule(prev => prev ? { ...prev, checkOutTime: e.target.value } : null)}
@@ -235,7 +236,7 @@ const AttendanceRulePage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>午休开始</Label>
-                <Input
+                <DatePicker
                   type="time"
                   value={rule?.lunchBreakStart || ''}
                   onChange={e => setRule(prev => prev ? { ...prev, lunchBreakStart: e.target.value } : null)}
@@ -244,7 +245,7 @@ const AttendanceRulePage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label>午休结束</Label>
-                <Input
+                <DatePicker
                   type="time"
                   value={rule?.lunchBreakEnd || ''}
                   onChange={e => setRule(prev => prev ? { ...prev, lunchBreakEnd: e.target.value } : null)}

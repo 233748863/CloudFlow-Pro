@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui';
+import { DatePicker } from '@/components/ui/date-picker';
 
 
 export const MobileVehicleBooking: React.FC = () => {
@@ -192,26 +193,22 @@ export const MobileVehicleBooking: React.FC = () => {
                 </div>
               <div>
                 <Label htmlFor="start-time">开始时间</Label>
-                <Input 
+                <DatePicker
                   id="start-time"
-                  type="datetime-local" 
-                  className="mt-2 h-12 text-base"
-                  value={formData.startTime} 
+                  type="datetime-local"
+                  className="mt-2"
+                  value={formData.startTime}
                   onChange={e => setFormData({...formData, startTime: e.target.value})}
-                  aria-label="选择开始时间"
-                  aria-required="true"
                 />
               </div>
               <div>
                 <Label htmlFor="end-time">结束时间</Label>
-                <Input 
+                <DatePicker
                   id="end-time"
-                  type="datetime-local" 
-                  className="mt-2 h-12 text-base"
-                  value={formData.endTime} 
+                  type="datetime-local"
+                  className="mt-2"
+                  value={formData.endTime}
                   onChange={e => setFormData({...formData, endTime: e.target.value})}
-                  aria-label="选择结束时间"
-                  aria-required="true"
                 />
               </div>
               </div>

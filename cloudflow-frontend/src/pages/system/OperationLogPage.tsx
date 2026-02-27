@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RotateCcw, Trash2, Eye, X, RefreshCw, Download } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import {
   getSysLogPage, getSysLogTrend, getSysLogDetail, deleteSysLogs,
@@ -286,18 +287,16 @@ export const OperationLogPage: React.FC = () => {
           </Select>
 
           <label className="text-sm text-slate-600">请求时间</label>
-          <input
+          <DatePicker
             type="date"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
-          <span className="text-slate-400">To</span>
-          <input
+          <span className="text-slate-400">至</span>
+          <DatePicker
             type="date"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
 
           <button

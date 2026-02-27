@@ -4,6 +4,7 @@ import { visitorApi, Visitor } from '../services/api/visitor';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Input } from '../components/ui/input';
+import { DatePicker } from '../components/ui/date-picker';
 import { Textarea } from '../components/ui/textarea';
 
 /** 访客管理页面 */
@@ -183,7 +184,7 @@ export const VisitorPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">来访日期</label>
-                  <Input type="date" value={formData.visitDate} onChange={e => setFormData({ ...formData, visitDate: e.target.value })} />
+                  <DatePicker type="date" value={formData.visitDate} onChange={e => setFormData({ ...formData, visitDate: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">车牌号</label>

@@ -16,6 +16,7 @@ import { toBackendDateString } from '../utils/dateFormat';
 import { Bell, Megaphone, AlertCircle, Eye, Plus, Edit, Trash2, X, Pin, Users, Search, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 
 export const AnnouncementPage = () => {
   const { user } = useAuth();
@@ -587,9 +588,8 @@ export const AnnouncementPage = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">过期时间（可选）</label>
-                                <input 
-                                    type="datetime-local" 
-                                    className="w-full border border-slate-300 rounded-lg p-2"
+                                <DatePicker
+                                    type="datetime-local"
                                     value={formData.expireTime ? new Date(formData.expireTime).toISOString().slice(0, 16) : ''}
                                     onChange={e => setFormData({...formData, expireTime: e.target.value || undefined})}
                                 />

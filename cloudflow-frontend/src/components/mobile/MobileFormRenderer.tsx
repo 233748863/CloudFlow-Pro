@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FormDefinition, FormField } from '../../types';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { DatePicker } from '../ui/date-picker';
 
 interface MobileFormRendererProps {
   formDef: FormDefinition;
@@ -136,12 +137,12 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
         )}
 
         {field.type === 'DATE' && (
-          <input
+          <DatePicker
             type="date"
             value={val || ''}
             onChange={(e) => handleChange(field.id, e.target.value)}
             disabled={readOnly}
-            className={inputClassName}
+            className="w-full"
           />
         )}
 

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
+import { DatePicker } from '../components/ui/date-picker';
 
 /** 出差申请页面 */
 export const BusinessTripPage: React.FC = () => {
@@ -94,22 +95,24 @@ export const BusinessTripPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">全部状态</SelectItem>
-                      <SelectItem value="DRAFT">草稿</SelectItem>
-                      <SelectItem value="PENDING">审批中</SelectItem>
-                      <SelectItem value="APPROVED">已通过</SelectItem>
-                      <SelectItem value="REJECTED">已驳回</SelectItem>
-                    </SelectContent>
-                  </Select>
-          <Input type="text" placeholder="搜索目的地" value={searchParams.destination} onChange={e => setSearchParams({ ...searchParams, destination: e.target.value })} />
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
-          <button onClick={() => setSearchParams({ status: '', destination: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
+          <div className="w-40 shrink-0">
+            <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">全部状态</SelectItem>
+                <SelectItem value="DRAFT">草稿</SelectItem>
+                <SelectItem value="PENDING">审批中</SelectItem>
+                <SelectItem value="APPROVED">已通过</SelectItem>
+                <SelectItem value="REJECTED">已驳回</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Input type="text" placeholder="搜索目的地" value={searchParams.destination} onChange={e => setSearchParams({ ...searchParams, destination: e.target.value })} className="max-w-xs" />
+          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="shrink-0 whitespace-nowrap bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
+          <button onClick={() => setSearchParams({ status: '', destination: '', pageNum: 1, pageSize: 10 })} className="shrink-0 whitespace-nowrap bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
         </div>
 
         <div className="flex-1 overflow-auto">
@@ -193,11 +196,11 @@ export const BusinessTripPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始日期 <span className="text-red-500">*</span></label>
-                  <Input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
+                  <DatePicker type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">结束日期 <span className="text-red-500">*</span></label>
-                  <Input type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
+                  <DatePicker type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
                 </div>
               </div>
               {/* 交通方式 & 住宿安排 */}

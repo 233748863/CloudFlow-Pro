@@ -35,6 +35,8 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Textarea } from '@/components/ui/textarea';
 import {
   getUsageList, getExpenseList, addExpense, getExpenseStats,
   approveUsage, returnVehicle, cancelUsage,
@@ -644,8 +646,8 @@ const VehicleUsageList: React.FC = () => {
               </div>
               <div className="space-y-1.5">
                 <Label>审批意见（可选）</Label>
-                <textarea
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 min-h-[60px] resize-none"
+                <Textarea
+                  className="min-h-[60px] resize-none"
                   placeholder="请输入审批意见..."
                   value={approveRemark}
                   onChange={(e) => setApproveRemark(e.target.value)}
@@ -741,7 +743,7 @@ const VehicleUsageList: React.FC = () => {
             </div>
             <div className="space-y-1.5">
               <Label>日期</Label>
-              <Input
+              <DatePicker
                 type="date"
                 value={expenseForm.expenseDate || ''}
                 onChange={(e) => setExpenseForm({ ...expenseForm, expenseDate: e.target.value })}

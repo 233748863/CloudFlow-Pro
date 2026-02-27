@@ -3,6 +3,7 @@ import { Receipt, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, FileText } f
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '../services/api/expense';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 
 export const ExpenseClaimPage: React.FC = () => {
   const [claims, setClaims] = useState<ExpenseClaim[]>([]);
@@ -485,9 +486,8 @@ export const ExpenseClaimPage: React.FC = () => {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">费用日期</label>
-                          <input
+                          <DatePicker
                             type="date"
-                            className="w-full border border-slate-300 rounded p-2 text-sm"
                             value={item.expenseDate}
                             onChange={(e) => updateItem(index, 'expenseDate', e.target.value)}
                           />

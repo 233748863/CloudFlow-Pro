@@ -5,6 +5,7 @@ import {
   getAuditLogPage, getAuditLogDetail, deleteAuditLogs,
   SysAuditLog, AuditLogQuery
 } from '@/services/api/log';
+import { DatePicker } from '@/components/ui/date-picker';
 
 /**
  * 审计日志页面
@@ -219,18 +220,16 @@ export const AuditLogPage: React.FC = () => {
           />
 
           <label className="text-sm text-slate-600">操作时间</label>
-          <input
+          <DatePicker
             type="date"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
-          <span className="text-slate-400">To</span>
-          <input
+          <span className="text-slate-400">至</span>
+          <DatePicker
             type="date"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-pink-100 focus:rder-pink-300 outline-none"
           />
 
           <button

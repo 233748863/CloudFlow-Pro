@@ -24,6 +24,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { FileUpload } from '@/components/FileUpload';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Textarea } from '@/components/ui/textarea';
 
 /** 车辆卡片组件 */
 const VehicleCard: React.FC<{
@@ -365,9 +367,8 @@ export const VehicleBooking: React.FC = () => {
                   <Calendar size={14} />
                   开始时间 <span className="text-red-500">*</span>
                 </Label>
-                <Input
+                <DatePicker
                   type="datetime-local"
-                  required
                   value={formData.startTime}
                   onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                 />
@@ -377,9 +378,8 @@ export const VehicleBooking: React.FC = () => {
                   <Calendar size={14} />
                   结束时间 <span className="text-red-500">*</span>
                 </Label>
-                <Input
+                <DatePicker
                   type="datetime-local"
-                  required
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                 />
@@ -442,8 +442,8 @@ export const VehicleBooking: React.FC = () => {
                 <FileText size={14} />
                 用车事由 <span className="text-red-500">*</span>
               </Label>
-              <textarea
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 min-h-[80px] resize-none"
+              <Textarea
+                className="min-h-[80px] resize-none"
                 placeholder="请详细描述用车事由..."
                 required
                 value={formData.reason}

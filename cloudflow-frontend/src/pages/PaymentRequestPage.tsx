@@ -3,6 +3,7 @@ import { DollarSign, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye } from 'lu
 import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 
 export const PaymentRequestPage: React.FC = () => {
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
@@ -423,9 +424,8 @@ export const PaymentRequestPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">期望付款日期</label>
-                  <input
+                  <DatePicker
                     type="date"
-                    className="w-full border border-slate-300 rounded-lg p-2"
                     value={formData.expectedDate || ''}
                     onChange={(e) => setFormData({ ...formData, expectedDate: e.target.value })}
                   />

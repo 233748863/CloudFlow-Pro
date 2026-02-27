@@ -15,6 +15,7 @@ import {
   Filter
 } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 import { 
   getPerformanceStats,
   PerformanceStats as PerformanceStatsType
@@ -149,20 +150,18 @@ const PerformanceStats: React.FC = () => {
             <span className="text-sm font-medium text-gray-700">时间范围:</span>
           </div>
           
-          <input
+          <DatePicker
             type="date"
             value={dateRange.startDate}
             onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
           />
           
           <span className="text-gray-500">至</span>
           
-          <input
+          <DatePicker
             type="date"
             value={dateRange.endDate}
             onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
           />
 
           <div className="flex items-center space-x-2 ml-4">

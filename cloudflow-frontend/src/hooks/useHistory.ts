@@ -6,6 +6,9 @@ interface HistoryState<T> {
   future: T[];
 }
 
+/** 历史记录最大保留条数，超出时丢弃最早的记录，防止内存无限增长 */
+const MAX_HISTORY_SIZE = 50;
+
 export function useHistory<T>(initialPresent: T) {
   const [state, setState] = useState<HistoryState<T>>({
     past: [],
@@ -54,8 +57,14 @@ export function useHistory<T>(initialPresent: T) {
       
       if (newPresent === present) return currentState;
 
+      // P1-6: 限制历史记录最大条数，超出时丢弃最早的记录
+      const newPast = [...past, present];
+      if (newPast.length > MAX_HISTORY_SIZE) {
+        newPast.splice(0, newPast.length - MAX_HISTORY_SIZE);
+      }
+
       return {
-        past: [...past, present],
+        past: newPast,
         present: newPresent,
         future: []
       };

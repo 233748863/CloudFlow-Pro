@@ -5,6 +5,7 @@ import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { expenseClaimApi } from '@/services/api/expense';
+import { DatePicker } from '@/components/ui/date-picker';
 
 type ExpenseType = 'travel' | 'meal' | 'accommodation' | 'transportation' | 'office' | 'other';
 
@@ -264,12 +265,12 @@ export const MobileReimbursement: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">日期</label>
-                <input
+                <DatePicker
                   type="date"
                   value={currentItem.date}
                   onChange={e => setCurrentItem({ ...currentItem, date: e.target.value })}
                   max={format(new Date(), 'yyyy-MM-dd')}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  className="w-full"
                 />
               </div>
             </div>
