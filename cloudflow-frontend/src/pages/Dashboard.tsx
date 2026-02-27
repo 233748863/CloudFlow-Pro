@@ -26,6 +26,7 @@ function extractRows(res: unknown): any[] {
     const obj = res as Record<string, unknown>;
     if (Array.isArray(obj.rows)) return obj.rows;
     if (Array.isArray(obj.records)) return obj.records;
+    if (Array.isArray(obj.data)) return obj.data; // 支持 data 字段
     if (Array.isArray(res)) return res as any[];
   }
   return [];
@@ -126,9 +127,11 @@ export const Dashboard = () => {
       .then(r => setCopyCount(extractTotal(r))).catch(() => setCopyCount(0));
     request.get('/workflow/done', { params: { pageNum: 1, pageSize: 5 }, ...s })
       .then(r => setDoneCount(extractTotal(r))).catch(() => setDoneCount(0));
-    // 公告列表 - 不限状态，获取最近的公告（常驻显示）
-    request.get('/oa/announcement/list', { params: { pageNum: 1, pageSize: 6 }, ...s })
-      .then(r => setAnnouncements(extractRows(r).slice(0, 6))).catch(() => setAnnouncements([])).finally(() => setLan(false));
+    // 公告列表 - 使用 my-list 接口获取当前用户的公告（常驻显示）
+    request.get('/oa/announcement/my-list', { ...s })
+      .then(r => setAnnouncements(extractRows(r).slice(0, 6)))
+      .catch(() => setAnnouncements([]))
+      .finally(() => setLan(false));
     const today = new Date().toISOString().split('T')[0];
     request.get('/oa/schedule/list', { params: { pageNum: 1, pageSize: 5, startDate: today, endDate: today }, ...s })
       .then(r => setSchedules(extractRows(r).slice(0, 5))).catch(() => setSchedules([])).finally(() => setLs(false));
@@ -315,9 +318,9 @@ export const Dashboard = () => {
             <div className="flex items-center justify-between p-5 pb-3">
               <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <div className="w-1 h-4 bg-rose-500 rounded-full" /> 公告通知
-                {announcements.filter(n => !readAnnouncementIds.has(String(n.id))).length > 0 && (
+                {announcements.filter(n => !readAnnouncementIds.has(String(n.announcementId || n.id))).length > 0 && (
                   <span className="px-1.5 py-0.5 text-xs font-bold bg-rose-100 text-rose-600 rounded-full">
-                    {announcements.filter(n => !readAnnouncementIds.has(String(n.id))).length}
+                    {announcements.filter(n => !readAnnouncementIds.has(String(n.announcementId || n.id))).length}
                   </span>
                 )}
               </h3>
@@ -326,11 +329,12 @@ export const Dashboard = () => {
             {lan ? <Skeleton /> : announcements.length > 0 ? (
               <div className="divide-y divide-slate-50">
                 {announcements.map((n, i) => {
-                  const nId = String(n.id);
+                  // 兼容不同的ID字段名：announcementId 或 id
+                  const nId = String(n.announcementId || n.id);
                   const isRead = readAnnouncementIds.has(nId);
                   return (
                     <div
-                      key={n.id || i}
+                      key={n.announcementId || n.id || i}
                       className={`flex items-start gap-3 px-5 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors group ${isRead ? 'opacity-60' : ''}`}
                       onClick={() => {
                         // 标记为已读
