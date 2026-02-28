@@ -300,6 +300,7 @@ INSERT INTO sys_menu VALUES(400, '流程设计',   4, 1, '/workflow',           
 INSERT INTO sys_menu VALUES(401, '流程监控',   4, 2, '/workflow/monitor',    'pages/WorkflowMonitor',        NULL, 0, 0, 'C', '0', '0', 'workflow:monitor:list',      'Monitor',         'admin', NOW(), '', null, '流程监控');
 INSERT INTO sys_menu VALUES(402, '发布管理',   4, 3, '/workflow/deploy',     'pages/DeployManagement',       NULL, 0, 0, 'C', '0', '0', 'workflow:deploy:list',       'Rocket',          'admin', NOW(), '', null, '发布管理');
 INSERT INTO sys_menu VALUES(403, '表单设计',   4, 4, '/forms',              'pages/FormDesign',             NULL, 0, 0, 'C', '0', '0', 'workflow:form:list',         'FormInput',       'admin', NOW(), '', null, '表单设计');
+INSERT INTO sys_menu VALUES(404, '批量编辑',   4, 5, '/workflow/management', 'pages/admin/ProcessManagement', NULL, 0, 0, 'C', '0', '0', 'workflow:process:manage',    'Settings',        'admin', NOW(), '', null, '流程批量管理（分类、标签）');
 
 -- 行政管理 (parent_id=5)
 INSERT INTO sys_menu VALUES(500, '组织架构',   5, 1, '/users',              'pages/OrgStructurePage',       NULL, 0, 0, 'C', '0', '0', 'admin:org:list',             'Users',           'admin', NOW(), '', null, '组织架构');
@@ -322,7 +323,7 @@ INSERT INTO sys_menu VALUES(608, '岗位管理',   6, 9, '/system/post',        
 INSERT INTO sys_menu VALUES(609, '参数配置',   6, 10, '/system/config',     'pages/system/ConfigList',      NULL, 0, 0, 'C', '0', '0', 'system:config:list',         'SlidersHorizontal','admin', NOW(), '', null, '参数配置');
 INSERT INTO sys_menu VALUES(610, '缓存监控',   6, 11, '/system/cache',      'pages/system/CacheMonitor',    NULL, 0, 0, 'C', '0', '0', 'system:cache:list',          'DatabaseZap',     'admin', NOW(), '', null, '缓存监控');
 INSERT INTO sys_menu VALUES(611, '字典管理',   6, 12, '/system/dict',       'pages/admin/DictPage',         NULL, 0, 0, 'C', '0', '0', 'system:dict:list',           'BookOpen',        'admin', NOW(), '', null, '字典管理');
-INSERT INTO sys_menu VALUES(612, '流程分类',   4, 5, '/workflow/category',  'pages/admin/ProcessCategoryPage', NULL, 0, 0, 'C', '0', '0', 'workflow:category:list',  'FolderTree',      'admin', NOW(), '', null, '流程分类管理');
+INSERT INTO sys_menu VALUES(612, '流程分类',   4, 6, '/workflow/category',  'pages/admin/ProcessCategoryPage', NULL, 0, 0, 'C', '0', '0', 'workflow:category:list',  'FolderTree',      'admin', NOW(), '', null, '流程分类管理');
 
 -- 办公协同(parent_id=2)扩展菜单：补卡申请、加班申请、出差申请、通讯录
 INSERT INTO sys_menu VALUES(203, '补卡申请',   2, 4, '/office/attendance-appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'office:attendance:appeal',  'ClipboardEdit',   'admin', NOW(), '', null, '补卡/外勤申请');
@@ -335,8 +336,8 @@ INSERT INTO sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',      
 INSERT INTO sys_menu VALUES(507, '值班排班',   5, 8, '/admin/duty-schedule',      'pages/DutySchedulePage',       NULL, 0, 0, 'C', '0', '0', 'admin:duty:list',           'CalendarClock',   'admin', NOW(), '', null, '值班排班管理');
 
 -- 流程管理(parent_id=4)扩展菜单：Phase 2 监控告警功能（2026-02-22新增）
-INSERT INTO sys_menu VALUES(700, '告警管理',   4, 5, '/workflow/alerts',          'pages/AlertList',              NULL, 0, 0, 'C', '0', '0', 'workflow:alert:list',       'Bell',            'admin', NOW(), '', null, '查看和处理超时告警和异常告警');
-INSERT INTO sys_menu VALUES(701, '性能统计',   4, 6, '/workflow/performance',     'pages/PerformanceStats',       NULL, 0, 0, 'C', '0', '0', 'workflow:performance:view', 'BarChart3',       'admin', NOW(), '', null, '查看流程执行性能统计和趋势分析');
+INSERT INTO sys_menu VALUES(700, '告警管理',   4, 7, '/workflow/alerts',          'pages/AlertList',              NULL, 0, 0, 'C', '0', '0', 'workflow:alert:list',       'Bell',            'admin', NOW(), '', null, '查看和处理超时告警和异常告警');
+INSERT INTO sys_menu VALUES(701, '性能统计',   4, 8, '/workflow/performance',     'pages/PerformanceStats',       NULL, 0, 0, 'C', '0', '0', 'workflow:performance:view', 'BarChart3',       'admin', NOW(), '', null, '查看流程执行性能统计和趋势分析');
 
 -- 7. 初始化岗位数据
 INSERT INTO sys_post VALUES(1, 100000, 'ceo',      '董事长',     1, '0', 'admin', NOW(), '', null, '公司最高管理者');
@@ -384,6 +385,7 @@ INSERT INTO sys_role_menu VALUES(2, 400, 100000);
 INSERT INTO sys_role_menu VALUES(2, 401, 100000);
 INSERT INTO sys_role_menu VALUES(2, 402, 100000);
 INSERT INTO sys_role_menu VALUES(2, 403, 100000);
+INSERT INTO sys_role_menu VALUES(2, 404, 100000);  -- 批量编辑
 -- 行政管理子菜单
 INSERT INTO sys_role_menu VALUES(2, 500, 100000);
 INSERT INTO sys_role_menu VALUES(2, 501, 100000);
@@ -444,6 +446,7 @@ INSERT INTO sys_role_menu VALUES(4, 400, 100000);
 INSERT INTO sys_role_menu VALUES(4, 401, 100000);
 INSERT INTO sys_role_menu VALUES(4, 402, 100000);
 INSERT INTO sys_role_menu VALUES(4, 403, 100000);
+INSERT INTO sys_role_menu VALUES(4, 404, 100000);  -- 批量编辑
 INSERT INTO sys_role_menu VALUES(4, 500, 100000);
 INSERT INTO sys_role_menu VALUES(4, 505, 100000);
 INSERT INTO sys_role_menu VALUES(4, 203, 100000);

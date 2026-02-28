@@ -64,6 +64,7 @@ const ProcessCategoryPage = React.lazy(() => import('./pages/admin/ProcessCatego
 const PostList = React.lazy(() => import('./pages/system/PostList').then(module => ({ default: module.PostList })));
 const ConfigList = React.lazy(() => import('./pages/system/ConfigList').then(module => ({ default: module.ConfigList })));
 const CacheMonitor = React.lazy(() => import('./pages/system/CacheMonitor').then(module => ({ default: module.CacheMonitor })));
+const ProcessManagement = React.lazy(() => import('./pages/admin/ProcessManagement').then(module => ({ default: module.ProcessManagement })));
 
 
 const Loading = () => (
@@ -256,6 +257,10 @@ const desktopRoutes = [
           {
             path: '/workflow/category',
             element: <Suspense fallback={<Loading />}><ProcessCategoryPage /></Suspense>,
+          },
+          {
+            path: '/workflow/management',
+            element: <Suspense fallback={<Loading />}><ProcessManagement /></Suspense>,
           },
           // === 新增系统管理路由 ===
           {
