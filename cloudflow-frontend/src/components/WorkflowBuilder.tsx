@@ -23,6 +23,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Input } from './ui/input';
 import { DatePicker } from './ui/date-picker';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
+import { useAuth } from '../context/AuthContext';
 
 // ==================== 辅助函数 ====================
 
@@ -2564,6 +2565,9 @@ const WorkflowToolbar = ({
 };
 
 export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onChange, onSave, availableForms, availableRoles, availableUsers }) => {
+  // P2: 获取当前用户信息（用于数据权限）
+  const { user } = useAuth();
+  
   const defaultRoot: WorkflowNode = {
     id: 'node_start', type: NodeType.START, title: '发起申请',
     next: { id: 'node_1', type: NodeType.APPROVAL, title: '部门经理审批', approverType: 'DEPT_MANAGER',
@@ -2607,6 +2611,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const [workflowTags, setWorkflowTags] = useState<string[]>([]);
   const [selectedFormId, setSelectedFormId] = useState('');
   
+  // P2: 启动权限配置状态
+  const [startPermissionType, setStartPermissionType] = useState('ALL');
+  const [startPermissionValue, setStartPermissionValue] = useState('');
+  
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     message: string;
@@ -2642,6 +2650,14 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       // 初始化表单ID
       if (workflow.formId) {
         setSelectedFormId(workflow.formId);
+      }
+      
+      // P2: 初始化启动权限配置
+      if (workflow.startPermissionType) {
+        setStartPermissionType(workflow.startPermissionType);
+      }
+      if (workflow.startPermissionValue) {
+        setStartPermissionValue(workflow.startPermissionValue);
       }
     }
   }, [workflow?.id]); // 只在 workflow.id 变化时重新初始化
@@ -2992,6 +3008,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     try {
       setSaving(true);
       // P1: 包含所有新增字段（description, category, tags, formId）
+      // P2: 包含启动权限字段（startPermissionType, startPermissionValue）
+      // P2: 包含数据权限字段（deptId - 从用户上下文自动获取）
       await saveProcessDefinition({ 
         definitionId: workflow?.id?.startsWith('new_') ? undefined : workflow?.id,
         processName: workflowName, 
@@ -3001,6 +3019,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         category: workflowCategory || undefined,
         tags: workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined,
         formId: selectedFormId || undefined,
+        startPermissionType: startPermissionType || undefined,
+        startPermissionValue: startPermissionValue || undefined,
+        deptId: user?.deptId ? Number(user.deptId) : undefined,
         ...globalConfig 
       });
       toast.success('流程已保存');
@@ -3022,7 +3043,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     
     try {
       setSaving(true);
-      // P0: 使用 definitionId；P1: 携带所有新增字段
+      // P0: 使用 definitionId；P1: 携带所有新增字段；P2: 携带启动权限字段和数据权限字段
       const definition = { 
         definitionId: workflow?.id?.startsWith('new_') ? undefined : workflow?.id, 
         processName: workflowName, 
@@ -3032,6 +3053,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         category: workflowCategory || undefined,
         tags: workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined,
         formId: selectedFormId || undefined,
+        startPermissionType: startPermissionType || undefined,
+        startPermissionValue: startPermissionValue || undefined,
+        deptId: user?.deptId ? Number(user.deptId) : undefined,
         ...globalConfig
       };
       const saveRes = await saveProcessDefinition(definition);
@@ -3052,11 +3076,15 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     category: string;
     tags: string[];
     formId: string;
+    startPermissionType: string;
+    startPermissionValue: string;
   }) => {
     setWorkflowDescription(settings.description);
     setWorkflowCategory(settings.category);
     setWorkflowTags(settings.tags);
     setSelectedFormId(settings.formId);
+    setStartPermissionType(settings.startPermissionType);
+    setStartPermissionValue(settings.startPermissionValue);
     toast.success('流程设置已更新');
   };
 
@@ -3175,6 +3203,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         category={workflowCategory}
         tags={workflowTags}
         formId={selectedFormId}
+        startPermissionType={startPermissionType}
+        startPermissionValue={startPermissionValue}
         onSave={handleSettingsSave}
       />
 

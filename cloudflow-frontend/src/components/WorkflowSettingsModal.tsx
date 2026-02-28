@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings, FileText, Tag, FolderOpen } from 'lucide-react';
+import { X, Settings, FileText, Tag, FolderOpen, Shield, Users } from 'lucide-react';
 import { Input } from './ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { getFormDefinitions } from '../services/api/workflow';
+import { getRoleList, getUserList, getDeptTree } from '../services/api/auth';
 import { FormDefinitionListItem } from '../types/workflow';
+import { SysRole, SysUser, SysDept } from '../services/api/auth';
 import { toast } from 'sonner';
 
 // 流程分类选项
@@ -36,11 +38,15 @@ interface WorkflowSettingsModalProps {
   category: string;
   tags: string[];
   formId: string;
+  startPermissionType: string;
+  startPermissionValue: string;
   onSave: (settings: {
     description: string;
     category: string;
     tags: string[];
     formId: string;
+    startPermissionType: string;
+    startPermissionValue: string;
   }) => void;
 }
 
@@ -53,6 +59,8 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   category: initialCategory,
   tags: initialTags,
   formId: initialFormId,
+  startPermissionType: initialStartPermissionType,
+  startPermissionValue: initialStartPermissionValue,
   onSave,
 }) => {
   const [description, setDescription] = useState(initialDescription);
@@ -61,9 +69,19 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   const [formId, setFormId] = useState(initialFormId);
   const [tagInput, setTagInput] = useState('');
   
+  // P2: 启动权限配置状态
+  const [startPermissionType, setStartPermissionType] = useState(initialStartPermissionType || 'ALL');
+  const [startPermissionValue, setStartPermissionValue] = useState(initialStartPermissionValue || '');
+  
   // P1: 表单列表状态
   const [formList, setFormList] = useState<FormDefinitionListItem[]>([]);
   const [loadingForms, setLoadingForms] = useState(false);
+  
+  // P2: 权限配置数据状态
+  const [roleList, setRoleList] = useState<SysRole[]>([]);
+  const [userList, setUserList] = useState<SysUser[]>([]);
+  const [deptList, setDeptList] = useState<SysDept[]>([]);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
 
   // 同步外部状态变化
   useEffect(() => {
@@ -71,12 +89,15 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
     setCategory(initialCategory);
     setTags(initialTags);
     setFormId(initialFormId);
-  }, [initialDescription, initialCategory, initialTags, initialFormId]);
+    setStartPermissionType(initialStartPermissionType || 'ALL');
+    setStartPermissionValue(initialStartPermissionValue || '');
+  }, [initialDescription, initialCategory, initialTags, initialFormId, initialStartPermissionType, initialStartPermissionValue]);
 
   // P1: 加载表单列表
   useEffect(() => {
     if (open) {
       loadForms();
+      loadPermissionData();
     }
   }, [open]);
 
@@ -90,6 +111,26 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
       toast.error('加载表单列表失败');
     } finally {
       setLoadingForms(false);
+    }
+  };
+
+  // P2: 加载权限配置数据（角色、用户、部门）
+  const loadPermissionData = async () => {
+    try {
+      setLoadingPermissions(true);
+      const [roles, users, depts] = await Promise.all([
+        getRoleList().catch(() => []),
+        getUserList().catch(() => ({ rows: [] })),
+        getDeptTree().catch(() => [])
+      ]);
+      setRoleList(Array.isArray(roles) ? roles : roles.rows || []);
+      setUserList(Array.isArray(users) ? users : users.rows || []);
+      setDeptList(Array.isArray(depts) ? depts : []);
+    } catch (error) {
+      console.error('加载权限数据失败:', error);
+      // 不显示错误提示，静默失败
+    } finally {
+      setLoadingPermissions(false);
     }
   };
 
@@ -111,6 +152,8 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
       category,
       tags,
       formId,
+      startPermissionType,
+      startPermissionValue,
     });
     onClose();
   };
@@ -295,6 +338,110 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
             )}
             <p className="text-xs text-slate-400">
               💡 关联表单后，流程启动时将使用该表单收集数据
+            </p>
+          </div>
+
+          {/* P2: 启动权限配置 */}
+          <div className="space-y-3 pt-3 border-t border-slate-200">
+            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Shield size={14} />
+              启动权限配置
+            </label>
+            
+            {/* 权限类型选择 */}
+            <div className="space-y-2">
+              <span className="text-xs text-slate-500">谁可以启动此流程？</span>
+              <Select value={startPermissionType} onValueChange={(value) => {
+                setStartPermissionType(value);
+                setStartPermissionValue(''); // 切换类型时清空值
+              }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">所有人</SelectItem>
+                  <SelectItem value="ROLE">指定角色</SelectItem>
+                  <SelectItem value="DEPT">指定部门</SelectItem>
+                  <SelectItem value="USER">指定用户</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 根据权限类型显示不同的选择器 */}
+            {startPermissionType === 'ROLE' && (
+              <div className="space-y-2">
+                <span className="text-xs text-slate-500">选择角色</span>
+                {loadingPermissions ? (
+                  <div className="w-full border border-slate-200 rounded-lg p-3 text-sm text-slate-400 bg-slate-50">
+                    加载角色列表中...
+                  </div>
+                ) : (
+                  <Select value={startPermissionValue} onValueChange={setStartPermissionValue}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择角色" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roleList.map((role) => (
+                        <SelectItem key={role.roleId} value={String(role.roleId)}>
+                          {role.roleName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            {startPermissionType === 'DEPT' && (
+              <div className="space-y-2">
+                <span className="text-xs text-slate-500">选择部门</span>
+                {loadingPermissions ? (
+                  <div className="w-full border border-slate-200 rounded-lg p-3 text-sm text-slate-400 bg-slate-50">
+                    加载部门列表中...
+                  </div>
+                ) : (
+                  <Select value={startPermissionValue} onValueChange={setStartPermissionValue}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择部门" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deptList.map((dept) => (
+                        <SelectItem key={dept.deptId} value={String(dept.deptId)}>
+                          {dept.deptName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            {startPermissionType === 'USER' && (
+              <div className="space-y-2">
+                <span className="text-xs text-slate-500">选择用户</span>
+                {loadingPermissions ? (
+                  <div className="w-full border border-slate-200 rounded-lg p-3 text-sm text-slate-400 bg-slate-50">
+                    加载用户列表中...
+                  </div>
+                ) : (
+                  <Select value={startPermissionValue} onValueChange={setStartPermissionValue}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择用户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userList.map((user) => (
+                        <SelectItem key={user.userId} value={String(user.userId)}>
+                          {user.nickName || user.userName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            <p className="text-xs text-slate-400">
+              💡 配置后，只有符合条件的用户才能启动此流程
             </p>
           </div>
         </div>
