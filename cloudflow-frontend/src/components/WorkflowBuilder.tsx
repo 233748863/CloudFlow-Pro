@@ -2766,11 +2766,15 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     if (errors.length > 0) { errors.forEach(err => toast.error(err)); return; }
     try {
       setSaving(true);
-      const definition = { id: workflow?.id?.startsWith('new_') ? undefined : workflow?.id, processName: workflowName, processKey: workflowKey, modelJson: JSON.stringify(root) };
+      const definition = { definitionId: workflow?.id?.startsWith('new_') ? undefined : workflow?.id, processName: workflowName, processKey: workflowKey, modelJson: JSON.stringify(root) };
       const saveRes = await saveProcessDefinition(definition);
-      const definitionId = (saveRes as any)?.id || saveRes;
-      if (definitionId) { await deployProcessDefinition(String(definitionId)); toast.success('流程已发布并上线！'); }
-      else { toast.error('发布失败：无法获取流程ID'); }
+      const definitionId = saveRes?.id;
+      if (!definitionId) {
+        toast.error('发布失败：无法获取流程ID');
+        return;
+      }
+      await deployProcessDefinition(definitionId);
+      toast.success('流程已发布并上线！');
     } catch (e) { console.error(e); toast.error('发布失败'); } finally { setSaving(false); }
   };
 

@@ -259,11 +259,20 @@ export interface CompleteTaskRequest {
  * 保存流程定义请求
  */
 export interface SaveProcessDefinitionRequest {
-  id?: string;
+  definitionId?: string;
   processName: string;
   processKey: string;
   formId?: string;
   modelJson: string;
+}
+
+/**
+ * 保存流程定义响应
+ */
+export interface SaveProcessDefinitionResponse {
+  id: string;
+  version: number;
+  processKey: string;
 }
 
 /**

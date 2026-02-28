@@ -16,6 +16,7 @@ import {
   StartProcessRequest,
   CompleteTaskRequest,
   SaveProcessDefinitionRequest,
+  SaveProcessDefinitionResponse,
   SaveFormDefinitionRequest,
   UrgeTaskRequest,
   UserBrief,
@@ -293,7 +294,7 @@ export async function getProcessDefinition(definitionId: string): Promise<Proces
 /**
  * 保存流程定义
  */
-export async function saveProcessDefinition(data: SaveProcessDefinitionRequest): Promise<WorkflowDefinition> {
+export async function saveProcessDefinition(data: SaveProcessDefinitionRequest): Promise<SaveProcessDefinitionResponse> {
   logApiCall('POST', '/workflow/definition/save', data);
   return request.post('/workflow/definition/save', data);
 }
