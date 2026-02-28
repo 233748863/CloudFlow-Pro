@@ -225,6 +225,51 @@ public class AuthController {
         return R.ok(menus);
     }
 
+    /**
+     * 退出登录
+     * 清除 Token 和用户相关的所有缓存
+     */
+    @PostMapping("/logout")
+    public R<?> logout(HttpServletRequest request) {
+        String jwtToken = request.getHeader("Authorization");
+        if (jwtToken != null && jwtToken.startsWith("Bearer ")) {
+            jwtToken = jwtToken.substring(7);
+        }
+
+        // 先验证 Token 获取用户信息
+        Map<String, Object> userMap = tokenService.verifyToken(jwtToken);
+        if (userMap != null) {
+            // 获取用户信息
+            String username = (String) userMap.get("username");
+            Object userIdObj = userMap.get("userId");
+            String uuidToken = (String) userMap.get("token"); // 从 userMap 中获取 UUID token
+            
+            Long userId = null;
+            if (userIdObj instanceof Integer) {
+                userId = ((Integer) userIdObj).longValue();
+            } else if (userIdObj instanceof Long) {
+                userId = (Long) userIdObj;
+            }
+
+            // 清除用户信息缓存
+            if (username != null) {
+                sysUserService.evictUserInfoCache(username);
+            }
+
+            // 清除用户菜单树缓存
+            if (userId != null) {
+                menuService.evictUserMenuCache(userId);
+            }
+
+            // 删除 Token（从 Redis 中移除，使用 UUID token）
+            if (uuidToken != null) {
+                tokenService.deleteToken(uuidToken);
+            }
+        }
+
+        return R.ok("退出成功");
+    }
+
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {

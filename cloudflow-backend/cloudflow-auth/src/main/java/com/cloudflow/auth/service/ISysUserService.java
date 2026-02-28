@@ -24,9 +24,9 @@ public interface ISysUserService {
     UserInfo findUserInfo(String username);
 
     /**
-     * 清除指定用户的缓存
+     * 清除指定用户的信息缓存
      */
-    void evictUserCache(String username);
+    void evictUserInfoCache(String username);
 
     /**
      * 根据用户ID列表批量查询用户

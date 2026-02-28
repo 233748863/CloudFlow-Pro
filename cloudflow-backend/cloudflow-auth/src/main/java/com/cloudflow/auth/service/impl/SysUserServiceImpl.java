@@ -106,7 +106,7 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Override
     @CacheEvict(value = CacheConstants.USER_DETAILS, key = "#username")
-    public void evictUserCache(String username) {
+    public void evictUserInfoCache(String username) {
         // 仅清除缓存,方法体为空
     }
 
@@ -291,7 +291,7 @@ public class SysUserServiceImpl implements ISysUserService {
             // 先查出用户名用于清除缓存
             SysUser existingUser = sysUserMapper.selectById(userId);
             if (existingUser != null) {
-                evictUserCache(existingUser.getUserName());
+                evictUserInfoCache(existingUser.getUserName());
                 menuService.evictUserMenuCache(userId);
             }
 
@@ -329,7 +329,7 @@ public class SysUserServiceImpl implements ISysUserService {
         // 清除用户缓存
         SysUser existingUser = sysUserMapper.selectById(userId);
         if (existingUser != null) {
-            evictUserCache(existingUser.getUserName());
+            evictUserInfoCache(existingUser.getUserName());
         }
 
         SysUser user = new SysUser();

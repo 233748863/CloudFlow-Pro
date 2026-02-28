@@ -62,16 +62,17 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int insertRole(SysRole role) {
         int rows = roleMapper.insert(role);
         insertRoleMenu(role);
-        // 角色新增时清除菜单缓存（新角色可能影响权限分配）
-        menuService.clearMenuCache();
+        // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return rows;
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int updateRole(SysRole role) {
         int rows = roleMapper.updateById(role);
         // 清除旧的角色-菜单关联
@@ -80,8 +81,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
         roleMenuMapper.delete(wrapper);
         // 插入新的角色-菜单关联
         insertRoleMenu(role);
-        // 角色变更时清除所有菜单缓存和用户菜单树缓存
-        menuService.clearMenuCache();
+        // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return rows;
     }
 
@@ -100,6 +100,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
     public int deleteRoleByIds(Long[] roleIds) {
         for (Long roleId : roleIds) {
             roleMapper.deleteById(roleId);
@@ -107,8 +108,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
             wrapper.eq(SysRoleMenu::getRoleId, roleId);
             roleMenuMapper.delete(wrapper);
         }
-        // 角色删除时清除所有菜单缓存和用户菜单树缓存
-        menuService.clearMenuCache();
+        // 注意：@CacheEvict 会自动清除缓存，不需要手动调用 clearMenuCache()
         return roleIds.length;
     }
 }
