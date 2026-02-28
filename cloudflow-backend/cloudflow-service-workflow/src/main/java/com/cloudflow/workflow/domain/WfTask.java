@@ -128,6 +128,13 @@ public class WfTask implements Serializable {
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private java.util.List<String> buttonPermissions;
 
+    /**
+     * P2-12: 是否允许编辑表单 (非持久化)
+     * 从流程定义 model_json 中当前节点的 allowEdit 配置解析而来
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Boolean allowEdit;
+
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }
 
@@ -294,5 +301,13 @@ public class WfTask implements Serializable {
 
     public void setButtonPermissions(java.util.List<String> buttonPermissions) {
         this.buttonPermissions = buttonPermissions;
+    }
+
+    public Boolean getAllowEdit() {
+        return allowEdit;
+    }
+
+    public void setAllowEdit(Boolean allowEdit) {
+        this.allowEdit = allowEdit;
     }
 }

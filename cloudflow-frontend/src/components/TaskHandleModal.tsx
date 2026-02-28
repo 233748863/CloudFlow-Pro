@@ -29,6 +29,7 @@ export const TaskHandleModal = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'handle' | 'trace'>('handle');
   const [comment, setComment] = useState('');
+  const [editedFormData, setEditedFormData] = useState<Record<string, any>>({});
   const [modifiedAmount, setModifiedAmount] = useState<number | undefined>(task?.amount);
   const [delegationMode, setDelegationMode] = useState(false);
   const [delegateUser, setDelegateUser] = useState<string>('');
@@ -110,8 +111,9 @@ export const TaskHandleModal = ({
           setHistoryNodesLoaded(false);
           setComment('');
           setConfirmAction(null);
+          setEditedFormData(task?.formData ? { ...task.formData } : {});
       }
-  }, [isOpen, task?.id]);
+  }, [isOpen, task?.id, task?.formData]);
 
   if (!isOpen || !task) return null;
 
@@ -147,6 +149,7 @@ export const TaskHandleModal = ({
         action: apiAction,
         comment: comment || undefined,
         delegateUserId: action === 'DELEGATED' ? delegateUser : undefined,
+        variables: (task.allowEdit && canAct && !viewOnly) ? editedFormData : undefined,
       });
 
       // Map to frontend status
@@ -567,7 +570,12 @@ export const TaskHandleModal = ({
                     {/* 表单数据展示 - 有表单定义时用 DynamicFormViewer，否则直接展示 formData */}
                     {currentFormDef && task.formData ? (
                         <div className="border border-slate-100 rounded-lg p-3">
-                            <DynamicFormViewer formDef={currentFormDef} data={task.formData}/>
+                            <DynamicFormViewer 
+                              formDef={currentFormDef} 
+                              data={editedFormData}
+                              allowEdit={Boolean(canAct && !viewOnly && task.allowEdit)}
+                              onChange={(id, val) => setEditedFormData(prev => ({ ...prev, [id]: val }))}
+                            />
                         </div>
                     ) : task.formData && Object.keys(task.formData).length > 0 && (
                         <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/30">

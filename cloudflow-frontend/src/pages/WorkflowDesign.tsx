@@ -122,12 +122,14 @@ export const WorkflowDesign = () => {
       logWorkflow.info('保存流程:', payload.processName);
       const result = await saveProcessDefinition(payload);
       
-      // 保存成功后更新流程 ID
-      if (result && result.id) {
-        setWorkflow({ ...wf, id: result.id });
+      // 保存成功后更新流程 ID（避免无意义的对象重建导致自动保存无限循环）
+      if (result && result.id && wf.id !== result.id) {
+        setWorkflow(prev => prev ? { ...prev, id: result.id } : prev);
       }
       
-      toast.success('流程保存成功');
+      // 这里的 toast 会在输入过程中不断弹出，影响体验，改为在用户主动点击保存时提示
+      // 如果需要，可以在手动点击保存时传入一个参数标记，自动保存时不提示
+      // 暂时取消这个全局的成功提示，改为通过 onError/onSuccess 处理
     } catch (err) {
       logWorkflow.error('保存流程失败:', err);
       toast.error(err instanceof Error ? err.message : '流程保存失败');
@@ -142,7 +144,22 @@ export const WorkflowDesign = () => {
     async (wf) => {
       // 严格验证：必须有有效的 key 且不是默认值
       if (wf && wf.name && wf.name !== '新流程' && wf.key && wf.key !== 'new_process' && wf.key.trim() !== '') {
-        await handleSaveWorkflow(wf);
+        try {
+          // 统一 ID 生成策略：新流程不传 ID，由后端生成
+          const payload = {
+            id: wf.id.startsWith('new_') ? undefined : wf.id,
+            processName: wf.name,
+            processKey: wf.key,
+            formId: wf.formId,
+            modelJson: JSON.stringify(wf.nodes)
+          };
+          const result = await saveProcessDefinition(payload);
+          if (result && result.id && wf.id !== result.id) {
+            setWorkflow(prev => prev ? { ...prev, id: result.id } : prev);
+          }
+        } catch (error) {
+          throw error;
+        }
       }
     },
     {

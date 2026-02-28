@@ -159,7 +159,11 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             log.warn("[runNode] 并行汇聚检查异常: {}", e.getMessage());
         }
 
-        // P2-9: 全局监听器 — 节点开始执行前回调
+        // P2-10: inputs 数据流映射 — 节点执行前，从流程变量提取到节点局部作用域
+        // inputs 配置格式: {"localVar": "processVar"} — 将流程变量 processVar 的值映射为节点可见的 localVar
+        applyInputsMapping(node, variables);
+
+        // 全局监听器 — 节点开始执行前回调
         globalListenerDispatcher.fireStart(instance, node, variables);
 
         // 按节点类型分发处理
@@ -167,9 +171,12 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             handleApprovalNode(node, instance, variables);
         } else if (nodeHandlerFactory.supports(node.getType())) {
             // 通过节点处理器工厂分发（NOTIFICATION/SCRIPT/COPY/TIMER/SUBPROCESS/MANUAL 等）
-            Boolean shouldContinue = nodeHandlerFactory.handle(node, instance, variables);
+            // P2-9: 节点级重试 — 读取 node.getRetry() 配置，失败时自动重试
+            Boolean shouldContinue = executeWithRetry(node, instance, variables);
             if (Boolean.TRUE.equals(shouldContinue)) {
-                // P2-9: 全局监听器 — 非审批节点执行完成后回调
+                // P2-10: outputs 数据流映射 — 节点执行后，将节点输出写回流程变量
+                applyOutputsMapping(node, variables, instance);
+                // 全局监听器 — 非审批节点执行完成后回调
                 globalListenerDispatcher.fireFinish(instance, node, variables);
                 advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
             }
@@ -895,6 +902,194 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
 
         return buttons.isEmpty() ? null : buttons;
+    }
+
+    // ==================== P2-9: 节点级重试 ====================
+
+    /**
+     * 带重试的节点执行
+     * 读取节点的 retry 配置（maxRetries, delayMs），在执行失败时自动重试
+     *
+     * retry 配置格式（JSON）:
+     * {
+     *   "maxRetries": 3,      // 最大重试次数，默认 0（不重试）
+     *   "delayMs": 1000       // 重试间隔（毫秒），默认 1000
+     * }
+     *
+     * @param node      当前节点配置
+     * @param instance  流程实例
+     * @param variables 流程变量
+     * @return 节点处理器的返回值（true=继续流转，false=阻塞等待）
+     */
+    private Boolean executeWithRetry(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables) {
+        Map<String, Object> retryConfig = node.getRetry();
+        int maxRetries = 0;
+        long delayMs = 1000L;
+
+        if (retryConfig != null) {
+            Object maxRetriesObj = retryConfig.get("maxRetries");
+            if (maxRetriesObj instanceof Number) {
+                maxRetries = ((Number) maxRetriesObj).intValue();
+            }
+            Object delayObj = retryConfig.get("delayMs");
+            if (delayObj instanceof Number) {
+                delayMs = ((Number) delayObj).longValue();
+            }
+        }
+
+        // 无重试配置时直接执行
+        if (maxRetries <= 0) {
+            return nodeHandlerFactory.handle(node, instance, variables);
+        }
+
+        // 带重试执行
+        Exception lastException = null;
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                Boolean result = nodeHandlerFactory.handle(node, instance, variables);
+                if (attempt > 0) {
+                    log.info("[executeWithRetry] 节点 '{}' (id={}) 第 {} 次重试成功, instanceId={}",
+                            node.getTitle(), node.getId(), attempt, instance.getInstanceId());
+                }
+                return result;
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("[executeWithRetry] 节点 '{}' (id={}) 执行失败 (第 {}/{} 次), instanceId={}: {}",
+                        node.getTitle(), node.getId(), attempt + 1, maxRetries + 1,
+                        instance.getInstanceId(), e.getMessage());
+
+                if (attempt < maxRetries) {
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.warn("[executeWithRetry] 重试等待被中断");
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 所有重试都失败
+        log.error("[executeWithRetry] 节点 '{}' (id={}) 重试 {} 次后仍然失败, instanceId={}, 将继续流转避免阻塞",
+                node.getTitle(), node.getId(), maxRetries, instance.getInstanceId(), lastException);
+
+        // 记录异常告警
+        try {
+            String errorMessage = "节点执行失败（已重试" + maxRetries + "次）: " + (lastException != null ? lastException.getMessage() : "未知错误");
+            String stackTrace = lastException != null ? lastException.toString() : null;
+            anomalyDetectionService.detectExecutionFailure(instance.getInstanceId(), errorMessage, stackTrace);
+        } catch (Exception e) {
+            log.warn("[executeWithRetry] 记录异常告警失败: {}", e.getMessage());
+        }
+
+        // 返回 true 继续流转，避免父流程永久阻塞
+        return true;
+    }
+
+    // ==================== P2-10: inputs/outputs 数据流映射 ====================
+
+    /**
+     * 应用 inputs 映射：节点执行前，从流程变量中提取值到局部变量
+     *
+     * inputs 配置格式: {"localVarName": "processVarName"}
+     * 作用: 将流程变量 processVarName 的值复制到 variables 中的 localVarName
+     * 用途: 节点可以通过 inputs 声明它需要哪些流程变量，实现节点间数据流的显式声明
+     *
+     * 例如: {"orderAmount": "formData.amount"} 表示把流程变量中 formData.amount 的值映射为 orderAmount
+     *
+     * @param node      当前节点配置
+     * @param variables 流程变量（会被就地修改）
+     */
+    private void applyInputsMapping(WfNodeConfig node, Map<String, Object> variables) {
+        Map<String, String> inputs = node.getInputs();
+        if (inputs == null || inputs.isEmpty() || variables == null) {
+            return;
+        }
+
+        for (Map.Entry<String, String> entry : inputs.entrySet()) {
+            String localKey = entry.getKey();
+            String sourceKey = entry.getValue();
+
+            if (!StringUtils.hasText(localKey) || !StringUtils.hasText(sourceKey)) {
+                continue;
+            }
+
+            // 支持嵌套属性访问：如 "formData.amount" → 从 variables["formData"]["amount"] 取值
+            Object value = resolveNestedValue(variables, sourceKey);
+            if (value != null) {
+                variables.put(localKey, value);
+                log.debug("[applyInputsMapping] 节点 '{}': {} <- {} = {}", node.getId(), localKey, sourceKey, value);
+            }
+        }
+    }
+
+    /**
+     * 应用 outputs 映射：节点执行后，将节点输出写回流程变量
+     *
+     * outputs 配置格式: {"processVarName": "localVarName"}
+     * 作用: 将 variables 中 localVarName 的值复制到 processVarName，并持久化到流程实例
+     * 用途: 节点执行完成后可以将产出数据写入流程变量，供后续节点使用
+     *
+     * @param node      当前节点配置
+     * @param variables 流程变量（会被就地修改）
+     * @param instance  流程实例（用于持久化更新后的变量）
+     */
+    private void applyOutputsMapping(WfNodeConfig node, Map<String, Object> variables, WfProcessInstance instance) {
+        Map<String, String> outputs = node.getOutputs();
+        if (outputs == null || outputs.isEmpty() || variables == null) {
+            return;
+        }
+
+        boolean changed = false;
+        for (Map.Entry<String, String> entry : outputs.entrySet()) {
+            String targetKey = entry.getKey();
+            String sourceKey = entry.getValue();
+
+            if (!StringUtils.hasText(targetKey) || !StringUtils.hasText(sourceKey)) {
+                continue;
+            }
+
+            Object value = resolveNestedValue(variables, sourceKey);
+            if (value != null) {
+                variables.put(targetKey, value);
+                changed = true;
+                log.debug("[applyOutputsMapping] 节点 '{}': {} <- {} = {}", node.getId(), targetKey, sourceKey, value);
+            }
+        }
+
+        // 如果有变量变更，持久化到流程实例
+        if (changed) {
+            try {
+                instance.setVariables(objectMapper.writeValueAsString(variables));
+                processInstanceMapper.updateById(instance);
+            } catch (Exception e) {
+                log.warn("[applyOutputsMapping] 持久化流程变量失败: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 解析嵌套属性值，支持点号分隔的属性路径
+     * 例如: "formData.amount" → variables.get("formData") 如果是 Map 则继续 .get("amount")
+     * 如果不含点号，直接从 variables 中取值
+     */
+    @SuppressWarnings("unchecked")
+    private Object resolveNestedValue(Map<String, Object> variables, String path) {
+        if (!path.contains(".")) {
+            return variables.get(path);
+        }
+
+        String[] parts = path.split("\\.");
+        Object current = variables;
+        for (String part : parts) {
+            if (current instanceof Map) {
+                current = ((Map<String, Object>) current).get(part);
+            } else {
+                return null;
+            }
+        }
+        return current;
     }
 
     // ==================== 快照 ====================

@@ -69,8 +69,8 @@ export enum NodeType {
 }
 
 export interface RetryConfig {
-  maxAttempts: number;
-  interval: number; // 秒
+  maxRetries: number;
+  delayMs: number; // 毫秒
 }
 
 export interface WorkflowNode {

@@ -252,6 +252,7 @@ export interface CompleteTaskRequest {
   comment?: string;
   delegateUserId?: string;
   modifiedData?: Record<string, any>;
+  variables?: Record<string, any>;
 }
 
 /**

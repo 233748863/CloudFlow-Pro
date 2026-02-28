@@ -1311,6 +1311,24 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               </p>
             </div>
           )}
+          {/* P2-12: 表单编辑权限 — 适用于审批节点和人工任务节点 */}
+          {(node.type === NodeType.APPROVAL || node.type === NodeType.MANUAL) && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><FileCheck size={12} /> 表单权限</label>
+              <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <div>
+                  <span className="text-xs text-slate-700 font-medium">允许编辑表单</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5">开启后，处理人可以修改流程表单数据</p>
+                </div>
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 rounded border-slate-300 text-pink-500 focus:ring-pink-500 cursor-pointer"
+                  checked={formData.allowEdit || false} 
+                  onChange={(e) => handleChange('allowEdit', e.target.checked)} 
+                />
+              </div>
+            </div>
+          )}
           {/* P2-11: SLA 超时配置 — 适用于审批节点和人工任务节点 */}
           {(node.type === NodeType.APPROVAL || node.type === NodeType.MANUAL) && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
@@ -1665,6 +1683,61 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <p className="text-[10px] text-slate-400 mt-1">💡 示例：amount {'>'} 5000 或 days {'>='} 3<br/>可用字段：amount(金额)、days(天数)、deptId(部门)</p>
             </div>
           </div>
+          {/* P2-9 & P2-10: 高级设置 (重试与数据流) — 适用于自动执行类节点 */}
+          {[NodeType.NOTIFICATION, NodeType.SCRIPT, NodeType.TIMER, NodeType.SUBPROCESS, NodeType.COPY].includes(node.type as NodeType) && (
+            <div className="space-y-3 pt-4 border-t border-slate-100 pb-4">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Settings size={12} /> 高级设置 (重试与数据映射)</label>
+              
+              <div className="space-y-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <span className="text-xs text-slate-600 font-medium">节点重试策略</span>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <span className="text-[10px] text-slate-400 mb-1 block">最大重试次数</span>
+                    <LazyInput type="number" min="0" placeholder="0"
+                      value={formData.retry?.maxRetries ?? ''}
+                      onChange={(val: any) => handleChange('retry', { ...formData.retry, maxRetries: val ? parseInt(val) : 0 })} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 mb-1 block">重试间隔(毫秒)</span>
+                    <LazyInput type="number" min="0" placeholder="1000"
+                      value={formData.retry?.delayMs ?? ''}
+                      onChange={(val: any) => handleChange('retry', { ...formData.retry, delayMs: val ? parseInt(val) : 1000 })} />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">💡 节点执行失败时自动重试。设为 0 表示不重试。</p>
+              </div>
+
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <span className="text-xs text-slate-600 font-medium mb-1 block">输入映射 (Inputs JSON)</span>
+                <p className="text-[10px] text-slate-400 mb-2 leading-relaxed">
+                  节点执行前，从流程变量提取到节点局部变量。<br/>
+                  格式: <code className="bg-slate-200 px-1 rounded text-[9px]">{"{\"localVar\": \"processVar\"}"}</code>
+                </p>
+                <LazyTextarea className="w-full border border-slate-200 rounded focus:ring-2 focus:ring-pink-200 outline-none p-2 text-[10px] font-mono min-h-[60px]"
+                  placeholder='{"orderId": "formData.id"}'
+                  value={formData.inputs ? JSON.stringify(formData.inputs, null, 2) : ''} 
+                  onChange={(val: any) => {
+                    if (!val) { handleChange('inputs', undefined); return; }
+                    try { handleChange('inputs', JSON.parse(val)); } catch(e) {}
+                  }} />
+              </div>
+
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <span className="text-xs text-slate-600 font-medium mb-1 block">输出映射 (Outputs JSON)</span>
+                <p className="text-[10px] text-slate-400 mb-2 leading-relaxed">
+                  节点执行后，将节点产出写回全局流程变量。<br/>
+                  格式: <code className="bg-slate-200 px-1 rounded text-[9px]">{"{\"processVar\": \"localVar\"}"}</code>
+                </p>
+                <LazyTextarea className="w-full border border-slate-200 rounded focus:ring-2 focus:ring-pink-200 outline-none p-2 text-[10px] font-mono min-h-[60px]"
+                  placeholder='{"formData.status": "resultStatus"}'
+                  value={formData.outputs ? JSON.stringify(formData.outputs, null, 2) : ''} 
+                  onChange={(val: any) => {
+                    if (!val) { handleChange('outputs', undefined); return; }
+                    try { handleChange('outputs', JSON.parse(val)); } catch(e) {}
+                  }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

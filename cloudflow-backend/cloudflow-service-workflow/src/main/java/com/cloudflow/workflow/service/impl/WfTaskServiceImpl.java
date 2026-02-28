@@ -739,6 +739,13 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         if (nodeButtons != null && !nodeButtons.isEmpty()) {
                             task.setButtonPermissions(nodeButtons);
                         }
+                        
+                        // P2-12: 设置是否允许编辑表单
+                        if (currentNode.getAllowEdit() != null) {
+                            task.setAllowEdit(currentNode.getAllowEdit());
+                        } else {
+                            task.setAllowEdit(false);
+                        }
                     }
                 }
             } catch (Exception e) {
