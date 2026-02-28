@@ -22,6 +22,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Input } from './ui/input';
 import { DatePicker } from './ui/date-picker';
+import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 
 // ==================== 辅助函数 ====================
 
@@ -2170,9 +2171,14 @@ function validateWorkflow(root: WorkflowNode): { errors: string[]; errorNodes: s
     errorNodes.push(root.id);
   }
   const checkApprover = (node: WorkflowNode) => {
-    if ((node.type === NodeType.APPROVAL || node.type === NodeType.PARALLEL) && !node.approverType && !node.approverValue) {
-      errors.push(`${node.type === NodeType.PARALLEL ? '会签' : '审批'}节点"${node.title}"未配置审批人`);
-      errorNodes.push(node.id);
+    if (node.type === NodeType.APPROVAL || node.type === NodeType.PARALLEL) {
+      if (!node.approverType) {
+        errors.push(`${node.type === NodeType.PARALLEL ? '会签' : '审批'}节点"${node.title}"未配置审批方式`);
+        errorNodes.push(node.id);
+      } else if (!['DIRECT_LEADER', 'DEPT_MANAGER'].includes(node.approverType) && !node.approverValue) {
+        errors.push(`${node.type === NodeType.PARALLEL ? '会签' : '审批'}节点"${node.title}"未配置具体的审批人`);
+        errorNodes.push(node.id);
+      }
     }
     if (node.next) checkApprover(node.next);
     if (node.branches) node.branches.forEach(checkApprover);
@@ -2233,14 +2239,30 @@ function validateWorkflow(root: WorkflowNode): { errors: string[]; errorNodes: s
       }
     }
     if (node.type === NodeType.MANUAL) {
-      if (!node.approverType && !node.approverValue) {
-        errors.push(`人工任务节点"${node.title}"未配置处理人`);
+      if (!node.approverType) {
+        errors.push(`人工任务节点"${node.title}"未配置处理人方式`);
+        errorNodes.push(node.id);
+      } else if (!['DIRECT_LEADER', 'DEPT_MANAGER'].includes(node.approverType) && !node.approverValue) {
+        errors.push(`人工任务节点"${node.title}"未配置具体的处理人`);
+        errorNodes.push(node.id);
+      }
+      if (!node.props?.taskDescription) {
+        errors.push(`人工任务节点"${node.title}"未配置任务描述`);
         errorNodes.push(node.id);
       }
     }
     if (node.type === NodeType.COPY) {
-      if (!node.approverType && !node.approverValue) {
-        errors.push(`抄送节点"${node.title}"未配置抄送人`);
+      if (!node.approverType) {
+        errors.push(`抄送节点"${node.title}"未配置抄送方式`);
+        errorNodes.push(node.id);
+      } else if (!['DIRECT_LEADER', 'DEPT_MANAGER'].includes(node.approverType) && !node.approverValue) {
+        errors.push(`抄送节点"${node.title}"未配置具体的抄送人`);
+        errorNodes.push(node.id);
+      }
+    }
+    if (node.type === NodeType.CONDITION) {
+      if (!node.condition || node.condition.trim() === '') {
+        errors.push(`条件分支"${node.title}"未配置触发条件`);
         errorNodes.push(node.id);
       }
     }
@@ -2285,6 +2307,145 @@ function validateWorkflow(root: WorkflowNode): { errors: string[]; errorNodes: s
   return { errors, errorNodes };
 }
 
+// ==================== 全局属性面板 ====================
+
+const GlobalPropertyPanel = ({
+  open,
+  onClose,
+  workflow,
+  onUpdate
+}: {
+  open: boolean;
+  onClose: () => void;
+  workflow: {
+    formId?: string;
+    description?: string;
+    category?: string;
+    tags?: string;
+    startPermissionType?: string;
+    startPermissionValue?: string;
+  };
+  onUpdate: (data: any) => void;
+}) => {
+  const [formData, setFormData] = useState(workflow || {});
+  
+  useEffect(() => {
+    if (open) {
+      setFormData(workflow || {});
+    }
+  }, [open, workflow]);
+
+  const handleChange = (field: string, value: any) => {
+    const updated = { ...formData, [field]: value };
+    setFormData(updated);
+    onUpdate(updated);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed right-0 top-0 h-full w-96 bg-white/90 backdrop-blur-2xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.25)] z-50 flex flex-col border-l border-slate-200/60 animate-in slide-in-from-right duration-300 ease-out">
+      <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-100 shadow-sm">
+            <Settings size={20} className="text-purple-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800 text-base">全局属性</h3>
+            <p className="text-xs text-slate-500 mt-0.5">配置流程的全局属性和元数据</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+          <X size={18} />
+        </button>
+      </div>
+      <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><FileText size={12} /> 基础信息</label>
+            
+            <div>
+              <span className="text-xs text-slate-400 mb-1 block">流程描述</span>
+              <LazyTextarea 
+                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-purple-400 outline-none"
+                placeholder="请输入流程描述"
+                value={formData.description || ''} 
+                onChange={(val: string) => handleChange('description', val)} 
+              />
+            </div>
+
+            <div>
+              <span className="text-xs text-slate-400 mb-1 block">流程分类</span>
+              <Select value={formData.category || ''} onValueChange={v => handleChange('category', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择分类" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="office">行政办公</SelectItem>
+                  <SelectItem value="finance">财务审批</SelectItem>
+                  <SelectItem value="hr">人事管理</SelectItem>
+                  <SelectItem value="sales">业务销售</SelectItem>
+                  <SelectItem value="it">IT运维</SelectItem>
+                  <SelectItem value="other">其他</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <span className="text-xs text-slate-400 mb-1 block">流程标签</span>
+              <LazyInput 
+                placeholder="多个标签用逗号分隔"
+                value={formData.tags || ''} 
+                onChange={(val: string) => handleChange('tags', val)} 
+              />
+            </div>
+            
+            <div>
+              <span className="text-xs text-slate-400 mb-1 block">关联表单</span>
+              <LazyInput 
+                placeholder="请输入表单ID，例如：form_leave_01"
+                value={formData.formId || ''} 
+                onChange={(val: string) => handleChange('formId', val)} 
+              />
+              <p className="text-[10px] text-slate-400 mt-1">💡 后续将支持从表单列表中选择</p>
+            </div>
+          </div>
+          
+          <div className="space-y-3 pt-4 border-t border-slate-100">
+            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><ShieldCheck size={12} /> 发起权限</label>
+            <div>
+              <span className="text-xs text-slate-400 mb-1 block">谁可以发起此流程</span>
+              <Select value={formData.startPermissionType || 'ALL'} onValueChange={v => {
+                handleChange('startPermissionType', v);
+                if (v === 'ALL') handleChange('startPermissionValue', '');
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">所有人</SelectItem>
+                  <SelectItem value="ROLE">指定角色</SelectItem>
+                  <SelectItem value="USER">指定人员</SelectItem>
+                  <SelectItem value="DEPT">指定部门</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {['ROLE', 'USER', 'DEPT'].includes(formData.startPermissionType || '') && (
+              <ApproverValueSelector
+                type={formData.startPermissionType as string}
+                value={formData.startPermissionValue || ''}
+                onChange={(val) => handleChange('startPermissionValue', val)}
+                multiple={true}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ==================== 主组件 ====================
 
 interface WorkflowBuilderProps {
@@ -2308,6 +2469,8 @@ const WorkflowToolbar = ({
   canUndo,
   canRedo,
   onOpenTemplatePicker,
+  onOpenGlobalConfig,
+  onOpenSettings,
   saving
 }: {
   workflowName: string;
@@ -2321,6 +2484,8 @@ const WorkflowToolbar = ({
   canUndo: boolean;
   canRedo: boolean;
   onOpenTemplatePicker: () => void;
+  onOpenGlobalConfig: () => void;
+  onOpenSettings: () => void;
   saving: boolean;
 }) => {
   return (
@@ -2356,6 +2521,20 @@ const WorkflowToolbar = ({
         >
           <Sparkles size={14} className="text-pink-500" />
           模板库
+        </button>
+        <button
+          onClick={onOpenSettings}
+          className="px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-blue-500 hover:border-blue-200 transition-all flex items-center gap-2 shadow-sm"
+        >
+          <FileText size={14} className="text-blue-500" />
+          流程设置
+        </button>
+        <button
+          onClick={onOpenGlobalConfig}
+          className="px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-purple-500 hover:border-purple-200 transition-all flex items-center gap-2 shadow-sm"
+        >
+          <Settings size={14} className="text-purple-500" />
+          全局属性
         </button>
         <div className="w-px h-6 bg-slate-200 mx-1"></div>
         <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
@@ -2411,12 +2590,61 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const [activeQuickAddId, setActiveQuickAddId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [invalidNodeIds, setInvalidNodeIds] = useState<string[]>([]);
+  const [showGlobalConfig, setShowGlobalConfig] = useState(false);
+  const [globalConfig, setGlobalConfig] = useState<{
+    formId?: string;
+    description?: string;
+    category?: string;
+    tags?: string;
+    startPermissionType?: string;
+    startPermissionValue?: string;
+  }>({});
+  
+  // P1: 流程设置状态
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [workflowDescription, setWorkflowDescription] = useState('');
+  const [workflowCategory, setWorkflowCategory] = useState('');
+  const [workflowTags, setWorkflowTags] = useState<string[]>([]);
+  const [selectedFormId, setSelectedFormId] = useState('');
+  
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     message: string;
     onConfirm: () => void;
   }>({ open: false, message: '', onConfirm: () => {} });
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // P1: 从 workflow 对象初始化流程设置状态
+  useEffect(() => {
+    if (workflow) {
+      // 初始化描述
+      if (workflow.description) {
+        setWorkflowDescription(workflow.description);
+      }
+      
+      // 初始化分类
+      if (workflow.category) {
+        setWorkflowCategory(workflow.category);
+      }
+      
+      // 初始化标签（从 JSON 字符串解析）
+      if (workflow.tags) {
+        try {
+          const parsedTags = JSON.parse(workflow.tags);
+          if (Array.isArray(parsedTags)) {
+            setWorkflowTags(parsedTags);
+          }
+        } catch (e) {
+          console.error('解析标签失败:', e);
+        }
+      }
+      
+      // 初始化表单ID
+      if (workflow.formId) {
+        setSelectedFormId(workflow.formId);
+      }
+    }
+  }, [workflow?.id]); // 只在 workflow.id 变化时重新初始化
 
   useEffect(() => {
     if (onChange && workflow) onChange({ ...workflow, nodes: root, name: workflowName, key: workflowKey });
@@ -2746,16 +2974,35 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const handleSave = async () => {
     const { errors, errorNodes } = validateWorkflow(root);
     setInvalidNodeIds(errorNodes);
-    if (errors.length > 0) { errors.forEach(err => toast.error(err)); return; }
+    
+    // P1: 增加对 processKey 和 processName 的非空和格式验证
     if (!workflowName || workflowName.trim() === '') { toast.error('请输入流程名称'); return; }
+    if (!workflowKey || workflowKey.trim() === '') { toast.error('请输入流程标识 (KEY)'); return; }
+    if (!/^[a-zA-Z0-9_]+$/.test(workflowKey)) { 
+      toast.error('流程标识格式不正确: 只能包含英文字母、数字和下划线'); return; 
+    }
+    
+    if (errors.length > 0) { errors.forEach(err => toast.error(err)); return; }
+    
     if (onSave && workflow) {
       setSaving(true);
-      try { await onSave({ ...workflow, nodes: root, name: workflowName, key: workflowKey }); } finally { setSaving(false); }
+      try { await onSave({ ...workflow, nodes: root, name: workflowName, key: workflowKey, ...globalConfig }); } finally { setSaving(false); }
       return;
     }
     try {
       setSaving(true);
-      await saveProcessDefinition({ processName: workflowName, processKey: workflowKey, modelJson: JSON.stringify(root) });
+      // P1: 包含所有新增字段（description, category, tags, formId）
+      await saveProcessDefinition({ 
+        definitionId: workflow?.id?.startsWith('new_') ? undefined : workflow?.id,
+        processName: workflowName, 
+        processKey: workflowKey, 
+        modelJson: JSON.stringify(root),
+        description: workflowDescription || undefined,
+        category: workflowCategory || undefined,
+        tags: workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined,
+        formId: selectedFormId || undefined,
+        ...globalConfig 
+      });
       toast.success('流程已保存');
     } catch (e) { console.error(e); toast.error('保存失败'); } finally { setSaving(false); }
   };
@@ -2763,12 +3010,33 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const handleDeploy = async () => {
     const { errors, errorNodes } = validateWorkflow(root);
     setInvalidNodeIds(errorNodes);
+    
+    // P1: 增加对 processKey 和 processName 的非空和格式验证
+    if (!workflowName || workflowName.trim() === '') { toast.error('请输入流程名称'); return; }
+    if (!workflowKey || workflowKey.trim() === '') { toast.error('请输入流程标识 (KEY)'); return; }
+    if (!/^[a-zA-Z0-9_]+$/.test(workflowKey)) { 
+      toast.error('流程标识格式不正确: 只能包含英文字母、数字和下划线'); return; 
+    }
+    
     if (errors.length > 0) { errors.forEach(err => toast.error(err)); return; }
+    
     try {
       setSaving(true);
-      const definition = { definitionId: workflow?.id?.startsWith('new_') ? undefined : workflow?.id, processName: workflowName, processKey: workflowKey, modelJson: JSON.stringify(root) };
+      // P0: 使用 definitionId；P1: 携带所有新增字段
+      const definition = { 
+        definitionId: workflow?.id?.startsWith('new_') ? undefined : workflow?.id, 
+        processName: workflowName, 
+        processKey: workflowKey, 
+        modelJson: JSON.stringify(root),
+        description: workflowDescription || undefined,
+        category: workflowCategory || undefined,
+        tags: workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined,
+        formId: selectedFormId || undefined,
+        ...globalConfig
+      };
       const saveRes = await saveProcessDefinition(definition);
-      const definitionId = saveRes?.id;
+      // API 应该返回带 id 字段的对象，如果返回本身就是 ID 则直接用
+      const definitionId = (saveRes as any)?.id || saveRes;
       if (!definitionId) {
         toast.error('发布失败：无法获取流程ID');
         return;
@@ -2776,6 +3044,20 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       await deployProcessDefinition(definitionId);
       toast.success('流程已发布并上线！');
     } catch (e) { console.error(e); toast.error('发布失败'); } finally { setSaving(false); }
+  };
+
+  // P1: 处理流程设置保存
+  const handleSettingsSave = (settings: {
+    description: string;
+    category: string;
+    tags: string[];
+    formId: string;
+  }) => {
+    setWorkflowDescription(settings.description);
+    setWorkflowCategory(settings.category);
+    setWorkflowTags(settings.tags);
+    setSelectedFormId(settings.formId);
+    toast.success('流程设置已更新');
   };
 
   return (
@@ -2792,6 +3074,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         canUndo={canUndo}
         canRedo={canRedo}
         onOpenTemplatePicker={() => setShowTemplates(true)}
+        onOpenSettings={() => setShowSettingsModal(true)}
+        onOpenGlobalConfig={() => setShowGlobalConfig(true)}
         saving={saving}
       />
 
@@ -2870,8 +3154,29 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         <PropertyPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={handleUpdateNode} onDelete={handleDeleteNode} onConfirmAction={(message, onConfirm) => setConfirmDialog({ open: true, message, onConfirm })} />
       )}
 
+      {/* 全局属性面板 */}
+      <GlobalPropertyPanel 
+        open={showGlobalConfig} 
+        onClose={() => setShowGlobalConfig(false)} 
+        workflow={globalConfig}
+        onUpdate={setGlobalConfig}
+      />
+
       {/* 模板选择器 */}
       <TemplatePickerModal open={showTemplates} onClose={() => setShowTemplates(false)} onSelect={handleApplyTemplate} />
+
+      {/* 流程设置模态框 */}
+      <WorkflowSettingsModal
+        open={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        workflowName={workflowName}
+        workflowKey={workflowKey}
+        description={workflowDescription}
+        category={workflowCategory}
+        tags={workflowTags}
+        formId={selectedFormId}
+        onSave={handleSettingsSave}
+      />
 
       {/* 确认对话框 */}
       <ConfirmDialog

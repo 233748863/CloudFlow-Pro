@@ -1,0 +1,320 @@
+import React, { useState, useEffect } from 'react';
+import { X, Settings, FileText, Tag, FolderOpen } from 'lucide-react';
+import { Input } from './ui/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { getFormDefinitions } from '../services/api/workflow';
+import { FormDefinitionListItem } from '../types/workflow';
+import { toast } from 'sonner';
+
+// 流程分类选项
+const WORKFLOW_CATEGORIES = [
+  { value: '', label: '未分类' },
+  { value: 'office', label: '行政办公' },
+  { value: 'finance', label: '财务管理' },
+  { value: 'hr', label: '人事管理' },
+  { value: 'sales', label: '销售业务' },
+  { value: 'it', label: 'IT运维' },
+  { value: 'production', label: '生产制造' },
+  { value: 'quality', label: '质量管理' },
+  { value: 'project', label: '项目管理' },
+  { value: 'other', label: '其他' },
+];
+
+// 常用标签建议
+const COMMON_TAGS = [
+  '审批', '请假', '报销', '采购', '合同',
+  '入职', '离职', '培训', '考勤', '绩效',
+  '项目', '任务', '变更', '发布', '维护',
+];
+
+interface WorkflowSettingsModalProps {
+  open: boolean;
+  onClose: () => void;
+  workflowName: string;
+  workflowKey: string;
+  description: string;
+  category: string;
+  tags: string[];
+  formId: string;
+  onSave: (settings: {
+    description: string;
+    category: string;
+    tags: string[];
+    formId: string;
+  }) => void;
+}
+
+export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
+  open,
+  onClose,
+  workflowName,
+  workflowKey,
+  description: initialDescription,
+  category: initialCategory,
+  tags: initialTags,
+  formId: initialFormId,
+  onSave,
+}) => {
+  const [description, setDescription] = useState(initialDescription);
+  const [category, setCategory] = useState(initialCategory);
+  const [tags, setTags] = useState<string[]>(initialTags);
+  const [formId, setFormId] = useState(initialFormId);
+  const [tagInput, setTagInput] = useState('');
+  
+  // P1: 表单列表状态
+  const [formList, setFormList] = useState<FormDefinitionListItem[]>([]);
+  const [loadingForms, setLoadingForms] = useState(false);
+
+  // 同步外部状态变化
+  useEffect(() => {
+    setDescription(initialDescription);
+    setCategory(initialCategory);
+    setTags(initialTags);
+    setFormId(initialFormId);
+  }, [initialDescription, initialCategory, initialTags, initialFormId]);
+
+  // P1: 加载表单列表
+  useEffect(() => {
+    if (open) {
+      loadForms();
+    }
+  }, [open]);
+
+  const loadForms = async () => {
+    try {
+      setLoadingForms(true);
+      const forms = await getFormDefinitions();
+      setFormList(forms || []);
+    } catch (error) {
+      console.error('加载表单列表失败:', error);
+      toast.error('加载表单列表失败');
+    } finally {
+      setLoadingForms(false);
+    }
+  };
+
+  const handleAddTag = (tag: string) => {
+    const trimmedTag = tag.trim();
+    if (trimmedTag && !tags.includes(trimmedTag)) {
+      setTags([...tags, trimmedTag]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  const handleSave = () => {
+    onSave({
+      description,
+      category,
+      tags,
+      formId,
+    });
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
+        {/* 标题栏 */}
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
+              <Settings size={20} className="text-pink-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">流程设置</h2>
+              <p className="text-xs text-slate-400 mt-0.5">配置流程的基本信息和属性</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X size={18} className="text-slate-400" />
+          </button>
+        </div>
+
+        {/* 内容区域 */}
+        <div className="p-6 flex-1 overflow-y-auto space-y-5">
+          {/* 基本信息（只读） */}
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <FileText size={14} />
+              基本信息
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">流程名称</span>
+                <Input
+                  value={workflowName}
+                  disabled
+                  className="bg-slate-50 text-slate-500"
+                />
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">流程Key</span>
+                <Input
+                  value={workflowKey}
+                  disabled
+                  className="bg-slate-50 text-slate-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 流程描述 */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">流程描述</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="请输入流程的详细描述，帮助用户了解此流程的用途和使用场景..."
+              className="w-full border border-slate-200 rounded-lg p-3 text-sm min-h-[100px] focus:ring-2 focus:ring-pink-400 focus:border-pink-400 outline-none resize-none"
+            />
+            <p className="text-xs text-slate-400">
+              💡 建议包含：流程用途、适用场景、注意事项等
+            </p>
+          </div>
+
+          {/* 流程分类 */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <FolderOpen size={14} />
+              流程分类
+            </label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择流程分类" />
+              </SelectTrigger>
+              <SelectContent>
+                {WORKFLOW_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-slate-400">
+              💡 选择合适的分类，便于流程管理和检索
+            </p>
+          </div>
+
+          {/* 流程标签 */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Tag size={14} />
+              流程标签
+            </label>
+            
+            {/* 已添加的标签 */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-pink-100 text-pink-600 rounded-full text-xs font-medium"
+                  >
+                    {tag}
+                    <button
+                      onClick={() => handleRemoveTag(tag)}
+                      className="hover:text-pink-700 ml-1"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* 标签输入 */}
+            <div className="flex gap-2">
+              <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddTag(tagInput);
+                  }
+                }}
+                placeholder="输入标签后按回车添加"
+                className="flex-1"
+              />
+              <button
+                onClick={() => handleAddTag(tagInput)}
+                disabled={!tagInput.trim()}
+                className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                添加
+              </button>
+            </div>
+
+            {/* 常用标签快捷选择 */}
+            <div className="space-y-2">
+              <p className="text-xs text-slate-400">常用标签：</p>
+              <div className="flex flex-wrap gap-2">
+                {COMMON_TAGS.filter(t => !tags.includes(t)).slice(0, 10).map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => handleAddTag(tag)}
+                    className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs hover:bg-slate-200 transition-colors"
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 关联表单 */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">关联表单</label>
+            {loadingForms ? (
+              <div className="w-full border border-slate-200 rounded-lg p-3 text-sm text-slate-400 bg-slate-50">
+                加载表单列表中...
+              </div>
+            ) : (
+              <Select value={formId} onValueChange={setFormId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择关联的表单（可选）" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">无</SelectItem>
+                  {formList.map((form) => (
+                    <SelectItem key={form.id} value={form.id}>
+                      {form.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-xs text-slate-400">
+              💡 关联表单后，流程启动时将使用该表单收集数据
+            </p>
+          </div>
+        </div>
+
+        {/* 底部按钮 */}
+        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-sm font-medium"
+          >
+            取消
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors text-sm font-medium"
+          >
+            保存设置
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

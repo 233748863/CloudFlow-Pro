@@ -121,6 +121,13 @@ export interface WorkflowDefinition {
   version: number;
   formId?: string; // 绑定动态表单
   nodes: WorkflowNode;
+  // P1: 新增字段（与后端 WfProcessDefinition 对齐）
+  description?: string;
+  category?: string;
+  tags?: string; // JSON 数组字符串
+  startPermissionType?: string;
+  startPermissionValue?: string;
+  deptId?: number;
 }
 
 // --- Instance Types ---

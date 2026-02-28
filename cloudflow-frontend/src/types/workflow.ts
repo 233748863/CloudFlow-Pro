@@ -264,6 +264,12 @@ export interface SaveProcessDefinitionRequest {
   processKey: string;
   formId?: string;
   modelJson: string;
+  description?: string;           // P1: 流程描述
+  category?: string;              // P1: 流程分类
+  tags?: string;                  // P1: 流程标签（JSON 数组字符串）
+  startPermissionType?: string;   // P1: 启动权限类型 (ALL/ROLE/DEPT/USER)
+  startPermissionValue?: string;  // P1: 启动权限值
+  deptId?: number;                // P1: 部门ID（数据权限）
 }
 
 /**
