@@ -133,6 +133,20 @@ public class WorkflowEventPublisher {
         // 如需要可以创建 ProcessTerminatedEvent 类
     }
 
+    /**
+     * 发布子流程完成事件
+     * 当子流程执行完毕后，通知父流程继续流转
+     *
+     * @param parentInstanceId  父流程实例ID
+     * @param parentNodeKey     父流程中触发子流程的节点Key
+     * @param childInstanceId   子流程实例ID
+     */
+    public void publishSubprocessCompleted(String parentInstanceId, String parentNodeKey, String childInstanceId) {
+        log.info("[WorkflowEventPublisher] 发布子流程完成事件: parentInstanceId={}, parentNodeKey={}, childInstanceId={}",
+                parentInstanceId, parentNodeKey, childInstanceId);
+        publish(new SubprocessCompletedEvent(this, parentInstanceId, parentNodeKey, childInstanceId));
+    }
+
     // ==================== 节点级事件 ====================
 
     /**

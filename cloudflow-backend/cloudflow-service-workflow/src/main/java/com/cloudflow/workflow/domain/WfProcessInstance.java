@@ -133,6 +133,12 @@ public class WfProcessInstance implements Serializable {
     @TableField(exist = false)
     private java.util.List<java.util.Map<String, Object>> stepsDetail;
 
+    /** 父流程实例ID（子流程场景，标识由哪个父流程启动） */
+    private String parentInstanceId;
+
+    /** 父流程中触发子流程的节点Key（子流程完成后回调父流程用） */
+    private String parentNodeKey;
+
     public String getCurrentNodeName() { return currentNodeName; }
     public void setCurrentNodeName(String currentNodeName) { this.currentNodeName = currentNodeName; }
 
@@ -356,5 +362,21 @@ public class WfProcessInstance implements Serializable {
 
     public void setProcessDefId(String processDefId) {
         this.definitionId = processDefId;
+    }
+
+    public String getParentInstanceId() {
+        return parentInstanceId;
+    }
+
+    public void setParentInstanceId(String parentInstanceId) {
+        this.parentInstanceId = parentInstanceId;
+    }
+
+    public String getParentNodeKey() {
+        return parentNodeKey;
+    }
+
+    public void setParentNodeKey(String parentNodeKey) {
+        this.parentNodeKey = parentNodeKey;
     }
 }

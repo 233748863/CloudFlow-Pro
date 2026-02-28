@@ -12,7 +12,7 @@ public class WfNodeConfig implements Serializable {
     private String type; // 节点类型：START, APPROVAL, CONDITION, PARALLEL, END, NOTIFICATION, SCRIPT, TIMER, SUBPROCESS, MANUAL
     private String title;
     private String description;
-    private String approverType; // 审批人类型：ROLE, USER, DEPT_MANAGER, DIRECT_LEADER
+    private String approverType; // 审批人类型：USER, USERS(USER_LIST), ROLE, DEPT, DEPT_MANAGER, DIRECT_LEADER
     private String approverValue;
     private WfNodeConfig next;
     private List<WfNodeConfig> branches;

@@ -253,17 +253,18 @@ public class JsonSchemaValidator {
     
     /**
      * 判断 PARALLEL 节点是否为会签模式
-     * signType 可能存储在节点顶层（node.signType）或 props 内（node.props.signType）
+     * signType 存储在节点顶层（node.signType），这是前端 WorkflowBuilder 的实际存储方式。
+     * 同时兼容 props.signType 以防旧数据或其他来源。
      */
     private boolean isCountersignNode(JsonNode node) {
         String signType = null;
-        // 优先检查 props.signType（前端 WorkflowBuilder 的存储方式）
-        if (node.has("props") && node.get("props").has("signType")) {
-            signType = node.get("props").get("signType").asText();
-        }
-        // 兼容直接存储在节点顶层的情况
-        if (signType == null && node.has("signType")) {
+        // 优先检查顶层 signType（前端 WorkflowBuilder 的实际存储位置）
+        if (node.has("signType")) {
             signType = node.get("signType").asText();
+        }
+        // 兼容 props.signType（旧数据或其他来源可能存储在此）
+        if (signType == null && node.has("props") && node.get("props").has("signType")) {
+            signType = node.get("props").get("signType").asText();
         }
         if (signType == null) {
             return false;

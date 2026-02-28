@@ -289,17 +289,50 @@ public class ConditionExpressionEngine {
         }
 
         try {
+            // P1-4: 前端传入的表达式使用 JavaScript 风格（如 amount > 5000），
+            // 但 SpEL 的 setVariable 设置的变量需要用 #varName 引用。
+            // 这里自动将表达式中的已知变量名替换为 #varName 格式。
+            String processedExpr = preprocessSpelExpression(expression, variables);
+
             // SimpleEvaluationContext 是安全的：禁止类型引用(T())、构造函数(new)、Bean引用(@)
             SimpleEvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
             if (variables != null) {
                 variables.forEach(context::setVariable);
             }
-            Boolean result = spelParser.parseExpression(expression).getValue(context, Boolean.class);
+            Boolean result = spelParser.parseExpression(processedExpr).getValue(context, Boolean.class);
             return result != null && result;
         } catch (Exception e) {
             log.warn("[ConditionExpressionEngine] SpEL表达式求值失败: expression={}, error={}", expression, e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * P1-4: 预处理前端传入的条件表达式，使其兼容 SpEL 语法
+     * 1. 将表达式中出现的已知变量名替换为 #varName（SpEL 变量引用格式）
+     * 2. 前端使用 JavaScript 风格的 &&、||、== 在 SpEL 中均可正常工作
+     *    （SpEL 的 == 对字符串做值比较，等同于 .equals()）
+     *
+     * @param expression 原始表达式
+     * @param variables  流程变量（用于识别变量名）
+     * @return 处理后的 SpEL 表达式
+     */
+    private String preprocessSpelExpression(String expression, Map<String, Object> variables) {
+        if (variables == null || variables.isEmpty()) {
+            return expression;
+        }
+        String result = expression;
+        // 按变量名长度降序排序，避免短变量名误替换长变量名的一部分
+        // 例如 amount 和 amountTotal，先替换 amountTotal 再替换 amount
+        List<String> sortedKeys = new java.util.ArrayList<>(variables.keySet());
+        sortedKeys.sort((a, b) -> b.length() - a.length());
+        for (String varName : sortedKeys) {
+            // 只替换独立的变量名（前后不是字母/数字/下划线/#），避免误替换已有 #varName 或子串
+            // 使用单词边界匹配：变量名前后不能是字母、数字、下划线或 #
+            String regex = "(?<![#\\w])" + java.util.regex.Pattern.quote(varName) + "(?!\\w)";
+            result = result.replaceAll(regex, "#" + varName);
+        }
+        return result;
     }
 
     /**

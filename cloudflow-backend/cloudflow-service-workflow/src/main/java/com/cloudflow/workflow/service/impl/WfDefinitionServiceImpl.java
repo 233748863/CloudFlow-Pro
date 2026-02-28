@@ -473,6 +473,21 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if ("MANUAL".equals(node.getType()) && !StringUtils.hasText(node.getApproverType())) {
             throw WorkflowException.validationError("人工任务节点 [" + node.getTitle() + "] 未配置处理人");
         }
+        // P1-5: COPY（抄送）节点校验 — 必须配置抄送人
+        if ("COPY".equals(node.getType())) {
+            if (!StringUtils.hasText(node.getApproverType()) || !StringUtils.hasText(node.getApproverValue())) {
+                throw WorkflowException.validationError("抄送节点 [" + node.getTitle() + "] 未配置抄送人（approverType 和 approverValue 不能为空）");
+            }
+        }
+        // P1-6: NOTIFICATION（通知）节点校验 — 必须配置通知标题或内容
+        if ("NOTIFICATION".equals(node.getType())) {
+            Map<String, Object> nodeProps = node.getProps();
+            boolean hasTitle = nodeProps != null && StringUtils.hasText((String) nodeProps.get("notificationTitle"));
+            boolean hasContent = nodeProps != null && StringUtils.hasText((String) nodeProps.get("notificationContent"));
+            if (!hasTitle && !hasContent) {
+                throw WorkflowException.validationError("通知节点 [" + node.getTitle() + "] 未配置通知标题或内容");
+            }
+        }
         // P0-3: PARALLEL 节点会签模式与分支互斥校验
         // 防止攻击者绕过前端直接提交同时包含 signType 和 branches 的 PARALLEL 节点
         if ("PARALLEL".equals(node.getType())) {

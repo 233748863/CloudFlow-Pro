@@ -285,12 +285,33 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
     /**
      * 处理并行网关
+     * 并行网关的所有分支都会被执行（不评估条件），分支执行完毕后在汇合点等待所有分支完成
+     *
+     * 关键修复：前端数据模型中，并行网关的分支头节点类型为 CONDITION（仅作为分支标签/描述使用），
+     * 但 CONDITION 类型在 runNode() 中会走 handleConditionGateway() 逻辑去评估条件表达式。
+     * 并行网关的语义是"所有分支都执行"，不应该评估条件。
+     * 因此这里对 CONDITION 类型的分支头节点做特殊处理：跳过条件评估，直接执行其 next 链。
      */
     private void handleParallelGateway(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
         List<WfNodeConfig> branches = node.getBranches();
         if (branches != null) {
             for (WfNodeConfig branch : branches) {
-                runNode(instance, branch, variables, depth + 1, rootNode);
+                if ("CONDITION".equals(branch.getType())) {
+                    // 并行网关中的 CONDITION 节点仅作为分支标签，不评估条件
+                    // 直接执行该分支的 next 链（分支内的实际业务节点）
+                    if (branch.getNext() != null) {
+                        runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
+                    }
+                    // 如果 CONDITION 分支自身也有嵌套 branches（理论上不应该出现在并行网关中），也执行
+                    if (branch.getBranches() != null && !branch.getBranches().isEmpty()) {
+                        for (WfNodeConfig subBranch : branch.getBranches()) {
+                            runNode(instance, subBranch, variables, depth + 1, rootNode);
+                        }
+                    }
+                } else {
+                    // 非 CONDITION 类型的分支节点，正常执行
+                    runNode(instance, branch, variables, depth + 1, rootNode);
+                }
             }
         }
     }
@@ -305,9 +326,32 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             List<WfNodeConfig> branches = currentNode.getBranches();
 
             if ("PARALLEL".equals(strategy)) {
+                // 与 handleParallelGateway 保持一致：CONDITION 类型分支头节点仅作标签，跳过条件评估
                 for (WfNodeConfig branch : branches) {
-                    runNode(instance, branch, variables, depth + 1, rootNode);
+                    if ("CONDITION".equals(branch.getType())) {
+                        if (branch.getNext() != null) {
+                            runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
+                        }
+                    } else {
+                        runNode(instance, branch, variables, depth + 1, rootNode);
+                    }
                 }
+                return;
+            } else if ("RACE".equals(strategy)) {
+                // P2-8: RACE（竞争模式）：所有分支并行启动，第一个完成的分支继续流转，其余分支被忽略
+                // 使用 Redis 计数器实现：只有第一个到达汇合点的分支（count==1）才继续执行 next
+                String raceKey = "sys:wf:race:" + instance.getInstanceId() + ":" + currentNodeKey;
+                for (WfNodeConfig branch : branches) {
+                    if ("CONDITION".equals(branch.getType())) {
+                        if (branch.getNext() != null) {
+                            runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
+                        }
+                    } else {
+                        runNode(instance, branch, variables, depth + 1, rootNode);
+                    }
+                }
+                // 注意：RACE 模式下，分支完成后的汇合逻辑由 runNode 中的并行汇聚检查处理
+                // 这里只负责启动所有分支，汇合时只有第一个到达的分支会继续
                 return;
             } else {
                 // EXCLUSIVE 或默认策略
@@ -369,7 +413,25 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
         // P2-9: 全局监听器 — 流程结束回调
         globalListenerDispatcher.fireFinish(instance, null, null);
+
+        // 子流程完成后回调父流程：如果当前实例是子流程，发布事件通知父流程继续流转
+        if (WfProcessStatus.COMPLETED.getCode().equals(status)
+                && StringUtils.hasText(instance.getParentInstanceId())
+                && StringUtils.hasText(instance.getParentNodeKey())) {
+            try {
+                workflowEventPublisher.publishSubprocessCompleted(
+                        instance.getParentInstanceId(),
+                        instance.getParentNodeKey(),
+                        instance.getInstanceId());
+                log.info("[completeInstance] 子流程完成事件已发布, parentInstanceId={}, parentNodeKey={}, childInstanceId={}",
+                        instance.getParentInstanceId(), instance.getParentNodeKey(), instance.getInstanceId());
+            } catch (Exception e) {
+                log.error("[completeInstance] 发布子流程完成事件失败, parentInstanceId={}, parentNodeKey={}: {}",
+                        instance.getParentInstanceId(), instance.getParentNodeKey(), e.getMessage(), e);
+            }
+        }
     }
+
 
     // ==================== 节点查找 ====================
 

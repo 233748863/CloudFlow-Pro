@@ -112,6 +112,8 @@ CREATE TABLE wf_process_instance (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 1代表删除）',
+  parent_instance_id VARCHAR(64)    DEFAULT NULL COMMENT '父流程实例ID（子流程场景，标识由哪个父流程启动）',
+  parent_node_key   VARCHAR(64)     DEFAULT NULL COMMENT '父流程中触发子流程的节点Key（子流程完成后回调父流程用）',
   PRIMARY KEY (instance_id),
   KEY idx_start_user (start_user_id),
   KEY idx_business_key (business_key),
@@ -121,7 +123,8 @@ CREATE TABLE wf_process_instance (
   KEY idx_start_time (start_time),
   KEY idx_dept_id (dept_id),
   KEY idx_create_by (create_by),
-  KEY idx_del_flag (del_flag)
+  KEY idx_del_flag (del_flag),
+  KEY idx_parent_instance (parent_instance_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流实例表';
 
 -- 4. 流程任务表

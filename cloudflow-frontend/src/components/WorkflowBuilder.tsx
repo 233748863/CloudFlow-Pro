@@ -1311,6 +1311,31 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               </p>
             </div>
           )}
+          {/* P2-11: SLA 超时配置 — 适用于审批节点和人工任务节点 */}
+          {(node.type === NodeType.APPROVAL || node.type === NodeType.MANUAL) && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Clock size={12} /> SLA 超时设置</label>
+              <div>
+                <span className="text-xs text-slate-400 mb-1 block">超时时间（小时）</span>
+                <LazyInput type="number" placeholder="例如: 24"
+                  value={formData.slaHours || ''}
+                  onChange={(val: any) => handleChange('slaHours', val ? parseInt(val) : undefined)} />
+                <p className="text-[10px] text-slate-400 mt-1">💡 设置后，超时未处理将自动触发超时动作。留空表示不限时。</p>
+              </div>
+              {formData.slaHours && formData.slaHours > 0 && (
+                <div>
+                  <span className="text-xs text-slate-400 mb-1 block">超时动作</span>
+                  <Select value={formData.slaAction || 'AUTO_PASS'} onValueChange={v => handleChange('slaAction', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AUTO_PASS">自动通过</SelectItem>
+                      <SelectItem value="AUTO_REJECT">自动拒绝</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
           {node.type === NodeType.NOTIFICATION && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Bell size={12} /> 通知设置</label>
