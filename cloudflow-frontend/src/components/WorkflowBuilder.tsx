@@ -864,29 +864,50 @@ const TemplatePickerModal = ({ open, onClose, onSelect }: {
 
 // ==================== 属性面板 ====================
 
+// 模块级缓存对象，避免在每次打开面板时重复拉取造成请求轰炸
+let cachedRoles: any[] | null = null;
+let cachedUsers: any[] | null = null;
+let cachedDepts: any[] | null = null;
+
+// 减少历史撤销记录污染的本地化受控组件
+const LazyInput = ({ value, onChange, ...props }: any) => {
+  const [val, setVal] = useState(value);
+  useEffect(() => { setVal(value); }, [value]);
+  return <Input {...props} value={val || ''} onChange={(e: any) => setVal(e.target.value)} onBlur={() => onChange(val)} onKeyDown={(e: any) => { if(e.key==='Enter') onChange(val); }} />;
+};
+
+const LazyTextarea = ({ value, onChange, className, ...props }: any) => {
+  const [val, setVal] = useState(value);
+  useEffect(() => { setVal(value); }, [value]);
+  return <textarea {...props} className={className} value={val || ''} onChange={(e: any) => setVal(e.target.value)} onBlur={() => onChange(val)} />;
+};
+
 // 角色/用户/部门选择器子组件 - 支持多选
 const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple = false }: {
   type: string; value: string; onChange: (val: string) => void; onLabelChange?: (label: string) => void; multiple?: boolean;
 }) => {
-  const [roles, setRoles] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [depts, setDepts] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>(cachedRoles || []);
+  const [users, setUsers] = useState<any[]>(cachedUsers || []);
+  const [depts, setDepts] = useState<any[]>(cachedDepts || []);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
 
-  // 加载数据
+  // 加载数据 (结合缓存机制)
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
       try {
-        if (type === 'ROLE') {
+        if (type === 'ROLE' && !cachedRoles) {
+          setLoading(true);
           const res: any = await getRoleList();
-          setRoles(Array.isArray(res) ? res : (res?.data || res?.rows || []));
-        } else if (type === 'USER') {
+          cachedRoles = Array.isArray(res) ? res : (res?.data || res?.rows || []);
+          setRoles(cachedRoles);
+        } else if (type === 'USER' && !cachedUsers) {
+          setLoading(true);
           const res: any = await getUserList();
-          const list = Array.isArray(res) ? res : (res?.data || res?.rows || []);
-          setUsers(list);
-        } else if (type === 'DEPT') {
+          cachedUsers = Array.isArray(res) ? res : (res?.data || res?.rows || []);
+          setUsers(cachedUsers);
+        } else if (type === 'DEPT' && !cachedDepts) {
+          setLoading(true);
           const res: any = await getDeptTree();
           // 部门树扁平化
           const flatten = (nodes: any[], result: any[] = []): any[] => {
@@ -897,7 +918,8 @@ const ApproverValueSelector = ({ type, value, onChange, onLabelChange, multiple 
             return result;
           };
           const tree = Array.isArray(res) ? res : (res?.data || []);
-          setDepts(flatten(tree));
+          cachedDepts = flatten(tree);
+          setDepts(cachedDepts);
         }
       } catch (e) {
         console.error('加载选项数据失败:', e);
@@ -1162,7 +1184,7 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
             <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Settings size={12} /> 基础信息</label>
             <div>
               <span className="text-xs text-slate-400 mb-1 block">名称</span>
-              <Input value={formData.title} onChange={e => handleChange('title', e.target.value)} placeholder="请输入节点名称" />
+              <LazyInput value={formData.title} onChange={(val: any) => handleChange('title', val)} placeholder="请输入节点名称" />
             </div>
           </div>
           {node.type === NodeType.APPROVAL && (
@@ -1250,10 +1272,10 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {formData.signType === 'PERCENT' && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">通过比例 (%)</span>
-                  <Input type="number" min={1} max={100}
+                  <LazyInput type="number" min={1} max={100}
                     placeholder="例如: 60"
                     value={formData.passPercent || ''}
-                    onChange={e => handleChange('passPercent', parseInt(e.target.value) || 0)} />
+                    onChange={(val: any) => handleChange('passPercent', parseInt(val) || 0)} />
                   <p className="text-[10px] text-slate-400 mt-1">💡 当同意人数达到该比例时流程通过</p>
                 </div>
               )}
@@ -1315,16 +1337,16 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               )}
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">通知标题</span>
-                <Input placeholder="例如: 您有新的审批任务"
+                <LazyInput placeholder="例如: 您有新的审批任务"
                   value={formData.props?.notificationTitle || ''} 
-                  onChange={e => handleChange('props', { ...formData.props, notificationTitle: e.target.value })} />
+                  onChange={(val: any) => handleChange('props', { ...formData.props, notificationTitle: val })} />
               </div>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">通知内容</span>
-                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-pink-400 outline-none"
+                <LazyTextarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-pink-400 outline-none"
                   placeholder="支持变量: ${initiator}, ${amount}, ${days} 等"
                   value={formData.props?.notificationContent || ''} 
-                  onChange={e => handleChange('props', { ...formData.props, notificationContent: e.target.value })} />
+                  onChange={(val: any) => handleChange('props', { ...formData.props, notificationContent: val })} />
                 <p className="text-[10px] text-slate-400 mt-1">💡 可使用 ${'{'}变量名{'}'} 引用流程数据</p>
               </div>
             </div>
@@ -1348,12 +1370,12 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {(formData.props?.scriptType === 'GROOVY' || formData.props?.scriptType === 'JAVASCRIPT') && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">脚本内容</span>
-                  <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[120px] bg-slate-50 focus:ring-2 focus:ring-green-500 outline-none"
+                  <LazyTextarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[120px] bg-slate-50 focus:ring-2 focus:ring-green-500 outline-none"
                     placeholder={formData.props?.scriptType === 'GROOVY' ? 
                       'def result = amount * 1.1\nreturn result' : 
                       'const result = amount * 1.1;\nreturn result;'}
                     value={formData.props?.scriptContent || ''} 
-                    onChange={e => handleChange('props', { ...formData.props, scriptContent: e.target.value })} />
+                    onChange={(val: any) => handleChange('props', { ...formData.props, scriptContent: val })} />
                   <p className="text-[10px] text-slate-400 mt-1">💡 可访问流程变量: amount, days, initiator 等</p>
                 </div>
               )}
@@ -1361,9 +1383,9 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                 <>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">API URL</span>
-                    <Input className="font-mono" placeholder="https://api.example.com/endpoint"
+                    <LazyInput className="font-mono" placeholder="https://api.example.com/endpoint"
                       value={formData.props?.apiUrl || ''} 
-                      onChange={e => handleChange('props', { ...formData.props, apiUrl: e.target.value })} />
+                      onChange={(val: any) => handleChange('props', { ...formData.props, apiUrl: val })} />
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">请求方法</span>
@@ -1381,17 +1403,17 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">请求头 (JSON)</span>
-                    <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[60px] bg-slate-50"
+                    <LazyTextarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[60px] bg-slate-50"
                       placeholder='{"Content-Type": "application/json"}'
                       value={formData.props?.apiHeaders || ''} 
-                      onChange={e => handleChange('props', { ...formData.props, apiHeaders: e.target.value })} />
+                      onChange={(val: any) => handleChange('props', { ...formData.props, apiHeaders: val })} />
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 mb-1 block">请求体 (JSON)</span>
-                    <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[60px] bg-slate-50"
+                    <LazyTextarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[60px] bg-slate-50"
                       placeholder='{"amount": "${amount}"}'
                       value={formData.props?.apiBody || ''} 
-                      onChange={e => handleChange('props', { ...formData.props, apiBody: e.target.value })} />
+                      onChange={(val: any) => handleChange('props', { ...formData.props, apiBody: val })} />
                     <p className="text-[10px] text-slate-400 mt-1">💡 可使用 ${'{'}变量名{'}'} 引用流程数据</p>
                   </div>
                 </>
@@ -1422,10 +1444,10 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               {formData.props?.timerType === 'DELAY' && (
                 <div>
                   <span className="text-xs text-slate-400 mb-1 block">延迟时间（分钟）</span>
-                  <Input type="number" placeholder="例如: 60"
+                  <LazyInput type="number" placeholder="例如: 60"
                     min="1"
                     value={formData.props?.delayMinutes || ''} 
-                    onChange={e => handleChange('props', { ...formData.props, delayMinutes: parseInt(e.target.value) || 0 })} />
+                    onChange={(val: any) => handleChange('props', { ...formData.props, delayMinutes: parseInt(val) || 0 })} />
                   <p className="text-[10px] text-slate-400 mt-1">💡 流程将在指定时间后自动继续</p>
                 </div>
               )}
@@ -1445,17 +1467,17 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Workflow size={12} /> 子流程设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">子流程ID</span>
-                <Input placeholder="输入子流程的ID"
+                <LazyInput placeholder="输入子流程的ID"
                   value={formData.props?.subprocessId || ''} 
-                  onChange={e => handleChange('props', { ...formData.props, subprocessId: e.target.value })} />
+                  onChange={(val: any) => handleChange('props', { ...formData.props, subprocessId: val })} />
                 <p className="text-[10px] text-slate-400 mt-1">💡 将调用指定的子流程</p>
               </div>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">变量映射 (JSON)</span>
-                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[80px] bg-slate-50 focus:ring-2 focus:ring-purple-500 outline-none"
+                <LazyTextarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm font-mono text-xs min-h-[80px] bg-slate-50 focus:ring-2 focus:ring-purple-500 outline-none"
                   placeholder='{"subAmount": "${amount}", "subDays": "${days}"}'
                   value={formData.props?.variableMapping || ''} 
-                  onChange={e => handleChange('props', { ...formData.props, variableMapping: e.target.value })} />
+                  onChange={(val: any) => handleChange('props', { ...formData.props, variableMapping: val })} />
                 <p className="text-[10px] text-slate-400 mt-1">💡 定义父流程变量到子流程的映射关系</p>
               </div>
               <div className="flex items-center gap-2">
@@ -1517,10 +1539,10 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><ClipboardCheck size={12} /> 人工任务设置</label>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">任务描述</span>
-                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-cyan-500 outline-none"
+                <LazyTextarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-cyan-500 outline-none"
                   placeholder="描述需要人工处理的任务内容"
                   value={formData.props?.taskDescription || ''} 
-                  onChange={e => handleChange('props', { ...formData.props, taskDescription: e.target.value })} />
+                  onChange={(val: any) => handleChange('props', { ...formData.props, taskDescription: val })} />
               </div>
               <div>
                 <span className="text-xs text-slate-400 mb-1 block">处理人类型</span>
@@ -1614,8 +1636,8 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
             <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><FileText size={12} /> 条件设置</label>
             <div>
               <span className="text-xs text-slate-400 mb-1 block">触发条件</span>
-              <Input className="font-mono bg-slate-50" placeholder="例如: amount > 5000" value={formData.condition || ''} onChange={e => handleChange('condition', e.target.value)} />
-              <p className="text-[10px] text-slate-400 mt-1">💡 示例：amount &gt; 5000 或 days &gt;= 3<br/>可用字段：amount(金额)、days(天数)、deptId(部门)</p>
+              <LazyInput className="font-mono bg-slate-50" placeholder="例如: amount > 5000" value={formData.condition || ''} onChange={(val: any) => handleChange('condition', val)} />
+              <p className="text-[10px] text-slate-400 mt-1">💡 示例：amount {'>'} 5000 或 days {'>='} 3<br/>可用字段：amount(金额)、days(天数)、deptId(部门)</p>
             </div>
           </div>
         </div>
@@ -1626,24 +1648,34 @@ const PropertyPanel = ({ node, onClose, onUpdate, onDelete, onConfirmAction }: {
 
 // ==================== 连接线拖放区域 ====================
 
-const ConnectorDropZone = ({ parentId, isDraggingGlobal, onDrop }: {
-  parentId: string; isDraggingGlobal: boolean; onDrop: (dragId: string, dropId: string) => void;
+const ConnectorDropZone = ({ parentId, isDraggingGlobal, draggingNodeId, onDrop, selfNodeId }: {
+  parentId: string; isDraggingGlobal: boolean; draggingNodeId: string | null; onDrop: (dragId: string, dropId: string) => void; selfNodeId?: string;
 }) => {
   const [isOver, setIsOver] = useState(false);
+  
+  // 如果没有在拖拽，显示普通的连线
   if (!isDraggingGlobal) {
     return (<div className="flex flex-col items-center"><div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div><ArrowDown size={14} className="text-slate-300 -mt-1 mb-1 transition-colors duration-300 group-hover/node:text-slate-400" /></div>);
   }
+
+  // 杜绝节点紧挨自身的错误拖拽区域亮起（无论是拖到自己的父亲下面，还是拖到自己的身上指向孩子的线）
+  const isInvalidSelfDrop = draggingNodeId === parentId || draggingNodeId === selfNodeId;
+
+  if (isInvalidSelfDrop) {
+    return (<div className="flex flex-col items-center"><div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400 opacity-50"></div><ArrowDown size={14} className="text-slate-300 -mt-1 mb-1 transition-colors duration-300 group-hover/node:text-slate-400 opacity-50" /></div>);
+  }
+
   return (
-    <div className="flex flex-col items-center relative">
-      <div className={`h-10 w-0.5 transition-all ${isOver ? 'bg-pink-400' : 'bg-slate-300'}`}></div>
-      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-12 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all cursor-pointer z-20 ${
+    <div className="flex flex-col items-center relative py-1">
+      <div className={`h-12 w-0.5 transition-all ${isOver ? 'bg-pink-400' : 'bg-slate-300'}`}></div>
+      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-10 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all cursor-pointer z-20 ${
         isOver ? 'border-pink-400 bg-pink-50 scale-110 shadow-lg shadow-pink-100' : 'border-slate-300 bg-white/80 hover:border-pink-300 hover:bg-pink-50/50'
       }`}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setIsOver(true); }}
         onDragLeave={() => setIsOver(false)}
         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setIsOver(false); const dragId = e.dataTransfer.getData('nodeId'); if (dragId) onDrop(dragId, parentId); }}>
         <Move size={14} className={isOver ? 'text-pink-400' : 'text-slate-400'} />
-        <span className={`text-xs font-medium ${isOver ? 'text-pink-500' : 'text-slate-400'}`}>{isOver ? '松开放置' : '拖到这里'}</span>
+        <span className={`text-xs font-medium ${isOver ? 'text-pink-500' : 'text-slate-400'}`}>{isOver ? '松开放置' : '拖入空位'}</span>
       </div>
       <ArrowDown size={14} className={`-mt-1 mb-1 ${isOver ? 'text-pink-400' : 'text-slate-300'}`} />
     </div>
@@ -1652,56 +1684,55 @@ const ConnectorDropZone = ({ parentId, isDraggingGlobal, onDrop }: {
 
 // ==================== 节点组件 ====================
 
-const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDraggingGlobal, setDraggingGlobal, activeQuickAddId, setActiveQuickAddId, hoveredNodeId, setHoveredNodeId, selectedNodeId }: {
-  node: WorkflowNode; onAddNext: (parentId: string, type?: NodeType) => void;
+const FlowNode = ({ node, invalidNodes, draggingNodeId, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDraggingGlobal, setDraggingGlobal, setDraggingNodeId, activeQuickAddId, setActiveQuickAddId, hoveredNodeId, setHoveredNodeId, selectedNodeId }: {
+  node: WorkflowNode; invalidNodes: string[]; draggingNodeId: string | null; onAddNext: (parentId: string, type?: NodeType) => void;
   onAddBranch: (parentId: string) => void; onSelect: (node: WorkflowNode) => void;
   onDrop: (dragId: string, dropId: string) => void; onCopy: (nodeId: string) => void;
-  isDraggingGlobal: boolean; setDraggingGlobal: (v: boolean) => void;
+  isDraggingGlobal: boolean; setDraggingGlobal: (v: boolean) => void; setDraggingNodeId: (id: string | null) => void;
   activeQuickAddId: string | null; setActiveQuickAddId: (id: string | null) => void;
   hoveredNodeId: string | null; setHoveredNodeId: (id: string | null) => void;
   selectedNodeId: string | null;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
   const showQuickAdd = activeQuickAddId === node.id;
   const isSelected = selectedNodeId === node.id;
+  const isInvalid = invalidNodes.includes(node.id);
   const visual = getNodeVisual(node.type);
   const NIcon = visual.icon;
   const canDrag = node.type !== NodeType.START && node.type !== NodeType.END;
   
-  // 当有任何菜单打开时，只有拥有该菜单的节点才能响应 hover
+  // 画布悬停逻辑优化（去鼠标追踪依赖，改为直接点击触发）
   const canShowHover = !activeQuickAddId || activeQuickAddId === node.id;
+
+  // 判断能否添加条件分支
+  const canAddBranch = node.type !== NodeType.PARALLEL || 
+    (node.signType && !['ALL', 'ANY', 'PERCENT', 'SEQUENTIAL'].includes(node.signType));
 
   return (
     <div className="flex flex-col items-center relative group/node animate-in fade-in zoom-in-95 duration-300 ease-out">
-      {/* 拖拽放置提示 */}
-      {isDragOver && !isDragging && isDraggingGlobal && (
-        <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-30 animate-bounce">
-          <div className="bg-pink-400 text-white text-xs px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
-            <ArrowDown size={12} /> 放置到此节点后
-          </div>
-        </div>
-      )}
-
       {/* 节点卡片容器 - 独立的相对定位容器 */}
       <div className={`relative group ${showQuickAdd ? 'z-50' : ''}`}>
+        {/* 错误提示框 */}
+        {isInvalid && (
+          <div className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md z-40 animate-pulse border-2 border-white" title="节点配置不完整">
+            !
+          </div>
+        )}
+
         {/* 节点卡片 */}
         <div
           className={`w-64 ${visual.bg} rounded-xl shadow-md border-2 transition-all duration-300 cursor-pointer relative z-10 ${
             isDragging ? 'opacity-40 scale-95 border-slate-300 rotate-1' :
-            isDragOver && isDraggingGlobal ? 'border-pink-400 shadow-xl shadow-pink-100 scale-105' :
+            isInvalid ? `border-red-500 ring-4 ring-red-100/50 shadow-xl scale-[1.02] bg-red-50/50` :
             isSelected ? `border-pink-500 ring-4 ring-pink-100 ring-offset-2 shadow-xl scale-[1.02] ${visual.bg}` :
             `${visual.border} ${visual.hoverBorder} hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]`
           } active:scale-95 active:shadow-sm`}
-          onClick={() => { onSelect(node); setActiveQuickAddId(null); }}
+          onClick={(e) => { e.stopPropagation(); onSelect(node); setActiveQuickAddId(null); }}
           onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
           onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
           draggable={canDrag}
-          onDragStart={(e) => { e.dataTransfer.setData('nodeId', node.id); e.dataTransfer.effectAllowed = 'move'; setIsDragging(true); setDraggingGlobal(true); }}
-          onDragEnd={() => { setIsDragging(false); setDraggingGlobal(false); }}
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setIsDragOver(true); }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); const dragId = e.dataTransfer.getData('nodeId'); if (dragId && dragId !== node.id) onDrop(dragId, node.id); }}
+          onDragStart={(e) => { e.dataTransfer.setData('nodeId', node.id); e.dataTransfer.effectAllowed = 'move'; setIsDragging(true); setDraggingGlobal(true); setDraggingNodeId(node.id); }}
+          onDragEnd={() => { setIsDragging(false); setDraggingGlobal(false); setDraggingNodeId(null); }}
         >
           {/* 顶部颜色条 */}
           <div className={`h-1.5 rounded-t-xl w-full ${visual.color}`}></div>
@@ -1786,14 +1817,14 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
           </div>
         </div>
 
-        {/* END节点的添加按钮 - 在节点上方 */}
+        {/* END节点的添加按钮 - 在节点上方，稍微拉开距离防止挡住上面的线和卡片 */}
         {node.type === NodeType.END && (
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-30" style={{ pointerEvents: showQuickAdd ? 'auto' : 'none' }}>
-          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`} style={{ pointerEvents: 'auto' }}>
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30" style={{ pointerEvents: 'auto' }}>
+          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`}>
             <button
               onClick={(e) => { e.stopPropagation(); setActiveQuickAddId(showQuickAdd ? null : node.id); }}
               onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
-              onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
+              onMouseLeave={() => canShowHover && !showQuickAdd && setHoveredNodeId(null)}
               className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                 showQuickAdd 
                   ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-lg' 
@@ -1831,8 +1862,8 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                   { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
                   { type: NodeType.MANUAL, icon: ClipboardCheck, label: '人工任务', desc: '需要人工处理', color: 'text-cyan-500', bg: 'hover:bg-cyan-50', border: 'hover:border-cyan-200' },
                   { type: NodeType.COPY, icon: Send, label: '抄送节点', desc: '发送流程副本', color: 'text-pink-500', bg: 'hover:bg-pink-50', border: 'hover:border-pink-200' },
-                  { type: NodeType.CONDITION, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true },
-                ] as const).map(item => {
+                  ...(canAddBranch ? [{ type: NodeType.CONDITION as any, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true }] : []),
+                ]).map(item => {
                   const ItemIcon = item.icon;
                   return (
                     <button 
@@ -1866,12 +1897,12 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
 
         {/* 非END节点的添加按钮 - 在节点卡片下方 */}
         {node.type !== NodeType.END && (
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-30" style={{ pointerEvents: showQuickAdd ? 'auto' : 'none' }}>
-          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`} style={{ pointerEvents: 'auto' }}>
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-30" style={{ pointerEvents: 'auto' }}>
+          <div className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? 'opacity-100' : 'opacity-0'}`}>
             <button
               onClick={(e) => { e.stopPropagation(); setActiveQuickAddId(showQuickAdd ? null : node.id); }}
               onMouseEnter={() => canShowHover && setHoveredNodeId(node.id)}
-              onMouseLeave={() => canShowHover && setHoveredNodeId(null)}
+              onMouseLeave={() => canShowHover && !showQuickAdd && setHoveredNodeId(null)}
               className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                 showQuickAdd 
                   ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-lg' 
@@ -1909,9 +1940,9 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                   { type: NodeType.SUBPROCESS, icon: Workflow, label: '子流程节点', desc: '调用其他流程', color: 'text-purple-500', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200' },
                   { type: NodeType.MANUAL, icon: ClipboardCheck, label: '人工任务', desc: '需要人工处理', color: 'text-cyan-500', bg: 'hover:bg-cyan-50', border: 'hover:border-cyan-200' },
                   { type: NodeType.COPY, icon: Send, label: '抄送节点', desc: '发送流程副本', color: 'text-pink-500', bg: 'hover:bg-pink-50', border: 'hover:border-pink-200' },
-                  { type: NodeType.CONDITION, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true },
-                  { type: NodeType.END, icon: Flag, label: '结束节点', desc: '流程终点', color: 'text-slate-500', bg: 'hover:bg-slate-50', border: 'hover:border-slate-200' },
-                ] as const).map(item => {
+                  ...(canAddBranch ? [{ type: NodeType.CONDITION as any, icon: GitBranch, label: '条件分支', desc: '根据条件分流', color: 'text-amber-500', bg: 'hover:bg-amber-50', border: 'hover:border-amber-200', isBranch: true }] : []),
+                  { type: NodeType.END as any, icon: Flag, label: '结束节点', desc: '流程终点', color: 'text-slate-500', bg: 'hover:bg-slate-50', border: 'hover:border-slate-200' },
+                ]).map(item => {
                   const ItemIcon = item.icon;
                   return (
                     <button 
@@ -1954,27 +1985,27 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
 
       {/* 分支 */}
       {node.branches && node.branches.length > 0 && (
-        <div className="flex flex-col items-center w-full mt-6">
+        <div className="flex flex-col items-center w-full mt-6 flex-none">
           {/* 从父节点到分支点的垂直连接线 */}
           <div className="h-6 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
           
           {/* 分支点 - 菱形指示器 */}
-          <div className="w-3 h-3 bg-amber-500 rotate-45 border-2 border-white shadow-md z-10"></div>
+          <div className="w-3 h-3 bg-amber-500 rotate-45 border-2 border-white shadow-md z-10 -mb-[1px]"></div>
           
           {/* 分支容器 */}
-          <div className="flex gap-12 relative pt-6">
-            {/* 水平连接线 - 连接所有分支 */}
+          <div className="flex gap-12 relative pt-6 text-center w-full justify-center">
+            {/* 顶部的水平连接线 - 连接所有分支的开始端 */}
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400" style={{ 
               left: `${100 / node.branches.length / 2}%`, 
               right: `${100 / node.branches.length / 2}%` 
             }}></div>
             
             {node.branches.map((branch, index) => (
-              <div key={branch.id} className="flex flex-col items-center relative">
-                {/* 从水平线到分支节点的垂直连接线 */}
+              <div key={branch.id} className="flex flex-col items-center relative w-full">
+                {/* 从顶部水平线往下的垂线 */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400 -mt-6"></div>
                 
-                {/* 分支标签 - 更醒目的设计 */}
+                {/* 分支入口小标签 */}
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-10">
                   <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap shadow-lg border-2 border-white flex items-center gap-1">
                     <GitBranch size={10} />
@@ -1982,36 +2013,52 @@ const FlowNode = ({ node, onAddNext, onAddBranch, onSelect, onDrop, onCopy, isDr
                   </div>
                 </div>
                 
-                <FlowNode node={branch} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
+                {/* 节点渲染区块 - 给它包裹 flex-none 保证子节点自然内容高，不被 stretch */}
+                <div className="flex-none flex justify-center w-full">
+                  <FlowNode node={branch} invalidNodes={invalidNodes} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} draggingNodeId={draggingNodeId} setDraggingNodeId={setDraggingNodeId} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
+                </div>
+
+                {/* 关键修复：底部自动填充延长线，利用 flex-1。如果本分支内容较短，这就自动把剩下的高度拉满，延展下垂线以合并入底部主干横线！ */}
+                <div className="w-0.5 min-h-[40px] bg-slate-300 flex-1 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
               </div>
             ))}
+
+            {/* 底部的闭合水平连接线 - 同步汇合所有的下边沿延长线 */}
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400" style={{ 
+              left: `${100 / node.branches.length / 2}%`, 
+              right: `${100 / node.branches.length / 2}%` 
+            }}></div>
           </div>
+          
+          {/* 汇合点：表示所有并行支路收束为一，完美接上后方的流程 */}
+          <div className="w-3 h-3 bg-white border-2 border-slate-300 rounded-full shadow-sm z-10 -mt-1.5 transition-colors duration-300 group-hover/node:border-slate-400"></div>
         </div>
       )}
 
       {/* 下一个节点 */}
       {node.next && node.next.type !== NodeType.END && (
-        <div className="flex flex-col items-center">
-          <ConnectorDropZone parentId={node.id} isDraggingGlobal={isDraggingGlobal} onDrop={onDrop} />
-          <FlowNode node={node.next} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
+        <div className="flex flex-col items-center w-full">
+          <ConnectorDropZone parentId={node.id} isDraggingGlobal={isDraggingGlobal} draggingNodeId={draggingNodeId} selfNodeId={node.next.id} onDrop={onDrop} />
+          <FlowNode node={node.next} invalidNodes={invalidNodes} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} draggingNodeId={draggingNodeId} setDraggingNodeId={setDraggingNodeId} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
         </div>
       )}
-      {/* END 节点特殊处理：只显示连接线，不显示 ConnectorDropZone */}
+      
+      {/* 结束节点: 因为添加节点永远是在被点加号的节点"后面"插入，如果是END节点，则是特例插入到END之前，所以连线也得对应过去 */}
       {node.next && node.next.type === NodeType.END && (
-        <div className="flex flex-col items-center">
-          <div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
-          <ArrowDown size={14} className="text-slate-300 -mt-1 mb-1 transition-colors duration-300 group-hover/node:text-slate-400" />
-          <FlowNode node={node.next} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
+        <div className="flex flex-col items-center w-full relative">
+          <ConnectorDropZone parentId={node.id} isDraggingGlobal={isDraggingGlobal} draggingNodeId={draggingNodeId} selfNodeId={node.next.id} onDrop={onDrop} />
+          
+          <FlowNode node={node.next} invalidNodes={invalidNodes} selectedNodeId={selectedNodeId} onAddNext={onAddNext} onAddBranch={onAddBranch} onSelect={onSelect} onDrop={onDrop} onCopy={onCopy} isDraggingGlobal={isDraggingGlobal} setDraggingGlobal={setDraggingGlobal} draggingNodeId={draggingNodeId} setDraggingNodeId={setDraggingNodeId} activeQuickAddId={activeQuickAddId} setActiveQuickAddId={setActiveQuickAddId} hoveredNodeId={hoveredNodeId} setHoveredNodeId={setHoveredNodeId} />
         </div>
       )}
-
     </div>
   );
 };
 
 // ==================== 校验 ====================
 
-function validateWorkflow(root: WorkflowNode): string[] {
+function validateWorkflow(root: WorkflowNode): { errors: string[]; errorNodes: string[] } {
+  const errorNodes: string[] = [];
   const errors: string[] = [];
   let hasEnd = false;
   const checkEnd = (node: WorkflowNode) => {
@@ -2020,10 +2067,14 @@ function validateWorkflow(root: WorkflowNode): string[] {
     if (node.branches) node.branches.forEach(checkEnd);
   };
   checkEnd(root);
-  if (!hasEnd) errors.push('流程缺少结束节点');
+  if (!hasEnd) {
+    errors.push('流程缺少结束节点');
+    errorNodes.push(root.id);
+  }
   const checkApprover = (node: WorkflowNode) => {
     if ((node.type === NodeType.APPROVAL || node.type === NodeType.PARALLEL) && !node.approverType && !node.approverValue) {
       errors.push(`${node.type === NodeType.PARALLEL ? '会签' : '审批'}节点"${node.title}"未配置审批人`);
+      errorNodes.push(node.id);
     }
     if (node.next) checkApprover(node.next);
     if (node.branches) node.branches.forEach(checkApprover);
@@ -2036,10 +2087,12 @@ function validateWorkflow(root: WorkflowNode): string[] {
       // 会签模式（ALL/ANY/PERCENT/SEQUENTIAL）不应有条件分支
       if ((signType === 'ALL' || signType === 'ANY' || signType === 'PERCENT' || signType === 'SEQUENTIAL') && node.branches && node.branches.length > 0) {
         errors.push(`会签节点"${node.title}"设置了${signType === 'ALL' ? '全签' : signType === 'ANY' ? '或签' : signType === 'PERCENT' ? '比例签' : '顺序签'}模式，但仍包含 ${node.branches.length} 个条件分支，请先清除分支或改用并行分支策略`);
+        errorNodes.push(node.id);
       }
       // 比例签必须设置百分比
       if (signType === 'PERCENT' && (!node.passPercent || node.passPercent <= 0 || node.passPercent > 100)) {
         errors.push(`会签节点"${node.title}"使用比例签模式，但未设置有效的通过比例（1-100%）`);
+        errorNodes.push(node.id);
       }
     }
     if (node.next) checkParallel(node.next);
@@ -2051,38 +2104,46 @@ function validateWorkflow(root: WorkflowNode): string[] {
     if (node.type === NodeType.NOTIFICATION) {
       if (!node.props?.notificationTitle && !node.props?.notificationContent) {
         errors.push(`通知节点"${node.title}"未配置通知标题或内容`);
+        errorNodes.push(node.id);
       }
     }
     if (node.type === NodeType.SCRIPT) {
       const st = node.props?.scriptType;
       if (st === 'API' && !node.props?.apiUrl) {
         errors.push(`脚本节点"${node.title}"选择了 API 调用模式，但未配置 API URL`);
+        errorNodes.push(node.id);
       }
       if ((st === 'GROOVY' || st === 'JAVASCRIPT') && !node.props?.scriptContent) {
         errors.push(`脚本节点"${node.title}"未填写脚本内容`);
+        errorNodes.push(node.id);
       }
     }
     if (node.type === NodeType.TIMER) {
       if (node.props?.timerType === 'DELAY' && (!node.props?.delayMinutes || node.props.delayMinutes <= 0)) {
         errors.push(`定时节点"${node.title}"选择了延迟模式，但未设置有效的延迟时间`);
+        errorNodes.push(node.id);
       }
       if (node.props?.timerType === 'SCHEDULE' && !node.props?.scheduleTime) {
         errors.push(`定时节点"${node.title}"选择了定时模式，但未设置定时时间`);
+        errorNodes.push(node.id);
       }
     }
     if (node.type === NodeType.SUBPROCESS) {
       if (!node.props?.subprocessId) {
         errors.push(`子流程节点"${node.title}"未配置子流程 ID`);
+        errorNodes.push(node.id);
       }
     }
     if (node.type === NodeType.MANUAL) {
       if (!node.approverType && !node.approverValue) {
         errors.push(`人工任务节点"${node.title}"未配置处理人`);
+        errorNodes.push(node.id);
       }
     }
     if (node.type === NodeType.COPY) {
       if (!node.approverType && !node.approverValue) {
         errors.push(`抄送节点"${node.title}"未配置抄送人`);
+        errorNodes.push(node.id);
       }
     }
     if (node.next) checkNodeProps(node.next);
@@ -2090,12 +2151,40 @@ function validateWorkflow(root: WorkflowNode): string[] {
   };
   checkNodeProps(root);
   const checkTitle = (node: WorkflowNode) => {
-    if (!node.title || node.title.trim() === '') errors.push(`有节点缺少名称`);
+    if (!node.title || node.title.trim() === '') {
+      errors.push(`有节点缺少名称`);
+      errorNodes.push(node.id);
+    }
     if (node.next) checkTitle(node.next);
     if (node.branches) node.branches.forEach(checkTitle);
   };
   checkTitle(root);
-  return errors;
+  
+  // JSON 格式防御性校验
+  const checkJSON = (node: WorkflowNode) => {
+    try {
+      if (node.props?.apiHeaders && typeof node.props.apiHeaders === 'string') {
+        const text = node.props.apiHeaders.trim();
+        if (text && (!text.startsWith('{') || !text.endsWith('}'))) throw new Error();
+      }
+      if (node.props?.apiBody && typeof node.props.apiBody === 'string') {
+        const text = node.props.apiBody.trim();
+        if (text && (!text.startsWith('{') || !text.endsWith('}'))) throw new Error();
+      }
+      if (node.props?.variableMapping && typeof node.props.variableMapping === 'string') {
+        const text = node.props.variableMapping.trim();
+        if (text && (!text.startsWith('{') || !text.endsWith('}'))) throw new Error();
+      }
+    } catch(e) {
+      errors.push(`节点"${node.title}"配置的 JSON 格式可能不正确，必须完整包含 {}`);
+      errorNodes.push(node.id);
+    }
+    if (node.next) checkJSON(node.next);
+    if (node.branches) node.branches.forEach(checkJSON);
+  };
+  checkJSON(root);
+
+  return { errors, errorNodes };
 }
 
 // ==================== 主组件 ====================
@@ -2214,10 +2303,16 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   const [workflowName, setWorkflowName] = useState(workflow?.name || '未命名流程');
   const [workflowKey, setWorkflowKey] = useState(workflow?.key || 'new_process');
   const [zoom, setZoom] = useState(1);
+  const [panOrigin, setPanOrigin] = useState({ x: 0, y: 0 }); // 拖拽平移偏移量
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  
   const [isDraggingGlobal, setDraggingGlobal] = useState(false);
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [activeQuickAddId, setActiveQuickAddId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [invalidNodeIds, setInvalidNodeIds] = useState<string[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     message: string;
@@ -2354,22 +2449,54 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     if (targetNode && targetNode.type === NodeType.END) {
       const endParent = findParentOfNode(root, parentId);
       if (endParent) {
-        // 在 END 的父节点上操作：parent.next = newNode, newNode.next = END
-        // 使用 node.next（updater 中的最新引用）而非外部 targetNode，确保数据一致性
-        setRoot(updateNodeInTree(root, endParent.id, node => ({
-          ...node,
-          next: { ...newNode, next: node.next }
-        })));
+        // 在 END 的父节点上操作：把 END 原有的位置替换为新节点，新节点的 next 指向 END
+        // 这里必须要在 endParent 处执行更新：让 endParent.next 指向新节点，新节点指向 END
+        
+        // 分支下的 END：如果 END 是通过 branches 连接的，而不是 next，此时 endParent 就是条件分支节点。
+        // 但通常连线只会通过 next。由于架构里 branches 里只能放一个 node（分支的头部），其余的逻辑都在 next 链里。
+        
+        const newRoot = updateNodeInTree(root, endParent.id, (node) => {
+          // 如果 END 在这个父节点的 next 上
+          if (node.next && node.next.id === targetNode.id) {
+            return {
+              ...node,
+              next: { ...newNode, next: node.next }
+            };
+          }
+          // 如果 END 直接在这个父节点的分支数组里（这通常不发生，因为我们会默认有个分支头）
+          if (node.branches) {
+            return {
+              ...node,
+              branches: node.branches.map(b => b.id === targetNode.id ? { ...newNode, next: b } : b)
+            };
+          }
+          return node;
+        });
+        setRoot(newRoot);
         return;
       }
     }
 
     // 普通情况：在 parentId 节点后面插入新节点
-    setRoot(updateNodeInTree(root, parentId, node => ({ ...node, next: node.next ? { ...newNode, next: node.next } : newNode })));
+    const newRoot = updateNodeInTree(root, parentId, node => ({ ...node, next: node.next ? { ...newNode, next: node.next } : newNode }));
+    setRoot(newRoot);
   };
 
-  const handleAddBranch = (parentId: string) => {
-    const parentNode = findNodeById(root, parentId);
+  const handleAddBranch = (targetId: string) => {
+    let parentId = targetId;
+    let parentNode = findNodeById(root, targetId);
+
+    // 修复: 如果是在 END 节点上方的“+”点击添加分支，其实应当是给 END 的前置父节点添加分支
+    if (parentNode?.type === NodeType.END) {
+      const endParent = findParentOfNode(root, targetId);
+      if (endParent) {
+        parentId = endParent.id;
+        parentNode = endParent;
+      } else {
+        toast.error('无法在当前位置添加分支');
+        return;
+      }
+    }
 
     // P1-8: PARALLEL 节点处于会签模式时，禁止添加分支（两者语义互斥）
     if (parentNode?.type === NodeType.PARALLEL) {
@@ -2383,11 +2510,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     const newBranch: WorkflowNode = { id: generateNodeId('branch'), type: NodeType.CONDITION, title: '新分支', condition: 'amount > 0' };
     // 根据父节点类型决定默认分支策略
     const defaultStrategy = parentNode?.type === NodeType.PARALLEL ? 'PARALLEL' : 'EXCLUSIVE';
-    setRoot(updateNodeInTree(root, parentId, node => ({ 
+    const newRoot = updateNodeInTree(root, parentId, node => ({ 
       ...node, 
       branches: [...(node.branches || []), newBranch], 
       branchStrategy: node.branchStrategy || defaultStrategy 
-    })));
+    }));
+    setRoot(newRoot);
   };
 
   const handleUpdateNode = (id: string, data: Partial<WorkflowNode>) => {
@@ -2405,11 +2533,29 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     if (!node) return;
     if (node.type === NodeType.END) { toast.error('结束节点不可删除'); return; }
 
+    // 严禁单独删除条件分支的根节点
+    const parentNode = findParentOfNode(root, id);
+    if (parentNode && parentNode.branches && parentNode.branches.some(b => b.id === id)) {
+      setConfirmDialog({
+        open: true,
+        message: `您即将删除整个条件分支，该分支下的所有节点也将一并被删除，是否继续？`,
+        onConfirm: () => {
+          // 只过滤自身，也就是将其从 parentNode.branches 里面移除
+          const newRoot = updateNodeInTree(rootRef.current, parentNode.id, n => ({
+            ...n,
+            branches: n.branches?.filter(b => b.id !== id)
+          }));
+          setRoot(newRoot); setSelectedNode(null); toast.success('已删除分支');
+        }
+      });
+      return;
+    }
+
     // P0-2 修复：删除带分支的节点时，提示用户分支内容将丢失
     if (node.branches && node.branches.length > 0) {
       setConfirmDialog({
         open: true,
-        message: `节点"${node.title}"包含 ${node.branches.length} 个分支，删除后分支内的所有节点将一并丢失。是否继续？`,
+        message: `节点"${node.title}"自身下方挂载了 ${node.branches.length} 个分支，删除该节点将导致这些分支结构彻底毁坏并丢失。是否继续？`,
         onConfirm: () => {
           const newRoot = deleteNodeInTree(rootRef.current, id);
           if (newRoot) { setRoot(newRoot); setSelectedNode(null); toast.success('节点及其分支已删除'); }
@@ -2471,25 +2617,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       // 移动时只移动节点本身，不带子树（next 断开）
       const nodeToInsert = { ...dragNode, next: undefined };
 
-      // 特殊处理：拖拽到 END 节点时，插入到 END 之前而非之后
-      const dropTarget = findNodeById(newRoot, dropId);
-      if (dropTarget && dropTarget.type === NodeType.END) {
-        const endParent = findParentOfNode(newRoot, dropId);
-        if (endParent) {
-          // 在 END 的父节点和 END 之间插入：parent.next = newNode, newNode.next = END
-          newRoot = updateNodeInTree(newRoot, endParent.id, node => ({
-            ...node,
-            next: { ...nodeToInsert, next: node.next }
-          }));
-        } else {
-          // 防御性处理：END 没有父节点（理论上不会发生），回退到普通插入
-          toast.error('无法在结束节点前插入');
-          return;
-        }
-      } else {
-        // 普通情况：插入到目标节点之后
-        newRoot = updateNodeInTree(newRoot, dropId, node => ({ ...node, next: { ...nodeToInsert, next: node.next } }));
-      }
+      // 统一处理：插入到落点节点之后。
+      // 因为现在所有的拖入都只会触发 ConnectorDropZone（发生在父节点和next节点之间的连线区），dropId就是此连线前方的节点ID
+      newRoot = updateNodeInTree(newRoot, dropId, node => ({ ...node, next: { ...nodeToInsert, next: node.next } }));
 
       setRoot(newRoot);
       // P1-10: 明确提示用户仅移动了当前节点
@@ -2516,7 +2646,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   };
 
   const handleSave = async () => {
-    const errors = validateWorkflow(root);
+    const { errors, errorNodes } = validateWorkflow(root);
+    setInvalidNodeIds(errorNodes);
     if (errors.length > 0) { errors.forEach(err => toast.error(err)); return; }
     if (!workflowName || workflowName.trim() === '') { toast.error('请输入流程名称'); return; }
     if (onSave && workflow) {
@@ -2532,7 +2663,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
   };
 
   const handleDeploy = async () => {
-    const errors = validateWorkflow(root);
+    const { errors, errorNodes } = validateWorkflow(root);
+    setInvalidNodeIds(errorNodes);
     if (errors.length > 0) { errors.forEach(err => toast.error(err)); return; }
     try {
       setSaving(true);
@@ -2562,7 +2694,34 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
       />
 
       {/* 画布 */}
-      <div ref={canvasRef} className={`flex-1 overflow-auto p-10 flex justify-center cursor-grab active:cursor-grabbing bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] relative transition-all duration-300 ease-out ${selectedNode ? 'mr-96' : ''}`}>
+      <div 
+        ref={canvasRef} 
+        className={`flex-1 overflow-hidden p-10 flex justify-center relative transition-all duration-300 ease-out bg-slate-50 ${isPanning ? 'cursor-grabbing' : 'cursor-default'} ${selectedNode ? 'mr-96' : ''}`}
+        onPointerDown={(e) => {
+          // 在空白处左键 或 中键 按下启动漫游 (pan)
+          if ((e.button === 0 && e.target === canvasRef.current) || e.button === 1) {
+            e.preventDefault();
+            setIsPanning(true);
+            setPanStart({ x: e.clientX - panOrigin.x, y: e.clientY - panOrigin.y });
+          }
+        }}
+        onPointerMove={(e) => {
+          if (isPanning) {
+            setPanOrigin({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+          }
+        }}
+        onPointerUp={() => setIsPanning(false)}
+        onPointerLeave={() => setIsPanning(false)}
+        onClick={() => { setActiveQuickAddId(null); setSelectedNode(null); }}
+      >
+        
+        {/* 动态网格背景，随漫游移动 */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(#e5e7eb 1px, transparent 1px)',
+          backgroundSize: '20px 20px',
+          backgroundPosition: `${panOrigin.x}px ${panOrigin.y}px`
+        }} />
+
         {/* 缩放控件 */}
         <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
           <button onClick={handleZoomOut} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="缩小"><ZoomOut size={16} /></button>
@@ -2579,10 +2738,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
           </div>
         )}
 
-        <div className="min-w-[800px] flex justify-center pb-40 transition-transform origin-top" style={{ transform: `scale(${zoom})` }}
-          onClick={() => setActiveQuickAddId(null)}>
+        <div 
+          className="min-w-[800px] flex justify-center pb-40 transition-transform origin-top z-10" 
+          style={{ transform: `translate(${panOrigin.x}px, ${panOrigin.y}px) scale(${zoom})` }}
+        >
           <FlowNode 
             node={root} 
+            invalidNodes={invalidNodeIds}
             selectedNodeId={selectedNode?.id}
             onAddNext={handleAddNext} 
             onAddBranch={handleAddBranch} 
@@ -2591,6 +2753,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
             onCopy={handleCopyNode} 
             isDraggingGlobal={isDraggingGlobal} 
             setDraggingGlobal={setDraggingGlobal}
+            draggingNodeId={draggingNodeId}
+            setDraggingNodeId={setDraggingNodeId}
             activeQuickAddId={activeQuickAddId} 
             setActiveQuickAddId={setActiveQuickAddId}
             hoveredNodeId={hoveredNodeId}
