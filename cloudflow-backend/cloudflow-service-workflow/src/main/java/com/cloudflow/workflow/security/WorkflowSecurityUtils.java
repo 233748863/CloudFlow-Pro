@@ -1,5 +1,6 @@
 package com.cloudflow.workflow.security;
 
+import com.cloudflow.common.core.context.UserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -253,5 +254,31 @@ public class WorkflowSecurityUtils {
             }
         }
         return sanitized;
+    }
+
+    /**
+     * 获取当前登录用户ID
+     * 从 UserContext 中获取（由 SecurityContextFilter 或 UserContextInterceptor 填充）
+     */
+    public static Long getCurrentUserId() {
+        try {
+            return UserContext.getUserId();
+        } catch (Exception e) {
+            log.warn("[getCurrentUserId] 获取当前用户ID失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 获取当前租户ID
+     * 从 UserContext 中获取（由 SecurityContextFilter 或 UserContextInterceptor 填充）
+     */
+    public static Long getCurrentTenantId() {
+        try {
+            return UserContext.getTenantId();
+        } catch (Exception e) {
+            log.warn("[getCurrentTenantId] 获取当前租户ID失败: {}", e.getMessage());
+            return null;
+        }
     }
 }

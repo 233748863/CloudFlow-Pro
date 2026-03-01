@@ -10,7 +10,6 @@ import com.cloudflow.common.oss.exception.OssException;
 import com.cloudflow.common.oss.properties.OssProperties;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.async.BlockingInputStreamAsyncRequestBody;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -130,28 +129,28 @@ public class OssClient {
      */
     public UploadResult upload(InputStream inputStream, String key, Long length, String contentType) {
         // 确保输入流可重复读取
-        if (!(inputStream instanceof ByteArrayInputStream)) {
-            inputStream = new ByteArrayInputStream(IoUtil.readBytes(inputStream));
+        byte[] bytes;
+        if (inputStream instanceof ByteArrayInputStream) {
+            bytes = IoUtil.readBytes(inputStream);
+        } else {
+            bytes = IoUtil.readBytes(inputStream);
         }
+        
         try {
-            // 创建异步请求体 - 使用正确的API
-            BlockingInputStreamAsyncRequestBody body = 
-                BlockingInputStreamAsyncRequestBody.builder()
-                    .contentLength(length)
-                    .build();
+            // 使用 AsyncRequestBody.fromBytes 创建请求体
+            software.amazon.awssdk.core.async.AsyncRequestBody requestBody = 
+                software.amazon.awssdk.core.async.AsyncRequestBody.fromBytes(bytes);
 
             // 执行上传
             Upload upload = transferManager.upload(x -> {
-                x.requestBody(body).putObjectRequest(
+                x.requestBody(requestBody).putObjectRequest(
                         y -> y.bucket(properties.getBucketName())
                                 .key(key)
                                 .contentType(contentType)
+                                .contentLength((long) bytes.length)
                                 .build()
                 );
             });
-
-            // 写入输入流数据
-            body.writeInputStream(inputStream);
 
             // 等待上传完成
             CompletedUpload uploadResult = upload.completionFuture().join();

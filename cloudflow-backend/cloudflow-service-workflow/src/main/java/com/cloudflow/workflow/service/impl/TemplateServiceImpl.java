@@ -1,0 +1,470 @@
+package com.cloudflow.workflow.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.workflow.domain.WfProcessDefinition;
+import com.cloudflow.workflow.domain.WorkflowTemplate;
+import com.cloudflow.workflow.domain.dto.CreateFromTemplateRequest;
+import com.cloudflow.workflow.domain.dto.CreateTemplateRequest;
+import com.cloudflow.workflow.domain.dto.UpdateTemplateRequest;
+import com.cloudflow.workflow.domain.dto.TemplateDTO;
+import com.cloudflow.workflow.exception.WorkflowException;
+import com.cloudflow.workflow.mapper.WorkflowTemplateMapper;
+import com.cloudflow.workflow.security.WorkflowSecurityUtils;
+import com.cloudflow.workflow.service.ITemplateService;
+import com.cloudflow.workflow.service.IWfDefinitionService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * 流程模板服务实现类
+ * 实现模板的完整生命周期管理
+ *
+ * @author CloudFlow
+ */
+@Slf4j
+@Service
+public class TemplateServiceImpl implements ITemplateService {
+
+    @Autowired
+    private WorkflowTemplateMapper templateMapper;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private IWfDefinitionService definitionService;
+
+    /**
+     * 分页查询模板列表（支持多条件筛选）
+     */
+    @Override
+    public Page<TemplateDTO> listTemplates(String categoryId, List<String> tags, String keyword, int pageNum, int pageSize) {
+        log.info("查询模板列表 - 分类:{}, 标签:{}, 关键词:{}, 页码:{}, 每页:{}", categoryId, tags, keyword, pageNum, pageSize);
+
+        // 构建查询条件
+        LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询激活状态的模板
+        wrapper.eq(WorkflowTemplate::getStatus, "active");
+        
+        // 按分类筛选
+        if (StringUtils.hasText(categoryId)) {
+            wrapper.eq(WorkflowTemplate::getCategoryId, categoryId);
+        }
+        
+        // 按标签筛选（JSON数组包含查询）
+        if (tags != null && !tags.isEmpty()) {
+            for (String tag : tags) {
+                wrapper.like(WorkflowTemplate::getTags, tag);
+            }
+        }
+        
+        // 按关键词搜索（搜索名称和描述）
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w.like(WorkflowTemplate::getName, keyword)
+                    .or()
+                    .like(WorkflowTemplate::getDescription, keyword));
+        }
+        
+        // 按创建时间倒序排列
+        wrapper.orderByDesc(WorkflowTemplate::getCreatedAt);
+
+        // 执行分页查询
+        Page<WorkflowTemplate> page = new Page<>(pageNum, pageSize);
+        Page<WorkflowTemplate> result = templateMapper.selectPage(page, wrapper);
+
+        // 转换为DTO
+        Page<TemplateDTO> dtoPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+        List<TemplateDTO> dtoList = result.getRecords().stream()
+                .map(this::convertToDTO)
+                .toList();
+        dtoPage.setRecords(dtoList);
+
+        log.info("查询到 {} 条模板记录", dtoList.size());
+        return dtoPage;
+    }
+
+    /**
+     * 根据ID获取模板详情
+     */
+    @Override
+    public TemplateDTO getTemplateById(String id) {
+        log.info("获取模板详情 - ID:{}", id);
+        
+        WorkflowTemplate template = templateMapper.selectById(id);
+        if (template == null) {
+            throw new WorkflowException("模板不存在: " + id);
+        }
+        
+        return convertToDTO(template);
+    }
+
+    /**
+     * 创建模板
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TemplateDTO createTemplate(CreateTemplateRequest request) {
+        log.info("创建模板 - 名称:{}", request.getName());
+
+        // 验证必填字段
+        validateCreateRequest(request);
+
+        // 将定义对象转换为JSON字符串
+        String definitionJson = convertObjectToJson(request.getDefinition());
+
+        // 验证模板结构
+        if (!validateTemplateStructure(definitionJson)) {
+            throw new WorkflowException("模板结构无效：必须包含至少一个开始节点和一个结束节点");
+        }
+
+        // 创建模板实体
+        WorkflowTemplate template = new WorkflowTemplate();
+        template.setId(UUID.randomUUID().toString().replace("-", ""));
+        template.setName(request.getName());
+        template.setDescription(request.getDescription());
+        template.setCategoryId(request.getCategoryId());
+        template.setTags(convertTagsToJson(request.getTags()));
+        template.setDefinition(definitionJson);
+        template.setPreviewImage(request.getPreviewImage());
+        
+        // 设置创建者ID（转换为String）
+        Long userId = WorkflowSecurityUtils.getCurrentUserId();
+        template.setCreatedBy(userId != null ? userId.toString() : null);
+        
+        template.setCreatedAt(LocalDateTime.now());
+        template.setUpdatedAt(LocalDateTime.now());
+        template.setUsageCount(0);
+        template.setIsSystem(0); // 用户创建的模板，非系统模板
+        template.setStatus("active");
+        template.setTenantId(WorkflowSecurityUtils.getCurrentTenantId());
+
+        // 保存到数据库
+        templateMapper.insert(template);
+
+        log.info("模板创建成功 - ID:{}", template.getId());
+        return convertToDTO(template);
+    }
+
+    /**
+     * 更新模板
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TemplateDTO updateTemplate(String id, UpdateTemplateRequest request) {
+        log.info("更新模板 - ID:{}", id);
+
+        // 检查模板是否存在
+        WorkflowTemplate template = templateMapper.selectById(id);
+        if (template == null) {
+            throw new WorkflowException("模板不存在: " + id);
+        }
+
+        // 如果更新了流程定义，需要验证结构
+        if (request.getDefinition() != null) {
+            String definitionJson = convertObjectToJson(request.getDefinition());
+            if (!validateTemplateStructure(definitionJson)) {
+                throw new WorkflowException("模板结构无效：必须包含至少一个开始节点和一个结束节点");
+            }
+            template.setDefinition(definitionJson);
+        }
+
+        // 更新字段
+        if (StringUtils.hasText(request.getName())) {
+            template.setName(request.getName());
+        }
+        if (StringUtils.hasText(request.getDescription())) {
+            template.setDescription(request.getDescription());
+        }
+        if (StringUtils.hasText(request.getCategoryId())) {
+            template.setCategoryId(request.getCategoryId());
+        }
+        if (request.getTags() != null) {
+            template.setTags(convertTagsToJson(request.getTags()));
+        }
+        if (StringUtils.hasText(request.getPreviewImage())) {
+            template.setPreviewImage(request.getPreviewImage());
+        }
+        if (StringUtils.hasText(request.getStatus())) {
+            template.setStatus(request.getStatus());
+        }
+
+        template.setUpdatedAt(LocalDateTime.now());
+
+        // 保存更新
+        templateMapper.updateById(template);
+
+        log.info("模板更新成功 - ID:{}", id);
+        return convertToDTO(template);
+    }
+
+    /**
+     * 删除模板
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTemplate(String id) {
+        log.info("删除模板 - ID:{}", id);
+
+        // 检查模板是否存在
+        WorkflowTemplate template = templateMapper.selectById(id);
+        if (template == null) {
+            throw new WorkflowException("模板不存在: " + id);
+        }
+
+        // 检查是否有流程正在使用该模板
+        int usageCount = checkTemplateUsage(id);
+        if (usageCount > 0) {
+            throw new WorkflowException("该模板正在被 " + usageCount + " 个流程使用，无法删除");
+        }
+
+        // 执行删除
+        templateMapper.deleteById(id);
+
+        log.info("模板删除成功 - ID:{}", id);
+    }
+
+    /**
+     * 验证模板结构
+     * 必须包含至少一个开始节点和一个结束节点
+     */
+    @Override
+    public boolean validateTemplateStructure(String definition) {
+        try {
+            JsonNode root = objectMapper.readTree(definition);
+            JsonNode nodes = root.get("nodes");
+            
+            if (nodes == null || !nodes.isArray()) {
+                return false;
+            }
+
+            boolean hasStartNode = false;
+            boolean hasEndNode = false;
+
+            // 遍历所有节点，检查是否有开始和结束节点
+            for (JsonNode node : nodes) {
+                String nodeType = node.get("type").asText();
+                if ("start".equals(nodeType)) {
+                    hasStartNode = true;
+                }
+                if ("end".equals(nodeType)) {
+                    hasEndNode = true;
+                }
+            }
+
+            return hasStartNode && hasEndNode;
+        } catch (Exception e) {
+            log.error("验证模板结构失败", e);
+            return false;
+        }
+    }
+
+    /**
+     * 检查模板是否被流程引用
+     */
+    @Override
+    public int checkTemplateUsage(String templateId) {
+        return templateMapper.countWorkflowsByTemplateId(templateId);
+    }
+
+    /**
+     * 增加模板使用次数
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void incrementUsageCount(String templateId) {
+        log.info("增加模板使用次数 - ID:{}", templateId);
+        templateMapper.incrementUsageCount(templateId);
+    }
+
+    /**
+     * 验证创建请求
+     */
+    private void validateCreateRequest(CreateTemplateRequest request) {
+        if (!StringUtils.hasText(request.getName())) {
+            throw new WorkflowException("模板名称不能为空");
+        }
+        if (!StringUtils.hasText(request.getDescription())) {
+            throw new WorkflowException("模板描述不能为空");
+        }
+        if (!StringUtils.hasText(request.getCategoryId())) {
+            throw new WorkflowException("模板分类不能为空");
+        }
+        if (request.getTags() == null || request.getTags().isEmpty()) {
+            throw new WorkflowException("模板标签不能为空");
+        }
+        if (request.getDefinition() == null) {
+            throw new WorkflowException("流程定义不能为空");
+        }
+    }
+
+    /**
+     * 将对象转换为JSON字符串
+     */
+    private String convertObjectToJson(Object obj) {
+        try {
+            if (obj instanceof String) {
+                return (String) obj;
+            }
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            log.error("转换对象为JSON失败", e);
+            throw new WorkflowException("流程定义格式错误");
+        }
+    }
+
+    /**
+     * 将JSON字符串转换为对象
+     */
+    private Object convertJsonToObject(String json) {
+        try {
+            return objectMapper.readValue(json, Object.class);
+        } catch (Exception e) {
+            log.error("解析JSON失败", e);
+            return null;
+        }
+    }
+
+    /**
+     * 将标签列表转换为JSON字符串
+     */
+    private String convertTagsToJson(List<String> tags) {
+        try {
+            return objectMapper.writeValueAsString(tags);
+        } catch (Exception e) {
+            log.error("转换标签为JSON失败", e);
+            return "[]";
+        }
+    }
+
+    /**
+     * 将JSON字符串转换为标签列表
+     */
+    private List<String> convertJsonToTags(String tagsJson) {
+        try {
+            return objectMapper.readValue(tagsJson, List.class);
+        } catch (Exception e) {
+            log.error("解析标签JSON失败", e);
+            return List.of();
+        }
+    }
+
+    /**
+     * 将实体转换为DTO
+     */
+    private TemplateDTO convertToDTO(WorkflowTemplate template) {
+        TemplateDTO dto = new TemplateDTO();
+        BeanUtils.copyProperties(template, dto);
+        
+        // 转换标签
+        if (StringUtils.hasText(template.getTags())) {
+            dto.setTags(convertJsonToTags(template.getTags()));
+        }
+        
+        // 转换流程定义
+        if (StringUtils.hasText(template.getDefinition())) {
+            dto.setDefinition(convertJsonToObject(template.getDefinition()));
+        }
+        
+        // 转换系统模板标志
+        dto.setIsSystem(template.getIsSystem() == 1);
+        
+        return dto;
+    }
+
+    /**
+     * 从模板创建流程
+     * 复制模板的所有节点、连接和配置到新流程
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public WfProcessDefinition createWorkflowFromTemplate(String templateId, CreateFromTemplateRequest request) {
+        log.info("从模板创建流程 - 模板ID:{}, 流程名称:{}", templateId, request.getWorkflowName());
+
+        // 验证请求参数
+        if (!StringUtils.hasText(request.getWorkflowName())) {
+            throw new WorkflowException("流程名称不能为空");
+        }
+
+        // 获取模板
+        WorkflowTemplate template = templateMapper.selectById(templateId);
+        if (template == null) {
+            throw new WorkflowException("模板不存在: " + templateId);
+        }
+
+        // 检查模板状态
+        if (!"active".equals(template.getStatus())) {
+            throw new WorkflowException("模板状态不可用");
+        }
+
+        // 创建流程定义对象
+        WfProcessDefinition definition = new WfProcessDefinition();
+        
+        // 生成流程ID
+        definition.setDefinitionId(UUID.randomUUID().toString().replace("-", ""));
+        
+        // 设置流程基本信息
+        definition.setProcessName(request.getWorkflowName());
+        definition.setDescription(request.getDescription());
+        
+        // 设置流程Key（如果未提供则使用流程名称的拼音或自动生成）
+        if (StringUtils.hasText(request.getProcessKey())) {
+            definition.setProcessKey(request.getProcessKey());
+        } else {
+            // 自动生成流程Key：使用UUID的前8位
+            definition.setProcessKey("wf_" + UUID.randomUUID().toString().substring(0, 8));
+        }
+        
+        // 复制模板的流程定义（所有节点、连接和配置）
+        definition.setModelJson(template.getDefinition());
+        
+        // 设置初始版本
+        definition.setVersion(1);
+        definition.setIsLatest(1);
+        
+        // 设置状态为草稿
+        definition.setStatus("DRAFT");
+        
+        // 设置租户ID
+        definition.setTenantId(WorkflowSecurityUtils.getCurrentTenantId());
+        
+        // 设置创建时间和创建者（转换为String）
+        definition.setCreateTime(LocalDateTime.now());
+        Long userId = WorkflowSecurityUtils.getCurrentUserId();
+        definition.setCreateBy(userId != null ? userId.toString() : null);
+        
+        // 记录来源模板ID（需要在 WfProcessDefinition 中添加 templateId 字段）
+        // 这里暂时通过 description 或其他方式记录
+        if (StringUtils.hasText(definition.getDescription())) {
+            definition.setDescription(definition.getDescription() + " [来源模板: " + template.getName() + "]");
+        } else {
+            definition.setDescription("[来源模板: " + template.getName() + "]");
+        }
+
+        // 调用流程定义服务保存流程
+        try {
+            definitionService.saveProcessDefinition(definition);
+            
+            // 增加模板使用次数
+            incrementUsageCount(templateId);
+            
+            log.info("从模板创建流程成功 - 流程ID:{}, 模板ID:{}", definition.getDefinitionId(), templateId);
+            return definition;
+            
+        } catch (Exception e) {
+            log.error("从模板创建流程失败", e);
+            throw new WorkflowException("创建流程失败: " + e.getMessage());
+        }
+    }
+}

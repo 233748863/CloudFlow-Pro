@@ -18,6 +18,7 @@ import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
+import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
 import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
@@ -61,6 +62,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     private JsonSchemaValidator jsonSchemaValidator;
     @Autowired
     private WorkflowSecurityUtils securityUtils;
+    @Autowired
+    private IVersionService versionService;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -124,6 +127,23 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         processDefinitionMapper.insert(definition);
         log.info("[saveProcessDefinition] 流程定义保存成功, definitionId={}, version={}", definition.getDefinitionId(), version);
+        
+        // 自动创建版本记录
+        try {
+            String currentUserId = UserContext.getUserId() != null ? UserContext.getUserId().toString() : "system";
+            String changeLog = "保存流程定义，版本 " + version;
+            versionService.createVersion(
+                definition.getDefinitionId(), 
+                definition.getModelJson(), 
+                changeLog, 
+                currentUserId
+            );
+            log.info("[saveProcessDefinition] 版本记录创建成功");
+        } catch (Exception e) {
+            log.error("[saveProcessDefinition] 创建版本记录失败", e);
+            // 版本创建失败不影响流程保存，仅记录日志
+        }
+        
         auditService.log(WorkflowAuditService.AuditAction.DEFINITION_CREATE, definition.getDefinitionId(),
             "processKey=" + definition.getProcessKey() + ", version=" + version);
         // P1-13: 返回结构化对象，前端通过 .id 获取 definitionId
