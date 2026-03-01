@@ -1007,6 +1007,266 @@ CREATE TABLE wf_deploy_window (
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   window_name       VARCHAR(100)    NOT NULL COMMENT '窗口名称',
   window_type       VARCHAR(20)     NOT NULL COMMENT '窗口类型：DAILY/WEEKLY/MONTHLY/CUSTOM',
+  start_time        TIME            NOT NULL COMMENT '开始时间',
+  end_time          TIME            NOT NULL COMMENT '结束时间',
+  week_days         VARCHAR(50)     DEFAULT NULL COMMENT '星期几（WEEKLY类型使用，逗号分隔：1,2,3,4,5）',
+  month_days        VARCHAR(100)    DEFAULT NULL COMMENT '每月几号（MONTHLY类型使用，逗号分隔：1,15,30）',
+  is_enabled        TINYINT(1)      DEFAULT 1 COMMENT '是否启用',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '描述',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_tenant (tenant_id),
+  KEY idx_enabled (is_enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布窗口配置表';
+
+-- =========================================================
+-- 十二、高级功能模块（模板库、版本控制、归档、审计）
+-- =========================================================
+
+-- 29. 工作流模板表
+DROP TABLE IF EXISTS workflow_template;
+CREATE TABLE workflow_template (
+    id VARCHAR(64) PRIMARY KEY COMMENT '模板ID',
+    name VARCHAR(200) NOT NULL COMMENT '模板名称',
+    description TEXT COMMENT '模板描述',
+    category_id VARCHAR(64) COMMENT '分类ID',
+    tags JSON COMMENT '标签（JSON数组）',
+    definition JSON NOT NULL COMMENT '流程定义（JSON格式）',
+    preview_image VARCHAR(500) COMMENT '预览图片URL',
+    created_by VARCHAR(64) NOT NULL COMMENT '创建人ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    usage_count INT DEFAULT 0 COMMENT '使用次数',
+    is_system TINYINT(1) DEFAULT 0 COMMENT '是否系统模板',
+    status VARCHAR(20) DEFAULT 'active' COMMENT '状态：active/inactive',
+    tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
+    INDEX idx_category (category_id),
+    INDEX idx_created_by (created_by),
+    INDEX idx_status (status),
+    INDEX idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流模板表';
+
+-- 30. 模板分类表
+DROP TABLE IF EXISTS template_category;
+CREATE TABLE template_category (
+    id VARCHAR(64) PRIMARY KEY COMMENT '分类ID',
+    name VARCHAR(100) NOT NULL COMMENT '分类名称',
+    description VARCHAR(500) COMMENT '分类描述',
+    parent_id VARCHAR(64) COMMENT '父分类ID',
+    order_num INT DEFAULT 0 COMMENT '排序号',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
+    INDEX idx_parent (parent_id),
+    INDEX idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板分类表';
+
+-- 31. 工作流版本表
+DROP TABLE IF EXISTS workflow_version;
+CREATE TABLE workflow_version (
+    id VARCHAR(64) PRIMARY KEY COMMENT '版本ID',
+    workflow_id VARCHAR(64) NOT NULL COMMENT '工作流ID（对应 wf_process_definition.definition_id）',
+    version_number VARCHAR(20) NOT NULL COMMENT '版本号（如：1.0.0）',
+    definition JSON NOT NULL COMMENT '流程定义快照（JSON格式）',
+    change_log TEXT COMMENT '变更日志',
+    change_type VARCHAR(20) NOT NULL COMMENT '变更类型：MAJOR/MINOR/PATCH/ROLLBACK',
+    created_by VARCHAR(64) NOT NULL COMMENT '创建人ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    is_rollback TINYINT(1) DEFAULT 0 COMMENT '是否回滚版本',
+    rollback_from_version VARCHAR(20) COMMENT '回滚自哪个版本',
+    checksum VARCHAR(64) NOT NULL COMMENT '定义校验和（MD5）',
+    tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
+    INDEX idx_workflow (workflow_id),
+    INDEX idx_version (workflow_id, version_number),
+    INDEX idx_created_at (created_at),
+    INDEX idx_tenant (tenant_id),
+    UNIQUE KEY uk_workflow_version (workflow_id, version_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流版本表';
+
+-- 32. 工作流归档表
+DROP TABLE IF EXISTS workflow_archive;
+CREATE TABLE workflow_archive (
+    id VARCHAR(64) PRIMARY KEY COMMENT '归档ID',
+    workflow_id VARCHAR(64) NOT NULL COMMENT '工作流ID',
+    workflow_name VARCHAR(200) NOT NULL COMMENT '工作流名称',
+    archived_by VARCHAR(64) NOT NULL COMMENT '归档人ID',
+    archived_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '归档时间',
+    archive_reason TEXT COMMENT '归档原因',
+    can_restore TINYINT(1) DEFAULT 1 COMMENT '是否可恢复',
+    original_data JSON NOT NULL COMMENT '原始数据（JSON格式）',
+    tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
+    INDEX idx_workflow (workflow_id),
+    INDEX idx_archived_by (archived_by),
+    INDEX idx_archived_at (archived_at),
+    INDEX idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流归档表';
+
+-- 33. 工作流审计日志表
+-- 注意：这与 sys_audit_log 表不同
+-- sys_audit_log：记录数据变更的字段级差异（使用 Javers 进行对象差异比较）
+-- wf_audit_log：记录工作流高级功能的关键操作（模板管理、版本回滚、归档、删除等）
+DROP TABLE IF EXISTS wf_audit_log;
+CREATE TABLE wf_audit_log (
+    id VARCHAR(64) PRIMARY KEY COMMENT '审计日志ID',
+    operation_type VARCHAR(50) NOT NULL COMMENT '操作类型：TEMPLATE_CREATE/TEMPLATE_UPDATE/TEMPLATE_DELETE/VERSION_CREATE/VERSION_ROLLBACK/ARCHIVE_CREATE/ARCHIVE_RESTORE/BATCH_ARCHIVE/BATCH_DELETE',
+    target_type VARCHAR(50) NOT NULL COMMENT '操作对象类型：TEMPLATE/WORKFLOW/VERSION/ARCHIVE',
+    target_id VARCHAR(64) NOT NULL COMMENT '操作对象ID',
+    target_name VARCHAR(200) COMMENT '操作对象名称',
+    operator_id VARCHAR(64) NOT NULL COMMENT '操作人ID',
+    operator_name VARCHAR(100) COMMENT '操作人名称',
+    operation_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+    operation_reason TEXT COMMENT '操作原因',
+    operation_details TEXT COMMENT '操作详情（JSON格式）',
+    operation_result VARCHAR(20) NOT NULL DEFAULT 'SUCCESS' COMMENT '操作结果：SUCCESS/FAILED',
+    error_message TEXT COMMENT '错误信息',
+    ip_address VARCHAR(50) COMMENT 'IP地址',
+    user_agent VARCHAR(500) COMMENT '用户代理',
+    tenant_id BIGINT COMMENT '租户ID',
+    INDEX idx_operation_type (operation_type),
+    INDEX idx_target_type (target_type),
+    INDEX idx_target_id (target_id),
+    INDEX idx_operator_id (operator_id),
+    INDEX idx_operation_time (operation_time),
+    INDEX idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流审计日志表';
+
+-- 34. 为 wf_process_definition 表添加高级功能字段
+ALTER TABLE wf_process_definition 
+    ADD COLUMN IF NOT EXISTS template_id VARCHAR(64) DEFAULT NULL COMMENT '来源模板ID';
+
+ALTER TABLE wf_process_definition 
+    ADD COLUMN IF NOT EXISTS current_version VARCHAR(20) DEFAULT '1.0.0' COMMENT '当前版本号';
+
+ALTER TABLE wf_process_definition 
+    ADD COLUMN IF NOT EXISTS is_archived TINYINT(1) DEFAULT 0 COMMENT '是否已归档';
+
+-- 添加索引
+ALTER TABLE wf_process_definition 
+    ADD INDEX IF NOT EXISTS idx_template (template_id);
+
+ALTER TABLE wf_process_definition 
+    ADD INDEX IF NOT EXISTS idx_archived (is_archived);
+
+ALTER TABLE wf_process_definition 
+    ADD INDEX IF NOT EXISTS idx_version (current_version);
+
+-- =========================================================
+-- 初始化数据 - 模板分类
+-- =========================================================
+INSERT INTO template_category (id, name, description, order_num, tenant_id) VALUES
+('cat-hr', '人事管理', '人力资源相关流程模板', 1, 100000),
+('cat-finance', '财务管理', '财务相关流程模板', 2, 100000),
+('cat-procurement', '采购管理', '采购相关流程模板', 3, 100000),
+('cat-contract', '合同管理', '合同审批相关流程模板', 4, 100000),
+('cat-admin', '行政管理', '行政管理流程模板', 5, 100000);
+
+-- =========================================================
+-- 初始化数据 - 预置流程模板
+-- =========================================================
+
+-- 1. 请假申请模板
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-leave-001', '请假申请', '员工请假审批流程模板', 'cat-hr', 
+'["请假", "审批", "人事"]', 
+'{
+  "nodes": [
+    {"id": "start-001", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
+    {"id": "form-001", "type": "form", "name": "提交请假申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "leaveType", "label": "请假类型", "type": "select", "required": true, "options": ["年假", "事假", "病假", "婚假", "产假"]}, {"name": "startDate", "label": "开始日期", "type": "date", "required": true}, {"name": "endDate", "label": "结束日期", "type": "date", "required": true}, {"name": "reason", "label": "请假事由", "type": "textarea", "required": true}]}},
+    {"id": "approval-001", "type": "approval", "name": "部门经理审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "manager"}},
+    {"id": "end-001", "type": "end", "name": "结束", "position": {"x": 100, "y": 400}}
+  ],
+  "edges": [
+    {"id": "edge-001", "source": "start-001", "target": "form-001"},
+    {"id": "edge-002", "source": "form-001", "target": "approval-001"},
+    {"id": "edge-003", "source": "approval-001", "target": "end-001"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+-- 2. 费用报销模板
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-expense-001', '费用报销', '员工费用报销审批流程模板', 'cat-finance', 
+'["报销", "财务", "审批"]', 
+'{
+  "nodes": [
+    {"id": "start-002", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
+    {"id": "form-002", "type": "form", "name": "提交报销申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "expenseType", "label": "费用类型", "type": "select", "required": true, "options": ["差旅费", "招待费", "办公费", "团建费"]}, {"name": "amount", "label": "报销金额", "type": "number", "required": true}, {"name": "description", "label": "费用说明", "type": "textarea", "required": true}, {"name": "attachments", "label": "附件", "type": "file", "required": true}]}},
+    {"id": "approval-002", "type": "approval", "name": "部门经理审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "dept_manager"}},
+    {"id": "approval-003", "type": "approval", "name": "财务审核", "position": {"x": 100, "y": 400}, "config": {"assigneeType": "ROLE", "assigneeValue": "finance"}},
+    {"id": "end-002", "type": "end", "name": "结束", "position": {"x": 100, "y": 500}}
+  ],
+  "edges": [
+    {"id": "edge-004", "source": "start-002", "target": "form-002"},
+    {"id": "edge-005", "source": "form-002", "target": "approval-002"},
+    {"id": "edge-006", "source": "approval-002", "target": "approval-003"},
+    {"id": "edge-007", "source": "approval-003", "target": "end-002"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+-- 3. 采购申请模板
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-purchase-001', '采购申请', '物资采购审批流程模板', 'cat-procurement', 
+'["采购", "审批", "物资"]', 
+'{
+  "nodes": [
+    {"id": "start-003", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
+    {"id": "form-003", "type": "form", "name": "提交采购申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "itemName", "label": "物品名称", "type": "text", "required": true}, {"name": "quantity", "label": "数量", "type": "number", "required": true}, {"name": "estimatedPrice", "label": "预估价格", "type": "number", "required": true}, {"name": "reason", "label": "采购理由", "type": "textarea", "required": true}]}},
+    {"id": "approval-004", "type": "approval", "name": "部门审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "dept_manager"}},
+    {"id": "end-003", "type": "end", "name": "结束", "position": {"x": 100, "y": 400}}
+  ],
+  "edges": [
+    {"id": "edge-008", "source": "start-003", "target": "form-003"},
+    {"id": "edge-009", "source": "form-003", "target": "approval-004"},
+    {"id": "edge-010", "source": "approval-004", "target": "end-003"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+-- 4. 合同审批模板
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-contract-001', '合同审批', '合同审批流程（含法务审核）', 'cat-contract', 
+'["合同", "审批", "法务"]', 
+'{
+  "nodes": [
+    {"id": "start-004", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
+    {"id": "form-004", "type": "form", "name": "提交合同", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "contractName", "label": "合同名称", "type": "text", "required": true}, {"name": "contractType", "label": "合同类型", "type": "select", "required": true, "options": ["采购合同", "销售合同", "服务协议"]}, {"name": "amount", "label": "合同金额", "type": "number", "required": true}, {"name": "contractFile", "label": "合同文件", "type": "file", "required": true}]}},
+    {"id": "approval-005", "type": "approval", "name": "法务审核", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "legal"}},
+    {"id": "approval-006", "type": "approval", "name": "领导审批", "position": {"x": 100, "y": 400}, "config": {"assigneeType": "ROLE", "assigneeValue": "leader"}},
+    {"id": "end-004", "type": "end", "name": "结束", "position": {"x": 100, "y": 500}}
+  ],
+  "edges": [
+    {"id": "edge-011", "source": "start-004", "target": "form-004"},
+    {"id": "edge-012", "source": "form-004", "target": "approval-005"},
+    {"id": "edge-013", "source": "approval-005", "target": "approval-006"},
+    {"id": "edge-014", "source": "approval-006", "target": "end-004"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+-- 5. 出差申请模板
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-trip-001', '出差申请', '员工出差审批流程模板', 'cat-admin', 
+'["出差", "审批", "行政"]', 
+'{
+  "nodes": [
+    {"id": "start-005", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
+    {"id": "form-005", "type": "form", "name": "提交出差申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "destination", "label": "目的地", "type": "text", "required": true}, {"name": "startDate", "label": "开始日期", "type": "date", "required": true}, {"name": "endDate", "label": "结束日期", "type": "date", "required": true}, {"name": "purpose", "label": "出差目的", "type": "textarea", "required": true}]}},
+    {"id": "approval-007", "type": "approval", "name": "部门经理审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "manager"}},
+    {"id": "end-005", "type": "end", "name": "结束", "position": {"x": 100, "y": 400}}
+  ],
+  "edges": [
+    {"id": "edge-015", "source": "start-005", "target": "form-005"},
+    {"id": "edge-016", "source": "form-005", "target": "approval-007"},
+    {"id": "edge-017", "source": "approval-007", "target": "end-005"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+SET FOREIGN_KEY_CHECKS = 1;',
   start_time        TIME            DEFAULT NULL COMMENT '开始时间（时分秒）',
   end_time          TIME            DEFAULT NULL COMMENT '结束时间（时分秒）',
   week_days         VARCHAR(50)     DEFAULT NULL COMMENT '星期几（1-7，逗号分隔）',
