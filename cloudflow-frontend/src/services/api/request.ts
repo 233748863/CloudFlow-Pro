@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
+import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
 
 // 定义标准 API 响应接口
 export interface ApiResponse<T = any> {
@@ -90,6 +91,16 @@ request.interceptors.response.use(
         console.warn(`[API] 服务暂时不可用: ${res.msg}`);
         return Promise.reject(new Error(res.msg || '服务暂时不可用'));
       }
+      // 403 权限不足 - 显示友好的权限错误提示
+      if (res.code === 403) {
+        if (!isSilent) {
+          toast.error(res.msg || '您没有权限执行此操作', {
+            duration: 4000,
+            description: '如需访问此功能，请联系系统管理员'
+          });
+        }
+        return Promise.reject(new Error(res.msg || '权限不足'));
+      }
       // 处理特定业务错误
       if (!isSilent) {
         toast.error(res.msg || '操作失败');
@@ -98,7 +109,7 @@ request.interceptors.response.use(
     }
     return res.data;
   },
-  (error: AxiosError<ApiResponse>) => {
+  (error: AxiosError<ApiResponse | ApiErrorResponse>) => {
     // 处理超时错误
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
       toast.error('请求超时，请稍后重试');
@@ -126,10 +137,18 @@ request.interceptors.response.use(
        // 服务不可用 - 微服务未启动，静默处理不弹 toast
        console.warn(`[API] 服务暂时不可用: ${error.config?.url}`);
     } else if (error.response) {
-       // 通用错误提示
-       if (!isSilent) {
-         const msg = error.response.data?.msg || error.message || '网络请求失败';
-         toast.error(msg);
+       // 使用统一的错误处理器
+       // 检查响应数据是否包含标准化的错误格式（有 code 字段）
+       const responseData = error.response.data;
+       if (responseData && typeof responseData === 'object' && 'code' in responseData) {
+         // 标准化错误响应，使用增强的错误处理器
+         handleApiError(error as AxiosError<ApiErrorResponse>, { silent: isSilent });
+       } else {
+         // 旧格式的错误响应，使用原有的处理方式
+         if (!isSilent) {
+           const msg = (responseData as any)?.msg || error.message || '网络请求失败';
+           toast.error(msg);
+         }
        }
     } else {
        // 其他错误

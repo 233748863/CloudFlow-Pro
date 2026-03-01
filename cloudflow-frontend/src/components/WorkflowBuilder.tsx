@@ -11,7 +11,7 @@ import {
   GraduationCap, Heart, Building2, Wrench, Package,
   UserPlus, UserMinus, Award, CreditCard, PiggyBank,
   Rocket, CheckSquare, Stethoscope, BookOpen,
-  Bell, Code, Clock, Workflow, ClipboardCheck, Send
+  Bell, Code, Clock, Workflow, ClipboardCheck, Send, FileDown
 } from 'lucide-react';
 import { WorkflowNode, NodeType, WorkflowDefinition, FormDefinition, User } from '../types';
 import { useHistory } from '../hooks/useHistory';
@@ -2461,6 +2461,7 @@ interface WorkflowBuilderProps {
 const WorkflowToolbar = ({
   workflowName,
   workflowKey,
+  workflowId,
   onNameChange,
   onKeyChange,
   onSave,
@@ -2472,10 +2473,13 @@ const WorkflowToolbar = ({
   onOpenTemplatePicker,
   onOpenGlobalConfig,
   onOpenSettings,
+  onViewVersionHistory,
+  onExport,
   saving
 }: {
   workflowName: string;
   workflowKey: string;
+  workflowId?: string;
   onNameChange: (name: string) => void;
   onKeyChange: (key: string) => void;
   onSave: () => void;
@@ -2487,6 +2491,8 @@ const WorkflowToolbar = ({
   onOpenTemplatePicker: () => void;
   onOpenGlobalConfig: () => void;
   onOpenSettings: () => void;
+  onViewVersionHistory?: () => void;
+  onExport?: () => void;
   saving: boolean;
 }) => {
   return (
@@ -2537,6 +2543,28 @@ const WorkflowToolbar = ({
           <Settings size={14} className="text-purple-500" />
           全局属性
         </button>
+        {/* 版本历史按钮 - 仅在流程已保存时显示 */}
+        {workflowId && !workflowId.startsWith('new_') && onViewVersionHistory && (
+          <button
+            onClick={onViewVersionHistory}
+            className="px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-500 hover:border-indigo-200 transition-all flex items-center gap-2 shadow-sm"
+            title="查看版本历史"
+          >
+            <Clock size={14} className="text-indigo-500" />
+            版本历史
+          </button>
+        )}
+        {/* 导出按钮 - 仅在流程已保存时显示 */}
+        {workflowId && !workflowId.startsWith('new_') && onExport && (
+          <button
+            onClick={onExport}
+            className="px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-green-500 hover:border-green-200 transition-all flex items-center gap-2 shadow-sm"
+            title="导出流程"
+          >
+            <FileDown size={14} className="text-green-500" />
+            导出
+          </button>
+        )}
         <div className="w-px h-6 bg-slate-200 mx-1"></div>
         <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
             <button onClick={onUndo} disabled={!canUndo} className={`p-1.5 rounded-md transition-all ${!canUndo ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900 active:scale-95'}`} title="撤销 (Ctrl+Z)"><Undo2 size={16} /></button>
@@ -3088,11 +3116,50 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
     toast.success('流程设置已更新');
   };
 
+  // 查看版本历史
+  const handleViewVersionHistory = () => {
+    if (workflow?.id && !workflow.id.startsWith('new_')) {
+      window.open(`/workflow/versions/${workflow.id}`, '_blank');
+    }
+  };
+
+  // 导出流程
+  const handleExport = async () => {
+    if (!workflow?.id || workflow.id.startsWith('new_')) {
+      toast.error('请先保存流程后再导出');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/workflow/import-export/export/${workflow.id}?includeSensitive=false`);
+      
+      if (!response.ok) {
+        throw new Error('导出失败');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `workflow_${workflowName}_${workflow.version || '1.0.0'}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('流程导出成功');
+    } catch (error) {
+      console.error('导出失败:', error);
+      toast.error('导出失败，请重试');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-slate-100 overflow-hidden relative">
       <WorkflowToolbar
         workflowName={workflowName}
         workflowKey={workflowKey}
+        workflowId={workflow?.id}
         onNameChange={setWorkflowName}
         onKeyChange={setWorkflowKey}
         onSave={handleSave}
@@ -3104,6 +3171,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onCh
         onOpenTemplatePicker={() => setShowTemplates(true)}
         onOpenSettings={() => setShowSettingsModal(true)}
         onOpenGlobalConfig={() => setShowGlobalConfig(true)}
+        onViewVersionHistory={handleViewVersionHistory}
+        onExport={handleExport}
         saving={saving}
       />
 

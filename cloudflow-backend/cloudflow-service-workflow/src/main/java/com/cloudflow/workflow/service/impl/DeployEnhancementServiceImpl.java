@@ -89,7 +89,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     @Override
     public R<List<WfDeployWindow>> listDeployWindows() {
         List<WfDeployWindow> list = deployWindowMapper.selectList(
-                new LambdaQueryWrapper<WfDeployWindow>().orderByDesc(WfDeployWindow::getCreatedTime));
+                new LambdaQueryWrapper<WfDeployWindow>().orderByDesc(WfDeployWindow::getCreateTime));
         return R.ok(list);
     }
 
@@ -97,8 +97,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     public R<?> saveDeployWindow(DeployWindowDTO dto) {
         WfDeployWindow window = new WfDeployWindow();
         BeanUtils.copyProperties(dto, window);
-        window.setCreatedBy(UserContext.getUserId());
-        window.setCreatedTime(LocalDateTime.now());
+        // 创建者字段由 MyBatis-Plus 自动填充处理
         deployWindowMapper.insert(window);
         return R.ok("发布窗口创建成功");
     }
@@ -113,8 +112,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             return R.fail("发布窗口不存在");
         }
         BeanUtils.copyProperties(dto, window);
-        window.setUpdatedBy(UserContext.getUserId());
-        window.setUpdatedTime(LocalDateTime.now());
+        // 更新者字段由 MyBatis-Plus 自动填充处理
         deployWindowMapper.updateById(window);
         return R.ok("发布窗口更新成功");
     }

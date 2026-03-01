@@ -10,12 +10,18 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * 模板库页面 - 用户端
  * 展示所有可用的流程模板，支持筛选和预览
+ * 权限控制：
+ * - 所有用户可以查看模板库
+ * - 需要登录才能使用模板创建流程
  */
 export const TemplateLibrary = () => {
+  // 用户认证
+  const { user } = useAuth();
   // 模板列表数据
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -121,6 +127,12 @@ export const TemplateLibrary = () => {
 
   // 从模板创建流程
   const handleCreateFromTemplate = (templateId: string) => {
+    // 检查用户是否登录
+    if (!user) {
+      toast.error('请先登录后再使用模板创建流程');
+      return;
+    }
+    
     setCreateTemplateId(templateId);
     setWorkflowName('');
     setWorkflowDescription('');
@@ -292,7 +304,9 @@ export const TemplateLibrary = () => {
                   </button>
                   <button
                     onClick={() => handleCreateFromTemplate(template.id)}
-                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    disabled={!user}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={!user ? '请先登录' : '使用此模板创建流程'}
                   >
                     <Plus className="inline w-4 h-4 mr-1" />
                     使用
@@ -334,7 +348,9 @@ export const TemplateLibrary = () => {
                     </button>
                     <button
                       onClick={() => handleCreateFromTemplate(template.id)}
-                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      disabled={!user}
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={!user ? '请先登录' : '使用此模板创建流程'}
                     >
                       使用模板
                     </button>
@@ -395,7 +411,9 @@ export const TemplateLibrary = () => {
                   setShowPreview(false);
                   handleCreateFromTemplate(previewTemplate.id);
                 }}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                disabled={!user}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!user ? '请先登录' : '使用此模板创建流程'}
               >
                 使用此模板
               </button>

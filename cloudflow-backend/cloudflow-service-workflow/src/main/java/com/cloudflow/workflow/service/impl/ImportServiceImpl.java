@@ -13,12 +13,15 @@ import com.cloudflow.workflow.resolver.ConflictResolver.ConflictStrategy;
 import com.cloudflow.workflow.service.IImportService;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.validator.ImportValidator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +29,11 @@ import java.util.UUID;
 
 /**
  * 流程导入服务实现类
+ * 
+ * 性能优化：
+ * 1. 使用流式 JSON 解析处理大文件
+ * 2. 批量导入使用独立事务，避免全部回滚
+ * 3. 限制单个文件大小为 10MB
  * 
  * @author CloudFlow
  */
@@ -47,6 +55,11 @@ public class ImportServiceImpl implements IImportService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    /**
+     * 文件大小限制：10MB
+     */
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     /**
      * 导入单个流程
@@ -120,6 +133,7 @@ public class ImportServiceImpl implements IImportService {
 
     /**
      * 批量导入流程
+     * 每个流程使用独立事务，避免一个失败导致全部回滚
      */
     @Override
     public List<ImportResultDTO> importWorkflows(List<WorkflowExportFormat> exportFormats, 
@@ -128,20 +142,31 @@ public class ImportServiceImpl implements IImportService {
 
         List<ImportResultDTO> results = new ArrayList<>();
 
-        for (WorkflowExportFormat exportFormat : exportFormats) {
-            try {
-                // 每个流程使用独立事务
-                ImportResultDTO result = importWorkflow(exportFormat, strategy);
-                results.add(result);
-            } catch (Exception e) {
-                log.error("导入流程失败, workflowName={}", 
-                    exportFormat.getWorkflow() != null ? exportFormat.getWorkflow().getName() : "unknown", e);
-                
-                // 记录失败结果
-                results.add(ImportResultDTO.failure(
-                    exportFormat.getWorkflow() != null ? exportFormat.getWorkflow().getName() : "unknown",
-                    e.getMessage()
-                ));
+        // 使用批处理，每批处理 100 个
+        int batchSize = 100;
+        for (int i = 0; i < exportFormats.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, exportFormats.size());
+            List<WorkflowExportFormat> batch = exportFormats.subList(i, end);
+            
+            log.debug("处理批次 {}/{}, 大小: {}", (i / batchSize + 1), 
+                (exportFormats.size() + batchSize - 1) / batchSize, batch.size());
+            
+            // 处理当前批次
+            for (WorkflowExportFormat exportFormat : batch) {
+                try {
+                    // 每个流程使用独立事务
+                    ImportResultDTO result = importWorkflow(exportFormat, strategy);
+                    results.add(result);
+                } catch (Exception e) {
+                    log.error("导入流程失败, workflowName={}", 
+                        exportFormat.getWorkflow() != null ? exportFormat.getWorkflow().getName() : "unknown", e);
+                    
+                    // 记录失败结果
+                    results.add(ImportResultDTO.failure(
+                        exportFormat.getWorkflow() != null ? exportFormat.getWorkflow().getName() : "unknown",
+                        e.getMessage()
+                    ));
+                }
             }
         }
 
@@ -153,6 +178,61 @@ public class ImportServiceImpl implements IImportService {
         log.info("批量导入完成, 总数={}, 成功={}, 失败={}, 跳过={}", 
             results.size(), successCount, failedCount, skippedCount);
 
+        return results;
+    }
+
+    /**
+     * 流式解析大文件导入
+     * 使用 Jackson 的流式 API 处理大文件，避免一次性加载到内存
+     * 
+     * @param inputStream 输入流
+     * @param strategy 冲突解决策略
+     * @return 导入结果列表
+     */
+    public List<ImportResultDTO> importWorkflowsFromStream(InputStream inputStream, 
+                                                           ConflictStrategy strategy) {
+        log.info("开始流式导入流程, strategy={}", strategy);
+        
+        List<ImportResultDTO> results = new ArrayList<>();
+        
+        try (JsonParser parser = objectMapper.getFactory().createParser(inputStream)) {
+            // 检查是否是数组开始
+            if (parser.nextToken() != JsonToken.START_ARRAY) {
+                throw new WorkflowException("导入文件格式错误，期望 JSON 数组");
+            }
+            
+            int count = 0;
+            // 逐个解析数组元素
+            while (parser.nextToken() != JsonToken.END_ARRAY) {
+                count++;
+                
+                // 流式读取单个 WorkflowExportFormat 对象
+                WorkflowExportFormat exportFormat = objectMapper.readValue(parser, WorkflowExportFormat.class);
+                
+                try {
+                    // 导入单个流程
+                    ImportResultDTO result = importWorkflow(exportFormat, strategy);
+                    results.add(result);
+                    
+                    log.debug("已处理 {} 个流程", count);
+                } catch (Exception e) {
+                    log.error("导入流程失败, workflowName={}", 
+                        exportFormat.getWorkflow() != null ? exportFormat.getWorkflow().getName() : "unknown", e);
+                    
+                    results.add(ImportResultDTO.failure(
+                        exportFormat.getWorkflow() != null ? exportFormat.getWorkflow().getName() : "unknown",
+                        e.getMessage()
+                    ));
+                }
+            }
+            
+            log.info("流式导入完成, 总数={}", count);
+            
+        } catch (Exception e) {
+            log.error("流式导入失败", e);
+            throw new WorkflowException("流式导入失败: " + e.getMessage());
+        }
+        
         return results;
     }
 

@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 /**
  * 全局异常处理器
  * 仅在 Servlet 环境下生效（排除 WebFlux 网关等响应式应用）
+ * 处理通用异常，不包含 Spring Security 相关异常（由各模块自行处理）
  */
 @RestControllerAdvice
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)

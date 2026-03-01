@@ -65,6 +65,10 @@ const PostList = React.lazy(() => import('./pages/system/PostList').then(module 
 const ConfigList = React.lazy(() => import('./pages/system/ConfigList').then(module => ({ default: module.ConfigList })));
 const CacheMonitor = React.lazy(() => import('./pages/system/CacheMonitor').then(module => ({ default: module.CacheMonitor })));
 const ProcessManagement = React.lazy(() => import('./pages/admin/ProcessManagement').then(module => ({ default: module.ProcessManagement })));
+const WorkflowImport = React.lazy(() => import('./pages/admin/WorkflowImport').then(module => ({ default: module.WorkflowImport })));
+const ArchivedWorkflows = React.lazy(() => import('./pages/admin/ArchivedWorkflows').then(module => ({ default: module.ArchivedWorkflows })));
+const VersionHistoryPage = React.lazy(() => import('./pages/VersionHistoryPage').then(module => ({ default: module.VersionHistoryPage })));
+const TemplateLibrary = React.lazy(() => import('./pages/TemplateLibrary').then(module => ({ default: module.TemplateLibrary })));
 
 
 const Loading = () => (
@@ -261,6 +265,22 @@ const desktopRoutes = [
           {
             path: '/workflow/management',
             element: <Suspense fallback={<Loading />}><ProcessManagement /></Suspense>,
+          },
+          {
+            path: '/workflow/import',
+            element: <Suspense fallback={<Loading />}><WorkflowImport /></Suspense>,
+          },
+          {
+            path: '/workflow/archived',
+            element: <Suspense fallback={<Loading />}><ArchivedWorkflows /></Suspense>,
+          },
+          {
+            path: '/workflow/versions/:workflowId',
+            element: <Suspense fallback={<Loading />}><VersionHistoryPage /></Suspense>,
+          },
+          {
+            path: '/templates',
+            element: <Suspense fallback={<Loading />}><TemplateLibrary /></Suspense>,
           },
           // === 新增系统管理路由 ===
           {

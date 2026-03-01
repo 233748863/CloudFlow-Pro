@@ -10,6 +10,7 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
+import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.util.VersionNumberGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +48,9 @@ public class VersionServiceImpl implements IVersionService {
 
     @Autowired
     private WfProcessInstanceMapper instanceMapper;
+
+    @Autowired
+    private INotificationService notificationService;
 
     /**
      * 创建新版本
@@ -310,6 +314,34 @@ public class VersionServiceImpl implements IVersionService {
 
             log.info("版本回滚成功, 新版本号: {}, 回滚自版本: {}", 
                 newVersionNumber, targetVersion.getVersionNumber());
+
+            // 发送回滚通知
+            WfProcessDefinition processDefinition = definitionMapper.selectById(workflowId);
+            if (processDefinition != null && processDefinition.getCreateBy() != null) {
+                String operatorName = "管理员"; // 可以从用户上下文获取
+                
+                // 将 createBy 从 String 转换为 Long
+                Long createById = null;
+                try {
+                    if (processDefinition.getCreateBy() != null && !processDefinition.getCreateBy().isEmpty()) {
+                        createById = Long.parseLong(processDefinition.getCreateBy());
+                    }
+                } catch (NumberFormatException e) {
+                    log.warn("无法解析创建者ID: {}", processDefinition.getCreateBy());
+                }
+                
+                if (createById != null) {
+                    notificationService.sendRollbackNotification(
+                        createById,
+                        workflowId,
+                        processDefinition.getProcessName(),
+                        currentVersion.getVersionNumber(),
+                        targetVersion.getVersionNumber(),
+                        reason != null ? reason : "版本回滚",
+                        operatorName
+                    );
+                }
+            }
 
             return rollbackVersion;
 

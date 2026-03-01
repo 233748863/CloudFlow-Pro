@@ -9,12 +9,26 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
+import { PermissionGuard } from '../../components/ui/PermissionGuard';
 
 /**
  * 模板管理页面 - 管理员端
  * 管理流程模板和分类
+ * 仅管理员可访问
  */
 export const TemplateManagement = () => {
+  // 权限控制
+  const { isAdmin, canManageTemplates } = useWorkflowPermission();
+
+  // 如果不是管理员，显示无权限提示
+  if (!isAdmin || !canManageTemplates) {
+    return (
+      <PermissionGuard permissions={[]} roles={[]} hidden={false}>
+        <div />
+      </PermissionGuard>
+    );
+  }
   // 模板列表
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

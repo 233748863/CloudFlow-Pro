@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   FolderOpen, 
@@ -10,11 +11,22 @@ import {
   Square,
   X,
   Save,
-  RefreshCw
+  RefreshCw,
+  Download,
+  FileDown,
+  Upload
 } from 'lucide-react';
 import { WorkflowDefinition as BaseWorkflowDefinition, NodeType } from '../../types';
-import { getProcessDefinitions, saveProcessDefinition } from '../../services/api/workflow';
+import { 
+  getProcessDefinitions, 
+  saveProcessDefinition, 
+  exportWorkflow, 
+  exportWorkflows,
+  archiveWorkflows,
+  checkOperationSafety 
+} from '../../services/api/workflow';
 import { toast } from 'sonner';
+import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 
 // 扩展 WorkflowDefinition 类型，tags 解析为数组
 interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
@@ -24,8 +36,22 @@ interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
 /**
  * 流程管理页面 - 支持批量编辑分类和标签
  * 管理员专用页面
+ * 权限控制：
+ * - 批量导出：仅管理员
+ * - 批量归档：仅管理员
+ * - 单个流程导出：流程创建者或管理员
  */
 export const ProcessManagement = () => {
+  const navigate = useNavigate();
+  
+  // 权限控制
+  const { 
+    isAdmin, 
+    canExportBatch, 
+    canBatchArchive,
+    canExportOwn 
+  } = useWorkflowPermission();
+  
   // 流程列表数据
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +70,20 @@ export const ProcessManagement = () => {
   const [batchCategory, setBatchCategory] = useState('');
   const [batchTags, setBatchTags] = useState<string[]>([]);
   const [batchTagInput, setBatchTagInput] = useState('');
+
+  // 导出功能状态
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportType, setExportType] = useState<'single' | 'batch'>('single');
+  const [exportWorkflowId, setExportWorkflowId] = useState<string>('');
+  const [includeSensitive, setIncludeSensitive] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // 归档功能状态
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveReason, setArchiveReason] = useState('');
+  const [archiving, setArchiving] = useState(false);
+  const [safetyWarnings, setSafetyWarnings] = useState<string[]>([]);
+  const [showSafetyWarning, setShowSafetyWarning] = useState(false);
 
   // 分类选项
   const CATEGORY_LABELS: Record<string, string> = {
@@ -238,6 +278,136 @@ export const ProcessManagement = () => {
     setBatchTags(batchTags.filter(t => t !== tag));
   };
 
+  // 打开导出对话框（单个流程）
+  const openExportDialog = (workflowId: string) => {
+    setExportType('single');
+    setExportWorkflowId(workflowId);
+    setIncludeSensitive(false);
+    setShowExportModal(true);
+  };
+
+  // 打开批量导出对话框
+  const openBatchExportDialog = () => {
+    if (selectedIds.length === 0) {
+      toast.error('请先选择要导出的流程');
+      return;
+    }
+    setExportType('batch');
+    setIncludeSensitive(false);
+    setShowExportModal(true);
+  };
+
+  // 执行导出
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      let blob: Blob;
+      let fileName: string;
+
+      if (exportType === 'single') {
+        // 单个流程导出
+        blob = await exportWorkflow(exportWorkflowId, includeSensitive);
+        const workflow = workflows.find(w => w.id === exportWorkflowId);
+        fileName = `workflow_${workflow?.name || 'export'}_${workflow?.version || '1.0.0'}_${new Date().toISOString().split('T')[0]}.json`;
+      } else {
+        // 批量导出
+        blob = await exportWorkflows(selectedIds, includeSensitive);
+        fileName = `workflows_batch_${new Date().toISOString().split('T')[0]}.json`;
+      }
+
+      // 创建下载链接并触发下载
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(exportType === 'single' ? '流程导出成功' : `成功导出 ${selectedIds.length} 个流程`);
+      setShowExportModal(false);
+      
+      // 批量导出后清空选择
+      if (exportType === 'batch') {
+        setSelectedIds([]);
+      }
+    } catch (error) {
+      console.error('导出失败:', error);
+      toast.error('导出失败，请重试');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // 打开批量归档对话框
+  const openBatchArchiveDialog = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('请先选择要归档的流程');
+      return;
+    }
+
+    // 执行安全检查
+    try {
+      const safetyResult = await checkOperationSafety(selectedIds);
+      
+      if (!safetyResult.safe && safetyResult.warnings.length > 0) {
+        // 有安全警告，显示警告信息
+        setSafetyWarnings(safetyResult.warnings);
+        setShowSafetyWarning(true);
+      }
+      
+      // 无论是否有警告，都打开归档对话框
+      setArchiveReason('');
+      setShowArchiveModal(true);
+    } catch (error) {
+      console.error('安全检查失败:', error);
+      toast.error('安全检查失败，请重试');
+    }
+  };
+
+  // 执行批量归档
+  const handleBatchArchive = async () => {
+    if (!archiveReason.trim()) {
+      toast.error('请输入归档原因');
+      return;
+    }
+
+    setArchiving(true);
+    try {
+      const result = await archiveWorkflows(selectedIds, archiveReason);
+      
+      // 显示归档结果
+      if (result.successCount > 0) {
+        toast.success(`成功归档 ${result.successCount} 个流程`);
+      }
+      
+      if (result.failedCount > 0) {
+        toast.error(`${result.failedCount} 个流程归档失败`);
+        // 显示失败详情
+        result.details
+          .filter(d => d.status === 'failed')
+          .forEach(d => {
+            console.error(`流程 ${d.workflowName} 归档失败: ${d.message}`);
+          });
+      }
+
+      // 关闭对话框并清空选择
+      setShowArchiveModal(false);
+      setShowSafetyWarning(false);
+      setSafetyWarnings([]);
+      setSelectedIds([]);
+      
+      // 重新加载流程列表
+      loadWorkflows();
+    } catch (error) {
+      console.error('批量归档失败:', error);
+      toast.error('批量归档失败，请重试');
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* 页面标题 */}
@@ -246,14 +416,30 @@ export const ProcessManagement = () => {
           <h2 className="text-2xl font-bold text-slate-800">流程管理</h2>
           <p className="text-slate-500 mt-1 text-sm">管理流程定义，支持批量修改分类和标签</p>
         </div>
-        <button
-          onClick={loadWorkflows}
-          disabled={loading}
-          className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2 disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          刷新
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/templates')}
+            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2 shadow-sm"
+          >
+            <FolderOpen size={16} />
+            从模板创建
+          </button>
+          <button
+            onClick={() => navigate('/workflow/import')}
+            className="px-4 py-2 bg-blue-500 text-white border border-blue-600 rounded-lg hover:bg-blue-600 transition-all flex items-center gap-2"
+          >
+            <Upload size={16} />
+            导入流程
+          </button>
+          <button
+            onClick={loadWorkflows}
+            disabled={loading}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2 disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            刷新
+          </button>
+        </div>
       </div>
 
       {/* 搜索和筛选 */}
@@ -361,6 +547,24 @@ export const ProcessManagement = () => {
             <Tag size={16} />
             批量添加标签
           </button>
+          <button
+            onClick={openBatchExportDialog}
+            disabled={selectedIds.length === 0 || !canExportBatch}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            title={!canExportBatch ? '仅管理员可批量导出' : '批量导出选中的流程'}
+          >
+            <Download size={16} />
+            批量导出
+          </button>
+          <button
+            onClick={openBatchArchiveDialog}
+            disabled={selectedIds.length === 0 || !canBatchArchive}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            title={!canBatchArchive ? '仅管理员可批量归档' : '批量归档选中的流程'}
+          >
+            <Archive size={16} />
+            批量归档
+          </button>
         </div>
       </div>
 
@@ -387,12 +591,15 @@ export const ProcessManagement = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                 版本
               </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   <div className="flex items-center justify-center gap-2">
                     <RefreshCw size={16} className="animate-spin" />
                     加载中...
@@ -401,7 +608,7 @@ export const ProcessManagement = () => {
               </tr>
             ) : filteredWorkflows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   暂无流程数据
                 </td>
               </tr>
@@ -456,6 +663,34 @@ export const ProcessManagement = () => {
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">v{wf.version}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate(`/workflow/design?id=${wf.id}`)}
+                        className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 text-sm"
+                        title="编辑流程"
+                      >
+                        <Edit size={16} />
+                        编辑
+                      </button>
+                      <button
+                        onClick={() => navigate(`/workflow/versions/${wf.id}`)}
+                        className="text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1 text-sm"
+                        title="查看版本历史"
+                      >
+                        <RefreshCw size={16} />
+                        版本
+                      </button>
+                      <button
+                        onClick={() => openExportDialog(wf.id)}
+                        className="text-green-600 hover:text-green-700 transition-colors flex items-center gap-1 text-sm"
+                        title="导出流程"
+                      >
+                        <FileDown size={16} />
+                        导出
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -598,6 +833,229 @@ export const ProcessManagement = () => {
               >
                 <Save size={16} />
                 {loading ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 导出选项对话框 */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            {/* 对话框标题 */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Download size={20} className="text-green-500" />
+                {exportType === 'single' ? '导出流程' : '批量导出流程'}
+              </h3>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* 对话框内容 */}
+            <div className="p-6 space-y-4">
+              {exportType === 'batch' && (
+                <div className="text-sm text-slate-600 mb-4 bg-blue-50 p-3 rounded-lg">
+                  已选择 <span className="font-bold text-blue-600">{selectedIds.length}</span> 个流程
+                </div>
+              )}
+
+              {exportType === 'single' && (
+                <div className="text-sm text-slate-600 mb-4 bg-green-50 p-3 rounded-lg">
+                  <div className="font-medium text-green-700 mb-1">流程信息</div>
+                  <div className="text-slate-600">
+                    {(() => {
+                      const workflow = workflows.find(w => w.id === exportWorkflowId);
+                      return workflow ? (
+                        <>
+                          <div>名称: {workflow.name}</div>
+                          <div>版本: v{workflow.version}</div>
+                          {workflow.category && (
+                            <div>分类: {CATEGORY_LABELS[workflow.category] || workflow.category}</div>
+                          )}
+                        </>
+                      ) : '未找到流程信息';
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* 敏感信息选项 */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  导出选项
+                </label>
+                
+                <div className="bg-slate-50 p-4 rounded-lg space-y-3">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="includeSensitive"
+                      checked={includeSensitive}
+                      onChange={(e) => setIncludeSensitive(e.target.checked)}
+                      className="mt-1 w-4 h-4 text-green-600 border-slate-300 rounded focus:ring-green-500"
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="includeSensitive" 
+                        className="text-sm font-medium text-slate-700 cursor-pointer"
+                      >
+                        包含敏感配置信息
+                      </label>
+                      <p className="text-xs text-slate-500 mt-1">
+                        包括 API 密钥、数据库连接字符串等敏感配置。如果不勾选，导出文件中的敏感信息将被脱敏处理。
+                      </p>
+                    </div>
+                  </div>
+
+                  {includeSensitive && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                      <div className="text-amber-600 mt-0.5">⚠️</div>
+                      <div className="text-xs text-amber-700">
+                        <div className="font-medium mb-1">安全提示</div>
+                        导出的文件将包含敏感信息，请妥善保管，避免泄露。
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 导出说明 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                <div className="font-medium mb-1">📋 导出说明</div>
+                <ul className="list-disc list-inside space-y-1 text-blue-600">
+                  <li>导出文件为 JSON 格式，可用于备份或迁移</li>
+                  <li>文件名格式：workflow_名称_版本_日期.json</li>
+                  <li>导出内容包含流程的所有节点、连接和配置</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* 对话框底部按钮 */}
+            <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
+              <button
+                onClick={() => setShowExportModal(false)}
+                disabled={exporting}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download size={16} />
+                {exporting ? '导出中...' : '确认导出'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 批量归档对话框 */}
+      {showArchiveModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            {/* 对话框标题 */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Archive size={20} className="text-orange-500" />
+                批量归档流程
+              </h3>
+              <button
+                onClick={() => {
+                  setShowArchiveModal(false);
+                  setShowSafetyWarning(false);
+                  setSafetyWarnings([]);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* 对话框内容 */}
+            <div className="p-6 space-y-4">
+              {/* 选中流程数量 */}
+              <div className="text-sm text-slate-600 mb-4 bg-orange-50 p-3 rounded-lg">
+                已选择 <span className="font-bold text-orange-600">{selectedIds.length}</span> 个流程
+              </div>
+
+              {/* 安全警告 */}
+              {showSafetyWarning && safetyWarnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="text-amber-600 mt-0.5">⚠️</div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-amber-700 mb-2">安全警告</div>
+                      <ul className="text-xs text-amber-600 space-y-1 list-disc list-inside">
+                        {safetyWarnings.map((warning, index) => (
+                          <li key={index}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="text-xs text-amber-700 mt-2 pt-2 border-t border-amber-200">
+                    请确认是否继续归档操作。归档后的流程将不可见，但可以在归档管理中恢复。
+                  </div>
+                </div>
+              )}
+
+              {/* 归档原因输入 */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  归档原因 <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={archiveReason}
+                  onChange={(e) => setArchiveReason(e.target.value)}
+                  placeholder="请输入归档原因，例如：流程已过期、不再使用等"
+                  rows={4}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-400 outline-none text-sm resize-none"
+                />
+                <div className="text-xs text-slate-500">
+                  归档原因将记录在审计日志中，便于后续追溯
+                </div>
+              </div>
+
+              {/* 归档说明 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                <div className="font-medium mb-1">📋 归档说明</div>
+                <ul className="list-disc list-inside space-y-1 text-blue-600">
+                  <li>归档后的流程将从流程列表中隐藏</li>
+                  <li>所有流程数据将被保留，可随时恢复</li>
+                  <li>流程创建者将收到归档通知</li>
+                  <li>归档操作将记录在审计日志中</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* 对话框底部按钮 */}
+            <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
+              <button
+                onClick={() => {
+                  setShowArchiveModal(false);
+                  setShowSafetyWarning(false);
+                  setSafetyWarnings([]);
+                }}
+                disabled={archiving}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleBatchArchive}
+                disabled={archiving || !archiveReason.trim()}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Archive size={16} />
+                {archiving ? '归档中...' : '确认归档'}
               </button>
             </div>
           </div>

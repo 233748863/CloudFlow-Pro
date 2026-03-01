@@ -34,6 +34,6 @@ public interface WfDeployWindowMapper extends BaseMapper<WfDeployWindow> {
      * 获取所有启用的发布窗口
      * @return 启用的窗口列表
      */
-    @Select("SELECT * FROM wf_deploy_window WHERE is_enabled = 1 ORDER BY created_time DESC")
+    @Select("SELECT * FROM wf_deploy_window WHERE is_enabled = 1 ORDER BY create_time DESC")
     List<WfDeployWindow> listEnabledWindows();
 }

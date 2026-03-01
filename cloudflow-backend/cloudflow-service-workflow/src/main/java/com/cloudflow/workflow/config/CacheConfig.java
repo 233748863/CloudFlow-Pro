@@ -34,6 +34,7 @@ public class CacheConfig {
      */
     public static final String PROCESS_DEFINITION_CACHE = "processDefinition";
     public static final String FORM_DEFINITION_CACHE = "formDefinition";
+    public static final String VERSION_COMPARISON_CACHE = "versionComparison";
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
@@ -68,10 +69,18 @@ public class CacheConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
 
+        // 版本对比缓存：1小时过期（版本对比结果相对稳定）
+        RedisCacheConfiguration versionComparisonConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofHours(1))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
+                .disableCachingNullValues();
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withCacheConfiguration(PROCESS_DEFINITION_CACHE, processDefConfig)
                 .withCacheConfiguration(FORM_DEFINITION_CACHE, formDefConfig)
+                .withCacheConfiguration(VERSION_COMPARISON_CACHE, versionComparisonConfig)
                 .build();
     }
 }

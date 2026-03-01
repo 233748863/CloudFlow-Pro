@@ -581,6 +581,235 @@ export async function terminateProcess(data: TerminateProcessRequest): Promise<{
   return request.post('/workflow/instance/terminate', data);
 }
 
+// ==================== 流程导入导出 API ====================
+
+/**
+ * 批量导出请求参数
+ */
+export interface BatchExportRequest {
+  workflowIds: string[];
+  includeSensitive: boolean;
+}
+
+/**
+ * 导入结果
+ */
+export interface ImportResult {
+  success: boolean;
+  workflowId?: string;
+  workflowName: string;
+  action: 'created' | 'updated' | 'skipped';
+  errors?: string[];
+  warnings?: string[];
+  message?: string;
+}
+
+/**
+ * 验证结果
+ */
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  workflowName?: string;
+  version?: string;
+  unsupportedNodeTypes?: string[];
+}
+
+/**
+ * 导出单个流程
+ * @param workflowId 流程 ID
+ * @param includeSensitive 是否包含敏感信息
+ * @returns 下载文件的 Blob
+ */
+export async function exportWorkflow(workflowId: string, includeSensitive: boolean = false): Promise<Blob> {
+  logApiCall('GET', `/workflow/import-export/export/${workflowId}`, { includeSensitive });
+  const response = await request.get(`/workflow/import-export/export/${workflowId}`, {
+    params: { includeSensitive },
+    responseType: 'blob'
+  });
+  return response;
+}
+
+/**
+ * 批量导出流程（管理员权限）
+ * @param workflowIds 流程 ID 列表
+ * @param includeSensitive 是否包含敏感信息
+ * @returns 下载文件的 Blob
+ */
+export async function exportWorkflows(workflowIds: string[], includeSensitive: boolean = false): Promise<Blob> {
+  logApiCall('POST', '/workflow/import-export/export/batch', { workflowIds, includeSensitive });
+  const response = await request.post('/workflow/import-export/export/batch', {
+    workflowIds,
+    includeSensitive
+  }, {
+    responseType: 'blob'
+  });
+  return response;
+}
+
+/**
+ * 验证导入文件
+ * @param file 导入文件
+ * @returns 验证结果
+ */
+export async function validateImportFile(file: File): Promise<ValidationResult> {
+  logApiCall('POST', '/workflow/import-export/import/validate', { fileName: file.name });
+  const formData = new FormData();
+  formData.append('file', file);
+  return request.post('/workflow/import-export/import/validate', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+}
+
+/**
+ * 导入流程
+ * @param file 导入文件
+ * @param conflictStrategy 冲突解决策略（overwrite/rename/skip）
+ * @returns 导入结果
+ */
+export async function importWorkflow(file: File, conflictStrategy: 'overwrite' | 'rename' | 'skip' = 'skip'): Promise<ImportResult> {
+  logApiCall('POST', '/workflow/import-export/import', { fileName: file.name, conflictStrategy });
+  const formData = new FormData();
+  formData.append('file', file);
+  return request.post('/workflow/import-export/import', formData, {
+    params: { conflictStrategy },
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+}
+
+/**
+ * 批量导入流程（管理员权限）
+ * @param files 导入文件列表
+ * @param conflictStrategy 冲突解决策略
+ * @returns 导入结果列表
+ */
+export async function importWorkflows(files: File[], conflictStrategy: 'overwrite' | 'rename' | 'skip' = 'skip'): Promise<ImportResult[]> {
+  logApiCall('POST', '/workflow/import-export/import/batch', { fileCount: files.length, conflictStrategy });
+  const formData = new FormData();
+  files.forEach(file => {
+    formData.append('files', file);
+  });
+  return request.post('/workflow/import-export/import/batch', formData, {
+    params: { conflictStrategy },
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+}
+
+// ==================== 批量操作 API ====================
+
+/**
+ * 批量归档请求参数
+ */
+export interface BatchArchiveRequest {
+  workflowIds: string[];
+  reason: string;
+}
+
+/**
+ * 批量操作结果
+ */
+export interface BatchOperationResult {
+  totalCount: number;
+  successCount: number;
+  failedCount: number;
+  skippedCount: number;
+  details: OperationDetail[];
+}
+
+/**
+ * 操作详情
+ */
+export interface OperationDetail {
+  workflowId: string;
+  workflowName: string;
+  status: 'success' | 'failed' | 'skipped';
+  message?: string;
+}
+
+/**
+ * 安全检查结果
+ */
+export interface SafetyCheckResult {
+  safe: boolean;
+  warnings: string[];
+  workflowsWithInstances: string[];
+  workflowsWithDependencies: string[];
+}
+
+/**
+ * 批量归档流程（管理员权限）
+ * @param workflowIds 流程 ID 列表
+ * @param reason 归档原因
+ * @returns 批量操作结果
+ */
+export async function archiveWorkflows(workflowIds: string[], reason: string): Promise<BatchOperationResult> {
+  logApiCall('POST', '/workflow/batch/archive', { workflowIds, reason });
+  return request.post('/workflow/batch/archive', {
+    workflowIds,
+    reason
+  });
+}
+
+/**
+ * 检查批量操作安全性
+ * @param workflowIds 流程 ID 列表
+ * @returns 安全检查结果
+ */
+export async function checkOperationSafety(workflowIds: string[]): Promise<SafetyCheckResult> {
+  logApiCall('POST', '/workflow/batch/check-safety', { workflowIds });
+  return request.post('/workflow/batch/check-safety', { workflowIds });
+}
+
+/**
+ * 获取归档流程列表（管理员权限）
+ * @param params 查询参数
+ * @returns 归档流程列表
+ */
+export async function getArchivedWorkflows(params?: {
+  pageNum?: number;
+  pageSize?: number;
+  keyword?: string;
+  archivedAfter?: string;
+  archivedBefore?: string;
+}): Promise<any> {
+  logApiCall('GET', '/workflow/batch/archived', params);
+  const query: Record<string, any> = {
+    pageNum: params?.pageNum || 1,
+    pageSize: params?.pageSize || 20,
+  };
+  if (params?.keyword) query['params[keyword]'] = params.keyword;
+  if (params?.archivedAfter) query['params[archivedAfter]'] = params.archivedAfter;
+  if (params?.archivedBefore) query['params[archivedBefore]'] = params.archivedBefore;
+  return request.get('/workflow/batch/archived', { params: query });
+}
+
+/**
+ * 批量恢复归档流程（管理员权限）
+ * @param workflowIds 流程 ID 列表
+ * @returns 批量操作结果
+ */
+export async function restoreWorkflows(workflowIds: string[]): Promise<BatchOperationResult> {
+  logApiCall('POST', '/workflow/batch/restore', { workflowIds });
+  return request.post('/workflow/batch/restore', { workflowIds });
+}
+
+/**
+ * 永久删除流程（管理员权限）
+ * @param workflowIds 流程 ID 列表
+ * @returns 批量操作结果
+ */
+export async function permanentDeleteWorkflows(workflowIds: string[]): Promise<BatchOperationResult> {
+  logApiCall('DELETE', '/workflow/batch/permanent', { workflowIds });
+  return request.delete('/workflow/batch/permanent', { data: { workflowIds } });
+}
+
 // ==================== 导出所有 API ====================
 
 export default {
@@ -634,4 +863,18 @@ export default {
   getFlowchartData,
   getFlowchartStructure,
   invalidateProcess,
+
+  // 流程导入导出
+  exportWorkflow,
+  exportWorkflows,
+  validateImportFile,
+  importWorkflow,
+  importWorkflows,
+
+  // 批量操作
+  archiveWorkflows,
+  checkOperationSafety,
+  getArchivedWorkflows,
+  restoreWorkflows,
+  permanentDeleteWorkflows,
 };

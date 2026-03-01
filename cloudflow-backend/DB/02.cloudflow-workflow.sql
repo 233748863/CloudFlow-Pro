@@ -49,6 +49,9 @@ CREATE TABLE wf_process_definition (
   KEY idx_template (template_id),
   KEY idx_archived (is_archived),
   KEY idx_version (current_version),
+  KEY idx_template_archived (template_id, is_archived) COMMENT '优化模板流程查询',
+  KEY idx_current_version (current_version) COMMENT '优化版本号查询',
+  KEY idx_category_status (category, status, is_archived) COMMENT '优化分类筛选查询',
   UNIQUE KEY uk_proc_def_key_ver_tenant (process_key, version, tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程定义表';
 
@@ -1017,6 +1020,7 @@ CREATE TABLE wf_deploy_window (
   end_time          TIME            NOT NULL COMMENT '结束时间',
   week_days         VARCHAR(50)     DEFAULT NULL COMMENT '星期几（WEEKLY类型使用，逗号分隔：1,2,3,4,5）',
   month_days        VARCHAR(100)    DEFAULT NULL COMMENT '每月几号（MONTHLY类型使用，逗号分隔：1,15,30）',
+  custom_dates      TEXT            DEFAULT NULL COMMENT '自定义日期（CUSTOM类型使用，JSON格式存储日期列表）',
   is_enabled        TINYINT(1)      DEFAULT 1 COMMENT '是否启用',
   description       VARCHAR(500)    DEFAULT NULL COMMENT '描述',
   create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
@@ -1184,7 +1188,10 @@ CREATE TABLE workflow_template (
     INDEX idx_category (category_id),
     INDEX idx_created_by (created_by),
     INDEX idx_status (status),
-    INDEX idx_tenant (tenant_id)
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_category_status (category_id, status) COMMENT '优化分类筛选查询',
+    INDEX idx_usage_count (usage_count DESC) COMMENT '优化热门模板查询',
+    INDEX idx_created_at (created_at DESC) COMMENT '优化最新模板查询'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流模板表';
 
 -- 36. 模板分类表
@@ -1199,7 +1206,8 @@ CREATE TABLE template_category (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     tenant_id BIGINT(20) DEFAULT 100000 COMMENT '租户ID',
     INDEX idx_parent (parent_id),
-    INDEX idx_tenant (tenant_id)
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_parent_order (parent_id, order_num) COMMENT '优化分类树查询'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板分类表';
 
 -- 37. 工作流版本表
@@ -1221,6 +1229,8 @@ CREATE TABLE workflow_version (
     INDEX idx_version (workflow_id, version_number),
     INDEX idx_created_at (created_at),
     INDEX idx_tenant (tenant_id),
+    INDEX idx_workflow_created (workflow_id, created_at DESC) COMMENT '优化版本历史查询',
+    INDEX idx_workflow_version_number (workflow_id, version_number) COMMENT '优化版本号查询',
     UNIQUE KEY uk_workflow_version (workflow_id, version_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流版本表';
 
@@ -1239,7 +1249,10 @@ CREATE TABLE workflow_archive (
     INDEX idx_workflow (workflow_id),
     INDEX idx_archived_by (archived_by),
     INDEX idx_archived_at (archived_at),
-    INDEX idx_tenant (tenant_id)
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_archived_at_desc (archived_at DESC) COMMENT '优化归档时间查询',
+    INDEX idx_archived_by_time (archived_by, archived_at DESC) COMMENT '优化按归档人查询',
+    INDEX idx_workflow_restore (workflow_id, can_restore) COMMENT '优化归档恢复查询'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流归档表';
 
 -- 39. 工作流审计日志表
@@ -1268,7 +1281,9 @@ CREATE TABLE wf_audit_log (
     INDEX idx_target_id (target_id),
     INDEX idx_operator_id (operator_id),
     INDEX idx_operation_time (operation_time),
-    INDEX idx_tenant_id (tenant_id)
+    INDEX idx_tenant_id (tenant_id),
+    INDEX idx_target_operation (target_type, target_id, operation_type) COMMENT '优化审计日志查询',
+    INDEX idx_operator_time (operator_id, operation_time DESC) COMMENT '优化操作人日志查询'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流审计日志表';
 
 -- =========================================================
@@ -1383,7 +1398,5 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
   ]
 }',
 1, 'active', 'system', 100000);
-
-SET FOREIGN_KEY_CHECKS = 1;
 
 SET FOREIGN_KEY_CHECKS = 1;

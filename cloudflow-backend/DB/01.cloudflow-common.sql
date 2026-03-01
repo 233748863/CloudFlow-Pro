@@ -324,6 +324,9 @@ INSERT INTO sys_menu VALUES(609, '参数配置',   6, 10, '/system/config',     
 INSERT INTO sys_menu VALUES(610, '缓存监控',   6, 11, '/system/cache',      'pages/system/CacheMonitor',    NULL, 0, 0, 'C', '0', '0', 'system:cache:list',          'DatabaseZap',     'admin', NOW(), '', null, '缓存监控');
 INSERT INTO sys_menu VALUES(611, '字典管理',   6, 12, '/system/dict',       'pages/admin/DictPage',         NULL, 0, 0, 'C', '0', '0', 'system:dict:list',           'BookOpen',        'admin', NOW(), '', null, '字典管理');
 INSERT INTO sys_menu VALUES(612, '流程分类',   4, 6, '/workflow/category',  'pages/admin/ProcessCategoryPage', NULL, 0, 0, 'C', '0', '0', 'workflow:category:list',  'FolderTree',      'admin', NOW(), '', null, '流程分类管理');
+INSERT INTO sys_menu VALUES(613, '模板库',     3, 5, '/templates',          'pages/TemplateLibrary',        NULL, 0, 0, 'C', '0', '0', 'workflow:template:list',  'Sparkles',        'admin', NOW(), '', null, '流程模板库');
+INSERT INTO sys_menu VALUES(614, '流程导入',   4, 7, '/workflow/import',    'pages/admin/WorkflowImport',   NULL, 0, 0, 'C', '0', '0', 'workflow:import:manage',  'Upload',          'admin', NOW(), '', null, '流程导入');
+INSERT INTO sys_menu VALUES(615, '归档管理',   4, 8, '/workflow/archived',  'pages/admin/ArchivedWorkflows', NULL, 0, 0, 'C', '0', '0', 'workflow:archive:manage', 'Archive',         'admin', NOW(), '', null, '归档流程管理');
 
 -- 办公协同(parent_id=2)扩展菜单：补卡申请、加班申请、出差申请、通讯录
 INSERT INTO sys_menu VALUES(203, '补卡申请',   2, 4, '/office/attendance-appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'office:attendance:appeal',  'ClipboardEdit',   'admin', NOW(), '', null, '补卡/外勤申请');
@@ -380,12 +383,16 @@ INSERT INTO sys_role_menu VALUES(2, 300, 100000);
 INSERT INTO sys_role_menu VALUES(2, 301, 100000);
 INSERT INTO sys_role_menu VALUES(2, 302, 100000);
 INSERT INTO sys_role_menu VALUES(2, 303, 100000);
+INSERT INTO sys_role_menu VALUES(2, 613, 100000);  -- 模板库
 -- 流程管理子菜单
 INSERT INTO sys_role_menu VALUES(2, 400, 100000);
 INSERT INTO sys_role_menu VALUES(2, 401, 100000);
 INSERT INTO sys_role_menu VALUES(2, 402, 100000);
 INSERT INTO sys_role_menu VALUES(2, 403, 100000);
 INSERT INTO sys_role_menu VALUES(2, 404, 100000);  -- 批量编辑
+INSERT INTO sys_role_menu VALUES(2, 612, 100000);  -- 流程分类
+INSERT INTO sys_role_menu VALUES(2, 614, 100000);  -- 流程导入
+INSERT INTO sys_role_menu VALUES(2, 615, 100000);  -- 归档管理
 -- 行政管理子菜单
 INSERT INTO sys_role_menu VALUES(2, 500, 100000);
 INSERT INTO sys_role_menu VALUES(2, 501, 100000);
@@ -414,14 +421,15 @@ INSERT INTO sys_role_menu VALUES(3, 101, 100000);
 INSERT INTO sys_role_menu VALUES(3, 200, 100000);
 INSERT INTO sys_role_menu VALUES(3, 201, 100000);
 INSERT INTO sys_role_menu VALUES(3, 202, 100000);
-INSERT INTO sys_role_menu VALUES(3, 300, 100000);
-INSERT INTO sys_role_menu VALUES(3, 301, 100000);
-INSERT INTO sys_role_menu VALUES(3, 302, 100000);
-INSERT INTO sys_role_menu VALUES(3, 303, 100000);
 INSERT INTO sys_role_menu VALUES(3, 203, 100000);
 INSERT INTO sys_role_menu VALUES(3, 204, 100000);
 INSERT INTO sys_role_menu VALUES(3, 205, 100000);
 INSERT INTO sys_role_menu VALUES(3, 206, 100000);
+INSERT INTO sys_role_menu VALUES(3, 300, 100000);
+INSERT INTO sys_role_menu VALUES(3, 301, 100000);
+INSERT INTO sys_role_menu VALUES(3, 302, 100000);
+INSERT INTO sys_role_menu VALUES(3, 303, 100000);
+INSERT INTO sys_role_menu VALUES(3, 613, 100000);  -- 模板库
 -- Phase 2 监控告警菜单（仅查看）
 INSERT INTO sys_role_menu VALUES(3, 4, 100000);
 INSERT INTO sys_role_menu VALUES(3, 401, 100000);
@@ -442,11 +450,15 @@ INSERT INTO sys_role_menu VALUES(4, 300, 100000);
 INSERT INTO sys_role_menu VALUES(4, 301, 100000);
 INSERT INTO sys_role_menu VALUES(4, 302, 100000);
 INSERT INTO sys_role_menu VALUES(4, 303, 100000);
+INSERT INTO sys_role_menu VALUES(4, 613, 100000);  -- 模板库
 INSERT INTO sys_role_menu VALUES(4, 400, 100000);
 INSERT INTO sys_role_menu VALUES(4, 401, 100000);
 INSERT INTO sys_role_menu VALUES(4, 402, 100000);
 INSERT INTO sys_role_menu VALUES(4, 403, 100000);
 INSERT INTO sys_role_menu VALUES(4, 404, 100000);  -- 批量编辑
+INSERT INTO sys_role_menu VALUES(4, 612, 100000);  -- 流程分类
+INSERT INTO sys_role_menu VALUES(4, 614, 100000);  -- 流程导入
+INSERT INTO sys_role_menu VALUES(4, 615, 100000);  -- 归档管理
 INSERT INTO sys_role_menu VALUES(4, 500, 100000);
 INSERT INTO sys_role_menu VALUES(4, 505, 100000);
 INSERT INTO sys_role_menu VALUES(4, 203, 100000);
@@ -472,6 +484,7 @@ INSERT INTO sys_role_menu VALUES(5, 300, 100000);
 INSERT INTO sys_role_menu VALUES(5, 301, 100000);
 INSERT INTO sys_role_menu VALUES(5, 302, 100000);
 INSERT INTO sys_role_menu VALUES(5, 303, 100000);
+INSERT INTO sys_role_menu VALUES(5, 613, 100000);  -- 模板库（普通用户可查看）
 INSERT INTO sys_role_menu VALUES(5, 203, 100000);
 INSERT INTO sys_role_menu VALUES(5, 204, 100000);
 INSERT INTO sys_role_menu VALUES(5, 205, 100000);

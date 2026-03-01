@@ -17,6 +17,7 @@ import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.service.IArchiveService;
 import com.cloudflow.workflow.service.IAuditLogService;
+import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.util.SafetyChecker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,9 +61,8 @@ public class ArchiveServiceImpl implements IArchiveService {
     @Autowired
     private IAuditLogService auditLogService;
 
-    // TODO: 注入通知服务
-    // @Autowired
-    // private INotificationService notificationService;
+    @Autowired
+    private INotificationService notificationService;
 
     /**
      * 归档单个流程
@@ -186,8 +186,30 @@ public class ArchiveServiceImpl implements IArchiveService {
             definition.setIsArchived(1);
             definitionMapper.updateById(definition);
 
-            // 6. 发送归档通知（TODO）
-            // notificationService.sendArchiveNotification(definition.getCreateBy(), workflowId, reason);
+            // 6. 发送归档通知
+            String operatorName = UserContext.getUserName();
+            if (operatorName == null || operatorName.isEmpty()) {
+                operatorName = "管理员";
+            }
+            // 将 createBy 从 String 转换为 Long
+            Long createById = null;
+            try {
+                if (definition.getCreateBy() != null && !definition.getCreateBy().isEmpty()) {
+                    createById = Long.parseLong(definition.getCreateBy());
+                }
+            } catch (NumberFormatException e) {
+                log.warn("无法解析创建者ID: {}", definition.getCreateBy());
+            }
+            
+            if (createById != null) {
+                notificationService.sendArchiveNotification(
+                    createById, 
+                    workflowId, 
+                    definition.getProcessName(),
+                    reason,
+                    operatorName
+                );
+            }
 
             // 7. 记录审计日志
             auditLogService.log(
@@ -300,7 +322,31 @@ public class ArchiveServiceImpl implements IArchiveService {
             definition.setIsArchived(0);
             definitionMapper.updateById(definition);
 
-            // 4. 记录审计日志
+            // 4. 发送恢复通知
+            String operatorName = UserContext.getUserName();
+            if (operatorName == null || operatorName.isEmpty()) {
+                operatorName = "管理员";
+            }
+            // 将 createBy 从 String 转换为 Long
+            Long createById = null;
+            try {
+                if (definition.getCreateBy() != null && !definition.getCreateBy().isEmpty()) {
+                    createById = Long.parseLong(definition.getCreateBy());
+                }
+            } catch (NumberFormatException e) {
+                log.warn("无法解析创建者ID: {}", definition.getCreateBy());
+            }
+            
+            if (createById != null) {
+                notificationService.sendRestoreNotification(
+                    createById,
+                    workflowId,
+                    definition.getProcessName(),
+                    operatorName
+                );
+            }
+
+            // 5. 记录审计日志
             auditLogService.log(
                 OperationType.WORKFLOW_RESTORE,
                 TargetType.WORKFLOW,

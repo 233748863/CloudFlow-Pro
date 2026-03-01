@@ -70,28 +70,28 @@ public class WfDeployWindow {
     private String description;
     
     /**
-     * 创建人ID
+     * 创建者
      */
     @TableField(fill = FieldFill.INSERT)
-    private Long createdBy;
+    private String createBy;
     
     /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createdTime;
+    private LocalDateTime createTime;
     
     /**
-     * 更新人ID
+     * 更新者
      */
     @TableField(fill = FieldFill.UPDATE)
-    private Long updatedBy;
+    private String updateBy;
     
     /**
      * 更新时间
      */
     @TableField(fill = FieldFill.UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime updatedTime;
+    private LocalDateTime updateTime;
 }

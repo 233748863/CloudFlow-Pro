@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, GitBranch, RotateCcw, Eye, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useWorkflowPermission } from '../hooks/useWorkflowPermission';
 
 interface VersionHistoryProps {
   workflowId: string;
+  workflowCreatorId?: string; // 流程创建者ID，用于权限判断
 }
 
 /**
  * 版本历史页面
  * 展示流程的版本历史，支持版本对比和回滚
+ * 权限控制：
+ * - 流程创建者和管理员可以查看版本历史
+ * - 仅管理员可以执行版本回滚
  */
-export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId }) => {
+export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, workflowCreatorId }) => {
+  // 权限控制
+  const { canViewVersionHistory, canRollbackVersion } = useWorkflowPermission();
+  
+  // 检查是否有查看权限
+  const hasViewPermission = workflowCreatorId ? canViewVersionHistory(workflowCreatorId) : true;
   const [versions, setVersions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedVersions, setSelectedVersions] = useState<string[]>([]);
@@ -26,6 +36,20 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId }) =>
   const [rollbackReason, setRollbackReason] = useState('');
   const [forceRollback, setForceRollback] = useState(false);
   const [hasRunningInstances, setHasRunningInstances] = useState(false);
+
+  // 如果没有查看权限，显示无权限提示
+  if (!hasViewPermission) {
+    return (
+      <div className="p-6">
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <AlertTriangle className="text-slate-400" size={24} />
+          </div>
+          <p className="text-sm text-slate-500">您没有权限查看此流程的版本历史</p>
+        </div>
+      </div>
+    );
+  }
 
   // 加载版本历史
   const loadVersions = async () => {
@@ -238,10 +262,12 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId }) =>
                   </div>
                 </div>
 
-                {index !== 0 && (
+                {/* 回滚按钮 - 仅管理员可见 */}
+                {index !== 0 && canRollbackVersion && (
                   <button
                     onClick={() => handleOpenRollback(version)}
                     className="px-3 py-1 border rounded hover:bg-gray-50 text-sm flex items-center gap-1"
+                    title="仅管理员可执行版本回滚"
                   >
                     <RotateCcw className="w-4 h-4" />
                     回滚
