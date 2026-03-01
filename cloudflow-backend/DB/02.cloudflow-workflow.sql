@@ -1253,3 +1253,5 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', 100000);
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+SET FOREIGN_KEY_CHECKS = 1;
