@@ -36,6 +36,9 @@ CREATE TABLE wf_process_definition (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 1代表删除）',
+  template_id       VARCHAR(64)     DEFAULT NULL COMMENT '来源模板ID',
+  current_version   VARCHAR(20)     DEFAULT '1.0.0' COMMENT '当前版本号',
+  is_archived       TINYINT(1)      DEFAULT 0 COMMENT '是否已归档',
   PRIMARY KEY (definition_id),
   KEY idx_process_key (process_key),
   KEY idx_status (status),
@@ -43,6 +46,9 @@ CREATE TABLE wf_process_definition (
   KEY idx_dept_id (dept_id),
   KEY idx_create_by (create_by),
   KEY idx_del_flag (del_flag),
+  KEY idx_template (template_id),
+  KEY idx_archived (is_archived),
+  KEY idx_version (current_version),
   UNIQUE KEY uk_proc_def_key_ver_tenant (process_key, version, tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程定义表';
 
@@ -1132,26 +1138,6 @@ CREATE TABLE wf_audit_log (
     INDEX idx_operation_time (operation_time),
     INDEX idx_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流审计日志表';
-
--- 34. 为 wf_process_definition 表添加高级功能字段
-ALTER TABLE wf_process_definition 
-    ADD COLUMN IF NOT EXISTS template_id VARCHAR(64) DEFAULT NULL COMMENT '来源模板ID';
-
-ALTER TABLE wf_process_definition 
-    ADD COLUMN IF NOT EXISTS current_version VARCHAR(20) DEFAULT '1.0.0' COMMENT '当前版本号';
-
-ALTER TABLE wf_process_definition 
-    ADD COLUMN IF NOT EXISTS is_archived TINYINT(1) DEFAULT 0 COMMENT '是否已归档';
-
--- 添加索引
-ALTER TABLE wf_process_definition 
-    ADD INDEX IF NOT EXISTS idx_template (template_id);
-
-ALTER TABLE wf_process_definition 
-    ADD INDEX IF NOT EXISTS idx_archived (is_archived);
-
-ALTER TABLE wf_process_definition 
-    ADD INDEX IF NOT EXISTS idx_version (current_version);
 
 -- =========================================================
 -- 初始化数据 - 模板分类
