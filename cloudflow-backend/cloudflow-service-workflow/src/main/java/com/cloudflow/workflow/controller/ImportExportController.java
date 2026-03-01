@@ -16,6 +16,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -99,7 +100,7 @@ public class ImportExportController {
      * @return 导出文件
      */
     @PostMapping("/export/batch")
-    // @PreAuthorize("hasRole('ADMIN')") // TODO: 添加权限验证
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public ResponseEntity<Resource> exportWorkflows(@RequestBody BatchExportRequest request) {
         log.info("批量导出流程, count={}, includeSensitive={}", 
             request.getWorkflowIds().size(), request.getIncludeSensitive());
@@ -211,7 +212,7 @@ public class ImportExportController {
      * @return 导入结果列表
      */
     @PostMapping("/import/batch")
-    // @PreAuthorize("hasRole('ADMIN')") // TODO: 添加权限验证
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<List<ImportResultDTO>> importWorkflows(
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam(required = false, defaultValue = "skip") String conflictStrategy) {

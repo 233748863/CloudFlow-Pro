@@ -8,6 +8,7 @@ import com.cloudflow.workflow.util.SafetyChecker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -37,7 +38,7 @@ public class BatchOperationController {
      * @return 批量操作结果
      */
     @PostMapping("/archive")
-    // @PreAuthorize("hasRole('ADMIN')") // TODO: 添加权限验证
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<BatchOperationResultDTO> archiveWorkflows(@RequestBody BatchArchiveRequest request) {
         log.info("批量归档流程: workflowIds={}, reason={}", request.getWorkflowIds(), request.getReason());
 
@@ -68,7 +69,7 @@ public class BatchOperationController {
      * @return 归档流程分页列表
      */
     @GetMapping("/archived")
-    // @PreAuthorize("hasRole('ADMIN')") // TODO: 添加权限验证
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<Page<ArchivedWorkflowDTO>> listArchivedWorkflows(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime archivedAfter,
@@ -97,7 +98,7 @@ public class BatchOperationController {
      * @return 批量操作结果
      */
     @PostMapping("/restore")
-    // @PreAuthorize("hasRole('ADMIN')") // TODO: 添加权限验证
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<BatchOperationResultDTO> restoreWorkflows(@RequestBody BatchRestoreRequest request) {
         log.info("批量恢复归档流程: workflowIds={}", request.getWorkflowIds());
 
@@ -117,7 +118,7 @@ public class BatchOperationController {
      * @return 批量操作结果
      */
     @DeleteMapping("/permanent")
-    // @PreAuthorize("hasRole('ADMIN')") // TODO: 添加权限验证
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<BatchOperationResultDTO> permanentDeleteWorkflows(@RequestBody BatchDeleteRequest request) {
         log.info("永久删除流程: workflowIds={}, confirmed={}", 
             request.getWorkflowIds(), request.getConfirmed());
@@ -143,7 +144,7 @@ public class BatchOperationController {
      * @return 安全检查结果
      */
     @PostMapping("/check-safety")
-    // @PreAuthorize("hasRole('ADMIN')") // TODO: 添加权限验证
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<SafetyCheckResultDTO> checkOperationSafety(@RequestBody List<String> workflowIds) {
         log.info("安全检查: workflowIds={}", workflowIds);
 

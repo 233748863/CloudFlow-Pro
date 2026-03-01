@@ -94,6 +94,8 @@ public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
     /**
      * 异步记录审计日志
      * 使用auditExecutor线程池
+     * 
+     * TODO: 此方法使用了旧的审计日志结构，需要重构以使用新的 IAuditLogService
      */
     @Override
     @Async("auditExecutor")
@@ -101,39 +103,34 @@ public class AsyncWorkflowServiceImpl implements IAsyncWorkflowService {
         long startTime = System.currentTimeMillis();
         
         try {
-            log.debug("开始异步记录审计日志: action={}, userId={}", 
-                auditLog.getAction(), 
-                auditLog.getUserId());
+            log.debug("开始异步记录审计日志: operationType={}, targetId={}", 
+                auditLog.getOperationType(), 
+                auditLog.getTargetId());
             
             // 实际的审计日志记录逻辑
-            // 1. 补充审计日志信息
-            if (auditLog.getActionTime() == null) {
-                auditLog.setActionTime(java.time.LocalDateTime.now());
-            }
-            
-            // 2. 通过WorkflowAuditService记录审计日志
-            // 将action字符串转换为AuditAction枚举
+            // 1. 通过WorkflowAuditService记录审计日志
+            // 将operationType字符串转换为AuditAction枚举
             WorkflowAuditService.AuditAction auditAction;
             try {
-                auditAction = WorkflowAuditService.AuditAction.valueOf(auditLog.getAction());
+                auditAction = WorkflowAuditService.AuditAction.valueOf(auditLog.getOperationType());
             } catch (IllegalArgumentException e) {
                 // 如果无法转换，使用默认值
                 auditAction = WorkflowAuditService.AuditAction.TASK_COMPLETE;
             }
             
-            String detail = String.format("用户[%s]对任务[%s]执行[%s]操作", 
-                auditLog.getUserName(), auditLog.getTaskId(), auditLog.getActionDesc());
-            workflowAuditService.log(auditAction, auditLog.getInstanceId(), detail);
+            String detail = String.format("操作[%s]对象[%s]", 
+                auditLog.getOperationType(), auditLog.getTargetName());
+            workflowAuditService.log(auditAction, auditLog.getTargetId(), detail);
             
-            // 3. 可选：发送到日志中心（预留扩展点）
+            // 2. 可选：发送到日志中心（预留扩展点）
             // logCenterService.send(auditLog);
             
             long duration = System.currentTimeMillis() - startTime;
-            log.debug("异步记录审计日志完成: action={}, 耗时={}ms", 
-                auditLog.getAction(), duration);
+            log.debug("异步记录审计日志完成: operationType={}, 耗时={}ms", 
+                auditLog.getOperationType(), duration);
             
         } catch (Exception e) {
-            log.error("异步记录审计日志失败: action={}", auditLog.getAction(), e);
+            log.error("异步记录审计日志失败: operationType={}", auditLog.getOperationType(), e);
         }
     }
 

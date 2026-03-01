@@ -10,10 +10,13 @@ import com.cloudflow.workflow.domain.dto.ArchivedWorkflowDTO;
 import com.cloudflow.workflow.domain.dto.BatchOperationResultDTO;
 import com.cloudflow.workflow.domain.dto.OperationDetailDTO;
 import com.cloudflow.workflow.domain.dto.SafetyCheckResultDTO;
+import com.cloudflow.workflow.enums.OperationType;
+import com.cloudflow.workflow.enums.TargetType;
 import com.cloudflow.workflow.mapper.WfProcessArchiveMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.service.IArchiveService;
+import com.cloudflow.workflow.service.IAuditLogService;
 import com.cloudflow.workflow.util.SafetyChecker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,6 +56,9 @@ public class ArchiveServiceImpl implements IArchiveService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private IAuditLogService auditLogService;
 
     // TODO: 注入通知服务
     // @Autowired
@@ -183,6 +189,15 @@ public class ArchiveServiceImpl implements IArchiveService {
             // 6. 发送归档通知（TODO）
             // notificationService.sendArchiveNotification(definition.getCreateBy(), workflowId, reason);
 
+            // 7. 记录审计日志
+            auditLogService.log(
+                OperationType.WORKFLOW_ARCHIVE,
+                TargetType.WORKFLOW,
+                workflowId,
+                definition.getProcessName(),
+                reason
+            );
+
             log.info("流程归档成功: workflowId={}, name={}", workflowId, definition.getProcessName());
 
             return OperationDetailDTO.builder()
@@ -284,6 +299,15 @@ public class ArchiveServiceImpl implements IArchiveService {
             // 3. 恢复流程状态
             definition.setIsArchived(0);
             definitionMapper.updateById(definition);
+
+            // 4. 记录审计日志
+            auditLogService.log(
+                OperationType.WORKFLOW_RESTORE,
+                TargetType.WORKFLOW,
+                workflowId,
+                definition.getProcessName(),
+                "恢复归档流程"
+            );
 
             log.info("流程恢复成功: workflowId={}, name={}", workflowId, definition.getProcessName());
 
@@ -445,6 +469,15 @@ public class ArchiveServiceImpl implements IArchiveService {
 
             // 4. 删除流程定义
             definitionMapper.deleteById(workflowId);
+
+            // 5. 记录审计日志
+            auditLogService.log(
+                OperationType.WORKFLOW_DELETE,
+                TargetType.WORKFLOW,
+                workflowId,
+                workflowName,
+                "永久删除流程"
+            );
 
             log.info("流程永久删除成功: workflowId={}, name={}", workflowId, workflowName);
 
