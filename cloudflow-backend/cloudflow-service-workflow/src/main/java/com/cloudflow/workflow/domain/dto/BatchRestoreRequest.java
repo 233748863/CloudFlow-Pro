@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 批量归档请求 DTO
+ * 批量恢复请求 DTO
  * 
  * @author CloudFlow
  */
@@ -16,15 +16,10 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BatchArchiveRequest {
+public class BatchRestoreRequest {
 
     /**
      * 流程 ID 列表
      */
     private List<String> workflowIds;
-
-    /**
-     * 归档原因
-     */
-    private String reason;
 }

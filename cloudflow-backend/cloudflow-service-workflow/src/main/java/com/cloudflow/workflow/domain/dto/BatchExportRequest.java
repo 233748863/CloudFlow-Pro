@@ -1,8 +1,10 @@
 package com.cloudflow.workflow.domain.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -11,17 +13,19 @@ import java.util.List;
  * @author CloudFlow
  */
 @Data
-public class BatchExportRequest implements Serializable {
-    private static final long serialVersionUID = 1L;
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class BatchExportRequest {
 
     /**
-     * 要导出的流程 ID 列表
+     * 流程 ID 列表
      */
     private List<String> workflowIds;
 
     /**
-     * 是否包含敏感配置
-     * 默认为 false
+     * 是否包含敏感信息
      */
+    @Builder.Default
     private Boolean includeSensitive = false;
 }

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 批量归档请求 DTO
+ * 批量删除请求 DTO
  * 
  * @author CloudFlow
  */
@@ -16,7 +16,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BatchArchiveRequest {
+public class BatchDeleteRequest {
 
     /**
      * 流程 ID 列表
@@ -24,7 +24,7 @@ public class BatchArchiveRequest {
     private List<String> workflowIds;
 
     /**
-     * 归档原因
+     * 是否已确认（用于二次确认）
      */
-    private String reason;
+    private Boolean confirmed;
 }

@@ -1,26 +1,24 @@
-package com.cloudflow.workflow.domain.dto;
+package com.cloudflow.workflow.domain;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
- * 归档流程 DTO
+ * 流程归档实体
  * 
  * @author CloudFlow
  */
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ArchivedWorkflowDTO {
+@TableName("workflow_archive")
+public class WfProcessArchive {
 
     /**
      * 归档记录 ID
      */
+    @TableId
     private String id;
 
     /**
@@ -29,7 +27,7 @@ public class ArchivedWorkflowDTO {
     private String workflowId;
 
     /**
-     * 流程名称
+     * 流程名称（冗余存储）
      */
     private String workflowName;
 
@@ -37,11 +35,6 @@ public class ArchivedWorkflowDTO {
      * 归档操作人 ID
      */
     private String archivedBy;
-
-    /**
-     * 归档操作人名称
-     */
-    private String archivedByName;
 
     /**
      * 归档时间
@@ -54,7 +47,12 @@ public class ArchivedWorkflowDTO {
     private String archiveReason;
 
     /**
-     * 是否可恢复
+     * 是否可恢复（1-可恢复，0-不可恢复）
      */
-    private Boolean canRestore;
+    private Integer canRestore;
+
+    /**
+     * 原始流程数据（JSON 格式）
+     */
+    private String originalData;
 }

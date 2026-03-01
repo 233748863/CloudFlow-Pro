@@ -61,6 +61,9 @@ public class WfProcessDefinition implements Serializable {
     /** 12.A: 是否最新版本 (0-否, 1-是) */
     private Integer isLatest;
 
+    /** 是否已归档 (0-否, 1-是) */
+    private Integer isArchived;
+
     /** 流程描述 */
     private String description;
     
@@ -203,6 +206,14 @@ public class WfProcessDefinition implements Serializable {
 
     public void setIsLatest(Integer isLatest) {
         this.isLatest = isLatest;
+    }
+
+    public Integer getIsArchived() {
+        return isArchived;
+    }
+
+    public void setIsArchived(Integer isArchived) {
+        this.isArchived = isArchived;
     }
 
     public String getDescription() {
