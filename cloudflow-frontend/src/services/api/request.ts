@@ -81,9 +81,18 @@ request.interceptors.request.use(
 
 // 响应拦截器
 request.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
+  (response: AxiosResponse<any>) => {
+    // binary download responses (e.g. export APIs)
+    if (response.config?.responseType === 'blob' || response.config?.responseType === 'arraybuffer') {
+      return response.data;
+    }
+
     const res = response.data;
     const isSilent = response.config?.silent;
+    // pass through non-standard responses
+    if (!res || typeof res !== 'object' || !('code' in res)) {
+      return res;
+    }
     // 假设后端返回格式为 { code: 200, msg: 'success', data: ... }
     if (res.code !== API_SUCCESS_CODE) {
       // 503 服务不可用 - 微服务未启动，始终静默处理

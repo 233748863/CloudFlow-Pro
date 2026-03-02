@@ -222,7 +222,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         workflowId,
         targetVersionId: pendingRollback.versionId,
         reason: pendingRollback.reason,
-        force: true, // 强制回滚标志
+        forceRollback: true, // 强制回滚标志
       });
 
       showSuccess('版本回滚成功');

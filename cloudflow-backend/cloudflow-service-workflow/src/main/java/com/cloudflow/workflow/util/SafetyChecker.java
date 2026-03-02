@@ -1,21 +1,25 @@
 package com.cloudflow.workflow.util;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
+import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.dto.SafetyCheckResultDTO;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
+import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
+import com.cloudflow.workflow.service.WorkflowPermissionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * 批量操作安全检查工具类
- * 检查流程是否可以安全地执行归档、删除等操作
- * 
- * @author CloudFlow
+ * Batch operation safety checker.
  */
 @Slf4j
 @Component
@@ -24,188 +28,164 @@ public class SafetyChecker {
     @Autowired
     private WfProcessDefinitionMapper definitionMapper;
 
-    // TODO: 注入流程实例服务，用于检查运行中的实例
-    // @Autowired
-    // private IProcessInstanceService instanceService;
+    @Autowired
+    private WfProcessInstanceMapper instanceMapper;
+
+    @Autowired
+    private WorkflowPermissionService permissionService;
 
     /**
-     * 检查流程是否可以安全执行批量操作
-     * 
-     * @param workflowIds 流程 ID 列表
-     * @return 安全检查结果
+     * Check whether workflows are safe for archive/permanent delete operations.
      */
     public SafetyCheckResultDTO checkSafety(List<String> workflowIds) {
-        log.info("开始安全检查, workflowCount={}", workflowIds.size());
+        log.info("Start safety check, workflowCount={}", workflowIds == null ? 0 : workflowIds.size());
 
         SafetyCheckResultDTO result = SafetyCheckResultDTO.builder()
             .safe(true)
             .build();
 
-        // 1. 检查流程是否存在
+        if (workflowIds == null || workflowIds.isEmpty()) {
+            result.setSafe(false);
+            result.getErrors().add("workflowIds is empty");
+            generateMessage(result);
+            return result;
+        }
+
         checkWorkflowsExist(workflowIds, result);
-
-        // 2. 检查是否有正在运行的实例
         checkRunningInstances(workflowIds, result);
-
-        // 3. 检查依赖关系
         checkDependencies(workflowIds, result);
-
-        // 4. 检查权限
         checkPermissions(workflowIds, result);
-
-        // 生成总体消息
         generateMessage(result);
 
-        log.info("安全检查完成, safe={}, warnings={}, errors={}", 
+        log.info("Safety check complete, safe={}, warnings={}, errors={}",
             result.getSafe(), result.getWarnings().size(), result.getErrors().size());
 
         return result;
     }
 
-    /**
-     * 检查流程是否存在
-     */
     private void checkWorkflowsExist(List<String> workflowIds, SafetyCheckResultDTO result) {
         for (String workflowId : workflowIds) {
             WfProcessDefinition definition = definitionMapper.selectById(workflowId);
             if (definition == null) {
-                result.getErrors().add("流程不存在: " + workflowId);
-                result.getDetails().put(workflowId, "流程不存在");
                 result.setSafe(false);
+                result.getErrors().add("Workflow not found: " + workflowId);
+                result.getDetails().put(workflowId, "Workflow not found");
             }
         }
     }
 
-    /**
-     * 检查是否有正在运行的实例
-     */
     private void checkRunningInstances(List<String> workflowIds, SafetyCheckResultDTO result) {
-        // TODO: 实现运行实例检查
-        // 当前简化实现，假设没有运行实例
-        
-        /*
         for (String workflowId : workflowIds) {
-            // 查询正在运行的实例数量
-            long runningCount = instanceService.countRunningInstances(workflowId);
-            
-            if (runningCount > 0) {
+            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            if (definition == null) {
+                continue;
+            }
+
+            LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(WfProcessInstance::getDefinitionId, workflowId)
+                .in(WfProcessInstance::getStatus, "RUNNING", "SUSPENDED");
+
+            Long runningCount = instanceMapper.selectCount(queryWrapper);
+            if (runningCount != null && runningCount > 0) {
                 result.getWorkflowsWithRunningInstances().add(workflowId);
-                result.getWarnings().add(
-                    String.format("流程 %s 有 %d 个正在运行的实例", workflowId, runningCount)
-                );
-                result.getDetails().put(workflowId, 
-                    String.format("有 %d 个正在运行的实例", runningCount));
+                result.getWarnings().add(String.format(
+                    "Workflow %s has %d running instances", workflowId, runningCount));
+                result.getDetails().put(workflowId,
+                    String.format("Has %d running instances", runningCount));
             }
         }
-        */
-        
-        log.debug("运行实例检查完成（当前为简化实现）");
     }
 
-    /**
-     * 检查依赖关系
-     */
     private void checkDependencies(List<String> workflowIds, SafetyCheckResultDTO result) {
-        // TODO: 实现依赖关系检查
-        // 检查是否有其他流程引用这些流程
-        // 检查是否有定时任务关联这些流程
-        
-        /*
-        for (String workflowId : workflowIds) {
-            // 检查是否有子流程引用
-            List<String> referencingWorkflows = findReferencingWorkflows(workflowId);
-            
-            if (!referencingWorkflows.isEmpty()) {
-                result.getWorkflowsWithDependencies().add(workflowId);
-                result.getWarnings().add(
-                    String.format("流程 %s 被 %d 个其他流程引用", 
-                        workflowId, referencingWorkflows.size())
-                );
-                result.getDetails().put(workflowId, 
-                    "被其他流程引用: " + String.join(", ", referencingWorkflows));
-            }
-        }
-        */
-        
-        log.debug("依赖关系检查完成（当前为简化实现）");
-    }
-
-    /**
-     * 检查权限
-     */
-    private void checkPermissions(List<String> workflowIds, SafetyCheckResultDTO result) {
-        // 获取当前用户信息
-        Long currentUserId = UserContext.getUserId();
-        Long currentTenantId = UserContext.getTenantId();
-        
-        if (currentUserId == null) {
-            result.getErrors().add("无法获取当前用户信息");
-            result.setSafe(false);
-            return;
-        }
+        Set<String> selectedWorkflowIds = new HashSet<>(workflowIds);
 
         for (String workflowId : workflowIds) {
             WfProcessDefinition definition = definitionMapper.selectById(workflowId);
-            
             if (definition == null) {
-                continue; // 已在存在性检查中处理
+                continue;
             }
 
-            // 检查租户权限
-            if (currentTenantId != null && definition.getTenantId() != null) {
-                if (!currentTenantId.equals(definition.getTenantId())) {
-                    result.getWorkflowsWithoutPermission().add(workflowId);
-                    result.getErrors().add("无权操作流程: " + workflowId + "（不同租户）");
-                    result.getDetails().put(workflowId, "无权操作（不同租户）");
+            LambdaQueryWrapper<WfProcessDefinition> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.ne(WfProcessDefinition::getDefinitionId, workflowId)
+                .like(WfProcessDefinition::getModelJson, workflowId)
+                .and(w -> w
+                    .isNull(WfProcessDefinition::getIsArchived)
+                    .or()
+                    .eq(WfProcessDefinition::getIsArchived, 0));
+
+            List<WfProcessDefinition> referencedBy = definitionMapper.selectList(queryWrapper).stream()
+                .filter(item -> !selectedWorkflowIds.contains(item.getDefinitionId()))
+                .collect(Collectors.toList());
+
+            if (!referencedBy.isEmpty()) {
+                List<String> referencingNames = referencedBy.stream()
+                    .map(item -> item.getProcessName() != null ? item.getProcessName() : item.getDefinitionId())
+                    .collect(Collectors.toList());
+
+                result.getWorkflowsWithDependencies().add(workflowId);
+                result.getWarnings().add(String.format(
+                    "Workflow %s is referenced by %d workflows", workflowId, referencingNames.size()));
+                result.getDetails().put(workflowId,
+                    "Referenced by workflows: " + String.join(", ", referencingNames));
+            }
+        }
+    }
+
+    private void checkPermissions(List<String> workflowIds, SafetyCheckResultDTO result) {
+        Long currentUserId = UserContext.getUserId();
+        Long currentTenantId = UserContext.getTenantId();
+
+        if (currentUserId == null) {
+            result.setSafe(false);
+            result.getErrors().add("Current user not found in context");
+            return;
+        }
+
+        boolean isAdmin = permissionService.isAdmin(currentUserId);
+
+        for (String workflowId : workflowIds) {
+            WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+            if (definition == null) {
+                continue;
+            }
+
+            if (currentTenantId != null && definition.getTenantId() != null
+                    && !currentTenantId.equals(definition.getTenantId())) {
+                result.setSafe(false);
+                result.getWorkflowsWithoutPermission().add(workflowId);
+                result.getErrors().add("No permission for workflow (tenant mismatch): " + workflowId);
+                result.getDetails().put(workflowId, "No permission: tenant mismatch");
+                continue;
+            }
+
+            if (!isAdmin) {
+                boolean isCreator = currentUserId.toString().equals(definition.getCreateBy());
+                if (!isCreator) {
                     result.setSafe(false);
-                    continue;
+                    result.getWorkflowsWithoutPermission().add(workflowId);
+                    result.getErrors().add("No permission for workflow: " + workflowId);
+                    result.getDetails().put(workflowId, "No permission: not owner or admin");
                 }
             }
-
-            // TODO: 检查更细粒度的权限
-            // 例如：只有流程创建者或管理员可以删除流程
-            /*
-            String createdBy = definition.getCreateBy();
-            boolean isCreator = currentUserId.toString().equals(createdBy);
-            boolean isAdmin = hasAdminRole();
-            
-            if (!isCreator && !isAdmin) {
-                result.getWorkflowsWithoutPermission().add(workflowId);
-                result.getErrors().add("无权操作流程: " + workflowId);
-                result.getDetails().put(workflowId, "无权操作（非创建者或管理员）");
-                result.setSafe(false);
-            }
-            */
         }
     }
 
-    /**
-     * 生成总体消息
-     */
     private void generateMessage(SafetyCheckResultDTO result) {
-        if (result.getSafe()) {
+        if (Boolean.TRUE.equals(result.getSafe())) {
             if (result.getWarnings().isEmpty()) {
-                result.setMessage("安全检查通过，可以执行操作");
+                result.setMessage("Safety check passed");
             } else {
-                result.setMessage(
-                    String.format("安全检查通过，但有 %d 个警告，建议谨慎操作", 
-                        result.getWarnings().size())
-                );
+                result.setMessage(String.format("Safety check passed with %d warnings", result.getWarnings().size()));
             }
         } else {
-            result.setMessage(
-                String.format("安全检查失败，有 %d 个错误，无法执行操作", 
-                    result.getErrors().size())
-            );
+            result.setMessage(String.format("Safety check failed with %d errors", result.getErrors().size()));
         }
     }
 
-    /**
-     * 检查单个流程的安全性
-     */
     public SafetyCheckResultDTO checkSafety(String workflowId) {
         List<String> workflowIds = new ArrayList<>();
         workflowIds.add(workflowId);
         return checkSafety(workflowIds);
     }
 }
+

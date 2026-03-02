@@ -322,8 +322,8 @@ export const Example6_SilentMode = () => {
  */
 export const Example7_CustomMessage = () => {
   const handleDelete = withErrorHandler(
-    async (id: string) => {
-      await request.delete(`/api/workflow/templates/${id}`);
+    async () => {
+      await request.delete('/api/workflow/templates/123');
       showSuccess('模板删除成功');
     },
     {
@@ -331,5 +331,5 @@ export const Example7_CustomMessage = () => {
     }
   );
 
-  return <button onClick={() => handleDelete('123')}>删除模板</button>;
+  return <button onClick={handleDelete}>删除模板</button>;
 };

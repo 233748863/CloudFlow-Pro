@@ -49,7 +49,7 @@ public class ConflictResolver {
 
         try {
             LambdaQueryWrapper<WfProcessDefinition> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(WfProcessDefinition::getName, workflowName);
+            wrapper.eq(WfProcessDefinition::getProcessName, workflowName);
             
             WfProcessDefinition existing = definitionMapper.selectOne(wrapper);
             

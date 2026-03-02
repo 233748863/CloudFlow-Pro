@@ -54,29 +54,29 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 构建查询条件
         LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
-        
+
         // 只查询激活状态的模板
         wrapper.eq(WorkflowTemplate::getStatus, "active");
-        
+
         // 按分类筛选
         if (StringUtils.hasText(categoryId)) {
             wrapper.eq(WorkflowTemplate::getCategoryId, categoryId);
         }
-        
+
         // 按标签筛选（JSON数组包含查询）
         if (tags != null && !tags.isEmpty()) {
             for (String tag : tags) {
                 wrapper.like(WorkflowTemplate::getTags, tag);
             }
         }
-        
+
         // 按关键词搜索（搜索名称和描述）
         if (StringUtils.hasText(keyword)) {
             wrapper.and(w -> w.like(WorkflowTemplate::getName, keyword)
                     .or()
                     .like(WorkflowTemplate::getDescription, keyword));
         }
-        
+
         // 按创建时间倒序排列
         wrapper.orderByDesc(WorkflowTemplate::getCreatedAt);
 
@@ -101,12 +101,12 @@ public class TemplateServiceImpl implements ITemplateService {
     @Override
     public TemplateDTO getTemplateById(String id) {
         log.info("获取模板详情 - ID:{}", id);
-        
+
         WorkflowTemplate template = templateMapper.selectById(id);
         if (template == null) {
             throw new WorkflowException("模板不存在: " + id);
         }
-        
+
         return convertToDTO(template);
     }
 
@@ -138,11 +138,11 @@ public class TemplateServiceImpl implements ITemplateService {
         template.setTags(convertTagsToJson(request.getTags()));
         template.setDefinition(definitionJson);
         template.setPreviewImage(request.getPreviewImage());
-        
+
         // 设置创建者ID（转换为String）
         Long userId = WorkflowSecurityUtils.getCurrentUserId();
         template.setCreatedBy(userId != null ? userId.toString() : null);
-        
+
         template.setCreatedAt(LocalDateTime.now());
         template.setUpdatedAt(LocalDateTime.now());
         template.setUsageCount(0);
@@ -244,7 +244,7 @@ public class TemplateServiceImpl implements ITemplateService {
         try {
             JsonNode root = objectMapper.readTree(definition);
             JsonNode nodes = root.get("nodes");
-            
+
             if (nodes == null || !nodes.isArray()) {
                 return false;
             }
@@ -366,20 +366,20 @@ public class TemplateServiceImpl implements ITemplateService {
     private TemplateDTO convertToDTO(WorkflowTemplate template) {
         TemplateDTO dto = new TemplateDTO();
         BeanUtils.copyProperties(template, dto);
-        
+
         // 转换标签
         if (StringUtils.hasText(template.getTags())) {
             dto.setTags(convertJsonToTags(template.getTags()));
         }
-        
+
         // 转换流程定义
         if (StringUtils.hasText(template.getDefinition())) {
             dto.setDefinition(convertJsonToObject(template.getDefinition()));
         }
-        
+
         // 转换系统模板标志
         dto.setIsSystem(template.getIsSystem() == 1);
-        
+
         return dto;
     }
 
@@ -410,14 +410,14 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 创建流程定义对象
         WfProcessDefinition definition = new WfProcessDefinition();
-        
+
         // 生成流程ID
         definition.setDefinitionId(UUID.randomUUID().toString().replace("-", ""));
-        
+
         // 设置流程基本信息
         definition.setProcessName(request.getWorkflowName());
         definition.setDescription(request.getDescription());
-        
+
         // 设置流程Key（如果未提供则使用流程名称的拼音或自动生成）
         if (StringUtils.hasText(request.getProcessKey())) {
             definition.setProcessKey(request.getProcessKey());
@@ -425,43 +425,38 @@ public class TemplateServiceImpl implements ITemplateService {
             // 自动生成流程Key：使用UUID的前8位
             definition.setProcessKey("wf_" + UUID.randomUUID().toString().substring(0, 8));
         }
-        
+
         // 复制模板的流程定义（所有节点、连接和配置）
         definition.setModelJson(template.getDefinition());
-        
+
         // 设置初始版本
         definition.setVersion(1);
         definition.setIsLatest(1);
-        
+
         // 设置状态为草稿
         definition.setStatus("DRAFT");
-        
+
         // 设置租户ID
         definition.setTenantId(WorkflowSecurityUtils.getCurrentTenantId());
-        
+
         // 设置创建时间和创建者（转换为String）
         definition.setCreateTime(LocalDateTime.now());
         Long userId = WorkflowSecurityUtils.getCurrentUserId();
         definition.setCreateBy(userId != null ? userId.toString() : null);
-        
-        // 记录来源模板ID（需要在 WfProcessDefinition 中添加 templateId 字段）
-        // 这里暂时通过 description 或其他方式记录
-        if (StringUtils.hasText(definition.getDescription())) {
-            definition.setDescription(definition.getDescription() + " [来源模板: " + template.getName() + "]");
-        } else {
-            definition.setDescription("[来源模板: " + template.getName() + "]");
-        }
+
+        // 记录来源模板ID（结构化字段，避免依赖描述拼接）
+        definition.setTemplateId(templateId);
 
         // 调用流程定义服务保存流程
         try {
             definitionService.saveProcessDefinition(definition);
-            
+
             // 增加模板使用次数
             incrementUsageCount(templateId);
-            
+
             log.info("从模板创建流程成功 - 流程ID:{}, 模板ID:{}", definition.getDefinitionId(), templateId);
             return definition;
-            
+
         } catch (Exception e) {
             log.error("从模板创建流程失败", e);
             throw new WorkflowException("创建流程失败: " + e.getMessage());

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Search,
   RotateCcw,
   Trash2,
   AlertTriangle,
@@ -11,17 +11,17 @@ import {
   FileText,
   ArrowLeft,
   Filter,
-  X
-} from 'lucide-react';
-import { 
+  X,
+} from "lucide-react";
+import {
   getArchivedWorkflows,
   restoreWorkflows,
   permanentDeleteWorkflows,
-  BatchOperationResult
-} from '../../services/api/workflow';
-import { toast } from 'sonner';
-import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
-import { PermissionGuard } from '../../components/ui/PermissionGuard';
+  BatchOperationResult,
+} from "../../services/api/workflow";
+import { toast } from "sonner";
+import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
+import { PermissionGuard } from "../../components/ui/PermissionGuard";
 
 /**
  * 归档流程数据接口
@@ -44,9 +44,14 @@ interface ArchivedWorkflow {
  */
 export const ArchivedWorkflows: React.FC = () => {
   const navigate = useNavigate();
-  
+
   // 权限控制
-  const { isAdmin, canAccessArchiveManagement, canBatchRestore, canPermanentDelete } = useWorkflowPermission();
+  const {
+    isAdmin,
+    canAccessArchiveManagement,
+    canBatchRestore,
+    canPermanentDelete,
+  } = useWorkflowPermission();
 
   // 如果不是管理员，显示无权限提示
   if (!isAdmin || !canAccessArchiveManagement) {
@@ -56,31 +61,31 @@ export const ArchivedWorkflows: React.FC = () => {
       </PermissionGuard>
     );
   }
-  
+
   // 归档流程列表
   const [workflows, setWorkflows] = useState<ArchivedWorkflow[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   // 搜索和筛选条件
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<{
     start: string;
     end: string;
-  }>({ start: '', end: '' });
+  }>({ start: "", end: "" });
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // 分页
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
   const [total, setTotal] = useState(0);
-  
+
   // 选中的流程
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  
+
   // 操作状态
   const [restoring, setRestoring] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  
+
   // 确认对话框
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string[]>([]);
@@ -95,7 +100,7 @@ export const ArchivedWorkflows: React.FC = () => {
         pageNum: currentPage,
         pageSize: pageSize,
       };
-      
+
       if (searchTerm.trim()) {
         params.keyword = searchTerm.trim();
       }
@@ -105,18 +110,15 @@ export const ArchivedWorkflows: React.FC = () => {
       if (dateRange.end) {
         params.archivedBefore = dateRange.end;
       }
-      
+
       const response = await getArchivedWorkflows(params);
-      
-      if (response.code === 200) {
-        setWorkflows(response.data.records || []);
-        setTotal(response.data.total || 0);
-      } else {
-        toast.error(response.msg || '加载归档流程失败');
-      }
+
+      // request 拦截器已解包返回 data，这里直接按分页对象读取
+      setWorkflows(response?.records || []);
+      setTotal(response?.total || 0);
     } catch (error) {
-      console.error('加载归档流程失败:', error);
-      toast.error('加载归档流程失败');
+      console.error("加载归档流程失败:", error);
+      toast.error("加载归档流程失败");
     } finally {
       setLoading(false);
     }
@@ -147,8 +149,8 @@ export const ArchivedWorkflows: React.FC = () => {
    * 清除筛选条件
    */
   const clearFilters = () => {
-    setDateRange({ start: '', end: '' });
-    setSearchTerm('');
+    setDateRange({ start: "", end: "" });
+    setSearchTerm("");
     setCurrentPage(1);
   };
 
@@ -159,7 +161,7 @@ export const ArchivedWorkflows: React.FC = () => {
     if (selectedIds.length === workflows.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(workflows.map(w => w.workflowId));
+      setSelectedIds(workflows.map((w) => w.workflowId));
     }
   };
 
@@ -168,7 +170,7 @@ export const ArchivedWorkflows: React.FC = () => {
    */
   const handleSelectOne = (workflowId: string) => {
     if (selectedIds.includes(workflowId)) {
-      setSelectedIds(selectedIds.filter(id => id !== workflowId));
+      setSelectedIds(selectedIds.filter((id) => id !== workflowId));
     } else {
       setSelectedIds([...selectedIds, workflowId]);
     }
@@ -179,26 +181,26 @@ export const ArchivedWorkflows: React.FC = () => {
    */
   const handleRestore = async (workflowIds: string[]) => {
     if (workflowIds.length === 0) {
-      toast.error('请选择要恢复的流程');
+      toast.error("请选择要恢复的流程");
       return;
     }
 
     setRestoring(true);
     try {
       const result: BatchOperationResult = await restoreWorkflows(workflowIds);
-      
+
       if (result.successCount > 0) {
         toast.success(`成功恢复 ${result.successCount} 个流程`);
         setSelectedIds([]);
         loadArchivedWorkflows();
       }
-      
+
       if (result.failedCount > 0) {
         toast.error(`${result.failedCount} 个流程恢复失败`);
       }
     } catch (error: any) {
-      console.error('恢复流程失败:', error);
-      toast.error(error.message || '恢复流程失败');
+      console.error("恢复流程失败:", error);
+      toast.error(error.message || "恢复流程失败");
     } finally {
       setRestoring(false);
     }
@@ -209,7 +211,7 @@ export const ArchivedWorkflows: React.FC = () => {
    */
   const showDeleteDialog = (workflowIds: string[]) => {
     if (workflowIds.length === 0) {
-      toast.error('请选择要删除的流程');
+      toast.error("请选择要删除的流程");
       return;
     }
     setDeleteTarget(workflowIds);
@@ -224,8 +226,9 @@ export const ArchivedWorkflows: React.FC = () => {
 
     setDeleting(true);
     try {
-      const result: BatchOperationResult = await permanentDeleteWorkflows(deleteTarget);
-      
+      const result: BatchOperationResult =
+        await permanentDeleteWorkflows(deleteTarget);
+
       if (result.successCount > 0) {
         toast.success(`成功删除 ${result.successCount} 个流程`);
         setSelectedIds([]);
@@ -233,13 +236,13 @@ export const ArchivedWorkflows: React.FC = () => {
         setDeleteTarget([]);
         loadArchivedWorkflows();
       }
-      
+
       if (result.failedCount > 0) {
         toast.error(`${result.failedCount} 个流程删除失败`);
       }
     } catch (error: any) {
-      console.error('删除流程失败:', error);
-      toast.error(error.message || '删除流程失败');
+      console.error("删除流程失败:", error);
+      toast.error(error.message || "删除流程失败");
     } finally {
       setDeleting(false);
     }
@@ -249,14 +252,14 @@ export const ArchivedWorkflows: React.FC = () => {
    * 格式化日期时间
    */
   const formatDateTime = (dateStr: string) => {
-    if (!dateStr) return '-';
+    if (!dateStr) return "-";
     const date = new Date(dateStr);
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -266,7 +269,7 @@ export const ArchivedWorkflows: React.FC = () => {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate("/admin")}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             title="返回管理后台"
           >
@@ -274,7 +277,9 @@ export const ArchivedWorkflows: React.FC = () => {
           </button>
           <div>
             <h2 className="text-2xl font-bold text-slate-800">归档流程管理</h2>
-            <p className="text-slate-500 mt-1 text-sm">查看和管理已归档的流程，支持恢复或永久删除</p>
+            <p className="text-slate-500 mt-1 text-sm">
+              查看和管理已归档的流程，支持恢复或永久删除
+            </p>
           </div>
         </div>
       </div>
@@ -299,8 +304,8 @@ export const ArchivedWorkflows: React.FC = () => {
             onClick={() => setShowFilters(!showFilters)}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
               showFilters || dateRange.start || dateRange.end
-                ? 'bg-pink-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? "bg-pink-500 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <Filter size={16} />
@@ -330,7 +335,9 @@ export const ArchivedWorkflows: React.FC = () => {
                 <input
                   type="date"
                   value={dateRange.start}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  onChange={(e) =>
+                    setDateRange((prev) => ({ ...prev, start: e.target.value }))
+                  }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
               </div>
@@ -341,7 +348,9 @@ export const ArchivedWorkflows: React.FC = () => {
                 <input
                   type="date"
                   value={dateRange.end}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  onChange={(e) =>
+                    setDateRange((prev) => ({ ...prev, end: e.target.value }))
+                  }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
               </div>
@@ -363,14 +372,18 @@ export const ArchivedWorkflows: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-blue-700">
             <CheckCircle2 size={20} />
-            <span className="font-medium">已选中 {selectedIds.length} 个流程</span>
+            <span className="font-medium">
+              已选中 {selectedIds.length} 个流程
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleRestore(selectedIds)}
               disabled={restoring || !canBatchRestore}
               className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-2 disabled:opacity-50"
-              title={!canBatchRestore ? '仅管理员可批量恢复' : '批量恢复选中的流程'}
+              title={
+                !canBatchRestore ? "仅管理员可批量恢复" : "批量恢复选中的流程"
+              }
             >
               <RotateCcw size={16} />
               批量恢复
@@ -379,7 +392,11 @@ export const ArchivedWorkflows: React.FC = () => {
               onClick={() => showDeleteDialog(selectedIds)}
               disabled={deleting || !canPermanentDelete}
               className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center gap-2 disabled:opacity-50"
-              title={!canPermanentDelete ? '仅管理员可永久删除' : '永久删除选中的流程'}
+              title={
+                !canPermanentDelete
+                  ? "仅管理员可永久删除"
+                  : "永久删除选中的流程"
+              }
             >
               <Trash2 size={16} />
               批量删除
@@ -412,12 +429,16 @@ export const ArchivedWorkflows: React.FC = () => {
             <div className="flex items-center gap-4">
               <input
                 type="checkbox"
-                checked={selectedIds.length === workflows.length && workflows.length > 0}
+                checked={
+                  selectedIds.length === workflows.length &&
+                  workflows.length > 0
+                }
                 onChange={handleSelectAll}
                 className="w-4 h-4 text-pink-500 rounded focus:ring-pink-500"
               />
               <span className="text-sm text-slate-600">
-                共 <span className="font-bold text-slate-800">{total}</span> 个归档流程
+                共 <span className="font-bold text-slate-800">{total}</span>{" "}
+                个归档流程
               </span>
             </div>
           </div>
@@ -428,7 +449,7 @@ export const ArchivedWorkflows: React.FC = () => {
               <div
                 key={workflow.id}
                 className={`p-4 hover:bg-slate-50 transition-colors ${
-                  selectedIds.includes(workflow.workflowId) ? 'bg-blue-50' : ''
+                  selectedIds.includes(workflow.workflowId) ? "bg-blue-50" : ""
                 }`}
               >
                 <div className="flex items-start gap-4">
@@ -457,15 +478,23 @@ export const ArchivedWorkflows: React.FC = () => {
                     <div className="grid grid-cols-3 gap-4 text-sm text-slate-600">
                       <div className="flex items-center gap-2">
                         <Calendar size={14} className="text-slate-400" />
-                        <span>归档时间: {formatDateTime(workflow.archivedAt)}</span>
+                        <span>
+                          归档时间: {formatDateTime(workflow.archivedAt)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <User size={14} className="text-slate-400" />
-                        <span>操作人: {workflow.archivedByName || workflow.archivedBy}</span>
+                        <span>
+                          操作人:{" "}
+                          {workflow.archivedByName || workflow.archivedBy}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <FileText size={14} className="text-slate-400" />
-                        <span className="truncate" title={workflow.archiveReason}>
+                        <span
+                          className="truncate"
+                          title={workflow.archiveReason}
+                        >
                           原因: {workflow.archiveReason}
                         </span>
                       </div>
@@ -476,9 +505,17 @@ export const ArchivedWorkflows: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleRestore([workflow.workflowId])}
-                      disabled={!workflow.canRestore || restoring || !canBatchRestore}
+                      disabled={
+                        !workflow.canRestore || restoring || !canBatchRestore
+                      }
                       className="px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={!canBatchRestore ? '仅管理员可恢复流程' : workflow.canRestore ? '恢复流程' : '此流程不可恢复'}
+                      title={
+                        !canBatchRestore
+                          ? "仅管理员可恢复流程"
+                          : workflow.canRestore
+                            ? "恢复流程"
+                            : "此流程不可恢复"
+                      }
                     >
                       <RotateCcw size={14} />
                       恢复
@@ -487,7 +524,9 @@ export const ArchivedWorkflows: React.FC = () => {
                       onClick={() => showDeleteDialog([workflow.workflowId])}
                       disabled={deleting || !canPermanentDelete}
                       className="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center gap-1 text-sm disabled:opacity-50"
-                      title={!canPermanentDelete ? '仅管理员可永久删除' : '永久删除'}
+                      title={
+                        !canPermanentDelete ? "仅管理员可永久删除" : "永久删除"
+                      }
                     >
                       <Trash2 size={14} />
                       删除
@@ -502,11 +541,12 @@ export const ArchivedWorkflows: React.FC = () => {
           {total > pageSize && (
             <div className="flex items-center justify-between p-4 border-t border-slate-200 bg-slate-50">
               <div className="text-sm text-slate-600">
-                显示 {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, total)} 条，共 {total} 条
+                显示 {(currentPage - 1) * pageSize + 1} -{" "}
+                {Math.min(currentPage * pageSize, total)} 条，共 {total} 条
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                   className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -516,7 +556,11 @@ export const ArchivedWorkflows: React.FC = () => {
                   第 {currentPage} / {Math.ceil(total / pageSize)} 页
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(total / pageSize), p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) =>
+                      Math.min(Math.ceil(total / pageSize), p + 1),
+                    )
+                  }
                   disabled={currentPage >= Math.ceil(total / pageSize)}
                   className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -538,10 +582,14 @@ export const ArchivedWorkflows: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-slate-800">确认永久删除</h3>
             </div>
-            
+
             <div className="space-y-3 mb-6">
               <p className="text-slate-600">
-                您即将永久删除 <span className="font-bold text-red-600">{deleteTarget.length}</span> 个流程。
+                您即将永久删除{" "}
+                <span className="font-bold text-red-600">
+                  {deleteTarget.length}
+                </span>{" "}
+                个流程。
               </p>
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-red-700 font-medium text-sm flex items-start gap-2">

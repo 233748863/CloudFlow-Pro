@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { VersionHistory } from './VersionHistory';
+import { VersionHistory } from './VersionHistory.improved';
+import request from '@/services/api/request';
 
 /**
  * 版本历史页面包装器
@@ -12,18 +13,14 @@ export const VersionHistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const [workflowInfo, setWorkflowInfo] = useState<any>(null);
 
-  // 加载流程基本信息
   useEffect(() => {
     const loadWorkflowInfo = async () => {
       if (!workflowId) return;
-      
+
       try {
-        const response = await fetch(`/api/workflow/process/${workflowId}`);
-        const result = await response.json();
-        
-        if (result.code === 200) {
-          setWorkflowInfo(result.data);
-        }
+        // Use unified request client so Authorization is injected automatically.
+        const data = await request.get(`/workflow/definition/${workflowId}`, { silent: true });
+        setWorkflowInfo(data || null);
       } catch (error) {
         console.error('加载流程信息失败:', error);
       }
@@ -42,7 +39,6 @@ export const VersionHistoryPage: React.FC = () => {
 
   return (
     <div className="h-full bg-white rounded-xl shadow-sm border border-slate-200">
-      {/* 页面头部 */}
       <div className="border-b border-slate-200 px-6 py-4">
         <div className="flex items-center gap-4">
           <button
@@ -63,10 +59,9 @@ export const VersionHistoryPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 版本历史内容 */}
       <div className="overflow-y-auto" style={{ height: 'calc(100% - 73px)' }}>
-        <VersionHistory 
-          workflowId={workflowId} 
+        <VersionHistory
+          workflowId={workflowId}
           workflowCreatorId={workflowInfo?.createdBy}
         />
       </div>

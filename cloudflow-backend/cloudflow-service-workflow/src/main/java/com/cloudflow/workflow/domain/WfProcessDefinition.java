@@ -3,7 +3,6 @@ package com.cloudflow.workflow.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
@@ -42,10 +41,10 @@ public class WfProcessDefinition implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 
     private LocalDateTime createTime;
-    
+
     /** 启动权限类型 (ALL/ROLE/DEPT/USER) */
     private String startPermissionType;
-    
+
     /** 启动权限值 (JSON格式) */
     private String startPermissionValue;
 
@@ -61,28 +60,34 @@ public class WfProcessDefinition implements Serializable {
     /** 12.A: 是否最新版本 (0-否, 1-是) */
     private Integer isLatest;
 
+    /** 来源模板ID */
+    private String templateId;
+
+    /** 当前版本号（语义化版本） */
+    private String currentVersion;
+
     /** 是否已归档 (0-否, 1-是) */
     private Integer isArchived;
 
     /** 流程描述 */
     private String description;
-    
+
     /** 部门ID - 数据权限 */
     private Long deptId;
-    
+
     /** 创建人 */
     @TableField(fill = FieldFill.INSERT)
     private String createBy;
-    
+
     /** 更新人 */
     @TableField(fill = FieldFill.UPDATE)
     private String updateBy;
-    
+
     /** 更新时间 */
     @TableField(fill = FieldFill.UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
-    
+
     /** 删除标记 */
     @TableLogic
     @TableField(fill = FieldFill.INSERT)
@@ -208,6 +213,22 @@ public class WfProcessDefinition implements Serializable {
         this.isLatest = isLatest;
     }
 
+    public String getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(String templateId) {
+        this.templateId = templateId;
+    }
+
+    public String getCurrentVersion() {
+        return currentVersion;
+    }
+
+    public void setCurrentVersion(String currentVersion) {
+        this.currentVersion = currentVersion;
+    }
+
     public Integer getIsArchived() {
         return isArchived;
     }
@@ -223,43 +244,43 @@ public class WfProcessDefinition implements Serializable {
     public void setDescription(String description) {
         this.description = description;
     }
-    
+
     public Long getDeptId() {
         return deptId;
     }
-    
+
     public void setDeptId(Long deptId) {
         this.deptId = deptId;
     }
-    
+
     public String getCreateBy() {
         return createBy;
     }
-    
+
     public void setCreateBy(String createBy) {
         this.createBy = createBy;
     }
-    
+
     public String getUpdateBy() {
         return updateBy;
     }
-    
+
     public void setUpdateBy(String updateBy) {
         this.updateBy = updateBy;
     }
-    
+
     public LocalDateTime getUpdateTime() {
         return updateTime;
     }
-    
+
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
     }
-    
+
     public String getDelFlag() {
         return delFlag;
     }
-    
+
     public void setDelFlag(String delFlag) {
         this.delFlag = delFlag;
     }

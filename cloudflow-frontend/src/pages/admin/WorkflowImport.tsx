@@ -1,189 +1,209 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Upload, 
-  X, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  AlertCircle,
   AlertTriangle,
-  Loader2,
+  ArrowLeft,
+  CheckCircle2,
   Download,
   FileCheck,
-  FileX,
+  FileText,
   FileWarning,
+  FileX,
   Info,
-  ArrowLeft
+  Loader2,
+  Upload,
+  X
 } from 'lucide-react';
-import { 
-  validateImportFile, 
-  importWorkflow, 
-  importWorkflows,
-  ValidationResult,
-  ImportResult 
-} from '../../services/api/workflow';
 import { toast } from 'sonner';
+import {
+  ImportResult,
+  ValidationResult,
+  importWorkflow,
+  validateImportFile
+} from '../../services/api/workflow';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 
-/**
- * 文件状态
- */
+type FileStatus =
+  | 'pending'
+  | 'validating'
+  | 'valid'
+  | 'invalid'
+  | 'importing'
+  | 'success'
+  | 'failed'
+  | 'skipped';
+
 interface FileWithStatus {
+  id: string;
   file: File;
-  status: 'pending' | 'validating' | 'valid' | 'invalid' | 'importing' | 'success' | 'failed' | 'skipped';
+  status: FileStatus;
   validation?: ValidationResult;
   importResult?: ImportResult;
   conflictStrategy?: 'overwrite' | 'rename' | 'skip';
 }
 
-/**
- * 工作流导入组件
- * 支持单个和批量导入，文件验证，冲突处理
- * 权限控制：
- * - 所有登录用户可以导入流程
- * - 仅管理员可以批量导入
- */
+interface ImportSummary {
+  total: number;
+  success: number;
+  failed: number;
+  skipped: number;
+}
+
+interface FileItemProps {
+  fileWithStatus: FileWithStatus;
+  disabled: boolean;
+  onRemove: () => void;
+  onUpdateStrategy: (strategy: 'overwrite' | 'rename' | 'skip') => void;
+}
+
+const createFileId = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+};
+
 export const WorkflowImport: React.FC = () => {
   const navigate = useNavigate();
-  
-  // 权限控制
   const { canImport, canImportBatch } = useWorkflowPermission();
-  
-  // 文件列表
-  const [files, setFiles] = useState<FileWithStatus[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 全局冲突策略
+  const [files, setFiles] = useState<FileWithStatus[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [globalConflictStrategy, setGlobalConflictStrategy] = useState<'overwrite' | 'rename' | 'skip'>('skip');
-  
-  // 导入状态
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
-
-  // 导入结果摘要
-  const [importSummary, setImportSummary] = useState<{
-    total: number;
-    success: number;
-    failed: number;
-    skipped: number;
-  } | null>(null);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
 
   /**
-   * 处理文件选择
+   * 校验单个文件。
+   * 这里使用 fileId 而不是数组下标，避免并发上传/删除时状态串位。
    */
-  const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
-    if (!selectedFiles || selectedFiles.length === 0) return;
-
-    const newFiles: FileWithStatus[] = Array.from(selectedFiles).map(file => ({
-      file,
-      status: 'pending',
-      conflictStrategy: globalConflictStrategy
-    }));
-
-    // 先添加文件到列表
-    setFiles(prev => {
-      const updatedFiles = [...prev, ...newFiles];
-      
-      // 异步验证新添加的文件
-      setTimeout(() => {
-        newFiles.forEach((_, index) => {
-          validateFile(prev.length + index);
-        });
-      }, 100);
-      
-      return updatedFiles;
-    });
-  }, [globalConflictStrategy]);
-
-  /**
-   * 验证单个文件
-   */
-  const validateFile = async (index: number) => {
-    const fileWithStatus = files[index];
-    if (!fileWithStatus) return;
-
-    // 更新状态为验证中
-    setFiles(prev => prev.map((f, i) => 
-      i === index ? { ...f, status: 'validating' as const } : f
-    ));
-
+  const validateFile = useCallback(async (fileId: string, file: File) => {
+    setFiles((prev) => prev.map((item) => (item.id === fileId ? { ...item, status: 'validating' } : item)));
     try {
-      const validation = await validateImportFile(fileWithStatus.file);
-      
-      // 更新验证结果
-      setFiles(prev => prev.map((f, i) => 
-        i === index ? {
-          ...f,
-          status: validation.valid ? 'valid' as const : 'invalid' as const,
-          validation
-        } : f
-      ));
-
+      const validation = await validateImportFile(file);
+      setFiles((prev) =>
+        prev.map((item) =>
+          item.id === fileId
+            ? {
+                ...item,
+                status: validation.valid ? 'valid' : 'invalid',
+                validation
+              }
+            : item
+        )
+      );
       if (!validation.valid) {
-        toast.error(`文件 ${fileWithStatus.file.name} 验证失败`);
+        toast.error(`文件 ${file.name} 校验失败`);
       }
     } catch (error) {
-      console.error('文件验证失败:', error);
-      setFiles(prev => prev.map((f, i) => 
-        i === index ? {
-          ...f,
-          status: 'invalid' as const,
-          validation: {
-            valid: false,
-            errors: ['验证请求失败，请检查网络连接'],
-            warnings: []
-          }
-        } : f
-      ));
-      toast.error(`文件 ${fileWithStatus.file.name} 验证失败`);
+      console.error('文件校验失败:', error);
+      setFiles((prev) =>
+        prev.map((item) =>
+          item.id === fileId
+            ? {
+                ...item,
+                status: 'invalid',
+                validation: {
+                  valid: false,
+                  errors: ['校验请求失败，请检查网络连接'],
+                  warnings: []
+                }
+              }
+            : item
+        )
+      );
+      toast.error(`文件 ${file.name} 校验失败`);
     }
-  };
+  }, []);
 
   /**
-   * 移除文件
+   * 处理文件选择/拖拽。
+   * 非管理员只能单文件导入，这里会强制裁剪为 1 个文件并给出提示。
    */
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+  const handleFileSelect = useCallback(
+    (selectedFiles: FileList | null) => {
+      if (!canImport) {
+        toast.error('当前账号没有导入权限');
+        return;
+      }
+      if (!selectedFiles || selectedFiles.length === 0) {
+        return;
+      }
+
+      const rawFiles = Array.from(selectedFiles);
+      const limitedFiles = canImportBatch ? rawFiles : rawFiles.slice(0, 1);
+
+      if (!canImportBatch && rawFiles.length > 1) {
+        toast.warning('当前账号仅支持单文件导入，已自动保留第一个文件');
+      }
+
+      const newItems: FileWithStatus[] = limitedFiles.map((file) => ({
+        id: createFileId(),
+        file,
+        status: 'pending',
+        conflictStrategy: globalConflictStrategy
+      }));
+
+      setImportSummary(null);
+      setFiles((prev) => (canImportBatch ? [...prev, ...newItems] : newItems));
+
+      newItems.forEach((item) => {
+        void validateFile(item.id, item.file);
+      });
+    },
+    [canImport, canImportBatch, globalConflictStrategy, validateFile]
+  );
+
+  const removeFile = (fileId: string) => {
+    setFiles((prev) => prev.filter((item) => item.id !== fileId));
   };
 
-  /**
-   * 更新文件的冲突策略
-   */
-  const updateConflictStrategy = (index: number, strategy: 'overwrite' | 'rename' | 'skip') => {
-    setFiles(prev => prev.map((f, i) => 
-      i === index ? { ...f, conflictStrategy: strategy } : f
-    ));
+  const updateConflictStrategy = (fileId: string, strategy: 'overwrite' | 'rename' | 'skip') => {
+    setFiles((prev) => prev.map((item) => (item.id === fileId ? { ...item, conflictStrategy: strategy } : item)));
   };
 
-  /**
-   * 拖拽处理
-   */
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    if (!canImport) {
+      return;
+    }
     setIsDragging(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
-    handleFileSelect(e.dataTransfer.files);
+    if (!canImport) {
+      toast.error('当前账号没有导入权限');
+      return;
+    }
+    handleFileSelect(event.dataTransfer.files);
   };
 
-  /**
-   * 执行导入
-   */
   const handleImport = async () => {
-    // 过滤出有效的文件
-    const validFiles = files.filter(f => f.status === 'valid');
-    
+    if (!canImport) {
+      toast.error('当前账号没有导入权限');
+      return;
+    }
+
+    const validFiles = files.filter((item) => item.status === 'valid');
     if (validFiles.length === 0) {
       toast.error('没有可导入的有效文件');
+      return;
+    }
+    if (!canImportBatch && validFiles.length > 1) {
+      toast.error('当前账号仅支持单文件导入');
       return;
     }
 
@@ -196,62 +216,74 @@ export const WorkflowImport: React.FC = () => {
     let skippedCount = 0;
 
     try {
-      // 逐个导入文件
-      for (let i = 0; i < validFiles.length; i++) {
-        const fileWithStatus = validFiles[i];
-        const fileIndex = files.indexOf(fileWithStatus);
-
-        // 更新状态为导入中
-        setFiles(prev => prev.map((f, idx) => 
-          idx === fileIndex ? { ...f, status: 'importing' as const } : f
-        ));
-
-        setImportProgress({ current: i + 1, total: validFiles.length });
+      /**
+       * 按文件顺序逐个导入，而不是并发导入：
+       * - 便于和 UI 进度条保持一致；
+       * - 便于在出现失败时定位具体文件；
+       * - 避免后端在高并发下出现冲突策略竞争。
+       */
+      for (let index = 0; index < validFiles.length; index++) {
+        const fileItem = validFiles[index];
+        setImportProgress({ current: index + 1, total: validFiles.length });
+        setFiles((prev) =>
+          prev.map((item) => (item.id === fileItem.id ? { ...item, status: 'importing' } : item))
+        );
 
         try {
           const result = await importWorkflow(
-            fileWithStatus.file, 
-            fileWithStatus.conflictStrategy || globalConflictStrategy
+            fileItem.file,
+            fileItem.conflictStrategy || globalConflictStrategy
           );
 
-          // 更新导入结果
-          setFiles(prev => prev.map((f, idx) => 
-            idx === fileIndex ? {
-              ...f,
-              status: result.success ? 'success' as const : 
-                     (result.action === 'skipped' ? 'skipped' as const : 'failed' as const),
-              importResult: result
-            } : f
-          ));
+          const nextStatus: FileStatus = result.success
+            ? result.action === 'skipped'
+              ? 'skipped'
+              : 'success'
+            : 'failed';
+
+          setFiles((prev) =>
+            prev.map((item) =>
+              item.id === fileItem.id
+                ? {
+                    ...item,
+                    status: nextStatus,
+                    importResult: result
+                  }
+                : item
+            )
+          );
 
           if (result.success) {
-            successCount++;
             if (result.action === 'skipped') {
               skippedCount++;
+            } else {
+              successCount++;
             }
           } else {
             failedCount++;
           }
-        } catch (error: any) {
+        } catch (error) {
           console.error('导入失败:', error);
           failedCount++;
-          
-          setFiles(prev => prev.map((f, idx) => 
-            idx === fileIndex ? {
-              ...f,
-              status: 'failed' as const,
-              importResult: {
-                success: false,
-                workflowName: fileWithStatus.file.name,
-                action: 'skipped' as const,
-                errors: [error.message || '导入失败']
-              }
-            } : f
-          ));
+          setFiles((prev) =>
+            prev.map((item) =>
+              item.id === fileItem.id
+                ? {
+                    ...item,
+                    status: 'failed',
+                    importResult: {
+                      success: false,
+                      workflowName: fileItem.file.name,
+                      action: 'skipped',
+                      errors: [getErrorMessage(error, '导入失败')]
+                    }
+                  }
+                : item
+            )
+          );
         }
       }
 
-      // 设置导入摘要
       setImportSummary({
         total: validFiles.length,
         success: successCount,
@@ -259,54 +291,72 @@ export const WorkflowImport: React.FC = () => {
         skipped: skippedCount
       });
 
-      // 显示结果提示
       if (failedCount === 0) {
-        toast.success(`成功导入 ${successCount} 个流程`);
+        toast.success(`导入完成，成功 ${successCount} 个，跳过 ${skippedCount} 个`);
       } else {
-        toast.warning(`导入完成：成功 ${successCount} 个，失败 ${failedCount} 个`);
+        toast.warning(`导入完成：成功 ${successCount} 个，失败 ${failedCount} 个，跳过 ${skippedCount} 个`);
       }
     } catch (error) {
       console.error('批量导入失败:', error);
-      toast.error('批量导入失败');
+      toast.error('导入过程出现异常');
     } finally {
       setImporting(false);
     }
   };
 
-  /**
-   * 清空所有文件
-   */
   const clearAll = () => {
     setFiles([]);
     setImportSummary(null);
   };
 
-  /**
-   * 重新导入失败的文件
-   */
   const retryFailed = () => {
-    setFiles(prev => prev.map(f => 
-      f.status === 'failed' ? { ...f, status: 'valid' as const } : f
-    ));
+    setFiles((prev) =>
+      prev.map((item) =>
+        item.status === 'failed'
+          ? { ...item, status: 'valid', importResult: undefined }
+          : item
+      )
+    );
     setImportSummary(null);
   };
 
-  // 统计各状态的文件数量
-  const stats = {
-    total: files.length,
-    pending: files.filter(f => f.status === 'pending').length,
-    validating: files.filter(f => f.status === 'validating').length,
-    valid: files.filter(f => f.status === 'valid').length,
-    invalid: files.filter(f => f.status === 'invalid').length,
-    importing: files.filter(f => f.status === 'importing').length,
-    success: files.filter(f => f.status === 'success').length,
-    failed: files.filter(f => f.status === 'failed').length,
-    skipped: files.filter(f => f.status === 'skipped').length,
-  };
+  const stats = useMemo(
+    () => ({
+      total: files.length,
+      pending: files.filter((item) => item.status === 'pending').length,
+      validating: files.filter((item) => item.status === 'validating').length,
+      valid: files.filter((item) => item.status === 'valid').length,
+      invalid: files.filter((item) => item.status === 'invalid').length,
+      importing: files.filter((item) => item.status === 'importing').length,
+      success: files.filter((item) => item.status === 'success').length,
+      failed: files.filter((item) => item.status === 'failed').length,
+      skipped: files.filter((item) => item.status === 'skipped').length
+    }),
+    [files]
+  );
+
+  if (!canImport) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/workflow/management')}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            title="返回流程管理"
+          >
+            <ArrowLeft size={20} className="text-slate-600" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">流程导入</h2>
+            <p className="text-slate-500 mt-1 text-sm">当前账号没有导入权限，请联系管理员开通。</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
-      {/* 页面标题 */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <button
@@ -318,17 +368,16 @@ export const WorkflowImport: React.FC = () => {
           </button>
           <div>
             <h2 className="text-2xl font-bold text-slate-800">流程导入</h2>
-            <p className="text-slate-500 mt-1 text-sm">导入流程定义文件，支持批量导入和冲突处理</p>
+            <p className="text-slate-500 mt-1 text-sm">导入流程定义文件，支持冲突策略与校验结果追踪</p>
           </div>
         </div>
       </div>
 
-      {/* 全局设置 */}
       <div className="bg-white rounded-xl p-4 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-1">全局冲突策略</h3>
-            <p className="text-xs text-slate-500">当导入的流程名称已存在时的处理方式</p>
+            <p className="text-xs text-slate-500">当导入流程名称已存在时的处理方式</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -364,27 +413,29 @@ export const WorkflowImport: React.FC = () => {
           </div>
         </div>
 
-        {/* 策略说明 */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
           <div className="flex items-start gap-2">
             <Info size={14} className="mt-0.5 flex-shrink-0" />
             <div>
               <span className="font-medium">
-                {globalConflictStrategy === 'skip' && '跳过：保留现有流程，不导入冲突的文件'}
-                {globalConflictStrategy === 'rename' && '重命名：自动为导入的流程生成新名称（原名称_副本_序号）'}
-                {globalConflictStrategy === 'overwrite' && '覆盖：替换现有流程，创建新版本（谨慎使用）'}
+                {globalConflictStrategy === 'skip' && '跳过：保留现有流程，不导入冲突文件'}
+                {globalConflictStrategy === 'rename' && '重命名：自动为导入流程生成新名称（原名_副本_序号）'}
+                {globalConflictStrategy === 'overwrite' && '覆盖：替换现有流程并生成新版本，请谨慎使用'}
               </span>
             </div>
           </div>
         </div>
+
+        {!canImportBatch && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+            当前账号仅支持单文件导入，不支持批量导入。
+          </div>
+        )}
       </div>
 
-      {/* 文件上传区域 */}
       <div
         className={`bg-white rounded-xl p-8 shadow-sm border-2 border-dashed transition-all ${
-          isDragging 
-            ? 'border-pink-400 bg-pink-50' 
-            : 'border-slate-300 hover:border-pink-300'
+          isDragging ? 'border-pink-400 bg-pink-50' : 'border-slate-300 hover:border-pink-300'
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -394,13 +445,12 @@ export const WorkflowImport: React.FC = () => {
           <div className={`p-4 rounded-full ${isDragging ? 'bg-pink-100' : 'bg-slate-100'}`}>
             <Upload size={32} className={isDragging ? 'text-pink-500' : 'text-slate-400'} />
           </div>
-          
+
           <div className="text-center">
-            <p className="text-slate-700 font-medium mb-1">
-              拖拽文件到此处，或点击选择文件
-            </p>
+            <p className="text-slate-700 font-medium mb-1">拖拽文件到此处，或点击选择文件</p>
             <p className="text-xs text-slate-500">
-              支持 JSON 格式的流程定义文件，可同时选择多个文件
+              支持 JSON 格式流程定义文件
+              {canImportBatch ? '，可同时选择多个文件' : '，当前账号仅可选择单个文件'}
             </p>
           </div>
 
@@ -409,8 +459,11 @@ export const WorkflowImport: React.FC = () => {
             type="file"
             className="hidden"
             accept=".json,application/json"
-            multiple
-            onChange={(e) => handleFileSelect(e.target.files)}
+            multiple={canImportBatch}
+            onChange={(event) => {
+              handleFileSelect(event.target.files);
+              event.currentTarget.value = '';
+            }}
           />
 
           <button
@@ -423,10 +476,8 @@ export const WorkflowImport: React.FC = () => {
         </div>
       </div>
 
-      {/* 文件列表 */}
       {files.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {/* 列表头部 */}
           <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
             <div className="flex items-center gap-4 text-sm">
               <span className="text-slate-600">
@@ -477,20 +528,18 @@ export const WorkflowImport: React.FC = () => {
             </div>
           </div>
 
-          {/* 文件列表 */}
           <div className="divide-y divide-slate-200 max-h-96 overflow-y-auto">
-            {files.map((fileWithStatus, index) => (
+            {files.map((fileWithStatus) => (
               <FileItem
-                key={index}
+                key={fileWithStatus.id}
                 fileWithStatus={fileWithStatus}
-                onRemove={() => removeFile(index)}
-                onUpdateStrategy={(strategy) => updateConflictStrategy(index, strategy)}
                 disabled={importing}
+                onRemove={() => removeFile(fileWithStatus.id)}
+                onUpdateStrategy={(strategy) => updateConflictStrategy(fileWithStatus.id, strategy)}
               />
             ))}
           </div>
 
-          {/* 导入按钮 */}
           <div className="p-4 border-t border-slate-200 bg-slate-50">
             <div className="flex items-center justify-between">
               <div className="text-sm text-slate-600">
@@ -501,7 +550,7 @@ export const WorkflowImport: React.FC = () => {
                   </span>
                 )}
               </div>
-              
+
               <button
                 onClick={handleImport}
                 disabled={importing || stats.valid === 0}
@@ -524,14 +573,13 @@ export const WorkflowImport: React.FC = () => {
         </div>
       )}
 
-      {/* 导入结果摘要 */}
       {importSummary && (
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
             <CheckCircle2 size={20} className="text-green-500" />
             导入完成
           </h3>
-          
+
           <div className="grid grid-cols-4 gap-4">
             <div className="bg-slate-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-slate-800">{importSummary.total}</div>
@@ -556,127 +604,84 @@ export const WorkflowImport: React.FC = () => {
   );
 };
 
-/**
- * 文件项组件
- */
-interface FileItemProps {
-  fileWithStatus: FileWithStatus;
-  onRemove: () => void;
-  onUpdateStrategy: (strategy: 'overwrite' | 'rename' | 'skip') => void;
-  disabled: boolean;
-}
-
-const FileItem: React.FC<FileItemProps> = ({ 
-  fileWithStatus, 
-  onRemove, 
-  onUpdateStrategy,
-  disabled 
+const FileItem: React.FC<FileItemProps> = ({
+  fileWithStatus,
+  disabled,
+  onRemove,
+  onUpdateStrategy
 }) => {
   const { file, status, validation, importResult, conflictStrategy } = fileWithStatus;
 
-  // 状态图标
-  const StatusIcon = () => {
-    switch (status) {
-      case 'pending':
-        return <FileText size={16} className="text-slate-400" />;
-      case 'validating':
-        return <Loader2 size={16} className="animate-spin text-blue-500" />;
-      case 'valid':
-        return <CheckCircle2 size={16} className="text-green-500" />;
-      case 'invalid':
-        return <AlertCircle size={16} className="text-red-500" />;
-      case 'importing':
-        return <Loader2 size={16} className="animate-spin text-pink-500" />;
-      case 'success':
-        return <FileCheck size={16} className="text-blue-500" />;
-      case 'failed':
-        return <FileX size={16} className="text-orange-500" />;
-      case 'skipped':
-        return <FileWarning size={16} className="text-yellow-500" />;
-      default:
-        return <FileText size={16} className="text-slate-400" />;
-    }
-  };
-
-  // 状态文本
-  const statusText = {
-    pending: '等待验证',
-    validating: '验证中...',
-    valid: '验证通过',
-    invalid: '验证失败',
+  const statusTextMap: Record<FileStatus, string> = {
+    pending: '等待校验',
+    validating: '校验中...',
+    valid: '校验通过',
+    invalid: '校验失败',
     importing: '导入中...',
     success: '导入成功',
     failed: '导入失败',
     skipped: '已跳过'
-  }[status];
+  };
+
+  const statusBadgeClass = (() => {
+    if (status === 'valid') return 'bg-green-100 text-green-600';
+    if (status === 'invalid') return 'bg-red-100 text-red-600';
+    if (status === 'success') return 'bg-blue-100 text-blue-600';
+    if (status === 'failed') return 'bg-orange-100 text-orange-600';
+    if (status === 'skipped') return 'bg-yellow-100 text-yellow-600';
+    return 'bg-slate-100 text-slate-600';
+  })();
+
+  const StatusIcon = () => {
+    if (status === 'validating') return <Loader2 size={16} className="animate-spin text-blue-500" />;
+    if (status === 'valid') return <CheckCircle2 size={16} className="text-green-500" />;
+    if (status === 'invalid') return <AlertCircle size={16} className="text-red-500" />;
+    if (status === 'importing') return <Loader2 size={16} className="animate-spin text-pink-500" />;
+    if (status === 'success') return <FileCheck size={16} className="text-blue-500" />;
+    if (status === 'failed') return <FileX size={16} className="text-orange-500" />;
+    if (status === 'skipped') return <FileWarning size={16} className="text-yellow-500" />;
+    return <FileText size={16} className="text-slate-400" />;
+  };
 
   return (
     <div className="p-4 hover:bg-slate-50 transition-colors">
       <div className="flex items-start gap-3">
-        {/* 状态图标 */}
         <div className="mt-1">
           <StatusIcon />
         </div>
 
-        {/* 文件信息 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-slate-800 truncate">
-              {file.name}
-            </span>
-            <span className={`text-xs px-2 py-0.5 rounded ${
-              status === 'valid' ? 'bg-green-100 text-green-600' :
-              status === 'invalid' ? 'bg-red-100 text-red-600' :
-              status === 'success' ? 'bg-blue-100 text-blue-600' :
-              status === 'failed' ? 'bg-orange-100 text-orange-600' :
-              status === 'skipped' ? 'bg-yellow-100 text-yellow-600' :
-              'bg-slate-100 text-slate-600'
-            }`}>
-              {statusText}
-            </span>
+            <span className="text-sm font-medium text-slate-800 truncate">{file.name}</span>
+            <span className={`text-xs px-2 py-0.5 rounded ${statusBadgeClass}`}>{statusTextMap[status]}</span>
           </div>
 
-          {/* 文件大小 */}
-          <div className="text-xs text-slate-500 mb-2">
-            {(file.size / 1024).toFixed(2)} KB
-          </div>
+          <div className="text-xs text-slate-500 mb-2">{(file.size / 1024).toFixed(2)} KB</div>
 
-          {/* 验证信息 */}
           {validation && (
             <div className="space-y-1 mb-2">
               {validation.workflowName && (
                 <div className="text-xs text-slate-600">
                   流程名称: <span className="font-medium">{validation.workflowName}</span>
-                  {validation.version && ` (v${validation.version})`}
-                </div>
-              )}
-              
-              {/* 错误信息 */}
-              {validation.errors && validation.errors.length > 0 && (
-                <div className="space-y-1">
-                  {validation.errors.map((error, idx) => (
-                    <div key={idx} className="flex items-start gap-1 text-xs text-red-600">
-                      <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-                      <span>{error}</span>
-                    </div>
-                  ))}
+                  {validation.version ? ` (v${validation.version})` : ''}
                 </div>
               )}
 
-              {/* 警告信息 */}
-              {validation.warnings && validation.warnings.length > 0 && (
-                <div className="space-y-1">
-                  {validation.warnings.map((warning, idx) => (
-                    <div key={idx} className="flex items-start gap-1 text-xs text-yellow-600">
-                      <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
-                      <span>{warning}</span>
-                    </div>
-                  ))}
+              {validation.errors?.map((error, index) => (
+                <div key={`${error}-${index}`} className="flex items-start gap-1 text-xs text-red-600">
+                  <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
-              )}
+              ))}
 
-              {/* 不支持的节点类型 */}
-              {validation.unsupportedNodeTypes && validation.unsupportedNodeTypes.length > 0 && (
+              {validation.warnings?.map((warning, index) => (
+                <div key={`${warning}-${index}`} className="flex items-start gap-1 text-xs text-yellow-600">
+                  <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
+                  <span>{warning}</span>
+                </div>
+              ))}
+
+              {!!validation.unsupportedNodeTypes?.length && (
                 <div className="text-xs text-red-600">
                   不支持的节点类型: {validation.unsupportedNodeTypes.join(', ')}
                 </div>
@@ -684,36 +689,24 @@ const FileItem: React.FC<FileItemProps> = ({
             </div>
           )}
 
-          {/* 导入结果 */}
           {importResult && (
             <div className="space-y-1 mb-2">
-              {importResult.message && (
-                <div className="text-xs text-slate-600">{importResult.message}</div>
-              )}
-              {importResult.errors && importResult.errors.length > 0 && (
-                <div className="space-y-1">
-                  {importResult.errors.map((error, idx) => (
-                    <div key={idx} className="flex items-start gap-1 text-xs text-red-600">
-                      <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-                      <span>{error}</span>
-                    </div>
-                  ))}
+              {importResult.message && <div className="text-xs text-slate-600">{importResult.message}</div>}
+              {importResult.errors?.map((error, index) => (
+                <div key={`${error}-${index}`} className="flex items-start gap-1 text-xs text-red-600">
+                  <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
-              )}
-              {importResult.warnings && importResult.warnings.length > 0 && (
-                <div className="space-y-1">
-                  {importResult.warnings.map((warning, idx) => (
-                    <div key={idx} className="flex items-start gap-1 text-xs text-yellow-600">
-                      <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
-                      <span>{warning}</span>
-                    </div>
-                  ))}
+              ))}
+              {importResult.warnings?.map((warning, index) => (
+                <div key={`${warning}-${index}`} className="flex items-start gap-1 text-xs text-yellow-600">
+                  <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
+                  <span>{warning}</span>
                 </div>
-              )}
+              ))}
             </div>
           )}
 
-          {/* 冲突策略选择（仅在验证通过时显示） */}
           {status === 'valid' && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-slate-500">冲突策略:</span>
@@ -756,7 +749,6 @@ const FileItem: React.FC<FileItemProps> = ({
           )}
         </div>
 
-        {/* 删除按钮 */}
         {!disabled && status !== 'importing' && (
           <button
             onClick={onRemove}

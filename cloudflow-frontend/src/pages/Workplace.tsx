@@ -1,10 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Search, DollarSign, Clock, Monitor, FileBadge, GitMerge, ArrowRightCircle, FormInput, AlertTriangle, Tag, FolderOpen, X } from 'lucide-react';
 import { WorkflowDefinition, NodeType, FormDefinition } from '../types';
-import { getProcessDefinitions, getFormDefinitions, startProcess, getTodoTasks, getMyInstances } from '../services/api/workflow';
+import { getProcessDefinitions, getFormDefinitions, startProcess } from '../services/api/workflow';
 import { FormRenderer } from '../components/FormRenderer';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+/**
+ * 将后端返回的 tags 统一转换为字符串数组，避免页面内反复强制类型断言。
+ */
+const normalizeTags = (rawTags: unknown): string[] => {
+  if (Array.isArray(rawTags)) {
+    return rawTags.filter((item): item is string => typeof item === 'string');
+  }
+
+  if (typeof rawTags !== 'string' || rawTags.trim() === '') {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawTags);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === 'string');
+    }
+  } catch {
+    // 非 JSON 字符串时，按逗号分隔兜底
+  }
+
+  return rawTags
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+};
 
 export const Workplace = () => {
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
@@ -42,7 +69,8 @@ export const Workplace = () => {
               formId: w.formId,
               // P3: 映射分类和标签字段
               category: w.category || '',
-              tags: w.tags ? (typeof w.tags === 'string' ? JSON.parse(w.tags) : w.tags) : [],
+              // 与 WorkflowDefinition.tags 类型保持一致，统一存为 JSON 字符串
+              tags: typeof w.tags === 'string' ? w.tags : JSON.stringify(normalizeTags(w.tags)),
               description: w.description || '',
               nodes: w.modelJson ? JSON.parse(w.modelJson) : { type: NodeType.START, title: '开始', id: 'start' }
           }));
@@ -94,15 +122,16 @@ export const Workplace = () => {
     const matchesCategory = !selectedCategory || wf.category === selectedCategory;
     
     // 标签筛选（任一匹配即可）
-    const matchesTags = selectedTags.length === 0 || 
-      selectedTags.some(tag => (wf.tags as string[])?.includes(tag));
+    const workflowTags = normalizeTags(wf.tags);
+    const matchesTags = selectedTags.length === 0 ||
+      selectedTags.some(tag => workflowTags.includes(tag));
     
     return matchesSearch && matchesCategory && matchesTags;
   });
 
   // P3: 获取所有可用标签（去重）
   const allTags = Array.from(new Set(
-    workflows.flatMap(wf => (wf.tags as string[]) || [])
+    workflows.flatMap(wf => normalizeTags(wf.tags))
   ));
 
   const handleStartClick = (wf: WorkflowDefinition) => {
@@ -126,18 +155,18 @@ export const Workplace = () => {
       alert("流程发起成功");
       setIsFormOpen(false);
       setTargetWorkflow(null);
-      // Navigate to My Apps
+      // 跳转到“我的申请”页面
       navigate('/my-apps');
       
     } catch (e) {
-      console.error("Start process failed:", e);
+      console.error("流程发起失败:", e);
       alert("流程发起失败");
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Overlay for Form Renderer */}
+      {/* 表单渲染弹层 */}
       {isFormOpen && targetWorkflow && (
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-2xl">
@@ -234,7 +263,9 @@ export const Workplace = () => {
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filteredWorkflows.map(wf => (
+        {filteredWorkflows.map(wf => {
+          const workflowTags = normalizeTags(wf.tags);
+          return (
           <div key={wf.id} className="group bg-white border border-slate-200 hover:border-pink-400 rounded-xl p-6 transition-all shadow-sm hover:shadow-lg cursor-pointer relative overflow-hidden" onClick={() => handleStartClick(wf)}>
             <div className="absolute top-0 right-0 w-24 h-24 bg-pink-50 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
             
@@ -270,16 +301,16 @@ export const Workplace = () => {
             <p className="text-xs text-slate-400">Key: {wf.key}</p>
             
             {/* P3: 标签列表 */}
-            {(wf.tags as string[])?.length > 0 && (
+            {workflowTags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1">
-                {(wf.tags as string[]).slice(0, 3).map(tag => (
+                {workflowTags.slice(0, 3).map(tag => (
                   <span key={tag} className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded">
                     {tag}
                   </span>
                 ))}
-                {(wf.tags as string[]).length > 3 && (
+                {workflowTags.length > 3 && (
                   <span className="px-2 py-0.5 text-xs bg-slate-100 text-slate-500 rounded">
-                    +{(wf.tags as string[]).length - 3}
+                    +{workflowTags.length - 3}
                   </span>
                 )}
               </div>
@@ -289,7 +320,7 @@ export const Workplace = () => {
               <FormInput size={12}/> 绑定表单: {wf.formId ? '已配置' : '无'}
             </div>
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );

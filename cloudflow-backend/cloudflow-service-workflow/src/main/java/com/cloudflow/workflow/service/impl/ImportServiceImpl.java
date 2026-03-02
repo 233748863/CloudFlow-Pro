@@ -83,6 +83,16 @@ public class ImportServiceImpl implements IImportService {
             }
 
             // 2. 解决冲突
+            if (validationResult.getUnsupportedNodeTypes() != null
+                    && !validationResult.getUnsupportedNodeTypes().isEmpty()) {
+                String unsupportedTypes = String.join(", ", validationResult.getUnsupportedNodeTypes());
+                log.error("Import blocked due to unsupported node types: {}", unsupportedTypes);
+                return ImportResultDTO.failure(
+                    exportFormat.getWorkflow().getName(),
+                    "Unsupported node types: " + unsupportedTypes
+                );
+            }
+
             ConflictResolution resolution = conflictResolver.resolveConflict(exportFormat, strategy);
             
             // 如果是跳过策略

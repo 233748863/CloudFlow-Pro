@@ -134,8 +134,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             return R.fail("发布窗口不存在");
         }
         window.setIsEnabled(enabled);
-        window.setUpdatedBy(UserContext.getUserId());
-        window.setUpdatedTime(LocalDateTime.now());
+        // 更新者字段由 MyBatis-Plus 自动填充处理，无需手动设置
         deployWindowMapper.updateById(window);
         return R.ok(enabled ? "发布窗口已启用" : "发布窗口已禁用");
     }

@@ -7,7 +7,7 @@
         SELECT COUNT(*)
         FROM wf_process_definition
         WHERE template_id = #{templateId}
-          AND deleted = 0
+          AND del_flag = '0'
     </select>
 
     <!-- 增加模板使用次数 -->

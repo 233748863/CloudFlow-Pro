@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessArchive;
+import com.cloudflow.workflow.domain.WfAuditLog;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WorkflowVersion;
 import com.cloudflow.workflow.domain.dto.ArchivedWorkflowDTO;
@@ -13,6 +14,7 @@ import com.cloudflow.workflow.domain.dto.SafetyCheckResultDTO;
 import com.cloudflow.workflow.enums.OperationType;
 import com.cloudflow.workflow.enums.TargetType;
 import com.cloudflow.workflow.mapper.WfProcessArchiveMapper;
+import com.cloudflow.workflow.mapper.WfAuditLogMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.service.IArchiveService;
@@ -51,6 +53,9 @@ public class ArchiveServiceImpl implements IArchiveService {
 
     @Autowired
     private WorkflowVersionMapper versionMapper;
+
+    @Autowired
+    private WfAuditLogMapper auditLogMapper;
 
     @Autowired
     private SafetyChecker safetyChecker;
@@ -514,6 +519,12 @@ public class ArchiveServiceImpl implements IArchiveService {
             log.debug("删除归档记录: workflowId={}, count={}", workflowId, archiveCount);
 
             // 4. 删除流程定义
+            LambdaQueryWrapper<WfAuditLog> auditLogQuery = new LambdaQueryWrapper<>();
+            auditLogQuery.eq(WfAuditLog::getTargetType, TargetType.WORKFLOW.name())
+                .eq(WfAuditLog::getTargetId, workflowId);
+            int auditLogCount = auditLogMapper.delete(auditLogQuery);
+            log.debug("Deleted workflow audit logs: workflowId={}, count={}", workflowId, auditLogCount);
+
             definitionMapper.deleteById(workflowId);
 
             // 5. 记录审计日志

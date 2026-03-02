@@ -297,6 +297,11 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             queryWrapper.eq(WfProcessDefinition::getCategory, category);
         }
 
+        queryWrapper.and(w -> w
+            .isNull(WfProcessDefinition::getIsArchived)
+            .or()
+            .eq(WfProcessDefinition::getIsArchived, 0));
+
         queryWrapper.orderByDesc(WfProcessDefinition::getCreateTime);
 
         Page<WfProcessDefinition> resultPage = processDefinitionMapper.selectPage(page, queryWrapper);

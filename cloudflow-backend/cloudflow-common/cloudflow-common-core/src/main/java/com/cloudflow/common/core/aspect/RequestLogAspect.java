@@ -1,7 +1,6 @@
 package com.cloudflow.common.core.aspect;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -27,9 +26,8 @@ public class RequestLogAspect {
     private static final Logger log = LoggerFactory.getLogger(RequestLogAspect.class);
     private final ObjectMapper objectMapper;
 
-    public RequestLogAspect() {
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+    public RequestLogAspect(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     @Pointcut("execution(public * com.cloudflow..controller..*.*(..))")
