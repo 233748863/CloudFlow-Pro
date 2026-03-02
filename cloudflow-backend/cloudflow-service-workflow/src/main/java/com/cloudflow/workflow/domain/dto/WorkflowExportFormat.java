@@ -80,6 +80,12 @@ public class WorkflowExportFormat implements Serializable {
         private String description;
 
         /**
+         * 流程 Key（流程定义唯一标识）
+         * 导入时优先使用该字段恢复流程标识。
+         */
+        private String processKey;
+
+        /**
          * 流程分类 ID
          */
         private String categoryId;

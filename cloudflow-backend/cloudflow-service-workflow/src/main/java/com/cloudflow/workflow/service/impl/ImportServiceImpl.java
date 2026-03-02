@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.dto.ConflictResolution;
 import com.cloudflow.workflow.domain.dto.ImportResultDTO;
@@ -20,11 +21,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -307,6 +310,16 @@ public class ImportServiceImpl implements IImportService {
         
         // 设置名称（使用解决冲突后的名称）
         definition.setProcessName(resolution.getNewName());
+
+        /**
+         * 导入流程时必须保证 processKey 可用且唯一：
+         * 1. 优先使用导出文件中的 processKey；
+         * 2. 兼容旧导出文件，尝试从 metadata.processKey 读取；
+         * 3. 仍为空时基于流程名生成；
+         * 4. 与库中重复时自动追加后缀。
+         */
+        String processKey = resolveProcessKey(exportFormat, resolution);
+        definition.setProcessKey(processKey);
         
         // 设置描述
         definition.setDescription(exportFormat.getWorkflow().getDescription());
@@ -334,8 +347,11 @@ public class ImportServiceImpl implements IImportService {
             throw new WorkflowException("序列化流程定义失败: " + e.getMessage());
         }
         
-        // 设置状态
-        definition.setStatus("draft");
+        // 设置版本与状态默认值，保持与系统保存流程时一致
+        definition.setVersion(1);
+        definition.setVersionLock(0);
+        definition.setIsLatest(1);
+        definition.setStatus("DRAFT");
         
         // 设置创建信息
         definition.setCreateTime(LocalDateTime.now());
@@ -355,6 +371,90 @@ public class ImportServiceImpl implements IImportService {
         definitionMapper.insert(definition);
 
         return definition.getDefinitionId();
+    }
+
+    /**
+     * 解析并生成可用的流程 key。
+     */
+    private String resolveProcessKey(WorkflowExportFormat exportFormat, ConflictResolution resolution) {
+        String processKey = null;
+        WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
+
+        if (workflow != null && StringUtils.hasText(workflow.getProcessKey())) {
+            processKey = workflow.getProcessKey();
+        }
+
+        // 向后兼容：老导出格式可能把 processKey 放在 metadata 里
+        if (!StringUtils.hasText(processKey) && workflow != null && workflow.getMetadata() != null) {
+            Object metadataKey = workflow.getMetadata().get("processKey");
+            if (metadataKey != null) {
+                processKey = String.valueOf(metadataKey);
+            }
+        }
+
+        if (!StringUtils.hasText(processKey)) {
+            processKey = resolution.getNewName();
+            log.warn("导入文件未提供 processKey，使用流程名称生成: workflowName={}", resolution.getNewName());
+        }
+
+        return generateUniqueProcessKey(processKey);
+    }
+
+    /**
+     * 生成租户内唯一的流程 key。
+     */
+    private String generateUniqueProcessKey(String sourceKey) {
+        String baseKey = normalizeProcessKey(sourceKey);
+        String candidate = baseKey;
+        int suffix = 1;
+
+        while (processKeyExists(candidate)) {
+            String suffixText = "_import_" + suffix;
+            int maxBaseLength = Math.max(1, 64 - suffixText.length());
+            String trimmedBase = baseKey.length() > maxBaseLength
+                ? baseKey.substring(0, maxBaseLength)
+                : baseKey;
+            candidate = trimmedBase + suffixText;
+            suffix++;
+        }
+
+        return candidate;
+    }
+
+    /**
+     * 规范化流程 key，仅保留小写字母、数字和下划线。
+     */
+    private String normalizeProcessKey(String sourceKey) {
+        String normalized = sourceKey == null ? "" : sourceKey.trim().toLowerCase(Locale.ROOT);
+        normalized = normalized.replaceAll("[^a-z0-9]+", "_");
+        normalized = normalized.replaceAll("^_+|_+$", "");
+
+        if (!StringUtils.hasText(normalized)) {
+            normalized = "wf_import";
+        }
+
+        if (normalized.length() > 64) {
+            normalized = normalized.substring(0, 64);
+        }
+
+        return normalized;
+    }
+
+    /**
+     * 校验流程 key 是否已存在（同租户内）。
+     */
+    private boolean processKeyExists(String processKey) {
+        LambdaQueryWrapper<WfProcessDefinition> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WfProcessDefinition::getProcessKey, processKey)
+            .eq(WfProcessDefinition::getDelFlag, "0");
+
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId != null) {
+            wrapper.eq(WfProcessDefinition::getTenantId, tenantId);
+        }
+
+        Long count = definitionMapper.selectCount(wrapper);
+        return count != null && count > 0;
     }
 
     /**

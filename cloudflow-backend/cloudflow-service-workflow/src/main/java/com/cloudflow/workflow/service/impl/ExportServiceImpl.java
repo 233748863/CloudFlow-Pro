@@ -83,6 +83,7 @@ public class ExportServiceImpl implements IExportService {
             workflowData.setId(definition.getDefinitionId());
             workflowData.setName(definition.getName());
             workflowData.setDescription(definition.getDescription());
+            workflowData.setProcessKey(definition.getProcessKey());
             workflowData.setCategoryId(definition.getCategory());
             
             // 解析标签
@@ -112,6 +113,7 @@ public class ExportServiceImpl implements IExportService {
             metadata.put("updatedAt", definition.getUpdateTime());
             metadata.put("createdBy", definition.getCreateBy());
             metadata.put("status", definition.getStatus());
+            metadata.put("processKey", definition.getProcessKey());
             workflowData.setMetadata(metadata);
 
             exportFormat.setWorkflow(workflowData);

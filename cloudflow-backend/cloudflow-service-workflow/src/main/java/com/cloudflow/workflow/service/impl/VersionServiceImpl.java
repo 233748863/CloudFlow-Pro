@@ -288,16 +288,19 @@ public class VersionServiceImpl implements IVersionService {
             );
 
             WfProcessDefinition definition = definitionMapper.selectById(workflowId);
-            if (definition != null) {
-                definition.setModelJson(targetVersion.getDefinition());
-                definition.setCurrentVersion(newVersionNumber);
-                definition.setUpdateTime(LocalDateTime.now());
-                if (operatorId != null) {
-                    definition.setUpdateBy(operatorId);
-                }
-                definitionMapper.updateById(definition);
-                log.info("流程定义已更新为目标版本");
+            if (definition == null) {
+                throw WorkflowException.processNotFound(workflowId);
             }
+            definition.setModelJson(targetVersion.getDefinition());
+            definition.setUpdateTime(LocalDateTime.now());
+            if (operatorId != null) {
+                definition.setUpdateBy(operatorId);
+            }
+            int updated = definitionMapper.updateById(definition);
+            if (updated <= 0) {
+                throw new WorkflowException("更新流程定义失败, workflowId=" + workflowId);
+            }
+            log.info("流程定义已更新为目标版本");
 
             // 创建回滚版本记录
             String checksum = calculateChecksum(targetVersion.getDefinition());
@@ -317,6 +320,7 @@ public class VersionServiceImpl implements IVersionService {
             rollbackVersion.setChecksum(checksum);
 
             versionMapper.insert(rollbackVersion);
+            updateCurrentVersion(workflowId, newVersionNumber, operatorId);
 
             log.info("版本回滚成功, 新版本号: {}, 回滚自版本: {}", 
                 newVersionNumber, targetVersion.getVersionNumber());
