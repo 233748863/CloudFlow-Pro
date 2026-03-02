@@ -115,6 +115,13 @@ export const login = async (username: string, password?: string, captchaToken?: 
   return request.post('/auth/login', { username, password: hashedPassword, captchaToken });
 };
 
+/**
+ * 登出接口：通知后端清理 token 与相关缓存。
+ */
+export const logout = async (): Promise<void> => {
+  return request.post('/auth/logout');
+};
+
 export const register = async (data: RegisterData): Promise<void> => {
   // 发送前对密码进行哈希
   const registerData = { ...data };

@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { User } from '@/types';
-import { getInfo, switchTenant as switchTenantApi } from '@/services/api/auth';
+import { getInfo, logout as logoutApi, switchTenant as switchTenantApi } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (token: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   switchTenant: (tenantId: number) => Promise<void>;
 }
 
@@ -90,7 +90,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        // 先通知后端清理 token/缓存，再做本地清理
+        await logoutApi();
+      } catch (error) {
+        // 登出接口失败不阻塞本地退出，避免用户被“卡住”
+        logger.warn('调用登出接口失败，继续执行本地退出:', error);
+      }
+    }
+
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

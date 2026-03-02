@@ -138,6 +138,7 @@ request.interceptors.response.use(
        toast.error('登录已过期，请重新登录');
        // 清除 token 并跳转登录页
        localStorage.removeItem('token');
+       localStorage.removeItem('user');
        // 使用 window.location.href 强制跳转，确保状态重置
        if (window.location.pathname !== '/login') {
            window.location.href = '/login';
