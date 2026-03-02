@@ -58,6 +58,18 @@ function logApiCall(method: string, endpoint: string, data?: any) {
   }
 }
 
+/**
+ * 归档时间参数标准化：
+ * 日期输入（yyyy-MM-dd）自动扩展为当天边界时间，便于后端按时间段精确筛选。
+ */
+function normalizeArchiveDateTime(value: string, isEnd: boolean): string {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return `${trimmed} ${isEnd ? "23:59:59" : "00:00:00"}`;
+  }
+  return trimmed;
+}
+
 // ==================== 流程实例相关 API ====================
 
 /**
@@ -881,8 +893,12 @@ export async function getArchivedWorkflows(params?: {
   };
   // 归档列表接口使用标准 query 参数，不使用 params[...] 包装
   if (params?.keyword) query.keyword = params.keyword;
-  if (params?.archivedAfter) query.archivedAfter = params.archivedAfter;
-  if (params?.archivedBefore) query.archivedBefore = params.archivedBefore;
+  if (params?.archivedAfter) {
+    query.archivedAfter = normalizeArchiveDateTime(params.archivedAfter, false);
+  }
+  if (params?.archivedBefore) {
+    query.archivedBefore = normalizeArchiveDateTime(params.archivedBefore, true);
+  }
   return request.get("/workflow/batch/archived", { params: query });
 }
 

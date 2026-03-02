@@ -10,6 +10,7 @@ import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
@@ -29,16 +30,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
  * 表单管理服务实现
- * 从 WorkflowServiceImpl 拆分而来，负责表单定义的 CRUD
- *
- * @author CloudFlow
  */
 @Service
 public class WfFormServiceImpl implements IWfFormService {
@@ -66,18 +64,15 @@ public class WfFormServiceImpl implements IWfFormService {
     public R<?> saveFormDefinition(WfFormDefinition definition) {
         log.info("[saveFormDefinition] 开始保存表单定义, formId={}", definition.getFormId());
 
-        // 权限校验
         permissionService.checkDefinitionPermission("保存表单");
 
-        // 参数校验
         if (!StringUtils.hasText(definition.getFormName())) {
             throw WorkflowException.validationError("表单名称不能为空");
         }
 
-        // XSS 防护
+        // 关键字段做 XSS 过滤，避免存储型风险
         definition.setFormName(securityUtils.sanitizeXss(definition.getFormName()));
 
-        // 表单 Schema 验证
         if (StringUtils.hasText(definition.getFormSchema())) {
             jsonSchemaValidator.validateFormSchema(definition.getFormSchema());
         }
@@ -88,7 +83,6 @@ public class WfFormServiceImpl implements IWfFormService {
 
         WfFormDefinition exist = formDefinitionMapper.selectById(definition.getFormId());
         if (exist != null) {
-            // 乐观锁冲突检测
             if (definition.getVersionLock() != null && !definition.getVersionLock().equals(exist.getVersionLock())) {
                 throw WorkflowException.invalidState("表单定义已被其他用户修改，请刷新后重试");
             }
@@ -113,35 +107,57 @@ public class WfFormServiceImpl implements IWfFormService {
     public WfFormDefinition getFormDefinition(String formId) {
         log.info("[getFormDefinition] 查询表单定义(缓存未命中), formId={}", formId);
 
-        // 表单权限控制
         Long currentUserId = UserContext.getUserId();
         if (currentUserId != null && !permissionService.isAdmin(currentUserId)) {
-            // 检查用户是否有关联的流程实例使用了此表单
+            // 非管理员必须只访问“自己发起过或参与过”的流程所绑定表单
             List<WfProcessDefinition> relatedDefs = processDefinitionMapper.selectList(
-                new LambdaQueryWrapper<WfProcessDefinition>()
-                    .eq(WfProcessDefinition::getFormId, formId)
+                    new LambdaQueryWrapper<WfProcessDefinition>()
+                            .eq(WfProcessDefinition::getFormId, formId)
             );
 
-            if (relatedDefs != null && !relatedDefs.isEmpty()) {
-                List<String> processKeys = relatedDefs.stream()
+            if (relatedDefs == null || relatedDefs.isEmpty()) {
+                throw new PermissionDeniedException("您没有权限访问此表单定义");
+            }
+
+            List<String> processKeys = relatedDefs.stream()
                     .map(WfProcessDefinition::getProcessKey)
+                    .filter(StringUtils::hasText)
                     .distinct()
                     .collect(Collectors.toList());
+            if (processKeys.isEmpty()) {
+                throw new PermissionDeniedException("您没有权限访问此表单定义");
+            }
 
-                Long instanceCount = processInstanceMapper.selectCount(
+            Long startedCount = processInstanceMapper.selectCount(
                     new LambdaQueryWrapper<WfProcessInstance>()
-                        .in(WfProcessInstance::getProcessDefKey, processKeys)
-                        .eq(WfProcessInstance::getStartUserId, currentUserId)
-                );
+                            .in(WfProcessInstance::getProcessDefKey, processKeys)
+                            .eq(WfProcessInstance::getStartUserId, currentUserId)
+            );
 
-                Long taskCount = taskMapper.selectCount(
-                    new LambdaQueryWrapper<WfTask>()
-                        .eq(WfTask::getAssignee, currentUserId)
-                );
+            // 关键修复：待办任务必须限定到该表单关联流程，不能用“任意待办”放行
+            List<WfProcessInstance> relatedInstances = processInstanceMapper.selectList(
+                    new LambdaQueryWrapper<WfProcessInstance>()
+                            .select(WfProcessInstance::getInstanceId)
+                            .in(WfProcessInstance::getProcessDefKey, processKeys)
+            );
+            List<String> relatedInstanceIds = relatedInstances == null
+                    ? new ArrayList<>()
+                    : relatedInstances.stream()
+                            .map(WfProcessInstance::getInstanceId)
+                            .filter(StringUtils::hasText)
+                            .collect(Collectors.toList());
 
-                if ((instanceCount == null || instanceCount == 0) && (taskCount == null || taskCount == 0)) {
-                    throw new com.cloudflow.workflow.exception.PermissionDeniedException("您没有权限访问此表单定义");
-                }
+            Long taskCount = 0L;
+            if (!relatedInstanceIds.isEmpty()) {
+                taskCount = taskMapper.selectCount(
+                        new LambdaQueryWrapper<WfTask>()
+                                .in(WfTask::getInstanceId, relatedInstanceIds)
+                                .eq(WfTask::getAssignee, currentUserId)
+                );
+            }
+
+            if ((startedCount == null || startedCount == 0) && (taskCount == null || taskCount == 0)) {
+                throw new PermissionDeniedException("您没有权限访问此表单定义");
             }
         }
 

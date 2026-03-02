@@ -2,30 +2,44 @@ package com.cloudflow.workflow.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.workflow.domain.dto.*;
+import com.cloudflow.workflow.domain.dto.ArchivedWorkflowDTO;
+import com.cloudflow.workflow.domain.dto.BatchArchiveRequest;
+import com.cloudflow.workflow.domain.dto.BatchDeleteRequest;
+import com.cloudflow.workflow.domain.dto.BatchIdsRequest;
+import com.cloudflow.workflow.domain.dto.BatchOperationResultDTO;
+import com.cloudflow.workflow.domain.dto.BatchRestoreRequest;
+import com.cloudflow.workflow.domain.dto.SafetyCheckResultDTO;
 import com.cloudflow.workflow.service.IArchiveService;
 import com.cloudflow.workflow.util.SafetyChecker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
- * 批量操作控制器
- * 提供流程批量归档、恢复、删除等功能
- *
- * @author CloudFlow
+ * 批量操作控制器。
+ * 提供流程批量归档、恢复、删除等功能。
  */
 @Slf4j
 @RestController
 @RequestMapping("/batch")
 public class BatchOperationController {
+
+    private static final DateTimeFormatter ARCHIVE_DATE_TIME_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
     private IArchiveService archiveService;
@@ -34,10 +48,7 @@ public class BatchOperationController {
     private SafetyChecker safetyChecker;
 
     /**
-     * 批量归档流程（管理员权限）
-     *
-     * @param request 批量归档请求
-     * @return 批量操作结果
+     * 批量归档流程（管理员权限）。
      */
     @PostMapping("/archive")
     @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
@@ -61,30 +72,29 @@ public class BatchOperationController {
     }
 
     /**
-     * 获取归档流程列表（管理员权限）
-     *
-     * @param keyword 关键词（流程名称或归档原因）
-     * @param archivedAfter 归档时间起始
-     * @param archivedBefore 归档时间结束
-     * @param pageNum 页码
-     * @param pageSize 每页大小
-     * @return 归档流程分页列表
+     * 获取归档流程列表（管理员权限）。
      */
     @GetMapping("/archived")
     @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<Page<ArchivedWorkflowDTO>> listArchivedWorkflows(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate archivedAfter,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate archivedBefore,
+            @RequestParam(required = false) String archivedAfter,
+            @RequestParam(required = false) String archivedBefore,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
 
         log.info("查询归档流程列表: keyword={}, archivedAfter={}, archivedBefore={}, pageNum={}, pageSize={}",
             keyword, archivedAfter, archivedBefore, pageNum, pageSize);
 
-        // 前端使用日期控件传 yyyy-MM-dd，这里统一转换为当天起止时间，避免时分秒格式不一致导致筛选失效
-        LocalDateTime archivedAfterDateTime = archivedAfter != null ? archivedAfter.atStartOfDay() : null;
-        LocalDateTime archivedBeforeDateTime = archivedBefore != null ? archivedBefore.atTime(LocalTime.MAX) : null;
+        LocalDateTime archivedAfterDateTime;
+        LocalDateTime archivedBeforeDateTime;
+        try {
+            // 兼容三种输入格式：yyyy-MM-dd HH:mm:ss、ISO、yyyy-MM-dd
+            archivedAfterDateTime = parseDateTime(archivedAfter, false);
+            archivedBeforeDateTime = parseDateTime(archivedBefore, true);
+        } catch (IllegalArgumentException ex) {
+            return R.fail(ex.getMessage());
+        }
 
         Page<ArchivedWorkflowDTO> page = archiveService.listArchivedWorkflows(
             keyword,
@@ -98,10 +108,7 @@ public class BatchOperationController {
     }
 
     /**
-     * 批量恢复归档流程（管理员权限）
-     *
-     * @param request 批量恢复请求
-     * @return 批量操作结果
+     * 批量恢复归档流程（管理员权限）。
      */
     @PostMapping("/restore")
     @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
@@ -118,10 +125,7 @@ public class BatchOperationController {
     }
 
     /**
-     * 永久删除流程（管理员权限）
-     *
-     * @param request 批量删除请求
-     * @return 批量操作结果
+     * 永久删除流程（管理员权限）。
      */
     @DeleteMapping("/permanent")
     @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
@@ -133,7 +137,6 @@ public class BatchOperationController {
             return R.fail("流程 ID 列表不能为空");
         }
 
-        // 要求用户确认
         if (request.getConfirmed() == null || !request.getConfirmed()) {
             return R.fail("永久删除操作需要确认，请设置 confirmed 为 true");
         }
@@ -144,10 +147,7 @@ public class BatchOperationController {
     }
 
     /**
-     * 检查流程是否可以安全归档/删除
-     *
-     * @param workflowIds 流程 ID 列表
-     * @return 安全检查结果
+     * 检查流程是否可以安全归档/删除。
      */
     @PostMapping("/check-safety")
     @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
@@ -162,5 +162,38 @@ public class BatchOperationController {
         SafetyCheckResultDTO result = safetyChecker.checkSafety(workflowIds);
 
         return R.ok(result);
+    }
+
+    /**
+     * 解析归档时间参数。
+     * endOfDay=true 时，日期格式（yyyy-MM-dd）会扩展为当天 23:59:59.999999999。
+     */
+    private LocalDateTime parseDateTime(String value, boolean endOfDay) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        try {
+            return LocalDateTime.parse(trimmed, ARCHIVE_DATE_TIME_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            // 继续尝试下一种格式
+        }
+
+        try {
+            return LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
+            // 继续尝试下一种格式
+        }
+
+        try {
+            LocalDate date = LocalDate.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE);
+            return endOfDay ? date.atTime(LocalTime.MAX) : date.atStartOfDay();
+        } catch (DateTimeParseException ignored) {
+            // 统一抛出格式错误
+        }
+
+        throw new IllegalArgumentException(
+            "归档时间格式错误，支持 yyyy-MM-dd HH:mm:ss、ISO(如 2026-03-02T10:00:00) 或 yyyy-MM-dd");
     }
 }

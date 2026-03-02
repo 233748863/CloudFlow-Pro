@@ -2,6 +2,7 @@ import React, { Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RoleGuard } from "@/components/RoleGuard";
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { isMobileDevice } from "@/utils/device";
@@ -343,17 +344,21 @@ const desktopRoutes = [
           {
             path: "/workflow",
             element: (
-              <Suspense fallback={<Loading />}>
-                <WorkflowDesign />
-              </Suspense>
+              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+                <Suspense fallback={<Loading />}>
+                  <WorkflowDesign />
+                </Suspense>
+              </RoleGuard>
             ),
           },
           {
             path: "/workflow/design",
             element: (
-              <Suspense fallback={<Loading />}>
-                <WorkflowDesign />
-              </Suspense>
+              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+                <Suspense fallback={<Loading />}>
+                  <WorkflowDesign />
+                </Suspense>
+              </RoleGuard>
             ),
           },
           {
@@ -391,9 +396,11 @@ const desktopRoutes = [
           {
             path: "/forms",
             element: (
-              <Suspense fallback={<Loading />}>
-                <FormDesign />
-              </Suspense>
+              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+                <Suspense fallback={<Loading />}>
+                  <FormDesign />
+                </Suspense>
+              </RoleGuard>
             ),
           },
           {

@@ -12,6 +12,7 @@ import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.event.WorkflowEventPublisher;
+import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.listener.GlobalListenerDispatcher;
 import com.cloudflow.workflow.mapper.*;
@@ -107,8 +108,13 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             throw WorkflowException.processNotFound(processDefKey);
         }
 
-        // 权限校验：仅管理员可管理流程定义，普通用户可发起
-        // checkDefinitionPermission 用于定义管理，发起流程无需特殊权限
+        // 严格执行流程发起权限配置，避免“仅存储不校验”的越权风险
+        if (!permissionService.canStartProcess(
+                currentUserId,
+                def.getStartPermissionType(),
+                def.getStartPermissionValue())) {
+            throw new PermissionDeniedException("您没有权限发起该流程");
+        }
 
         // 创建流程实例
         WfProcessInstance instance = new WfProcessInstance();

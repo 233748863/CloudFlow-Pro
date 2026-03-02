@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { FormBuilder } from '../components/FormBuilder';
-import { FormDefinition } from '../types';
-import { getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
-import { useMount } from '../hooks/useMount';
-import { useAutoSave } from '../hooks/useAutoSave';
-import { SkeletonForm } from '../components/ui/Skeleton';
-import { EmptyForms, EmptyError } from '../components/ui/EmptyState';
-import { toast } from 'sonner';
-import { logForm } from '../lib/logger';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, GitMerge, Rocket } from 'lucide-react';
+import { toast } from 'sonner';
+import { FormBuilder } from '../components/FormBuilder';
+import { SkeletonForm } from '../components/ui/Skeleton';
+import { EmptyForms, EmptyError } from '../components/ui/EmptyState';
+import { useMount } from '../hooks/useMount';
+import { useAutoSave } from '../hooks/useAutoSave';
+import { getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
+import { logForm } from '../lib/logger';
+import { FormDefinition } from '../types';
+
+const NEW_FORM_NAME = '新表单';
 
 export const FormDesign = () => {
   const [forms, setForms] = useState<FormDefinition[]>([]);
@@ -24,7 +26,6 @@ export const FormDesign = () => {
       setError(null);
 
       const formList = await getFormDefinitions();
-      
       if (Array.isArray(formList)) {
         const mapped = formList.map((f: any) => {
           let fields = f.fields || [];
@@ -32,7 +33,7 @@ export const FormDesign = () => {
             try {
               fields = JSON.parse(f.fieldsJson);
             } catch (parseErr) {
-              // 尝试修复常见的非法转义字符（如 \d, \w 等正则表达式字符）
+              // 兼容历史脏数据中的非法转义字符，避免整个列表加载失败
               try {
                 const sanitized = f.fieldsJson.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
                 fields = JSON.parse(sanitized);
@@ -44,22 +45,22 @@ export const FormDesign = () => {
           } else if (f.fieldsJson) {
             fields = f.fieldsJson;
           }
+
           return {
             id: f.id || f.formId,
             name: f.name || f.formName,
-            fields
-          };
+            fields,
+          } as FormDefinition;
         });
+
         setForms(mapped);
-        
-        // 默认选择第一个表单，如果没有则创建新表单
         if (mapped.length > 0) {
           setSelectedForm(mapped[0]);
         } else {
           setSelectedForm({
             id: `new_${Date.now()}`,
-            name: '新表单',
-            fields: []
+            name: NEW_FORM_NAME,
+            fields: [],
           });
         }
       }
@@ -78,32 +79,36 @@ export const FormDesign = () => {
 
   const handleSaveForm = async (form: FormDefinition) => {
     try {
-      // 统一 ID 生成策略：新表单不传 ID，由后端生成
-      // 重要：将 fields 数组序列化为 JSON 字符串，匹配后端的 fieldsJson 字段
       const payload = {
         formId: form.id.startsWith('new_') ? undefined : form.id,
         formName: form.name,
-        fieldsJson: JSON.stringify(form.fields) // 序列化为 JSON 字符串
+        fieldsJson: JSON.stringify(form.fields),
       };
-      
-      const result = await saveFormDefinition(payload);
-      
-      // 保存成功后更新表单 ID 和列表
-      if (result && result.id) {
-        const updatedForm = { ...form, id: result.id };
+
+      const result: any = await saveFormDefinition(payload as any);
+
+      // 兼容后端返回 string(formId) 和 object({ id/formId }) 两种格式
+      const savedId =
+        typeof result === 'string'
+          ? result
+          : (result as any)?.id || (result as any)?.formId;
+
+      if (savedId) {
+        const updatedForm = { ...form, id: savedId };
         setSelectedForm(updatedForm);
-        
-        // 更新表单列表
-        const existingIndex = forms.findIndex(f => f.id === form.id);
-        if (existingIndex >= 0) {
-          const newForms = [...forms];
-          newForms[existingIndex] = updatedForm;
-          setForms(newForms);
-        } else {
-          setForms([...forms, updatedForm]);
-        }
+
+        // 函数式更新避免并发保存导致的状态覆盖
+        setForms((prevForms) => {
+          const index = prevForms.findIndex((item) => item.id === form.id);
+          if (index >= 0) {
+            const next = [...prevForms];
+            next[index] = updatedForm;
+            return next;
+          }
+          return [...prevForms, updatedForm];
+        });
       }
-      
+
       toast.success('表单保存成功');
     } catch (err) {
       logForm.error('保存表单失败:', err);
@@ -112,11 +117,10 @@ export const FormDesign = () => {
     }
   };
 
-  // 自动保存功能（3秒防抖）
   useAutoSave(
     selectedForm,
     async (form) => {
-      if (form && form.name && form.name !== '新表单') {
+      if (form && form.name && form.name !== NEW_FORM_NAME) {
         await handleSaveForm(form);
       }
     },
@@ -125,19 +129,17 @@ export const FormDesign = () => {
       enabled: !!selectedForm && !selectedForm.id.startsWith('new_'),
       onSuccess: () => logForm.info('表单自动保存成功'),
       onError: (err) => logForm.error('表单自动保存失败:', err),
-    }
+    },
   );
 
   const handleCreateNew = () => {
-    const newForm: FormDefinition = {
+    setSelectedForm({
       id: `new_${Date.now()}`,
-      name: '新表单',
-      fields: []
-    };
-    setSelectedForm(newForm);
+      name: NEW_FORM_NAME,
+      fields: [],
+    });
   };
 
-  // Loading 状态
   if (loading) {
     return (
       <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -146,7 +148,6 @@ export const FormDesign = () => {
     );
   }
 
-  // Error 状态
   if (error) {
     return (
       <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
@@ -155,7 +156,6 @@ export const FormDesign = () => {
     );
   }
 
-  // 无表单状态
   if (!selectedForm) {
     return (
       <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
@@ -166,7 +166,6 @@ export const FormDesign = () => {
 
   return (
     <div className="h-[calc(100vh-140px)] flex gap-4">
-      {/* 表单列表侧边栏 */}
       <div className="w-64 bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-slate-900">表单列表</h3>
@@ -177,12 +176,12 @@ export const FormDesign = () => {
             新建
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto space-y-2">
           {forms.length === 0 ? (
             <p className="text-sm text-slate-500 text-center py-4">暂无表单</p>
           ) : (
-            forms.map(form => (
+            forms.map((form) => (
               <button
                 key={form.id}
                 onClick={() => setSelectedForm(form)}
@@ -193,15 +192,12 @@ export const FormDesign = () => {
                 }`}
               >
                 <div className="font-medium truncate">{form.name}</div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {form.fields.length} 个字段
-                </div>
+                <div className="text-xs text-slate-500 mt-1">{form.fields.length} 个字段</div>
               </button>
             ))
           )}
         </div>
 
-        {/* 使用引导 */}
         <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
           <p className="text-xs text-slate-400 font-medium">下一步</p>
           <button
@@ -223,13 +219,8 @@ export const FormDesign = () => {
         </div>
       </div>
 
-      {/* 表单设计器 */}
       <div className="flex-1">
-        <FormBuilder 
-          key={selectedForm.id} 
-          onSave={handleSaveForm} 
-          initialForm={selectedForm} 
-        />
+        <FormBuilder key={selectedForm.id} onSave={handleSaveForm} initialForm={selectedForm} />
       </div>
     </div>
   );

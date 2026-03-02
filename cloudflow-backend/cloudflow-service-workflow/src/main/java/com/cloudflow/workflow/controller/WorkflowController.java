@@ -107,7 +107,7 @@ public class WorkflowController {
      * 查询所有表单
      */
     @GetMapping("/forms")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<com.cloudflow.common.core.domain.PageResult<com.cloudflow.workflow.domain.WfFormDefinition>> listFormDefinitions(@ModelAttribute com.cloudflow.common.core.domain.PageQuery pageQuery) {
         return R.ok(workflowService.listFormDefinitions(pageQuery));
     }

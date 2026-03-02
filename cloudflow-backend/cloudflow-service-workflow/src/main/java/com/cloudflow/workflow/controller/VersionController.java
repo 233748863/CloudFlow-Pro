@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -103,10 +102,12 @@ public class VersionController {
     }
 
     @PostMapping("/rollback")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> rollbackToVersion(@RequestBody RollbackVersionRequest request) {
         log.info("Rollback workflow version, workflowId={}, targetVersionId={}",
             request.getWorkflowId(), request.getTargetVersionId());
+
+        // 权限口径统一：仅流程创建者或管理员可回滚
+        ensureWorkflowOwnerOrAdmin(request.getWorkflowId());
 
         String operatorId = UserContext.getUserId() != null
             ? UserContext.getUserId().toString()

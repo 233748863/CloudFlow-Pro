@@ -504,6 +504,10 @@ public class ArchiveServiceImpl implements IArchiveService {
             // 2. 删除版本历史
             LambdaQueryWrapper<WorkflowVersion> versionQuery = new LambdaQueryWrapper<>();
             versionQuery.eq(WorkflowVersion::getWorkflowId, workflowId);
+            List<String> versionIds = versionMapper.selectList(versionQuery).stream()
+                .map(WorkflowVersion::getId)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
             int versionCount = versionMapper.delete(versionQuery);
             log.debug("删除版本历史: workflowId={}, count={}", workflowId, versionCount);
 
@@ -514,12 +518,19 @@ public class ArchiveServiceImpl implements IArchiveService {
             log.debug("删除归档记录: workflowId={}, count={}", workflowId, archiveCount);
 
             // 4. 删除流程历史审计日志（按 workflowId + targetType 级联清理）
-            int auditLogCount = auditLogService.deleteByTarget(TargetType.WORKFLOW, workflowId);
-            log.debug("删除流程历史审计日志: workflowId={}, count={}", workflowId, auditLogCount);
+            int workflowAuditLogCount = auditLogService.deleteByTarget(TargetType.WORKFLOW, workflowId);
+
+            // 5. 额外清理关联版本的审计日志，避免残留 VERSION 目标类型的孤儿记录
+            int versionAuditLogCount = 0;
+            for (String versionId : versionIds) {
+                versionAuditLogCount += auditLogService.deleteByTarget(TargetType.VERSION, versionId);
+            }
+            log.debug("删除流程历史审计日志: workflowId={}, workflowLogCount={}, versionLogCount={}",
+                workflowId, workflowAuditLogCount, versionAuditLogCount);
 
             definitionMapper.deleteById(workflowId);
 
-            // 5. 记录审计日志
+            // 6. 记录审计日志
             auditLogService.log(
                 OperationType.WORKFLOW_DELETE,
                 TargetType.WORKFLOW,

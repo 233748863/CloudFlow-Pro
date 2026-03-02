@@ -1,17 +1,77 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, NodeType, FormDefinition, User } from '../types';
-import { getProcessDefinitions, saveProcessDefinition, getFormDefinitions } from '../services/api/workflow';
+import {
+  getProcessDefinition,
+  getProcessDefinitions,
+  saveProcessDefinition,
+  getFormDefinitions,
+} from '../services/api/workflow';
 import { getRoleList, getUserList } from '../services/api/auth';
 import { mapBackendUserToFrontend } from '../utils/mappers';
-import { useMount } from '../hooks/useMount';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { SkeletonForm } from '../components/ui/Skeleton';
 import { EmptyWorkflows, EmptyError } from '../components/ui/EmptyState';
 import { toast } from 'sonner';
 import { logWorkflow } from '../lib/logger';
 
+const createDefaultWorkflow = (): WorkflowDefinition => ({
+  id: `new_${Date.now()}`,
+  name: '新流程',
+  key: 'new_process',
+  version: 1,
+  nodes: { type: NodeType.START, title: '开始', id: 'start' },
+});
+
+/**
+ * 解析流程节点定义。
+ * 支持对象与 JSON 字符串，解析失败时返回默认开始节点。
+ */
+const parseWorkflowNodes = (raw: unknown) => {
+  if (raw && typeof raw === 'object') {
+    return raw as WorkflowDefinition['nodes'];
+  }
+
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      return JSON.parse(raw) as WorkflowDefinition['nodes'];
+    } catch {
+      // 兼容后端偶发的非法转义
+      try {
+        const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
+        return JSON.parse(sanitized) as WorkflowDefinition['nodes'];
+      } catch {
+        return { type: NodeType.START, title: '开始', id: 'start' };
+      }
+    }
+  }
+
+  return { type: NodeType.START, title: '开始', id: 'start' };
+};
+
+/**
+ * 统一映射后端流程数据，确保设计器使用稳定的 definitionId。
+ */
+const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
+  id: String(w?.definitionId || w?.id || w?.processKey || `wf_${Date.now()}`),
+  name: w?.processName || w?.name || '未命名流程',
+  key: w?.processKey || w?.key || 'new_process',
+  version: Number(w?.version || 1),
+  formId: w?.formId,
+  nodes: parseWorkflowNodes(w?.nodes ?? w?.modelJson),
+  description: w?.description,
+  category: w?.category,
+  tags: typeof w?.tags === 'string' ? w.tags : w?.tags ? JSON.stringify(w.tags) : undefined,
+  startPermissionType: w?.startPermissionType,
+  startPermissionValue: w?.startPermissionValue,
+  deptId: w?.deptId,
+});
+
 export const WorkflowDesign = () => {
+  const [searchParams] = useSearchParams();
+  const requestedWorkflowId = useMemo(() => (searchParams.get('id') || '').trim(), [searchParams]);
+
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [savedForms, setSavedForms] = useState<FormDefinition[]>([]);
   const [availableRoles, setAvailableRoles] = useState<any[]>([]);
@@ -19,55 +79,59 @@ export const WorkflowDesign = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // 并行加载所有数据
-      const [workflows, forms, roles, users] = await Promise.all([
-        getProcessDefinitions().catch(() => []),
+      const [forms, roles, users] = await Promise.all([
         getFormDefinitions().catch(() => []),
         getRoleList().catch(() => []),
-        getUserList().catch(() => [])
+        getUserList().catch(() => []),
       ]);
 
-      // 处理流程定义
-      if (Array.isArray(workflows) && workflows.length > 0) {
-        const w = workflows[0];
-        setWorkflow({
-          id: w.id || w.definitionId || w.processKey || `wf_${Date.now()}`,
-          name: w.name || w.processName || '未命名流程',
-          key: w.key || w.processKey || 'new_process',
-          version: w.version || 1,
-          formId: w.formId,
-          nodes: w.nodes || (w.modelJson ? JSON.parse(w.modelJson) : { type: NodeType.START, title: '开始', id: 'start' })
-        });
-      } else {
-        // 创建新流程
-        setWorkflow({
-          id: `new_${Date.now()}`,
-          name: '新流程',
-          key: 'new_process',
-          version: 1,
-          nodes: { type: NodeType.START, title: '开始', id: 'start' }
-        });
+      // 先按 URL id 精确加载，避免串流程
+      let selectedWorkflow: any = null;
+      if (requestedWorkflowId) {
+        try {
+          selectedWorkflow = await getProcessDefinition(requestedWorkflowId);
+        } catch (err) {
+          logWorkflow.warn('按 ID 加载流程失败，尝试列表兜底:', err);
+        }
       }
 
-      // 处理表单定义
+      // 兜底：从列表中匹配，仍找不到则回退到第一条
+      if (!selectedWorkflow) {
+        const workflows = await getProcessDefinitions().catch(() => []);
+        if (Array.isArray(workflows) && workflows.length > 0) {
+          if (requestedWorkflowId) {
+            selectedWorkflow = workflows.find((item: any) => {
+              const id = String(item?.definitionId || item?.id || item?.processKey || '');
+              return id === requestedWorkflowId;
+            });
+          }
+          selectedWorkflow = selectedWorkflow || workflows[0];
+        }
+      }
+
+      setWorkflow(selectedWorkflow ? mapBackendWorkflow(selectedWorkflow) : createDefaultWorkflow());
+
       if (Array.isArray(forms)) {
         const mapped = forms.map((f: any) => {
-          let fields = [];
-          const raw = typeof f.fieldsJson === 'string' ? f.fieldsJson
-                    : typeof f.formSchema === 'string' ? f.formSchema
-                    : null;
+          let fields: any[] = [];
+          const raw =
+            typeof f.fieldsJson === 'string'
+              ? f.fieldsJson
+              : typeof f.formSchema === 'string'
+                ? f.formSchema
+                : null;
+
           if (raw) {
             try {
               fields = JSON.parse(raw);
             } catch {
-              // 尝试修复非法转义字符（如 \d, \w 等正则表达式字符）
               try {
-                const sanitized = raw.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
+                const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
                 fields = JSON.parse(sanitized);
               } catch (parseError) {
                 logWorkflow.error('解析表单字段失败:', parseError);
@@ -77,19 +141,18 @@ export const WorkflowDesign = () => {
           } else {
             fields = f.fields || f.fieldsJson || [];
           }
+
           return {
             id: f.id || f.formId,
             name: f.name || f.formName,
-            fields
+            fields,
           };
         });
         setSavedForms(mapped);
       }
 
-      // 处理角色和用户
       if (Array.isArray(roles)) setAvailableRoles(roles);
       if (Array.isArray(users)) setAvailableUsers(users.map(mapBackendUserToFrontend));
-
     } catch (err) {
       logWorkflow.error('加载数据失败:', err);
       setError(err instanceof Error ? err.message : '加载数据失败');
@@ -97,39 +160,38 @@ export const WorkflowDesign = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestedWorkflowId]);
 
-  useMount(() => {
+  useEffect(() => {
     loadData();
-  });
+  }, [loadData]);
 
   const handleSaveWorkflow = async (wf: WorkflowDefinition) => {
     try {
-      // 验证必填字段
       if (!wf.key || wf.key === 'new_process') {
         throw new Error('流程Key不能为空或使用默认值，请设置有效的流程Key');
       }
-      
-      // 统一 ID 生成策略：新流程不传 ID，由后端生成
+
       const payload = {
-        id: wf.id.startsWith('new_') ? undefined : wf.id,
+        definitionId: wf.id.startsWith('new_') ? undefined : wf.id,
         processName: wf.name,
         processKey: wf.key,
         formId: wf.formId,
-        modelJson: JSON.stringify(wf.nodes)
+        modelJson: JSON.stringify(wf.nodes),
+        description: wf.description,
+        category: wf.category,
+        tags: wf.tags,
+        startPermissionType: wf.startPermissionType,
+        startPermissionValue: wf.startPermissionValue,
+        deptId: wf.deptId,
       };
-      
+
       logWorkflow.info('保存流程:', payload.processName);
       const result = await saveProcessDefinition(payload);
-      
-      // 保存成功后更新流程 ID（避免无意义的对象重建导致自动保存无限循环）
+
       if (result && result.id && wf.id !== result.id) {
-        setWorkflow(prev => prev ? { ...prev, id: result.id } : prev);
+        setWorkflow((prev) => (prev ? { ...prev, id: result.id } : prev));
       }
-      
-      // 这里的 toast 会在输入过程中不断弹出，影响体验，改为在用户主动点击保存时提示
-      // 如果需要，可以在手动点击保存时传入一个参数标记，自动保存时不提示
-      // 暂时取消这个全局的成功提示，改为通过 onError/onSuccess 处理
     } catch (err) {
       logWorkflow.error('保存流程失败:', err);
       toast.error(err instanceof Error ? err.message : '流程保存失败');
@@ -137,45 +199,50 @@ export const WorkflowDesign = () => {
     }
   };
 
-  // 自动保存功能（3秒防抖）
-  // 只有当流程不是新建的，且有有效的 key 时才启用自动保存
+  // 自动保存：仅对已持久化流程启用
   useAutoSave(
     workflow,
     async (wf) => {
-      // 严格验证：必须有有效的 key 且不是默认值
-      if (wf && wf.name && wf.name !== '新流程' && wf.key && wf.key !== 'new_process' && wf.key.trim() !== '') {
-        try {
-          // 统一 ID 生成策略：新流程不传 ID，由后端生成
-          const payload = {
-            id: wf.id.startsWith('new_') ? undefined : wf.id,
-            processName: wf.name,
-            processKey: wf.key,
-            formId: wf.formId,
-            modelJson: JSON.stringify(wf.nodes)
-          };
-          const result = await saveProcessDefinition(payload);
-          if (result && result.id && wf.id !== result.id) {
-            setWorkflow(prev => prev ? { ...prev, id: result.id } : prev);
-          }
-        } catch (error) {
-          throw error;
+      if (
+        wf &&
+        wf.name &&
+        wf.name !== '新流程' &&
+        wf.key &&
+        wf.key !== 'new_process' &&
+        wf.key.trim() !== ''
+      ) {
+        const payload = {
+          definitionId: wf.id.startsWith('new_') ? undefined : wf.id,
+          processName: wf.name,
+          processKey: wf.key,
+          formId: wf.formId,
+          modelJson: JSON.stringify(wf.nodes),
+          description: wf.description,
+          category: wf.category,
+          tags: wf.tags,
+          startPermissionType: wf.startPermissionType,
+          startPermissionValue: wf.startPermissionValue,
+          deptId: wf.deptId,
+        };
+        const result = await saveProcessDefinition(payload);
+        if (result && result.id && wf.id !== result.id) {
+          setWorkflow((prev) => (prev ? { ...prev, id: result.id } : prev));
         }
       }
     },
     {
       delay: 3000,
-      // 更严格的启用条件
-      enabled: !!workflow && 
-               !workflow.id.startsWith('new_') && 
-               !!workflow.key && 
-               workflow.key !== 'new_process' && 
-               workflow.key.trim() !== '',
+      enabled:
+        !!workflow &&
+        !workflow.id.startsWith('new_') &&
+        !!workflow.key &&
+        workflow.key !== 'new_process' &&
+        workflow.key.trim() !== '',
       onSuccess: () => logWorkflow.info('流程自动保存成功'),
       onError: (err) => logWorkflow.error('流程自动保存失败:', err),
-    }
+    },
   );
 
-  // Loading 状态
   if (loading) {
     return (
       <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -184,7 +251,6 @@ export const WorkflowDesign = () => {
     );
   }
 
-  // Error 状态
   if (error) {
     return (
       <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
@@ -193,7 +259,6 @@ export const WorkflowDesign = () => {
     );
   }
 
-  // 无流程状态（理论上不会出现，因为会自动创建新流程）
   if (!workflow) {
     return (
       <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
@@ -204,9 +269,9 @@ export const WorkflowDesign = () => {
 
   return (
     <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
-      <WorkflowBuilder 
-        workflow={workflow} 
-        onChange={setWorkflow} 
+      <WorkflowBuilder
+        workflow={workflow}
+        onChange={setWorkflow}
         onSave={handleSaveWorkflow}
         availableForms={savedForms}
         availableRoles={availableRoles}
