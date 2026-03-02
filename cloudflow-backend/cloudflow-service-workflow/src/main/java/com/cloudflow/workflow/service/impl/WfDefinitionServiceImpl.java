@@ -128,21 +128,16 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         processDefinitionMapper.insert(definition);
         log.info("[saveProcessDefinition] 流程定义保存成功, definitionId={}, version={}", definition.getDefinitionId(), version);
         
-        // 自动创建版本记录
-        try {
-            String currentUserId = UserContext.getUserId() != null ? UserContext.getUserId().toString() : "system";
-            String changeLog = "保存流程定义，版本 " + version;
-            versionService.createVersion(
-                definition.getDefinitionId(), 
-                definition.getModelJson(), 
-                changeLog, 
-                currentUserId
-            );
-            log.info("[saveProcessDefinition] 版本记录创建成功");
-        } catch (Exception e) {
-            log.error("[saveProcessDefinition] 创建版本记录失败", e);
-            // 版本创建失败不影响流程保存，仅记录日志
-        }
+        // 自动创建版本记录（强一致性：失败则回滚，不再静默吞异常）
+        String currentUserId = UserContext.getUserId() != null ? UserContext.getUserId().toString() : "system";
+        String changeLog = "保存流程定义，版本 " + version;
+        versionService.createVersion(
+            definition.getDefinitionId(),
+            definition.getModelJson(),
+            changeLog,
+            currentUserId
+        );
+        log.info("[saveProcessDefinition] 版本记录创建成功");
         
         auditService.log(WorkflowAuditService.AuditAction.DEFINITION_CREATE, definition.getDefinitionId(),
             "processKey=" + definition.getProcessKey() + ", version=" + version);

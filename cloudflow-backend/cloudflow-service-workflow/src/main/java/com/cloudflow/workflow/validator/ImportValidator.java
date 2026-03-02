@@ -81,11 +81,11 @@ public class ImportValidator {
         // 4. 验证格式版本兼容性
         validateFormatVersion(exportFormat, errors, warnings);
 
-        // 5. 验证节点类型兼容性
-        List<String> unsupportedNodeTypes = validateNodeTypes(exportFormat, warnings);
+        // 5. 验证节点类型兼容性（不支持类型直接阻断导入）
+        List<String> unsupportedNodeTypes = validateNodeTypes(exportFormat, errors, warnings);
 
-        // 6. 验证集成兼容性
-        List<String> unsupportedIntegrations = validateIntegrations(exportFormat, warnings);
+        // 6. 验证集成兼容性（不支持集成直接阻断导入）
+        List<String> unsupportedIntegrations = validateIntegrations(exportFormat, errors, warnings);
 
         // 7. 检查名称冲突
         boolean hasNameConflict = false;
@@ -202,7 +202,7 @@ public class ImportValidator {
      * 验证节点类型兼容性
      */
     @SuppressWarnings("unchecked")
-    private List<String> validateNodeTypes(WorkflowExportFormat exportFormat, List<String> warnings) {
+    private List<String> validateNodeTypes(WorkflowExportFormat exportFormat, List<String> errors, List<String> warnings) {
         List<String> unsupportedTypes = new ArrayList<>();
 
         if (exportFormat.getDependencies() != null && 
@@ -215,7 +215,9 @@ public class ImportValidator {
             }
 
             if (!unsupportedTypes.isEmpty()) {
-                warnings.add("流程包含不支持的节点类型: " + String.join(", ", unsupportedTypes));
+                String message = "流程包含不支持的节点类型: " + String.join(", ", unsupportedTypes);
+                errors.add(message);
+                warnings.add("该文件无法导入，请删除或替换不支持节点后重试");
             }
         }
 
@@ -225,7 +227,7 @@ public class ImportValidator {
     /**
      * 验证集成兼容性
      */
-    private List<String> validateIntegrations(WorkflowExportFormat exportFormat, List<String> warnings) {
+    private List<String> validateIntegrations(WorkflowExportFormat exportFormat, List<String> errors, List<String> warnings) {
         List<String> unsupportedIntegrations = new ArrayList<>();
 
         if (exportFormat.getDependencies() != null && 
@@ -238,7 +240,9 @@ public class ImportValidator {
             }
 
             if (!unsupportedIntegrations.isEmpty()) {
-                warnings.add("流程包含不支持的集成: " + String.join(", ", unsupportedIntegrations));
+                String message = "流程包含不支持的集成: " + String.join(", ", unsupportedIntegrations);
+                errors.add(message);
+                warnings.add("该文件无法导入，请删除或替换不支持集成后重试");
             }
         }
 

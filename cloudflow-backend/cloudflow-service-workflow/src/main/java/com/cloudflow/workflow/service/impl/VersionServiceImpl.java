@@ -108,6 +108,7 @@ public class VersionServiceImpl implements IVersionService {
 
             // 保存到数据库
             versionMapper.insert(version);
+            updateCurrentVersion(workflowId, newVersionNumber, createdBy);
 
             log.info("版本创建成功, versionId={}, versionNumber={}", version.getId(), newVersionNumber);
             return version;
@@ -281,19 +282,24 @@ public class VersionServiceImpl implements IVersionService {
 
         try {
             // 更新流程定义
+            String newVersionNumber = VersionNumberGenerator.generateNextVersion(
+                currentVersion.getVersionNumber(),
+                VersionNumberGenerator.ChangeType.MAJOR
+            );
+
             WfProcessDefinition definition = definitionMapper.selectById(workflowId);
             if (definition != null) {
                 definition.setModelJson(targetVersion.getDefinition());
+                definition.setCurrentVersion(newVersionNumber);
+                definition.setUpdateTime(LocalDateTime.now());
+                if (operatorId != null) {
+                    definition.setUpdateBy(operatorId);
+                }
                 definitionMapper.updateById(definition);
                 log.info("流程定义已更新为目标版本");
             }
 
             // 创建回滚版本记录
-            String newVersionNumber = VersionNumberGenerator.generateNextVersion(
-                currentVersion.getVersionNumber(), 
-                VersionNumberGenerator.ChangeType.MAJOR  // 回滚视为重大变更
-            );
-
             String checksum = calculateChecksum(targetVersion.getDefinition());
 
             WorkflowVersion rollbackVersion = new WorkflowVersion();
@@ -368,5 +374,27 @@ public class VersionServiceImpl implements IVersionService {
         }
 
         return hasRunning;
+    }
+
+    /**
+     * 同步流程定义表中的 currentVersion 字段。
+     * 这里采用“失败即抛异常”策略，确保版本记录与流程定义版本指针始终一致。
+     */
+    private void updateCurrentVersion(String workflowId, String currentVersion, String operatorId) {
+        WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+        if (definition == null) {
+            throw WorkflowException.processNotFound(workflowId);
+        }
+
+        definition.setCurrentVersion(currentVersion);
+        definition.setUpdateTime(LocalDateTime.now());
+        if (operatorId != null) {
+            definition.setUpdateBy(operatorId);
+        }
+
+        int updated = definitionMapper.updateById(definition);
+        if (updated <= 0) {
+            throw new WorkflowException("同步流程 currentVersion 失败, workflowId=" + workflowId);
+        }
     }
 }

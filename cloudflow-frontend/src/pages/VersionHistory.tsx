@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, GitBranch, RotateCcw, Eye, AlertTriangle, X } from 'lucide-react';
+import { Clock, RotateCcw, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkflowPermission } from '../hooks/useWorkflowPermission';
+import request from '../services/api/request';
 
 interface VersionHistoryProps {
   workflowId: string;
@@ -55,14 +56,8 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, work
   const loadVersions = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/workflow/versions/workflow/${workflowId}`);
-      const result = await response.json();
-      
-      if (result.code === 200) {
-        setVersions(result.data || []);
-      } else {
-        toast.error(result.msg || '加载版本历史失败');
-      }
+      const data = await request.get<any[]>(`/workflow/versions/workflow/${workflowId}`);
+      setVersions(data || []);
     } catch (error) {
       console.error('加载版本历史失败:', error);
       toast.error('加载版本历史失败');
@@ -100,17 +95,14 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, work
 
     setComparing(true);
     try {
-      const response = await fetch(
-        `/api/workflow/versions/compare?fromVersionId=${selectedVersions[0]}&toVersionId=${selectedVersions[1]}`
-      );
-      const result = await response.json();
-      
-      if (result.code === 200) {
-        setComparison(result.data);
-        setShowCompareModal(true);
-      } else {
-        toast.error(result.msg || '版本对比失败');
-      }
+      const data = await request.get('/workflow/versions/compare', {
+        params: {
+          fromVersionId: selectedVersions[0],
+          toVersionId: selectedVersions[1]
+        }
+      });
+      setComparison(data);
+      setShowCompareModal(true);
     } catch (error) {
       console.error('版本对比失败:', error);
       toast.error('版本对比失败');
@@ -127,12 +119,10 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, work
     
     // 检查是否有运行中的实例
     try {
-      const response = await fetch(`/api/workflow/versions/check-running/${workflowId}`);
-      const result = await response.json();
-      
-      if (result.code === 200) {
-        setHasRunningInstances(result.data.hasRunningInstances);
-      }
+      const data = await request.get<{ hasRunningInstances?: boolean }>(
+        `/workflow/versions/check-running/${workflowId}`
+      );
+      setHasRunningInstances(Boolean(data?.hasRunningInstances));
     } catch (error) {
       console.error('检查运行实例失败:', error);
     }
@@ -153,26 +143,16 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, work
     }
 
     try {
-      const response = await fetch('/api/workflow/versions/rollback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workflowId,
-          targetVersionId: rollbackVersion.id,
-          reason: rollbackReason.trim(),
-          forceRollback
-        })
+      await request.post('/workflow/versions/rollback', {
+        workflowId,
+        targetVersionId: rollbackVersion.id,
+        reason: rollbackReason.trim(),
+        forceRollback
       });
 
-      const result = await response.json();
-      
-      if (result.code === 200) {
-        toast.success('版本回滚成功');
-        setShowRollbackModal(false);
-        loadVersions();
-      } else {
-        toast.error(result.msg || '版本回滚失败');
-      }
+      toast.success('版本回滚成功');
+      setShowRollbackModal(false);
+      loadVersions();
     } catch (error) {
       console.error('版本回滚失败:', error);
       toast.error('版本回滚失败');

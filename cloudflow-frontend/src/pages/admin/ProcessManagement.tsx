@@ -350,14 +350,19 @@ export const ProcessManagement = () => {
     // 执行安全检查
     try {
       const safetyResult = await checkOperationSafety(selectedIds);
-      
-      if (!safetyResult.safe && safetyResult.warnings.length > 0) {
-        // 有安全警告，显示警告信息
-        setSafetyWarnings(safetyResult.warnings);
-        setShowSafetyWarning(true);
+
+      const warnings = safetyResult.warnings || [];
+      setSafetyWarnings(warnings);
+      setShowSafetyWarning(warnings.length > 0);
+
+      // 安全检查不通过时直接阻断归档，避免无权限或无效流程被继续提交
+      if (!safetyResult.safe) {
+        const errorMessage =
+          safetyResult.errors?.join('；') || safetyResult.message || '安全检查未通过，请处理后重试';
+        toast.error(errorMessage);
+        return;
       }
-      
-      // 无论是否有警告，都打开归档对话框
+
       setArchiveReason('');
       setShowArchiveModal(true);
     } catch (error) {

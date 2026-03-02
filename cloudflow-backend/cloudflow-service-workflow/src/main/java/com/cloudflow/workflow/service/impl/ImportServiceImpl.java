@@ -362,26 +362,29 @@ public class ImportServiceImpl implements IImportService {
      */
     private void createInitialVersion(String workflowId, WorkflowExportFormat exportFormat) {
         log.debug("创建初始版本, workflowId={}", workflowId);
-
+        // 序列化流程定义
+        String definitionJson;
         try {
-            // 序列化流程定义
-            String definitionJson = objectMapper.writeValueAsString(
-                exportFormat.getWorkflow().getDefinition());
-
-            // 获取当前用户
-            String createdBy = UserContext.getUserId() != null ? 
-                UserContext.getUserId().toString() : "system";
-
-            // 创建版本记录
-            versionService.createVersion(
-                workflowId,
-                definitionJson,
-                "从导入创建",
-                createdBy
-            );
+            definitionJson = objectMapper.writeValueAsString(exportFormat.getWorkflow().getDefinition());
         } catch (Exception e) {
-            log.warn("创建初始版本失败, workflowId={}", workflowId, e);
-            // 不抛出异常，版本创建失败不影响导入
+            throw new WorkflowException("序列化流程定义失败: " + e.getMessage());
         }
+
+        // 获取当前用户
+        String createdBy = UserContext.getUserId() != null
+            ? UserContext.getUserId().toString()
+            : "system";
+
+        /**
+         * 强一致性策略：
+         * 初始版本创建是导入链路的关键步骤，失败时直接抛异常，
+         * 由上层事务统一回滚，避免“流程已导入但版本缺失”的脏状态。
+         */
+        versionService.createVersion(
+            workflowId,
+            definitionJson,
+            "从导入创建",
+            createdBy
+        );
     }
 }

@@ -824,9 +824,13 @@ export interface OperationDetail {
  */
 export interface SafetyCheckResult {
   safe: boolean;
+  message?: string;
   warnings: string[];
-  workflowsWithInstances: string[];
+  errors: string[];
+  workflowsWithRunningInstances: string[];
   workflowsWithDependencies: string[];
+  workflowsWithoutPermission: string[];
+  details: Record<string, string>;
 }
 
 /**
