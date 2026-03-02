@@ -148,6 +148,8 @@ public class VersionController {
     public R<Map<String, Object>> checkRunningInstances(@PathVariable String workflowId) {
         log.info("Check workflow running instances, workflowId={}", workflowId);
 
+        // 仅流程创建者或管理员可查看运行实例状态，避免越权探测流程活跃情况
+        ensureWorkflowOwnerOrAdmin(workflowId);
         boolean hasRunning = versionService.hasRunningInstances(workflowId);
 
         Map<String, Object> result = new HashMap<>();
