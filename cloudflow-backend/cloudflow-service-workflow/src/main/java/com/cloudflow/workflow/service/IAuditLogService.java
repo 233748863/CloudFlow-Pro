@@ -83,4 +83,13 @@ public interface IAuditLogService {
      * @return 删除的记录数
      */
     int deleteExpiredLogs(int daysToKeep);
+
+    /**
+     * 按目标对象删除历史审计日志
+     *
+     * @param targetType 目标类型
+     * @param targetId 目标对象 ID
+     * @return 删除的记录数
+     */
+    int deleteByTarget(TargetType targetType, String targetId);
 }

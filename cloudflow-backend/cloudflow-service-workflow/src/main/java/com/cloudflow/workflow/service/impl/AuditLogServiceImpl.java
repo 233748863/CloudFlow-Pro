@@ -167,6 +167,25 @@ public class AuditLogServiceImpl implements IAuditLogService {
     }
 
     /**
+     * 按目标对象删除历史审计日志
+     */
+    @Override
+    public int deleteByTarget(TargetType targetType, String targetId) {
+        if (targetType == null || !StringUtils.hasText(targetId)) {
+            return 0;
+        }
+
+        LambdaQueryWrapper<WfAuditLog> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(WfAuditLog::getTargetType, targetType.name())
+            .eq(WfAuditLog::getTargetId, targetId);
+
+        int count = auditLogMapper.delete(queryWrapper);
+        log.info("按目标删除审计日志完成: targetType={}, targetId={}, count={}",
+            targetType, targetId, count);
+        return count;
+    }
+
+    /**
      * 构建审计日志对象
      */
     private WfAuditLog buildAuditLog(OperationType operationType, TargetType targetType,
