@@ -39,7 +39,7 @@ export const publishAnnouncement = async (data: Partial<Announcement>): Promise<
 };
 
 export const getAnnouncementList = async (): Promise<Announcement[]> => {
-  const data = await request.get<Announcement[]>('/oa/announcement/list');
+  const data = await request.get<Announcement[]>('/oa/announcement/my-list');
   return Array.isArray(data) ? data : [];
 };
 

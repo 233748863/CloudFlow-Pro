@@ -55,5 +55,5 @@ export const changeTenantStatus = (data: { tenantId: number; status: string }) =
 
 // 获取租户统计信息
 export const getTenantStatistics = (tenantId: number) => {
-  return request.get(`/auth/system/tenant/statistics/${tenantId}`);
+  return request.get(`/auth/system/tenant/${tenantId}/check`);
 };
