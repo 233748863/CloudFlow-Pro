@@ -4757,6 +4757,7 @@ const GlobalPropertyPanel = ({
   };
   onUpdate: (data: any) => void;
 }) => {
+  const CATEGORY_NONE_VALUE = "__NONE__";
   const [formData, setFormData] = useState(workflow || {});
 
   useEffect(() => {
@@ -4818,13 +4819,19 @@ const GlobalPropertyPanel = ({
                 流程分类
               </span>
               <Select
-                value={formData.category || ""}
-                onValueChange={(v) => handleChange("category", v)}
+                value={formData.category || CATEGORY_NONE_VALUE}
+                onValueChange={(v) =>
+                  handleChange(
+                    "category",
+                    v === CATEGORY_NONE_VALUE ? "" : v,
+                  )
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="请选择分类" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={CATEGORY_NONE_VALUE}>未分类</SelectItem>
                   <SelectItem value="office">行政办公</SelectItem>
                   <SelectItem value="finance">财务审批</SelectItem>
                   <SelectItem value="hr">人事管理</SelectItem>
@@ -5101,6 +5108,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const {
     state: root,
     set: setRoot,
+    reset: resetRoot,
     undo,
     redo,
     canUndo,
@@ -5109,6 +5117,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
   const rootRef = useRef(root);
   rootRef.current = root;
+  const workflowRef = useRef(workflow);
+  workflowRef.current = workflow;
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
   const [saving, setSaving] = useState(false);
   const [workflowName, setWorkflowName] = useState(
@@ -5156,55 +5166,108 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   }>({ open: false, message: "", onConfirm: () => {} });
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // P1: 从 workflow 对象初始化流程设置状态
-  useEffect(() => {
-    if (workflow) {
-      // 初始化描述
-      if (workflow.description) {
-        setWorkflowDescription(workflow.description);
+  const parseTagsToArray = useCallback((raw?: string) => {
+    if (!raw || !raw.trim()) return [] as string[];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => String(item).trim())
+          .filter((item) => item.length > 0);
       }
-
-      // 初始化分类
-      if (workflow.category) {
-        setWorkflowCategory(workflow.category);
-      }
-
-      // 初始化标签（从 JSON 字符串解析）
-      if (workflow.tags) {
-        try {
-          const parsedTags = JSON.parse(workflow.tags);
-          if (Array.isArray(parsedTags)) {
-            setWorkflowTags(parsedTags);
-          }
-        } catch (e) {
-          console.error("解析标签失败:", e);
-        }
-      }
-
-      // 初始化表单ID
-      if (workflow.formId) {
-        setSelectedFormId(workflow.formId);
-      }
-
-      // P2: 初始化启动权限配置
-      if (workflow.startPermissionType) {
-        setStartPermissionType(workflow.startPermissionType);
-      }
-      if (workflow.startPermissionValue) {
-        setStartPermissionValue(workflow.startPermissionValue);
-      }
+    } catch {
+      // 兼容逗号分隔标签
+      return raw
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
     }
-  }, [workflow?.id]); // 只在 workflow.id 变化时重新初始化
+    return [];
+  }, []);
+
+  const buildSettingsState = useCallback(() => {
+    const tagsText =
+      workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined;
+    return {
+      formId: selectedFormId || undefined,
+      description: workflowDescription || undefined,
+      category: workflowCategory || undefined,
+      tags: tagsText,
+      startPermissionType: startPermissionType || "ALL",
+      startPermissionValue: startPermissionValue || undefined,
+      deptId: user?.deptId ? Number(user.deptId) : undefined,
+    };
+  }, [
+    selectedFormId,
+    workflowDescription,
+    workflowCategory,
+    workflowTags,
+    startPermissionType,
+    startPermissionValue,
+    user?.deptId,
+  ]);
+
+  const buildWorkflowSnapshot = useCallback((): WorkflowDefinition | null => {
+    const currentWorkflow = workflowRef.current;
+    if (!currentWorkflow) return null;
+    return {
+      ...currentWorkflow,
+      nodes: rootRef.current,
+      name: workflowName,
+      key: workflowKey,
+      ...buildSettingsState(),
+    };
+  }, [workflowName, workflowKey, buildSettingsState]);
+
+  // P1: 从 workflow 对象初始化流程设置状态，并在切换流程时重置画布状态
+  useEffect(() => {
+    if (!workflow) return;
+
+    const nextRoot = workflow.nodes || defaultRoot;
+    const parsedTags = parseTagsToArray(workflow.tags);
+    resetRoot(nextRoot);
+    rootRef.current = nextRoot;
+    setSelectedNode(null);
+
+    setWorkflowName(workflow.name || "未命名流程");
+    setWorkflowKey(workflow.key || "new_process");
+    setWorkflowDescription(workflow.description || "");
+    setWorkflowCategory(workflow.category || "");
+    setWorkflowTags(parsedTags);
+    setSelectedFormId(workflow.formId || "");
+    setStartPermissionType(workflow.startPermissionType || "ALL");
+    setStartPermissionValue(workflow.startPermissionValue || "");
+    setGlobalConfig({
+      formId: workflow.formId || undefined,
+      description: workflow.description || undefined,
+      category: workflow.category || undefined,
+      tags: parsedTags.length > 0 ? parsedTags.join(", ") : undefined,
+      startPermissionType: workflow.startPermissionType || "ALL",
+      startPermissionValue: workflow.startPermissionValue || undefined,
+    });
+  }, [workflow?.id, parseTagsToArray, resetRoot]);
 
   useEffect(() => {
-    if (onChange && workflow)
-      onChange({
-        ...workflow,
-        nodes: root,
-        name: workflowName,
-        key: workflowKey,
-      });
-  }, [root, workflowName, workflowKey]);
+    if (!onChange || !workflowRef.current) return;
+    const snapshot = buildWorkflowSnapshot();
+    if (snapshot) {
+      onChange(snapshot);
+    }
+  }, [
+    onChange,
+    workflow?.id,
+    root,
+    workflowName,
+    workflowKey,
+    workflowDescription,
+    workflowCategory,
+    workflowTags,
+    selectedFormId,
+    startPermissionType,
+    startPermissionValue,
+    user?.deptId,
+    buildWorkflowSnapshot,
+  ]);
 
   // 键盘快捷键支持
   useEffect(() => {
@@ -5643,6 +5706,18 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     toast.success(`已应用模板: ${template.name}`);
   };
 
+  const buildDefinitionPayload = useCallback(() => {
+    return {
+      definitionId: workflowRef.current?.id?.startsWith("new_")
+        ? undefined
+        : workflowRef.current?.id,
+      processName: workflowName,
+      processKey: workflowKey,
+      modelJson: JSON.stringify(rootRef.current),
+      ...buildSettingsState(),
+    };
+  }, [workflowName, workflowKey, buildSettingsState]);
+
   const handleSave = async () => {
     const { errors, errorNodes } = validateWorkflow(root);
     setInvalidNodeIds(errorNodes);
@@ -5669,13 +5744,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     if (onSave && workflow) {
       setSaving(true);
       try {
-        await onSave({
-          ...workflow,
-          nodes: root,
-          name: workflowName,
-          key: workflowKey,
-          ...globalConfig,
-        });
+        const snapshot = buildWorkflowSnapshot();
+        if (snapshot) {
+          await onSave(snapshot);
+        }
       } finally {
         setSaving(false);
       }
@@ -5686,23 +5758,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       // P1: 包含所有新增字段（description, category, tags, formId）
       // P2: 包含启动权限字段（startPermissionType, startPermissionValue）
       // P2: 包含数据权限字段（deptId - 从用户上下文自动获取）
-      await saveProcessDefinition({
-        definitionId: workflow?.id?.startsWith("new_")
-          ? undefined
-          : workflow?.id,
-        processName: workflowName,
-        processKey: workflowKey,
-        modelJson: JSON.stringify(root),
-        description: workflowDescription || undefined,
-        category: workflowCategory || undefined,
-        tags:
-          workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined,
-        formId: selectedFormId || undefined,
-        startPermissionType: startPermissionType || undefined,
-        startPermissionValue: startPermissionValue || undefined,
-        deptId: user?.deptId ? Number(user.deptId) : undefined,
-        ...globalConfig,
-      });
+      const definition = buildDefinitionPayload();
+      await saveProcessDefinition(definition);
       toast.success("流程已保存");
     } catch (e) {
       console.error(e);
@@ -5738,23 +5795,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     try {
       setSaving(true);
       // P0: 使用 definitionId；P1: 携带所有新增字段；P2: 携带启动权限字段和数据权限字段
-      const definition = {
-        definitionId: workflow?.id?.startsWith("new_")
-          ? undefined
-          : workflow?.id,
-        processName: workflowName,
-        processKey: workflowKey,
-        modelJson: JSON.stringify(root),
-        description: workflowDescription || undefined,
-        category: workflowCategory || undefined,
-        tags:
-          workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined,
-        formId: selectedFormId || undefined,
-        startPermissionType: startPermissionType || undefined,
-        startPermissionValue: startPermissionValue || undefined,
-        deptId: user?.deptId ? Number(user.deptId) : undefined,
-        ...globalConfig,
-      };
+      const definition = buildDefinitionPayload();
       const saveRes = await saveProcessDefinition(definition);
       // API 应该返回带 id 字段的对象，如果返回本身就是 ID 则直接用
       const definitionId = (saveRes as any)?.id || saveRes;
@@ -5787,8 +5828,37 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setSelectedFormId(settings.formId);
     setStartPermissionType(settings.startPermissionType);
     setStartPermissionValue(settings.startPermissionValue);
+    setGlobalConfig({
+      formId: settings.formId || undefined,
+      description: settings.description || undefined,
+      category: settings.category || undefined,
+      tags: settings.tags && settings.tags.length > 0 ? settings.tags.join(", ") : undefined,
+      startPermissionType: settings.startPermissionType || "ALL",
+      startPermissionValue: settings.startPermissionValue || undefined,
+    });
     toast.success("流程设置已更新");
   };
+
+  const handleGlobalConfigUpdate = useCallback(
+    (data: {
+      formId?: string;
+      description?: string;
+      category?: string;
+      tags?: string;
+      startPermissionType?: string;
+      startPermissionValue?: string;
+    }) => {
+      const next = data || {};
+      setGlobalConfig(next);
+      setWorkflowDescription(next.description || "");
+      setWorkflowCategory(next.category || "");
+      setSelectedFormId(next.formId || "");
+      setStartPermissionType(next.startPermissionType || "ALL");
+      setStartPermissionValue(next.startPermissionValue || "");
+      setWorkflowTags(parseTagsToArray(next.tags));
+    },
+    [parseTagsToArray],
+  );
 
   // 查看版本历史
   const handleViewVersionHistory = () => {
@@ -5976,7 +6046,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         open={showGlobalConfig}
         onClose={() => setShowGlobalConfig(false)}
         workflow={globalConfig}
-        onUpdate={setGlobalConfig}
+        onUpdate={handleGlobalConfigUpdate}
       />
 
       {/* 模板选择器 */}

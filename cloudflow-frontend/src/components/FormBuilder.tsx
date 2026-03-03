@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FormDefinition, FormField, FormFieldType } from '../types';
 import { Plus, Trash2, GripVertical, Type, Hash, Calendar, List, AlignLeft, Save, AlertCircle, Code, X, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
@@ -325,6 +325,15 @@ const FormPreview: React.FC<{
 export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   const [formName, setFormName] = useState(initialForm?.name || '未命名表单');
   const [fields, setFields] = useState<FormField[]>(initialForm?.fields || []);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewData, setPreviewData] = useState<Record<string, any> | null>(null);
+
+  useEffect(() => {
+    setFormName(initialForm?.name || '未命名表单');
+    setFields(initialForm?.fields || []);
+    setPreviewing(false);
+    setPreviewData(null);
+  }, [initialForm?.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -340,6 +349,9 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
       setFields((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) {
+          return items;
+        }
         return arrayMove(items, oldIndex, newIndex);
       });
       toast.success('字段顺序已更新');
@@ -347,33 +359,31 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   };
 
   const addField = (type: FormFieldType) => {
-    // 生成唯一 ID 并检查重复
-    let newId = crypto.randomUUID();
-    while (fields.some(f => f.id === newId)) {
-      newId = crypto.randomUUID();
-    }
-    
-    const newField: FormField = {
-      id: newId,
-      type,
-      label: type === 'TEXT' ? '请输入内容' : '新字段',
-      required: false,
-      options: type === 'SELECT' ? ['选项A', '选项B'] : undefined
-    };
-    setFields([...fields, newField]);
+    setFields((prev) => {
+      // 生成唯一 ID 并检查重复
+      let newId = crypto.randomUUID();
+      while (prev.some(f => f.id === newId)) {
+        newId = crypto.randomUUID();
+      }
+
+      const newField: FormField = {
+        id: newId,
+        type,
+        label: type === 'TEXT' ? '请输入内容' : '新字段',
+        required: false,
+        options: type === 'SELECT' ? ['选项A', '选项B'] : undefined
+      };
+      return [...prev, newField];
+    });
   };
 
   const removeField = (id: string) => {
-    setFields(fields.filter(f => f.id !== id));
+    setFields((prev) => prev.filter(f => f.id !== id));
   };
 
   const updateField = (id: string, updates: Partial<FormField>) => {
-    setFields(fields.map(f => f.id === id ? { ...f, ...updates } : f));
+    setFields((prev) => prev.map(f => f.id === id ? { ...f, ...updates } : f));
   };
-
-  // 预览模式状态
-  const [previewing, setPreviewing] = useState(false);
-  const [previewData, setPreviewData] = useState<Record<string, any> | null>(null);
 
   const handleSave = () => {
     // 校验表单名称

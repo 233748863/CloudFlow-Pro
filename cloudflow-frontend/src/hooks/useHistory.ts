@@ -71,9 +71,18 @@ export function useHistory<T>(initialPresent: T) {
     });
   }, []);
 
+  const reset = useCallback((newPresent: T) => {
+    setState({
+      past: [],
+      present: newPresent,
+      future: []
+    });
+  }, []);
+
   return { 
     state: state.present, 
     set, 
+    reset,
     undo, 
     redo, 
     canUndo, 

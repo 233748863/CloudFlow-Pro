@@ -8,9 +8,11 @@ import { FormDefinitionListItem } from '../types/workflow';
 import { SysRole, SysUser, SysDept } from '../services/api/auth';
 import { toast } from 'sonner';
 
+const SELECT_NONE_VALUE = '__NONE__';
+
 // 流程分类选项
 const WORKFLOW_CATEGORIES = [
-  { value: '', label: '未分类' },
+  { value: SELECT_NONE_VALUE, label: '未分类' },
   { value: 'office', label: '行政办公' },
   { value: 'finance', label: '财务管理' },
   { value: 'hr', label: '人事管理' },
@@ -230,7 +232,10 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               <FolderOpen size={14} />
               流程分类
             </label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select
+              value={category || SELECT_NONE_VALUE}
+              onValueChange={(value) => setCategory(value === SELECT_NONE_VALUE ? '' : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="请选择流程分类" />
               </SelectTrigger>
@@ -322,12 +327,15 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
                 加载表单列表中...
               </div>
             ) : (
-              <Select value={formId} onValueChange={setFormId}>
+              <Select
+                value={formId || SELECT_NONE_VALUE}
+                onValueChange={(value) => setFormId(value === SELECT_NONE_VALUE ? '' : value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="选择关联的表单（可选）" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">无</SelectItem>
+                  <SelectItem value={SELECT_NONE_VALUE}>无</SelectItem>
                   {formList.map((form) => (
                     <SelectItem key={form.id} value={form.id}>
                       {form.name}
@@ -376,7 +384,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
                     加载角色列表中...
                   </div>
                 ) : (
-                  <Select value={startPermissionValue} onValueChange={setStartPermissionValue}>
+                  <Select value={startPermissionValue || undefined} onValueChange={setStartPermissionValue}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择角色" />
                     </SelectTrigger>
@@ -400,7 +408,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
                     加载部门列表中...
                   </div>
                 ) : (
-                  <Select value={startPermissionValue} onValueChange={setStartPermissionValue}>
+                  <Select value={startPermissionValue || undefined} onValueChange={setStartPermissionValue}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择部门" />
                     </SelectTrigger>
@@ -424,7 +432,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
                     加载用户列表中...
                   </div>
                 ) : (
-                  <Select value={startPermissionValue} onValueChange={setStartPermissionValue}>
+                  <Select value={startPermissionValue || undefined} onValueChange={setStartPermissionValue}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择用户" />
                     </SelectTrigger>
