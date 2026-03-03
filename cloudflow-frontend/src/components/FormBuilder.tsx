@@ -25,7 +25,7 @@ import { Input } from './ui/input';
 import { DatePicker } from './ui/date-picker';
 
 interface Props {
-  onSave: (form: FormDefinition) => void;
+  onSave: (form: FormDefinition) => Promise<void> | void;
   initialForm?: FormDefinition;
 }
 
@@ -327,6 +327,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   const [fields, setFields] = useState<FormField[]>(initialForm?.fields || []);
   const [previewing, setPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState<Record<string, any> | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setFormName(initialForm?.name || '未命名表单');
@@ -385,7 +386,9 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
     setFields((prev) => prev.map(f => f.id === id ? { ...f, ...updates } : f));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving) return;
+
     // 校验表单名称
     if (!formName || formName.trim() === '') {
       toast.error('请输入表单名称');
@@ -415,11 +418,16 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
       return;
     }
 
-    onSave({
-      id: initialForm?.id || crypto.randomUUID(),
-      name: formName.trim(),
-      fields
-    });
+    try {
+      setSaving(true);
+      await onSave({
+        id: initialForm?.id || crypto.randomUUID(),
+        name: formName.trim(),
+        fields
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -468,8 +476,12 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
               {previewing ? <EyeOff size={16} /> : <Eye size={16} />}
               {previewing ? '退出预览' : '预览填写'}
             </button>
-            <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600">
-              <Save size={16} /> 保存表单
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Save size={16} /> {saving ? '保存中...' : '保存表单'}
             </button>
           </div>
         </div>

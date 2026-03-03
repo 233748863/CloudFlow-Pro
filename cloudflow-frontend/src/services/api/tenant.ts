@@ -48,7 +48,9 @@ export const deleteTenant = (tenantIds: number[]) => {
 
 // 修改租户状态
 export const changeTenantStatus = (data: { tenantId: number; status: string }) => {
-  return request.put('/auth/system/tenant/changeStatus', data);
+  return request.put(`/auth/system/tenant/${data.tenantId}/status`, null, {
+    params: { status: data.status },
+  });
 };
 
 // 获取租户统计信息

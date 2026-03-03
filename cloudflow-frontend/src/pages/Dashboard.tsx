@@ -20,6 +20,16 @@ function extractTotal(res: unknown): number {
   return 0;
 }
 
+// 提取对象中的数字字段
+function extractNumberByKey(res: unknown, key: string): number {
+  if (res && typeof res === 'object') {
+    const obj = res as Record<string, unknown>;
+    const value = obj[key];
+    if (typeof value === 'number') return value;
+  }
+  return 0;
+}
+
 // 提取列表数据
 function extractRows(res: unknown): any[] {
   if (res && typeof res === 'object') {
@@ -125,15 +135,15 @@ export const Dashboard = () => {
       .catch(() => { setMyAppsCount(0); setRecentApps([]); }).finally(() => setLa(false));
     request.get('/workflow/copy/list', { params: { pageNum: 1, pageSize: 5 }, ...s })
       .then(r => setCopyCount(extractTotal(r))).catch(() => setCopyCount(0));
-    request.get('/workflow/done', { params: { pageNum: 1, pageSize: 5 }, ...s })
-      .then(r => setDoneCount(extractTotal(r))).catch(() => setDoneCount(0));
+    request.get('/workflow/tasks/count', { ...s })
+      .then(r => setDoneCount(extractNumberByKey(r, 'doneCount'))).catch(() => setDoneCount(0));
     // 公告列表 - 使用 my-list 接口获取当前用户的公告（常驻显示）
     request.get('/oa/announcement/my-list', { ...s })
       .then(r => setAnnouncements(extractRows(r).slice(0, 6)))
       .catch(() => setAnnouncements([]))
       .finally(() => setLan(false));
     const today = new Date().toISOString().split('T')[0];
-    request.get('/oa/schedule/list', { params: { pageNum: 1, pageSize: 5, startDate: today, endDate: today }, ...s })
+    request.get('/oa/schedule/my-events', { params: { start: today, end: today }, ...s })
       .then(r => setSchedules(extractRows(r).slice(0, 5))).catch(() => setSchedules([])).finally(() => setLs(false));
   }, [user]);
 

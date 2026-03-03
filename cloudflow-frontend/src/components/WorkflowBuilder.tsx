@@ -2172,14 +2172,29 @@ interface ApproverCacheEntry {
 const APPROVER_CACHE_PREFIX = "workflow_approver_options_";
 const APPROVER_CACHE_TTL_MS = 5 * 60 * 1000;
 
+// 按租户+用户隔离缓存，避免跨租户/跨账号复用审批候选数据
+const getApproverCacheKey = (type: ApproverCacheType): string => {
+  try {
+    const rawUser = localStorage.getItem("user");
+    if (!rawUser) return `${APPROVER_CACHE_PREFIX}anonymous_${type}`;
+    const user = JSON.parse(rawUser) as Record<string, unknown>;
+    const tenantId = String(user.tenantId ?? "default");
+    const userId = String(user.id ?? user.userId ?? user.username ?? "anonymous");
+    return `${APPROVER_CACHE_PREFIX}${tenantId}_${userId}_${type}`;
+  } catch {
+    return `${APPROVER_CACHE_PREFIX}anonymous_${type}`;
+  }
+};
+
 // 使用本地缓存替代模块级 let 变量，避免页面热更新和多实例下缓存状态污染
 const readApproverCache = (type: ApproverCacheType): any[] | null => {
   try {
-    const raw = localStorage.getItem(`${APPROVER_CACHE_PREFIX}${type}`);
+    const cacheKey = getApproverCacheKey(type);
+    const raw = localStorage.getItem(cacheKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ApproverCacheEntry;
     if (!parsed?.expiresAt || Date.now() > parsed.expiresAt) {
-      localStorage.removeItem(`${APPROVER_CACHE_PREFIX}${type}`);
+      localStorage.removeItem(cacheKey);
       return null;
     }
     return Array.isArray(parsed.data) ? parsed.data : null;
@@ -2190,14 +2205,12 @@ const readApproverCache = (type: ApproverCacheType): any[] | null => {
 
 const writeApproverCache = (type: ApproverCacheType, data: any[]) => {
   try {
+    const cacheKey = getApproverCacheKey(type);
     const payload: ApproverCacheEntry = {
       data: Array.isArray(data) ? data : [],
       expiresAt: Date.now() + APPROVER_CACHE_TTL_MS,
     };
-    localStorage.setItem(
-      `${APPROVER_CACHE_PREFIX}${type}`,
-      JSON.stringify(payload),
-    );
+    localStorage.setItem(cacheKey, JSON.stringify(payload));
   } catch {
     // 忽略缓存写入失败，保持选择器功能可用
   }
