@@ -31,6 +31,7 @@ type FileStatus =
   | 'invalid'
   | 'importing'
   | 'success'
+  | 'partial'
   | 'failed'
   | 'skipped';
 
@@ -46,6 +47,7 @@ interface FileWithStatus {
 interface ImportSummary {
   total: number;
   success: number;
+  partial: number;
   failed: number;
   skipped: number;
 }
@@ -67,6 +69,21 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
 };
 
 /**
+ * 解析后端批量导入汇总消息：
+ * 例：批量导入完成：共 3 个流程，成功 2，失败 1，跳过 0
+ */
+const parseBatchSummaryFromMessage = (message?: string) => {
+  if (!message) return null;
+  const match = message.match(/成功\s*(\d+)\s*，\s*失败\s*(\d+)\s*，\s*跳过\s*(\d+)/);
+  if (!match) return null;
+  return {
+    success: Number(match[1]),
+    failed: Number(match[2]),
+    skipped: Number(match[3])
+  };
+};
+
+/**
  * 统一解析导入结果状态：
  * - action=failed 或 success=false 一律视为失败；
  * - skipped 单独归类为跳过；
@@ -74,6 +91,11 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
  */
 const resolveImportStatus = (result: ImportResult): FileStatus => {
   if (result.action === 'failed' || !result.success) {
+    const summary = parseBatchSummaryFromMessage(result.message);
+    if (summary && summary.success > 0 && summary.failed > 0) {
+      // 批量文件部分成功，避免误归类为“可重试失败文件”
+      return 'partial';
+    }
     return 'failed';
   }
   if (result.action === 'skipped') {
@@ -229,6 +251,7 @@ export const WorkflowImport: React.FC = () => {
     setImportSummary(null);
 
     let successCount = 0;
+    let partialCount = 0;
     let failedCount = 0;
     let skippedCount = 0;
 
@@ -268,6 +291,8 @@ export const WorkflowImport: React.FC = () => {
 
           if (nextStatus === 'success') {
             successCount++;
+          } else if (nextStatus === 'partial') {
+            partialCount++;
           } else if (nextStatus === 'skipped') {
             skippedCount++;
           } else {
@@ -298,14 +323,17 @@ export const WorkflowImport: React.FC = () => {
       setImportSummary({
         total: validFiles.length,
         success: successCount,
+        partial: partialCount,
         failed: failedCount,
         skipped: skippedCount
       });
 
-      if (failedCount === 0) {
+      if (failedCount === 0 && partialCount === 0) {
         toast.success(`导入完成，成功 ${successCount} 个，跳过 ${skippedCount} 个`);
+      } else if (failedCount === 0 && partialCount > 0) {
+        toast.warning(`导入完成：成功 ${successCount} 个，部分成功 ${partialCount} 个，跳过 ${skippedCount} 个`);
       } else {
-        toast.warning(`导入完成：成功 ${successCount} 个，失败 ${failedCount} 个，跳过 ${skippedCount} 个`);
+        toast.warning(`导入完成：成功 ${successCount} 个，部分成功 ${partialCount} 个，失败 ${failedCount} 个，跳过 ${skippedCount} 个`);
       }
     } catch (error) {
       console.error('批量导入失败:', error);
@@ -341,6 +369,7 @@ export const WorkflowImport: React.FC = () => {
       importing: files.filter((item) => item.status === 'importing').length,
       success: files.filter((item) => item.status === 'success').length,
       failed: files.filter((item) => item.status === 'failed').length,
+      partial: files.filter((item) => item.status === 'partial').length,
       skipped: files.filter((item) => item.status === 'skipped').length
     }),
     [files]
@@ -518,6 +547,12 @@ export const WorkflowImport: React.FC = () => {
                   {stats.failed} 个失败
                 </span>
               )}
+              {stats.partial > 0 && (
+                <span className="text-amber-600">
+                  <AlertTriangle size={14} className="inline mr-1" />
+                  {stats.partial} 个部分成功
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -591,7 +626,7 @@ export const WorkflowImport: React.FC = () => {
             导入完成
           </h3>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <div className="bg-slate-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-slate-800">{importSummary.total}</div>
               <div className="text-xs text-slate-500 mt-1">总计</div>
@@ -599,6 +634,10 @@ export const WorkflowImport: React.FC = () => {
             <div className="bg-green-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-green-600">{importSummary.success}</div>
               <div className="text-xs text-green-600 mt-1">成功</div>
+            </div>
+            <div className="bg-amber-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-amber-600">{importSummary.partial}</div>
+              <div className="text-xs text-amber-600 mt-1">部分成功</div>
             </div>
             <div className="bg-orange-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-orange-600">{importSummary.failed}</div>
@@ -630,6 +669,7 @@ const FileItem: React.FC<FileItemProps> = ({
     invalid: '校验失败',
     importing: '导入中...',
     success: '导入成功',
+    partial: '部分成功',
     failed: '导入失败',
     skipped: '已跳过'
   };
@@ -638,6 +678,7 @@ const FileItem: React.FC<FileItemProps> = ({
     if (status === 'valid') return 'bg-green-100 text-green-600';
     if (status === 'invalid') return 'bg-red-100 text-red-600';
     if (status === 'success') return 'bg-blue-100 text-blue-600';
+    if (status === 'partial') return 'bg-amber-100 text-amber-700';
     if (status === 'failed') return 'bg-orange-100 text-orange-600';
     if (status === 'skipped') return 'bg-yellow-100 text-yellow-600';
     return 'bg-slate-100 text-slate-600';
@@ -649,6 +690,7 @@ const FileItem: React.FC<FileItemProps> = ({
     if (status === 'invalid') return <AlertCircle size={16} className="text-red-500" />;
     if (status === 'importing') return <Loader2 size={16} className="animate-spin text-pink-500" />;
     if (status === 'success') return <FileCheck size={16} className="text-blue-500" />;
+    if (status === 'partial') return <AlertTriangle size={16} className="text-amber-500" />;
     if (status === 'failed') return <FileX size={16} className="text-orange-500" />;
     if (status === 'skipped') return <FileWarning size={16} className="text-yellow-500" />;
     return <FileText size={16} className="text-slate-400" />;
