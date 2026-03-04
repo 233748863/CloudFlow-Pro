@@ -61,6 +61,26 @@ const resolveDefinitionId = (w: any): string => {
   return String(rawId).trim();
 };
 
+/**
+ * 兼容保存接口返回格式：
+ * - 新版：{ id: string }
+ * - 旧版：string
+ */
+const resolveSavedDefinitionId = (result: unknown): string | undefined => {
+  if (typeof result === 'string') {
+    const trimmed = result.trim();
+    return trimmed ? trimmed : undefined;
+  }
+  if (result && typeof result === 'object') {
+    const rawId = (result as { id?: unknown }).id;
+    if (typeof rawId === 'string') {
+      const trimmed = rawId.trim();
+      return trimmed ? trimmed : undefined;
+    }
+  }
+  return undefined;
+};
+
 const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   id: resolveDefinitionId(w) || `new_${Date.now()}`,
   name: w?.processName || w?.name || '未命名流程',
@@ -236,9 +256,8 @@ export const WorkflowDesign = () => {
 
       logWorkflow.info('保存流程:', payload.processName);
       const result = await saveProcessDefinition(payload);
-
-      if (result && result.id && wf.id !== result.id) {
-        const nextId = String(result.id);
+      const nextId = resolveSavedDefinitionId(result);
+      if (nextId && wf.id !== nextId) {
         setWorkflow((prev) => (prev ? { ...prev, id: nextId } : prev));
         syncWorkflowIdToUrl(nextId);
       }
@@ -275,9 +294,10 @@ export const WorkflowDesign = () => {
           deptId: wf.deptId,
         };
         const result = await saveProcessDefinition(payload);
-        if (result && result.id && wf.id !== result.id) {
+        const nextId = resolveSavedDefinitionId(result);
+        if (nextId && wf.id !== nextId) {
           // 自动保存仅同步 URL，避免因 definitionId 变化触发新的自动保存循环
-          syncWorkflowIdToUrl(String(result.id));
+          syncWorkflowIdToUrl(nextId);
         }
       }
     },

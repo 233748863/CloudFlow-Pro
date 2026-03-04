@@ -199,6 +199,24 @@ export const ProcessManagement = () => {
     return buildDefaultNodes();
   };
 
+  /**
+   * 兼容保存流程接口返回：
+   * 1) 对象结构：{ id: string }
+   * 2) 旧版结构：string
+   */
+  const resolveSavedDefinitionId = (result: unknown): string => {
+    if (typeof result === 'string') {
+      return result.trim();
+    }
+    if (result && typeof result === 'object') {
+      const rawId = (result as { id?: unknown }).id;
+      if (typeof rawId === 'string') {
+        return rawId.trim();
+      }
+    }
+    return '';
+  };
+
   const canExportSingleWorkflow = (workflow: WorkflowDefinition): boolean => {
     if (isAdmin) {
       return true;
@@ -380,7 +398,7 @@ export const ProcessManagement = () => {
 
         // 原流程已发布时，分类变更后自动发布新版本，保持发起页与管理页元数据一致
         if (workflow.status === 'PUBLISHED') {
-          const nextDefinitionId = String((saveResult as any)?.id || '');
+          const nextDefinitionId = resolveSavedDefinitionId(saveResult);
           if (nextDefinitionId) {
             await deployProcessDefinition(nextDefinitionId);
           }
@@ -446,7 +464,7 @@ export const ProcessManagement = () => {
 
         // 原流程已发布时，标签变更后自动发布新版本，避免“最新发布版标签未更新”
         if (workflow.status === 'PUBLISHED') {
-          const nextDefinitionId = String((saveResult as any)?.id || '');
+          const nextDefinitionId = resolveSavedDefinitionId(saveResult);
           if (nextDefinitionId) {
             await deployProcessDefinition(nextDefinitionId);
           }
