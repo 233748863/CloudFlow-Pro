@@ -392,8 +392,22 @@ export const TaskHandleModal = ({
                           </div>
                         </>
                       ) : (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-                          当前节点没有可驳回的历史节点。若需终止流程，请返回后使用“拒绝”操作。
+                        <div className="space-y-3">
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                            当前节点没有可驳回的历史节点。若需终止流程，请返回后使用“拒绝”操作。
+                          </div>
+                          <div className="flex justify-end pt-2 border-t">
+                            <button
+                              onClick={() => {
+                                setRejectMode(false);
+                                setRejectTargetNode('');
+                                setRejectReason('');
+                              }}
+                              className="px-4 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                            >
+                              返回
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
