@@ -85,12 +85,7 @@ export const TaskHandleModal = ({
                               index === self.findIndex((n: any) => n.key === node.key)
                           );
                   }
-                  
-                  // 如果没有历史节点（第一个审批节点），添加"发起人"作为默认驳回目标
-                  if (nodes.length === 0) {
-                      nodes = [{ key: 'start', name: '发起人（重新提交）' }];
-                  }
-                  
+
                   setHistoryNodes(nodes);
               }
               // 无论结果如何，标记为已加载
@@ -341,60 +336,66 @@ export const TaskHandleModal = ({
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto mb-2"></div>
                           加载历史节点中...
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {historyNodes.map(node => (
-                            <div 
-                              key={node.key} 
-                              onClick={() => setRejectTargetNode(node.key)} 
-                              className={`p-3 border rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
-                                rejectTargetNode === node.key 
-                                  ? 'border-pink-400 bg-pink-50 shadow-sm' 
-                                  : 'border-slate-200 hover:border-pink-200 hover:bg-slate-50'
-                              }`}
+                      ) : historyNodes.length > 0 ? (
+                        <>
+                          <div className="space-y-2">
+                            {historyNodes.map(node => (
+                              <div 
+                                key={node.key} 
+                                onClick={() => setRejectTargetNode(node.key)} 
+                                className={`p-3 border rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
+                                  rejectTargetNode === node.key 
+                                    ? 'border-pink-400 bg-pink-50 shadow-sm' 
+                                    : 'border-slate-200 hover:border-pink-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                <CornerUpLeft size={16} className={rejectTargetNode === node.key ? 'text-pink-500' : 'text-slate-400'} />
+                                <span className={rejectTargetNode === node.key ? 'text-pink-600 font-medium' : 'text-slate-700'}>
+                                  {node.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="mt-4">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              驳回原因 <span className="text-red-500">*</span>
+                            </label>
+                            <textarea 
+                              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400" 
+                              placeholder="请填写驳回原因（必填）..."
+                              rows={4}
+                              value={rejectReason}
+                              onChange={e => setRejectReason(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                            <button 
+                              onClick={() => {
+                                setRejectMode(false);
+                                setRejectTargetNode('');
+                                setRejectReason('');
+                              }} 
+                              disabled={submitting}
+                              className="px-4 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
                             >
-                              <CornerUpLeft size={16} className={rejectTargetNode === node.key ? 'text-pink-500' : 'text-slate-400'} />
-                              <span className={rejectTargetNode === node.key ? 'text-pink-600 font-medium' : 'text-slate-700'}>
-                                {node.name}
-                              </span>
-                            </div>
-                          ))}
+                              取消
+                            </button>
+                            <button 
+                              onClick={handleReject} 
+                              disabled={submitting || !rejectTargetNode || !rejectReason.trim()}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {submitting ? '处理中...' : '确认驳回'}
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                          当前节点没有可驳回的历史节点。若需终止流程，请返回后使用“拒绝”操作。
                         </div>
                       )}
-                      
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          驳回原因 <span className="text-red-500">*</span>
-                        </label>
-                        <textarea 
-                          className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400" 
-                          placeholder="请填写驳回原因（必填）..."
-                          rows={4}
-                          value={rejectReason}
-                          onChange={e => setRejectReason(e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-                        <button 
-                          onClick={() => {
-                            setRejectMode(false);
-                            setRejectTargetNode('');
-                            setRejectReason('');
-                          }} 
-                          disabled={submitting}
-                          className="px-4 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
-                        >
-                          取消
-                        </button>
-                        <button 
-                          onClick={handleReject} 
-                          disabled={submitting || !rejectTargetNode || !rejectReason.trim()}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {submitting ? '处理中...' : '确认驳回'}
-                        </button>
-                      </div>
                     </div>
                 ) : delegationMode ? (
                     <div className="space-y-4">

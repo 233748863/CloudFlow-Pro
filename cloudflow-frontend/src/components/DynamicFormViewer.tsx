@@ -1,5 +1,6 @@
 import React from 'react';
 import { FormDefinition, FormField } from '../types';
+const SELECT_NONE_VALUE = '__NONE__';
 
 /**
  * 格式化字段值
@@ -110,13 +111,18 @@ export const DynamicFormViewer = ({
                 />
               ) : field.type === 'SELECT' ? (
                 <Select
-                  value={rawValue !== null && rawValue !== undefined ? String(rawValue) : ''}
-                  onValueChange={v => onChange?.(field.id, v)}
+                  value={
+                    rawValue !== null && rawValue !== undefined && rawValue !== ''
+                      ? String(rawValue)
+                      : SELECT_NONE_VALUE
+                  }
+                  onValueChange={v => onChange?.(field.id, v === SELECT_NONE_VALUE ? '' : v)}
                 >
                   <SelectTrigger className="w-full text-sm">
                     <SelectValue placeholder={field.placeholder || "请选择"} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={SELECT_NONE_VALUE}>请选择</SelectItem>
                     {(field.options || []).map((opt, idx) => (
                       <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
                     ))}
