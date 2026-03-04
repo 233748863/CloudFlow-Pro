@@ -947,6 +947,11 @@ public class WfTaskServiceImpl implements IWfTaskService {
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
         }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && task.getTenantId() != null
+                && !currentTenantId.equals(task.getTenantId())) {
+            throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
+        }
 
         // 权限校验：只有当前任务处理人可以加签
         if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
@@ -1096,6 +1101,11 @@ public class WfTaskServiceImpl implements IWfTaskService {
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
+        }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && task.getTenantId() != null
+                && !currentTenantId.equals(task.getTenantId())) {
+            throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
         }
 
         // 权限校验：只有当前任务处理人或管理员可以减签
