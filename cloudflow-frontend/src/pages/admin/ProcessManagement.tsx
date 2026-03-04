@@ -244,6 +244,14 @@ export const ProcessManagement = () => {
               key: w.processKey || w.key || '',
               version: w.version,
               formId: w.formId,
+              startPermissionType: w.startPermissionType,
+              startPermissionValue: w.startPermissionValue,
+              deptId:
+                typeof w.deptId === 'number'
+                  ? w.deptId
+                  : typeof w.deptId === 'string' && w.deptId.trim() !== '' && Number.isFinite(Number(w.deptId))
+                    ? Number(w.deptId)
+                    : undefined,
               status: w.status,
               category: w.category || '',
               tags: parseTagsSafely(w.tags, workflowName, () => {
@@ -365,6 +373,9 @@ export const ProcessManagement = () => {
                 : undefined,
           description: workflow.description,
           formId: workflow.formId,
+          startPermissionType: workflow.startPermissionType,
+          startPermissionValue: workflow.startPermissionValue,
+          deptId: workflow.deptId,
         });
 
         // 原流程已发布时，分类变更后自动发布新版本，保持发起页与管理页元数据一致
@@ -428,6 +439,9 @@ export const ProcessManagement = () => {
           tags: JSON.stringify(mergedTags),
           description: workflow.description,
           formId: workflow.formId,
+          startPermissionType: workflow.startPermissionType,
+          startPermissionValue: workflow.startPermissionValue,
+          deptId: workflow.deptId,
         });
 
         // 原流程已发布时，标签变更后自动发布新版本，避免“最新发布版标签未更新”

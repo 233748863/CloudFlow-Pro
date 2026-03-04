@@ -91,6 +91,26 @@ public class WorkflowExportFormat implements Serializable {
         private String categoryId;
 
         /**
+         * 绑定表单 ID
+         */
+        private String formId;
+
+        /**
+         * 发起权限类型（ALL/ROLE/DEPT/USER）
+         */
+        private String startPermissionType;
+
+        /**
+         * 发起权限值（JSON 字符串）
+         */
+        private String startPermissionValue;
+
+        /**
+         * 数据权限部门 ID
+         */
+        private Long deptId;
+
+        /**
          * 流程标签
          */
         private List<String> tags;

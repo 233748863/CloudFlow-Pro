@@ -293,33 +293,44 @@ public class ImportValidator {
             if (definition instanceof Map) {
                 Map<String, Object> defMap = (Map<String, Object>) definition;
 
-                // 检查是否有节点
                 Object nodesObj = defMap.get("nodes");
-                if (nodesObj == null || !(nodesObj instanceof List) || ((List<?>) nodesObj).isEmpty()) {
-                    errors.add("流程定义必须包含至少一个节点");
-                    return;
-                }
+                // 兼容两种定义结构：
+                // 1) 标准数组结构：{ nodes: [...] }
+                // 2) CloudFlow 树结构：{ type, id, next, branches }
+                if (nodesObj instanceof List) {
+                    List<Object> nodes = (List<Object>) nodesObj;
+                    if (nodes.isEmpty()) {
+                        errors.add("流程定义必须包含至少一个节点");
+                        return;
+                    }
 
-                List<Object> nodes = (List<Object>) nodesObj;
+                    boolean hasStartNode = nodes.stream()
+                        .filter(node -> node instanceof Map)
+                        .map(node -> (Map<String, Object>) node)
+                        .anyMatch(node -> "start".equalsIgnoreCase(String.valueOf(node.get("type"))));
+                    if (!hasStartNode) {
+                        errors.add("流程定义必须包含至少一个开始节点");
+                    }
 
-                // 检查是否有开始节点
-                boolean hasStartNode = nodes.stream()
-                    .filter(node -> node instanceof Map)
-                    .map(node -> (Map<String, Object>) node)
-                    .anyMatch(node -> "start".equals(node.get("type")));
-
-                if (!hasStartNode) {
-                    errors.add("流程定义必须包含至少一个开始节点");
-                }
-
-                // 检查是否有结束节点
-                boolean hasEndNode = nodes.stream()
-                    .filter(node -> node instanceof Map)
-                    .map(node -> (Map<String, Object>) node)
-                    .anyMatch(node -> "end".equals(node.get("type")));
-
-                if (!hasEndNode) {
-                    warnings.add("流程定义建议包含至少一个结束节点");
+                    boolean hasEndNode = nodes.stream()
+                        .filter(node -> node instanceof Map)
+                        .map(node -> (Map<String, Object>) node)
+                        .anyMatch(node -> "end".equalsIgnoreCase(String.valueOf(node.get("type"))));
+                    if (!hasEndNode) {
+                        warnings.add("流程定义建议包含至少一个结束节点");
+                    }
+                } else {
+                    Object rootType = defMap.get("type");
+                    if (rootType == null) {
+                        errors.add("流程定义格式不标准：缺少根节点 type");
+                        return;
+                    }
+                    if (!"start".equalsIgnoreCase(String.valueOf(rootType))) {
+                        warnings.add("流程定义根节点不是开始节点，建议检查模型");
+                    }
+                    if (!containsEndNode(defMap)) {
+                        warnings.add("流程定义建议包含至少一个结束节点");
+                    }
                 }
             } else {
                 warnings.add("流程定义格式不标准，可能导致导入失败");
@@ -328,6 +339,35 @@ public class ImportValidator {
             log.warn("验证流程定义结构失败", e);
             warnings.add("无法验证流程定义结构");
         }
+    }
+
+    /**
+     * 递归检查树结构流程定义中是否包含 END 节点。
+     */
+    @SuppressWarnings("unchecked")
+    private boolean containsEndNode(Map<String, Object> node) {
+        if (node == null) {
+            return false;
+        }
+        Object type = node.get("type");
+        if (type != null && "end".equalsIgnoreCase(String.valueOf(type))) {
+            return true;
+        }
+
+        Object next = node.get("next");
+        if (next instanceof Map && containsEndNode((Map<String, Object>) next)) {
+            return true;
+        }
+
+        Object branches = node.get("branches");
+        if (branches instanceof List) {
+            for (Object branch : (List<?>) branches) {
+                if (branch instanceof Map && containsEndNode((Map<String, Object>) branch)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

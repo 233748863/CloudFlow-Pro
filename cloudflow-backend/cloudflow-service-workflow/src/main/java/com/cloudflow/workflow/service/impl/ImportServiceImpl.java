@@ -8,6 +8,7 @@ import com.cloudflow.workflow.domain.dto.ImportResultDTO;
 import com.cloudflow.workflow.domain.dto.ValidationResultDTO;
 import com.cloudflow.workflow.domain.dto.WorkflowExportFormat;
 import com.cloudflow.workflow.exception.WorkflowException;
+import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.resolver.ConflictResolver;
 import com.cloudflow.workflow.resolver.ConflictResolver.ConflictStrategy;
@@ -46,6 +47,9 @@ public class ImportServiceImpl implements IImportService {
 
     @Autowired
     private WfProcessDefinitionMapper definitionMapper;
+
+    @Autowired
+    private WfFormDefinitionMapper formDefinitionMapper;
 
     @Autowired
     private ImportValidator importValidator;
@@ -285,6 +289,26 @@ public class ImportServiceImpl implements IImportService {
             }
         }
 
+        // 同步导入可选字段（向后兼容旧导出格式）
+        WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
+        String formId = resolveWorkflowFormId(workflow);
+        if (StringUtils.hasText(formId)) {
+            validateImportedFormBinding(formId);
+            existing.setFormId(formId);
+        }
+        String startPermissionType = resolveStartPermissionType(workflow);
+        if (StringUtils.hasText(startPermissionType)) {
+            existing.setStartPermissionType(startPermissionType);
+        }
+        String startPermissionValue = resolveStartPermissionValue(workflow);
+        if (StringUtils.hasText(startPermissionValue)) {
+            existing.setStartPermissionValue(startPermissionValue);
+        }
+        Long deptId = resolveDeptId(workflow);
+        if (deptId != null) {
+            existing.setDeptId(deptId);
+        }
+
         // 更新时间和操作人
         existing.setUpdateTime(LocalDateTime.now());
         existing.setUpdateBy(UserContext.getUserId() != null ? 
@@ -303,6 +327,7 @@ public class ImportServiceImpl implements IImportService {
                                     ConflictResolution resolution) {
         log.info("创建新流程, workflowName={}", resolution.getNewName());
 
+        WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
         WfProcessDefinition definition = new WfProcessDefinition();
         
         // 生成新 ID
@@ -328,6 +353,16 @@ public class ImportServiceImpl implements IImportService {
         if (exportFormat.getWorkflow().getCategoryId() != null) {
             definition.setCategory(exportFormat.getWorkflow().getCategoryId());
         }
+
+        // 导入时保留表单绑定与权限配置，保障“表单设计→流程绑定→发起”链路完整
+        String formId = resolveWorkflowFormId(workflow);
+        if (StringUtils.hasText(formId)) {
+            validateImportedFormBinding(formId);
+            definition.setFormId(formId);
+        }
+        definition.setStartPermissionType(resolveStartPermissionType(workflow));
+        definition.setStartPermissionValue(resolveStartPermissionValue(workflow));
+        definition.setDeptId(resolveDeptId(workflow));
         
         // 设置标签
         if (exportFormat.getWorkflow().getTags() != null) {
@@ -398,6 +433,98 @@ public class ImportServiceImpl implements IImportService {
         }
 
         return generateUniqueProcessKey(processKey);
+    }
+
+    /**
+     * 解析导入文件中的 formId，兼容旧格式 metadata.formId。
+     */
+    private String resolveWorkflowFormId(WorkflowExportFormat.WorkflowData workflow) {
+        if (workflow == null) {
+            return null;
+        }
+        if (StringUtils.hasText(workflow.getFormId())) {
+            return workflow.getFormId();
+        }
+        if (workflow.getMetadata() != null) {
+            Object value = workflow.getMetadata().get("formId");
+            if (value != null && StringUtils.hasText(String.valueOf(value))) {
+                return String.valueOf(value);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 解析导入文件中的发起权限类型，兼容旧格式 metadata.startPermissionType。
+     */
+    private String resolveStartPermissionType(WorkflowExportFormat.WorkflowData workflow) {
+        if (workflow == null) {
+            return null;
+        }
+        if (StringUtils.hasText(workflow.getStartPermissionType())) {
+            return workflow.getStartPermissionType();
+        }
+        if (workflow.getMetadata() != null) {
+            Object value = workflow.getMetadata().get("startPermissionType");
+            if (value != null && StringUtils.hasText(String.valueOf(value))) {
+                return String.valueOf(value);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 解析导入文件中的发起权限值，兼容旧格式 metadata.startPermissionValue。
+     */
+    private String resolveStartPermissionValue(WorkflowExportFormat.WorkflowData workflow) {
+        if (workflow == null) {
+            return null;
+        }
+        if (StringUtils.hasText(workflow.getStartPermissionValue())) {
+            return workflow.getStartPermissionValue();
+        }
+        if (workflow.getMetadata() != null) {
+            Object value = workflow.getMetadata().get("startPermissionValue");
+            if (value != null && StringUtils.hasText(String.valueOf(value))) {
+                return String.valueOf(value);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 解析导入文件中的数据权限部门，兼容旧格式 metadata.deptId。
+     */
+    private Long resolveDeptId(WorkflowExportFormat.WorkflowData workflow) {
+        if (workflow == null) {
+            return null;
+        }
+        if (workflow.getDeptId() != null) {
+            return workflow.getDeptId();
+        }
+        if (workflow.getMetadata() != null) {
+            Object value = workflow.getMetadata().get("deptId");
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            }
+            if (value != null) {
+                try {
+                    return Long.valueOf(String.valueOf(value));
+                } catch (NumberFormatException ignored) {
+                    log.warn("导入文件 deptId 非法: {}", value);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 表单绑定存在性校验，防止导入后流程绑定悬空表单导致发起失败。
+     */
+    private void validateImportedFormBinding(String formId) {
+        if (formDefinitionMapper.selectById(formId) == null) {
+            throw WorkflowException.validationError("导入失败：绑定表单不存在: " + formId);
+        }
     }
 
     /**
