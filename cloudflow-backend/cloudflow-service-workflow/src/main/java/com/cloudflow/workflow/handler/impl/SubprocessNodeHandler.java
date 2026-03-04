@@ -7,6 +7,7 @@ import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.handler.INodeHandler;
+import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.service.INodeExecutionService;
@@ -47,6 +48,7 @@ public class SubprocessNodeHandler implements INodeHandler {
     private static final Logger log = LoggerFactory.getLogger(SubprocessNodeHandler.class);
 
     private final WfProcessDefinitionMapper processDefinitionMapper;
+    private final WfFormDefinitionMapper formDefinitionMapper;
     private final WfProcessInstanceMapper processInstanceMapper;
 
     /**
@@ -97,7 +99,7 @@ public class SubprocessNodeHandler implements INodeHandler {
                 new LambdaQueryWrapper<WfProcessDefinition>()
                         .eq(WfProcessDefinition::getProcessKey, subprocessId)
                         .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                        .eq(WfProcessDefinition::getIsLatest, 1)
+                        .orderByDesc(WfProcessDefinition::getVersion)
                         .last("LIMIT 1")
         );
 
@@ -110,6 +112,12 @@ public class SubprocessNodeHandler implements INodeHandler {
 
         if (!StringUtils.hasText(subDef.getModelJson())) {
             log.error("[SubprocessNodeHandler] 子流程定义模型为空, subprocessId={}", subprocessId);
+            return true;
+        }
+        // 子流程绑定表单被删除时，直接跳过子流程节点，避免后续任务阶段出现不可恢复错误
+        if (StringUtils.hasText(subDef.getFormId()) && formDefinitionMapper.selectById(subDef.getFormId()) == null) {
+            log.error("[SubprocessNodeHandler] 子流程绑定表单不存在, subprocessId={}, formId={}",
+                    subprocessId, subDef.getFormId());
             return true;
         }
 

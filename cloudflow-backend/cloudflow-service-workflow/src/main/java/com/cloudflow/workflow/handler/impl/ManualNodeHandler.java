@@ -66,7 +66,7 @@ public class ManualNodeHandler implements INodeHandler {
             taskDescription = (String) props.get("taskDescription");
             String configPriority = (String) props.get("priority");
             if (configPriority != null) {
-                priority = configPriority;
+                priority = normalizePriority(configPriority);
             }
         }
 
@@ -95,5 +95,23 @@ public class ManualNodeHandler implements INodeHandler {
 
         // 返回 false 表示流程阻塞，等待处理人完成任务后由 completeTask 触发继续流转
         return false;
+    }
+
+    /**
+     * 兼容前端与后端优先级枚举差异：
+     * 前端人工任务配置使用 LOW/MEDIUM/HIGH，后端统一使用 LOW/NORMAL/HIGH/URGENT。
+     */
+    private String normalizePriority(String rawPriority) {
+        if (rawPriority == null) {
+            return "NORMAL";
+        }
+        String value = rawPriority.trim().toUpperCase();
+        if ("MEDIUM".equals(value)) {
+            return "NORMAL";
+        }
+        if ("LOW".equals(value) || "NORMAL".equals(value) || "HIGH".equals(value) || "URGENT".equals(value)) {
+            return value;
+        }
+        return "NORMAL";
     }
 }

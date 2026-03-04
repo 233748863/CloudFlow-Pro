@@ -13,7 +13,9 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 定时节点处理器
@@ -39,8 +41,8 @@ public class TimerNodeHandler implements INodeHandler {
 
     private static final Logger log = LoggerFactory.getLogger(TimerNodeHandler.class);
 
-    /** Redis ZSet key，存储待触发的定时节点 */
-    private static final String TIMER_ZSET_KEY = "sys:wf:timer:pending";
+    /** Redis ZSet key，需与 TimerScanJob 保持一致 */
+    private static final String TIMER_ZSET_KEY = "sys:wf:timers";
 
     private final RedisCache redisCache;
 
@@ -111,11 +113,22 @@ public class TimerNodeHandler implements INodeHandler {
             expireTimeMillis = System.currentTimeMillis() + (long) delayMinutes * 60 * 1000;
         }
 
-        // 将定时任务注册到 Redis ZSet，score 为到期时间戳
-        // member 格式: instanceId:nodeKey，便于到期后定位流程实例和节点
-        String member = instance.getInstanceId() + ":" + node.getId();
+        // 将定时任务注册到 Redis（与 TimerScanJob 协议保持一致）
+        // timerKey 作为 ZSet member，同时对应一条 Hash/Object 数据
+        String timerKey = "sys:wf:timer:" + instance.getInstanceId() + ":" + node.getId();
+        Map<String, Object> timerData = new HashMap<>();
+        timerData.put("instanceId", instance.getInstanceId());
+        timerData.put("nodeKey", node.getId());
+        timerData.put("timerType", timerType);
+        if (variables != null && !variables.isEmpty()) {
+            timerData.put("variables", variables);
+        }
+
         try {
-            redisCache.setCacheZSet(TIMER_ZSET_KEY, member, (double) expireTimeMillis);
+            // 数据对象的 TTL 至少覆盖触发时间，额外保留 1 天避免边界丢失
+            long ttlSeconds = Math.max(3600L, (expireTimeMillis - System.currentTimeMillis()) / 1000 + 86400L);
+            redisCache.setCacheObject(timerKey, timerData, ttlSeconds, TimeUnit.SECONDS);
+            redisCache.setCacheZSet(TIMER_ZSET_KEY, timerKey, (double) expireTimeMillis);
             long delaySeconds = (expireTimeMillis - System.currentTimeMillis()) / 1000;
             log.info("[TimerNodeHandler] 定时任务已注册, nodeKey={}, instanceId={}, 将在 {}秒后({}分钟后)触发",
                     node.getId(), instance.getInstanceId(), delaySeconds, delaySeconds / 60);

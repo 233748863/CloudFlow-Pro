@@ -11,6 +11,7 @@ import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.IProcessCopyService;
+import com.cloudflow.workflow.strategy.AssignUserStrategyFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -39,6 +40,7 @@ public class CopyNodeHandler implements INodeHandler {
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysUserMapper sysUserMapper;
+    private final AssignUserStrategyFactory assignUserStrategyFactory;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -57,18 +59,26 @@ public class CopyNodeHandler implements INodeHandler {
                 return true;
             }
 
-            // 收集抄送人ID列表
-            List<Long> copyUserIds = new ArrayList<>();
+            // 收集抄送人ID列表（去重，先走标准 approverType/approverValue，再兼容旧 props）
+            java.util.Set<Long> copyUserIdSet = new java.util.LinkedHashSet<>();
+
+            // 0. 标准字段（与前端 WorkflowBuilder 对齐）
+            if (StringUtils.hasText(node.getApproverType())) {
+                List<Long> resolved = assignUserStrategyFactory.resolveMultiple(node, instance);
+                if (resolved != null) {
+                    copyUserIdSet.addAll(resolved);
+                }
+            }
 
             // 1. 直接指定的用户ID列表
             Object userIdsObj = props.get("copyUserIds");
             if (userIdsObj instanceof String && StringUtils.hasText((String) userIdsObj)) {
                 for (String idStr : ((String) userIdsObj).split(",")) {
-                    try { copyUserIds.add(Long.valueOf(idStr.trim())); } catch (NumberFormatException ignored) {}
+                    try { copyUserIdSet.add(Long.valueOf(idStr.trim())); } catch (NumberFormatException ignored) {}
                 }
             } else if (userIdsObj instanceof List) {
                 for (Object id : (List<?>) userIdsObj) {
-                    try { copyUserIds.add(Long.valueOf(String.valueOf(id))); } catch (NumberFormatException ignored) {}
+                    try { copyUserIdSet.add(Long.valueOf(String.valueOf(id))); } catch (NumberFormatException ignored) {}
                 }
             }
 
@@ -81,7 +91,7 @@ public class CopyNodeHandler implements INodeHandler {
                     List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
                             new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
                     for (SysUserRole ur : userRoles) {
-                        copyUserIds.add(ur.getUserId());
+                        copyUserIdSet.add(ur.getUserId());
                     }
                 }
             }
@@ -93,13 +103,15 @@ public class CopyNodeHandler implements INodeHandler {
                         new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeptId, Long.valueOf(copyDeptId)));
                 if (deptUsers != null) {
                     for (SysUser u : deptUsers) {
-                        copyUserIds.add(u.getUserId());
+                        copyUserIdSet.add(u.getUserId());
                     }
                 }
             }
 
+            List<Long> copyUserIds = new ArrayList<>(copyUserIdSet);
             if (copyUserIds.isEmpty()) {
-                log.info("[CopyNodeHandler] 未解析到抄送人, nodeKey={}", node.getId());
+                log.info("[CopyNodeHandler] 未解析到抄送人, nodeKey={}, approverType={}, approverValue={}",
+                        node.getId(), node.getApproverType(), node.getApproverValue());
                 return true;
             }
 

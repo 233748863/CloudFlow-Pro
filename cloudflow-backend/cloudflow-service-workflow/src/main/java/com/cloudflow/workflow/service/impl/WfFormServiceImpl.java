@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -103,7 +102,6 @@ public class WfFormServiceImpl implements IWfFormService {
     }
 
     @Override
-    @Cacheable(value = "formDefinition", key = "#formId", unless = "#result == null")
     public WfFormDefinition getFormDefinition(String formId) {
         log.info("[getFormDefinition] 查询表单定义(缓存未命中), formId={}", formId);
 

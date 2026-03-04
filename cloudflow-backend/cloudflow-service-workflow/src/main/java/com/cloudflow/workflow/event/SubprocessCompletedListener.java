@@ -98,7 +98,7 @@ public class SubprocessCompletedListener {
                         new LambdaQueryWrapper<WfProcessDefinition>()
                                 .eq(WfProcessDefinition::getProcessKey, parentInstance.getProcessDefKey())
                                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                                .eq(WfProcessDefinition::getIsLatest, 1)
+                                .orderByDesc(WfProcessDefinition::getVersion)
                                 .last("LIMIT 1")
                 );
             }

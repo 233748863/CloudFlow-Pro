@@ -516,6 +516,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
                 .orderByDesc(WfProcessDefinition::getVersion)
                 .last("LIMIT 1"));
         if (subDef == null) { throw WorkflowException.processNotFound(subProcessDefKey); }
+        if (org.springframework.util.StringUtils.hasText(subDef.getFormId())
+                && formDefinitionMapper.selectById(subDef.getFormId()) == null) {
+            throw WorkflowException.validationError("子流程绑定表单不存在或已被删除，无法启动");
+        }
 
         WfProcessInstance subInstance = new WfProcessInstance();
         subInstance.setInstanceId(UUID.randomUUID().toString());

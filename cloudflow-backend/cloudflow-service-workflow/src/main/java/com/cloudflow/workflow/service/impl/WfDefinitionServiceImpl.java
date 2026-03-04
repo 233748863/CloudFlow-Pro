@@ -506,8 +506,34 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         // P1-5: COPY（抄送）节点校验 — 必须配置抄送人
         if ("COPY".equals(node.getType())) {
-            if (!StringUtils.hasText(node.getApproverType()) || !StringUtils.hasText(node.getApproverValue())) {
-                throw WorkflowException.validationError("抄送节点 [" + node.getTitle() + "] 未配置抄送人（approverType 和 approverValue 不能为空）");
+            boolean hasApproverType = StringUtils.hasText(node.getApproverType());
+            boolean requiresApproverValue = hasApproverType
+                    && !"DIRECT_LEADER".equals(node.getApproverType())
+                    && !"DEPT_MANAGER".equals(node.getApproverType());
+            boolean hasApproverValue = StringUtils.hasText(node.getApproverValue());
+
+            // 兼容历史模型字段（copyUserIds/copyRoleKey/copyDeptId）
+            Map<String, Object> nodeProps = node.getProps();
+            Object legacyUserIds = nodeProps != null ? nodeProps.get("copyUserIds") : null;
+            boolean hasLegacyUserIds = false;
+            if (legacyUserIds instanceof String) {
+                hasLegacyUserIds = StringUtils.hasText((String) legacyUserIds);
+            } else if (legacyUserIds instanceof Collection) {
+                hasLegacyUserIds = !((Collection<?>) legacyUserIds).isEmpty();
+            }
+            Object legacyRoleKey = nodeProps != null ? nodeProps.get("copyRoleKey") : null;
+            Object legacyDeptId = nodeProps != null ? nodeProps.get("copyDeptId") : null;
+            boolean hasLegacyCopyConfig = nodeProps != null && (
+                    hasLegacyUserIds
+                            || (legacyRoleKey instanceof String && StringUtils.hasText((String) legacyRoleKey))
+                            || (legacyDeptId instanceof String && StringUtils.hasText((String) legacyDeptId))
+                            || (legacyDeptId instanceof Number)
+            );
+
+            boolean validByApprover = hasApproverType && (!requiresApproverValue || hasApproverValue);
+            if (!validByApprover && !hasLegacyCopyConfig) {
+                throw WorkflowException.validationError(
+                        "抄送节点 [" + node.getTitle() + "] 未配置抄送人（请设置 approverType，且在需要时设置 approverValue）");
             }
         }
         // P1-6: NOTIFICATION（通知）节点校验 — 必须配置通知标题或内容
