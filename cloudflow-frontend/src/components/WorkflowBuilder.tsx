@@ -4001,6 +4001,7 @@ const FlowNode = ({
   activeQuickAddId,
   hoveredNodeId,
   selectedNodeId,
+  isInsideBranch,
 }: {
   node: WorkflowNode;
   invalidNodes: string[];
@@ -4009,6 +4010,7 @@ const FlowNode = ({
   activeQuickAddId: string | null;
   hoveredNodeId: string | null;
   selectedNodeId: string | null;
+  isInsideBranch: boolean;
 }) => {
   const actions = React.useContext(FlowNodeActionsContext);
   const [isDragging, setIsDragging] = useState(false);
@@ -4017,7 +4019,9 @@ const FlowNode = ({
   const isInvalid = invalidNodes.includes(node.id);
   const visual = getNodeVisual(node.type);
   const NIcon = visual.icon;
-  const canDrag = node.type !== NodeType.START && node.type !== NodeType.END;
+  // 分支子树节点禁止拖拽：拖拽会破坏分支结构，改为前置禁用避免误操作
+  const canDrag =
+    !isInsideBranch && node.type !== NodeType.START && node.type !== NodeType.END;
 
   // 画布悬停逻辑优化（去鼠标追踪依赖，改为直接点击触发）
   const canShowHover = !activeQuickAddId || activeQuickAddId === node.id;
@@ -4618,6 +4622,7 @@ const FlowNode = ({
                     draggingNodeId={draggingNodeId}
                     activeQuickAddId={activeQuickAddId}
                     hoveredNodeId={hoveredNodeId}
+                    isInsideBranch={true}
                   />
                 </div>
 
@@ -4659,6 +4664,7 @@ const FlowNode = ({
             draggingNodeId={draggingNodeId}
             activeQuickAddId={activeQuickAddId}
             hoveredNodeId={hoveredNodeId}
+            isInsideBranch={isInsideBranch}
           />
         </div>
       )}
@@ -4682,6 +4688,7 @@ const FlowNode = ({
             draggingNodeId={draggingNodeId}
             activeQuickAddId={activeQuickAddId}
             hoveredNodeId={hoveredNodeId}
+            isInsideBranch={isInsideBranch}
           />
         </div>
       )}
@@ -6331,6 +6338,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             draggingNodeId={draggingNodeId}
             activeQuickAddId={activeQuickAddId}
             hoveredNodeId={hoveredNodeId}
+            isInsideBranch={false}
           />
         </div>
       </div>
