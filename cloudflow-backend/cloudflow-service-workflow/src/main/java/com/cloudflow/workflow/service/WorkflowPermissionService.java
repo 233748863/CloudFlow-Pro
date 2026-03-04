@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -77,7 +78,8 @@ public class WorkflowPermissionService {
             throw new PermissionDeniedException("用户未登录");
         }
         checkTenantIsolation(instance.getTenantId(), "流程实例");
-        if (!instance.getStartUserId().equals(currentUserId) && !isAdmin(currentUserId)) {
+        Long startUserId = instance.getStartUserId();
+        if (!Objects.equals(startUserId, currentUserId) && !isAdmin(currentUserId)) {
             log.warn("用户 {} 尝试撤回非本人发起流程 {}", currentUserId, instance.getInstanceId());
             throw new PermissionDeniedException("非发起人无法撤回");
         }
@@ -92,7 +94,8 @@ public class WorkflowPermissionService {
             throw new PermissionDeniedException("用户未登录");
         }
         checkTenantIsolation(instance.getTenantId(), "流程实例");
-        if (!instance.getStartUserId().equals(currentUserId) && !isAdmin(currentUserId)) {
+        Long startUserId = instance.getStartUserId();
+        if (!Objects.equals(startUserId, currentUserId) && !isAdmin(currentUserId)) {
             throw new PermissionDeniedException("仅发起人或管理员可催办");
         }
     }

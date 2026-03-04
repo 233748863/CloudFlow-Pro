@@ -685,14 +685,14 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public R<?> invalidateProcess(String instanceId, String reason) {
-        log.info("[invalidateProcess] 作废流程, instanceId={}, reason={}", instanceId, reason);
-
         // 权限校验：仅管理员可作废
         permissionService.checkDefinitionPermission("作废流程");
 
         if (!StringUtils.hasText(reason)) {
             throw WorkflowException.validationError("作废原因不能为空");
         }
+        String sanitizedReason = securityUtils.sanitizeXss(reason.trim());
+        log.info("[invalidateProcess] 作废流程, instanceId={}, reason={}", instanceId, sanitizedReason);
 
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
         if (instance == null) {
@@ -727,7 +727,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             h.setOperatorId(UserContext.getUserId());
             h.setOperatorName(UserContext.getUserName());
             h.setAction("INVALIDATE");
-            h.setComment("流程作废: " + securityUtils.sanitizeXss(reason));
+            h.setComment("流程作废: " + sanitizedReason);
             h.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(h);
 
@@ -741,14 +741,14 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         // 3. 记录审计日志
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_INVALIDATE, instanceId,
-            "reason=" + reason + ", deletedTasks=" + pendingTasks.size());
+            "reason=" + sanitizedReason + ", deletedTasks=" + pendingTasks.size());
 
         // 4. 通知流程发起人
         if (instance.getStartUserId() != null) {
             Long adminUserId = UserContext.getUserId();
             String adminUserName = UserContext.getUserName();
             sysNoticeService.sendNotice(instance.getStartUserId(), "流程作废通知",
-                String.format("您发起的流程 [%s] 已被管理员作废，原因：%s", instance.getTitle(), reason),
+                String.format("您发起的流程 [%s] 已被管理员作废，原因：%s", instance.getTitle(), sanitizedReason),
                 "SYSTEM", adminUserId != null ? adminUserId : 0L, adminUserName != null ? adminUserName : "系统");
         }
 
