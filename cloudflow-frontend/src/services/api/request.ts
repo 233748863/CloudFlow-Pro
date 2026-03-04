@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
 import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
+import { clearAuthSession } from '@/utils/sessionCleanup';
 
 // 定义标准 API 响应接口
 export interface ApiResponse<T = any> {
@@ -136,9 +137,8 @@ request.interceptors.response.use(
     // 全局处理 401 未授权 (always show)
     if (error.response && error.response.status === 401) {
        toast.error('登录已过期，请重新登录');
-       // 清除 token 并跳转登录页
-       localStorage.removeItem('token');
-       localStorage.removeItem('user');
+       // 清除认证信息和会话缓存，并跳转登录页
+       clearAuthSession();
        // 使用 window.location.href 强制跳转，确保状态重置
        if (window.location.pathname !== '/login') {
            window.location.href = '/login';

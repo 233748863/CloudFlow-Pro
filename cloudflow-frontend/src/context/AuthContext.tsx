@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { User } from '@/types';
 import { getInfo, logout as logoutApi, switchTenant as switchTenantApi } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
+import { clearAuthSession } from '@/utils/sessionCleanup';
 
 interface AuthContextType {
   user: User | null;
@@ -45,8 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } catch (e) {
           logger.error('Failed to get user info:', e);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          clearAuthSession();
           toast.error('登录状态已过期，请重新登录');
         }
       }
@@ -84,8 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       // 如果获取用户信息失败，清除 token 和用户信息
       logger.error('获取用户信息失败:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuthSession();
       throw error;
     }
   };
@@ -102,8 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuthSession();
     setUser(null);
   };
 
