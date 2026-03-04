@@ -17,6 +17,7 @@ import com.cloudflow.workflow.service.IImportService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.cloudflow.workflow.util.ExportFormatUtil;
 import com.cloudflow.workflow.validator.ImportValidator;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Workflow import/export controller.
@@ -137,9 +140,24 @@ public class ImportExportController {
 
         try {
             String json = new String(file.getBytes(), StandardCharsets.UTF_8);
+            if (isBatchPayload(json)) {
+                List<WorkflowExportFormat> batchFormats = parseBatchPayload(json);
+                if (batchFormats.isEmpty()) {
+                    return R.ok(buildInvalidValidation("导入文件中不包含任何流程定义"));
+                }
+                if (batchFormats.size() > 1 && !permissionService.isAdmin(UserContext.getUserId())) {
+                    return R.ok(buildInvalidValidation("当前账号无批量导入权限，请联系管理员"));
+                }
+
+                List<ValidationResultDTO> results = new ArrayList<>();
+                for (WorkflowExportFormat format : batchFormats) {
+                    results.add(importValidator.validate(format));
+                }
+                return R.ok(mergeBatchValidation(results));
+            }
+
             WorkflowExportFormat exportFormat = ExportFormatUtil.deserialize(json);
-            ValidationResultDTO result = importValidator.validate(exportFormat);
-            return R.ok(result);
+            return R.ok(importValidator.validate(exportFormat));
         } catch (Exception e) {
             log.error("Validate import file failed", e);
             return R.fail("校验失败: " + e.getMessage());
@@ -158,16 +176,37 @@ public class ImportExportController {
 
         try {
             String json = new String(file.getBytes(), StandardCharsets.UTF_8);
-            WorkflowExportFormat exportFormat = ExportFormatUtil.deserializeAndVerify(json);
             ConflictStrategy strategy = conflictResolver.parseStrategy(conflictStrategy);
+
+            if (isBatchPayload(json)) {
+                List<WorkflowExportFormat> batchFormats = parseBatchPayload(json);
+                if (batchFormats.isEmpty()) {
+                    return R.ok(ImportResultDTO.failure(
+                        file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
+                        "导入失败：批量文件中不包含流程定义"));
+                }
+
+                if (batchFormats.size() == 1) {
+                    return R.ok(importService.importWorkflow(batchFormats.get(0), strategy));
+                }
+
+                if (!permissionService.isAdmin(UserContext.getUserId())) {
+                    return R.ok(ImportResultDTO.failure(
+                        file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
+                        "导入失败：当前账号无批量导入权限"));
+                }
+
+                List<ImportResultDTO> batchResults = importService.importWorkflows(batchFormats, strategy);
+                return R.ok(summarizeBatchImportResult(file.getOriginalFilename(), batchResults));
+            }
+
+            WorkflowExportFormat exportFormat = ExportFormatUtil.deserializeAndVerify(json);
             ImportResultDTO result = importService.importWorkflow(exportFormat, strategy);
-            // 保持结构化返回，前端可根据 success/action 精确展示失败原因与冲突处理结果
             return R.ok(result);
         } catch (Exception e) {
             log.error("Import workflow failed", e);
             String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
             ImportResultDTO failedResult = ImportResultDTO.failure(fileName, "导入失败：" + e.getMessage());
-            // 统一返回 200 + 业务失败体，避免前端丢失冲突/校验结果上下文
             return R.ok(failedResult);
         }
     }
@@ -188,8 +227,11 @@ public class ImportExportController {
             for (MultipartFile file : files) {
                 try {
                     String json = new String(file.getBytes(), StandardCharsets.UTF_8);
-                    WorkflowExportFormat exportFormat = ExportFormatUtil.deserializeAndVerify(json);
-                    exportFormats.add(exportFormat);
+                    if (isBatchPayload(json)) {
+                        exportFormats.addAll(parseBatchPayload(json));
+                    } else {
+                        exportFormats.add(ExportFormatUtil.deserializeAndVerify(json));
+                    }
                 } catch (Exception e) {
                     log.error("Parse import file failed, fileName={}", file.getOriginalFilename(), e);
                 }
@@ -225,5 +267,152 @@ public class ImportExportController {
         if (!isCreator && !isAdmin) {
             throw new PermissionDeniedException("Only workflow owner or admin can export this workflow");
         }
+    }
+
+    private boolean isBatchPayload(String json) {
+        return json != null && json.trim().startsWith("[");
+    }
+
+    private List<WorkflowExportFormat> parseBatchPayload(String json) throws Exception {
+        List<WorkflowExportFormat> exportFormats = objectMapper.readValue(
+            json,
+            new TypeReference<List<WorkflowExportFormat>>() {}
+        );
+        if (exportFormats == null) {
+            return new ArrayList<>();
+        }
+        for (WorkflowExportFormat format : exportFormats) {
+            if (!ExportFormatUtil.verifyChecksum(format)) {
+                throw WorkflowException.validationError("批量文件中存在 checksum 校验失败的流程定义");
+            }
+        }
+        return exportFormats;
+    }
+
+    private ValidationResultDTO buildInvalidValidation(String errorMessage) {
+        List<String> errors = new ArrayList<>();
+        errors.add(errorMessage);
+        return ValidationResultDTO.builder()
+            .valid(false)
+            .errors(errors)
+            .warnings(new ArrayList<>())
+            .details(errorMessage)
+            .build();
+    }
+
+    private ValidationResultDTO mergeBatchValidation(List<ValidationResultDTO> validationResults) {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        Set<String> unsupportedNodeTypes = new LinkedHashSet<>();
+        Set<String> unsupportedIntegrations = new LinkedHashSet<>();
+
+        boolean valid = true;
+        boolean checksumValid = true;
+        boolean hasNameConflict = false;
+        int failedCount = 0;
+
+        for (int i = 0; i < validationResults.size(); i++) {
+            ValidationResultDTO result = validationResults.get(i);
+            String name = result != null ? result.getWorkflowName() : null;
+            String prefix = "第" + (i + 1) + "个流程" + (name != null ? "（" + name + "）" : "");
+
+            if (result == null || !Boolean.TRUE.equals(result.getValid())) {
+                valid = false;
+                failedCount++;
+            }
+            if (result == null || !Boolean.TRUE.equals(result.getChecksumValid())) {
+                checksumValid = false;
+            }
+            if (result != null && Boolean.TRUE.equals(result.getHasNameConflict())) {
+                hasNameConflict = true;
+            }
+
+            if (result != null && result.getErrors() != null) {
+                for (String error : result.getErrors()) {
+                    errors.add(prefix + ": " + error);
+                }
+            }
+            if (result != null && result.getWarnings() != null) {
+                for (String warning : result.getWarnings()) {
+                    warnings.add(prefix + ": " + warning);
+                }
+            }
+            if (result != null && result.getUnsupportedNodeTypes() != null) {
+                unsupportedNodeTypes.addAll(result.getUnsupportedNodeTypes());
+            }
+            if (result != null && result.getUnsupportedIntegrations() != null) {
+                unsupportedIntegrations.addAll(result.getUnsupportedIntegrations());
+            }
+        }
+
+        String details = String.format(
+            "批量校验完成：共 %d 个流程，失败 %d 个",
+            validationResults.size(),
+            failedCount
+        );
+
+        return ValidationResultDTO.builder()
+            .valid(valid)
+            .workflowName("批量导入文件")
+            .errors(errors)
+            .warnings(warnings)
+            .unsupportedNodeTypes(new ArrayList<>(unsupportedNodeTypes))
+            .unsupportedIntegrations(new ArrayList<>(unsupportedIntegrations))
+            .hasNameConflict(hasNameConflict)
+            .checksumValid(checksumValid)
+            .details(details)
+            .build();
+    }
+
+    private ImportResultDTO summarizeBatchImportResult(String fileName, List<ImportResultDTO> batchResults) {
+        int total = batchResults == null ? 0 : batchResults.size();
+        int successCount = 0;
+        int failedCount = 0;
+        int skippedCount = 0;
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+
+        if (batchResults != null) {
+            for (ImportResultDTO result : batchResults) {
+                if (result == null) {
+                    failedCount++;
+                    continue;
+                }
+
+                if (Boolean.TRUE.equals(result.getSuccess()) && !"failed".equals(result.getAction())) {
+                    if ("skipped".equals(result.getAction())) {
+                        skippedCount++;
+                    } else {
+                        successCount++;
+                    }
+                } else {
+                    failedCount++;
+                }
+
+                if (result.getErrors() != null && !result.getErrors().isEmpty()) {
+                    errors.addAll(result.getErrors());
+                }
+                if (result.getWarnings() != null && !result.getWarnings().isEmpty()) {
+                    warnings.addAll(result.getWarnings());
+                }
+            }
+        }
+
+        boolean allSucceeded = failedCount == 0;
+        ImportResultDTO summary = ImportResultDTO.builder()
+            .success(allSucceeded)
+            .workflowName(fileName != null ? fileName : "batch")
+            .action(allSucceeded ? "created" : "failed")
+            .message(String.format(
+                "批量导入完成：共 %d 个流程，成功 %d，失败 %d，跳过 %d",
+                total,
+                successCount,
+                failedCount,
+                skippedCount
+            ))
+            .build();
+        summary.setErrors(errors);
+        summary.setWarnings(warnings);
+        return summary;
     }
 }
