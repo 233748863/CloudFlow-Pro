@@ -19,9 +19,18 @@ export function useAutoSave<T>(
     onError?: (error: Error) => void;
     /** 重置基线键（如实体ID）；变化时不触发保存，仅更新比较基准 */
     resetKey?: unknown;
+    /** 自定义相等判断（默认 Object.is） */
+    isEqual?: (prev: T, next: T) => boolean;
   } = {}
 ) {
-  const { delay = 3000, enabled = true, onSuccess, onError, resetKey } = options;
+  const {
+    delay = 3000,
+    enabled = true,
+    onSuccess,
+    onError,
+    resetKey,
+    isEqual = Object.is,
+  } = options;
   const setDirty = useAppStore((s) => s.setDirty);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dataRef = useRef<T>(data);
@@ -48,7 +57,7 @@ export function useAutoSave<T>(
     }
 
     // 数据未变化
-    if (dataRef.current === data) return;
+    if (isEqual(dataRef.current, data)) return;
 
     dataRef.current = data;
     setDirty(true);
@@ -79,7 +88,7 @@ export function useAutoSave<T>(
         clearTimeout(timerRef.current);
       }
     };
-  }, [data, delay, enabled, onSave, onSuccess, onError, setDirty, resetKey]);
+  }, [data, delay, enabled, onSave, onSuccess, onError, setDirty, resetKey, isEqual]);
 
   // 手动触发保存
   const saveNow = async () => {

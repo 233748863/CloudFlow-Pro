@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, NodeType, FormDefinition, User } from '../types';
@@ -96,6 +96,39 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   deptId: w?.deptId,
 });
 
+const buildWorkflowSavePayload = (wf: WorkflowDefinition) => ({
+  definitionId: wf.id.startsWith('new_') ? undefined : wf.id,
+  processName: wf.name,
+  processKey: wf.key,
+  formId: wf.formId,
+  modelJson: JSON.stringify(wf.nodes),
+  description: wf.description,
+  category: wf.category,
+  tags: wf.tags,
+  startPermissionType: wf.startPermissionType,
+  startPermissionValue: wf.startPermissionValue,
+  deptId: wf.deptId,
+});
+
+/**
+ * 自动保存签名：忽略 definitionId，仅关注流程内容是否真正变化。
+ */
+const buildWorkflowContentSignature = (wf: WorkflowDefinition | null | undefined): string => {
+  if (!wf) return '';
+  return JSON.stringify({
+    processName: wf.name || '',
+    processKey: wf.key || '',
+    formId: wf.formId || '',
+    modelJson: JSON.stringify(wf.nodes || null),
+    description: wf.description || '',
+    category: wf.category || '',
+    tags: wf.tags || '',
+    startPermissionType: wf.startPermissionType || '',
+    startPermissionValue: wf.startPermissionValue || '',
+    deptId: wf.deptId ?? null,
+  });
+};
+
 export const WorkflowDesign = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -107,6 +140,10 @@ export const WorkflowDesign = () => {
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const workflowIdRef = useRef<string>('');
+  const inFlightLoadKeyRef = useRef<string | null>(null);
+  const loadSequenceRef = useRef(0);
+  const lastAutoSavedSignatureRef = useRef<string>('');
 
   const syncWorkflowIdToUrl = useCallback(
     (definitionId: string) => {
@@ -120,7 +157,36 @@ export const WorkflowDesign = () => {
     [navigate, searchParams],
   );
 
+  useEffect(() => {
+    workflowIdRef.current = workflow?.id || '';
+  }, [workflow?.id]);
+
+  const handleWorkflowChange = useCallback((next: WorkflowDefinition) => {
+    setWorkflow((prev) => {
+      if (!prev) {
+        return next;
+      }
+      const sameId = prev.id === next.id;
+      const sameContent = buildWorkflowContentSignature(prev) === buildWorkflowContentSignature(next);
+      // 避免编辑器回传“等价快照”导致父状态抖动，进而触发自动保存误判
+      if (sameId && sameContent) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+
   const loadData = useCallback(async () => {
+    const loadKey = requestedWorkflowId || '__default__';
+    if (inFlightLoadKeyRef.current === loadKey) {
+      return;
+    }
+    // URL 同步引起的同 ID 重入不再重复请求后端
+    if (requestedWorkflowId && workflowIdRef.current === requestedWorkflowId) {
+      return;
+    }
+    inFlightLoadKeyRef.current = loadKey;
+    const currentLoadSeq = ++loadSequenceRef.current;
     try {
       setLoading(true);
       setError(null);
@@ -142,6 +208,9 @@ export const WorkflowDesign = () => {
           return [];
         }),
       ]);
+      if (currentLoadSeq !== loadSequenceRef.current) {
+        return;
+      }
 
       // 先按 URL id 精确加载，避免串流程
       let selectedWorkflow: any = null;
@@ -156,6 +225,9 @@ export const WorkflowDesign = () => {
       // 兜底：从列表中匹配，仍找不到则回退到第一条
       if (!selectedWorkflow) {
         const workflows = await getProcessDefinitions().catch(() => []);
+        if (currentLoadSeq !== loadSequenceRef.current) {
+          return;
+        }
         if (Array.isArray(workflows) && workflows.length > 0) {
           if (requestedWorkflowId) {
             selectedWorkflow = workflows.find((item: any) => {
@@ -175,7 +247,10 @@ export const WorkflowDesign = () => {
         toast.warning('检测到流程缺少定义ID，已切换为新建模式以避免误覆盖');
       }
 
-      setWorkflow(selectedWorkflow ? mapBackendWorkflow(selectedWorkflow) : createDefaultWorkflow());
+      const nextWorkflow = selectedWorkflow ? mapBackendWorkflow(selectedWorkflow) : createDefaultWorkflow();
+      setWorkflow(nextWorkflow);
+      workflowIdRef.current = nextWorkflow.id;
+      lastAutoSavedSignatureRef.current = buildWorkflowContentSignature(nextWorkflow);
 
       if (Array.isArray(forms)) {
         const mapped = forms.map((f: any) => {
@@ -219,7 +294,12 @@ export const WorkflowDesign = () => {
       setError(err instanceof Error ? err.message : '加载数据失败');
       toast.error('加载数据失败，请重试');
     } finally {
-      setLoading(false);
+      if (inFlightLoadKeyRef.current === loadKey) {
+        inFlightLoadKeyRef.current = null;
+      }
+      if (currentLoadSeq === loadSequenceRef.current) {
+        setLoading(false);
+      }
     }
   }, [requestedWorkflowId]);
 
@@ -240,26 +320,15 @@ export const WorkflowDesign = () => {
         throw new Error('流程Key不能为空或使用默认值，请设置有效的流程Key');
       }
 
-      const payload = {
-        definitionId: wf.id.startsWith('new_') ? undefined : wf.id,
-        processName: wf.name,
-        processKey: wf.key,
-        formId: wf.formId,
-        modelJson: JSON.stringify(wf.nodes),
-        description: wf.description,
-        category: wf.category,
-        tags: wf.tags,
-        startPermissionType: wf.startPermissionType,
-        startPermissionValue: wf.startPermissionValue,
-        deptId: wf.deptId,
-      };
+      const payload = buildWorkflowSavePayload(wf);
 
       logWorkflow.info('保存流程:', payload.processName);
       const result = await saveProcessDefinition(payload);
+      lastAutoSavedSignatureRef.current = buildWorkflowContentSignature(wf);
       const nextId = resolveSavedDefinitionId(result);
       if (nextId && wf.id !== nextId) {
         setWorkflow((prev) => (prev ? { ...prev, id: nextId } : prev));
-        syncWorkflowIdToUrl(nextId);
+        workflowIdRef.current = nextId;
       }
     } catch (err) {
       logWorkflow.error('保存流程失败:', err);
@@ -280,24 +349,17 @@ export const WorkflowDesign = () => {
         wf.key !== 'new_process' &&
         wf.key.trim() !== ''
       ) {
-        const payload = {
-          definitionId: wf.id.startsWith('new_') ? undefined : wf.id,
-          processName: wf.name,
-          processKey: wf.key,
-          formId: wf.formId,
-          modelJson: JSON.stringify(wf.nodes),
-          description: wf.description,
-          category: wf.category,
-          tags: wf.tags,
-          startPermissionType: wf.startPermissionType,
-          startPermissionValue: wf.startPermissionValue,
-          deptId: wf.deptId,
-        };
+        const currentSignature = buildWorkflowContentSignature(wf);
+        if (currentSignature === lastAutoSavedSignatureRef.current) {
+          return;
+        }
+        const payload = buildWorkflowSavePayload(wf);
         const result = await saveProcessDefinition(payload);
+        lastAutoSavedSignatureRef.current = currentSignature;
         const nextId = resolveSavedDefinitionId(result);
         if (nextId && wf.id !== nextId) {
-          // 自动保存仅同步 URL，避免因 definitionId 变化触发新的自动保存循环
-          syncWorkflowIdToUrl(nextId);
+          setWorkflow((prev) => (prev ? { ...prev, id: nextId } : prev));
+          workflowIdRef.current = nextId;
         }
       }
     },
@@ -310,6 +372,8 @@ export const WorkflowDesign = () => {
         workflow.key !== 'new_process' &&
         workflow.key.trim() !== '',
       resetKey: workflow?.id,
+      isEqual: (prev, next) =>
+        buildWorkflowContentSignature(prev) === buildWorkflowContentSignature(next),
       onSuccess: () => logWorkflow.info('流程自动保存成功'),
       onError: (err) => logWorkflow.error('流程自动保存失败:', err),
     },
@@ -343,7 +407,7 @@ export const WorkflowDesign = () => {
     <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
       <WorkflowBuilder
         workflow={workflow}
-        onChange={setWorkflow}
+        onChange={handleWorkflowChange}
         onSave={handleSaveWorkflow}
         availableForms={savedForms}
         availableRoles={availableRoles}
