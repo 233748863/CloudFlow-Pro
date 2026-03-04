@@ -5605,18 +5605,42 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         toast.error("此节点不可复制");
         return;
       }
+
+      const cloneNodeTree = (
+        source: WorkflowNode,
+        options?: { keepNext?: boolean },
+      ): WorkflowNode => {
+        const idPrefix = source.id?.startsWith("branch")
+          ? "branch"
+          : source.type === NodeType.START
+            ? "start"
+            : source.type === NodeType.END
+              ? "end"
+              : "node";
+        const cloned: WorkflowNode = {
+          ...source,
+          id: generateNodeId(idPrefix),
+        };
+        if (source.branches && source.branches.length > 0) {
+          // 关键修复：复制节点时保留分支完整子树，避免仅复制分支头导致配置丢失
+          cloned.branches = source.branches.map((branch) =>
+            cloneNodeTree(branch, { keepNext: true }),
+          );
+        } else {
+          cloned.branches = undefined;
+        }
+        if (options?.keepNext && source.next) {
+          cloned.next = cloneNodeTree(source.next, { keepNext: true });
+        } else {
+          // 顶层复制仍然只复制当前节点，不连带主干后续链路
+          cloned.next = undefined;
+        }
+        return cloned;
+      };
+
       const copiedNode: WorkflowNode = {
-        ...node,
-        id: generateNodeId("node"),
+        ...cloneNodeTree(node, { keepNext: false }),
         title: `${node.title} (副本)`,
-        next: undefined,
-        branches: node.branches
-          ? node.branches.map((b, i) => ({
-              ...b,
-              id: generateNodeId("branch"),
-              next: undefined,
-            }))
-          : undefined,
       };
       const newRoot = updateNodeInTree(currentRoot, nodeId, (n) => ({
         ...n,
