@@ -5599,7 +5599,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
   const handleCopyNode = useCallback(
     (nodeId: string) => {
-      const node = findNodeById(root, nodeId);
+      const currentRoot = rootRef.current;
+      const node = findNodeById(currentRoot, nodeId);
       if (!node || node.type === NodeType.START || node.type === NodeType.END) {
         toast.error("此节点不可复制");
         return;
@@ -5617,40 +5618,42 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             }))
           : undefined,
       };
-      setRoot(
-        updateNodeInTree(root, nodeId, (n) => ({
-          ...n,
-          next: n.next ? { ...copiedNode, next: n.next } : copiedNode,
-        })),
-      );
+      const newRoot = updateNodeInTree(currentRoot, nodeId, (n) => ({
+        ...n,
+        next: n.next ? { ...copiedNode, next: n.next } : copiedNode,
+      }));
+      rootRef.current = newRoot;
+      setRoot(newRoot);
       toast.success("节点已复制");
     },
-    [root],
+    [],
   );
 
   const handleAddNext = (parentId: string, type?: NodeType) => {
+    const currentRoot = rootRef.current;
     const nodeType = type || NodeType.APPROVAL;
 
     // 如果要添加END节点,检查是否已存在END节点
-    if (nodeType === NodeType.END && hasEndNode(root)) {
+    if (nodeType === NodeType.END && hasEndNode(currentRoot)) {
       // 显示自定义确认对话框
       setConfirmDialog({
         open: true,
         message:
           "流程中已存在结束节点。添加新的结束节点将会删除当前节点之后的所有节点。是否继续?",
         onConfirm: () => {
+          const latestRoot = rootRef.current;
           // 用户确认,删除后续节点并添加END节点
           const newNode: WorkflowNode = {
             id: generateNodeId("node"),
             type: NodeType.END,
             title: "流程结束",
           };
-          setRoot(
-            updateNodeInTree(root, parentId, (node) => ({
-              ...node,
-              next: newNode,
-            })),
-          );
+          const nextRoot = updateNodeInTree(latestRoot, parentId, (node) => ({
+            ...node,
+            next: newNode,
+          }));
+          rootRef.current = nextRoot;
+          setRoot(nextRoot);
           toast.success("已添加结束节点");
         },
       });
@@ -5698,9 +5701,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     // 关键修复：当 parentId 是 END 节点时，新节点应插入到 END 之前，而不是之后
     // 即找到 END 的父节点，把新节点插在父节点和 END 之间
-    const targetNode = findNodeById(root, parentId);
+    const targetNode = findNodeById(currentRoot, parentId);
     if (targetNode && targetNode.type === NodeType.END) {
-      const endParent = findParentOfNode(root, parentId);
+      const endParent = findParentOfNode(currentRoot, parentId);
       if (endParent) {
         // 在 END 的父节点上操作：把 END 原有的位置替换为新节点，新节点的 next 指向 END
         // 这里必须要在 endParent 处执行更新：让 endParent.next 指向新节点，新节点指向 END
@@ -5708,7 +5711,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         // 分支下的 END：如果 END 是通过 branches 连接的，而不是 next，此时 endParent 就是条件分支节点。
         // 但通常连线只会通过 next。由于架构里 branches 里只能放一个 node（分支的头部），其余的逻辑都在 next 链里。
 
-        const newRoot = updateNodeInTree(root, endParent.id, (node) => {
+        const newRoot = updateNodeInTree(currentRoot, endParent.id, (node) => {
           // 如果 END 在这个父节点的 next 上
           if (node.next && node.next.id === targetNode.id) {
             return {
@@ -5727,26 +5730,29 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           }
           return node;
         });
+        rootRef.current = newRoot;
         setRoot(newRoot);
         return;
       }
     }
 
     // 普通情况：在 parentId 节点后面插入新节点
-    const newRoot = updateNodeInTree(root, parentId, (node) => ({
+    const newRoot = updateNodeInTree(currentRoot, parentId, (node) => ({
       ...node,
       next: node.next ? { ...newNode, next: node.next } : newNode,
     }));
+    rootRef.current = newRoot;
     setRoot(newRoot);
   };
 
   const handleAddBranch = (targetId: string) => {
+    const currentRoot = rootRef.current;
     let parentId = targetId;
-    let parentNode = findNodeById(root, targetId);
+    let parentNode = findNodeById(currentRoot, targetId);
 
     // 修复: 如果是在 END 节点上方的“+”点击添加分支，其实应当是给 END 的前置父节点添加分支
     if (parentNode?.type === NodeType.END) {
-      const endParent = findParentOfNode(root, targetId);
+      const endParent = findParentOfNode(currentRoot, targetId);
       if (endParent) {
         parentId = endParent.id;
         parentNode = endParent;
@@ -5779,11 +5785,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     // 根据父节点类型决定默认分支策略
     const defaultStrategy =
       parentNode?.type === NodeType.PARALLEL ? "PARALLEL" : "EXCLUSIVE";
-    const newRoot = updateNodeInTree(root, parentId, (node) => ({
+    const newRoot = updateNodeInTree(currentRoot, parentId, (node) => ({
       ...node,
       branches: [...(node.branches || []), newBranch],
       branchStrategy: node.branchStrategy || defaultStrategy,
     }));
+    rootRef.current = newRoot;
     setRoot(newRoot);
   };
 
@@ -5802,11 +5809,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   };
 
   const handleDeleteNode = (id: string) => {
-    if (id === root.id) {
+    const currentRoot = rootRef.current;
+    if (id === currentRoot.id) {
       toast.error("开始节点不可删除");
       return;
     }
-    const node = findNodeById(root, id);
+    const node = findNodeById(currentRoot, id);
     if (!node) return;
     if (node.type === NodeType.END) {
       toast.error("结束节点不可删除");
@@ -5814,7 +5822,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     }
 
     // 严禁单独删除条件分支的根节点
-    const parentNode = findParentOfNode(root, id);
+    const parentNode = findParentOfNode(currentRoot, id);
     if (
       parentNode &&
       parentNode.branches &&
@@ -5828,11 +5836,17 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           const newRoot = updateNodeInTree(
             rootRef.current,
             parentNode.id,
-            (n) => ({
-              ...n,
-              branches: n.branches?.filter((b) => b.id !== id),
-            }),
+            (n) => {
+              const nextBranches = n.branches?.filter((b) => b.id !== id) || [];
+              return {
+                ...n,
+                branches: nextBranches.length > 0 ? nextBranches : undefined,
+                branchStrategy:
+                  nextBranches.length > 0 ? n.branchStrategy : undefined,
+              };
+            },
           );
+          rootRef.current = newRoot;
           setRoot(newRoot);
           setSelectedNode(null);
           toast.success("已删除分支");
@@ -5849,6 +5863,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         onConfirm: () => {
           const newRoot = deleteNodeInTree(rootRef.current, id);
           if (newRoot) {
+            rootRef.current = newRoot;
             setRoot(newRoot);
             setSelectedNode(null);
             toast.success("节点及其分支已删除");
@@ -5858,8 +5873,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       return;
     }
 
-    const newRoot = deleteNodeInTree(root, id);
+    const newRoot = deleteNodeInTree(currentRoot, id);
     if (newRoot) {
+      rootRef.current = newRoot;
       setRoot(newRoot);
       setSelectedNode(null);
       toast.success("节点已删除");
@@ -5958,7 +5974,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         newNode.branches = newNode.branches.map((b) => regenerateIds(b));
       return newNode;
     };
-    setRoot(regenerateIds(template.nodes));
+    const nextRoot = regenerateIds(template.nodes);
+    rootRef.current = nextRoot;
+    setRoot(nextRoot);
     setWorkflowName(template.name);
     toast.success(`已应用模板: ${template.name}`);
   };
@@ -5976,7 +5994,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   }, [workflowName, workflowKey, buildSettingsState]);
 
   const handleSave = async () => {
-    const { errors, errorNodes } = validateWorkflow(root);
+    const { errors, errorNodes } = validateWorkflow(rootRef.current);
     setInvalidNodeIds(errorNodes);
 
     // P1: 增加对 processKey 和 processName 的非空和格式验证
@@ -6027,7 +6045,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   };
 
   const handleDeploy = async () => {
-    const { errors, errorNodes } = validateWorkflow(root);
+    const { errors, errorNodes } = validateWorkflow(rootRef.current);
     setInvalidNodeIds(errorNodes);
 
     // P1: 增加对 processKey 和 processName 的非空和格式验证
