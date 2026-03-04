@@ -5,6 +5,7 @@ import { getProcessDefinitions, getFormDefinition, getFormDefinitions, startProc
 import { FormRenderer } from '../components/FormRenderer';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 /**
  * 将后端返回的 tags 统一转换为字符串数组，避免页面内反复强制类型断言。
@@ -67,6 +68,42 @@ const mapBackendForm = (f: any): FormDefinition => {
   };
 };
 
+/**
+ * 解析流程模型 JSON，单条数据异常时回退到默认开始节点，避免整页加载失败。
+ */
+const parseWorkflowNodes = (rawModelJson: unknown): WorkflowDefinition['nodes'] => {
+  if (!rawModelJson) {
+    return { type: NodeType.START, title: '开始', id: 'start' };
+  }
+
+  if (typeof rawModelJson === 'object') {
+    return rawModelJson as WorkflowDefinition['nodes'];
+  }
+
+  if (typeof rawModelJson === 'string') {
+    try {
+      const parsed = JSON.parse(rawModelJson);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as WorkflowDefinition['nodes'];
+      }
+    } catch {
+      // 兜底返回默认节点
+    }
+  }
+
+  return { type: NodeType.START, title: '开始', id: 'start' };
+};
+
+/**
+ * 提取后端返回的可读错误信息，避免仅展示固定失败文案。
+ */
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+};
+
 export const Workplace = () => {
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,13 +132,28 @@ export const Workplace = () => {
   };
 
   useEffect(() => {
-    getProcessDefinitions({ status: 'PUBLISHED' }).then(res => {
+    getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false }).then(res => {
        if (Array.isArray(res)) {
-          // 发起页只展示已发布流程，避免“界面显示草稿、后端实际发起旧发布版”的错配
-          const sourceWorkflows = res.some((w: any) => !!w?.status)
+          // 发起页按 processKey 只保留“最高已发布版本”，避免最新草稿导致已发布流程被隐藏
+          const publishedOnly = res.some((w: any) => !!w?.status)
             ? res.filter((w: any) => String(w?.status || '').toUpperCase() === 'PUBLISHED')
             : res;
-          const mapped = sourceWorkflows.map((w: any) => ({
+
+          const latestPublishedMap = new Map<string, any>();
+          for (const item of publishedOnly) {
+            const processKey = String(item?.processKey || item?.key || '').trim();
+            if (!processKey) continue;
+            const current = latestPublishedMap.get(processKey);
+            const currentVersion = Number(current?.version || 0);
+            const nextVersion = Number(item?.version || 0);
+            if (!current || nextVersion >= currentVersion) {
+              latestPublishedMap.set(processKey, item);
+            }
+          }
+
+          const mapped = Array.from(latestPublishedMap.values())
+            .filter((w: any) => typeof (w?.processKey || w?.key) === 'string' && String(w.processKey || w.key).trim() !== '')
+            .map((w: any) => ({
               id: w.definitionId || w.processKey,
               name: w.processName || w.name,
               key: w.processKey || w.key,
@@ -112,10 +164,13 @@ export const Workplace = () => {
               // 与 WorkflowDefinition.tags 类型保持一致，统一存为 JSON 字符串
               tags: typeof w.tags === 'string' ? w.tags : JSON.stringify(normalizeTags(w.tags)),
               description: w.description || '',
-              nodes: w.modelJson ? JSON.parse(w.modelJson) : { type: NodeType.START, title: '开始', id: 'start' }
+              nodes: parseWorkflowNodes(w.modelJson)
           }));
           setWorkflows(mapped);
        }
+    }).catch((error) => {
+      console.error('加载流程列表失败:', error);
+      toast.error('加载流程列表失败，请稍后重试');
     });
 
     // 全量表单接口需要管理员权限，非管理员失败时忽略，后续按 formId 懒加载
@@ -215,7 +270,7 @@ export const Workplace = () => {
         variables: { ...formData }
       });
       
-      alert("流程发起成功");
+      toast.success("流程发起成功");
       setIsFormOpen(false);
       setTargetWorkflow(null);
       // 跳转到“我的申请”页面
@@ -223,7 +278,8 @@ export const Workplace = () => {
       
     } catch (e) {
       console.error("流程发起失败:", e);
-      alert("流程发起失败");
+      const message = getApiErrorMessage(e, "流程发起失败，请重试");
+      toast.error(message);
     }
   };
 

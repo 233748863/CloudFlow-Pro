@@ -17,17 +17,38 @@ export function useAutoSave<T>(
     onSuccess?: () => void;
     /** 保存失败回调 */
     onError?: (error: Error) => void;
+    /** 重置基线键（如实体ID）；变化时不触发保存，仅更新比较基准 */
+    resetKey?: unknown;
   } = {}
 ) {
-  const { delay = 3000, enabled = true, onSuccess, onError } = options;
+  const { delay = 3000, enabled = true, onSuccess, onError, resetKey } = options;
   const setDirty = useAppStore((s) => s.setDirty);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dataRef = useRef<T>(data);
   const isSavingRef = useRef(false);
+  const initializedRef = useRef(false);
+  const resetKeyRef = useRef<unknown>(resetKey);
 
   useEffect(() => {
-    // 数据未变化或未启用自动保存
-    if (!enabled || dataRef.current === data) return;
+    if (!enabled) return;
+
+    // 首次启用自动保存时建立基线，不立即保存
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      dataRef.current = data;
+      resetKeyRef.current = resetKey;
+      return;
+    }
+
+    // 当外部实体切换（如 workflowId/formId 变化）时，重置基线，不触发自动保存
+    if (resetKeyRef.current !== resetKey) {
+      resetKeyRef.current = resetKey;
+      dataRef.current = data;
+      return;
+    }
+
+    // 数据未变化
+    if (dataRef.current === data) return;
 
     dataRef.current = data;
     setDirty(true);
@@ -58,7 +79,7 @@ export function useAutoSave<T>(
         clearTimeout(timerRef.current);
       }
     };
-  }, [data, delay, enabled, onSave, onSuccess, onError, setDirty]);
+  }, [data, delay, enabled, onSave, onSuccess, onError, setDirty, resetKey]);
 
   // 手动触发保存
   const saveNow = async () => {

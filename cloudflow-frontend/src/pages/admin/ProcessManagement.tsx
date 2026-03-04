@@ -20,6 +20,7 @@ import { WorkflowDefinition as BaseWorkflowDefinition, NodeType } from '../../ty
 import { 
   getProcessDefinitions, 
   saveProcessDefinition, 
+  deployProcessDefinition,
   exportWorkflow, 
   exportWorkflows,
   archiveWorkflows,
@@ -31,6 +32,9 @@ import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 // 扩展 WorkflowDefinition 类型，tags 解析为数组
 interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
   tags: string[]; // 已解析的标签数组
+  tagsRaw?: string; // 后端原始标签串（用于避免批量编辑时覆盖异常数据）
+  modelJsonRaw?: string; // 后端原始模型串（用于避免批量编辑时覆盖异常数据）
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   workflowCreatorId: string; // 流程创建者ID（用于权限判断）
 }
 
@@ -222,20 +226,35 @@ export const ProcessManagement = () => {
             }
 
             const workflowName = (w.processName || w.name || definitionId) as string;
+            const tagsRaw =
+              typeof w.tags === 'string'
+                ? w.tags
+                : Array.isArray(w.tags)
+                  ? JSON.stringify(w.tags)
+                  : undefined;
+            const modelJsonRaw =
+              typeof w.modelJson === 'string'
+                ? w.modelJson
+                : w.modelJson && typeof w.modelJson === 'object'
+                  ? JSON.stringify(w.modelJson)
+                  : undefined;
             return {
               id: definitionId,
               name: workflowName,
               key: w.processKey || w.key || '',
               version: w.version,
               formId: w.formId,
+              status: w.status,
               category: w.category || '',
               tags: parseTagsSafely(w.tags, workflowName, () => {
                 invalidTagsCount += 1;
               }),
+              tagsRaw,
               description: w.description || '',
               nodes: parseNodesSafely(w.modelJson, workflowName, () => {
                 invalidModelCount += 1;
               }),
+              modelJsonRaw,
               workflowCreatorId: String(
                 w.createBy ?? w.createdBy ?? w.creatorId ?? w.creator ?? ''
               )
@@ -332,24 +351,48 @@ export const ProcessManagement = () => {
         const workflow = workflows.find(wf => wf.id === id);
         if (!workflow) return;
 
-        await saveProcessDefinition({
+        const saveResult = await saveProcessDefinition({
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: JSON.stringify(workflow.nodes),
+          modelJson: workflow.modelJsonRaw || JSON.stringify(workflow.nodes),
           category: batchCategory,
-          tags: workflow.tags.length > 0 ? JSON.stringify(workflow.tags) : undefined,
+          tags:
+            workflow.tagsRaw !== undefined
+              ? workflow.tagsRaw
+              : workflow.tags.length > 0
+                ? JSON.stringify(workflow.tags)
+                : undefined,
           description: workflow.description,
           formId: workflow.formId,
         });
+
+        // 原流程已发布时，分类变更后自动发布新版本，保持发起页与管理页元数据一致
+        if (workflow.status === 'PUBLISHED') {
+          const nextDefinitionId = String((saveResult as any)?.id || '');
+          if (nextDefinitionId) {
+            await deployProcessDefinition(nextDefinitionId);
+          }
+        }
       });
 
-      await Promise.all(updatePromises);
-      
-      toast.success(`成功修改 ${selectedIds.length} 个流程的分类`);
-      setShowBatchEditModal(false);
-      setSelectedIds([]);
-      loadWorkflows(); // 重新加载列表
+      const results = await Promise.allSettled(updatePromises);
+      const successCount = results.filter(result => result.status === 'fulfilled').length;
+      const failedIds = results
+        .map((result, index) => ({ result, id: selectedIds[index] }))
+        .filter(({ result }) => result.status === 'rejected')
+        .map(({ id }) => id);
+
+      if (successCount > 0) {
+        toast.success(`成功修改 ${successCount} 个流程的分类`);
+        setShowBatchEditModal(false);
+        setSelectedIds([]);
+        loadWorkflows(); // 重新加载列表
+      }
+      if (failedIds.length > 0) {
+        console.error('批量修改分类失败的流程ID:', failedIds);
+        toast.error(`${failedIds.length} 个流程修改分类失败，请重试`);
+      }
     } catch (error) {
       console.error('批量修改分类失败:', error);
       toast.error('批量修改分类失败');
@@ -376,24 +419,43 @@ export const ProcessManagement = () => {
         const existingTags = workflow.tags;
         const mergedTags = Array.from(new Set([...existingTags, ...batchTags]));
 
-        await saveProcessDefinition({
+        const saveResult = await saveProcessDefinition({
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: JSON.stringify(workflow.nodes),
+          modelJson: workflow.modelJsonRaw || JSON.stringify(workflow.nodes),
           category: workflow.category,
           tags: JSON.stringify(mergedTags),
           description: workflow.description,
           formId: workflow.formId,
         });
+
+        // 原流程已发布时，标签变更后自动发布新版本，避免“最新发布版标签未更新”
+        if (workflow.status === 'PUBLISHED') {
+          const nextDefinitionId = String((saveResult as any)?.id || '');
+          if (nextDefinitionId) {
+            await deployProcessDefinition(nextDefinitionId);
+          }
+        }
       });
 
-      await Promise.all(updatePromises);
-      
-      toast.success(`成功为 ${selectedIds.length} 个流程添加标签`);
-      setShowBatchEditModal(false);
-      setSelectedIds([]);
-      loadWorkflows(); // 重新加载列表
+      const results = await Promise.allSettled(updatePromises);
+      const successCount = results.filter(result => result.status === 'fulfilled').length;
+      const failedIds = results
+        .map((result, index) => ({ result, id: selectedIds[index] }))
+        .filter(({ result }) => result.status === 'rejected')
+        .map(({ id }) => id);
+
+      if (successCount > 0) {
+        toast.success(`成功为 ${successCount} 个流程添加标签`);
+        setShowBatchEditModal(false);
+        setSelectedIds([]);
+        loadWorkflows(); // 重新加载列表
+      }
+      if (failedIds.length > 0) {
+        console.error('批量添加标签失败的流程ID:', failedIds);
+        toast.error(`${failedIds.length} 个流程添加标签失败，请重试`);
+      }
     } catch (error) {
       console.error('批量添加标签失败:', error);
       toast.error('批量添加标签失败');

@@ -77,7 +77,7 @@ export const FormDesign = () => {
     loadForms();
   });
 
-  const handleSaveForm = async (form: FormDefinition) => {
+  const handleSaveForm = async (form: FormDefinition, options?: { silent?: boolean }) => {
     try {
       const payload = {
         formId: form.id.startsWith('new_') ? undefined : form.id,
@@ -109,7 +109,9 @@ export const FormDesign = () => {
         });
       }
 
-      toast.success('表单保存成功');
+      if (!options?.silent) {
+        toast.success('表单保存成功');
+      }
     } catch (err) {
       logForm.error('保存表单失败:', err);
       toast.error(err instanceof Error ? err.message : '表单保存失败');
@@ -121,12 +123,13 @@ export const FormDesign = () => {
     selectedForm,
     async (form) => {
       if (form && form.name && form.name !== NEW_FORM_NAME) {
-        await handleSaveForm(form);
+        await handleSaveForm(form, { silent: true });
       }
     },
     {
       delay: 3000,
       enabled: !!selectedForm && !selectedForm.id.startsWith('new_'),
+      resetKey: selectedForm?.id,
       onSuccess: () => logForm.info('表单自动保存成功'),
       onError: (err) => logForm.error('表单自动保存失败:', err),
     },

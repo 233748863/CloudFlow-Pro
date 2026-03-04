@@ -14,6 +14,7 @@ import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
+import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
@@ -53,6 +54,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     @Autowired
     private WfDeployRecordMapper deployRecordMapper;
     @Autowired
+    private WfFormDefinitionMapper formDefinitionMapper;
+    @Autowired
     private WfProcessVersionSnapshotMapper versionSnapshotMapper;
     @Autowired
     private WorkflowPermissionService permissionService;
@@ -80,6 +83,10 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         if (!StringUtils.hasText(definition.getProcessName())) {
             throw WorkflowException.validationError("流程名称不能为空");
+        }
+        if (StringUtils.hasText(definition.getFormId())
+            && formDefinitionMapper.selectById(definition.getFormId()) == null) {
+            throw WorkflowException.validationError("绑定表单不存在: " + definition.getFormId());
         }
 
         // XSS 防护

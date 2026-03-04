@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Task, TaskStatus, FormDefinition, UnifiedTask, WorkTaskStatus } from '../types';
 import { TaskList } from '../components/TaskList';
 import { TaskHandleModal } from '../components/TaskHandleModal';
@@ -60,6 +60,9 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [savedForms, setSavedForms] = useState<FormDefinition[]>([]);
+  const hasShownFormLoadWarningRef = useRef(false);
+  const hasShownProcessDefLoadWarningRef = useRef(false);
+  const hasShownFormListLoadWarningRef = useRef(false);
   
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [filterType, setFilterType] = useState<'all' | 'process' | 'work'>('all');
@@ -223,6 +226,10 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
       }
     }).catch(err => {
       console.error('Failed to fetch process definitions:', err);
+      if (!hasShownProcessDefLoadWarningRef.current) {
+        toast.warning('流程类型筛选加载失败，已切换为无筛选选项模式');
+        hasShownProcessDefLoadWarningRef.current = true;
+      }
     });
   }, [type]);
 
@@ -235,6 +242,10 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
         }
     }).catch(err => {
         console.error('Failed to fetch form definitions:', err);
+        if (!hasShownFormListLoadWarningRef.current) {
+          toast.warning('表单定义加载失败，审批详情将回退原始业务数据展示');
+          hasShownFormListLoadWarningRef.current = true;
+        }
     });
   }, []);
 
@@ -255,14 +266,23 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
     }
 
     let cancelled = false;
+    let failedCount = 0;
     Promise.all(
       missingIds.map((id) =>
         getFormDefinition(id)
           .then((res) => mapBackendForm(res))
-          .catch(() => null),
+          .catch((err) => {
+            failedCount += 1;
+            logTask.warn(`按 formId 懒加载表单失败: ${id}`, err);
+            return null;
+          }),
       ),
     ).then((forms) => {
       if (cancelled) return;
+      if (failedCount > 0 && !hasShownFormLoadWarningRef.current) {
+        toast.warning('部分任务绑定表单加载失败，将显示原始业务数据');
+        hasShownFormLoadWarningRef.current = true;
+      }
       const loadedForms = forms.filter((item): item is FormDefinition => !!item);
       if (loadedForms.length === 0) return;
 
@@ -469,7 +489,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {searchInput && searchInput !== keyword && (
@@ -507,7 +527,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             value={todoSearchInput}
                             onChange={(e) => setTodoSearchInput(e.target.value)}
                             onKeyDown={handleTodoSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
+                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {todoSearchInput && todoSearchInput !== todoKeyword && (
@@ -541,7 +561,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         placeholder="申请人姓名..."
                         value={todoStartUserName}
                         onChange={(e) => setTodoStartUserName(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
+                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
                     />
 
                     {/* 时间范围筛选 */}

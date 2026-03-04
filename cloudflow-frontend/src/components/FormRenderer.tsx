@@ -12,8 +12,34 @@ export const FormRenderer = ({
   onSubmit: (data: Record<string, any>) => void,
   onCancel: () => void
 }) => {
+  const SELECT_NONE_VALUE = '__NONE__';
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  /**
+   * 判定字段是否“有值”：
+   * - 0/false 视为有效值；
+   * - null/undefined/空白字符串视为无值。
+   */
+  const hasValue = (value: unknown): boolean => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  };
+
+  /**
+   * 统一输入值类型：NUMBER 转数字，其他类型保持原值。
+   * 清空输入时返回空字符串，避免 Number("") 变成 0。
+   */
+  const normalizeFieldValue = (fieldType: string, rawValue: string) => {
+    if (fieldType === 'NUMBER') {
+      const trimmed = rawValue.trim();
+      if (trimmed === '') return '';
+      const parsed = Number(trimmed);
+      return Number.isNaN(parsed) ? rawValue : parsed;
+    }
+    return rawValue;
+  };
 
   // 如果没有表单定义，显示错误状态
   if (!formDef || !formDef.fields || formDef.fields.length === 0) {
@@ -56,12 +82,12 @@ export const FormRenderer = ({
       const val = formData[field.id];
       
       // 必填校验
-      if (field.required && (!val || String(val).trim() === '')) {
+      if (field.required && !hasValue(val)) {
         newErrors[field.id] = '此项必填';
         isValid = false;
       } 
       // 正则校验
-      else if (val && field.regex) {
+      else if (hasValue(val) && field.regex) {
         try {
           const regex = new RegExp(field.regex);
           if (!regex.test(String(val))) {
@@ -73,7 +99,7 @@ export const FormRenderer = ({
         }
       }
       // 数字类型校验
-      else if (val && field.type === 'NUMBER') {
+      else if (hasValue(val) && field.type === 'NUMBER') {
         const num = Number(val);
         if (isNaN(num)) {
           newErrors[field.id] = '请输入有效的数字';
@@ -120,12 +146,21 @@ export const FormRenderer = ({
                 onChange={e => handleChange(field.id, e.target.value)}
               />
             ) : field.type === 'SELECT' ? (
-              <Select value={formData[field.id] || ""} onValueChange={v => handleChange(field.id, v)}>
+              <Select
+                value={
+                  formData[field.id] === undefined ||
+                  formData[field.id] === null ||
+                  formData[field.id] === ''
+                    ? SELECT_NONE_VALUE
+                    : String(formData[field.id])
+                }
+                onValueChange={(v) => handleChange(field.id, v === SELECT_NONE_VALUE ? '' : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="请选择" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">请选择</SelectItem>
+                  <SelectItem value={SELECT_NONE_VALUE}>请选择</SelectItem>
                   {(field.options || []).map((opt, idx) => (
                     <SelectItem key={idx} value={String(opt)}>{opt}</SelectItem>
                   ))}
@@ -138,7 +173,7 @@ export const FormRenderer = ({
                   errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
                 }`}
                 placeholder={field.placeholder}
-                onChange={e => handleChange(field.id, e.target.value)}
+                onChange={e => handleChange(field.id, normalizeFieldValue(field.type, e.target.value))}
               />
             )}
             {errors[field.id] && (

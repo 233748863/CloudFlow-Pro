@@ -101,7 +101,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         if (!StringUtils.hasText(action)) {
             throw WorkflowException.validationError("操作类型不能为空");
         }
-        if ("DELEGATE".equalsIgnoreCase(action) && !StringUtils.hasText(delegateUserId)) {
+        // 统一动作口径：仅支持 APPROVE/REJECT/DELEGATE，兼容 PASS=APPROVE
+        String normalizedAction = normalizeCompleteAction(action);
+        if ("DELEGATE".equals(normalizedAction) && !StringUtils.hasText(delegateUserId)) {
             throw WorkflowException.validationError("转办操作必须指定目标用户ID");
         }
 
@@ -126,7 +128,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 // 会签任务处理
                 if (countersignService.isCountersignTask(task)) {
-                    return handleCountersignVote(task, taskId, action, comment, variables);
+                    return handleCountersignVote(task, taskId, normalizedAction, comment, variables);
                 }
 
                 // 保存历史记录
@@ -139,7 +141,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 history.setOperatorId(currentUserId);
                 history.setOperatorName(UserContext.getUserName());
                 history.setComment(comment);
-                history.setAction(action);
+                history.setAction(normalizedAction);
                 history.setCreateTime(LocalDateTime.now());
 
                 if (task.getCreateTime() != null) {
@@ -159,15 +161,15 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 nodeExecutionService.saveProcessSnapshot(instance, task.getNodeKey(), task.getNodeName());
 
                 // 转办操作
-                if ("DELEGATE".equalsIgnoreCase(action)) {
+                if ("DELEGATE".equals(normalizedAction)) {
                     return handleDelegate(task, instance, delegateUserId, comment);
                 }
 
                 // 拒绝操作
-                if ("REJECT".equalsIgnoreCase(action)) {
+                if ("REJECT".equals(normalizedAction)) {
                     nodeExecutionService.completeInstance(instance, WfProcessStatus.REJECTED.getCode());
                     workflowEventPublisher.publishProcessRejected(instance, task.getNodeName(), comment);
-                    notifyInitiator(instance, task.getNodeName(), action, comment);
+                    notifyInitiator(instance, task.getNodeName(), normalizedAction, comment);
                     return R.ok();
                 }
 
@@ -213,17 +215,17 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         WfNodeConfig postRoot = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
                         WfNodeConfig completedNode = nodeExecutionService.findNode(postRoot, task.getNodeKey());
                         if (completedNode != null) {
-                            approvalPostProcessor.process(completedNode, instance, action, mergedVariables);
+                            approvalPostProcessor.process(completedNode, instance, normalizedAction, mergedVariables);
                         }
                     }
                 } catch (Exception e) {
                     log.warn("[completeTask] 审批后置处理失败, taskId={}: {}", taskId, e.getMessage());
                 }
 
-                notifyInitiator(instance, task.getNodeName(), action, comment);
+                notifyInitiator(instance, task.getNodeName(), normalizedAction, comment);
                 auditService.log(WorkflowAuditService.AuditAction.TASK_COMPLETE, taskId,
-                    "action=" + action + ", nodeName=" + task.getNodeName());
-                workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(), action, comment);
+                    "action=" + normalizedAction + ", nodeName=" + task.getNodeName());
+                workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(), normalizedAction, comment);
 
                 return R.ok();
             } else {
@@ -459,6 +461,21 @@ public class WfTaskServiceImpl implements IWfTaskService {
     // ==================== 私有方法 ====================
 
     /**
+     * 标准化完成任务动作，避免未知动作被误当成"同意"执行。
+     * 兼容历史 PASS（等价 APPROVE）。
+     */
+    private String normalizeCompleteAction(String action) {
+        String normalized = action.trim().toUpperCase(Locale.ROOT);
+        if ("PASS".equals(normalized)) {
+            return "APPROVE";
+        }
+        if ("APPROVE".equals(normalized) || "REJECT".equals(normalized) || "DELEGATE".equals(normalized)) {
+            return normalized;
+        }
+        throw WorkflowException.validationError("不支持的操作类型: " + action + "，仅支持 APPROVE/REJECT/DELEGATE");
+    }
+
+    /**
      * 处理转办操作
      */
     private R<?> handleDelegate(WfTask task, WfProcessInstance instance, String delegateUserId, String comment) {
@@ -487,7 +504,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
     private R<?> handleCountersignVote(WfTask task, String taskId, String action, String comment, Map<String, Object> variables) {
         Long currentUserId = UserContext.getUserId();
         String userName = UserContext.getUserName();
-        String voteResult = "APPROVE".equalsIgnoreCase(action) ? "APPROVE" : ("REJECT".equalsIgnoreCase(action) ? "REJECT" : "APPROVE");
+        if (!"APPROVE".equals(action) && !"REJECT".equals(action)) {
+            throw WorkflowException.validationError("会签任务仅支持同意或拒绝操作");
+        }
+        String voteResult = action;
 
         String countersignResult = countersignService.vote(taskId, currentUserId, userName, voteResult, comment);
 

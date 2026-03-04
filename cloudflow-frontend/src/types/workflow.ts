@@ -248,7 +248,7 @@ export interface StartProcessRequest {
  */
 export interface CompleteTaskRequest {
   taskId: string;
-  action: 'APPROVE' | 'REJECT' | 'DELEGATE' | 'RETURN';
+  action: 'APPROVE' | 'REJECT' | 'DELEGATE';
   comment?: string;
   delegateUserId?: string;
   modifiedData?: Record<string, any>;

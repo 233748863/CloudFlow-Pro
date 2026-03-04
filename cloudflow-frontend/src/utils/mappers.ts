@@ -36,6 +36,8 @@ interface BackendTask {
   stepsDetail?: StepDetail[];
   /** 节点级按钮权限列表（后端 enrichTodoTasks 注入） */
   buttonPermissions?: string[];
+  /** 是否允许在当前节点编辑表单（后端 enrichTodoTasks 注入） */
+  allowEdit?: boolean;
 }
 
 /** 后端流程实例数据结构（我的申请） */
@@ -71,21 +73,39 @@ export const mapBackendUserToFrontend = (u: BackendUser): User => ({
   avatar: u.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + u.userName
 });
 
+/** 待办任务状态映射（后端任务态 -> 前端展示态） */
+const mapBackendTaskStatus = (status?: string): TaskStatus => {
+  switch (status) {
+    case 'TODO':
+      return TaskStatus.PENDING;
+    case 'COMPLETED':
+      return TaskStatus.APPROVED;
+    case 'REJECTED':
+    case 'REVOKED':
+      return TaskStatus.REJECTED;
+    case 'DELEGATED':
+      return TaskStatus.DELEGATED;
+    default:
+      // 未知状态按待处理展示，保证页面稳定
+      return TaskStatus.PENDING;
+  }
+};
+
 export const mapBackendTaskToFrontend = (t: BackendTask): Task => ({
   id: t.taskId,
-  processInstanceId: t.instanceId,
-  workflowId: t.processDefKey,
-  workflowName: t.processName || t.processDefKey,
-  nodeName: t.nodeName,
-  applicantId: t.startUserId,
+  processInstanceId: t.instanceId || '',
+  workflowId: t.processDefKey || '',
+  workflowName: t.processName || t.processDefKey || '未命名流程',
+  nodeName: t.nodeName || '-',
+  applicantId: t.startUserId ? String(t.startUserId) : '',
   applicantName: t.startUserName || 'Unknown',
-  assigneeId: String(t.assignee),
+  assigneeId: t.assignee !== undefined && t.assignee !== null ? String(t.assignee) : undefined,
   assigneeName: t.assigneeName || (t.assignee ? String(t.assignee) : '待认领'), 
   type: 'DYNAMIC',
-  status: t.status === 'TODO' ? TaskStatus.PENDING : TaskStatus.APPROVED,
+  status: mapBackendTaskStatus(t.status),
   createdTime: t.createTime,
   dueDate: t.dueTime,
-  allowEdit: false,
+  allowEdit: Boolean(t.allowEdit),
   formId: t.formId || '', 
   formData: t.variables || {},
   reason: (t.variables?.reason as string) || '',

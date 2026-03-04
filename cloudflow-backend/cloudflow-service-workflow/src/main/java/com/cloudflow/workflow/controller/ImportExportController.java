@@ -94,13 +94,17 @@ public class ImportExportController {
                 .body(resource);
         } catch (Exception e) {
             log.error("Export workflow failed, workflowId={}", workflowId, e);
-            throw new RuntimeException("Export workflow failed: " + e.getMessage());
+            throw new RuntimeException("导出流程失败: " + e.getMessage());
         }
     }
 
     @PostMapping("/export/batch")
     @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public ResponseEntity<Resource> exportWorkflows(@RequestBody BatchExportRequest request) {
+        if (request == null || request.getWorkflowIds() == null || request.getWorkflowIds().isEmpty()) {
+            throw WorkflowException.validationError("workflowIds 不能为空");
+        }
+
         log.info("Batch export workflows, count={}, includeSensitive={}",
             request.getWorkflowIds().size(), request.getIncludeSensitive());
 
@@ -123,7 +127,7 @@ public class ImportExportController {
                 .body(resource);
         } catch (Exception e) {
             log.error("Batch export workflows failed", e);
-            throw new RuntimeException("Batch export workflows failed: " + e.getMessage());
+            throw new RuntimeException("批量导出流程失败: " + e.getMessage());
         }
     }
 
@@ -138,7 +142,7 @@ public class ImportExportController {
             return R.ok(result);
         } catch (Exception e) {
             log.error("Validate import file failed", e);
-            return R.fail("Validation failed: " + e.getMessage());
+            return R.fail("校验失败: " + e.getMessage());
         }
     }
 
@@ -146,6 +150,9 @@ public class ImportExportController {
     public R<ImportResultDTO> importWorkflow(
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false, defaultValue = "skip") String conflictStrategy) {
+        if (file == null || file.isEmpty()) {
+            return R.ok(ImportResultDTO.failure("unknown", "导入失败：上传文件不能为空"));
+        }
 
         log.info("Import workflow, fileName={}, conflictStrategy={}", file.getOriginalFilename(), conflictStrategy);
 
@@ -158,7 +165,10 @@ public class ImportExportController {
             return R.ok(result);
         } catch (Exception e) {
             log.error("Import workflow failed", e);
-            return R.fail("Import failed: " + e.getMessage());
+            String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            ImportResultDTO failedResult = ImportResultDTO.failure(fileName, "导入失败：" + e.getMessage());
+            // 统一返回 200 + 业务失败体，避免前端丢失冲突/校验结果上下文
+            return R.ok(failedResult);
         }
     }
 
@@ -167,6 +177,9 @@ public class ImportExportController {
     public R<List<ImportResultDTO>> importWorkflows(
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam(required = false, defaultValue = "skip") String conflictStrategy) {
+        if (files == null || files.isEmpty()) {
+            return R.fail("导入文件不能为空");
+        }
 
         log.info("Batch import workflows, count={}, conflictStrategy={}", files.size(), conflictStrategy);
 
@@ -192,7 +205,7 @@ public class ImportExportController {
             return R.ok(results);
         } catch (Exception e) {
             log.error("Batch import workflows failed", e);
-            return R.fail("Batch import failed: " + e.getMessage());
+            return R.fail("批量导入失败: " + e.getMessage());
         }
     }
 

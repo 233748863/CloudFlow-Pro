@@ -73,6 +73,7 @@ import { useHistory } from "../hooks/useHistory";
 import {
   saveProcessDefinition,
   deployProcessDefinition,
+  exportWorkflow,
 } from "../services/api/workflow";
 import { getRoleList, getUserList, getDeptTree } from "../services/api/auth";
 import { toast } from "sonner";
@@ -2697,6 +2698,22 @@ const PropertyPanel = ({
   };
   const visual = getNodeVisual(node.type);
   const PIcon = visual.icon;
+  const branchStrategyOptions =
+    node.type === NodeType.PARALLEL
+      ? (Object.entries(BRANCH_STRATEGY_LABELS).filter(([key]) =>
+          ["PARALLEL", "RACE"].includes(key),
+        ) as Array<[string, string]>)
+      : (Object.entries(BRANCH_STRATEGY_LABELS).filter(
+          ([key]) => key === "EXCLUSIVE",
+        ) as Array<[string, string]>);
+  const branchStrategyValues = branchStrategyOptions.map(([key]) => key);
+  const normalizedBranchStrategy = branchStrategyValues.includes(
+    String(formData.branchStrategy || ""),
+  )
+    ? String(formData.branchStrategy)
+    : node.type === NodeType.PARALLEL
+      ? "PARALLEL"
+      : "EXCLUSIVE";
 
   return (
     <div className="fixed right-0 top-0 h-full w-96 bg-white/90 backdrop-blur-2xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.25)] z-50 flex flex-col border-l border-slate-200/60 animate-in slide-in-from-right duration-300 ease-out">
@@ -3634,14 +3651,14 @@ const PropertyPanel = ({
                 <GitBranch size={12} /> 分支规则
               </label>
               <Select
-                value={formData.branchStrategy || "EXCLUSIVE"}
+                value={normalizedBranchStrategy}
                 onValueChange={(v) => handleChange("branchStrategy", v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="请选择" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(BRANCH_STRATEGY_LABELS).map(([k, v]) => (
+                  {branchStrategyOptions.map(([k, v]) => (
                     <SelectItem key={k} value={k}>
                       {v}
                     </SelectItem>
@@ -4623,6 +4640,28 @@ function validateWorkflow(root: WorkflowNode): {
 } {
   const errorNodes: string[] = [];
   const errors: string[] = [];
+
+  // 结构完整性校验：节点 ID 必须全局唯一，否则拖拽/编辑时会出现定位错乱
+  const nodeIdCounter = new Map<string, number>();
+  const collectNodeIds = (node: WorkflowNode) => {
+    if (node.id) {
+      nodeIdCounter.set(node.id, (nodeIdCounter.get(node.id) || 0) + 1);
+    }
+    if (node.next) collectNodeIds(node.next);
+    if (node.branches) node.branches.forEach(collectNodeIds);
+  };
+  collectNodeIds(root);
+
+  const duplicateNodeIds = Array.from(nodeIdCounter.entries())
+    .filter(([, count]) => count > 1)
+    .map(([id]) => id);
+  if (duplicateNodeIds.length > 0) {
+    errors.push(
+      `检测到重复节点ID（${duplicateNodeIds.length}个），请删除重复节点后再保存/发布`,
+    );
+    errorNodes.push(...duplicateNodeIds);
+  }
+
   let hasEnd = false;
   const checkEnd = (node: WorkflowNode) => {
     if (node.type === NodeType.END) hasEnd = true;
@@ -4657,6 +4696,18 @@ function validateWorkflow(root: WorkflowNode): {
   checkApprover(root);
   // 会签节点一致性校验
   const checkParallel = (node: WorkflowNode) => {
+    if (
+      node.branches &&
+      node.branches.length > 0 &&
+      node.type !== NodeType.PARALLEL &&
+      node.branchStrategy &&
+      node.branchStrategy !== "EXCLUSIVE"
+    ) {
+      errors.push(
+        `节点"${node.title}"不是并行网关，仅支持单选分支（EXCLUSIVE），请调整分支策略`,
+      );
+      errorNodes.push(node.id);
+    }
     if (node.type === NodeType.PARALLEL) {
       const signType = node.signType || "ALL";
       // 会签模式（ALL/ANY/PERCENT/SEQUENTIAL）不应有条件分支
@@ -4813,7 +4864,10 @@ function validateWorkflow(root: WorkflowNode): {
   };
   checkJSON(root);
 
-  return { errors, errorNodes };
+  return {
+    errors: Array.from(new Set(errors)),
+    errorNodes: Array.from(new Set(errorNodes)),
+  };
 }
 
 // ==================== 全局属性面板 ====================
@@ -5718,10 +5772,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   };
 
   const handleDrop = (dragId: string, dropId: string) => {
+    const currentRoot = rootRef.current;
+
     // 基础校验：不能拖到自身
     if (dragId === dropId) return;
 
-    const dragNode = findNodeById(root, dragId);
+    const dragNode = findNodeById(currentRoot, dragId);
     if (!dragNode) return;
 
     // 不能拖拽开始/结束节点
@@ -5745,27 +5801,34 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       return false;
     };
 
-    if (checkIfBranchNode(root, dragId)) {
+    if (checkIfBranchNode(currentRoot, dragId)) {
       toast.error("分支节点不能移动，这会破坏流程结构");
       return;
     }
 
     // 防止循环引用：不能把节点拖到自己的子树中
-    if (isDescendantOf(root, dragId, dropId)) {
+    if (isDescendantOf(currentRoot, dragId, dropId)) {
       toast.error("不能将节点移动到自己的子节点中，这会导致循环引用");
       return;
     }
 
     // 检查是否是相邻节点的无意义移动（dragNode 已经紧跟在 dropId 后面）
-    const dropNode = findNodeById(root, dropId);
+    const dropNode = findNodeById(currentRoot, dropId);
     if (dropNode?.next?.id === dragId) {
       toast.info("节点已在该位置，无需移动");
       return;
     }
 
     // 执行移动：先从树中删除拖拽节点，再插入到目标位置
-    let newRoot = deleteNodeInTree(root, dragId);
+    let newRoot = deleteNodeInTree(currentRoot, dragId);
     if (newRoot) {
+      // 防御性保护：若删除后落点不存在，则中止本次拖拽，避免异常场景下结构丢失
+      const dropNodeAfterDelete = findNodeById(newRoot, dropId);
+      if (!dropNodeAfterDelete) {
+        toast.error("目标位置已失效，请重试拖拽");
+        return;
+      }
+
       // 移动时只移动节点本身，不带子树（next 断开）
       const nodeToInsert = { ...dragNode, next: undefined };
 
@@ -5776,6 +5839,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         next: { ...nodeToInsert, next: node.next },
       }));
 
+      rootRef.current = newRoot;
       setRoot(newRoot);
       // P1-10: 明确提示用户仅移动了当前节点
       toast.success("节点已移动（仅移动当前节点，后续节点保留在原位）");
@@ -5981,15 +6045,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     }
 
     try {
-      const response = await fetch(
-        `/api/workflow/import-export/export/${workflow.id}?includeSensitive=false`,
-      );
-
-      if (!response.ok) {
-        throw new Error("导出失败");
-      }
-
-      const blob = await response.blob();
+      // 统一走 request 客户端，确保携带认证信息与统一错误处理
+      const blob = await exportWorkflow(workflow.id, false);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

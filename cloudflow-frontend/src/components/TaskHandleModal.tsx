@@ -34,6 +34,7 @@ export const TaskHandleModal = ({
   const [delegationMode, setDelegationMode] = useState(false);
   const [delegateUser, setDelegateUser] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
+  const [hasTriedLoadUsers, setHasTriedLoadUsers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'APPROVED' | 'REJECTED' | null>(null);
   const [rejectMode, setRejectMode] = useState(false);
@@ -53,14 +54,18 @@ export const TaskHandleModal = ({
   }, [isOpen, task, currentUser.id]);
 
   useEffect(() => {
-      if (delegationMode && users.length === 0) {
+      if (delegationMode && !hasTriedLoadUsers) {
+          setHasTriedLoadUsers(true);
           getUserList().then(res => {
               if (Array.isArray(res)) {
                   setUsers(res.map(mapBackendUserToFrontend));
               }
-          }).catch(console.error);
+          }).catch(err => {
+              console.error('加载转办用户失败:', err);
+              toast.error('加载可转办用户失败，请稍后重试');
+          });
       }
-  }, [delegationMode, users.length]);
+  }, [delegationMode, hasTriedLoadUsers]);
 
   // 加载历史节点用于驳回
   useEffect(() => {
@@ -111,6 +116,8 @@ export const TaskHandleModal = ({
           setHistoryNodesLoaded(false);
           setComment('');
           setConfirmAction(null);
+          setHasTriedLoadUsers(false);
+          setUsers([]);
           setEditedFormData(task?.formData ? { ...task.formData } : {});
       }
   }, [isOpen, task?.id, task?.formData]);
@@ -128,7 +135,36 @@ export const TaskHandleModal = ({
     ? availableForms.find(f => f.id === task.formId) 
     : null;
 
-  const handleAction = async (action: 'APPROVED' | 'REJECTED' | 'DELEGATED' | 'RETURNED' | 'REVOKE_DELEGATION') => {
+  const buildEditableVariables = (): Record<string, any> | undefined => {
+    if (!(task.allowEdit && canAct && !viewOnly)) {
+      return undefined;
+    }
+
+    const source = editedFormData || {};
+    if (!currentFormDef || !Array.isArray(currentFormDef.fields) || currentFormDef.fields.length === 0) {
+      return source;
+    }
+
+    // 仅提交表单定义中的字段，降低误传系统字段风险；保留 id/label 双键兼容历史数据
+    const allowedKeys = new Set<string>();
+    currentFormDef.fields.forEach((field) => {
+      if (field.id) {
+        allowedKeys.add(field.id);
+      }
+      if (field.label) {
+        allowedKeys.add(field.label);
+      }
+    });
+
+    const filtered = Object.fromEntries(
+      Object.entries(source).filter(([key]) => allowedKeys.has(key)),
+    );
+
+    // 兼容老数据：若过滤后为空，回退原对象，避免误丢用户输入
+    return Object.keys(filtered).length > 0 ? filtered : source;
+  };
+
+  const handleAction = async (action: 'APPROVED' | 'REJECTED' | 'DELEGATED') => {
     if (action === 'DELEGATED' && !delegateUser) {
       toast.error('请选择受托人');
       return;
@@ -137,11 +173,12 @@ export const TaskHandleModal = ({
     setSubmitting(true);
     setConfirmAction(null);
 
-    // Map action to API action type
-    const apiAction = action === 'APPROVED' ? 'APPROVE' 
-      : action === 'REJECTED' ? 'REJECT' 
-      : action === 'DELEGATED' ? 'DELEGATE' 
-      : 'RETURN';
+    // 与后端 completeTask 对齐：仅支持 APPROVE/REJECT/DELEGATE 三类动作
+    const apiAction = action === 'APPROVED'
+      ? 'APPROVE'
+      : action === 'REJECTED'
+      ? 'REJECT'
+      : 'DELEGATE';
 
     try {
       await completeTask({
@@ -149,21 +186,17 @@ export const TaskHandleModal = ({
         action: apiAction,
         comment: comment || undefined,
         delegateUserId: action === 'DELEGATED' ? delegateUser : undefined,
-        variables: (task.allowEdit && canAct && !viewOnly) ? editedFormData : undefined,
+        variables: buildEditableVariables(),
       });
 
       // Map to frontend status
       let newStatus = TaskStatus.APPROVED;
       if (action === 'REJECTED') newStatus = TaskStatus.REJECTED;
       if (action === 'DELEGATED') newStatus = TaskStatus.DELEGATED;
-      if (action === 'RETURNED') newStatus = TaskStatus.RETURNED;
-      if (action === 'REVOKE_DELEGATION') newStatus = TaskStatus.PENDING;
 
       const actionLabel = action === 'APPROVED' ? '同意' 
         : action === 'REJECTED' ? '拒绝' 
-        : action === 'DELEGATED' ? '转办' 
-        : action === 'RETURNED' ? '退回' 
-        : '撤回转办';
+        : '转办';
 
       const log = {
         operator: currentUser.name,
@@ -334,7 +367,7 @@ export const TaskHandleModal = ({
                           驳回原因 <span className="text-red-500">*</span>
                         </label>
                         <textarea 
-                          className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:rder-pink-400" 
+                          className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400" 
                           placeholder="请填写驳回原因（必填）..."
                           rows={4}
                           value={rejectReason}
@@ -568,6 +601,11 @@ export const TaskHandleModal = ({
                     )}
                     
                     {/* 表单数据展示 - 有表单定义时用 DynamicFormViewer，否则直接展示 formData */}
+                    {task.formId && !currentFormDef && (
+                        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                          未加载到该任务绑定的表单定义，已回退为原始业务字段展示。
+                        </div>
+                    )}
                     {currentFormDef && task.formData ? (
                         <div className="border border-slate-100 rounded-lg p-3">
                             <DynamicFormViewer 
@@ -841,26 +879,28 @@ export const TaskHandleModal = ({
                               return (
                                 <>
                                   {/* 加签/减签按钮行 */}
-                                  <div className="flex gap-2 mb-2">
-                                    <button 
-                                      onClick={() => { setSignatureMode('add'); setSignatureModalOpen(true); }} 
-                                      disabled={submitting}
-                                      className="flex-1 px-3 py-1.5 border border-pink-100 text-pink-500 rounded text-xs disabled:opacity-50 hover:bg-pink-50 flex items-center justify-center gap-1"
-                                      title="会签节点可动态增加审批人"
-                                    >
-                                      <UserPlus size={14} />
-                                      加签
-                                    </button>
-                                    <button 
-                                      onClick={() => { setSignatureMode('reduce'); setSignatureModalOpen(true); }} 
-                                      disabled={submitting}
-                                      className="flex-1 px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center justify-center gap-1"
-                                      title="会签节点可动态减少审批人"
-                                    >
-                                      <UserMinus size={14} />
-                                      减签
-                                    </button>
-                                  </div>
+                                  {hasBtn('ADD_SIGN') && (
+                                    <div className="flex gap-2 mb-2">
+                                      <button 
+                                        onClick={() => { setSignatureMode('add'); setSignatureModalOpen(true); }} 
+                                        disabled={submitting}
+                                        className="flex-1 px-3 py-1.5 border border-pink-100 text-pink-500 rounded text-xs disabled:opacity-50 hover:bg-pink-50 flex items-center justify-center gap-1"
+                                        title="会签节点可动态增加审批人"
+                                      >
+                                        <UserPlus size={14} />
+                                        加签
+                                      </button>
+                                      <button 
+                                        onClick={() => { setSignatureMode('reduce'); setSignatureModalOpen(true); }} 
+                                        disabled={submitting}
+                                        className="flex-1 px-3 py-1.5 border border-amber-200 text-amber-600 rounded text-xs disabled:opacity-50 hover:bg-amber-50 flex items-center justify-center gap-1"
+                                        title="会签节点可动态减少审批人"
+                                      >
+                                        <UserMinus size={14} />
+                                        减签
+                                      </button>
+                                    </div>
+                                  )}
                                   
                                   {/* 主要操作按钮行 */}
                                   <div className="flex gap-2 justify-end">

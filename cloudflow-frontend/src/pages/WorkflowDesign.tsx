@@ -53,8 +53,16 @@ const parseWorkflowNodes = (raw: unknown) => {
 /**
  * 统一映射后端流程数据，确保设计器使用稳定的 definitionId。
  */
+const resolveDefinitionId = (w: any): string => {
+  const rawId = w?.definitionId ?? w?.id;
+  if (rawId === undefined || rawId === null) {
+    return '';
+  }
+  return String(rawId).trim();
+};
+
 const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
-  id: String(w?.definitionId || w?.id || w?.processKey || `wf_${Date.now()}`),
+  id: resolveDefinitionId(w) || `new_${Date.now()}`,
   name: w?.processName || w?.name || '未命名流程',
   key: w?.processKey || w?.key || 'new_process',
   version: Number(w?.version || 1),
@@ -119,17 +127,20 @@ export const WorkflowDesign = () => {
         if (Array.isArray(workflows) && workflows.length > 0) {
           if (requestedWorkflowId) {
             selectedWorkflow = workflows.find((item: any) => {
-              const id = String(item?.definitionId || item?.id || item?.processKey || '');
+              const id = resolveDefinitionId(item);
               return id === requestedWorkflowId;
             });
           } else {
-            selectedWorkflow = workflows[0];
+            selectedWorkflow = workflows.find((item: any) => !!resolveDefinitionId(item));
           }
         }
       }
 
       if (!selectedWorkflow && requestedWorkflowId) {
         toast.warning('指定流程不存在或已失效，已切换到新建流程');
+      }
+      if (selectedWorkflow && !resolveDefinitionId(selectedWorkflow)) {
+        toast.warning('检测到流程缺少定义ID，已切换为新建模式以避免误覆盖');
       }
 
       setWorkflow(selectedWorkflow ? mapBackendWorkflow(selectedWorkflow) : createDefaultWorkflow());
@@ -266,6 +277,7 @@ export const WorkflowDesign = () => {
         !!workflow.key &&
         workflow.key !== 'new_process' &&
         workflow.key.trim() !== '',
+      resetKey: workflow?.id,
       onSuccess: () => logWorkflow.info('流程自动保存成功'),
       onError: (err) => logWorkflow.error('流程自动保存失败:', err),
     },

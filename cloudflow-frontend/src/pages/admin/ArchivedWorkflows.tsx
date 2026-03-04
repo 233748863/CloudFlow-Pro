@@ -72,6 +72,10 @@ export const ArchivedWorkflows: React.FC = () => {
     start: string;
     end: string;
   }>({ start: "", end: "" });
+  const [appliedDateRange, setAppliedDateRange] = useState<{
+    start: string;
+    end: string;
+  }>({ start: "", end: "" });
   const [showFilters, setShowFilters] = useState(false);
 
   // 分页
@@ -104,11 +108,11 @@ export const ArchivedWorkflows: React.FC = () => {
       if (searchTerm.trim()) {
         params.keyword = searchTerm.trim();
       }
-      if (dateRange.start) {
-        params.archivedAfter = dateRange.start;
+      if (appliedDateRange.start) {
+        params.archivedAfter = appliedDateRange.start;
       }
-      if (dateRange.end) {
-        params.archivedBefore = dateRange.end;
+      if (appliedDateRange.end) {
+        params.archivedBefore = appliedDateRange.end;
       }
 
       const response = await getArchivedWorkflows(params);
@@ -126,7 +130,7 @@ export const ArchivedWorkflows: React.FC = () => {
 
   useEffect(() => {
     loadArchivedWorkflows();
-  }, [currentPage, searchTerm, dateRange]);
+  }, [currentPage, searchTerm, appliedDateRange]);
 
   /**
    * 处理搜索
@@ -141,8 +145,8 @@ export const ArchivedWorkflows: React.FC = () => {
    */
   const applyDateFilter = () => {
     setCurrentPage(1);
+    setAppliedDateRange(dateRange);
     setShowFilters(false);
-    loadArchivedWorkflows();
   };
 
   /**
@@ -150,6 +154,7 @@ export const ArchivedWorkflows: React.FC = () => {
    */
   const clearFilters = () => {
     setDateRange({ start: "", end: "" });
+    setAppliedDateRange({ start: "", end: "" });
     setSearchTerm("");
     setCurrentPage(1);
   };
@@ -303,7 +308,7 @@ export const ArchivedWorkflows: React.FC = () => {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-              showFilters || dateRange.start || dateRange.end
+              showFilters || appliedDateRange.start || appliedDateRange.end
                 ? "bg-pink-500 text-white"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
@@ -313,7 +318,7 @@ export const ArchivedWorkflows: React.FC = () => {
           </button>
 
           {/* 清除筛选 */}
-          {(searchTerm || dateRange.start || dateRange.end) && (
+          {(searchTerm || appliedDateRange.start || appliedDateRange.end) && (
             <button
               onClick={clearFilters}
               className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all flex items-center gap-2"

@@ -66,6 +66,22 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
+/**
+ * 统一解析导入结果状态：
+ * - action=failed 或 success=false 一律视为失败；
+ * - skipped 单独归类为跳过；
+ * - 其余成功动作统一归类为成功。
+ */
+const resolveImportStatus = (result: ImportResult): FileStatus => {
+  if (result.action === 'failed' || !result.success) {
+    return 'failed';
+  }
+  if (result.action === 'skipped') {
+    return 'skipped';
+  }
+  return 'success';
+};
+
 export const WorkflowImport: React.FC = () => {
   const navigate = useNavigate();
   const { canImport, canImportBatch } = useWorkflowPermission();
@@ -103,6 +119,7 @@ export const WorkflowImport: React.FC = () => {
       }
     } catch (error) {
       console.error('文件校验失败:', error);
+      const errorMessage = getErrorMessage(error, '校验请求失败，请检查网络连接');
       setFiles((prev) =>
         prev.map((item) =>
           item.id === fileId
@@ -111,7 +128,7 @@ export const WorkflowImport: React.FC = () => {
                 status: 'invalid',
                 validation: {
                   valid: false,
-                  errors: ['校验请求失败，请检查网络连接'],
+                  errors: [errorMessage],
                   warnings: []
                 }
               }
@@ -235,11 +252,7 @@ export const WorkflowImport: React.FC = () => {
             fileItem.conflictStrategy || globalConflictStrategy
           );
 
-          const nextStatus: FileStatus = result.success
-            ? result.action === 'skipped'
-              ? 'skipped'
-              : 'success'
-            : 'failed';
+          const nextStatus = resolveImportStatus(result);
 
           setFiles((prev) =>
             prev.map((item) =>
@@ -253,12 +266,10 @@ export const WorkflowImport: React.FC = () => {
             )
           );
 
-          if (result.success) {
-            if (result.action === 'skipped') {
-              skippedCount++;
-            } else {
-              successCount++;
-            }
+          if (nextStatus === 'success') {
+            successCount++;
+          } else if (nextStatus === 'skipped') {
+            skippedCount++;
           } else {
             failedCount++;
           }
@@ -691,7 +702,15 @@ const FileItem: React.FC<FileItemProps> = ({
 
           {importResult && (
             <div className="space-y-1 mb-2">
-              {importResult.message && <div className="text-xs text-slate-600">{importResult.message}</div>}
+              {importResult.message && (
+                <div
+                  className={`text-xs ${
+                    importResult.action === 'failed' ? 'text-red-600' : 'text-slate-600'
+                  }`}
+                >
+                  {importResult.message}
+                </div>
+              )}
               {importResult.errors?.map((error, index) => (
                 <div key={`${error}-${index}`} className="flex items-start gap-1 text-xs text-red-600">
                   <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />

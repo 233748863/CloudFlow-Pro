@@ -39,10 +39,14 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
   workflowCreatorId 
 }) => {
   // 权限控制
-  const { canViewVersionHistory, canRollbackVersion } = useWorkflowPermission();
+  const { isAdmin, canViewVersionHistory } = useWorkflowPermission();
   
   // 检查是否有查看权限
   const hasViewPermission = workflowCreatorId ? canViewVersionHistory(workflowCreatorId) : true;
+  // 回滚权限口径与后端保持一致：流程创建者或管理员
+  const canRollbackCurrentWorkflow = workflowCreatorId
+    ? canViewVersionHistory(workflowCreatorId)
+    : isAdmin;
   
   const [versions, setVersions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -155,8 +159,8 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
    * 打开回滚对话框
    */
   const handleOpenRollback = (version: any) => {
-    if (!canRollbackVersion) {
-      showWarning('您没有权限执行版本回滚操作', '此操作需要管理员权限');
+    if (!canRollbackCurrentWorkflow) {
+      showWarning('您没有权限执行版本回滚操作', '仅流程创建者或管理员可执行回滚');
       return;
     }
     
@@ -333,7 +337,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                     >
                       <Eye size={16} />
                     </button>
-                    {canRollbackVersion && (
+                    {canRollbackCurrentWorkflow && (
                       <button
                         onClick={() => handleOpenRollback(version)}
                         className="p-2 text-gray-400 hover:text-blue-600"

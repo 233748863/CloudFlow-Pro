@@ -51,6 +51,20 @@ function getFieldValue(field: FormField, data: Record<string, any>): any {
   return undefined;
 }
 
+/**
+ * 统一输入值类型：NUMBER 转数字，其他类型原样返回。
+ * 清空输入时保留空字符串，避免误转成 0。
+ */
+function normalizeInputValue(field: FormField, rawValue: string): any {
+  if (field.type === 'NUMBER') {
+    const trimmed = rawValue.trim();
+    if (trimmed === '') return '';
+    const parsed = Number(trimmed);
+    return Number.isNaN(parsed) ? rawValue : parsed;
+  }
+  return rawValue;
+}
+
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 
 export const DynamicFormViewer = ({ 
@@ -91,11 +105,14 @@ export const DynamicFormViewer = ({
                   className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition-all border-slate-300"
                   rows={3}
                   placeholder={field.placeholder || '请输入...'}
-                  value={rawValue || ''}
+                  value={rawValue ?? ''}
                   onChange={e => onChange?.(field.id, e.target.value)}
                 />
               ) : field.type === 'SELECT' ? (
-                <Select value={rawValue ? String(rawValue) : ''} onValueChange={v => onChange?.(field.id, v)}>
+                <Select
+                  value={rawValue !== null && rawValue !== undefined ? String(rawValue) : ''}
+                  onValueChange={v => onChange?.(field.id, v)}
+                >
                   <SelectTrigger className="w-full text-sm">
                     <SelectValue placeholder={field.placeholder || "请选择"} />
                   </SelectTrigger>
@@ -110,8 +127,8 @@ export const DynamicFormViewer = ({
                   type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
                   className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition-all border-slate-300"
                   placeholder={field.placeholder || '请输入...'}
-                  value={rawValue || ''}
-                  onChange={e => onChange?.(field.id, e.target.value)}
+                  value={rawValue ?? ''}
+                  onChange={e => onChange?.(field.id, normalizeInputValue(field, e.target.value))}
                 />
               )
             ) : (

@@ -332,6 +332,13 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             String strategy = currentNode.getBranchStrategy();
             List<WfNodeConfig> branches = currentNode.getBranches();
 
+            // 防御性兜底：仅 PARALLEL 节点允许 PARALLEL/RACE，其他节点一律按 EXCLUSIVE 处理
+            if (!"PARALLEL".equals(currentNode.getType()) && !"EXCLUSIVE".equals(strategy)) {
+                log.warn("[advanceAfterNode] 节点 {}({}) 使用了不兼容分支策略 {}, 已自动回退为 EXCLUSIVE",
+                    currentNode.getTitle(), currentNode.getId(), strategy);
+                strategy = "EXCLUSIVE";
+            }
+
             if ("PARALLEL".equals(strategy)) {
                 // 与 handleParallelGateway 保持一致：CONDITION 类型分支头节点仅作标签，跳过条件评估
                 for (WfNodeConfig branch : branches) {
