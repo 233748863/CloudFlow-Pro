@@ -227,6 +227,35 @@ const findParentOfNode = (
 };
 
 /**
+ * 判断节点是否位于某个分支子树中（true=在分支内，false=在主干上）。
+ * 用于限制跨作用域拖拽，避免主干与分支互拖导致结构难以预期。
+ */
+const isNodeInsideBranchScope = (
+  root: WorkflowNode,
+  targetId: string,
+  isInsideBranch: boolean = false,
+): boolean | null => {
+  if (root.id === targetId) {
+    return isInsideBranch;
+  }
+  if (root.next) {
+    const foundInNext = isNodeInsideBranchScope(root.next, targetId, isInsideBranch);
+    if (foundInNext !== null) {
+      return foundInNext;
+    }
+  }
+  if (root.branches) {
+    for (const branch of root.branches) {
+      const foundInBranch = isNodeInsideBranchScope(branch, targetId, true);
+      if (foundInBranch !== null) {
+        return foundInBranch;
+      }
+    }
+  }
+  return null;
+};
+
+/**
  * 历史模型兼容处理：
  * 非 PARALLEL 节点若误配置为 PARALLEL/RACE 分支策略，加载时自动回正为 EXCLUSIVE。
  */
@@ -5921,6 +5950,17 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     const dragNode = findNodeById(currentRoot, dragId);
     if (!dragNode) return;
+    const dragInsideBranch = isNodeInsideBranchScope(currentRoot, dragId);
+    const dropInsideBranch = isNodeInsideBranchScope(currentRoot, dropId);
+    if (dragInsideBranch === null || dropInsideBranch === null) {
+      toast.error("拖拽目标已失效，请重试");
+      return;
+    }
+    // 主干与分支之间禁止直接拖拽，避免隐式改变链路组装语义
+    if (dragInsideBranch !== dropInsideBranch) {
+      toast.error("暂不支持主干与分支之间直接拖拽，请使用复制+删除方式调整");
+      return;
+    }
 
     // 不能拖拽开始/结束节点
     if (dragNode.type === NodeType.START || dragNode.type === NodeType.END) {

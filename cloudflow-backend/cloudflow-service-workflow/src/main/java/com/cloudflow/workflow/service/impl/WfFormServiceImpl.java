@@ -87,20 +87,27 @@ public class WfFormServiceImpl implements IWfFormService {
                     && !currentTenantId.equals(exist.getTenantId())) {
                 throw new PermissionDeniedException("无权修改该租户表单定义");
             }
+            if (definition.getTenantId() != null && exist.getTenantId() != null
+                    && !definition.getTenantId().equals(exist.getTenantId())) {
+                throw new PermissionDeniedException("不允许变更表单所属租户");
+            }
             if (definition.getVersionLock() != null && !definition.getVersionLock().equals(exist.getVersionLock())) {
                 throw WorkflowException.invalidState("表单定义已被其他用户修改，请刷新后重试");
             }
-            if (definition.getTenantId() == null) {
-                definition.setTenantId(exist.getTenantId());
-            }
+            // 更新时租户归属以历史记录为准，禁止通过请求体篡改
+            definition.setTenantId(exist.getTenantId());
             definition.setVersion(exist.getVersion() + 1);
             definition.setVersionLock(exist.getVersionLock() != null ? exist.getVersionLock() + 1 : 1);
             definition.setIsLatest(1);
             formDefinitionMapper.updateById(definition);
             log.info("[saveFormDefinition] 表单定义更新成功, formId={}, version={}", definition.getFormId(), definition.getVersion());
         } else {
-            if (definition.getTenantId() == null && currentTenantId != null) {
-                definition.setTenantId(currentTenantId);
+            if (currentTenantId != null) {
+                if (definition.getTenantId() == null) {
+                    definition.setTenantId(currentTenantId);
+                } else if (!currentTenantId.equals(definition.getTenantId())) {
+                    throw new PermissionDeniedException("无权创建其他租户表单定义");
+                }
             }
             definition.setVersion(1);
             definition.setVersionLock(0);

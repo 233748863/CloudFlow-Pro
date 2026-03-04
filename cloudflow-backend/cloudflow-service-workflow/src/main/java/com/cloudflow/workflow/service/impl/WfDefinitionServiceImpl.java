@@ -101,8 +101,12 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         // 权限校验
         permissionService.checkDefinitionPermission("保存");
         Long currentTenantId = UserContext.getTenantId();
-        if (definition.getTenantId() == null && currentTenantId != null) {
-            definition.setTenantId(currentTenantId);
+        if (currentTenantId != null) {
+            if (definition.getTenantId() == null) {
+                definition.setTenantId(currentTenantId);
+            } else if (!currentTenantId.equals(definition.getTenantId())) {
+                throw new PermissionDeniedException("无权保存其他租户流程定义");
+            }
         }
         validateBoundFormTenant(definition.getFormId(), definition.getTenantId(), "保存");
 
@@ -173,6 +177,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (def == null) {
             throw WorkflowException.processNotFound(definitionId);
         }
+        ensureDefinitionTenantAccess(def.getTenantId(), "发布");
         if ("PUBLISHED".equals(def.getStatus())) {
             throw WorkflowException.invalidState("流程定义已发布，无需重复发布");
         }
@@ -242,6 +247,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (def == null) {
             throw WorkflowException.processNotFound(definitionId);
         }
+        ensureDefinitionTenantAccess(def.getTenantId(), "删除");
 
         // 检查运行中的实例
         LambdaQueryWrapper<WfProcessInstance> runningQuery = new LambdaQueryWrapper<WfProcessInstance>()
@@ -522,6 +528,14 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         if (!permissionService.isAdmin(currentUserId) && "DRAFT".equalsIgnoreCase(def.getStatus())) {
             throw new PermissionDeniedException("无权访问草稿流程定义");
+        }
+    }
+
+    private void ensureDefinitionTenantAccess(Long definitionTenantId, String operation) {
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && definitionTenantId != null
+                && !currentTenantId.equals(definitionTenantId)) {
+            throw new PermissionDeniedException("无权" + operation + "其他租户流程定义");
         }
     }
 

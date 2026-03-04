@@ -120,6 +120,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 // 权限校验
                 permissionService.checkTaskPermission(task);
+                Map<String, Object> editableVariables = normalizeEditableVariables(task, variables, normalizedAction);
 
                 // XSS 过滤
                 if (StringUtils.hasText(comment)) {
@@ -128,7 +129,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 // 会签任务处理
                 if (countersignService.isCountersignTask(task)) {
-                    return handleCountersignVote(task, taskId, normalizedAction, comment, variables);
+                    return handleCountersignVote(task, taskId, normalizedAction, comment, editableVariables);
                 }
 
                 // 保存历史记录
@@ -174,12 +175,12 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 }
 
                 // 审批通过 - 变量合并
-                Map<String, Object> mergedVariables = mergeVariables(instance, variables);
+                Map<String, Object> mergedVariables = mergeVariables(instance, editableVariables);
 
                 // 记录变量变更
-                if (variables != null && !variables.isEmpty()) {
+                if (editableVariables != null && !editableVariables.isEmpty()) {
                     try {
-                        history.setVariablesChanged(objectMapper.writeValueAsString(variables));
+                        history.setVariablesChanged(objectMapper.writeValueAsString(editableVariables));
                         taskHistoryMapper.updateById(history);
                     } catch (Exception e) {
                         log.warn("[completeTask] 记录变量变更失败: {}", e.getMessage());
@@ -484,17 +485,34 @@ public class WfTaskServiceImpl implements IWfTaskService {
      * 处理转办操作
      */
     private R<?> handleDelegate(WfTask task, WfProcessInstance instance, String delegateUserId, String comment) {
+        Long delegateId;
+        try {
+            delegateId = Long.valueOf(delegateUserId);
+        } catch (Exception e) {
+            throw WorkflowException.validationError("转办目标用户ID格式非法: " + delegateUserId);
+        }
+
+        SysUser delegateUser = sysUserMapper.selectById(delegateId);
+        if (delegateUser == null) {
+            throw WorkflowException.validationError("转办目标用户不存在: " + delegateUserId);
+        }
+        String delegateUserName = StringUtils.hasText(delegateUser.getNickName())
+            ? delegateUser.getNickName()
+            : delegateUser.getUserName();
+
         WfTask newTask = new WfTask();
         newTask.setTaskId(UUID.randomUUID().toString());
         newTask.setInstanceId(task.getInstanceId());
         newTask.setNodeName(task.getNodeName());
         newTask.setNodeKey(task.getNodeKey());
-        newTask.setAssignee(Long.valueOf(delegateUserId));
+        newTask.setAssignee(delegateId);
+        newTask.setAssigneeName(delegateUserName);
+        newTask.setTenantId(task.getTenantId());
         newTask.setStatus(WfTaskStatus.TODO.getCode());
         newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
 
-        sysNoticeService.sendNotice(Long.valueOf(delegateUserId), "任务转办通知",
+        sysNoticeService.sendNotice(delegateId, "任务转办通知",
             String.format("您收到一个转办任务: %s (流程: %s)", task.getNodeName(), instance.getTitle()),
             "1", UserContext.getUserId(), UserContext.getUserName());
 
@@ -623,6 +641,37 @@ public class WfTaskServiceImpl implements IWfTaskService {
             } catch (Exception e) { log.warn("[mergeVariables] 更新失败"); }
         }
         return instanceVars;
+    }
+
+    /**
+     * 仅允许在节点开启 allowEdit 时提交业务变量；系统变量（_前缀）始终忽略。
+     */
+    private Map<String, Object> normalizeEditableVariables(WfTask task, Map<String, Object> variables, String action) {
+        if (variables == null || variables.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        // 仅“同意”动作允许回写变量，拒绝/转办忽略客户端变量，避免误伤历史客户端调用。
+        if (!"APPROVE".equalsIgnoreCase(action)) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Object> editableVariables = new HashMap<>();
+        for (Map.Entry<String, Object> entry : variables.entrySet()) {
+            String key = entry.getKey();
+            if (StringUtils.hasText(key) && !key.startsWith("_")) {
+                editableVariables.put(key, entry.getValue());
+            }
+        }
+
+        if (editableVariables.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        if (!Boolean.TRUE.equals(task.getAllowEdit())) {
+            throw WorkflowException.validationError("当前节点不允许修改表单数据");
+        }
+
+        return editableVariables;
     }
 
     /**
@@ -1015,6 +1064,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     newTask.setNodeName(task.getNodeName());
                     newTask.setNodeKey(task.getNodeKey());
                     newTask.setAssignee(userId);
+                    newTask.setTenantId(task.getTenantId());
                     newTask.setStatus(WfTaskStatus.TODO.getCode());
                     newTask.setCreateTime(LocalDateTime.now());
                     newTask.setCandidateRoles("CS:" + countersignId);
@@ -1037,6 +1087,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     if (toUser != null) {
                         toUserName = toUser.getNickName() != null ? toUser.getNickName() : toUser.getUserName();
                     }
+                    newTask.setAssigneeName(toUserName);
                     
                     addSign.setSignUserIds(String.valueOf(userId));
                     addSign.setSignUserNames(toUserName);
