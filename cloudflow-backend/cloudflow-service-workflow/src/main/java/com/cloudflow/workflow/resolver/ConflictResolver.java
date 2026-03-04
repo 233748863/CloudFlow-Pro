@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.resolver;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.dto.ConflictResolution;
 import com.cloudflow.workflow.domain.dto.WorkflowExportFormat;
@@ -48,8 +49,12 @@ public class ConflictResolver {
         }
 
         try {
+            Long tenantId = UserContext.getTenantId();
             LambdaQueryWrapper<WfProcessDefinition> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(WfProcessDefinition::getProcessName, workflowName);
+            if (tenantId != null) {
+                wrapper.eq(WfProcessDefinition::getTenantId, tenantId);
+            }
             
             WfProcessDefinition existing = definitionMapper.selectOne(wrapper);
             

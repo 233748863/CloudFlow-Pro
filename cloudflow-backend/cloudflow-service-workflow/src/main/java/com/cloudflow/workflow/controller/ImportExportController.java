@@ -253,6 +253,7 @@ public class ImportExportController {
 
     private void ensureWorkflowOwnerOrAdmin(String workflowId) {
         Long currentUserId = UserContext.getUserId();
+        Long currentTenantId = UserContext.getTenantId();
         if (currentUserId == null) {
             throw new PermissionDeniedException("User not logged in");
         }
@@ -260,6 +261,10 @@ public class ImportExportController {
         WfProcessDefinition definition = definitionMapper.selectById(workflowId);
         if (definition == null) {
             throw WorkflowException.processNotFound(workflowId);
+        }
+        if (currentTenantId != null && definition.getTenantId() != null
+                && !currentTenantId.equals(definition.getTenantId())) {
+            throw new PermissionDeniedException("无权导出其他租户流程");
         }
 
         boolean isCreator = currentUserId.toString().equals(definition.getCreateBy());

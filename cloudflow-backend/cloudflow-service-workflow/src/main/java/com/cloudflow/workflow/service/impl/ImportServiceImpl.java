@@ -3,6 +3,7 @@ package com.cloudflow.workflow.service.impl;
 import com.cloudflow.common.core.context.UserContext;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
+import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.dto.ConflictResolution;
 import com.cloudflow.workflow.domain.dto.ImportResultDTO;
 import com.cloudflow.workflow.domain.dto.ValidationResultDTO;
@@ -265,6 +266,11 @@ public class ImportServiceImpl implements IImportService {
         if (existing == null) {
             throw new WorkflowException("现有流程不存在: " + resolution.getExistingWorkflowId());
         }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && existing.getTenantId() != null
+                && !currentTenantId.equals(existing.getTenantId())) {
+            throw WorkflowException.permissionDenied("更新其他租户流程");
+        }
 
         // 更新流程定义
         try {
@@ -522,8 +528,14 @@ public class ImportServiceImpl implements IImportService {
      * 表单绑定存在性校验，防止导入后流程绑定悬空表单导致发起失败。
      */
     private void validateImportedFormBinding(String formId) {
-        if (formDefinitionMapper.selectById(formId) == null) {
+        WfFormDefinition formDefinition = formDefinitionMapper.selectById(formId);
+        if (formDefinition == null) {
             throw WorkflowException.validationError("导入失败：绑定表单不存在: " + formId);
+        }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && formDefinition.getTenantId() != null
+                && !currentTenantId.equals(formDefinition.getTenantId())) {
+            throw WorkflowException.validationError("导入失败：绑定表单不属于当前租户: " + formId);
         }
     }
 

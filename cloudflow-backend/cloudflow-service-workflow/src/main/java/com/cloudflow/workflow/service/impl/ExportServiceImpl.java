@@ -62,6 +62,11 @@ public class ExportServiceImpl implements IExportService {
             if (definition == null) {
                 throw new WorkflowException("流程不存在: " + workflowId);
             }
+            Long currentTenantId = UserContext.getTenantId();
+            if (currentTenantId != null && definition.getTenantId() != null
+                    && !currentTenantId.equals(definition.getTenantId())) {
+                throw WorkflowException.permissionDenied("导出其他租户流程");
+            }
 
             // 获取最新版本信息
             WorkflowVersion latestVersion = versionService.getLatestVersion(workflowId);
