@@ -4,10 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.domain.WfTaskHistory;
 import com.cloudflow.workflow.domain.system.SysRole;
 import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
+import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
+import com.cloudflow.workflow.mapper.WfTaskMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
@@ -43,6 +46,12 @@ public class WorkflowPermissionService {
 
     @Autowired
     private SysUserMapper sysUserMapper;
+
+    @Autowired
+    private WfTaskMapper taskMapper;
+
+    @Autowired
+    private WfTaskHistoryMapper taskHistoryMapper;
 
     /**
      * 校验当前用户是否有权限处理任务
@@ -106,10 +115,37 @@ public class WorkflowPermissionService {
         if (currentUserId == null) {
             throw new PermissionDeniedException("用户未登录");
         }
-        if (!instance.getStartUserId().equals(currentUserId) && !isAdmin(currentUserId)) {
-            log.warn("用户 {} 尝试查看非本人流程实例 {}", currentUserId, instance.getInstanceId());
-            throw new PermissionDeniedException("无权查看此流程实例");
+        if (isAdmin(currentUserId)) {
+            return;
         }
+
+        // 发起人可查看自己的流程实例
+        if (instance.getStartUserId() != null && instance.getStartUserId().equals(currentUserId)) {
+            return;
+        }
+
+        // 当前待办处理人可查看
+        Long todoCount = taskMapper.selectCount(
+                new LambdaQueryWrapper<WfTask>()
+                        .eq(WfTask::getInstanceId, instance.getInstanceId())
+                        .eq(WfTask::getAssignee, currentUserId)
+        );
+        if (todoCount != null && todoCount > 0) {
+            return;
+        }
+
+        // 历史处理人可查看（用于已办、轨迹回看）
+        Long historyCount = taskHistoryMapper.selectCount(
+                new LambdaQueryWrapper<WfTaskHistory>()
+                        .eq(WfTaskHistory::getInstanceId, instance.getInstanceId())
+                        .eq(WfTaskHistory::getOperatorId, currentUserId)
+        );
+        if (historyCount != null && historyCount > 0) {
+            return;
+        }
+
+        log.warn("用户 {} 尝试查看无权限流程实例 {}", currentUserId, instance.getInstanceId());
+        throw new PermissionDeniedException("无权查看此流程实例");
     }
 
     /**

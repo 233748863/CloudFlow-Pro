@@ -296,6 +296,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        permissionService.checkViewInstancePermission(instance);
         return instance;
     }
 
@@ -307,6 +308,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        permissionService.checkViewInstancePermission(instance);
 
         // 查询历史记录
         List<WfTaskHistory> histories = taskHistoryMapper.selectList(
@@ -533,6 +535,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        permissionService.checkViewInstancePermission(instance);
 
         // 查询流程定义获取模型JSON
         WfProcessDefinition def = resolveDefinitionByInstance(instance);

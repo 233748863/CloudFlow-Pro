@@ -12,6 +12,7 @@ import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
+import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
 import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
@@ -271,6 +272,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (def == null) {
             throw new WorkflowException("DEFINITION_NOT_FOUND", "流程定义不存在: " + definitionId);
         }
+        checkDefinitionReadPermission(def);
         return def;
     }
 
@@ -280,7 +282,19 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         LambdaQueryWrapper<WfProcessDefinition> queryWrapper = new LambdaQueryWrapper<>();
 
         String status = (String) pageQuery.getParams().get("status");
-        if (StringUtils.hasText(status)) {
+        Long currentUserId = UserContext.getUserId();
+        Long currentTenantId = UserContext.getTenantId();
+        boolean isAdmin = permissionService.isAdmin(currentUserId);
+
+        // 租户隔离：同租户内可见（管理员/普通用户一致）
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfProcessDefinition::getTenantId, currentTenantId);
+        }
+
+        // 非管理员仅可见已发布流程，避免草稿定义信息泄露
+        if (!isAdmin) {
+            queryWrapper.eq(WfProcessDefinition::getStatus, "PUBLISHED");
+        } else if (StringUtils.hasText(status)) {
             queryWrapper.eq(WfProcessDefinition::getStatus, status);
         }
 
@@ -324,6 +338,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (def == null) {
             throw new WorkflowException("DEFINITION_NOT_FOUND", "流程定义不存在: " + definitionId);
         }
+        checkDefinitionReadPermission(def);
         if (!StringUtils.hasText(def.getModelJson())) {
             throw WorkflowException.validationError("流程定义模型为空");
         }
@@ -468,6 +483,26 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     }
 
     // ==================== 私有方法 ====================
+
+    /**
+     * 读取流程定义时的最小权限校验：
+     * 1) 必须同租户；
+     * 2) 非管理员不可读取草稿定义。
+     */
+    private void checkDefinitionReadPermission(WfProcessDefinition def) {
+        Long currentUserId = UserContext.getUserId();
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentUserId == null) {
+            throw new PermissionDeniedException("用户未登录");
+        }
+        if (currentTenantId != null && def.getTenantId() != null
+                && !currentTenantId.equals(def.getTenantId())) {
+            throw new PermissionDeniedException("无权访问该租户流程定义");
+        }
+        if (!permissionService.isAdmin(currentUserId) && "DRAFT".equalsIgnoreCase(def.getStatus())) {
+            throw new PermissionDeniedException("无权访问草稿流程定义");
+        }
+    }
 
     /**
      * 流程模型合法性验证
