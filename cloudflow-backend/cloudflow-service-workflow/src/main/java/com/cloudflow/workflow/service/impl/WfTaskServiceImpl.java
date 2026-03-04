@@ -573,15 +573,18 @@ public class WfTaskServiceImpl implements IWfTaskService {
             return null;
         }
 
-        return processDefinitionMapper.selectOne(
-            new LambdaQueryWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                    .or()
-                    .isNull(WfProcessDefinition::getStatus))
-                .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1")
-        );
+        LambdaQueryWrapper<WfProcessDefinition> latestDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+            .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+            .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                .or()
+                .isNull(WfProcessDefinition::getStatus))
+            .orderByDesc(WfProcessDefinition::getVersion)
+            .last("LIMIT 1");
+        Long tenantId = instance.getTenantId() != null ? instance.getTenantId() : UserContext.getTenantId();
+        if (tenantId != null) {
+            latestDefQuery.eq(WfProcessDefinition::getTenantId, tenantId);
+        }
+        return processDefinitionMapper.selectOne(latestDefQuery);
     }
 
     /**
@@ -670,6 +673,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
      * 批量填充待办任务的关联信息（流程实例、定义、已读状态、步骤信息、按钮权限）
      */
     private void enrichTodoTasks(List<WfTask> tasks, Long userId) {
+        Long currentTenantId = UserContext.getTenantId();
         // 批量查询实例
         List<String> instanceIds = tasks.stream().map(WfTask::getInstanceId).distinct().collect(Collectors.toList());
         List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
@@ -701,14 +705,16 @@ public class WfTaskServiceImpl implements IWfTaskService {
             .collect(Collectors.toList());
         Map<String, WfProcessDefinition> latestDefByKey = new HashMap<>();
         if (!processKeys.isEmpty()) {
-            List<WfProcessDefinition> defsByKey = processDefinitionMapper.selectList(
-                new LambdaQueryWrapper<WfProcessDefinition>()
-                    .in(WfProcessDefinition::getProcessKey, processKeys)
-                    .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                        .or()
-                        .isNull(WfProcessDefinition::getStatus))
-                    .orderByDesc(WfProcessDefinition::getVersion)
-            );
+            LambdaQueryWrapper<WfProcessDefinition> defsByKeyQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+                .in(WfProcessDefinition::getProcessKey, processKeys)
+                .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                    .or()
+                    .isNull(WfProcessDefinition::getStatus))
+                .orderByDesc(WfProcessDefinition::getVersion);
+            if (currentTenantId != null) {
+                defsByKeyQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
+            }
+            List<WfProcessDefinition> defsByKey = processDefinitionMapper.selectList(defsByKeyQuery);
             if (defsByKey != null) {
                 for (WfProcessDefinition def : defsByKey) {
                     if (def != null && StringUtils.hasText(def.getProcessKey())) {

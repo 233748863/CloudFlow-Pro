@@ -103,14 +103,20 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         // 权限校验
         permissionService.checkDefinitionPermission("保存");
+        Long currentTenantId = UserContext.getTenantId();
+        if (definition.getTenantId() == null && currentTenantId != null) {
+            definition.setTenantId(currentTenantId);
+        }
 
         // 查找当前Key的最大版本
-        WfProcessDefinition lastDef = processDefinitionMapper.selectOne(
-            new LambdaQueryWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, definition.getProcessKey())
-                .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1")
-        );
+        LambdaQueryWrapper<WfProcessDefinition> lastDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+            .eq(WfProcessDefinition::getProcessKey, definition.getProcessKey())
+            .orderByDesc(WfProcessDefinition::getVersion)
+            .last("LIMIT 1");
+        if (definition.getTenantId() != null) {
+            lastDefQuery.eq(WfProcessDefinition::getTenantId, definition.getTenantId());
+        }
+        WfProcessDefinition lastDef = processDefinitionMapper.selectOne(lastDefQuery);
 
         // 乐观锁冲突检测
         if (lastDef != null && definition.getVersionLock() != null) {
@@ -189,13 +195,15 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         processDefinitionMapper.updateById(def);
 
         // 旧版本归档
-        processDefinitionMapper.update(null,
-            new LambdaUpdateWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, def.getProcessKey())
-                .ne(WfProcessDefinition::getDefinitionId, definitionId)
-                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                .set(WfProcessDefinition::getStatus, "ARCHIVED")
-        );
+        LambdaUpdateWrapper<WfProcessDefinition> archiveOldVersions = new LambdaUpdateWrapper<WfProcessDefinition>()
+            .eq(WfProcessDefinition::getProcessKey, def.getProcessKey())
+            .ne(WfProcessDefinition::getDefinitionId, definitionId)
+            .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+            .set(WfProcessDefinition::getStatus, "ARCHIVED");
+        if (def.getTenantId() != null) {
+            archiveOldVersions.eq(WfProcessDefinition::getTenantId, def.getTenantId());
+        }
+        processDefinitionMapper.update(null, archiveOldVersions);
 
         // 创建发布记录
         Long userId = UserContext.getUserId();
@@ -241,20 +249,24 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
 
         // 检查运行中的实例
-        Long runningCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>()
-                .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey())
-                .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode())
-        );
+        LambdaQueryWrapper<WfProcessInstance> runningQuery = new LambdaQueryWrapper<WfProcessInstance>()
+            .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey())
+            .eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode());
+        if (def.getTenantId() != null) {
+            runningQuery.eq(WfProcessInstance::getTenantId, def.getTenantId());
+        }
+        Long runningCount = processInstanceMapper.selectCount(runningQuery);
         if (runningCount != null && runningCount > 0) {
             throw WorkflowException.invalidState("该流程定义有 " + runningCount + " 个运行中的实例，无法删除");
         }
 
         // 检查历史实例
-        Long totalCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>()
-                .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey())
-        );
+        LambdaQueryWrapper<WfProcessInstance> totalQuery = new LambdaQueryWrapper<WfProcessInstance>()
+            .eq(WfProcessInstance::getProcessDefKey, def.getProcessKey());
+        if (def.getTenantId() != null) {
+            totalQuery.eq(WfProcessInstance::getTenantId, def.getTenantId());
+        }
+        Long totalCount = processInstanceMapper.selectCount(totalQuery);
         if (totalCount != null && totalCount > 0) {
             def.setStatus("ARCHIVED");
             processDefinitionMapper.updateById(def);

@@ -90,6 +90,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     public R<?> startProcess(String processDefKey, String businessKey, Map<String, Object> variables) {
         Long currentUserId = UserContext.getUserId();
         String currentUserName = UserContext.getUserName();
+        Long currentTenantId = UserContext.getTenantId();
         log.info("[startProcess] 开始发起流程, processDefKey={}, userId={}", processDefKey, currentUserId);
 
         if (!StringUtils.hasText(processDefKey)) {
@@ -99,13 +100,15 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         rateLimiterService.checkStartProcessLimit(currentUserId != null ? currentUserId : 0L);
 
         // 查找已发布的最新版本
-        WfProcessDefinition def = processDefinitionMapper.selectOne(
-            new LambdaQueryWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, processDefKey)
-                .eq(WfProcessDefinition::getStatus, "PUBLISHED")
-                .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1")
-        );
+        LambdaQueryWrapper<WfProcessDefinition> startDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+            .eq(WfProcessDefinition::getProcessKey, processDefKey)
+            .eq(WfProcessDefinition::getStatus, "PUBLISHED")
+            .orderByDesc(WfProcessDefinition::getVersion)
+            .last("LIMIT 1");
+        if (currentTenantId != null) {
+            startDefQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
+        }
+        WfProcessDefinition def = processDefinitionMapper.selectOne(startDefQuery);
         if (def == null) {
             throw WorkflowException.processNotFound(processDefKey);
         }
@@ -131,6 +134,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         instance.setBusinessKey(businessKey);
         instance.setStartUserId(currentUserId);
         instance.setStartUserName(currentUserName);
+        instance.setTenantId(currentTenantId != null ? currentTenantId : def.getTenantId());
         instance.setStatus(WfProcessStatus.RUNNING.getCode());
         instance.setStartTime(LocalDateTime.now());
 
@@ -414,6 +418,10 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         Page<WfProcessInstance> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfProcessInstance::getStartUserId, userId);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
+        }
 
         String status = (String) pageQuery.getParams().get("status");
         if (StringUtils.hasText(status)) {
@@ -764,15 +772,18 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             return null;
         }
 
-        return processDefinitionMapper.selectOne(
-            new LambdaQueryWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                    .or()
-                    .isNull(WfProcessDefinition::getStatus))
-                .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1")
-        );
+        LambdaQueryWrapper<WfProcessDefinition> latestDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+            .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+            .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                .or()
+                .isNull(WfProcessDefinition::getStatus))
+            .orderByDesc(WfProcessDefinition::getVersion)
+            .last("LIMIT 1");
+        Long instanceTenantId = instance.getTenantId() != null ? instance.getTenantId() : UserContext.getTenantId();
+        if (instanceTenantId != null) {
+            latestDefQuery.eq(WfProcessDefinition::getTenantId, instanceTenantId);
+        }
+        return processDefinitionMapper.selectOne(latestDefQuery);
     }
 
     /**
@@ -781,6 +792,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
      * 2) 补齐当前待办节点与处理人信息，提升列表可读性。
      */
     private void enrichMyInstances(List<WfProcessInstance> instances) {
+        Long currentTenantId = UserContext.getTenantId();
         // 1) 批量查询流程定义（优先 definitionId，回退 processKey 最新版本）
         List<String> definitionIds = instances.stream()
             .map(WfProcessInstance::getDefinitionId)
@@ -809,14 +821,16 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         Map<String, WfProcessDefinition> latestDefByKey = new HashMap<>();
         if (!processKeys.isEmpty()) {
-            List<WfProcessDefinition> defsByKey = processDefinitionMapper.selectList(
-                new LambdaQueryWrapper<WfProcessDefinition>()
-                    .in(WfProcessDefinition::getProcessKey, processKeys)
-                    .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                        .or()
-                        .isNull(WfProcessDefinition::getStatus))
-                    .orderByDesc(WfProcessDefinition::getVersion)
-            );
+            LambdaQueryWrapper<WfProcessDefinition> defsByKeyQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+                .in(WfProcessDefinition::getProcessKey, processKeys)
+                .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                    .or()
+                    .isNull(WfProcessDefinition::getStatus))
+                .orderByDesc(WfProcessDefinition::getVersion);
+            if (currentTenantId != null) {
+                defsByKeyQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
+            }
+            List<WfProcessDefinition> defsByKey = processDefinitionMapper.selectList(defsByKeyQuery);
             for (WfProcessDefinition def : defsByKey) {
                 if (def != null && StringUtils.hasText(def.getProcessKey())) {
                     latestDefByKey.putIfAbsent(def.getProcessKey(), def);

@@ -106,12 +106,15 @@ public class WfFormServiceImpl implements IWfFormService {
         log.info("[getFormDefinition] 查询表单定义(缓存未命中), formId={}", formId);
 
         Long currentUserId = UserContext.getUserId();
+        Long currentTenantId = UserContext.getTenantId();
         if (currentUserId != null && !permissionService.isAdmin(currentUserId)) {
             // 非管理员必须只访问“自己发起过或参与过”的流程所绑定表单
-            List<WfProcessDefinition> relatedDefs = processDefinitionMapper.selectList(
-                    new LambdaQueryWrapper<WfProcessDefinition>()
-                            .eq(WfProcessDefinition::getFormId, formId)
-            );
+            LambdaQueryWrapper<WfProcessDefinition> relatedDefsQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+                    .eq(WfProcessDefinition::getFormId, formId);
+            if (currentTenantId != null) {
+                relatedDefsQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
+            }
+            List<WfProcessDefinition> relatedDefs = processDefinitionMapper.selectList(relatedDefsQuery);
 
             if (relatedDefs == null || relatedDefs.isEmpty()) {
                 throw new PermissionDeniedException("您没有权限访问此表单定义");
@@ -141,18 +144,22 @@ public class WfFormServiceImpl implements IWfFormService {
                 throw new PermissionDeniedException("您没有权限访问此表单定义");
             }
 
-            Long startedCount = processInstanceMapper.selectCount(
-                    new LambdaQueryWrapper<WfProcessInstance>()
-                            .in(WfProcessInstance::getProcessDefKey, processKeys)
-                            .eq(WfProcessInstance::getStartUserId, currentUserId)
-            );
+            LambdaQueryWrapper<WfProcessInstance> startedQuery = new LambdaQueryWrapper<WfProcessInstance>()
+                    .in(WfProcessInstance::getProcessDefKey, processKeys)
+                    .eq(WfProcessInstance::getStartUserId, currentUserId);
+            if (currentTenantId != null) {
+                startedQuery.eq(WfProcessInstance::getTenantId, currentTenantId);
+            }
+            Long startedCount = processInstanceMapper.selectCount(startedQuery);
 
             // 关键修复：待办任务必须限定到该表单关联流程，不能用“任意待办”放行
-            List<WfProcessInstance> relatedInstances = processInstanceMapper.selectList(
-                    new LambdaQueryWrapper<WfProcessInstance>()
-                            .select(WfProcessInstance::getInstanceId)
-                            .in(WfProcessInstance::getProcessDefKey, processKeys)
-            );
+            LambdaQueryWrapper<WfProcessInstance> relatedInstancesQuery = new LambdaQueryWrapper<WfProcessInstance>()
+                    .select(WfProcessInstance::getInstanceId)
+                    .in(WfProcessInstance::getProcessDefKey, processKeys);
+            if (currentTenantId != null) {
+                relatedInstancesQuery.eq(WfProcessInstance::getTenantId, currentTenantId);
+            }
+            List<WfProcessInstance> relatedInstances = processInstanceMapper.selectList(relatedInstancesQuery);
             List<String> relatedInstanceIds = relatedInstances == null
                     ? new ArrayList<>()
                     : relatedInstances.stream()

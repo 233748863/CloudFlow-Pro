@@ -112,9 +112,17 @@ public class WorkflowPermissionService {
      */
     public void checkViewInstancePermission(WfProcessInstance instance) {
         Long currentUserId = UserContext.getUserId();
+        Long currentTenantId = UserContext.getTenantId();
         if (currentUserId == null) {
             throw new PermissionDeniedException("用户未登录");
         }
+
+        // 先做租户隔离，防止跨租户通过 instanceId 直接探测数据
+        if (currentTenantId != null && instance.getTenantId() != null
+                && !currentTenantId.equals(instance.getTenantId())) {
+            throw new PermissionDeniedException("无权访问该租户流程实例");
+        }
+
         if (isAdmin(currentUserId)) {
             return;
         }
