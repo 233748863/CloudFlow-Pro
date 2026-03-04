@@ -75,7 +75,9 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
  */
 export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
   const { value, labels } = React.useContext(SelectContext);
-  return <span className={value ? 'text-slate-900' : 'text-slate-400'}>{value ? labels[value] || value : placeholder}</span>;
+  const hasValue = value !== undefined;
+  const displayValue = hasValue ? (labels[value as string] ?? value) : placeholder;
+  return <span className={hasValue ? 'text-slate-900' : 'text-slate-400'}>{displayValue}</span>;
 };
 
 /**
