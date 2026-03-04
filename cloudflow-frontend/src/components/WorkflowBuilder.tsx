@@ -5367,6 +5367,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   // P2: 启动权限配置状态
   const [startPermissionType, setStartPermissionType] = useState("ALL");
   const [startPermissionValue, setStartPermissionValue] = useState("");
+  const [workflowDeptId, setWorkflowDeptId] = useState<number | undefined>(
+    undefined,
+  );
 
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -5395,6 +5398,19 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     return [];
   }, []);
 
+  const normalizeDeptId = useCallback((raw: unknown): number | undefined => {
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return raw;
+    }
+    if (typeof raw === "string" && raw.trim() !== "") {
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  }, []);
+
   const buildSettingsState = useCallback(() => {
     const tagsText =
       workflowTags.length > 0 ? JSON.stringify(workflowTags) : undefined;
@@ -5405,7 +5421,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       tags: tagsText,
       startPermissionType: startPermissionType || "ALL",
       startPermissionValue: startPermissionValue || undefined,
-      deptId: user?.deptId ? Number(user.deptId) : undefined,
+      // 编辑已有流程时优先保留原有数据权限部门，避免被当前登录人部门覆盖
+      deptId: workflowDeptId,
     };
   }, [
     selectedFormId,
@@ -5414,7 +5431,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     workflowTags,
     startPermissionType,
     startPermissionValue,
-    user?.deptId,
+    workflowDeptId,
   ]);
 
   const buildWorkflowSnapshot = useCallback((): WorkflowDefinition | null => {
@@ -5464,6 +5481,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setSelectedFormId(workflow.formId || "");
     setStartPermissionType(workflow.startPermissionType || "ALL");
     setStartPermissionValue(workflow.startPermissionValue || "");
+    const nextDeptId =
+      normalizeDeptId(workflow.deptId) ?? normalizeDeptId(user?.deptId);
+    setWorkflowDeptId(nextDeptId);
     setGlobalConfig({
       formId: workflow.formId || undefined,
       description: workflow.description || undefined,
@@ -5472,7 +5492,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       startPermissionType: workflow.startPermissionType || "ALL",
       startPermissionValue: workflow.startPermissionValue || undefined,
     });
-  }, [workflow?.id, parseTagsToArray, resetRoot]);
+  }, [workflow?.id, parseTagsToArray, resetRoot, normalizeDeptId, user?.deptId]);
 
   useEffect(() => {
     if (!onChange || !workflowRef.current) return;
@@ -5492,7 +5512,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     selectedFormId,
     startPermissionType,
     startPermissionValue,
-    user?.deptId,
+    workflowDeptId,
     buildWorkflowSnapshot,
   ]);
 
