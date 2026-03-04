@@ -217,12 +217,10 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        checkInstanceTenantAccess(instance, "撤回");
 
-        // 只有发起人可以撤回
-        Long currentUserId = UserContext.getUserId();
-        if (!instance.getStartUserId().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
-            throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有流程发起人可以撤回");
-        }
+        // 只有发起人或管理员可以撤回
+        permissionService.checkRecallPermission(instance);
 
         if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
             throw WorkflowException.invalidState("只有运行中的流程可以撤回");
@@ -261,6 +259,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        checkInstanceTenantAccess(instance, "暂停");
         if (!WfProcessStatus.RUNNING.getCode().equals(instance.getStatus())) {
             throw WorkflowException.invalidState("只有运行中的流程可以暂停");
         }
@@ -283,6 +282,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        checkInstanceTenantAccess(instance, "恢复");
         if (!WfProcessStatus.SUSPENDED.getCode().equals(instance.getStatus())) {
             throw WorkflowException.invalidState("只有暂停中的流程可以恢复");
         }
@@ -691,6 +691,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             throw WorkflowException.instanceNotFound(instanceId);
         }
+        checkInstanceTenantAccess(instance, "作废");
 
         // 只有运行中或暂停中的流程可以作废
         String currentStatus = instance.getStatus();
@@ -749,6 +750,14 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     }
 
     // ==================== 私有方法 ====================
+
+    private void checkInstanceTenantAccess(WfProcessInstance instance, String operation) {
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && instance.getTenantId() != null
+                && !currentTenantId.equals(instance.getTenantId())) {
+            throw new PermissionDeniedException("无权" + operation + "该租户流程实例");
+        }
+    }
 
     /**
      * 优先按实例锁定的 definitionId 读取流程定义，避免模型被新版本污染；
@@ -921,6 +930,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
         if (instance == null) {
             return R.fail("流程实例不存在");
+        }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && instance.getTenantId() != null
+                && !currentTenantId.equals(instance.getTenantId())) {
+            auditService.logPermissionDenied(instanceId, "TERMINATE_TENANT");
+            return R.fail("无权访问该租户流程实例");
         }
 
         // 4. 状态校验

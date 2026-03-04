@@ -325,6 +325,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
     @Override
     public PageResult<WfTask> getTodoTasks(Long userId, PageQuery pageQuery) {
         log.info("[getTodoTasks] 查询待办任务, userId={}", userId);
+        Long currentTenantId = UserContext.getTenantId();
 
         // 提取搜索条件
         String keyword = (String) pageQuery.getParams().get("keyword");
@@ -340,6 +341,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         if (hasInstanceFilter) {
             LambdaQueryWrapper<WfProcessInstance> instanceWrapper = new LambdaQueryWrapper<>();
             instanceWrapper.eq(WfProcessInstance::getStatus, WfProcessStatus.RUNNING.getCode());
+            if (currentTenantId != null) {
+                instanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
+            }
             if (StringUtils.hasText(keyword)) {
                 instanceWrapper.and(w -> w.like(WfProcessInstance::getTitle, keyword).or().like(WfProcessInstance::getProcessNo, keyword));
             }
@@ -361,6 +365,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
         LambdaQueryWrapper<WfTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfTask::getAssignee, userId);
         queryWrapper.eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfTask::getTenantId, currentTenantId);
+        }
 
         if (filteredInstanceIds != null) {
             queryWrapper.in(WfTask::getInstanceId, filteredInstanceIds);
@@ -398,6 +405,11 @@ public class WfTaskServiceImpl implements IWfTaskService {
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) {
             throw WorkflowException.taskNotFound(taskId);
+        }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && task.getTenantId() != null
+                && !currentTenantId.equals(task.getTenantId())) {
+            throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
         }
         if (task.getAssignee() != null && !task.getAssignee().equals(userId) && !permissionService.isAdmin(userId)) {
             throw new com.cloudflow.workflow.exception.PermissionDeniedException("您不是此任务的处理人，无法标记已读");

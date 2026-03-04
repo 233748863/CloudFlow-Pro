@@ -61,6 +61,7 @@ public class WorkflowPermissionService {
         if (currentUserId == null) {
             throw new PermissionDeniedException("用户未登录");
         }
+        checkTenantIsolation(task.getTenantId(), "任务");
         if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId) && !isAdmin(currentUserId)) {
             log.warn("用户 {} 尝试处理非本人任务 {}", currentUserId, task.getTaskId());
             throw new PermissionDeniedException("无权处理此任务");
@@ -75,6 +76,7 @@ public class WorkflowPermissionService {
         if (currentUserId == null) {
             throw new PermissionDeniedException("用户未登录");
         }
+        checkTenantIsolation(instance.getTenantId(), "流程实例");
         if (!instance.getStartUserId().equals(currentUserId) && !isAdmin(currentUserId)) {
             log.warn("用户 {} 尝试撤回非本人发起流程 {}", currentUserId, instance.getInstanceId());
             throw new PermissionDeniedException("非发起人无法撤回");
@@ -89,6 +91,7 @@ public class WorkflowPermissionService {
         if (currentUserId == null) {
             throw new PermissionDeniedException("用户未登录");
         }
+        checkTenantIsolation(instance.getTenantId(), "流程实例");
         if (!instance.getStartUserId().equals(currentUserId) && !isAdmin(currentUserId)) {
             throw new PermissionDeniedException("仅发起人或管理员可催办");
         }
@@ -102,6 +105,7 @@ public class WorkflowPermissionService {
         if (currentUserId == null) {
             throw new PermissionDeniedException("用户未登录");
         }
+        checkTenantIsolation(task.getTenantId(), "任务");
         if (task.getAssignee() != null && !task.getAssignee().equals(currentUserId) && !isAdmin(currentUserId)) {
             throw new PermissionDeniedException("无权驳回此任务");
         }
@@ -285,5 +289,12 @@ public class WorkflowPermissionService {
             }
         }
         return value;
+    }
+
+    private void checkTenantIsolation(Long resourceTenantId, String resourceName) {
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && resourceTenantId != null && !currentTenantId.equals(resourceTenantId)) {
+            throw new PermissionDeniedException("无权访问该租户" + resourceName);
+        }
     }
 }

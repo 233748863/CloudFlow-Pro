@@ -64,6 +64,7 @@ public class WfFormServiceImpl implements IWfFormService {
         log.info("[saveFormDefinition] 开始保存表单定义, formId={}", definition.getFormId());
 
         permissionService.checkDefinitionPermission("保存表单");
+        Long currentTenantId = UserContext.getTenantId();
 
         if (!StringUtils.hasText(definition.getFormName())) {
             throw WorkflowException.validationError("表单名称不能为空");
@@ -82,8 +83,15 @@ public class WfFormServiceImpl implements IWfFormService {
 
         WfFormDefinition exist = formDefinitionMapper.selectById(definition.getFormId());
         if (exist != null) {
+            if (currentTenantId != null && exist.getTenantId() != null
+                    && !currentTenantId.equals(exist.getTenantId())) {
+                throw new PermissionDeniedException("无权修改该租户表单定义");
+            }
             if (definition.getVersionLock() != null && !definition.getVersionLock().equals(exist.getVersionLock())) {
                 throw WorkflowException.invalidState("表单定义已被其他用户修改，请刷新后重试");
+            }
+            if (definition.getTenantId() == null) {
+                definition.setTenantId(exist.getTenantId());
             }
             definition.setVersion(exist.getVersion() + 1);
             definition.setVersionLock(exist.getVersionLock() != null ? exist.getVersionLock() + 1 : 1);
@@ -91,6 +99,9 @@ public class WfFormServiceImpl implements IWfFormService {
             formDefinitionMapper.updateById(definition);
             log.info("[saveFormDefinition] 表单定义更新成功, formId={}, version={}", definition.getFormId(), definition.getVersion());
         } else {
+            if (definition.getTenantId() == null && currentTenantId != null) {
+                definition.setTenantId(currentTenantId);
+            }
             definition.setVersion(1);
             definition.setVersionLock(0);
             definition.setIsLatest(1);
@@ -107,6 +118,14 @@ public class WfFormServiceImpl implements IWfFormService {
 
         Long currentUserId = UserContext.getUserId();
         Long currentTenantId = UserContext.getTenantId();
+        WfFormDefinition form = formDefinitionMapper.selectById(formId);
+        if (form == null) {
+            throw WorkflowException.validationError("表单定义不存在: " + formId);
+        }
+        if (currentTenantId != null && form.getTenantId() != null
+                && !currentTenantId.equals(form.getTenantId())) {
+            throw new PermissionDeniedException("您没有权限访问此表单定义");
+        }
         if (currentUserId != null && !permissionService.isAdmin(currentUserId)) {
             // 非管理员必须只访问“自己发起过或参与过”的流程所绑定表单
             LambdaQueryWrapper<WfProcessDefinition> relatedDefsQuery = new LambdaQueryWrapper<WfProcessDefinition>()
@@ -128,10 +147,6 @@ public class WfFormServiceImpl implements IWfFormService {
                             def.getStartPermissionType(),
                             def.getStartPermissionValue()));
             if (canStartPublishedProcess) {
-                WfFormDefinition form = formDefinitionMapper.selectById(formId);
-                if (form == null) {
-                    throw WorkflowException.validationError("表单定义不存在: " + formId);
-                }
                 return form;
             }
 
@@ -180,11 +195,6 @@ public class WfFormServiceImpl implements IWfFormService {
                 throw new PermissionDeniedException("您没有权限访问此表单定义");
             }
         }
-
-        WfFormDefinition form = formDefinitionMapper.selectById(formId);
-        if (form == null) {
-            throw WorkflowException.validationError("表单定义不存在: " + formId);
-        }
         return form;
     }
 
@@ -194,6 +204,11 @@ public class WfFormServiceImpl implements IWfFormService {
 
         Page<WfFormDefinition> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfFormDefinition> queryWrapper = new LambdaQueryWrapper<>();
+        Long currentTenantId = UserContext.getTenantId();
+
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfFormDefinition::getTenantId, currentTenantId);
+        }
 
         String status = (String) pageQuery.getParams().get("status");
         if (StringUtils.hasText(status)) {

@@ -206,18 +206,39 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
   useEffect(() => {
     getProcessDefinitions({ latestOnly: false }).then(res => {
       if (Array.isArray(res)) {
-        // 按 processKey 去重，只保留最新版本
-        // 兼容后端返回的 processKey/key 和 processName/name 两种字段名
-        const seen = new Set<string>();
-        const options: { key: string; name: string }[] = [];
+        // 按 processKey 聚合：优先已发布版本，其次版本号更高，避免筛选项展示旧版/草稿名称
+        const latestByKey = new Map<string, any>();
         for (const def of res) {
-          const defKey = def.processKey || def.key;
-          const defName = def.processName || def.name || defKey;
-          if (defKey && !seen.has(defKey)) {
-            seen.add(defKey);
-            options.push({ key: defKey, name: defName });
+          const defKey = String(def.processKey || def.key || '').trim();
+          if (!defKey) continue;
+
+          const current = latestByKey.get(defKey);
+          if (!current) {
+            latestByKey.set(defKey, def);
+            continue;
+          }
+
+          const currentPublished = String(current.status || '').toUpperCase() === 'PUBLISHED';
+          const nextPublished = String(def.status || '').toUpperCase() === 'PUBLISHED';
+          const currentVersion = Number(current.version || 0);
+          const nextVersion = Number(def.version || 0);
+
+          if (
+            (nextPublished && !currentPublished) ||
+            (nextPublished === currentPublished && nextVersion >= currentVersion)
+          ) {
+            latestByKey.set(defKey, def);
           }
         }
+
+        const options: { key: string; name: string }[] = Array.from(latestByKey.values())
+          .map((def: any) => {
+            const defKey = String(def.processKey || def.key || '').trim();
+            const defName = def.processName || def.name || defKey;
+            return { key: defKey, name: defName };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+
         if (type === 'applications') {
           setProcessDefOptions(options);
         } else {
