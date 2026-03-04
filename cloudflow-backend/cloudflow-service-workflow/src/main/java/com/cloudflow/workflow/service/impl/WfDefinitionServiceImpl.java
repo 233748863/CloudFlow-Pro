@@ -9,6 +9,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfNodeConfig;
+import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
@@ -85,10 +86,6 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (!StringUtils.hasText(definition.getProcessName())) {
             throw WorkflowException.validationError("流程名称不能为空");
         }
-        if (StringUtils.hasText(definition.getFormId())
-            && formDefinitionMapper.selectById(definition.getFormId()) == null) {
-            throw WorkflowException.validationError("绑定表单不存在: " + definition.getFormId());
-        }
 
         // XSS 防护
         definition.setProcessName(securityUtils.sanitizeXss(definition.getProcessName()));
@@ -107,6 +104,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (definition.getTenantId() == null && currentTenantId != null) {
             definition.setTenantId(currentTenantId);
         }
+        validateBoundFormTenant(definition.getFormId(), definition.getTenantId(), "保存");
 
         // 查找当前Key的最大版本
         LambdaQueryWrapper<WfProcessDefinition> lastDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
@@ -181,10 +179,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (!StringUtils.hasText(def.getModelJson())) {
             throw WorkflowException.validationError("流程定义模型为空，无法发布");
         }
-        if (StringUtils.hasText(def.getFormId())
-            && formDefinitionMapper.selectById(def.getFormId()) == null) {
-            throw WorkflowException.validationError("绑定表单不存在或已被删除，无法发布");
-        }
+        validateBoundFormTenant(def.getFormId(), def.getTenantId(), "发布");
 
         // 发布前完整性检查
         jsonSchemaValidator.validateProcessDefinitionJson(def.getModelJson());
@@ -495,6 +490,20 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     }
 
     // ==================== 私有方法 ====================
+
+    private void validateBoundFormTenant(String formId, Long definitionTenantId, String operation) {
+        if (!StringUtils.hasText(formId)) {
+            return;
+        }
+        WfFormDefinition boundForm = formDefinitionMapper.selectById(formId);
+        if (boundForm == null) {
+            throw WorkflowException.validationError("绑定表单不存在: " + formId);
+        }
+        if (definitionTenantId != null && boundForm.getTenantId() != null
+                && !definitionTenantId.equals(boundForm.getTenantId())) {
+            throw WorkflowException.validationError("绑定表单不属于当前租户，无法" + operation + "流程定义");
+        }
+    }
 
     /**
      * 读取流程定义时的最小权限校验：
