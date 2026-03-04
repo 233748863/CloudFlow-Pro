@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, NodeType, FormDefinition, User } from '../types';
 import {
@@ -69,6 +69,7 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
 });
 
 export const WorkflowDesign = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedWorkflowId = useMemo(() => (searchParams.get('id') || '').trim(), [searchParams]);
 
@@ -78,6 +79,18 @@ export const WorkflowDesign = () => {
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const syncWorkflowIdToUrl = useCallback(
+    (definitionId: string) => {
+      if (!definitionId) return;
+      if (searchParams.get('id') === definitionId) return;
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('id', definitionId);
+      navigate({ search: `?${nextParams.toString()}` }, { replace: true });
+    },
+    [navigate, searchParams],
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -109,9 +122,14 @@ export const WorkflowDesign = () => {
               const id = String(item?.definitionId || item?.id || item?.processKey || '');
               return id === requestedWorkflowId;
             });
+          } else {
+            selectedWorkflow = workflows[0];
           }
-          selectedWorkflow = selectedWorkflow || workflows[0];
         }
+      }
+
+      if (!selectedWorkflow && requestedWorkflowId) {
+        toast.warning('指定流程不存在或已失效，已切换到新建流程');
       }
 
       setWorkflow(selectedWorkflow ? mapBackendWorkflow(selectedWorkflow) : createDefaultWorkflow());
@@ -166,6 +184,13 @@ export const WorkflowDesign = () => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!workflow?.id || workflow.id.startsWith('new_')) {
+      return;
+    }
+    syncWorkflowIdToUrl(workflow.id);
+  }, [workflow?.id, syncWorkflowIdToUrl]);
+
   const handleSaveWorkflow = async (wf: WorkflowDefinition) => {
     try {
       if (!wf.key || wf.key === 'new_process') {
@@ -190,7 +215,9 @@ export const WorkflowDesign = () => {
       const result = await saveProcessDefinition(payload);
 
       if (result && result.id && wf.id !== result.id) {
-        setWorkflow((prev) => (prev ? { ...prev, id: result.id } : prev));
+        const nextId = String(result.id);
+        setWorkflow((prev) => (prev ? { ...prev, id: nextId } : prev));
+        syncWorkflowIdToUrl(nextId);
       }
     } catch (err) {
       logWorkflow.error('保存流程失败:', err);
@@ -226,7 +253,8 @@ export const WorkflowDesign = () => {
         };
         const result = await saveProcessDefinition(payload);
         if (result && result.id && wf.id !== result.id) {
-          setWorkflow((prev) => (prev ? { ...prev, id: result.id } : prev));
+          // 自动保存仅同步 URL，避免因 definitionId 变化触发新的自动保存循环
+          syncWorkflowIdToUrl(String(result.id));
         }
       }
     },

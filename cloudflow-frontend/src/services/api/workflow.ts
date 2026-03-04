@@ -78,8 +78,19 @@ function normalizeArchiveDateTime(value: string, isEnd: boolean): string {
 export async function startProcess(
   data: StartProcessRequest,
 ): Promise<ProcessInstance> {
-  logApiCall("POST", "/workflow/start", data);
-  return request.post("/workflow/start", data);
+  const variables: Record<string, any> = { ...(data.variables || {}) };
+  if (data.title && !Object.prototype.hasOwnProperty.call(variables, "_title")) {
+    variables._title = data.title;
+  }
+
+  // 后端仅接收 processDefKey/businessKey/variables，前端在此完成字段归一化
+  const payload = {
+    processDefKey: data.processDefKey,
+    businessKey: data.businessKey,
+    variables,
+  };
+  logApiCall("POST", "/workflow/start", payload);
+  return request.post("/workflow/start", payload);
 }
 
 /**
@@ -300,11 +311,25 @@ export async function getTaskGroups(
 /**
  * 获取流程定义列表
  */
-export async function getProcessDefinitions(): Promise<
-  ProcessDefinitionListItem[]
-> {
-  logApiCall("GET", "/workflow/definitions");
-  return request.get("/workflow/definitions").then(extractList);
+export async function getProcessDefinitions(params?: {
+  pageNum?: number;
+  pageSize?: number;
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  latestOnly?: boolean;
+}): Promise<ProcessDefinitionListItem[]> {
+  const query: Record<string, any> = {
+    pageNum: params?.pageNum || 1,
+    pageSize: params?.pageSize || 500,
+  };
+  if (params?.status) {
+    query["params[status]"] = params.status;
+  }
+  if (params?.latestOnly === false) {
+    query["params[latestOnly]"] = "false";
+  }
+
+  logApiCall("GET", "/workflow/definitions", query);
+  return request.get("/workflow/definitions", { params: query }).then(extractList);
 }
 
 /**
@@ -662,7 +687,7 @@ export interface ImportResult {
   success: boolean;
   workflowId?: string;
   workflowName: string;
-  action: "created" | "updated" | "skipped";
+  action: "created" | "updated" | "skipped" | "failed";
   errors?: string[];
   warnings?: string[];
   message?: string;

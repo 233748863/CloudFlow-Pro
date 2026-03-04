@@ -3,7 +3,7 @@ import { Task, TaskStatus, FormDefinition, UnifiedTask, WorkTaskStatus } from '.
 import { TaskList } from '../components/TaskList';
 import { TaskHandleModal } from '../components/TaskHandleModal';
 import { TaskBoard } from '../components/TaskBoard';
-import { getTodoTasks, getMyInstances, getFormDefinitions, getProcessDefinitions } from '../services/api/workflow';
+import { getTodoTasks, getMyInstances, getFormDefinition, getFormDefinitions, getProcessDefinitions } from '../services/api/workflow';
 import { getWorkTasks, updateWorkTaskStatus } from '../services/api/workTask';
 import { useAuth } from '../context/AuthContext';
 import { mapBackendTaskToFrontend, mapBackendInstanceToTask, mapTaskToUnified, mapWorkTaskToUnified } from '../utils/mappers';
@@ -18,6 +18,40 @@ import { DatePicker } from '../components/ui/date-picker';
 
 // 每页条数
 const PAGE_SIZE = 12;
+
+/**
+ * 统一解析后端表单结构，兼容 fieldsJson / formSchema / fields 三种返回格式。
+ */
+const mapBackendForm = (f: any): FormDefinition => {
+  let fields: any[] = [];
+  const raw =
+    typeof f?.fieldsJson === 'string'
+      ? f.fieldsJson
+      : typeof f?.formSchema === 'string'
+        ? f.formSchema
+        : null;
+
+  if (raw) {
+    try {
+      fields = JSON.parse(raw);
+    } catch {
+      try {
+        const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
+        fields = JSON.parse(sanitized);
+      } catch {
+        fields = [];
+      }
+    }
+  } else {
+    fields = f?.fields || f?.fieldsJson || [];
+  }
+
+  return {
+    id: String(f?.id || f?.formId || ''),
+    name: f?.name || f?.formName || '未命名表单',
+    fields,
+  };
+};
 
 export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => {
   const { user } = useAuth();
@@ -196,32 +230,55 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
   useEffect(() => {
     getFormDefinitions().then(res => {
         if(Array.isArray(res)) {
-            const mapped = res.map((f: any) => {
-                let fields = [];
-                try {
-                    if (typeof f.fieldsJson === 'string') {
-                        let cleanedJson = f.fieldsJson;
-                        cleanedJson = cleanedJson.replace(/\\/g, '\\\\');
-                        try {
-                            fields = JSON.parse(cleanedJson);
-                        } catch {
-                            fields = JSON.parse(f.fieldsJson);
-                        }
-                    } else {
-                        fields = f.fieldsJson || [];
-                    }
-                } catch (e) {
-                    console.warn(`无法解析表单 "${f.formName}" 的 fieldsJson，使用空数组`, e);
-                    fields = [];
-                }
-                return { id: f.formId, name: f.formName, fields };
-            });
+            const mapped = res.map((f: any) => mapBackendForm(f));
             setSavedForms(mapped);
         }
     }).catch(err => {
         console.error('Failed to fetch form definitions:', err);
     });
   }, []);
+
+  // 非管理员无法获取全量表单时，按任务中的 formId 懒加载，保证审批详情可展示动态表单
+  useEffect(() => {
+    const formIds = Array.from(
+      new Set(
+        rawTasks
+          .map((task) => task.formId)
+          .filter((formId): formId is string => typeof formId === 'string' && formId.trim() !== ''),
+      ),
+    );
+
+    const existingIds = new Set(savedForms.map((form) => form.id));
+    const missingIds = formIds.filter((id) => !existingIds.has(id));
+    if (missingIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    Promise.all(
+      missingIds.map((id) =>
+        getFormDefinition(id)
+          .then((res) => mapBackendForm(res))
+          .catch(() => null),
+      ),
+    ).then((forms) => {
+      if (cancelled) return;
+      const loadedForms = forms.filter((item): item is FormDefinition => !!item);
+      if (loadedForms.length === 0) return;
+
+      setSavedForms((prev) => {
+        const nextMap = new Map(prev.map((item) => [item.id, item] as const));
+        for (const form of loadedForms) {
+          nextMap.set(form.id, form);
+        }
+        return Array.from(nextMap.values());
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rawTasks, savedForms]);
 
   const handleTaskUpdate = () => {
       fetchTasks();

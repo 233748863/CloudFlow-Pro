@@ -119,6 +119,21 @@ public class WfFormServiceImpl implements IWfFormService {
                 throw new PermissionDeniedException("您没有权限访问此表单定义");
             }
 
+            // 允许具备流程发起权限的用户访问绑定表单，支持首次发起流程
+            boolean canStartPublishedProcess = relatedDefs.stream()
+                    .filter(def -> "PUBLISHED".equals(def.getStatus()))
+                    .anyMatch(def -> permissionService.canStartProcess(
+                            currentUserId,
+                            def.getStartPermissionType(),
+                            def.getStartPermissionValue()));
+            if (canStartPublishedProcess) {
+                WfFormDefinition form = formDefinitionMapper.selectById(formId);
+                if (form == null) {
+                    throw WorkflowException.validationError("表单定义不存在: " + formId);
+                }
+                return form;
+            }
+
             List<String> processKeys = relatedDefs.stream()
                     .map(WfProcessDefinition::getProcessKey)
                     .filter(StringUtils::hasText)
@@ -191,3 +206,4 @@ public class WfFormServiceImpl implements IWfFormService {
         return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
     }
 }
+

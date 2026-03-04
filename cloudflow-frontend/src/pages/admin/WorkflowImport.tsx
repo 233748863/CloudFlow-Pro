@@ -274,7 +274,7 @@ export const WorkflowImport: React.FC = () => {
                     importResult: {
                       success: false,
                       workflowName: fileItem.file.name,
-                      action: 'skipped',
+                      action: 'failed',
                       errors: [getErrorMessage(error, '导入失败')]
                     }
                   }

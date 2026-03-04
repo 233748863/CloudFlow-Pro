@@ -31,6 +31,7 @@ import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 // 扩展 WorkflowDefinition 类型，tags 解析为数组
 interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
   tags: string[]; // 已解析的标签数组
+  workflowCreatorId: string; // 流程创建者ID（用于权限判断）
 }
 
 /**
@@ -106,24 +107,154 @@ export const ProcessManagement = () => {
     '紧急', '重要', '常用'
   ];
 
+  // 默认流程结构（模型解析失败时兜底）
+  const buildDefaultNodes = (): BaseWorkflowDefinition['nodes'] => ({
+    type: NodeType.START,
+    title: '开始',
+    id: 'start'
+  });
+
+  const parseTagsSafely = (
+    rawTags: unknown,
+    workflowName: string,
+    onError: () => void
+  ): string[] => {
+    if (!rawTags) {
+      return [];
+    }
+
+    if (Array.isArray(rawTags)) {
+      return rawTags
+        .map(tag => String(tag).trim())
+        .filter(Boolean);
+    }
+
+    if (typeof rawTags === 'string') {
+      const trimmed = rawTags.trim();
+      if (!trimmed) {
+        return [];
+      }
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map(tag => String(tag).trim())
+            .filter(Boolean);
+        }
+        onError();
+        console.warn(`[ProcessManagement] tags 解析结果不是数组，流程: ${workflowName}`);
+        return [];
+      } catch (error) {
+        // 兼容后端偶发返回的单标签纯文本
+        if (!trimmed.startsWith('[')) {
+          return [trimmed];
+        }
+        onError();
+        console.warn(`[ProcessManagement] tags JSON 解析失败，流程: ${workflowName}`, error);
+        return [];
+      }
+    }
+
+    onError();
+    console.warn(`[ProcessManagement] tags 字段类型不支持，流程: ${workflowName}`, rawTags);
+    return [];
+  };
+
+  const parseNodesSafely = (
+    rawModelJson: unknown,
+    workflowName: string,
+    onError: () => void
+  ): BaseWorkflowDefinition['nodes'] => {
+    if (!rawModelJson) {
+      return buildDefaultNodes();
+    }
+
+    if (typeof rawModelJson === 'string') {
+      try {
+        const parsed = JSON.parse(rawModelJson);
+        if (parsed && typeof parsed === 'object') {
+          return parsed as BaseWorkflowDefinition['nodes'];
+        }
+        onError();
+        console.warn(`[ProcessManagement] modelJson 解析结果无效，流程: ${workflowName}`);
+        return buildDefaultNodes();
+      } catch (error) {
+        onError();
+        console.warn(`[ProcessManagement] modelJson JSON 解析失败，流程: ${workflowName}`, error);
+        return buildDefaultNodes();
+      }
+    }
+
+    if (typeof rawModelJson === 'object') {
+      return rawModelJson as BaseWorkflowDefinition['nodes'];
+    }
+
+    onError();
+    console.warn(`[ProcessManagement] modelJson 字段类型不支持，流程: ${workflowName}`, rawModelJson);
+    return buildDefaultNodes();
+  };
+
+  const canExportSingleWorkflow = (workflow: WorkflowDefinition): boolean => {
+    if (isAdmin) {
+      return true;
+    }
+    return !!workflow.workflowCreatorId && canExportOwn(workflow.workflowCreatorId);
+  };
+
   // 加载流程列表
   const loadWorkflows = async () => {
     setLoading(true);
     try {
       const res = await getProcessDefinitions();
       if (Array.isArray(res)) {
-        const mapped = res.map((w: any) => ({
-          id: w.definitionId || w.processKey,
-          name: w.processName || w.name,
-          key: w.processKey || w.key,
-          version: w.version,
-          formId: w.formId,
-          category: w.category || '',
-          tags: w.tags ? (typeof w.tags === 'string' ? JSON.parse(w.tags) : w.tags) : [],
-          description: w.description || '',
-          nodes: w.modelJson ? JSON.parse(w.modelJson) : { type: NodeType.START, title: '开始', id: 'start' }
-        }));
+        let missingDefinitionIdCount = 0;
+        let invalidTagsCount = 0;
+        let invalidModelCount = 0;
+
+        const mappedItems: Array<WorkflowDefinition | null> = res
+          .map((w: any): WorkflowDefinition | null => {
+            const definitionId = typeof w.definitionId === 'string' ? w.definitionId.trim() : '';
+            if (!definitionId) {
+              missingDefinitionIdCount += 1;
+              console.warn('[ProcessManagement] 跳过缺少 definitionId 的流程记录:', w);
+              return null;
+            }
+
+            const workflowName = (w.processName || w.name || definitionId) as string;
+            return {
+              id: definitionId,
+              name: workflowName,
+              key: w.processKey || w.key || '',
+              version: w.version,
+              formId: w.formId,
+              category: w.category || '',
+              tags: parseTagsSafely(w.tags, workflowName, () => {
+                invalidTagsCount += 1;
+              }),
+              description: w.description || '',
+              nodes: parseNodesSafely(w.modelJson, workflowName, () => {
+                invalidModelCount += 1;
+              }),
+              workflowCreatorId: String(
+                w.createBy ?? w.createdBy ?? w.creatorId ?? w.creator ?? ''
+              )
+            };
+          });
+        const mapped = mappedItems.filter((item): item is WorkflowDefinition => item !== null);
+
         setWorkflows(mapped);
+        setSelectedIds(prev => prev.filter(id => mapped.some(wf => wf.id === id)));
+
+        if (missingDefinitionIdCount > 0) {
+          toast.warning(`有 ${missingDefinitionIdCount} 条流程缺少 definitionId，已自动跳过`);
+        }
+        if (invalidTagsCount > 0) {
+          toast.warning(`有 ${invalidTagsCount} 条流程标签格式异常，已按空标签处理`);
+        }
+        if (invalidModelCount > 0) {
+          toast.warning(`有 ${invalidModelCount} 条流程模型异常，已回退为默认开始节点`);
+        }
       }
     } catch (error) {
       console.error('加载流程列表失败:', error);
@@ -171,6 +302,11 @@ export const ProcessManagement = () => {
 
   // 打开批量编辑模态框
   const openBatchEdit = (type: 'category' | 'tags') => {
+    if (!isAdmin) {
+      toast.error('仅管理员可批量编辑流程');
+      return;
+    }
+
     if (selectedIds.length === 0) {
       toast.error('请先选择要编辑的流程');
       return;
@@ -280,6 +416,17 @@ export const ProcessManagement = () => {
 
   // 打开导出对话框（单个流程）
   const openExportDialog = (workflowId: string) => {
+    const workflow = workflows.find(w => w.id === workflowId);
+    if (!workflow) {
+      toast.error('流程不存在或已被删除');
+      return;
+    }
+
+    if (!canExportSingleWorkflow(workflow)) {
+      toast.error('仅流程创建者或管理员可导出该流程');
+      return;
+    }
+
     setExportType('single');
     setExportWorkflowId(workflowId);
     setIncludeSensitive(false);
@@ -305,9 +452,18 @@ export const ProcessManagement = () => {
       let fileName: string;
 
       if (exportType === 'single') {
+        const workflow = workflows.find(w => w.id === exportWorkflowId);
+        if (!workflow) {
+          toast.error('未找到要导出的流程');
+          return;
+        }
+        if (!canExportSingleWorkflow(workflow)) {
+          toast.error('仅流程创建者或管理员可导出该流程');
+          return;
+        }
+
         // 单个流程导出
         blob = await exportWorkflow(exportWorkflowId, includeSensitive);
-        const workflow = workflows.find(w => w.id === exportWorkflowId);
         fileName = `workflow_${workflow?.name || 'export'}_${workflow?.version || '1.0.0'}_${new Date().toISOString().split('T')[0]}.json`;
       } else {
         // 批量导出
@@ -538,16 +694,18 @@ export const ProcessManagement = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => openBatchEdit('category')}
-            disabled={selectedIds.length === 0}
+            disabled={selectedIds.length === 0 || !isAdmin}
             className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            title={!isAdmin ? '仅管理员可批量修改分类' : '批量修改选中流程分类'}
           >
             <FolderOpen size={16} />
             批量修改分类
           </button>
           <button
             onClick={() => openBatchEdit('tags')}
-            disabled={selectedIds.length === 0}
+            disabled={selectedIds.length === 0 || !isAdmin}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            title={!isAdmin ? '仅管理员可批量添加标签' : '批量为选中流程添加标签'}
           >
             <Tag size={16} />
             批量添加标签
@@ -672,8 +830,9 @@ export const ProcessManagement = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => navigate(`/workflow/design?id=${wf.id}`)}
-                        className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 text-sm"
-                        title="编辑流程"
+                        disabled={!isAdmin}
+                        className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 text-sm disabled:text-slate-400 disabled:cursor-not-allowed"
+                        title={isAdmin ? '编辑流程' : '仅管理员可编辑流程'}
                       >
                         <Edit size={16} />
                         编辑
@@ -688,8 +847,9 @@ export const ProcessManagement = () => {
                       </button>
                       <button
                         onClick={() => openExportDialog(wf.id)}
-                        className="text-green-600 hover:text-green-700 transition-colors flex items-center gap-1 text-sm"
-                        title="导出流程"
+                        disabled={!canExportSingleWorkflow(wf)}
+                        className="text-green-600 hover:text-green-700 transition-colors flex items-center gap-1 text-sm disabled:text-slate-400 disabled:cursor-not-allowed"
+                        title={canExportSingleWorkflow(wf) ? '导出流程' : '仅流程创建者或管理员可导出'}
                       >
                         <FileDown size={16} />
                         导出

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, DollarSign, Clock, Monitor, FileBadge, GitMerge, ArrowRightCircle, FormInput, AlertTriangle, Tag, FolderOpen, X } from 'lucide-react';
 import { WorkflowDefinition, NodeType, FormDefinition } from '../types';
-import { getProcessDefinitions, getFormDefinitions, startProcess } from '../services/api/workflow';
+import { getProcessDefinitions, getFormDefinition, getFormDefinitions, startProcess } from '../services/api/workflow';
 import { FormRenderer } from '../components/FormRenderer';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +33,40 @@ const normalizeTags = (rawTags: unknown): string[] => {
     .filter((item) => item.length > 0);
 };
 
+/**
+ * 统一解析后端表单结构，兼容 fieldsJson / formSchema / fields 三种返回格式。
+ */
+const mapBackendForm = (f: any): FormDefinition => {
+  let fields: any[] = [];
+  const raw =
+    typeof f?.fieldsJson === 'string'
+      ? f.fieldsJson
+      : typeof f?.formSchema === 'string'
+        ? f.formSchema
+        : null;
+
+  if (raw) {
+    try {
+      fields = JSON.parse(raw);
+    } catch {
+      try {
+        const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
+        fields = JSON.parse(sanitized);
+      } catch {
+        fields = [];
+      }
+    }
+  } else {
+    fields = f?.fields || f?.fieldsJson || [];
+  }
+
+  return {
+    id: String(f?.id || f?.formId || ''),
+    name: f?.name || f?.formName || '未命名表单',
+    fields,
+  };
+};
+
 export const Workplace = () => {
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +75,8 @@ export const Workplace = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [targetWorkflow, setTargetWorkflow] = useState<WorkflowDefinition | null>(null);
   const [savedForms, setSavedForms] = useState<FormDefinition[]>([]);
+  const [loadingBoundForm, setLoadingBoundForm] = useState(false);
+  const [boundFormError, setBoundFormError] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -59,9 +95,13 @@ export const Workplace = () => {
   };
 
   useEffect(() => {
-    getProcessDefinitions().then(res => {
+    getProcessDefinitions({ status: 'PUBLISHED' }).then(res => {
        if (Array.isArray(res)) {
-          const mapped = res.map((w: any) => ({
+          // 发起页只展示已发布流程，避免“界面显示草稿、后端实际发起旧发布版”的错配
+          const sourceWorkflows = res.some((w: any) => !!w?.status)
+            ? res.filter((w: any) => String(w?.status || '').toUpperCase() === 'PUBLISHED')
+            : res;
+          const mapped = sourceWorkflows.map((w: any) => ({
               id: w.definitionId || w.processKey,
               name: w.processName || w.name,
               key: w.processKey || w.key,
@@ -78,40 +118,62 @@ export const Workplace = () => {
        }
     });
 
-    getFormDefinitions().then(res => {
-        if(Array.isArray(res)) {
-            const mapped = res.map((f: any) => {
-                let fields = [];
-                const raw = typeof f.fieldsJson === 'string' ? f.fieldsJson
-                          : typeof f.formSchema === 'string' ? f.formSchema
-                          : null;
-                if (raw) {
-                    try {
-                        fields = JSON.parse(raw);
-                    } catch {
-                        // 尝试修复非法转义字符（如 \d, \w 等正则表达式字符）
-                        try {
-                            const sanitized = raw.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
-                            fields = JSON.parse(sanitized);
-                        } catch (parseError) {
-                            console.error('解析表单字段失败:', parseError);
-                            fields = [];
-                        }
-                    }
-                } else {
-                    fields = f.fields || f.fieldsJson || [];
-                }
-                
-                return {
-                    id: f.formId,
-                    name: f.formName,
-                    fields: fields
-                };
-            });
-            setSavedForms(mapped);
+    // 全量表单接口需要管理员权限，非管理员失败时忽略，后续按 formId 懒加载
+    getFormDefinitions()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setSavedForms(res.map((f: any) => mapBackendForm(f)));
         }
-    });
+      })
+      .catch(() => {
+        setSavedForms([]);
+      });
   }, []);
+
+  useEffect(() => {
+    if (!isFormOpen || !targetWorkflow?.formId) {
+      setLoadingBoundForm(false);
+      setBoundFormError(null);
+      return;
+    }
+
+    const formId = targetWorkflow.formId;
+    if (savedForms.some((form) => form.id === formId)) {
+      setLoadingBoundForm(false);
+      setBoundFormError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingBoundForm(true);
+    setBoundFormError(null);
+
+    getFormDefinition(formId)
+      .then((res) => {
+        if (cancelled) return;
+        const mapped = mapBackendForm(res);
+        setSavedForms((prev) => {
+          const exists = prev.some((item) => item.id === mapped.id);
+          if (exists) {
+            return prev.map((item) => (item.id === mapped.id ? mapped : item));
+          }
+          return [...prev, mapped];
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setBoundFormError(err instanceof Error ? err.message : '加载绑定表单失败');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingBoundForm(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFormOpen, savedForms, targetWorkflow?.formId]);
   
   // P3: 筛选逻辑 - 支持搜索、分类和标签筛选
   const filteredWorkflows = workflows.filter(wf => {
@@ -135,6 +197,7 @@ export const Workplace = () => {
   ));
 
   const handleStartClick = (wf: WorkflowDefinition) => {
+    setBoundFormError(null);
     setTargetWorkflow(wf);
     setIsFormOpen(true);
   };
@@ -164,6 +227,10 @@ export const Workplace = () => {
     }
   };
 
+  const boundForm = targetWorkflow?.formId
+    ? savedForms.find((f) => f.id === targetWorkflow.formId)
+    : undefined;
+
   return (
     <div className="space-y-6">
       {/* 表单渲染弹层 */}
@@ -171,11 +238,32 @@ export const Workplace = () => {
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-2xl">
                 {targetWorkflow.formId ? (
+                loadingBoundForm ? (
+                <div className="bg-white p-8 rounded-xl text-center">
+                    <h3 className="font-bold">正在加载表单</h3>
+                    <p className="text-slate-500 text-sm mb-4">请稍候，正在获取流程绑定的表单定义。</p>
+                    <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-slate-100 rounded">关闭</button>
+                </div>
+                ) : (
+                boundForm ? (
                 <FormRenderer 
-                    formDef={savedForms.find(f => f.id === targetWorkflow.formId) || savedForms[0]}
+                    formDef={boundForm}
                     onCancel={() => setIsFormOpen(false)}
                     onSubmit={handleStartProcess}
                 />
+                ) : (
+                <div className="bg-white p-8 rounded-xl text-center">
+                    <AlertTriangle size={32} className="text-amber-500 mx-auto mb-4"/>
+                    <h3 className="font-bold">绑定表单不存在</h3>
+                    <p className="text-slate-500 text-sm mb-4">
+                      {boundFormError
+                        ? `无法加载绑定表单：${boundFormError}`
+                        : '流程已绑定的表单可能被删除或无权访问，请联系管理员重新配置流程。'}
+                    </p>
+                    <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-slate-100 rounded">关闭</button>
+                </div>
+                )
+                )
                 ) : (
                 <div className="bg-white p-8 rounded-xl text-center">
                     <AlertTriangle size={32} className="text-amber-500 mx-auto mb-4"/>

@@ -4996,7 +4996,9 @@ const GlobalPropertyPanel = ({
 interface WorkflowBuilderProps {
   workflow?: WorkflowDefinition;
   onChange?: (wf: WorkflowDefinition) => void;
-  onSave?: (wf: WorkflowDefinition) => void;
+  onSave?: (
+    wf: WorkflowDefinition,
+  ) => Promise<{ id?: string } | void> | { id?: string } | void;
   availableForms?: FormDefinition[];
   availableRoles?: any[];
   availableUsers?: User[];
@@ -5899,7 +5901,15 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         toast.error("发布失败：无法获取流程ID");
         return;
       }
-      await deployProcessDefinition(definitionId);
+      const normalizedDefinitionId = String(definitionId);
+      // 同步到外层状态，避免发布后继续使用旧 definitionId
+      if (onChange) {
+        const snapshot = buildWorkflowSnapshot();
+        if (snapshot && snapshot.id !== normalizedDefinitionId) {
+          onChange({ ...snapshot, id: normalizedDefinitionId });
+        }
+      }
+      await deployProcessDefinition(normalizedDefinitionId);
       toast.success("流程已发布并上线！");
     } catch (e) {
       console.error(e);

@@ -11,7 +11,7 @@ import request from '@/services/api/request';
 export const VersionHistoryPage: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>();
   const navigate = useNavigate();
-  const [workflowInfo, setWorkflowInfo] = useState<any>(null);
+  const [workflowInfo, setWorkflowInfo] = useState<Record<string, any> | null>(null);
 
   useEffect(() => {
     const loadWorkflowInfo = async () => {
@@ -50,7 +50,7 @@ export const VersionHistoryPage: React.FC = () => {
           </button>
           <div>
             <h1 className="text-xl font-bold text-slate-800">
-              {workflowInfo?.name || '流程'} - 版本历史
+              {workflowInfo?.processName || workflowInfo?.name || '流程'} - 版本历史
             </h1>
             {workflowInfo?.description && (
               <p className="text-sm text-slate-500 mt-1">{workflowInfo.description}</p>
@@ -62,7 +62,7 @@ export const VersionHistoryPage: React.FC = () => {
       <div className="overflow-y-auto" style={{ height: 'calc(100% - 73px)' }}>
         <VersionHistory
           workflowId={workflowId}
-          workflowCreatorId={workflowInfo?.createdBy}
+          workflowCreatorId={workflowInfo?.createBy || workflowInfo?.createdBy}
         />
       </div>
     </div>

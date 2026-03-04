@@ -215,9 +215,13 @@ public class WorkflowController {
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
-        java.time.LocalDateTime start = startTime != null ? java.time.LocalDateTime.parse(startTime) : null;
-        java.time.LocalDateTime end = endTime != null ? java.time.LocalDateTime.parse(endTime) : null;
-        return R.ok(workflowService.getTaskStatistics(userId, start, end));
+        try {
+            java.time.LocalDateTime start = parseDateTimeParam(startTime, false);
+            java.time.LocalDateTime end = parseDateTimeParam(endTime, true);
+            return R.ok(workflowService.getTaskStatistics(userId, start, end));
+        } catch (IllegalArgumentException ex) {
+            return R.fail(ex.getMessage());
+        }
     }
 
     /**
@@ -386,5 +390,23 @@ public class WorkflowController {
         }
 
         return workflowService.terminateProcess(instanceId, reason);
+    }
+
+    private java.time.LocalDateTime parseDateTimeParam(String value, boolean endOfDay) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        try {
+            return java.time.LocalDateTime.parse(trimmed);
+        } catch (java.time.format.DateTimeParseException ignore) {
+            try {
+                java.time.LocalDate date = java.time.LocalDate.parse(trimmed);
+                return endOfDay ? date.atTime(23, 59, 59) : date.atStartOfDay();
+            } catch (java.time.format.DateTimeParseException ex) {
+                throw new IllegalArgumentException("时间参数格式错误，请使用 yyyy-MM-dd 或 yyyy-MM-ddTHH:mm:ss");
+            }
+        }
     }
 }

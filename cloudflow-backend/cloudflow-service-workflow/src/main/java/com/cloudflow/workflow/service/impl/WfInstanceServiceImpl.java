@@ -52,6 +52,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Autowired
     private WfProcessDefinitionMapper processDefinitionMapper;
     @Autowired
+    private WfFormDefinitionMapper formDefinitionMapper;
+    @Autowired
     private WfTaskMapper taskMapper;
     @Autowired
     private WfTaskHistoryMapper taskHistoryMapper;
@@ -117,6 +119,11 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         // 创建流程实例
+        // 流程绑定表单时，发起前必须校验表单仍然存在，避免产生脏数据
+        if (StringUtils.hasText(def.getFormId()) && formDefinitionMapper.selectById(def.getFormId()) == null) {
+            throw WorkflowException.validationError("流程绑定的表单不存在或已被删除，无法发起");
+        }
+
         WfProcessInstance instance = new WfProcessInstance();
         instance.setInstanceId(UUID.randomUUID().toString());
         instance.setProcessDefKey(processDefKey);

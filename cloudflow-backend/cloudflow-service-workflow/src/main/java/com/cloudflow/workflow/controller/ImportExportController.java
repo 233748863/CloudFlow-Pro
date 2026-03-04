@@ -154,11 +154,8 @@ public class ImportExportController {
             WorkflowExportFormat exportFormat = ExportFormatUtil.deserializeAndVerify(json);
             ConflictStrategy strategy = conflictResolver.parseStrategy(conflictStrategy);
             ImportResultDTO result = importService.importWorkflow(exportFormat, strategy);
-
-            if (Boolean.TRUE.equals(result.getSuccess())) {
-                return R.ok(result);
-            }
-            return R.fail(result.getMessage());
+            // 保持结构化返回，前端可根据 success/action 精确展示失败原因与冲突处理结果
+            return R.ok(result);
         } catch (Exception e) {
             log.error("Import workflow failed", e);
             return R.fail("Import failed: " + e.getMessage());
