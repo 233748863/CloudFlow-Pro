@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   CheckCircle2, Circle, Clock, AlertCircle, 
   ArrowDown, GitBranch, GitMerge, User, Shield, 
   CreditCard, FileText, Briefcase, MessageSquare,
   ChevronDown, ChevronUp
 } from 'lucide-react';
-import { getProcessTrace, getProcessInstance, getProcessDefinitions, urgeTask } from '../services/api/workflow';
+import { getProcessTrace, getProcessInstance, getProcessDefinition, getProcessDefinitions, urgeTask } from '../services/api/workflow';
 import { WorkflowDefinition, NodeType, WorkflowNode } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -29,10 +29,11 @@ interface HistoryDetail {
 }
 
 interface ActiveDetail {
+  taskId?: string;
   nodeKey: string;
   nodeName: string;
   assigneeName?: string;
-  assigneeId?: string;
+  assigneeId?: string | number;
   createTime?: string;
 }
 
@@ -104,6 +105,29 @@ const formatTime = (timeStr?: string) => {
   }
 };
 
+/**
+ * 统一解析流程模型节点，兼容对象和 JSON 字符串。
+ */
+const parseWorkflowNodes = (rawModel: unknown): WorkflowNode | null => {
+  if (!rawModel) return null;
+  if (typeof rawModel === 'object') {
+    return rawModel as WorkflowNode;
+  }
+  if (typeof rawModel === 'string') {
+    try {
+      return JSON.parse(rawModel) as WorkflowNode;
+    } catch {
+      try {
+        const sanitized = rawModel.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
+        return JSON.parse(sanitized) as WorkflowNode;
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+};
+
 export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -116,45 +140,61 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   // 流程图展开/折叠
   const [diagramExpanded, setDiagramExpanded] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // 1. 获取流程轨迹（含历史详情）
-        const traceRes = await getProcessTrace(instanceId);
-        setTrace(traceRes as unknown as TraceData);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      // 1. 获取流程轨迹（含历史详情）
+      const traceRes = await getProcessTrace(instanceId);
+      setTrace(traceRes as unknown as TraceData);
 
-        // 2. 获取流程实例信息
-        const instanceRes = await getProcessInstance(instanceId);
-        setInstance(instanceRes);
-        
-        // 3. 获取流程定义（用于流程图渲染）
-        const defKey = (instanceRes as any)?.processDefKey || instanceRes?.workflowId;
-        if (instanceRes && defKey) {
-            const defs = await getProcessDefinitions();
-            const def = (defs as any[]).find(d => 
-              d.processKey === defKey || d.key === defKey || d.id === defKey
+      // 2. 获取流程实例信息
+      const instanceRes = await getProcessInstance(instanceId);
+      setInstance(instanceRes);
+      
+      // 3. 获取流程定义（用于流程图渲染）
+      const definitionId = (instanceRes as any)?.definitionId;
+      const defKey = (instanceRes as any)?.processDefKey || instanceRes?.workflowId;
+      if (instanceRes && definitionId) {
+          const def = await getProcessDefinition(String(definitionId));
+          const parsed = parseWorkflowNodes((def as any)?.nodes ?? (def as any)?.modelJson);
+          setRootNode(parsed);
+      } else if (instanceRes && defKey) {
+          const defs = await getProcessDefinitions({ latestOnly: false });
+          const matchedDefs = (defs as any[]).filter(d =>
+            d.processKey === defKey || d.key === defKey || d.id === defKey
+          );
+
+          if (matchedDefs.length > 0) {
+            // 优先使用已发布版本，若不存在则回退到最高版本
+            const byVersionDesc = [...matchedDefs].sort(
+              (a, b) => Number(b?.version || 0) - Number(a?.version || 0),
             );
-            
-            if (def && def.nodes) {
-                setRootNode(def.nodes);
-            } else if (def && def.modelJson) {
-                setRootNode(JSON.parse(def.modelJson));
-            }
-        }
-      } catch (e) {
-        console.error(e);
-        setError("加载流程追踪失败");
-      } finally {
-        setLoading(false);
+            const published = byVersionDesc.filter(
+              (item) => String(item?.status || '').toUpperCase() === 'PUBLISHED',
+            );
+            const preferred = (published.length > 0 ? published : byVersionDesc)[0];
+            const parsed = parseWorkflowNodes(preferred?.nodes ?? preferred?.modelJson);
+            setRootNode(parsed);
+          } else {
+            setRootNode(null);
+          }
       }
-    };
-    fetchData();
+    } catch (e) {
+      console.error(e);
+      setError("加载流程追踪失败");
+    } finally {
+      setLoading(false);
+    }
   }, [instanceId]);
 
-  const handleUrge = async (nodeId: string, nodeName: string) => {
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  const handleUrge = async (taskId: string, nodeName: string) => {
       try {
-          await urgeTask(nodeId, `催办节点: ${nodeName}`);
+          await urgeTask(taskId, `催办节点: ${nodeName}`);
           toast.success(`已向 ${nodeName} 节点发送催办提醒`);
       } catch (err) {
           console.error('催办失败:', err);
@@ -201,9 +241,12 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
           </div>
           
           {/* 催办按钮 */}
-          {isActive && isInitiator && (
+          {isActive && isInitiator && nodeActive?.taskId && (
               <button 
-                onClick={(e) => { e.stopPropagation(); handleUrge(node.id, node.title); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleUrge(nodeActive.taskId!, node.title);
+                }}
                 className="absolute -right-8 top-0 bg-amber-100 text-amber-600 p-1 rounded-full hover:bg-amber-200 transition-colors"
                 title="催办"
               >
@@ -324,7 +367,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
               </div>
               <div className="text-xs text-slate-500 flex items-center gap-2">
                 <User size={11} className="text-pink-300" />
-                <span>待处理: {item.assigneeName || '待认领'}</span>
+                <span>待处理: {item.assigneeName || (item.assigneeId ? String(item.assigneeId) : '待认领')}</span>
                 {item.createTime && (
                   <>
                     <span className="text-slate-300">·</span>
@@ -354,7 +397,9 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
         <AlertCircle className="text-red-500" size={32} />
         <p className="text-red-500 font-medium">{error}</p>
         <button 
-          onClick={() => window.location.reload()} 
+          onClick={() => {
+            void fetchData();
+          }} 
           className="mt-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm"
         >
           重新加载

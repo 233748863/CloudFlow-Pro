@@ -40,7 +40,7 @@ export const DeployStatistics: React.FC = () => {
 
   const loadProcesses = async () => {
     try {
-      const data = await getProcessDefinitions();
+      const data = await getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false });
       const list = Array.isArray(data) ? data : [];
       setProcesses(list);
       if (list.length > 0) {

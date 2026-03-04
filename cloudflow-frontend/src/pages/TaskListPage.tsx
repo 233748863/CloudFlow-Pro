@@ -204,7 +204,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
   // 加载流程定义选项（用于流程类型筛选，任务中心和我的申请都需要）
   useEffect(() => {
-    getProcessDefinitions().then(res => {
+    getProcessDefinitions({ latestOnly: false }).then(res => {
       if (Array.isArray(res)) {
         // 按 processKey 去重，只保留最新版本
         // 兼容后端返回的 processKey/key 和 processName/name 两种字段名

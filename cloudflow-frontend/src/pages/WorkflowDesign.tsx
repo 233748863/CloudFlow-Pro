@@ -106,9 +106,21 @@ export const WorkflowDesign = () => {
       setError(null);
 
       const [forms, roles, users] = await Promise.all([
-        getFormDefinitions().catch(() => []),
-        getRoleList().catch(() => []),
-        getUserList().catch(() => []),
+        getFormDefinitions().catch((err) => {
+          logWorkflow.warn('加载表单列表失败:', err);
+          toast.warning('表单列表加载失败，暂时无法绑定表单');
+          return [];
+        }),
+        getRoleList().catch((err) => {
+          logWorkflow.warn('加载角色列表失败:', err);
+          toast.warning('角色列表加载失败，部分审批人配置不可用');
+          return [];
+        }),
+        getUserList().catch((err) => {
+          logWorkflow.warn('加载用户列表失败:', err);
+          toast.warning('用户列表加载失败，部分审批人配置不可用');
+          return [];
+        }),
       ]);
 
       // 先按 URL id 精确加载，避免串流程

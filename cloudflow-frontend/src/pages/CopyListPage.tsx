@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getMyCopyList, getCopyUnreadCount, markCopyAsRead, batchMarkCopyAsRead, getProcessDefinitions } from '../services/api/workflow';
 import { useAuth } from '../context/AuthContext';
 import { RefreshCw, Search, ChevronLeft, ChevronRight, Eye, CheckCheck, Mail, MailOpen, X, FileText } from 'lucide-react';
@@ -52,6 +52,7 @@ export const CopyListPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [processDefKey, setProcessDefKey] = useState('');
   const [processDefOptions, setProcessDefOptions] = useState<{ key: string; name: string }[]>([]);
+  const hasShownProcessDefLoadWarningRef = useRef(false);
 
   // 未读数量（用于标题展示）
   const [unreadCount, setUnreadCount] = useState(0);
@@ -122,7 +123,7 @@ export const CopyListPage: React.FC = () => {
 
   // 加载流程定义选项
   useEffect(() => {
-    getProcessDefinitions().then(res => {
+    getProcessDefinitions({ latestOnly: false }).then(res => {
       if (Array.isArray(res)) {
         const seen = new Set<string>();
         const options: { key: string; name: string }[] = [];
@@ -136,7 +137,13 @@ export const CopyListPage: React.FC = () => {
         }
         setProcessDefOptions(options);
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error('加载流程定义选项失败:', err);
+      if (!hasShownProcessDefLoadWarningRef.current) {
+        toast.warning('流程类型筛选加载失败，已切换为无筛选选项模式');
+        hasShownProcessDefLoadWarningRef.current = true;
+      }
+    });
   }, []);
 
   /** 刷新 */
@@ -160,6 +167,12 @@ export const CopyListPage: React.FC = () => {
   /** 切换已读筛选 */
   const handleReadFilterChange = (val: typeof readFilter) => {
     setReadFilter(val);
+    setPageNum(1);
+  };
+
+  /** 切换流程类型筛选 */
+  const handleProcessTypeChange = (val: string) => {
+    setProcessDefKey(val);
     setPageNum(1);
   };
 
@@ -234,7 +247,9 @@ export const CopyListPage: React.FC = () => {
       markCopyAsRead(record.id).then(() => {
         fetchList(false);
         fetchUnreadCount();
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('自动标记抄送已读失败:', err);
+      });
     }
   };
 
@@ -335,7 +350,7 @@ export const CopyListPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:rder-pink-400 focus:outline-none"
+              className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
             />
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             {searchInput && searchInput !== keyword && (
@@ -392,7 +407,7 @@ export const CopyListPage: React.FC = () => {
 
         {/* 流程类型筛选 */}
         {processDefOptions.length > 0 && (
-          <Select value={processDefKey} onValueChange={v => setProcessDefKey(v)}>
+          <Select value={processDefKey} onValueChange={handleProcessTypeChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>

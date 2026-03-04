@@ -174,6 +174,10 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (!StringUtils.hasText(def.getModelJson())) {
             throw WorkflowException.validationError("流程定义模型为空，无法发布");
         }
+        if (StringUtils.hasText(def.getFormId())
+            && formDefinitionMapper.selectById(def.getFormId()) == null) {
+            throw WorkflowException.validationError("绑定表单不存在或已被删除，无法发布");
+        }
 
         // 发布前完整性检查
         jsonSchemaValidator.validateProcessDefinitionJson(def.getModelJson());

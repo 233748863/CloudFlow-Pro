@@ -127,6 +127,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         WfProcessInstance instance = new WfProcessInstance();
         instance.setInstanceId(UUID.randomUUID().toString());
         instance.setProcessDefKey(processDefKey);
+        instance.setDefinitionId(def.getDefinitionId());
         instance.setBusinessKey(businessKey);
         instance.setStartUserId(currentUserId);
         instance.setStartUserName(currentUserName);
@@ -357,7 +358,11 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             detail.put("taskId", t.getTaskId());
             detail.put("nodeKey", t.getNodeKey());
             detail.put("nodeName", t.getNodeName());
-            detail.put("assignee", t.getAssignee());
+            detail.put("assignee", t.getAssignee()); // 兼容旧前端字段
+            detail.put("assigneeId", t.getAssignee());
+            detail.put("assigneeName", StringUtils.hasText(t.getAssigneeName())
+                ? t.getAssigneeName()
+                : (t.getAssignee() != null ? String.valueOf(t.getAssignee()) : null));
             detail.put("createTime", t.getCreateTime());
             activeDetails.add(detail);
         }
@@ -365,12 +370,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 构建步骤详情
         List<Map<String, Object>> stepsDetail = null;
         try {
-            WfProcessDefinition def = processDefinitionMapper.selectOne(
-                new LambdaQueryWrapper<WfProcessDefinition>()
-                    .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                    .orderByDesc(WfProcessDefinition::getVersion)
-                    .last("LIMIT 1")
-            );
+            WfProcessDefinition def = resolveDefinitionByInstance(instance);
             if (def != null && StringUtils.hasText(def.getModelJson())) {
                 WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
                 List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
@@ -427,10 +427,64 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             );
         }
 
+        // 与前端筛选参数对齐：流程类型
+        String processDefKey = (String) pageQuery.getParams().get("processDefKey");
+        if (StringUtils.hasText(processDefKey)) {
+            queryWrapper.eq(WfProcessInstance::getProcessDefKey, processDefKey);
+        }
+
+        // 与前端筛选参数对齐：优先级
+        String priority = (String) pageQuery.getParams().get("priority");
+        if (StringUtils.hasText(priority)) {
+            queryWrapper.eq(WfProcessInstance::getPriority, priority);
+        }
+
+        // 与前端筛选参数对齐：流程编号（单独搜索）
+        String processNo = (String) pageQuery.getParams().get("processNo");
+        if (StringUtils.hasText(processNo)) {
+            queryWrapper.like(WfProcessInstance::getProcessNo, processNo);
+        }
+
+        // 与前端筛选参数对齐：发起人姓名（我的申请场景通常为当前用户，但保持兼容）
+        String startUserName = (String) pageQuery.getParams().get("startUserName");
+        if (StringUtils.hasText(startUserName)) {
+            queryWrapper.like(WfProcessInstance::getStartUserName, startUserName);
+        }
+
+        // 与前端筛选参数对齐：开始时间范围（yyyy-MM-dd）
+        String startTimeFrom = (String) pageQuery.getParams().get("startTimeFrom");
+        if (StringUtils.hasText(startTimeFrom)) {
+            try {
+                LocalDateTime fromDate = java.time.LocalDate
+                    .parse(startTimeFrom, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    .atStartOfDay();
+                queryWrapper.ge(WfProcessInstance::getStartTime, fromDate);
+            } catch (Exception e) {
+                log.warn("[getMyInstances] 解析开始时间失败: {}", startTimeFrom);
+            }
+        }
+
+        String startTimeTo = (String) pageQuery.getParams().get("startTimeTo");
+        if (StringUtils.hasText(startTimeTo)) {
+            try {
+                LocalDateTime toDate = java.time.LocalDate
+                    .parse(startTimeTo, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    .atStartOfDay();
+                LocalDateTime endOfDay = toDate.withHour(23).withMinute(59).withSecond(59);
+                queryWrapper.le(WfProcessInstance::getStartTime, endOfDay);
+            } catch (Exception e) {
+                log.warn("[getMyInstances] 解析结束时间失败: {}", startTimeTo);
+            }
+        }
+
         queryWrapper.orderByDesc(WfProcessInstance::getStartTime);
 
         Page<WfProcessInstance> resultPage = processInstanceMapper.selectPage(page, queryWrapper);
-        return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
+        List<WfProcessInstance> instances = resultPage.getRecords();
+        if (instances != null && !instances.isEmpty()) {
+            enrichMyInstances(instances);
+        }
+        return new PageResult<>(instances, resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
     }
 
     @Override
@@ -447,12 +501,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                     return;
                 }
 
-                WfProcessDefinition def = processDefinitionMapper.selectOne(
-                    new LambdaQueryWrapper<WfProcessDefinition>()
-                        .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                        .orderByDesc(WfProcessDefinition::getVersion)
-                        .last("LIMIT 1")
-                );
+                WfProcessDefinition def = resolveDefinitionByInstance(instance);
 
                 if (def != null && StringUtils.hasText(def.getModelJson())) {
                     WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
@@ -486,12 +535,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         // 查询流程定义获取模型JSON
-        WfProcessDefinition def = processDefinitionMapper.selectOne(
-            new LambdaQueryWrapper<WfProcessDefinition>()
-                .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1")
-        );
+        WfProcessDefinition def = resolveDefinitionByInstance(instance);
         if (def == null || !StringUtils.hasText(def.getModelJson())) {
             throw WorkflowException.processNotFound(instance.getProcessDefKey());
         }
@@ -694,6 +738,131 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     }
 
     // ==================== 私有方法 ====================
+
+    /**
+     * 优先按实例锁定的 definitionId 读取流程定义，避免模型被新版本污染；
+     * 兼容历史数据（definitionId 为空）时回退到 processKey 最新版本。
+     */
+    private WfProcessDefinition resolveDefinitionByInstance(WfProcessInstance instance) {
+        if (instance == null) {
+            return null;
+        }
+
+        if (StringUtils.hasText(instance.getDefinitionId())) {
+            WfProcessDefinition byId = processDefinitionMapper.selectById(instance.getDefinitionId());
+            if (byId != null) {
+                return byId;
+            }
+            log.warn("[resolveDefinitionByInstance] definitionId={} 不存在，回退 processKey={} 最新版本",
+                instance.getDefinitionId(), instance.getProcessDefKey());
+        }
+
+        if (!StringUtils.hasText(instance.getProcessDefKey())) {
+            return null;
+        }
+
+        return processDefinitionMapper.selectOne(
+            new LambdaQueryWrapper<WfProcessDefinition>()
+                .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                    .or()
+                    .isNull(WfProcessDefinition::getStatus))
+                .orderByDesc(WfProcessDefinition::getVersion)
+                .last("LIMIT 1")
+        );
+    }
+
+    /**
+     * 批量富化“我的申请”列表，补齐前端所需展示字段。
+     * 1) 补齐 formId，保证详情页可以按流程绑定表单渲染；
+     * 2) 补齐当前待办节点与处理人信息，提升列表可读性。
+     */
+    private void enrichMyInstances(List<WfProcessInstance> instances) {
+        // 1) 批量查询流程定义（优先 definitionId，回退 processKey 最新版本）
+        List<String> definitionIds = instances.stream()
+            .map(WfProcessInstance::getDefinitionId)
+            .filter(StringUtils::hasText)
+            .distinct()
+            .collect(Collectors.toList());
+
+        Map<String, WfProcessDefinition> defById = new HashMap<>();
+        if (!definitionIds.isEmpty()) {
+            List<WfProcessDefinition> defsById = processDefinitionMapper.selectBatchIds(definitionIds);
+            if (defsById != null) {
+                for (WfProcessDefinition def : defsById) {
+                    if (def != null && StringUtils.hasText(def.getDefinitionId())) {
+                        defById.put(def.getDefinitionId(), def);
+                    }
+                }
+            }
+        }
+
+        List<String> processKeys = instances.stream()
+            .filter(inst -> !StringUtils.hasText(inst.getDefinitionId()))
+            .map(WfProcessInstance::getProcessDefKey)
+            .filter(StringUtils::hasText)
+            .distinct()
+            .collect(Collectors.toList());
+
+        Map<String, WfProcessDefinition> latestDefByKey = new HashMap<>();
+        if (!processKeys.isEmpty()) {
+            List<WfProcessDefinition> defsByKey = processDefinitionMapper.selectList(
+                new LambdaQueryWrapper<WfProcessDefinition>()
+                    .in(WfProcessDefinition::getProcessKey, processKeys)
+                    .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                        .or()
+                        .isNull(WfProcessDefinition::getStatus))
+                    .orderByDesc(WfProcessDefinition::getVersion)
+            );
+            for (WfProcessDefinition def : defsByKey) {
+                if (def != null && StringUtils.hasText(def.getProcessKey())) {
+                    latestDefByKey.putIfAbsent(def.getProcessKey(), def);
+                }
+            }
+        }
+
+        // 2) 批量查询当前待办任务（每个实例取最早创建的一条 TODO 任务作为当前节点）
+        List<String> instanceIds = instances.stream()
+            .map(WfProcessInstance::getInstanceId)
+            .filter(StringUtils::hasText)
+            .distinct()
+            .collect(Collectors.toList());
+
+        Map<String, WfTask> activeTaskByInstance = new HashMap<>();
+        if (!instanceIds.isEmpty()) {
+            List<WfTask> activeTasks = taskMapper.selectList(
+                new LambdaQueryWrapper<WfTask>()
+                    .in(WfTask::getInstanceId, instanceIds)
+                    .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+                    .orderByAsc(WfTask::getCreateTime)
+            );
+            for (WfTask task : activeTasks) {
+                activeTaskByInstance.putIfAbsent(task.getInstanceId(), task);
+            }
+        }
+
+        // 3) 回填字段
+        for (WfProcessInstance instance : instances) {
+            WfProcessDefinition definition = null;
+            if (StringUtils.hasText(instance.getDefinitionId())) {
+                definition = defById.get(instance.getDefinitionId());
+            }
+            if (definition == null && StringUtils.hasText(instance.getProcessDefKey())) {
+                definition = latestDefByKey.get(instance.getProcessDefKey());
+            }
+            if (definition != null) {
+                instance.setFormId(definition.getFormId());
+            }
+
+            WfTask activeTask = activeTaskByInstance.get(instance.getInstanceId());
+            if (activeTask != null) {
+                instance.setTaskId(activeTask.getTaskId());
+                instance.setCurrentNodeName(activeTask.getNodeName());
+                instance.setAssignee(activeTask.getAssignee());
+                instance.setAssigneeName(activeTask.getAssigneeName());
+            }
+        }
+    }
 
     /**
      * 生成流程编号

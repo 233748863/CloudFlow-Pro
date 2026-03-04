@@ -3,6 +3,7 @@ import { Loader2, Code } from 'lucide-react';
 import { WorkflowDefinition } from '../types';
 import { generateBackendArtifacts } from '../services/geminiService';
 import { BACKEND_SOURCE } from '../backend_data';
+import { toast } from 'sonner';
 
 export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition }) => {
   const [activeTab, setActiveTab] = useState<'sql' | 'java'>('java');
@@ -21,7 +22,8 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
       ]);
       setGeneratedCode({ sql, java, loading: false });
     } catch (e) {
-      alert("生成失败，请检查 API Key");
+      const msg = e instanceof Error ? e.message : '生成失败，请检查 API Key';
+      toast.error(msg);
       setGeneratedCode(prev => ({ ...prev, loading: false }));
     }
   };

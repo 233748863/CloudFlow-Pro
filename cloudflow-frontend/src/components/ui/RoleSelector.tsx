@@ -127,7 +127,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索角色..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:rder-pink-400"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-pink-400"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>

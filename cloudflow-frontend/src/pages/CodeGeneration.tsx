@@ -3,25 +3,68 @@ import { SourceCodeViewer } from '../components/SourceCodeViewer';
 import { WorkflowDefinition, NodeType } from '../types';
 import { getProcessDefinitions } from '../services/api/workflow';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { toast } from 'sonner';
+
+/**
+ * 解析流程模型，兼容对象与 JSON 字符串，异常时回退到开始节点。
+ */
+const parseWorkflowNodes = (rawModelJson: unknown): WorkflowDefinition['nodes'] => {
+  if (!rawModelJson) {
+    return { type: NodeType.START, title: '开始', id: 'start' };
+  }
+
+  if (typeof rawModelJson === 'object') {
+    return rawModelJson as WorkflowDefinition['nodes'];
+  }
+
+  if (typeof rawModelJson === 'string') {
+    try {
+      const parsed = JSON.parse(rawModelJson);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as WorkflowDefinition['nodes'];
+      }
+    } catch {
+      // 兜底返回默认节点
+    }
+  }
+
+  return { type: NodeType.START, title: '开始', id: 'start' };
+};
 
 export const CodeGeneration = () => {
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowDefinition | null>(null);
 
   useEffect(() => {
-    getProcessDefinitions().then(res => {
+    getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false }).then(res => {
        if (Array.isArray(res)) {
-          const mapped = res.map((w: any) => ({
+          // 按流程 Key 保留最高发布版本，避免多版本重复项影响选择与代码生成
+          const latestPublishedMap = new Map<string, any>();
+          for (const item of res) {
+            const processKey = String(item?.processKey || item?.key || '').trim();
+            if (!processKey) continue;
+            const current = latestPublishedMap.get(processKey);
+            const currentVersion = Number(current?.version || 0);
+            const nextVersion = Number(item?.version || 0);
+            if (!current || nextVersion >= currentVersion) {
+              latestPublishedMap.set(processKey, item);
+            }
+          }
+
+          const mapped = Array.from(latestPublishedMap.values()).map((w: any) => ({
               id: w.definitionId || w.processKey,
               name: w.processName || w.name,
               key: w.processKey || w.key,
               version: w.version,
               formId: w.formId,
-              nodes: w.modelJson ? JSON.parse(w.modelJson) : { type: NodeType.START, title: '开始', id: 'start' }
+              nodes: parseWorkflowNodes(w.modelJson)
           }));
           setWorkflows(mapped);
           if (mapped.length > 0) setSelectedWorkflow(mapped[0]);
        }
+    }).catch((err) => {
+      console.error('加载流程定义失败:', err);
+      toast.error('加载流程定义失败，请稍后重试');
     });
   }, []);
 
@@ -29,13 +72,13 @@ export const CodeGeneration = () => {
     <div className="h-full flex flex-col gap-4">
       <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
          <label className="text-sm font-bold text-slate-700">选择流程:</label>
-         <Select value={selectedWorkflow?.key || ""} onValueChange={v => setSelectedWorkflow(workflows.find(w => w.key === v) || null)}>
+         <Select value={selectedWorkflow?.id || ""} onValueChange={v => setSelectedWorkflow(workflows.find(w => w.id === v) || null)}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
                       {workflows.map(w => (
-                        <SelectItem key={w.key} value={String(w.key)}>{w.name} ({w.key})</SelectItem>
+                        <SelectItem key={w.id} value={String(w.id)}>{w.name} ({w.key})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

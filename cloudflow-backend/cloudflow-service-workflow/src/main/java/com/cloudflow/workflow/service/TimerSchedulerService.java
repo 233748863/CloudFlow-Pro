@@ -13,7 +13,6 @@ import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -48,10 +47,10 @@ public class TimerSchedulerService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 每分钟扫描一次到期的定时任务
-     * 使用分布式锁防止多实例重复执行
+     * 兼容保留：旧版定时器扫描逻辑。
+     * 当前生产调度统一由 TimerScanJob 执行，这里不再挂载 @Scheduled，
+     * 避免同一 Redis ZSet 被两个调度器并发消费导致重复触发或流转不一致。
      */
-    @Scheduled(fixedRate = 60000) // 每60秒执行一次
     public void scanAndTriggerTimers() {
         String lockKey = "lock:scheduled:scanAndTriggerTimers";
         RLock lock = redissonClient.getLock(lockKey);
@@ -151,13 +150,28 @@ public class TimerSchedulerService {
                 return;
             }
             
-            // 查询流程定义
-            WfProcessDefinition def = processDefinitionMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WfProcessDefinition>()
-                    .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                    .orderByDesc(WfProcessDefinition::getVersion)
-                    .last("LIMIT 1")
-            );
+            // 优先按实例 definitionId 读取流程定义，避免定时触发时被新版本模型污染
+            WfProcessDefinition def = null;
+            if (StringUtils.hasText(instance.getDefinitionId())) {
+                def = processDefinitionMapper.selectById(instance.getDefinitionId());
+                if (def == null) {
+                    log.warn("[triggerTimer] definitionId={} 不存在，回退 processDefKey={} 最新版本",
+                        instance.getDefinitionId(), instance.getProcessDefKey());
+                }
+            }
+
+            // 兼容历史实例（definitionId 为空）回退按 processKey 取最新版本
+            if (def == null) {
+                def = processDefinitionMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WfProcessDefinition>()
+                        .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
+                        .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                            .or()
+                            .isNull(WfProcessDefinition::getStatus))
+                        .orderByDesc(WfProcessDefinition::getVersion)
+                        .last("LIMIT 1")
+                );
+            }
             
             if (def == null || !StringUtils.hasText(def.getModelJson())) {
                 log.warn("[triggerTimer] 流程定义不存在或模型为空, processDefKey={}", 

@@ -197,16 +197,35 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
             }
         }
 
-        // 批量查询流程定义（获取流程名称，每个 processKey 取最新版本）
-        Map<String, String> processNameMap = new HashMap<>();
+        // 优先按实例 definitionId 批量查询流程定义，确保抄送记录显示的是实例启动时版本
+        Map<String, String> processNameByDefinitionId = new HashMap<>();
+        List<String> definitionIds = instanceMap.values().stream()
+                .map(WfProcessInstance::getDefinitionId)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+        if (!definitionIds.isEmpty()) {
+            List<WfProcessDefinition> definitionsById = processDefinitionMapper.selectBatchIds(definitionIds);
+            for (WfProcessDefinition def : definitionsById) {
+                if (def != null && StringUtils.hasText(def.getDefinitionId())) {
+                    processNameByDefinitionId.put(def.getDefinitionId(), def.getProcessName());
+                }
+            }
+        }
+
+        // 兼容历史实例（definitionId 为空）回退按 processKey 取最新版本
+        Map<String, String> processNameByKey = new HashMap<>();
         if (!processKeys.isEmpty()) {
             List<WfProcessDefinition> definitions = processDefinitionMapper.selectList(
                     new LambdaQueryWrapper<WfProcessDefinition>()
                             .in(WfProcessDefinition::getProcessKey, processKeys)
+                            .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                                    .or()
+                                    .isNull(WfProcessDefinition::getStatus))
                             .orderByDesc(WfProcessDefinition::getVersion)
             );
             for (WfProcessDefinition def : definitions) {
-                processNameMap.putIfAbsent(def.getProcessKey(), def.getProcessName());
+                processNameByKey.putIfAbsent(def.getProcessKey(), def.getProcessName());
             }
         }
 
@@ -215,8 +234,13 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
             WfProcessInstance inst = instanceMap.get(copy.getInstanceId());
             if (inst != null) {
                 copy.setProcessStatus(inst.getStatus());
+                String processName = processNameByDefinitionId.get(inst.getDefinitionId());
+                if (StringUtils.hasText(processName)) {
+                    copy.setProcessName(processName);
+                    continue;
+                }
             }
-            String processName = processNameMap.get(copy.getProcessDefKey());
+            String processName = processNameByKey.get(copy.getProcessDefKey());
             if (processName != null) {
                 copy.setProcessName(processName);
             }

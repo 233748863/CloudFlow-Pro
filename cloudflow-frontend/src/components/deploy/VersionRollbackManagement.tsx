@@ -37,6 +37,17 @@ const ROLLBACK_STATUS_CONFIG: Record<string, { label: string; color: string }> =
   PARTIAL: { label: '部分成功', color: 'text-yellow-600 bg-yellow-50' },
 };
 
+/**
+ * 将 JSON 字符串格式化展示，解析失败时回退原始文本，避免弹窗崩溃。
+ */
+const formatJsonSafely = (raw: string): string => {
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+};
+
 export const VersionRollbackManagement: React.FC = () => {
   const [activeView, setActiveView] = useState<'versions' | 'history'>('versions');
   const [processes, setProcesses] = useState<any[]>([]);
@@ -68,7 +79,7 @@ export const VersionRollbackManagement: React.FC = () => {
 
   const loadProcesses = async () => {
     try {
-      const data = await getProcessDefinitions();
+      const data = await getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false });
       const list = Array.isArray(data) ? data : [];
       setProcesses(list);
       if (list.length > 0) {
@@ -383,7 +394,7 @@ export const VersionRollbackManagement: React.FC = () => {
                   <div>
                     <h4 className="font-medium text-gray-700 mb-2">表单配置</h4>
                     <pre className="bg-gray-50 rounded-lg p-4 text-xs overflow-x-auto max-h-60">
-                      {JSON.stringify(JSON.parse(snapshotModal.formConfig), null, 2)}
+                      {formatJsonSafely(snapshotModal.formConfig)}
                     </pre>
                   </div>
                 )}
