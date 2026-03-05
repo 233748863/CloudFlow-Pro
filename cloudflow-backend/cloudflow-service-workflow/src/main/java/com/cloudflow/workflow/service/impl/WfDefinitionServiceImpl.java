@@ -293,8 +293,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     public PageResult<WfProcessDefinition> listProcessDefinitions(PageQuery pageQuery) {
         Page<WfProcessDefinition> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfProcessDefinition> queryWrapper = new LambdaQueryWrapper<>();
+        Map<String, Object> params = pageQuery.getParams() != null ? pageQuery.getParams() : Collections.emptyMap();
 
-        String status = (String) pageQuery.getParams().get("status");
+        String status = Objects.toString(params.get("status"), null);
         Long currentUserId = UserContext.getUserId();
         Long currentTenantId = UserContext.getTenantId();
         boolean isAdmin = permissionService.isAdmin(currentUserId);
@@ -311,7 +312,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             queryWrapper.eq(WfProcessDefinition::getStatus, status);
         }
 
-        String keyword = (String) pageQuery.getParams().get("keyword");
+        String keyword = Objects.toString(params.get("keyword"), null);
         if (StringUtils.hasText(keyword)) {
             queryWrapper.and(w -> w
                 .like(WfProcessDefinition::getProcessName, keyword)
@@ -320,12 +321,12 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
             );
         }
 
-        String showLatestOnly = (String) pageQuery.getParams().get("latestOnly");
-        if (!"false".equals(showLatestOnly)) {
+        String showLatestOnly = Objects.toString(params.get("latestOnly"), null);
+        if (!"false".equalsIgnoreCase(showLatestOnly)) {
             queryWrapper.eq(WfProcessDefinition::getIsLatest, 1);
         }
 
-        String category = (String) pageQuery.getParams().get("category");
+        String category = Objects.toString(params.get("category"), null);
         if (StringUtils.hasText(category)) {
             queryWrapper.eq(WfProcessDefinition::getCategory, category);
         }

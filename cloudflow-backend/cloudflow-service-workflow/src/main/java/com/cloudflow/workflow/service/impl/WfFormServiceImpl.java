@@ -30,7 +30,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -211,17 +213,18 @@ public class WfFormServiceImpl implements IWfFormService {
         Page<WfFormDefinition> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfFormDefinition> queryWrapper = new LambdaQueryWrapper<>();
         Long currentTenantId = UserContext.getTenantId();
+        Map<String, Object> params = pageQuery.getParams() != null ? pageQuery.getParams() : Collections.emptyMap();
 
         if (currentTenantId != null) {
             queryWrapper.eq(WfFormDefinition::getTenantId, currentTenantId);
         }
 
-        String status = (String) pageQuery.getParams().get("status");
+        String status = Objects.toString(params.get("status"), null);
         if (StringUtils.hasText(status)) {
             queryWrapper.eq(WfFormDefinition::getStatus, status);
         }
 
-        String keyword = (String) pageQuery.getParams().get("keyword");
+        String keyword = Objects.toString(params.get("keyword"), null);
         if (StringUtils.hasText(keyword)) {
             queryWrapper.like(WfFormDefinition::getFormName, keyword);
         }

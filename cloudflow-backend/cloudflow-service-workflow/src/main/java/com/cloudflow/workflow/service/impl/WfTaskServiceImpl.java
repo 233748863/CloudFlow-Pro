@@ -325,13 +325,14 @@ public class WfTaskServiceImpl implements IWfTaskService {
     public PageResult<WfTask> getTodoTasks(Long userId, PageQuery pageQuery) {
         log.info("[getTodoTasks] 查询待办任务, userId={}", userId);
         Long currentTenantId = UserContext.getTenantId();
+        Map<String, Object> params = pageQuery.getParams() != null ? pageQuery.getParams() : Collections.emptyMap();
 
         // 提取搜索条件
-        String keyword = (String) pageQuery.getParams().get("keyword");
-        String processDefKey = (String) pageQuery.getParams().get("processDefKey");
-        String startTimeFrom = (String) pageQuery.getParams().get("startTimeFrom");
-        String startTimeTo = (String) pageQuery.getParams().get("startTimeTo");
-        String startUserName = (String) pageQuery.getParams().get("startUserName");
+        String keyword = Objects.toString(params.get("keyword"), null);
+        String processDefKey = Objects.toString(params.get("processDefKey"), null);
+        String startTimeFrom = Objects.toString(params.get("startTimeFrom"), null);
+        String startTimeTo = Objects.toString(params.get("startTimeTo"), null);
+        String startUserName = Objects.toString(params.get("startUserName"), null);
 
         // 实例筛选
         List<String> filteredInstanceIds = null;

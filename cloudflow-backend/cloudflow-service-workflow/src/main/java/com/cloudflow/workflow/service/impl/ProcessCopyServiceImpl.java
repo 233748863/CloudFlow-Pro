@@ -88,6 +88,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
 
         Page<WfProcessCopy> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfProcessCopy> wrapper = new LambdaQueryWrapper<>();
+        Map<String, Object> params = pageQuery.getParams() != null ? pageQuery.getParams() : Collections.emptyMap();
         wrapper.eq(WfProcessCopy::getUserId, userId);
         Long tenantId = UserContext.getTenantId();
         if (tenantId != null) {
@@ -95,19 +96,23 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
         }
 
         // 关键字搜索（按流程标题模糊匹配）
-        String keyword = (String) pageQuery.getParams().get("keyword");
+        String keyword = Objects.toString(params.get("keyword"), null);
         if (StringUtils.hasText(keyword)) {
             wrapper.like(WfProcessCopy::getTitle, keyword);
         }
 
         // 已读状态筛选
-        String isRead = (String) pageQuery.getParams().get("isRead");
+        String isRead = Objects.toString(params.get("isRead"), null);
         if (StringUtils.hasText(isRead)) {
-            wrapper.eq(WfProcessCopy::getIsRead, Integer.parseInt(isRead));
+            try {
+                wrapper.eq(WfProcessCopy::getIsRead, Integer.parseInt(isRead));
+            } catch (NumberFormatException e) {
+                log.warn("[getMyCopyList] isRead 参数格式非法: {}", isRead);
+            }
         }
 
         // 流程类型筛选
-        String processDefKey = (String) pageQuery.getParams().get("processDefKey");
+        String processDefKey = Objects.toString(params.get("processDefKey"), null);
         if (StringUtils.hasText(processDefKey)) {
             wrapper.eq(WfProcessCopy::getProcessDefKey, processDefKey);
         }
