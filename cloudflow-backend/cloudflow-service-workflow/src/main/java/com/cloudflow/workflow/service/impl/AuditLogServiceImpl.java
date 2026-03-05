@@ -94,6 +94,10 @@ public class AuditLogServiceImpl implements IAuditLogService {
 
         // 构建查询条件
         LambdaQueryWrapper<WfAuditLog> queryWrapper = new LambdaQueryWrapper<>();
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfAuditLog::getTenantId, currentTenantId);
+        }
         
         if (StringUtils.hasText(operationType)) {
             queryWrapper.eq(WfAuditLog::getOperationType, operationType);
@@ -144,6 +148,12 @@ public class AuditLogServiceImpl implements IAuditLogService {
             log.warn("审计日志不存在: id={}", id);
             return null;
         }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !currentTenantId.equals(auditLog.getTenantId())) {
+            log.warn("越权访问审计日志详情: id={}, currentTenantId={}, auditTenantId={}",
+                id, currentTenantId, auditLog.getTenantId());
+            return null;
+        }
         
         return convertToDTO(auditLog);
     }
@@ -159,6 +169,10 @@ public class AuditLogServiceImpl implements IAuditLogService {
         
         LambdaQueryWrapper<WfAuditLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.lt(WfAuditLog::getOperationTime, expireTime);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfAuditLog::getTenantId, currentTenantId);
+        }
         
         int count = auditLogMapper.delete(queryWrapper);
         
@@ -178,6 +192,10 @@ public class AuditLogServiceImpl implements IAuditLogService {
         LambdaQueryWrapper<WfAuditLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfAuditLog::getTargetType, targetType.name())
             .eq(WfAuditLog::getTargetId, targetId);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfAuditLog::getTenantId, currentTenantId);
+        }
 
         int count = auditLogMapper.delete(queryWrapper);
         log.info("按目标删除审计日志完成: targetType={}, targetId={}, count={}",
