@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/workflow/test/permission")
+@PreAuthorize("hasAnyRole('admin', 'ADMIN')")
 public class PermissionTestController {
 
     /**
