@@ -477,6 +477,9 @@ public class TemplateServiceImpl implements ITemplateService {
         if (!"active".equals(template.getStatus())) {
             throw new WorkflowException("模板状态不可用");
         }
+        if (!isDesignerTreeDefinition(template.getDefinition())) {
+            throw new WorkflowException("模板定义格式不兼容流程设计器，请使用链式节点结构（含 id/type/next/branches）");
+        }
 
         // 创建流程定义对象
         WfProcessDefinition definition = new WfProcessDefinition();
@@ -530,6 +533,18 @@ public class TemplateServiceImpl implements ITemplateService {
         } catch (Exception e) {
             log.error("从模板创建流程失败", e);
             throw new WorkflowException("创建流程失败: " + e.getMessage());
+        }
+    }
+
+    private boolean isDesignerTreeDefinition(String definition) {
+        try {
+            JsonNode root = objectMapper.readTree(definition);
+            return root != null
+                    && root.isObject()
+                    && root.hasNonNull("id")
+                    && root.hasNonNull("type");
+        } catch (Exception e) {
+            return false;
         }
     }
 
