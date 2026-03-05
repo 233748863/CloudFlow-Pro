@@ -44,7 +44,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "创建发布窗口配置")
     @PostMapping("/window/save")
-    @PreAuthorize("hasAnyAuthority('admin', 'manager', 'hr')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> saveDeployWindow(@RequestBody DeployWindowDTO dto) {
         return deployEnhancementService.saveDeployWindow(dto);
     }
