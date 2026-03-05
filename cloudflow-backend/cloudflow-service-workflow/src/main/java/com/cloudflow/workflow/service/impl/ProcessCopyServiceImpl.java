@@ -89,6 +89,10 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
         Page<WfProcessCopy> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfProcessCopy> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfProcessCopy::getUserId, userId);
+        Long tenantId = UserContext.getTenantId();
+        if (tenantId != null) {
+            wrapper.eq(WfProcessCopy::getTenantId, tenantId);
+        }
 
         // 关键字搜索（按流程标题模糊匹配）
         String keyword = (String) pageQuery.getParams().get("keyword");
@@ -129,6 +133,12 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
             log.warn("[markAsRead] 抄送记录不存在, copyId={}", copyId);
             return;
         }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, copy.getTenantId())) {
+            log.warn("[markAsRead] 租户不匹配, copyId={}, currentTenantId={}, copyTenantId={}",
+                    copyId, currentTenantId, copy.getTenantId());
+            return;
+        }
         // 校验：只有抄送接收人才能标记已读
         if (!Objects.equals(copy.getUserId(), userId)) {
             log.warn("[markAsRead] 非抄送接收人, copyId={}, userId={}, ownerId={}", copyId, userId, copy.getUserId());
@@ -150,24 +160,30 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
         if (copyIds == null || copyIds.isEmpty()) {
             return;
         }
-        processCopyMapper.update(null,
-                new LambdaUpdateWrapper<WfProcessCopy>()
-                        .in(WfProcessCopy::getId, copyIds)
-                        .eq(WfProcessCopy::getUserId, userId)
-                        .eq(WfProcessCopy::getIsRead, 0)
-                        .set(WfProcessCopy::getIsRead, 1)
-                        .set(WfProcessCopy::getReadTime, LocalDateTime.now())
-        );
+        Long tenantId = UserContext.getTenantId();
+        LambdaUpdateWrapper<WfProcessCopy> updateWrapper = new LambdaUpdateWrapper<WfProcessCopy>()
+                .in(WfProcessCopy::getId, copyIds)
+                .eq(WfProcessCopy::getUserId, userId)
+                .eq(WfProcessCopy::getIsRead, 0)
+                .set(WfProcessCopy::getIsRead, 1)
+                .set(WfProcessCopy::getReadTime, LocalDateTime.now());
+        if (tenantId != null) {
+            updateWrapper.eq(WfProcessCopy::getTenantId, tenantId);
+        }
+        processCopyMapper.update(null, updateWrapper);
         log.info("[batchMarkAsRead] 批量标记已读, userId={}, count={}", userId, copyIds.size());
     }
 
     @Override
     public int getUnreadCount(Long userId) {
-        Long count = processCopyMapper.selectCount(
-                new LambdaQueryWrapper<WfProcessCopy>()
-                        .eq(WfProcessCopy::getUserId, userId)
-                        .eq(WfProcessCopy::getIsRead, 0)
-        );
+        Long tenantId = UserContext.getTenantId();
+        LambdaQueryWrapper<WfProcessCopy> queryWrapper = new LambdaQueryWrapper<WfProcessCopy>()
+                .eq(WfProcessCopy::getUserId, userId)
+                .eq(WfProcessCopy::getIsRead, 0);
+        if (tenantId != null) {
+            queryWrapper.eq(WfProcessCopy::getTenantId, tenantId);
+        }
+        Long count = processCopyMapper.selectCount(queryWrapper);
         return count != null ? count.intValue() : 0;
     }
 
@@ -176,6 +192,8 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
      * 使用批量查询避免 N+1 问题
      */
     private void enrichCopyRecords(List<WfProcessCopy> records) {
+        Long tenantId = UserContext.getTenantId();
+
         // 收集所有 instanceId 和 processDefKey
         List<String> instanceIds = records.stream()
                 .map(WfProcessCopy::getInstanceId)
@@ -191,7 +209,12 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
         // 批量查询流程实例（获取状态）
         Map<String, WfProcessInstance> instanceMap = new HashMap<>();
         if (!instanceIds.isEmpty()) {
-            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+            LambdaQueryWrapper<WfProcessInstance> instanceQuery = new LambdaQueryWrapper<WfProcessInstance>()
+                    .in(WfProcessInstance::getInstanceId, instanceIds);
+            if (tenantId != null) {
+                instanceQuery.eq(WfProcessInstance::getTenantId, tenantId);
+            }
+            List<WfProcessInstance> instances = processInstanceMapper.selectList(instanceQuery);
             for (WfProcessInstance inst : instances) {
                 instanceMap.put(inst.getInstanceId(), inst);
             }
@@ -205,7 +228,12 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
                 .distinct()
                 .collect(Collectors.toList());
         if (!definitionIds.isEmpty()) {
-            List<WfProcessDefinition> definitionsById = processDefinitionMapper.selectBatchIds(definitionIds);
+            LambdaQueryWrapper<WfProcessDefinition> definitionIdQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+                    .in(WfProcessDefinition::getDefinitionId, definitionIds);
+            if (tenantId != null) {
+                definitionIdQuery.eq(WfProcessDefinition::getTenantId, tenantId);
+            }
+            List<WfProcessDefinition> definitionsById = processDefinitionMapper.selectList(definitionIdQuery);
             for (WfProcessDefinition def : definitionsById) {
                 if (def != null && StringUtils.hasText(def.getDefinitionId())) {
                     processNameByDefinitionId.put(def.getDefinitionId(), def.getProcessName());
@@ -216,14 +244,16 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
         // 兼容历史实例（definitionId 为空）回退按 processKey 取最新版本
         Map<String, String> processNameByKey = new HashMap<>();
         if (!processKeys.isEmpty()) {
-            List<WfProcessDefinition> definitions = processDefinitionMapper.selectList(
-                    new LambdaQueryWrapper<WfProcessDefinition>()
-                            .in(WfProcessDefinition::getProcessKey, processKeys)
-                            .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                                    .or()
-                                    .isNull(WfProcessDefinition::getStatus))
-                            .orderByDesc(WfProcessDefinition::getVersion)
-            );
+            LambdaQueryWrapper<WfProcessDefinition> processKeyQuery = new LambdaQueryWrapper<WfProcessDefinition>()
+                    .in(WfProcessDefinition::getProcessKey, processKeys)
+                    .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
+                            .or()
+                            .isNull(WfProcessDefinition::getStatus))
+                    .orderByDesc(WfProcessDefinition::getVersion);
+            if (tenantId != null) {
+                processKeyQuery.eq(WfProcessDefinition::getTenantId, tenantId);
+            }
+            List<WfProcessDefinition> definitions = processDefinitionMapper.selectList(processKeyQuery);
             for (WfProcessDefinition def : definitions) {
                 processNameByKey.putIfAbsent(def.getProcessKey(), def.getProcessName());
             }
