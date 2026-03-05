@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Workflow version controller.
@@ -92,7 +93,7 @@ public class VersionController {
         if (toVersion == null) {
             throw new WorkflowException("Version not found: " + toVersionId);
         }
-        if (!fromVersion.getWorkflowId().equals(toVersion.getWorkflowId())) {
+        if (!Objects.equals(fromVersion.getWorkflowId(), toVersion.getWorkflowId())) {
             throw WorkflowException.validationError("Only versions of the same workflow can be compared");
         }
 
@@ -162,6 +163,7 @@ public class VersionController {
 
     private void ensureWorkflowOwnerOrAdmin(String workflowId) {
         Long currentUserId = UserContext.getUserId();
+        Long currentTenantId = UserContext.getTenantId();
         if (currentUserId == null) {
             throw new PermissionDeniedException("User not logged in");
         }
@@ -170,8 +172,11 @@ public class VersionController {
         if (definition == null) {
             throw WorkflowException.processNotFound(workflowId);
         }
+        if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
+            throw new PermissionDeniedException("Tenant mismatch");
+        }
 
-        boolean isCreator = currentUserId.toString().equals(definition.getCreateBy());
+        boolean isCreator = Objects.equals(currentUserId.toString(), definition.getCreateBy());
         boolean isAdmin = permissionService.isAdmin(currentUserId);
         if (!isCreator && !isAdmin) {
             throw new PermissionDeniedException("Only workflow owner or admin can access version data");
