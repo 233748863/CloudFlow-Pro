@@ -10,6 +10,7 @@ import com.cloudflow.workflow.handler.INodeHandler;
 import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.service.INodeExecutionService;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,6 +60,8 @@ public class SubprocessNodeHandler implements INodeHandler {
     @Autowired
     @Lazy
     private INodeExecutionService nodeExecutionService;
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -180,7 +183,7 @@ public class SubprocessNodeHandler implements INodeHandler {
             processInstanceMapper.insert(subInstance);
 
             // 解析子流程模型并启动执行
-            WfNodeConfig subRoot = objectMapper.readValue(subDef.getModelJson(), WfNodeConfig.class);
+            WfNodeConfig subRoot = workflowModelBridge.parseRuntimeRoot(subDef.getModelJson());
             nodeExecutionService.runNode(subInstance, subRoot, subVariables, 0, subRoot);
 
             log.info("[SubprocessNodeHandler] 子流程已启动, subInstanceId={}, subProcessKey={}, waitForCompletion={}",

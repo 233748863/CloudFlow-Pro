@@ -6,8 +6,8 @@ import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.service.INodeExecutionService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -43,8 +43,8 @@ public class TimerSchedulerService {
 
     @Autowired
     private INodeExecutionService nodeExecutionService;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     /**
      * 兼容保留：旧版定时器扫描逻辑。
@@ -181,7 +181,7 @@ public class TimerSchedulerService {
             }
             
             // 解析流程模型
-            WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
             
             // 查找下一个节点
             WfNodeConfig nextNode = null;

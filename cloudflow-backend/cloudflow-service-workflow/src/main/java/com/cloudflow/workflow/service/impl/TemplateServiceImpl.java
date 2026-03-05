@@ -10,6 +10,7 @@ import com.cloudflow.workflow.domain.dto.UpdateTemplateRequest;
 import com.cloudflow.workflow.domain.dto.TemplateDTO;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WorkflowTemplateMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.ITemplateService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
@@ -45,6 +46,8 @@ public class TemplateServiceImpl implements ITemplateService {
 
     @Autowired
     private IWfDefinitionService definitionService;
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     /**
      * 分页查询模板列表（支持多条件筛选）
@@ -134,7 +137,7 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 验证模板结构
         if (!validateTemplateStructure(definitionJson)) {
-            throw new WorkflowException("模板结构无效：必须为链式节点结构且包含开始/结束节点");
+            throw new WorkflowException("模板结构无效");
         }
 
         // 创建模板实体
@@ -184,7 +187,7 @@ public class TemplateServiceImpl implements ITemplateService {
         if (request.getDefinition() != null) {
             String definitionJson = convertObjectToJson(request.getDefinition());
             if (!validateTemplateStructure(definitionJson)) {
-                throw new WorkflowException("模板结构无效：必须为链式节点结构且包含开始/结束节点");
+                throw new WorkflowException("模板结构无效");
             }
             template.setDefinition(definitionJson);
         }
@@ -252,6 +255,9 @@ public class TemplateServiceImpl implements ITemplateService {
     @Override
     public boolean validateTemplateStructure(String definition) {
         try {
+            if (workflowModelBridge.isGraphModel(definition)) {
+                return workflowModelBridge.validateGraphModel(definition);
+            }
             JsonNode root = objectMapper.readTree(definition);
             if (!isDesignerTreeNode(root)) {
                 return false;
@@ -446,8 +452,8 @@ public class TemplateServiceImpl implements ITemplateService {
         if (!"active".equals(template.getStatus())) {
             throw new WorkflowException("模板状态不可用");
         }
-        if (!isDesignerTreeDefinition(template.getDefinition())) {
-            throw new WorkflowException("模板定义格式不兼容流程设计器，请使用链式节点结构（含 id/type/next/branches）");
+        if (!validateTemplateStructure(template.getDefinition())) {
+            throw new WorkflowException("模板定义结构无效");
         }
 
         // 创建流程定义对象
@@ -502,15 +508,6 @@ public class TemplateServiceImpl implements ITemplateService {
         } catch (Exception e) {
             log.error("从模板创建流程失败", e);
             throw new WorkflowException("创建流程失败: " + e.getMessage());
-        }
-    }
-
-    private boolean isDesignerTreeDefinition(String definition) {
-        try {
-            JsonNode root = objectMapper.readTree(definition);
-            return isDesignerTreeNode(root);
-        } catch (Exception e) {
-            return false;
         }
     }
 

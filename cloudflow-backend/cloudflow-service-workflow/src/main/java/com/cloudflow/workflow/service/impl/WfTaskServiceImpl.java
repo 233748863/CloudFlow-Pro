@@ -19,6 +19,7 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.job.TaskReminderJob;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.processor.ApprovalPostProcessor;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
@@ -85,6 +86,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
     private ApprovalPostProcessor approvalPostProcessor;
     @Autowired
     private TaskReminderJob taskReminderJob;
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -193,7 +196,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 try {
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
-                        WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                         WfNodeConfig currentNode = nodeExecutionService.findNode(root, task.getNodeKey());
                         nodeExecutionService.advanceAfterNode(instance, currentNode, task.getNodeKey(), mergedVariables, 0, root);
                     } else {
@@ -209,7 +212,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 // 审批后置处理
                 try {
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
-                        WfNodeConfig postRoot = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                        WfNodeConfig postRoot = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                         WfNodeConfig completedNode = nodeExecutionService.findNode(postRoot, task.getNodeKey());
                         if (completedNode != null) {
                             approvalPostProcessor.process(completedNode, instance, normalizedAction, mergedVariables);
@@ -305,7 +308,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         try {
-            WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
             WfNodeConfig targetNode = nodeExecutionService.findNode(root, targetNodeKey);
             if (targetNode == null) {
                 throw WorkflowException.validationError("目标节点不存在: " + targetNodeKey);
@@ -557,7 +560,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 WfProcessDefinition def = resolveDefinitionByInstance(instance);
                 try {
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
-                        WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                         WfNodeConfig nextNode = nodeExecutionService.findNextNode(root, task.getNodeKey());
                         if (nextNode != null) {
                             nodeExecutionService.runNode(instance, nextNode, mergedVariables, 0, root);
@@ -856,7 +859,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 if (steps == null) {
                     WfProcessDefinition def = resolveDefinitionForInstance(instance, defById, latestDefByKey);
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
-                        WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                         steps = nodeExecutionService.extractApprovalSteps(root);
                         stepsCache.put(definitionCacheKey, steps);
                         rootNodeCache.put(definitionCacheKey, root);

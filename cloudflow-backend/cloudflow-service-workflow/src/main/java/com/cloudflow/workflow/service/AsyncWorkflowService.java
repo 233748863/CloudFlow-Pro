@@ -7,7 +7,7 @@ import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,8 +53,8 @@ public class AsyncWorkflowService {
 
     @Autowired
     private IWorkflowSagaService sagaService;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     /**
      * 异步执行流程节点解析和任务创建
@@ -82,7 +82,7 @@ public class AsyncWorkflowService {
                 return;
             }
 
-            WfNodeConfig rootNode = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+            WfNodeConfig rootNode = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
             WfNodeConfig nextNode = rootNode.getNext();
 
             // 执行节点（通过回调委托给 WorkflowServiceImpl）

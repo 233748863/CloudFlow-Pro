@@ -16,6 +16,7 @@ import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.listener.GlobalListenerDispatcher;
 import com.cloudflow.workflow.mapper.*;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -81,6 +82,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     private WfCountersignVoteMapper countersignVoteMapper;
     @Autowired(required = false)
     private TimerSchedulerService timerSchedulerService;
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -194,7 +197,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 解析流程模型并执行第一个节点
         try {
             if (StringUtils.hasText(def.getModelJson())) {
-                WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                 // 跳过 START 节点，执行 next
                 WfNodeConfig firstNode = root;
                 if ("START".equals(root.getType()) && root.getNext() != null) {
@@ -388,7 +391,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         try {
             WfProcessDefinition def = resolveDefinitionByInstance(instance);
             if (def != null && StringUtils.hasText(def.getModelJson())) {
-                WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                 List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
                 String currentNodeKey = activeNodeKeys.isEmpty() ? null : activeNodeKeys.get(0);
                 stepsDetail = nodeExecutionService.buildAllStepsDetail(steps, histories, currentNodeKey);
@@ -525,7 +528,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 WfProcessDefinition def = resolveDefinitionByInstance(instance);
 
                 if (def != null && StringUtils.hasText(def.getModelJson())) {
-                    WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+                    WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                     WfNodeConfig timerNode = nodeExecutionService.findNode(root, nodeKey);
                     if (timerNode != null) {
                         nodeExecutionService.advanceAfterNode(instance, timerNode, nodeKey, variables, 0, root);
@@ -591,7 +594,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         List<Map<String, Object>> edges = new ArrayList<>();
 
         try {
-            WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
             int[] position = {0}; // 用于自动布局的Y坐标计数器
             buildFlowchartNodes(root, nodes, edges, finishedNodeKeys, activeNodeKeys, instance.getStatus(), position, null);
         } catch (Exception e) {

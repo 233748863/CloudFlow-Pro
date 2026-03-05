@@ -20,6 +20,7 @@ import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
@@ -27,7 +28,10 @@ import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.cloudflow.workflow.validator.JsonSchemaValidator;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +73,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     private WorkflowSecurityUtils securityUtils;
     @Autowired
     private IVersionService versionService;
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -92,7 +98,13 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         // JSON 结构校验 + P0-5: 递归 XSS 过滤 modelJson 内所有节点文本字段
         if (StringUtils.hasText(definition.getModelJson())) {
-            jsonSchemaValidator.validateProcessDefinitionJson(definition.getModelJson());
+            if (workflowModelBridge.isGraphModel(definition.getModelJson())) {
+                if (!workflowModelBridge.validateGraphModel(definition.getModelJson())) {
+                    throw WorkflowException.validationError("流程定义图模型校验失败");
+                }
+            } else {
+                jsonSchemaValidator.validateProcessDefinitionJson(definition.getModelJson());
+            }
             validateModelIntegrity(definition.getModelJson());
             // P0-5: 对 modelJson 内部节点的 title/condition/props 等字段做 XSS 过滤
             definition.setModelJson(sanitizeModelJson(definition.getModelJson()));
@@ -187,7 +199,13 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         validateBoundFormTenant(def.getFormId(), def.getTenantId(), "发布");
 
         // 发布前完整性检查
-        jsonSchemaValidator.validateProcessDefinitionJson(def.getModelJson());
+        if (workflowModelBridge.isGraphModel(def.getModelJson())) {
+            if (!workflowModelBridge.validateGraphModel(def.getModelJson())) {
+                throw WorkflowException.validationError("流程定义图模型校验失败");
+            }
+        } else {
+            jsonSchemaValidator.validateProcessDefinitionJson(def.getModelJson());
+        }
 
         // 更新状态
         def.setStatus("PUBLISHED");
@@ -361,7 +379,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         List<Map<String, Object>> edges = new ArrayList<>();
 
         try {
-            WfNodeConfig root = objectMapper.readValue(def.getModelJson(), WfNodeConfig.class);
+            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
             int[] position = {0};
             buildStructureNodes(root, nodes, edges, position, null);
         } catch (WorkflowException e) {
@@ -446,9 +464,9 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
      */
     private String sanitizeModelJson(String modelJson) {
         try {
-            WfNodeConfig root = objectMapper.readValue(modelJson, WfNodeConfig.class);
-            sanitizeNodeRecursive(root);
-            return objectMapper.writeValueAsString(root);
+            JsonNode root = objectMapper.readTree(modelJson);
+            JsonNode sanitized = sanitizeJsonNode(root);
+            return objectMapper.writeValueAsString(sanitized);
         } catch (Exception e) {
             log.warn("[sanitizeModelJson] XSS过滤失败，保留原始JSON: {}", e.getMessage());
             return modelJson;
@@ -494,6 +512,32 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                 sanitizeNodeRecursive(branch);
             }
         }
+    }
+
+    private JsonNode sanitizeJsonNode(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return node;
+        }
+        if (node.isTextual()) {
+            return objectMapper.getNodeFactory().textNode(securityUtils.sanitizeXss(node.asText()));
+        }
+        if (node.isArray()) {
+            ArrayNode arrayNode = objectMapper.createArrayNode();
+            for (JsonNode child : node) {
+                arrayNode.add(sanitizeJsonNode(child));
+            }
+            return arrayNode;
+        }
+        if (node.isObject()) {
+            ObjectNode objectNode = objectMapper.createObjectNode();
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                objectNode.set(entry.getKey(), sanitizeJsonNode(entry.getValue()));
+            }
+            return objectNode;
+        }
+        return node;
     }
 
     // ==================== 私有方法 ====================
@@ -542,7 +586,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
      */
     private void validateModelIntegrity(String modelJson) {
         try {
-            WfNodeConfig root = objectMapper.readValue(modelJson, WfNodeConfig.class);
+            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(modelJson);
             if (root == null) {
                 throw WorkflowException.validationError("流程模型为空");
             }

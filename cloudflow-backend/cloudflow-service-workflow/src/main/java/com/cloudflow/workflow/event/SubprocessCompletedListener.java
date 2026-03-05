@@ -7,6 +7,7 @@ import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.service.INodeExecutionService;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,16 +45,19 @@ public class SubprocessCompletedListener {
     private final WfProcessDefinitionMapper processDefinitionMapper;
     @Lazy
     private final INodeExecutionService nodeExecutionService;
+    private final WorkflowModelBridge workflowModelBridge;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public SubprocessCompletedListener(WfProcessInstanceMapper processInstanceMapper,
                                         WfProcessDefinitionMapper processDefinitionMapper,
-                                        @Lazy INodeExecutionService nodeExecutionService) {
+                                        @Lazy INodeExecutionService nodeExecutionService,
+                                        WorkflowModelBridge workflowModelBridge) {
         this.processInstanceMapper = processInstanceMapper;
         this.processDefinitionMapper = processDefinitionMapper;
         this.nodeExecutionService = nodeExecutionService;
+        this.workflowModelBridge = workflowModelBridge;
     }
 
     /**
@@ -115,7 +119,7 @@ public class SubprocessCompletedListener {
             }
 
             // 4. 解析父流程模型
-            WfNodeConfig rootNode = objectMapper.readValue(parentDef.getModelJson(), WfNodeConfig.class);
+            WfNodeConfig rootNode = workflowModelBridge.parseRuntimeRoot(parentDef.getModelJson());
 
             // 5. 定位触发子流程的节点
             WfNodeConfig subprocessNode = nodeExecutionService.findNode(rootNode, parentNodeKey);
