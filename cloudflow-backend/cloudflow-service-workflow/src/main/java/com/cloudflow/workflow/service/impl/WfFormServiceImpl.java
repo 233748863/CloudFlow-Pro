@@ -88,10 +88,10 @@ public class WfFormServiceImpl implements IWfFormService {
                 throw new PermissionDeniedException("无权修改该租户表单定义");
             }
             if (definition.getTenantId() != null && exist.getTenantId() != null
-                    && !definition.getTenantId().equals(exist.getTenantId())) {
+                    && !Objects.equals(definition.getTenantId(), exist.getTenantId())) {
                 throw new PermissionDeniedException("不允许变更表单所属租户");
             }
-            if (definition.getVersionLock() != null && !definition.getVersionLock().equals(exist.getVersionLock())) {
+            if (definition.getVersionLock() != null && !Objects.equals(definition.getVersionLock(), exist.getVersionLock())) {
                 throw WorkflowException.invalidState("表单定义已被其他用户修改，请刷新后重试");
             }
             // 更新时租户归属以历史记录为准，禁止通过请求体篡改
@@ -105,7 +105,7 @@ public class WfFormServiceImpl implements IWfFormService {
             if (currentTenantId != null) {
                 if (definition.getTenantId() == null) {
                     definition.setTenantId(currentTenantId);
-                } else if (!currentTenantId.equals(definition.getTenantId())) {
+                } else if (!Objects.equals(currentTenantId, definition.getTenantId())) {
                     throw new PermissionDeniedException("无权创建其他租户表单定义");
                 }
             }
@@ -232,4 +232,3 @@ public class WfFormServiceImpl implements IWfFormService {
         return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
     }
 }
-
