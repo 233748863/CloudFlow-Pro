@@ -134,6 +134,39 @@ const parseTemplateDefinition = (definition: unknown): { nodes: PreviewNode[]; e
     })
     .filter((item): item is PreviewEdge => Boolean(item));
 
+  // 兼容设计器链式结构：{ id, type, next, branches }
+  if (nodes.length === 0 && !rawNodes && typeof objectValue.type === 'string') {
+    const treeNodes: PreviewNode[] = [];
+    const treeEdges: PreviewEdge[] = [];
+    const visited = new Set<string>();
+
+    const walk = (nodeLike: unknown, parentId?: string) => {
+      if (!nodeLike || typeof nodeLike !== 'object') {
+        return;
+      }
+      const source = nodeLike as Record<string, unknown>;
+      const id = String(source.id ?? source.key ?? source.nodeId ?? `node-${treeNodes.length + 1}`);
+      const name = String(source.name ?? source.title ?? source.label ?? `节点 ${treeNodes.length + 1}`);
+      const type = String(source.type ?? source.nodeType ?? 'task');
+
+      if (!visited.has(id)) {
+        treeNodes.push({ id, name, type });
+        visited.add(id);
+      }
+      if (parentId) {
+        treeEdges.push({ source: parentId, target: id });
+      }
+
+      walk(source.next, id);
+      if (Array.isArray(source.branches)) {
+        source.branches.forEach((branch) => walk(branch, id));
+      }
+    };
+
+    walk(objectValue);
+    return { nodes: treeNodes, edges: treeEdges };
+  }
+
   return { nodes, edges };
 };
 
