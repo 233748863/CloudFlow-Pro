@@ -253,31 +253,86 @@ public class TemplateServiceImpl implements ITemplateService {
     public boolean validateTemplateStructure(String definition) {
         try {
             JsonNode root = objectMapper.readTree(definition);
-            JsonNode nodes = root.get("nodes");
-
-            if (nodes == null || !nodes.isArray()) {
+            if (root == null || !root.isObject()) {
                 return false;
             }
 
-            boolean hasStartNode = false;
-            boolean hasEndNode = false;
-
-            // 遍历所有节点，检查是否有开始和结束节点
-            for (JsonNode node : nodes) {
-                String nodeType = node.get("type").asText();
-                if ("start".equals(nodeType)) {
-                    hasStartNode = true;
-                }
-                if ("end".equals(nodeType)) {
-                    hasEndNode = true;
-                }
+            // 兼容数组型定义：{nodes:[...]}、{nodeList:[...]}、{activities:[...]}、{steps:[...]}
+            JsonNode nodeArray = findNodeArray(root);
+            if (nodeArray != null) {
+                return hasTypeInNodeArray(nodeArray, "start") && hasTypeInNodeArray(nodeArray, "end");
             }
 
-            return hasStartNode && hasEndNode;
+            // 兼容 CloudFlow 设计器链式定义：{type:"START", next:{...}, branches:[...]}
+            return containsNodeTypeInTree(root, "start") && containsNodeTypeInTree(root, "end");
         } catch (Exception e) {
             log.error("验证模板结构失败", e);
             return false;
         }
+    }
+
+    private JsonNode findNodeArray(JsonNode root) {
+        JsonNode[] candidates = new JsonNode[]{
+                root.get("nodes"),
+                root.get("nodeList"),
+                root.get("activities"),
+                root.get("steps")
+        };
+        for (JsonNode candidate : candidates) {
+            if (candidate != null && candidate.isArray()) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasTypeInNodeArray(JsonNode nodes, String expectedType) {
+        if (nodes == null || !nodes.isArray()) {
+            return false;
+        }
+        for (JsonNode node : nodes) {
+            if (isExpectedType(node, expectedType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsNodeTypeInTree(JsonNode node, String expectedType) {
+        if (node == null || !node.isObject()) {
+            return false;
+        }
+        if (isExpectedType(node, expectedType)) {
+            return true;
+        }
+
+        JsonNode nextNode = node.get("next");
+        if (containsNodeTypeInTree(nextNode, expectedType)) {
+            return true;
+        }
+
+        JsonNode branches = node.get("branches");
+        if (branches != null && branches.isArray()) {
+            for (JsonNode branch : branches) {
+                if (containsNodeTypeInTree(branch, expectedType)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isExpectedType(JsonNode node, String expectedType) {
+        if (node == null || !node.isObject()) {
+            return false;
+        }
+        JsonNode typeNode = node.get("type");
+        if (typeNode == null || typeNode.isNull()) {
+            typeNode = node.get("nodeType");
+        }
+        return typeNode != null
+                && !typeNode.isNull()
+                && expectedType.equalsIgnoreCase(typeNode.asText());
     }
 
     /**
