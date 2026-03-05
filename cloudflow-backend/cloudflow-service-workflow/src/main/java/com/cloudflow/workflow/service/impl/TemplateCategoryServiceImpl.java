@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -72,7 +73,13 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      */
     @Override
     public List<TemplateCategory> listAll() {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
         LambdaQueryWrapper<TemplateCategory> wrapper = new LambdaQueryWrapper<>();
+        if (currentTenantId != null) {
+            wrapper.and(w -> w.eq(TemplateCategory::getTenantId, currentTenantId)
+                .or()
+                .isNull(TemplateCategory::getTenantId));
+        }
         wrapper.orderByAsc(TemplateCategory::getOrderNum);
         return categoryMapper.selectList(wrapper);
     }
@@ -88,6 +95,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
         if (category == null) {
             throw new WorkflowException("分类不存在: " + categoryId);
         }
+        assertCategoryReadable(category, "查看模板分类");
         
         return category;
     }
@@ -141,6 +149,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
         if (existing == null) {
             throw new WorkflowException("分类不存在: " + category.getId());
         }
+        assertCategoryWritable(existing, "更新模板分类");
 
         // 验证必填字段
         validateCategory(category);
@@ -156,6 +165,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
             if (parent == null) {
                 throw new WorkflowException("父分类不存在: " + category.getParentId());
             }
+            assertCategoryWritable(parent, "更新模板分类");
 
             // 检查是否会形成循环引用
             if (wouldCreateCircularReference(category.getId(), category.getParentId())) {
@@ -165,6 +175,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
 
         // 更新字段
         category.setUpdatedAt(LocalDateTime.now());
+        category.setTenantId(existing.getTenantId());
         categoryMapper.updateById(category);
 
         log.info("分类更新成功 - ID:{}", category.getId());
@@ -184,6 +195,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
         if (category == null) {
             throw new WorkflowException("分类不存在: " + categoryId);
         }
+        assertCategoryWritable(category, "删除模板分类");
 
         // 检查是否有子分类
         int childCount = countChildCategories(categoryId);
@@ -208,8 +220,12 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      */
     @Override
     public int countTemplatesByCategory(String categoryId) {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
         LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowTemplate::getCategoryId, categoryId);
+        if (currentTenantId != null) {
+            wrapper.eq(WorkflowTemplate::getTenantId, currentTenantId);
+        }
         return templateMapper.selectCount(wrapper).intValue();
     }
 
@@ -218,8 +234,12 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      */
     @Override
     public int countChildCategories(String categoryId) {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
         LambdaQueryWrapper<TemplateCategory> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TemplateCategory::getParentId, categoryId);
+        if (currentTenantId != null) {
+            wrapper.eq(TemplateCategory::getTenantId, currentTenantId);
+        }
         return categoryMapper.selectCount(wrapper).intValue();
     }
 
@@ -238,6 +258,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      */
     private boolean wouldCreateCircularReference(String categoryId, String newParentId) {
         String currentParentId = newParentId;
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
         
         // 向上遍历父分类链，检查是否会遇到自己
         while (StringUtils.hasText(currentParentId)) {
@@ -248,6 +269,10 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
             TemplateCategory parent = categoryMapper.selectById(currentParentId);
             if (parent == null) {
                 break;
+            }
+            if (currentTenantId != null && parent.getTenantId() != null
+                && !Objects.equals(currentTenantId, parent.getTenantId())) {
+                throw new WorkflowException("无权访问其他租户父分类");
             }
             
             currentParentId = parent.getParentId();
@@ -260,8 +285,14 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      * 统计每个分类下的模板数量
      */
     private Map<String, Long> countTemplatesGroupByCategory() {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
         LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowTemplate::getStatus, "active");
+        if (currentTenantId != null) {
+            wrapper.and(w -> w.eq(WorkflowTemplate::getTenantId, currentTenantId)
+                .or()
+                .isNull(WorkflowTemplate::getTenantId));
+        }
         
         List<WorkflowTemplate> templates = templateMapper.selectList(wrapper);
         
@@ -271,6 +302,22 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
                         WorkflowTemplate::getCategoryId,
                         Collectors.counting()
                 ));
+    }
+
+    private void assertCategoryReadable(TemplateCategory category, String operation) {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
+        if (currentTenantId != null
+            && category.getTenantId() != null
+            && !Objects.equals(currentTenantId, category.getTenantId())) {
+            throw WorkflowException.permissionDenied(operation);
+        }
+    }
+
+    private void assertCategoryWritable(TemplateCategory category, String operation) {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, category.getTenantId())) {
+            throw WorkflowException.permissionDenied(operation);
+        }
     }
 
     /**

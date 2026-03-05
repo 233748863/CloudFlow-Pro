@@ -24,6 +24,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -54,9 +55,15 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 构建查询条件
         LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
 
         // 只查询激活状态的模板
         wrapper.eq(WorkflowTemplate::getStatus, "active");
+        if (currentTenantId != null) {
+            // 当前租户可见：本租户模板 + 平台系统模板（tenant_id 为空且 is_system=1）
+            wrapper.and(w -> w.eq(WorkflowTemplate::getTenantId, currentTenantId)
+                    .or(q -> q.isNull(WorkflowTemplate::getTenantId).eq(WorkflowTemplate::getIsSystem, 1)));
+        }
 
         // 按分类筛选
         if (StringUtils.hasText(categoryId)) {
@@ -106,6 +113,7 @@ public class TemplateServiceImpl implements ITemplateService {
         if (template == null) {
             throw new WorkflowException("模板不存在: " + id);
         }
+        assertTemplateReadable(template, "查看模板");
 
         return convertToDTO(template);
     }
@@ -170,6 +178,7 @@ public class TemplateServiceImpl implements ITemplateService {
         if (template == null) {
             throw new WorkflowException("模板不存在: " + id);
         }
+        assertTemplateWritable(template, "更新模板");
 
         // 如果更新了流程定义，需要验证结构
         if (request.getDefinition() != null) {
@@ -222,6 +231,7 @@ public class TemplateServiceImpl implements ITemplateService {
         if (template == null) {
             throw new WorkflowException("模板不存在: " + id);
         }
+        assertTemplateWritable(template, "删除模板");
 
         // 检查是否有流程正在使用该模板
         int usageCount = checkTemplateUsage(id);
@@ -285,6 +295,10 @@ public class TemplateServiceImpl implements ITemplateService {
     @Transactional(rollbackFor = Exception.class)
     public void incrementUsageCount(String templateId) {
         log.info("增加模板使用次数 - ID:{}", templateId);
+        WorkflowTemplate template = templateMapper.selectById(templateId);
+        if (template != null) {
+            assertTemplateReadable(template, "更新模板使用次数");
+        }
         templateMapper.incrementUsageCount(templateId);
     }
 
@@ -402,6 +416,7 @@ public class TemplateServiceImpl implements ITemplateService {
         if (template == null) {
             throw new WorkflowException("模板不存在: " + templateId);
         }
+        assertTemplateReadable(template, "从模板创建流程");
 
         // 检查模板状态
         if (!"active".equals(template.getStatus())) {
@@ -460,6 +475,37 @@ public class TemplateServiceImpl implements ITemplateService {
         } catch (Exception e) {
             log.error("从模板创建流程失败", e);
             throw new WorkflowException("创建流程失败: " + e.getMessage());
+        }
+    }
+
+    private void assertTemplateReadable(WorkflowTemplate template, String operation) {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
+        if (currentTenantId == null) {
+            return;
+        }
+        Long templateTenantId = template.getTenantId();
+        if (templateTenantId == null) {
+            // 仅平台系统模板允许跨租户读取
+            if (!Integer.valueOf(1).equals(template.getIsSystem())) {
+                throw WorkflowException.permissionDenied(operation);
+            }
+            return;
+        }
+        if (!Objects.equals(currentTenantId, templateTenantId)) {
+            throw WorkflowException.permissionDenied(operation);
+        }
+    }
+
+    private void assertTemplateWritable(WorkflowTemplate template, String operation) {
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
+        if (currentTenantId == null) {
+            return;
+        }
+        if (!Objects.equals(currentTenantId, template.getTenantId())) {
+            throw WorkflowException.permissionDenied(operation);
+        }
+        if (Integer.valueOf(1).equals(template.getIsSystem())) {
+            throw WorkflowException.permissionDenied(operation);
         }
     }
 }
