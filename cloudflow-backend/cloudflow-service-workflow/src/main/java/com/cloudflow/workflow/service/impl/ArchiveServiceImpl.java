@@ -12,6 +12,7 @@ import com.cloudflow.workflow.domain.dto.OperationDetailDTO;
 import com.cloudflow.workflow.domain.dto.SafetyCheckResultDTO;
 import com.cloudflow.workflow.enums.OperationType;
 import com.cloudflow.workflow.enums.TargetType;
+import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessArchiveMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
@@ -31,6 +32,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -145,6 +147,7 @@ public class ArchiveServiceImpl implements IArchiveService {
                     .message("流程不存在")
                     .build();
             }
+            ensureWorkflowTenantAccess(definition, "归档流程");
 
             // 2. 检查是否已归档
             if (definition.getIsArchived() != null && definition.getIsArchived() == 1) {
@@ -307,6 +310,7 @@ public class ArchiveServiceImpl implements IArchiveService {
                     .message("流程不存在")
                     .build();
             }
+            ensureWorkflowTenantAccess(definition, "恢复归档流程");
 
             // 2. 检查是否已归档
             if (definition.getIsArchived() == null || definition.getIsArchived() == 0) {
@@ -391,6 +395,15 @@ public class ArchiveServiceImpl implements IArchiveService {
 
         // 构建查询条件
         LambdaQueryWrapper<WfProcessArchive> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 按租户过滤归档记录，避免跨租户数据泄露
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            queryWrapper.inSql(
+                WfProcessArchive::getWorkflowId,
+                "SELECT definition_id FROM wf_process_definition WHERE tenant_id = " + currentTenantId
+            );
+        }
         
         // 关键词搜索（流程名称或归档原因）
         if (StringUtils.hasText(keyword)) {
@@ -498,6 +511,7 @@ public class ArchiveServiceImpl implements IArchiveService {
                     .message("流程不存在")
                     .build();
             }
+            ensureWorkflowTenantAccess(definition, "永久删除流程");
 
             String workflowName = definition.getProcessName();
 
@@ -573,5 +587,12 @@ public class ArchiveServiceImpl implements IArchiveService {
             .archiveReason(archive.getArchiveReason())
             .canRestore(archive.getCanRestore() == 1)
             .build();
+    }
+
+    private void ensureWorkflowTenantAccess(WfProcessDefinition definition, String operation) {
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
+            throw WorkflowException.permissionDenied(operation);
+        }
     }
 }
