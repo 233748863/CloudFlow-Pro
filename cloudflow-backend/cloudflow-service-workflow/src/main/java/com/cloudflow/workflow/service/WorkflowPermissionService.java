@@ -139,21 +139,25 @@ public class WorkflowPermissionService {
         }
 
         // 当前待办处理人可查看
-        Long todoCount = taskMapper.selectCount(
-                new LambdaQueryWrapper<WfTask>()
-                        .eq(WfTask::getInstanceId, instance.getInstanceId())
-                        .eq(WfTask::getAssignee, currentUserId)
-        );
+        LambdaQueryWrapper<WfTask> todoWrapper = new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getInstanceId, instance.getInstanceId())
+                .eq(WfTask::getAssignee, currentUserId);
+        if (currentTenantId != null) {
+            todoWrapper.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Long todoCount = taskMapper.selectCount(todoWrapper);
         if (todoCount != null && todoCount > 0) {
             return;
         }
 
         // 历史处理人可查看（用于已办、轨迹回看）
-        Long historyCount = taskHistoryMapper.selectCount(
-                new LambdaQueryWrapper<WfTaskHistory>()
-                        .eq(WfTaskHistory::getInstanceId, instance.getInstanceId())
-                        .eq(WfTaskHistory::getOperatorId, currentUserId)
-        );
+        LambdaQueryWrapper<WfTaskHistory> historyWrapper = new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getInstanceId, instance.getInstanceId())
+                .eq(WfTaskHistory::getOperatorId, currentUserId);
+        if (currentTenantId != null) {
+            historyWrapper.eq(WfTaskHistory::getTenantId, currentTenantId);
+        }
+        Long historyCount = taskHistoryMapper.selectCount(historyWrapper);
         if (historyCount != null && historyCount > 0) {
             return;
         }

@@ -167,13 +167,24 @@ export const WorkflowDesign = () => {
       if (!prev) {
         return next;
       }
-      const sameId = prev.id === next.id;
-      const sameContent = buildWorkflowContentSignature(prev) === buildWorkflowContentSignature(next);
+      // 设计器可能在异步保存后短暂回传旧 definitionId；已持久化流程始终以父状态 id 为准，避免回滚触发循环请求
+      const keepPrevId =
+        !!prev.id &&
+        !prev.id.startsWith('new_') &&
+        !!next.id &&
+        prev.id !== next.id;
+      const normalizedNext = keepPrevId ? { ...next, id: prev.id } : next;
+
+      const sameId = prev.id === normalizedNext.id;
+      const sameContent =
+        buildWorkflowContentSignature(prev) ===
+        buildWorkflowContentSignature(normalizedNext);
+
       // 避免编辑器回传“等价快照”导致父状态抖动，进而触发自动保存误判
       if (sameId && sameContent) {
         return prev;
       }
-      return next;
+      return normalizedNext;
     });
   }, []);
 
