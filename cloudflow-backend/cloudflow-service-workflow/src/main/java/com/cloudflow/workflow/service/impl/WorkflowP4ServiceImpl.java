@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.*;
@@ -58,6 +59,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         log.info("[delegateTask] taskId={}, toUserId={}", taskId, toUserId);
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
+        Long operatorId = resolveOperatorId(null, "delegateTask");
+        assertTaskAccess(task, operatorId, "delegateTask");
 
         Long fromUserId = task.getAssignee();
         String fromUserName = task.getAssigneeName();
@@ -92,6 +95,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         log.info("[delegateWithReturn] taskId={}, toUserId={}", taskId, toUserId);
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
+        Long operatorId = resolveOperatorId(null, "delegateWithReturn");
+        assertTaskAccess(task, operatorId, "delegateWithReturn");
 
         Long fromUserId = task.getAssignee();
         String fromUserName = task.getAssigneeName();
@@ -127,6 +132,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         delegatedTask.setAssigneeName(toUserName);
         delegatedTask.setStatus("TODO");
         delegatedTask.setPriority(task.getPriority());
+        delegatedTask.setTenantId(task.getTenantId());
         delegatedTask.setCreateTime(LocalDateTime.now());
         // 关联原任务，被委派人完成后用于回溯
         delegatedTask.setCandidateRoles("DELEGATE_FROM:" + taskId + ":" + delegation.getDelegationId());
@@ -143,6 +149,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         h.setOperatorName(fromUserName);
         h.setAction("DELEGATE_WITH_RETURN");
         h.setComment("委派给 " + toUserName + "，原因：" + (reason != null ? reason : ""));
+        h.setTenantId(resolveTaskTenantId(task));
         h.setCreateTime(LocalDateTime.now());
         taskHistoryMapper.insert(h);
 
@@ -161,6 +168,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         log.info("[addSign] taskId={}, signType={}", taskId, signType);
         WfTask originalTask = taskMapper.selectById(taskId);
         if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
+        Long operatorId = resolveOperatorId(null, "addSign");
+        assertTaskAccess(originalTask, operatorId, "addSign");
         if (CollectionUtils.isEmpty(userIds)) { throw WorkflowException.validationError("加签用户不能为空"); }
 
         WfTaskAddSign addSign = new WfTaskAddSign();
@@ -199,6 +208,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             t.setAssignee(userIds.get(i));
             t.setAssigneeName(userNames != null && i < userNames.size() ? userNames.get(i) : "");
             t.setStatus("TODO");
+            t.setTenantId(original.getTenantId());
             t.setCreateTime(LocalDateTime.now());
             taskMapper.insert(t);
             sendNotification("TASK_ASSIGN", userIds.get(i), "加签任务", "您收到" + label + "任务");
@@ -210,9 +220,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     public R<?> setProxy(Long userId, String userName, Long proxyUserId, String proxyUserName,
                          LocalDateTime startTime, LocalDateTime endTime, String reason) {
+        Long effectiveUserId = resolveOperatorId(userId, "setProxy");
         log.info("[setProxy] userId={}, proxyUserId={}", userId, proxyUserId);
         Long cnt = delegationMapper.selectCount(new LambdaQueryWrapper<WfTaskDelegation>()
-                .eq(WfTaskDelegation::getFromUserId, userId)
+                .eq(WfTaskDelegation::getFromUserId, effectiveUserId)
                 .eq(WfTaskDelegation::getDelegationType, "PROXY")
                 .eq(WfTaskDelegation::getStatus, "ACTIVE"));
         if (cnt > 0) { throw WorkflowException.validationError("已有活跃代理，请先取消"); }
@@ -220,7 +231,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         WfTaskDelegation proxy = new WfTaskDelegation();
         proxy.setDelegationId(UUID.randomUUID().toString());
         proxy.setDelegationType("PROXY");
-        proxy.setFromUserId(userId);
+        proxy.setFromUserId(effectiveUserId);
         proxy.setFromUserName(userName);
         proxy.setToUserId(proxyUserId);
         proxy.setToUserName(proxyUserName);
@@ -231,22 +242,35 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         proxy.setCreateTime(LocalDateTime.now());
         delegationMapper.insert(proxy);
 
-        taskMapper.update(null, new LambdaUpdateWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId).eq(WfTask::getStatus, "TODO")
-                .set(WfTask::getProxyUserId, proxyUserId));
+        LambdaUpdateWrapper<WfTask> taskUpdateWrapper = new LambdaUpdateWrapper<WfTask>()
+                .eq(WfTask::getAssignee, effectiveUserId)
+                .eq(WfTask::getStatus, "TODO");
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            taskUpdateWrapper.eq(WfTask::getTenantId, currentTenantId);
+        }
+        taskUpdateWrapper.set(WfTask::getProxyUserId, proxyUserId);
+        taskMapper.update(null, taskUpdateWrapper);
         sendNotification("TASK_PROXY", proxyUserId, "代理通知", userName + " 已将您设为代理人");
         return R.ok(proxy.getDelegationId());
     }
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> cancelProxy(Long userId) {
+        Long effectiveUserId = resolveOperatorId(userId, "cancelProxy");
         delegationMapper.update(null, new LambdaUpdateWrapper<WfTaskDelegation>()
-                .eq(WfTaskDelegation::getFromUserId, userId)
+                .eq(WfTaskDelegation::getFromUserId, effectiveUserId)
                 .eq(WfTaskDelegation::getDelegationType, "PROXY")
                 .eq(WfTaskDelegation::getStatus, "ACTIVE")
                 .set(WfTaskDelegation::getStatus, "CANCELLED"));
-        taskMapper.update(null, new LambdaUpdateWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId).set(WfTask::getProxyUserId, null));
+        LambdaUpdateWrapper<WfTask> taskUpdateWrapper = new LambdaUpdateWrapper<WfTask>()
+                .eq(WfTask::getAssignee, effectiveUserId);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            taskUpdateWrapper.eq(WfTask::getTenantId, currentTenantId);
+        }
+        taskUpdateWrapper.set(WfTask::getProxyUserId, null);
+        taskMapper.update(null, taskUpdateWrapper);
         return R.ok();
     }
 
@@ -271,23 +295,25 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> claimTask(String taskId, Long userId, String userName) {
+        Long operatorId = resolveOperatorId(userId, "claimTask");
         RLock lock = redissonClient.getLock("lock:claim:" + taskId);
         try {
             if (!lock.tryLock(10, 30, TimeUnit.SECONDS)) {
                 throw WorkflowException.validationError("操作繁忙，请稍后重试");
             }
             WfTaskCandidate candidate = candidateMapper.selectOne(new LambdaQueryWrapper<WfTaskCandidate>()
-                    .eq(WfTaskCandidate::getTaskId, taskId).eq(WfTaskCandidate::getUserId, userId)
+                    .eq(WfTaskCandidate::getTaskId, taskId).eq(WfTaskCandidate::getUserId, operatorId)
                     .eq(WfTaskCandidate::getStatus, "PENDING"));
             if (candidate == null) { throw WorkflowException.validationError("您不是候选人或任务已被认领"); }
 
             WfTask task = taskMapper.selectById(taskId);
             if (task == null) { throw WorkflowException.taskNotFound(taskId); }
+            assertTaskTenantAccess(task, "claimTask");
             if (task.getAssignee() != null && task.getAssignee() > 0) {
                 throw WorkflowException.validationError("任务已被认领");
             }
 
-            task.setAssignee(userId);
+            task.setAssignee(operatorId);
             task.setAssigneeName(userName);
             taskMapper.updateById(task);
             candidate.setStatus("CLAIMED");
@@ -295,7 +321,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             candidateMapper.updateById(candidate);
 
             candidateMapper.update(null, new LambdaUpdateWrapper<WfTaskCandidate>()
-                    .eq(WfTaskCandidate::getTaskId, taskId).ne(WfTaskCandidate::getUserId, userId)
+                    .eq(WfTaskCandidate::getTaskId, taskId).ne(WfTaskCandidate::getUserId, operatorId)
                     .eq(WfTaskCandidate::getStatus, "PENDING").set(WfTaskCandidate::getStatus, "CANCELLED"));
             return R.ok();
         } catch (InterruptedException e) {
@@ -310,9 +336,13 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> withdrawApproval(String historyId, Long operatorId) {
+        Long effectiveOperatorId = resolveOperatorId(operatorId, "withdrawApproval");
         WfTaskHistory history = taskHistoryMapper.selectById(historyId);
         if (history == null) { throw WorkflowException.validationError("历史记录不存在"); }
-        if (!history.getOperatorId().equals(operatorId)) { throw WorkflowException.validationError("只能撤回自己的审批"); }
+        WfProcessInstance instance = processInstanceMapper.selectById(history.getInstanceId());
+        if (instance == null) { throw WorkflowException.instanceNotFound(history.getInstanceId()); }
+        assertInstanceTenantAccess(instance, "withdrawApproval");
+        if (!Objects.equals(history.getOperatorId(), effectiveOperatorId)) { throw WorkflowException.validationError("只能撤回自己的审批"); }
 
         List<WfTask> currentTasks = taskMapper.selectList(new LambdaQueryWrapper<WfTask>()
                 .eq(WfTask::getInstanceId, history.getInstanceId()).eq(WfTask::getStatus, "TODO"));
@@ -329,6 +359,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         newTask.setAssignee(history.getOperatorId());
         newTask.setAssigneeName(history.getOperatorName());
         newTask.setStatus("TODO");
+        newTask.setTenantId(instance.getTenantId());
         newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
 
@@ -338,10 +369,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         wh.setInstanceId(history.getInstanceId());
         wh.setNodeKey(history.getNodeKey());
         wh.setNodeName(history.getNodeName());
-        wh.setOperatorId(operatorId);
+        wh.setOperatorId(effectiveOperatorId);
         wh.setOperatorName(history.getOperatorName());
         wh.setAction("WITHDRAW");
         wh.setComment("撤回审批");
+        wh.setTenantId(instance.getTenantId());
         wh.setCreateTime(LocalDateTime.now());
         taskHistoryMapper.insert(wh);
         return R.ok();
@@ -351,8 +383,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> rejectToPrevious(String taskId, Long operatorId, String operatorName, String comment) {
+        Long effectiveOperatorId = resolveOperatorId(operatorId, "rejectToPrevious");
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
+        assertTaskAccess(task, effectiveOperatorId, "rejectToPrevious");
 
         List<WfTaskHistory> histories = taskHistoryMapper.selectList(new LambdaQueryWrapper<WfTaskHistory>()
                 .eq(WfTaskHistory::getInstanceId, task.getInstanceId())
@@ -366,10 +400,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         rh.setInstanceId(task.getInstanceId());
         rh.setNodeKey(task.getNodeKey());
         rh.setNodeName(task.getNodeName());
-        rh.setOperatorId(operatorId);
+        rh.setOperatorId(effectiveOperatorId);
         rh.setOperatorName(operatorName);
         rh.setAction("REJECT_TO_PREVIOUS");
         rh.setComment(comment);
+        rh.setTenantId(resolveTaskTenantId(task));
         rh.setCreateTime(LocalDateTime.now());
         taskHistoryMapper.insert(rh);
 
@@ -382,6 +417,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         newTask.setAssignee(prev.getOperatorId());
         newTask.setAssigneeName(prev.getOperatorName());
         newTask.setStatus("TODO");
+        newTask.setTenantId(resolveTaskTenantId(task));
         newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
 
@@ -395,6 +431,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     public R<?> uploadAttachment(String taskId, String instanceId, String fileName, String fileUrl,
                                  String fileType, Long fileSize, Long uploaderId, String uploaderName) {
+        Long effectiveUploaderId = resolveOperatorId(uploaderId, "uploadAttachment");
+        WfTask task = taskMapper.selectById(taskId);
+        if (task != null) {
+            assertTaskAccess(task, effectiveUploaderId, "uploadAttachment");
+        }
         WfTaskAttachment a = new WfTaskAttachment();
         a.setAttachmentId(UUID.randomUUID().toString());
         a.setTaskId(taskId);
@@ -403,7 +444,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         a.setFileUrl(fileUrl);
         a.setFileType(fileType);
         a.setFileSize(fileSize);
-        a.setUploaderId(uploaderId);
+        a.setUploaderId(effectiveUploaderId);
         a.setUploaderName(uploaderName);
         a.setUploadTime(LocalDateTime.now());
         attachmentMapper.insert(a);
@@ -411,15 +452,24 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     }
 
     public R<?> getTaskAttachments(String taskId) {
+        WfTask task = taskMapper.selectById(taskId);
+        if (task != null) {
+            assertTaskTenantAccess(task, "getTaskAttachments");
+        }
         return R.ok(attachmentMapper.selectList(new LambdaQueryWrapper<WfTaskAttachment>()
                 .eq(WfTaskAttachment::getTaskId, taskId).orderByDesc(WfTaskAttachment::getUploadTime)));
     }
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> deleteAttachment(String attachmentId, Long operatorId) {
+        Long effectiveOperatorId = resolveOperatorId(operatorId, "deleteAttachment");
         WfTaskAttachment a = attachmentMapper.selectById(attachmentId);
         if (a == null) { throw WorkflowException.validationError("附件不存在"); }
-        if (!Objects.equals(a.getUploaderId(), operatorId)) { throw WorkflowException.validationError("只能删除自己的附件"); }
+        WfTask task = taskMapper.selectById(a.getTaskId());
+        if (task != null) {
+            assertTaskTenantAccess(task, "deleteAttachment");
+        }
+        if (!Objects.equals(a.getUploaderId(), effectiveOperatorId)) { throw WorkflowException.validationError("只能删除自己的附件"); }
         attachmentMapper.deleteById(attachmentId);
         return R.ok();
     }
@@ -428,22 +478,25 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> batchApprove(List<String> taskIds, Long operatorId, String operatorName, String action, String comment) {
+        Long effectiveOperatorId = resolveOperatorId(operatorId, "batchApprove");
         int success = 0, fail = 0;
         List<String> failedIds = new ArrayList<>();
         for (String taskId : taskIds) {
             try {
                 WfTask task = taskMapper.selectById(taskId);
-                if (task == null || !Objects.equals(task.getAssignee(), operatorId)) { fail++; failedIds.add(taskId); continue; }
+                if (task == null || !Objects.equals(task.getAssignee(), effectiveOperatorId)) { fail++; failedIds.add(taskId); continue; }
+                assertTaskTenantAccess(task, "batchApprove");
                 WfTaskHistory h = new WfTaskHistory();
                 h.setHistoryId(UUID.randomUUID().toString());
                 h.setTaskId(taskId);
                 h.setInstanceId(task.getInstanceId());
                 h.setNodeKey(task.getNodeKey());
                 h.setNodeName(task.getNodeName());
-                h.setOperatorId(operatorId);
+                h.setOperatorId(effectiveOperatorId);
                 h.setOperatorName(operatorName);
                 h.setAction(action);
                 h.setComment(comment);
+                h.setTenantId(resolveTaskTenantId(task));
                 h.setCreateTime(LocalDateTime.now());
                 taskHistoryMapper.insert(h);
                 taskMapper.deleteById(taskId);
@@ -462,6 +515,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         log.info("[removeSign] taskId={}, userIds={}", taskId, userIds);
         WfTask originalTask = taskMapper.selectById(taskId);
         if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
+        Long operatorId = resolveOperatorId(null, "removeSign");
+        assertTaskAccess(originalTask, operatorId, "removeSign");
         if (CollectionUtils.isEmpty(userIds)) { throw WorkflowException.validationError("减签用户不能为空"); }
 
         // 查找加签创建的任务
@@ -480,10 +535,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             h.setInstanceId(t.getInstanceId());
             h.setNodeKey(t.getNodeKey());
             h.setNodeName(t.getNodeName());
-            h.setOperatorId(originalTask.getAssignee());
-            h.setOperatorName(originalTask.getAssigneeName());
+            h.setOperatorId(operatorId);
+            h.setOperatorName(UserContext.getUserName());
             h.setAction("REMOVE_SIGN");
             h.setComment("减签: " + (reason != null ? reason : ""));
+            h.setTenantId(resolveTaskTenantId(originalTask));
             h.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(h);
 
@@ -508,17 +564,26 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
         WfProcessInstance parentInstance = processInstanceMapper.selectById(parentInstanceId);
         if (parentInstance == null) { throw WorkflowException.instanceNotFound(parentInstanceId); }
+        assertInstanceTenantAccess(parentInstance, "startSubProcess");
 
         // 创建子流程实例
-        WfProcessDefinition subDef = processDefinitionMapper.selectOne(new LambdaQueryWrapper<WfProcessDefinition>()
+        LambdaQueryWrapper<WfProcessDefinition> subDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getProcessKey, subProcessDefKey)
                 .eq(WfProcessDefinition::getStatus, "PUBLISHED")
                 .orderByDesc(WfProcessDefinition::getVersion)
-                .last("LIMIT 1"));
+                .last("LIMIT 1");
+        if (parentInstance.getTenantId() != null) {
+            subDefQuery.eq(WfProcessDefinition::getTenantId, parentInstance.getTenantId());
+        }
+        WfProcessDefinition subDef = processDefinitionMapper.selectOne(subDefQuery);
         if (subDef == null) { throw WorkflowException.processNotFound(subProcessDefKey); }
-        if (org.springframework.util.StringUtils.hasText(subDef.getFormId())
-                && formDefinitionMapper.selectById(subDef.getFormId()) == null) {
-            throw WorkflowException.validationError("子流程绑定表单不存在或已被删除，无法启动");
+        assertDefinitionTenantAccess(subDef, "startSubProcess");
+        if (org.springframework.util.StringUtils.hasText(subDef.getFormId())) {
+            WfFormDefinition subForm = formDefinitionMapper.selectById(subDef.getFormId());
+            if (subForm == null) {
+                throw WorkflowException.validationError("子流程绑定表单不存在或已被删除，无法启动");
+            }
+            assertTenantAccess(subForm.getTenantId(), "startSubProcess", subForm.getFormId());
         }
 
         WfProcessInstance subInstance = new WfProcessInstance();
@@ -532,6 +597,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         subInstance.setStatus("RUNNING");
         subInstance.setStartTime(LocalDateTime.now());
         subInstance.setPriority(parentInstance.getPriority()); // 继承父流程优先级
+        subInstance.setTenantId(parentInstance.getTenantId());
 
         if (variables != null) {
             try {
@@ -553,9 +619,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public R<?> conditionalApprove(String taskId, Long operatorId, String operatorName,
                                     String action, String comment, String selectedPath) {
         log.info("[conditionalApprove] taskId={}, selectedPath={}", taskId, selectedPath);
+        Long effectiveOperatorId = resolveOperatorId(operatorId, "conditionalApprove");
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
-        if (!Objects.equals(task.getAssignee(), operatorId)) { throw WorkflowException.validationError("您不是此任务的处理人"); }
+        assertTaskAccess(task, effectiveOperatorId, "conditionalApprove");
 
         // 记录历史（包含选择的路径）
         WfTaskHistory h = new WfTaskHistory();
@@ -564,10 +631,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         h.setInstanceId(task.getInstanceId());
         h.setNodeKey(task.getNodeKey());
         h.setNodeName(task.getNodeName());
-        h.setOperatorId(operatorId);
+        h.setOperatorId(effectiveOperatorId);
         h.setOperatorName(operatorName);
         h.setAction(action);
         h.setComment(comment);
+        h.setTenantId(resolveTaskTenantId(task));
         h.setCreateTime(LocalDateTime.now());
 
         // 记录选择的路径到变量变更
@@ -593,6 +661,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         }
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
+        Long operatorId = resolveOperatorId(null, "setTaskPriority");
+        assertTaskAccess(task, operatorId, "setTaskPriority");
         task.setPriority(priority);
         taskMapper.updateById(task);
         if ("URGENT".equals(priority)) {
@@ -604,10 +674,17 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.12: 代理人任务查询 ====================
 
     public R<?> getProxyTasks(Long userId, PageQuery pageQuery) {
+        Long effectiveUserId = resolveOperatorId(userId, "getProxyTasks");
         Page<WfTask> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        Page<WfTask> result = taskMapper.selectPage(page, new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getProxyUserId, userId).eq(WfTask::getStatus, "TODO")
-                .orderByDesc(WfTask::getCreateTime));
+        LambdaQueryWrapper<WfTask> queryWrapper = new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getProxyUserId, effectiveUserId)
+                .eq(WfTask::getStatus, "TODO")
+                .orderByDesc(WfTask::getCreateTime);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Page<WfTask> result = taskMapper.selectPage(page, queryWrapper);
         List<Map<String, Object>> list = result.getRecords().stream().map(t -> {
             Map<String, Object> m = new HashMap<>();
             m.put("task", t); m.put("isProxy", true); m.put("originalAssignee", t.getAssigneeName());
@@ -639,9 +716,14 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.14/P4.15: 任务筛选和排序 ====================
 
     public R<?> advancedTaskQuery(Long userId, Map<String, Object> filters, PageQuery pageQuery) {
+        Long effectiveUserId = resolveOperatorId(userId, "advancedTaskQuery");
         Page<WfTask> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
         LambdaQueryWrapper<WfTask> w = new LambdaQueryWrapper<>();
-        w.eq(WfTask::getAssignee, userId).eq(WfTask::getStatus, "TODO");
+        w.eq(WfTask::getAssignee, effectiveUserId).eq(WfTask::getStatus, "TODO");
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            w.eq(WfTask::getTenantId, currentTenantId);
+        }
 
         if (filters.containsKey("priority")) { w.eq(WfTask::getPriority, filters.get("priority")); }
         if (filters.containsKey("isTimeout")) { w.eq(WfTask::getIsTimeout, filters.get("isTimeout")); }
@@ -661,9 +743,16 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.16: 已办任务查询 ====================
 
     public R<?> getDoneTasks(Long userId, PageQuery pageQuery) {
+        Long effectiveUserId = resolveOperatorId(userId, "getDoneTasks");
         Page<WfTaskHistory> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
-        Page<WfTaskHistory> result = taskHistoryMapper.selectPage(page, new LambdaQueryWrapper<WfTaskHistory>()
-                .eq(WfTaskHistory::getOperatorId, userId).orderByDesc(WfTaskHistory::getCreateTime));
+        LambdaQueryWrapper<WfTaskHistory> queryWrapper = new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getOperatorId, effectiveUserId)
+                .orderByDesc(WfTaskHistory::getCreateTime);
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfTaskHistory::getTenantId, currentTenantId);
+        }
+        Page<WfTaskHistory> result = taskHistoryMapper.selectPage(page, queryWrapper);
         Map<String, Object> r = new HashMap<>();
         r.put("records", result.getRecords()); r.put("total", result.getTotal());
         return R.ok(r);
@@ -673,10 +762,12 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> batchMarkRead(List<String> taskIds, Long userId) {
+        Long effectiveUserId = resolveOperatorId(userId, "batchMarkRead");
         int count = 0;
         for (String taskId : taskIds) {
             WfTask task = taskMapper.selectById(taskId);
-            if (task != null && Objects.equals(task.getAssignee(), userId)) {
+            if (task != null && Objects.equals(task.getAssignee(), effectiveUserId)) {
+                assertTaskTenantAccess(task, "batchMarkRead");
                 // 插入已读记录（WfTaskRead表）
                 count++;
             }
@@ -690,10 +781,12 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         WfProcessDefinition d1 = processDefinitionMapper.selectById(defId1);
         WfProcessDefinition d2 = processDefinitionMapper.selectById(defId2);
         if (d1 == null || d2 == null) { throw WorkflowException.validationError("流程定义不存在"); }
+        assertDefinitionTenantAccess(d1, "compareVersions");
+        assertDefinitionTenantAccess(d2, "compareVersions");
 
         Map<String, Object> result = new HashMap<>();
-        result.put("version1", Map.of("id", d1.getDefinitionId(), "name", d1.getName(), "version", d1.getVersion()));
-        result.put("version2", Map.of("id", d2.getDefinitionId(), "name", d2.getName(), "version", d2.getVersion()));
+        result.put("version1", Map.of("id", d1.getDefinitionId(), "name", d1.getProcessName(), "version", d1.getVersion()));
+        result.put("version2", Map.of("id", d2.getDefinitionId(), "name", d2.getProcessName(), "version", d2.getVersion()));
         result.put("modelJson1", d1.getModelJson());
         result.put("modelJson2", d2.getModelJson());
         result.put("isSame", Objects.equals(d1.getModelJson(), d2.getModelJson()));
@@ -705,6 +798,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public R<?> exportDefinition(String defId) {
         WfProcessDefinition def = processDefinitionMapper.selectById(defId);
         if (def == null) { throw WorkflowException.processNotFound(defId); }
+        assertDefinitionTenantAccess(def, "exportDefinition");
         Map<String, Object> exportData = new HashMap<>();
         exportData.put("processDefinition", def);
         exportData.put("exportTime", LocalDateTime.now());
@@ -722,17 +816,27 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.21: 表单历史版本 ====================
 
     public R<?> getFormVersions(String formKey) {
-        List<WfFormDefinition> versions = formDefinitionMapper.selectList(
-                new LambdaQueryWrapper<WfFormDefinition>()
-                        .eq(WfFormDefinition::getFormKey, formKey)
-                        .orderByDesc(WfFormDefinition::getVersion));
+        Long currentTenantId = UserContext.getTenantId();
+        LambdaQueryWrapper<WfFormDefinition> queryWrapper = new LambdaQueryWrapper<WfFormDefinition>()
+                .eq(WfFormDefinition::getFormKey, formKey)
+                .orderByDesc(WfFormDefinition::getVersion);
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfFormDefinition::getTenantId, currentTenantId);
+        }
+        List<WfFormDefinition> versions = formDefinitionMapper.selectList(queryWrapper);
         return R.ok(versions);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> rollbackFormVersion(String formKey, Integer targetVersion) {
-        WfFormDefinition target = formDefinitionMapper.selectOne(new LambdaQueryWrapper<WfFormDefinition>()
-                .eq(WfFormDefinition::getFormKey, formKey).eq(WfFormDefinition::getVersion, targetVersion));
+        Long currentTenantId = UserContext.getTenantId();
+        LambdaQueryWrapper<WfFormDefinition> queryWrapper = new LambdaQueryWrapper<WfFormDefinition>()
+                .eq(WfFormDefinition::getFormKey, formKey)
+                .eq(WfFormDefinition::getVersion, targetVersion);
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfFormDefinition::getTenantId, currentTenantId);
+        }
+        WfFormDefinition target = formDefinitionMapper.selectOne(queryWrapper);
         if (target == null) { throw WorkflowException.validationError("目标版本不存在"); }
         // 基于目标版本创建新版本
         log.info("[rollbackFormVersion] 回退到版本 {}", targetVersion);
@@ -759,9 +863,13 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.23: 表单使用统计 ====================
 
     public R<?> getFormUsage(String formKey) {
-        List<WfProcessDefinition> processes = processDefinitionMapper.selectList(
-                new LambdaQueryWrapper<WfProcessDefinition>()
-                        .like(WfProcessDefinition::getModelJson, formKey));
+        Long currentTenantId = UserContext.getTenantId();
+        LambdaQueryWrapper<WfProcessDefinition> queryWrapper = new LambdaQueryWrapper<WfProcessDefinition>()
+                .like(WfProcessDefinition::getModelJson, formKey);
+        if (currentTenantId != null) {
+            queryWrapper.eq(WfProcessDefinition::getTenantId, currentTenantId);
+        }
+        List<WfProcessDefinition> processes = processDefinitionMapper.selectList(queryWrapper);
         Map<String, Object> usage = new HashMap<>();
         usage.put("formKey", formKey);
         usage.put("usedByProcesses", processes);
@@ -775,6 +883,11 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public R<?> setInstancePriority(String instanceId, String priority) {
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
         if (instance == null) { throw WorkflowException.instanceNotFound(instanceId); }
+        assertInstanceTenantAccess(instance, "setInstancePriority");
+        Long operatorId = resolveOperatorId(null, "setInstancePriority");
+        if (instance.getStartUserId() != null && !Objects.equals(instance.getStartUserId(), operatorId)) {
+            throw WorkflowException.permissionDenied("setInstancePriority");
+        }
         instance.setPriority(priority);
         processInstanceMapper.updateById(instance);
         
@@ -812,6 +925,72 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         effect.setUrgeTime(LocalDateTime.now());
         effect.setCompleteTime(LocalDateTime.now());
         urgeEffectMapper.insert(effect);
+    }
+
+    /**
+     * 统一获取当前操作人，防止通过入参伪造他人身份。
+     */
+    private Long resolveOperatorId(Long requestedUserId, String operation) {
+        Long currentUserId = UserContext.getUserId();
+        if (requestedUserId != null && currentUserId != null && !Objects.equals(requestedUserId, currentUserId)) {
+            log.warn("[{}] user mismatch, requestedUserId={}, currentUserId={}",
+                    operation, requestedUserId, currentUserId);
+            throw WorkflowException.permissionDenied(operation);
+        }
+        Long effectiveUserId = requestedUserId != null ? requestedUserId : currentUserId;
+        if (effectiveUserId == null) {
+            throw WorkflowException.validationError("未获取到当前登录用户");
+        }
+        return effectiveUserId;
+    }
+
+    /**
+     * 统一按当前租户严格匹配资源租户，避免跨租户访问。
+     */
+    private void assertTenantAccess(Long resourceTenantId, String operation, String resourceId) {
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, resourceTenantId)) {
+            log.warn("[{}] tenant mismatch, resourceId={}, currentTenantId={}, resourceTenantId={}",
+                    operation, resourceId, currentTenantId, resourceTenantId);
+            throw WorkflowException.permissionDenied(operation);
+        }
+    }
+
+    private Long resolveTaskTenantId(WfTask task) {
+        if (task == null) {
+            return null;
+        }
+        if (task.getTenantId() != null) {
+            return task.getTenantId();
+        }
+        if (task.getInstanceId() == null) {
+            return null;
+        }
+        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+        return instance != null ? instance.getTenantId() : null;
+    }
+
+    private void assertTaskTenantAccess(WfTask task, String operation) {
+        assertTenantAccess(resolveTaskTenantId(task), operation, task != null ? task.getTaskId() : null);
+    }
+
+    private void assertTaskAccess(WfTask task, Long operatorId, String operation) {
+        assertTaskTenantAccess(task, operation);
+        if (task != null && operatorId != null && !Objects.equals(task.getAssignee(), operatorId)) {
+            log.warn("[{}] operator mismatch, taskId={}, operatorId={}, assignee={}",
+                    operation, task.getTaskId(), operatorId, task.getAssignee());
+            throw WorkflowException.permissionDenied(operation);
+        }
+    }
+
+    private void assertInstanceTenantAccess(WfProcessInstance instance, String operation) {
+        assertTenantAccess(instance != null ? instance.getTenantId() : null, operation,
+                instance != null ? instance.getInstanceId() : null);
+    }
+
+    private void assertDefinitionTenantAccess(WfProcessDefinition definition, String operation) {
+        assertTenantAccess(definition != null ? definition.getTenantId() : null, operation,
+                definition != null ? definition.getDefinitionId() : null);
     }
 
     private Integer calculateEffectiveness(Long before, Long after) {
