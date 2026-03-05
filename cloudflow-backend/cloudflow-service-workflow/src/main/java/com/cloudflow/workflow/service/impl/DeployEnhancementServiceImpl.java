@@ -600,7 +600,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (approval == null) {
             return R.fail("审批记录不存在");
         }
-        if (!approval.getSubmitterId().equals(userId)) {
+        if (!Objects.equals(approval.getSubmitterId(), userId)) {
             return R.fail("只有提交人可以取消审批");
         }
         if (!ApprovalStatus.PENDING.getCode().equals(approval.getApprovalStatus())) {

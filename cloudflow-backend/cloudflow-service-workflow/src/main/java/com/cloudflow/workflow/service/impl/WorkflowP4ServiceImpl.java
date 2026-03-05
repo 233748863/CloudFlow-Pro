@@ -419,7 +419,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public R<?> deleteAttachment(String attachmentId, Long operatorId) {
         WfTaskAttachment a = attachmentMapper.selectById(attachmentId);
         if (a == null) { throw WorkflowException.validationError("附件不存在"); }
-        if (!a.getUploaderId().equals(operatorId)) { throw WorkflowException.validationError("只能删除自己的附件"); }
+        if (!Objects.equals(a.getUploaderId(), operatorId)) { throw WorkflowException.validationError("只能删除自己的附件"); }
         attachmentMapper.deleteById(attachmentId);
         return R.ok();
     }
@@ -433,7 +433,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         for (String taskId : taskIds) {
             try {
                 WfTask task = taskMapper.selectById(taskId);
-                if (task == null || !task.getAssignee().equals(operatorId)) { fail++; failedIds.add(taskId); continue; }
+                if (task == null || !Objects.equals(task.getAssignee(), operatorId)) { fail++; failedIds.add(taskId); continue; }
                 WfTaskHistory h = new WfTaskHistory();
                 h.setHistoryId(UUID.randomUUID().toString());
                 h.setTaskId(taskId);
@@ -555,7 +555,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         log.info("[conditionalApprove] taskId={}, selectedPath={}", taskId, selectedPath);
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
-        if (!task.getAssignee().equals(operatorId)) { throw WorkflowException.validationError("您不是此任务的处理人"); }
+        if (!Objects.equals(task.getAssignee(), operatorId)) { throw WorkflowException.validationError("您不是此任务的处理人"); }
 
         // 记录历史（包含选择的路径）
         WfTaskHistory h = new WfTaskHistory();
@@ -676,7 +676,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         int count = 0;
         for (String taskId : taskIds) {
             WfTask task = taskMapper.selectById(taskId);
-            if (task != null && task.getAssignee().equals(userId)) {
+            if (task != null && Objects.equals(task.getAssignee(), userId)) {
                 // 插入已读记录（WfTaskRead表）
                 count++;
             }

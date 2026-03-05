@@ -130,7 +130,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
             return;
         }
         // 校验：只有抄送接收人才能标记已读
-        if (!copy.getUserId().equals(userId)) {
+        if (!Objects.equals(copy.getUserId(), userId)) {
             log.warn("[markAsRead] 非抄送接收人, copyId={}, userId={}, ownerId={}", copyId, userId, copy.getUserId());
             return;
         }

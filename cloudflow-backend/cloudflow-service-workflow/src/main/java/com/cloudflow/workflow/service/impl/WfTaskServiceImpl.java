@@ -1001,7 +1001,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         // 权限校验：只有当前任务处理人可以加签
-        if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
+        if (!Objects.equals(task.getAssignee(), currentUserId) && !permissionService.isAdmin(currentUserId)) {
             throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人可以加签");
         }
 
@@ -1157,7 +1157,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         // 权限校验：只有当前任务处理人或管理员可以减签
-        if (!task.getAssignee().equals(currentUserId) && !permissionService.isAdmin(currentUserId)) {
+        if (!Objects.equals(task.getAssignee(), currentUserId) && !permissionService.isAdmin(currentUserId)) {
             throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人或管理员可以减签");
         }
 
