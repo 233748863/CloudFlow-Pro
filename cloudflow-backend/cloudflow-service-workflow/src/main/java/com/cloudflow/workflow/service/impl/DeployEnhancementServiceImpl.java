@@ -70,7 +70,10 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     @Override
     public R<Map<String, Object>> checkDeployWindow() {
         LocalDateTime now = LocalDateTime.now();
-        List<WfDeployWindow> windows = deployWindowMapper.checkDeployWindow(now);
+        Long currentTenantId = UserContext.getTenantId();
+        List<WfDeployWindow> windows = deployWindowMapper.checkDeployWindow(now).stream()
+                .filter(w -> currentTenantId == null || Objects.equals(currentTenantId, w.getTenantId()))
+                .collect(Collectors.toList());
         Map<String, Object> result = new HashMap<>();
         if (windows != null && !windows.isEmpty()) {
             result.put("allowed", true);
@@ -80,7 +83,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             result.put("allowed", false);
             result.put("message", "当前不在任何发布窗口内，不允许发布");
             // 查询所有启用的窗口供参考
-            List<WfDeployWindow> enabledWindows = deployWindowMapper.listEnabledWindows();
+            List<WfDeployWindow> enabledWindows = deployWindowMapper.listEnabledWindows().stream()
+                    .filter(w -> currentTenantId == null || Objects.equals(currentTenantId, w.getTenantId()))
+                    .collect(Collectors.toList());
             result.put("availableWindows", enabledWindows);
         }
         return R.ok(result);
@@ -88,8 +93,13 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Override
     public R<List<WfDeployWindow>> listDeployWindows() {
-        List<WfDeployWindow> list = deployWindowMapper.selectList(
-                new LambdaQueryWrapper<WfDeployWindow>().orderByDesc(WfDeployWindow::getCreateTime));
+        Long currentTenantId = UserContext.getTenantId();
+        LambdaQueryWrapper<WfDeployWindow> wrapper = new LambdaQueryWrapper<WfDeployWindow>()
+                .orderByDesc(WfDeployWindow::getCreateTime);
+        if (currentTenantId != null) {
+            wrapper.eq(WfDeployWindow::getTenantId, currentTenantId);
+        }
+        List<WfDeployWindow> list = deployWindowMapper.selectList(wrapper);
         return R.ok(list);
     }
 
@@ -97,6 +107,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     public R<?> saveDeployWindow(DeployWindowDTO dto) {
         WfDeployWindow window = new WfDeployWindow();
         BeanUtils.copyProperties(dto, window);
+        window.setTenantId(UserContext.getTenantId());
         // 创建者字段由 MyBatis-Plus 自动填充处理
         deployWindowMapper.insert(window);
         return R.ok("发布窗口创建成功");
@@ -111,7 +122,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (window == null) {
             return R.fail("发布窗口不存在");
         }
+        assertTenantAccess(window.getTenantId(), "更新发布窗口");
         BeanUtils.copyProperties(dto, window);
+        window.setTenantId(window.getTenantId());
         // 更新者字段由 MyBatis-Plus 自动填充处理
         deployWindowMapper.updateById(window);
         return R.ok("发布窗口更新成功");
@@ -123,6 +136,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (window == null) {
             return R.fail("发布窗口不存在");
         }
+        assertTenantAccess(window.getTenantId(), "删除发布窗口");
         deployWindowMapper.deleteById(windowId);
         return R.ok("发布窗口删除成功");
     }
@@ -133,6 +147,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (window == null) {
             return R.fail("发布窗口不存在");
         }
+        assertTenantAccess(window.getTenantId(), "切换发布窗口");
         window.setIsEnabled(enabled);
         // 更新者字段由 MyBatis-Plus 自动填充处理，无需手动设置
         deployWindowMapper.updateById(window);
@@ -148,10 +163,12 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (deployRecord == null) {
             return R.fail("发布记录不存在");
         }
+        assertTenantAccess(deployRecord.getTenantId(), "发送发布通知");
 
         List<WfDeployNotification> notifications = new ArrayList<>();
         for (NotificationConfigDTO config : configs) {
             WfDeployNotification notification = new WfDeployNotification();
+            notification.setTenantId(resolveTenantId(deployRecord.getTenantId()));
             notification.setDeployId(deployId);
             notification.setNotificationType(config.getNotificationType());
             notification.setRecipientType(config.getRecipientType());
@@ -187,16 +204,31 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Override
     public R<List<WfDeployNotification>> listDeployNotifications(Long deployId) {
-        List<WfDeployNotification> list = deployNotificationMapper.listByDeployId(deployId);
+        WfDeployRecord deployRecord = deployRecordMapper.selectById(deployId);
+        if (deployRecord == null) {
+            return R.fail("发布记录不存在");
+        }
+        assertTenantAccess(deployRecord.getTenantId(), "查询发布通知");
+        Long currentTenantId = UserContext.getTenantId();
+        List<WfDeployNotification> list = deployNotificationMapper.listByDeployId(deployId).stream()
+                .filter(n -> currentTenantId == null || Objects.equals(currentTenantId, n.getTenantId()))
+                .collect(Collectors.toList());
         return R.ok(list);
     }
 
     @Override
     @Transactional
     public R<?> resendFailedNotifications(Long deployId) {
+        WfDeployRecord deployRecord = deployRecordMapper.selectById(deployId);
+        if (deployRecord == null) {
+            return R.fail("发布记录不存在");
+        }
+        assertTenantAccess(deployRecord.getTenantId(), "重发发布通知");
+        Long currentTenantId = UserContext.getTenantId();
         List<WfDeployNotification> failedList = deployNotificationMapper.listByStatus(SendStatus.FAILED.getCode());
         failedList = failedList.stream()
                 .filter(n -> n.getDeployId().equals(deployId))
+                .filter(n -> currentTenantId == null || Objects.equals(currentTenantId, n.getTenantId()))
                 .collect(Collectors.toList());
 
         int successCount = 0;
@@ -262,6 +294,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (deployRecord == null) {
             return R.fail("发布记录不存在");
         }
+        assertTenantAccess(deployRecord.getTenantId(), "执行版本回滚");
 
         String processDefId = deployRecord.getProcessDefId();
 
@@ -285,12 +318,14 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (definition == null) {
             return R.fail("流程定义不存在");
         }
+        assertTenantAccess(definition.getTenantId(), "执行版本回滚");
         definition.setModelContent(snapshot.getSnapshotData());
         definition.setVersion(targetVersion);
         processDefinitionMapper.updateById(definition);
 
         // 5. 创建新的发布记录
         WfDeployRecord rollbackRecord = new WfDeployRecord();
+        rollbackRecord.setTenantId(resolveTenantId(definition.getTenantId()));
         rollbackRecord.setProcessDefId(processDefId);
         rollbackRecord.setVersion(targetVersion);
         rollbackRecord.setDeployStatus("SUCCESS");
@@ -304,6 +339,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
         // 6. 记录回滚历史
         WfDeployRollbackHistory history = new WfDeployRollbackHistory();
+        history.setTenantId(resolveTenantId(definition.getTenantId()));
         history.setOriginalDeployId(deployId);
         history.setRollbackDeployId(rollbackRecord.getId());
         history.setFromVersion(deployRecord.getVersion());
@@ -321,21 +357,40 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Override
     public R<List<WfProcessVersionSnapshot>> listRollbackVersions(String processDefId) {
-        List<WfProcessVersionSnapshot> list = versionSnapshotMapper.listByProcessDefId(processDefId);
+        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
+        if (definition == null) {
+            return R.fail("流程定义不存在");
+        }
+        assertTenantAccess(definition.getTenantId(), "查看可回滚版本");
+        Long currentTenantId = UserContext.getTenantId();
+        List<WfProcessVersionSnapshot> list = versionSnapshotMapper.listByProcessDefId(processDefId).stream()
+                .filter(s -> currentTenantId == null || Objects.equals(currentTenantId, s.getTenantId()))
+                .collect(Collectors.toList());
         return R.ok(list);
     }
 
     @Override
     public R<List<WfDeployRollbackHistory>> listRollbackHistory(String processDefId) {
+        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
+        if (definition == null) {
+            return R.fail("流程定义不存在");
+        }
+        assertTenantAccess(definition.getTenantId(), "查看回滚历史");
+        Long currentTenantId = UserContext.getTenantId();
         // 通过发布记录关联查询回滚历史
         LambdaQueryWrapper<WfDeployRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfDeployRecord::getProcessDefId, processDefId);
+        if (currentTenantId != null) {
+            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
+        }
         List<WfDeployRecord> records = deployRecordMapper.selectList(wrapper);
         
         List<WfDeployRollbackHistory> allHistory = new ArrayList<>();
         for (WfDeployRecord record : records) {
             List<WfDeployRollbackHistory> histories = rollbackHistoryMapper
-                    .listByOriginalDeployId(record.getId());
+                    .listByOriginalDeployId(record.getId()).stream()
+                    .filter(h -> currentTenantId == null || Objects.equals(currentTenantId, h.getTenantId()))
+                    .collect(Collectors.toList());
             allHistory.addAll(histories);
         }
         allHistory.sort((a, b) -> b.getRollbackTime().compareTo(a.getRollbackTime()));
@@ -344,16 +399,29 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Override
     public R<WfProcessVersionSnapshot> getVersionSnapshot(String processDefId, Integer version) {
+        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
+        if (definition == null) {
+            return R.fail("流程定义不存在");
+        }
+        assertTenantAccess(definition.getTenantId(), "查看版本快照");
         WfProcessVersionSnapshot snapshot = versionSnapshotMapper
                 .selectByProcessDefIdAndVersion(processDefId, version);
         if (snapshot == null) {
             return R.fail("版本快照不存在");
         }
+        assertTenantAccess(snapshot.getTenantId(), "查看版本快照");
         return R.ok(snapshot);
     }
 
     @Override
     public R<ImpactAnalysisDTO> analyzeDeployImpact(String processDefId) {
+        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
+        if (definition == null) {
+            return R.fail("流程定义不存在");
+        }
+        assertTenantAccess(definition.getTenantId(), "发布影响分析");
+        Long currentTenantId = UserContext.getTenantId();
+
         ImpactAnalysisDTO result = new ImpactAnalysisDTO();
         result.setProcessDefId(processDefId);
         List<ImpactAnalysisDTO.ImpactItem> impacts = new ArrayList<>();
@@ -362,6 +430,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         LambdaQueryWrapper<WfProcessInstance> instanceWrapper = new LambdaQueryWrapper<>();
         instanceWrapper.eq(WfProcessInstance::getProcessDefId, processDefId)
                 .eq(WfProcessInstance::getStatus, "RUNNING");
+        if (currentTenantId != null) {
+            instanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
+        }
         Long runningCount = processInstanceMapper.selectCount(instanceWrapper);
         if (runningCount > 0) {
             ImpactAnalysisDTO.ImpactItem item = new ImpactAnalysisDTO.ImpactItem();
@@ -375,6 +446,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         // 2. 分析待办任务
         LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
         taskWrapper.eq(WfTask::getStatus, "PENDING");
+        if (currentTenantId != null) {
+            taskWrapper.eq(WfTask::getTenantId, currentTenantId);
+        }
         // 通过实例关联流程定义
         Long pendingTaskCount = taskMapper.selectCount(taskWrapper);
         if (pendingTaskCount > 0) {
@@ -402,11 +476,20 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     @Transactional
     public R<?> submitDeployApproval(String definitionId, DeployApprovalDTO dto) {
         Long userId = UserContext.getUserId();
+        WfProcessDefinition definition = processDefinitionMapper.selectById(definitionId);
+        if (definition == null) {
+            return R.fail("流程定义不存在");
+        }
+        assertTenantAccess(definition.getTenantId(), "提交发布审批");
+        Long tenantId = resolveTenantId(definition.getTenantId());
 
         // 1. 检查是否已有待审批的发布请求
         LambdaQueryWrapper<WfDeployApproval> existWrapper = new LambdaQueryWrapper<>();
         existWrapper.eq(WfDeployApproval::getProcessDefId, definitionId)
                 .eq(WfDeployApproval::getApprovalStatus, ApprovalStatus.PENDING.getCode());
+        if (tenantId != null) {
+            existWrapper.eq(WfDeployApproval::getTenantId, tenantId);
+        }
         Long existCount = deployApprovalMapper.selectCount(existWrapper);
         if (existCount > 0) {
             return R.fail("该流程定义已有待审批的发布请求");
@@ -414,6 +497,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
         // 2. 创建审批记录
         WfDeployApproval approval = new WfDeployApproval();
+        approval.setTenantId(tenantId);
         approval.setProcessDefId(definitionId);
         approval.setApprovalStatus(ApprovalStatus.PENDING.getCode());
         approval.setCurrentStep(1);
@@ -433,6 +517,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             int stepNo = 1;
             for (DeployApprovalDTO.ApprovalStepConfig stepConfig : dto.getSteps()) {
                 WfDeployApprovalStep step = new WfDeployApprovalStep();
+                step.setTenantId(tenantId);
                 step.setApprovalId(approval.getId());
                 step.setStepNo(stepNo);
                 step.setStepName(stepConfig.getStepName());
@@ -464,6 +549,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (approval == null) {
             return R.fail("审批记录不存在");
         }
+        assertTenantAccess(approval.getTenantId(), "审批发布请求");
         if (!ApprovalStatus.PENDING.getCode().equals(approval.getApprovalStatus())) {
             return R.fail("该审批已完成，无法操作");
         }
@@ -473,6 +559,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (step == null || !step.getApprovalId().equals(approvalId)) {
             return R.fail("审批步骤不存在");
         }
+        assertTenantAccess(step.getTenantId(), "审批发布请求");
         if (!ApprovalStatus.PENDING.getCode().equals(step.getStepStatus())) {
             return R.fail("该步骤已处理");
         }
@@ -527,8 +614,10 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             String processDefId = approval.getProcessDefId();
             WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
             if (definition != null) {
+                assertTenantAccess(definition.getTenantId(), "审批通过自动发布");
                 // 创建发布记录
                 WfDeployRecord record = new WfDeployRecord();
+                record.setTenantId(resolveTenantId(approval.getTenantId()));
                 record.setProcessDefId(processDefId);
                 record.setVersion(definition.getVersion() != null ? definition.getVersion() + 1 : 1);
                 record.setDeployStatus("SUCCESS");
@@ -548,6 +637,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
                 // 创建版本快照
                 WfProcessVersionSnapshot snapshot = new WfProcessVersionSnapshot();
+                snapshot.setTenantId(resolveTenantId(definition.getTenantId()));
                 snapshot.setProcessDefId(processDefId);
                 snapshot.setVersion(record.getVersion());
                 snapshot.setDeployId(record.getId());
@@ -565,7 +655,10 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Override
     public R<List<WfDeployApproval>> listPendingApprovals(Long userId) {
-        List<WfDeployApproval> list = deployApprovalMapper.listPendingForUser(userId);
+        Long currentTenantId = UserContext.getTenantId();
+        List<WfDeployApproval> list = deployApprovalMapper.listPendingForUser(userId).stream()
+                .filter(a -> currentTenantId == null || Objects.equals(currentTenantId, a.getTenantId()))
+                .collect(Collectors.toList());
         return R.ok(list);
     }
 
@@ -575,8 +668,12 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (approval == null) {
             return R.fail("审批记录不存在");
         }
+        assertTenantAccess(approval.getTenantId(), "查看审批详情");
+        Long currentTenantId = UserContext.getTenantId();
 
-        List<WfDeployApprovalStep> steps = deployApprovalStepMapper.listByApprovalId(approvalId);
+        List<WfDeployApprovalStep> steps = deployApprovalStepMapper.listByApprovalId(approvalId).stream()
+                .filter(s -> currentTenantId == null || Objects.equals(currentTenantId, s.getTenantId()))
+                .collect(Collectors.toList());
 
         Map<String, Object> detail = new HashMap<>();
         detail.put("approval", approval);
@@ -585,6 +682,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         // 获取流程定义信息
         WfProcessDefinition definition = processDefinitionMapper.selectById(approval.getProcessDefId());
         if (definition != null) {
+            assertTenantAccess(definition.getTenantId(), "查看审批详情");
             detail.put("processName", definition.getProcessName());
             detail.put("processKey", definition.getProcessKey());
         }
@@ -600,6 +698,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (approval == null) {
             return R.fail("审批记录不存在");
         }
+        assertTenantAccess(approval.getTenantId(), "取消发布审批");
         if (!Objects.equals(approval.getSubmitterId(), userId)) {
             return R.fail("只有提交人可以取消审批");
         }
@@ -616,17 +715,30 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Override
     public R<List<WfDeployApproval>> listMySubmittedApprovals(Long userId) {
-        List<WfDeployApproval> list = deployApprovalMapper.listBySubmitter(userId);
+        Long currentTenantId = UserContext.getTenantId();
+        List<WfDeployApproval> list = deployApprovalMapper.listBySubmitter(userId).stream()
+                .filter(a -> currentTenantId == null || Objects.equals(currentTenantId, a.getTenantId()))
+                .collect(Collectors.toList());
         return R.ok(list);
     }
 
     @Override
     public R<Map<String, Object>> getDeployStatistics(String processDefId) {
+        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
+        if (definition == null) {
+            return R.fail("流程定义不存在");
+        }
+        assertTenantAccess(definition.getTenantId(), "查看发布统计");
+        Long currentTenantId = UserContext.getTenantId();
+
         Map<String, Object> stats = new HashMap<>();
 
         // 发布总次数
         LambdaQueryWrapper<WfDeployRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfDeployRecord::getProcessDefId, processDefId);
+        if (currentTenantId != null) {
+            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
+        }
         Long totalDeploys = deployRecordMapper.selectCount(wrapper);
         stats.put("totalDeploys", totalDeploys);
 
@@ -634,6 +746,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         wrapper.clear();
         wrapper.eq(WfDeployRecord::getProcessDefId, processDefId)
                 .eq(WfDeployRecord::getDeployStatus, "SUCCESS");
+        if (currentTenantId != null) {
+            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
+        }
         Long successCount = deployRecordMapper.selectCount(wrapper);
         stats.put("successCount", successCount);
 
@@ -641,17 +756,36 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         wrapper.clear();
         wrapper.eq(WfDeployRecord::getProcessDefId, processDefId)
                 .isNotNull(WfDeployRecord::getRollbackTime);
+        if (currentTenantId != null) {
+            wrapper.eq(WfDeployRecord::getTenantId, currentTenantId);
+        }
         Long rollbackCount = deployRecordMapper.selectCount(wrapper);
         stats.put("rollbackCount", rollbackCount);
 
         // 版本快照数
-        List<WfProcessVersionSnapshot> snapshots = versionSnapshotMapper.listByProcessDefId(processDefId);
+        List<WfProcessVersionSnapshot> snapshots = versionSnapshotMapper.listByProcessDefId(processDefId).stream()
+                .filter(s -> currentTenantId == null || Objects.equals(currentTenantId, s.getTenantId()))
+                .collect(Collectors.toList());
         stats.put("snapshotCount", snapshots != null ? snapshots.size() : 0);
 
         // 最新版本
         WfProcessVersionSnapshot latest = versionSnapshotMapper.selectLatestByProcessDefId(processDefId);
+        if (latest != null) {
+            assertTenantAccess(latest.getTenantId(), "查看发布统计");
+        }
         stats.put("latestVersion", latest != null ? latest.getVersion() : 0);
 
         return R.ok(stats);
+    }
+
+    private void assertTenantAccess(Long resourceTenantId, String operation) {
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, resourceTenantId)) {
+            throw WorkflowException.permissionDenied(operation);
+        }
+    }
+
+    private Long resolveTenantId(Long resourceTenantId) {
+        return resourceTenantId != null ? resourceTenantId : UserContext.getTenantId();
     }
 }
