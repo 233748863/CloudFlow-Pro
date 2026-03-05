@@ -1305,17 +1305,21 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 ('tpl-leave-001', '请假申请', '员工请假审批流程模板', 'cat-hr', 
 '["请假", "审批", "人事"]', 
 '{
-  "nodes": [
-    {"id": "start-001", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
-    {"id": "form-001", "type": "form", "name": "提交请假申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "leaveType", "label": "请假类型", "type": "select", "required": true, "options": ["年假", "事假", "病假", "婚假", "产假"]}, {"name": "startDate", "label": "开始日期", "type": "date", "required": true}, {"name": "endDate", "label": "结束日期", "type": "date", "required": true}, {"name": "reason", "label": "请假事由", "type": "textarea", "required": true}]}},
-    {"id": "approval-001", "type": "approval", "name": "部门经理审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "manager"}},
-    {"id": "end-001", "type": "end", "name": "结束", "position": {"x": 100, "y": 400}}
-  ],
-  "edges": [
-    {"id": "edge-001", "source": "start-001", "target": "form-001"},
-    {"id": "edge-002", "source": "form-001", "target": "approval-001"},
-    {"id": "edge-003", "source": "approval-001", "target": "end-001"}
-  ]
+  "id": "start_leave",
+  "type": "START",
+  "title": "提交请假申请",
+  "next": {
+    "id": "approval_leave_manager",
+    "type": "APPROVAL",
+    "title": "部门经理审批",
+    "approverType": "ROLE",
+    "approverValue": "ADMIN",
+    "next": {
+      "id": "end_leave",
+      "type": "END",
+      "title": "流程结束"
+    }
+  }
 }',
 1, 'active', 'system', 100000);
 
@@ -1324,19 +1328,28 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 ('tpl-expense-001', '费用报销', '员工费用报销审批流程模板', 'cat-finance', 
 '["报销", "财务", "审批"]', 
 '{
-  "nodes": [
-    {"id": "start-002", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
-    {"id": "form-002", "type": "form", "name": "提交报销申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "expenseType", "label": "费用类型", "type": "select", "required": true, "options": ["差旅费", "招待费", "办公费", "团建费"]}, {"name": "amount", "label": "报销金额", "type": "number", "required": true}, {"name": "description", "label": "费用说明", "type": "textarea", "required": true}, {"name": "attachments", "label": "附件", "type": "file", "required": true}]}},
-    {"id": "approval-002", "type": "approval", "name": "部门经理审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "dept_manager"}},
-    {"id": "approval-003", "type": "approval", "name": "财务审核", "position": {"x": 100, "y": 400}, "config": {"assigneeType": "ROLE", "assigneeValue": "finance"}},
-    {"id": "end-002", "type": "end", "name": "结束", "position": {"x": 100, "y": 500}}
-  ],
-  "edges": [
-    {"id": "edge-004", "source": "start-002", "target": "form-002"},
-    {"id": "edge-005", "source": "form-002", "target": "approval-002"},
-    {"id": "edge-006", "source": "approval-002", "target": "approval-003"},
-    {"id": "edge-007", "source": "approval-003", "target": "end-002"}
-  ]
+  "id": "start_expense",
+  "type": "START",
+  "title": "提交报销申请",
+  "next": {
+    "id": "approval_expense_manager",
+    "type": "APPROVAL",
+    "title": "部门经理审批",
+    "approverType": "ROLE",
+    "approverValue": "ADMIN",
+    "next": {
+      "id": "approval_expense_finance",
+      "type": "APPROVAL",
+      "title": "财务审核",
+      "approverType": "ROLE",
+      "approverValue": "ADMIN",
+      "next": {
+        "id": "end_expense",
+        "type": "END",
+        "title": "流程结束"
+      }
+    }
+  }
 }',
 1, 'active', 'system', 100000);
 
@@ -1345,17 +1358,21 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 ('tpl-purchase-001', '采购申请', '物资采购审批流程模板', 'cat-procurement', 
 '["采购", "审批", "物资"]', 
 '{
-  "nodes": [
-    {"id": "start-003", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
-    {"id": "form-003", "type": "form", "name": "提交采购申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "itemName", "label": "物品名称", "type": "text", "required": true}, {"name": "quantity", "label": "数量", "type": "number", "required": true}, {"name": "estimatedPrice", "label": "预估价格", "type": "number", "required": true}, {"name": "reason", "label": "采购理由", "type": "textarea", "required": true}]}},
-    {"id": "approval-004", "type": "approval", "name": "部门审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "dept_manager"}},
-    {"id": "end-003", "type": "end", "name": "结束", "position": {"x": 100, "y": 400}}
-  ],
-  "edges": [
-    {"id": "edge-008", "source": "start-003", "target": "form-003"},
-    {"id": "edge-009", "source": "form-003", "target": "approval-004"},
-    {"id": "edge-010", "source": "approval-004", "target": "end-003"}
-  ]
+  "id": "start_purchase",
+  "type": "START",
+  "title": "提交采购申请",
+  "next": {
+    "id": "approval_purchase_manager",
+    "type": "APPROVAL",
+    "title": "部门审批",
+    "approverType": "ROLE",
+    "approverValue": "ADMIN",
+    "next": {
+      "id": "end_purchase",
+      "type": "END",
+      "title": "流程结束"
+    }
+  }
 }',
 1, 'active', 'system', 100000);
 
@@ -1364,19 +1381,28 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 ('tpl-contract-001', '合同审批', '合同审批流程（含法务审核）', 'cat-contract', 
 '["合同", "审批", "法务"]', 
 '{
-  "nodes": [
-    {"id": "start-004", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
-    {"id": "form-004", "type": "form", "name": "提交合同", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "contractName", "label": "合同名称", "type": "text", "required": true}, {"name": "contractType", "label": "合同类型", "type": "select", "required": true, "options": ["采购合同", "销售合同", "服务协议"]}, {"name": "amount", "label": "合同金额", "type": "number", "required": true}, {"name": "contractFile", "label": "合同文件", "type": "file", "required": true}]}},
-    {"id": "approval-005", "type": "approval", "name": "法务审核", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "legal"}},
-    {"id": "approval-006", "type": "approval", "name": "领导审批", "position": {"x": 100, "y": 400}, "config": {"assigneeType": "ROLE", "assigneeValue": "leader"}},
-    {"id": "end-004", "type": "end", "name": "结束", "position": {"x": 100, "y": 500}}
-  ],
-  "edges": [
-    {"id": "edge-011", "source": "start-004", "target": "form-004"},
-    {"id": "edge-012", "source": "form-004", "target": "approval-005"},
-    {"id": "edge-013", "source": "approval-005", "target": "approval-006"},
-    {"id": "edge-014", "source": "approval-006", "target": "end-004"}
-  ]
+  "id": "start_contract",
+  "type": "START",
+  "title": "提交合同",
+  "next": {
+    "id": "approval_contract_legal",
+    "type": "APPROVAL",
+    "title": "法务审核",
+    "approverType": "ROLE",
+    "approverValue": "ADMIN",
+    "next": {
+      "id": "approval_contract_leader",
+      "type": "APPROVAL",
+      "title": "领导审批",
+      "approverType": "ROLE",
+      "approverValue": "ADMIN",
+      "next": {
+        "id": "end_contract",
+        "type": "END",
+        "title": "流程结束"
+      }
+    }
+  }
 }',
 1, 'active', 'system', 100000);
 
@@ -1385,17 +1411,21 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 ('tpl-trip-001', '出差申请', '员工出差审批流程模板', 'cat-admin', 
 '["出差", "审批", "行政"]', 
 '{
-  "nodes": [
-    {"id": "start-005", "type": "start", "name": "开始", "position": {"x": 100, "y": 100}},
-    {"id": "form-005", "type": "form", "name": "提交出差申请", "position": {"x": 100, "y": 200}, "config": {"formFields": [{"name": "destination", "label": "目的地", "type": "text", "required": true}, {"name": "startDate", "label": "开始日期", "type": "date", "required": true}, {"name": "endDate", "label": "结束日期", "type": "date", "required": true}, {"name": "purpose", "label": "出差目的", "type": "textarea", "required": true}]}},
-    {"id": "approval-007", "type": "approval", "name": "部门经理审批", "position": {"x": 100, "y": 300}, "config": {"assigneeType": "ROLE", "assigneeValue": "manager"}},
-    {"id": "end-005", "type": "end", "name": "结束", "position": {"x": 100, "y": 400}}
-  ],
-  "edges": [
-    {"id": "edge-015", "source": "start-005", "target": "form-005"},
-    {"id": "edge-016", "source": "form-005", "target": "approval-007"},
-    {"id": "edge-017", "source": "approval-007", "target": "end-005"}
-  ]
+  "id": "start_trip",
+  "type": "START",
+  "title": "提交出差申请",
+  "next": {
+    "id": "approval_trip_manager",
+    "type": "APPROVAL",
+    "title": "部门经理审批",
+    "approverType": "ROLE",
+    "approverValue": "ADMIN",
+    "next": {
+      "id": "end_trip",
+      "type": "END",
+      "title": "流程结束"
+    }
+  }
 }',
 1, 'active', 'system', 100000);
 

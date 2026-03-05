@@ -134,7 +134,7 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 验证模板结构
         if (!validateTemplateStructure(definitionJson)) {
-            throw new WorkflowException("模板结构无效：必须包含至少一个开始节点和一个结束节点");
+            throw new WorkflowException("模板结构无效：必须为链式节点结构且包含开始/结束节点");
         }
 
         // 创建模板实体
@@ -184,7 +184,7 @@ public class TemplateServiceImpl implements ITemplateService {
         if (request.getDefinition() != null) {
             String definitionJson = convertObjectToJson(request.getDefinition());
             if (!validateTemplateStructure(definitionJson)) {
-                throw new WorkflowException("模板结构无效：必须包含至少一个开始节点和一个结束节点");
+                throw new WorkflowException("模板结构无效：必须为链式节点结构且包含开始/结束节点");
             }
             template.setDefinition(definitionJson);
         }
@@ -253,17 +253,9 @@ public class TemplateServiceImpl implements ITemplateService {
     public boolean validateTemplateStructure(String definition) {
         try {
             JsonNode root = objectMapper.readTree(definition);
-            if (root == null || !root.isObject()) {
+            if (!isDesignerTreeNode(root)) {
                 return false;
             }
-
-            // 兼容数组型定义：{nodes:[...]}、{nodeList:[...]}、{activities:[...]}、{steps:[...]}
-            JsonNode nodeArray = findNodeArray(root);
-            if (nodeArray != null) {
-                return hasTypeInNodeArray(nodeArray, "start") && hasTypeInNodeArray(nodeArray, "end");
-            }
-
-            // 兼容 CloudFlow 设计器链式定义：{type:"START", next:{...}, branches:[...]}
             return containsNodeTypeInTree(root, "start") && containsNodeTypeInTree(root, "end");
         } catch (Exception e) {
             log.error("验证模板结构失败", e);
@@ -271,35 +263,8 @@ public class TemplateServiceImpl implements ITemplateService {
         }
     }
 
-    private JsonNode findNodeArray(JsonNode root) {
-        JsonNode[] candidates = new JsonNode[]{
-                root.get("nodes"),
-                root.get("nodeList"),
-                root.get("activities"),
-                root.get("steps")
-        };
-        for (JsonNode candidate : candidates) {
-            if (candidate != null && candidate.isArray()) {
-                return candidate;
-            }
-        }
-        return null;
-    }
-
-    private boolean hasTypeInNodeArray(JsonNode nodes, String expectedType) {
-        if (nodes == null || !nodes.isArray()) {
-            return false;
-        }
-        for (JsonNode node : nodes) {
-            if (isExpectedType(node, expectedType)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private boolean containsNodeTypeInTree(JsonNode node, String expectedType) {
-        if (node == null || !node.isObject()) {
+        if (!isDesignerTreeNode(node)) {
             return false;
         }
         if (isExpectedType(node, expectedType)) {
@@ -327,12 +292,16 @@ public class TemplateServiceImpl implements ITemplateService {
             return false;
         }
         JsonNode typeNode = node.get("type");
-        if (typeNode == null || typeNode.isNull()) {
-            typeNode = node.get("nodeType");
-        }
         return typeNode != null
                 && !typeNode.isNull()
                 && expectedType.equalsIgnoreCase(typeNode.asText());
+    }
+
+    private boolean isDesignerTreeNode(JsonNode node) {
+        return node != null
+                && node.isObject()
+                && node.hasNonNull("id")
+                && node.hasNonNull("type");
     }
 
     /**
@@ -539,10 +508,7 @@ public class TemplateServiceImpl implements ITemplateService {
     private boolean isDesignerTreeDefinition(String definition) {
         try {
             JsonNode root = objectMapper.readTree(definition);
-            return root != null
-                    && root.isObject()
-                    && root.hasNonNull("id")
-                    && root.hasNonNull("type");
+            return isDesignerTreeNode(root);
         } catch (Exception e) {
             return false;
         }
