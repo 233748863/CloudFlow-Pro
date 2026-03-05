@@ -46,14 +46,25 @@ interface TemplateListResult {
 }
 
 const DEFAULT_TEMPLATE_DEFINITION = {
-  id: 'start',
-  type: 'START',
-  title: '开始',
-  next: {
-    id: 'end',
-    type: 'END',
-    title: '流程结束'
-  }
+  nodes: [
+    {
+      id: 'start',
+      type: 'START',
+      title: '开始'
+    },
+    {
+      id: 'end',
+      type: 'END',
+      title: '流程结束'
+    }
+  ],
+  edges: [
+    {
+      id: 'start->end',
+      source: 'start',
+      target: 'end'
+    }
+  ]
 };
 
 const flattenCategoryTree = (
