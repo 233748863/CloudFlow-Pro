@@ -9,7 +9,7 @@ import com.cloudflow.workflow.domain.enums.DeployEnums.*;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +66,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private WorkflowPermissionService workflowPermissionService;
 
     // ==================== 发布窗口管理 ====================
 
@@ -798,25 +801,24 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (step == null || userId == null) {
             return false;
         }
-        if (!"USER".equalsIgnoreCase(step.getApproverType())) {
-            // ROLE/DEPT 场景保持历史行为，避免影响存量流程配置
-            return true;
+
+        String approverType = step.getApproverType();
+        if (!StringUtils.hasText(approverType)) {
+            return false;
+        }
+        String normalizedType = approverType.trim().toUpperCase(Locale.ROOT);
+        if (!"USER".equals(normalizedType) && !"ROLE".equals(normalizedType) && !"DEPT".equals(normalizedType)) {
+            log.warn("不支持的发布审批人类型，拒绝审批: stepId={}, approverType={}", step.getId(), approverType);
+            return false;
         }
         if (!StringUtils.hasText(step.getApproverIds())) {
             return false;
         }
 
-        try {
-            List<Long> approverIds = objectMapper.readValue(
-                step.getApproverIds(),
-                new TypeReference<List<Long>>() {}
-            );
-            return approverIds != null && approverIds.stream().anyMatch(id -> Objects.equals(id, userId));
-        } catch (Exception ex) {
-            log.warn("解析审批人列表失败，降级使用字符串匹配校验, stepId={}", step.getId(), ex);
-            String userIdText = userId.toString();
-            return step.getApproverIds().contains("\"" + userIdText + "\"")
-                || step.getApproverIds().contains(userIdText);
-        }
+        return workflowPermissionService.canStartProcess(
+            userId,
+            normalizedType,
+            step.getApproverIds()
+        );
     }
 }
