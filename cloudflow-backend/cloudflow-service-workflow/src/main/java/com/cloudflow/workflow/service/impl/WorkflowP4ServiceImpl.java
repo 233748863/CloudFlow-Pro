@@ -136,7 +136,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         delegatedTask.setAssigneeName(toUserName);
         delegatedTask.setStatus("TODO");
         delegatedTask.setPriority(task.getPriority());
-        delegatedTask.setTenantId(task.getTenantId());
+        delegatedTask.setTenantId(taskTenantId);
         delegatedTask.setCreateTime(LocalDateTime.now());
         // 关联原任务，被委派人完成后用于回溯
         delegatedTask.setCandidateRoles("DELEGATE_FROM:" + taskId + ":" + delegation.getDelegationId());
@@ -205,6 +205,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     }
 
     private void createAddSignTasks(WfTask original, List<Long> userIds, List<String> userNames, String label) {
+        Long taskTenantId = resolveTaskTenantId(original);
         for (int i = 0; i < userIds.size(); i++) {
             WfTask t = new WfTask();
             t.setTaskId(UUID.randomUUID().toString());
@@ -214,7 +215,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             t.setAssignee(userIds.get(i));
             t.setAssigneeName(userNames != null && i < userNames.size() ? userNames.get(i) : "");
             t.setStatus("TODO");
-            t.setTenantId(original.getTenantId());
+            t.setTenantId(taskTenantId);
             t.setCreateTime(LocalDateTime.now());
             taskMapper.insert(t);
             sendNotification("TASK_ASSIGN", userIds.get(i), "加签任务", "您收到" + label + "任务");
@@ -565,14 +566,19 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "removeSign");
         assertTaskAccess(originalTask, operatorId, "removeSign");
+        Long taskTenantId = resolveTaskTenantId(originalTask);
         if (CollectionUtils.isEmpty(userIds)) { throw WorkflowException.validationError("减签用户不能为空"); }
 
         // 查找加签创建的任务
-        List<WfTask> addSignTasks = taskMapper.selectList(new LambdaQueryWrapper<WfTask>()
+        LambdaQueryWrapper<WfTask> addSignQuery = new LambdaQueryWrapper<WfTask>()
                 .eq(WfTask::getInstanceId, originalTask.getInstanceId())
                 .like(WfTask::getNodeKey, originalTask.getNodeKey() + "_addsign")
                 .eq(WfTask::getStatus, "TODO")
-                .in(WfTask::getAssignee, userIds));
+                .in(WfTask::getAssignee, userIds);
+        if (taskTenantId != null) {
+            addSignQuery.eq(WfTask::getTenantId, taskTenantId);
+        }
+        List<WfTask> addSignTasks = taskMapper.selectList(addSignQuery);
 
         int removed = 0;
         for (WfTask t : addSignTasks) {
