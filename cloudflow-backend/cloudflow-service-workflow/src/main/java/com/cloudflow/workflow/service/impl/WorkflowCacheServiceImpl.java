@@ -1,5 +1,6 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfFormDefinition;
@@ -63,7 +64,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 使用Spring Cache注解自动管理缓存
      */
     @Override
-    @Cacheable(value = DEFINITION_CACHE, key = "#definitionId", unless = "#result == null")
+    @Cacheable(value = DEFINITION_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #definitionId", unless = "#result == null")
     public WfProcessDefinition getDefinition(String definitionId) {
         // P2-fix-2: 缓存未命中，计数+1
         definitionMissCount.incrementAndGet();
@@ -72,7 +73,8 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
         
         if (definition != null) {
             // P2-fix-4: 手动设置带随机抖动的TTL，防止缓存雪崩
-            String cacheKey = DEFINITION_CACHE + "::" + definitionId;
+            Long currentTenantId = UserContext.getTenantId();
+            String cacheKey = DEFINITION_CACHE + "::" + currentTenantId + ":" + definitionId;
             redisTemplate.expire(cacheKey, getJitteredTtl(DEFINITION_TTL), TimeUnit.SECONDS);
         }
         
@@ -83,7 +85,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 获取表单定义（带缓存）
      */
     @Override
-    @Cacheable(value = FORM_CACHE, key = "#formId", unless = "#result == null")
+    @Cacheable(value = FORM_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #formId", unless = "#result == null")
     public WfFormDefinition getForm(String formId) {
         // P2-fix-2: 缓存未命中，计数+1
         formMissCount.incrementAndGet();
@@ -92,7 +94,8 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
         
         if (form != null) {
             // P2-fix-4: 带随机抖动的TTL
-            String cacheKey = FORM_CACHE + "::" + formId;
+            Long currentTenantId = UserContext.getTenantId();
+            String cacheKey = FORM_CACHE + "::" + currentTenantId + ":" + formId;
             redisTemplate.expire(cacheKey, getJitteredTtl(FORM_TTL), TimeUnit.SECONDS);
         }
         
@@ -103,7 +106,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 获取用户信息（带缓存）
      */
     @Override
-    @Cacheable(value = USER_CACHE, key = "#userId", unless = "#result == null")
+    @Cacheable(value = USER_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #userId", unless = "#result == null")
     public UserBriefVO getUser(Long userId) {
         if (userId == null) {
             return null;
@@ -121,7 +124,8 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
                 UserBriefVO user = convertMapToUserBriefVO(result.getData());
                 
                 // P2-fix-4: 带随机抖动的TTL
-                String cacheKey = USER_CACHE + "::" + userId;
+                Long currentTenantId = UserContext.getTenantId();
+                String cacheKey = USER_CACHE + "::" + currentTenantId + ":" + userId;
                 redisTemplate.expire(cacheKey, getJitteredTtl(USER_TTL), TimeUnit.SECONDS);
                 
                 return user;
@@ -139,7 +143,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 失效流程定义缓存
      */
     @Override
-    @CacheEvict(value = DEFINITION_CACHE, key = "#definitionId")
+    @CacheEvict(value = DEFINITION_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #definitionId")
     public void evictDefinition(String definitionId) {
         log.info("失效流程定义缓存: {}", definitionId);
     }
@@ -148,7 +152,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 失效表单定义缓存
      */
     @Override
-    @CacheEvict(value = FORM_CACHE, key = "#formId")
+    @CacheEvict(value = FORM_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #formId")
     public void evictForm(String formId) {
         log.info("失效表单定义缓存: {}", formId);
     }
@@ -157,7 +161,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
      * 失效用户信息缓存
      */
     @Override
-    @CacheEvict(value = USER_CACHE, key = "#userId")
+    @CacheEvict(value = USER_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getTenantId() + ':' + #userId")
     public void evictUser(Long userId) {
         log.info("失效用户信息缓存: {}", userId);
     }
