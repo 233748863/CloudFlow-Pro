@@ -35,6 +35,7 @@ public class TemplateController {
     private ITemplateCategoryService categoryService;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public R<Page<TemplateDTO>> listTemplates(
             @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) String tags,
@@ -55,6 +56,7 @@ public class TemplateController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public R<TemplateDTO> getTemplate(@PathVariable String id) {
         try {
             TemplateDTO template = templateService.getTemplateById(id);
@@ -104,6 +106,7 @@ public class TemplateController {
     }
 
     @PostMapping("/{id}/create-workflow")
+    @PreAuthorize("isAuthenticated()")
     public R<WfProcessDefinition> createWorkflowFromTemplate(
             @PathVariable String id,
             @RequestBody CreateFromTemplateRequest request) {
@@ -117,6 +120,7 @@ public class TemplateController {
     }
 
     @GetMapping("/categories")
+    @PreAuthorize("isAuthenticated()")
     public R<List<CategoryTreeNode>> getCategories() {
         try {
             List<CategoryTreeNode> categories = categoryService.listCategoryTree();
