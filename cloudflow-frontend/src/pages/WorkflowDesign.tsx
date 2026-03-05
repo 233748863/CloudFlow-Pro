@@ -96,6 +96,39 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   deptId: w?.deptId,
 });
 
+const mapBackendForms = (forms: any[]): FormDefinition[] =>
+  forms.map((f: any) => {
+    let fields: any[] = [];
+    const raw =
+      typeof f.fieldsJson === 'string'
+        ? f.fieldsJson
+        : typeof f.formSchema === 'string'
+          ? f.formSchema
+          : null;
+
+    if (raw) {
+      try {
+        fields = JSON.parse(raw);
+      } catch {
+        try {
+          const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
+          fields = JSON.parse(sanitized);
+        } catch (parseError) {
+          logWorkflow.error('解析表单字段失败:', parseError);
+          fields = [];
+        }
+      }
+    } else {
+      fields = f.fields || f.fieldsJson || [];
+    }
+
+    return {
+      id: f.id || f.formId,
+      name: f.name || f.formName,
+      fields,
+    };
+  });
+
 const buildWorkflowSavePayload = (wf: WorkflowDefinition) => ({
   definitionId: wf.id.startsWith('new_') ? undefined : wf.id,
   processName: wf.name,
@@ -143,6 +176,7 @@ export const WorkflowDesign = () => {
   const workflowIdRef = useRef<string>('');
   const inFlightLoadKeyRef = useRef<string | null>(null);
   const loadSequenceRef = useRef(0);
+  const contextLoadedRef = useRef(false);
   const lastAutoSavedSignatureRef = useRef<string>('');
   const skipNextUrlSyncRef = useRef(false);
 
@@ -203,25 +237,35 @@ export const WorkflowDesign = () => {
       setLoading(true);
       setError(null);
 
-      const [forms, roles, users] = await Promise.all([
-        getFormDefinitions().catch((err) => {
-          logWorkflow.warn('加载表单列表失败:', err);
-          toast.warning('表单列表加载失败，暂时无法绑定表单');
-          return [];
-        }),
-        getRoleList().catch((err) => {
-          logWorkflow.warn('加载角色列表失败:', err);
-          toast.warning('角色列表加载失败，部分审批人配置不可用');
-          return [];
-        }),
-        getUserList().catch((err) => {
-          logWorkflow.warn('加载用户列表失败:', err);
-          toast.warning('用户列表加载失败，部分审批人配置不可用');
-          return [];
-        }),
-      ]);
-      if (currentLoadSeq !== loadSequenceRef.current) {
-        return;
+      // 基础上下文（表单/角色/用户）在设计页生命周期内只加载一次，避免切换流程时重复请求。
+      if (!contextLoadedRef.current) {
+        const [forms, roles, users] = await Promise.all([
+          getFormDefinitions().catch((err) => {
+            logWorkflow.warn('加载表单列表失败:', err);
+            toast.warning('表单列表加载失败，暂时无法绑定表单');
+            return [];
+          }),
+          getRoleList().catch((err) => {
+            logWorkflow.warn('加载角色列表失败:', err);
+            toast.warning('角色列表加载失败，部分审批人配置不可用');
+            return [];
+          }),
+          getUserList().catch((err) => {
+            logWorkflow.warn('加载用户列表失败:', err);
+            toast.warning('用户列表加载失败，部分审批人配置不可用');
+            return [];
+          }),
+        ]);
+        if (currentLoadSeq !== loadSequenceRef.current) {
+          return;
+        }
+
+        if (Array.isArray(forms)) {
+          setSavedForms(mapBackendForms(forms));
+        }
+        if (Array.isArray(roles)) setAvailableRoles(roles);
+        if (Array.isArray(users)) setAvailableUsers(users.map(mapBackendUserToFrontend));
+        contextLoadedRef.current = true;
       }
 
       // 先按 URL id 精确加载，避免串流程
@@ -263,44 +307,6 @@ export const WorkflowDesign = () => {
       setWorkflow(nextWorkflow);
       workflowIdRef.current = nextWorkflow.id;
       lastAutoSavedSignatureRef.current = buildWorkflowContentSignature(nextWorkflow);
-
-      if (Array.isArray(forms)) {
-        const mapped = forms.map((f: any) => {
-          let fields: any[] = [];
-          const raw =
-            typeof f.fieldsJson === 'string'
-              ? f.fieldsJson
-              : typeof f.formSchema === 'string'
-                ? f.formSchema
-                : null;
-
-          if (raw) {
-            try {
-              fields = JSON.parse(raw);
-            } catch {
-              try {
-                const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
-                fields = JSON.parse(sanitized);
-              } catch (parseError) {
-                logWorkflow.error('解析表单字段失败:', parseError);
-                fields = [];
-              }
-            }
-          } else {
-            fields = f.fields || f.fieldsJson || [];
-          }
-
-          return {
-            id: f.id || f.formId,
-            name: f.name || f.formName,
-            fields,
-          };
-        });
-        setSavedForms(mapped);
-      }
-
-      if (Array.isArray(roles)) setAvailableRoles(roles);
-      if (Array.isArray(users)) setAvailableUsers(users.map(mapBackendUserToFrontend));
     } catch (err) {
       logWorkflow.error('加载数据失败:', err);
       setError(err instanceof Error ? err.message : '加载数据失败');
