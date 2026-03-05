@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -267,8 +268,7 @@ public class ImportServiceImpl implements IImportService {
             throw new WorkflowException("现有流程不存在: " + resolution.getExistingWorkflowId());
         }
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && existing.getTenantId() != null
-                && !currentTenantId.equals(existing.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, existing.getTenantId())) {
             throw WorkflowException.permissionDenied("更新其他租户流程");
         }
 
@@ -533,8 +533,7 @@ public class ImportServiceImpl implements IImportService {
             throw WorkflowException.validationError("导入失败：绑定表单不存在: " + formId);
         }
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && formDefinition.getTenantId() != null
-                && !currentTenantId.equals(formDefinition.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, formDefinition.getTenantId())) {
             throw WorkflowException.validationError("导入失败：绑定表单不属于当前租户: " + formId);
         }
     }

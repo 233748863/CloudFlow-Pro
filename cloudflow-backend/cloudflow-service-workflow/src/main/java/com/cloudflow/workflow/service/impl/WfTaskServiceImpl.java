@@ -408,8 +408,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.taskNotFound(taskId);
         }
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && task.getTenantId() != null
-                && !currentTenantId.equals(task.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
             throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
         }
         if (task.getAssignee() != null && !task.getAssignee().equals(userId) && !permissionService.isAdmin(userId)) {
@@ -997,8 +996,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.taskNotFound(taskId);
         }
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && task.getTenantId() != null
-                && !currentTenantId.equals(task.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
             throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
         }
 
@@ -1154,8 +1152,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.taskNotFound(taskId);
         }
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && task.getTenantId() != null
-                && !currentTenantId.equals(task.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
             throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
         }
 

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -149,8 +150,7 @@ public class SafetyChecker {
                 continue;
             }
 
-            if (currentTenantId != null && definition.getTenantId() != null
-                    && !currentTenantId.equals(definition.getTenantId())) {
+            if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
                 result.setSafe(false);
                 result.getWorkflowsWithoutPermission().add(workflowId);
                 result.getErrors().add("No permission for workflow (tenant mismatch): " + workflowId);

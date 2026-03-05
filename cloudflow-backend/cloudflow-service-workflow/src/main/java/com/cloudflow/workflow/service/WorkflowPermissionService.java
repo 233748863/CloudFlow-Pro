@@ -125,8 +125,7 @@ public class WorkflowPermissionService {
         }
 
         // 先做租户隔离，防止跨租户通过 instanceId 直接探测数据
-        if (currentTenantId != null && instance.getTenantId() != null
-                && !currentTenantId.equals(instance.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, instance.getTenantId())) {
             throw new PermissionDeniedException("无权访问该租户流程实例");
         }
 
@@ -296,7 +295,7 @@ public class WorkflowPermissionService {
 
     private void checkTenantIsolation(Long resourceTenantId, String resourceName) {
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && resourceTenantId != null && !currentTenantId.equals(resourceTenantId)) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, resourceTenantId)) {
             throw new PermissionDeniedException("无权访问该租户" + resourceName);
         }
     }

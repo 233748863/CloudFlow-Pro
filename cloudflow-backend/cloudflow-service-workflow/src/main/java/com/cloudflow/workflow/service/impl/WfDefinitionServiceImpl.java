@@ -505,8 +505,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (boundForm == null) {
             throw WorkflowException.validationError("绑定表单不存在: " + formId);
         }
-        if (definitionTenantId != null && boundForm.getTenantId() != null
-                && !definitionTenantId.equals(boundForm.getTenantId())) {
+        if (definitionTenantId != null && !Objects.equals(definitionTenantId, boundForm.getTenantId())) {
             throw WorkflowException.validationError("绑定表单不属于当前租户，无法" + operation + "流程定义");
         }
     }
@@ -522,8 +521,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (currentUserId == null) {
             throw new PermissionDeniedException("用户未登录");
         }
-        if (currentTenantId != null && def.getTenantId() != null
-                && !currentTenantId.equals(def.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, def.getTenantId())) {
             throw new PermissionDeniedException("无权访问该租户流程定义");
         }
         if (!permissionService.isAdmin(currentUserId) && "DRAFT".equalsIgnoreCase(def.getStatus())) {
@@ -533,8 +531,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
     private void ensureDefinitionTenantAccess(Long definitionTenantId, String operation) {
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && definitionTenantId != null
-                && !currentTenantId.equals(definitionTenantId)) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, definitionTenantId)) {
             throw new PermissionDeniedException("无权" + operation + "其他租户流程定义");
         }
     }

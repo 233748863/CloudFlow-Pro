@@ -128,9 +128,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             if (boundForm == null) {
                 throw WorkflowException.validationError("流程绑定的表单不存在或已被删除，无法发起");
             }
-            if (def.getTenantId() != null && boundForm.getTenantId() != null
-                    && !def.getTenantId().equals(boundForm.getTenantId())) {
+            // 租户隔离：流程定义租户、当前租户、绑定表单租户必须一致
+            if (def.getTenantId() != null && !Objects.equals(def.getTenantId(), boundForm.getTenantId())) {
                 throw WorkflowException.validationError("流程绑定的表单不属于当前租户，无法发起");
+            }
+            if (currentTenantId != null && !Objects.equals(currentTenantId, boundForm.getTenantId())) {
+                throw WorkflowException.validationError("流程绑定的表单租户不匹配，无法发起");
             }
         }
 
@@ -760,8 +763,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
     private void checkInstanceTenantAccess(WfProcessInstance instance, String operation) {
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && instance.getTenantId() != null
-                && !currentTenantId.equals(instance.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, instance.getTenantId())) {
             throw new PermissionDeniedException("无权" + operation + "该租户流程实例");
         }
     }
@@ -774,14 +776,22 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (instance == null) {
             return null;
         }
+        Long instanceTenantId = instance.getTenantId() != null ? instance.getTenantId() : UserContext.getTenantId();
 
         if (StringUtils.hasText(instance.getDefinitionId())) {
             WfProcessDefinition byId = processDefinitionMapper.selectById(instance.getDefinitionId());
             if (byId != null) {
-                return byId;
+                // 优先按 definitionId 命中时仍校验租户，避免脏数据导致跨租户读取
+                if (instanceTenantId != null && !Objects.equals(instanceTenantId, byId.getTenantId())) {
+                    log.warn("[resolveDefinitionByInstance] definitionId={} 租户不匹配(instanceTenantId={}, defTenantId={})，回退 processKey={}",
+                        instance.getDefinitionId(), instanceTenantId, byId.getTenantId(), instance.getProcessDefKey());
+                } else {
+                    return byId;
+                }
+            } else {
+                log.warn("[resolveDefinitionByInstance] definitionId={} 不存在，回退 processKey={} 最新版本",
+                    instance.getDefinitionId(), instance.getProcessDefKey());
             }
-            log.warn("[resolveDefinitionByInstance] definitionId={} 不存在，回退 processKey={} 最新版本",
-                instance.getDefinitionId(), instance.getProcessDefKey());
         }
 
         if (!StringUtils.hasText(instance.getProcessDefKey())) {
@@ -795,7 +805,6 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 .isNull(WfProcessDefinition::getStatus))
             .orderByDesc(WfProcessDefinition::getVersion)
             .last("LIMIT 1");
-        Long instanceTenantId = instance.getTenantId() != null ? instance.getTenantId() : UserContext.getTenantId();
         if (instanceTenantId != null) {
             latestDefQuery.eq(WfProcessDefinition::getTenantId, instanceTenantId);
         }
@@ -822,6 +831,10 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             if (defsById != null) {
                 for (WfProcessDefinition def : defsById) {
                     if (def != null && StringUtils.hasText(def.getDefinitionId())) {
+                        // 二次防护：租户上下文下仅缓存同租户定义
+                        if (currentTenantId != null && !Objects.equals(currentTenantId, def.getTenantId())) {
+                            continue;
+                        }
                         defById.put(def.getDefinitionId(), def);
                     }
                 }
@@ -939,8 +952,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             return R.fail("流程实例不存在");
         }
         Long currentTenantId = UserContext.getTenantId();
-        if (currentTenantId != null && instance.getTenantId() != null
-                && !currentTenantId.equals(instance.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, instance.getTenantId())) {
             auditService.logPermissionDenied(instanceId, "TERMINATE_TENANT");
             return R.fail("无权访问该租户流程实例");
         }

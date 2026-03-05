@@ -31,6 +31,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -83,8 +84,7 @@ public class WfFormServiceImpl implements IWfFormService {
 
         WfFormDefinition exist = formDefinitionMapper.selectById(definition.getFormId());
         if (exist != null) {
-            if (currentTenantId != null && exist.getTenantId() != null
-                    && !currentTenantId.equals(exist.getTenantId())) {
+            if (currentTenantId != null && !Objects.equals(currentTenantId, exist.getTenantId())) {
                 throw new PermissionDeniedException("无权修改该租户表单定义");
             }
             if (definition.getTenantId() != null && exist.getTenantId() != null
@@ -129,8 +129,7 @@ public class WfFormServiceImpl implements IWfFormService {
         if (form == null) {
             throw WorkflowException.validationError("表单定义不存在: " + formId);
         }
-        if (currentTenantId != null && form.getTenantId() != null
-                && !currentTenantId.equals(form.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, form.getTenantId())) {
             throw new PermissionDeniedException("您没有权限访问此表单定义");
         }
         if (currentUserId != null && !permissionService.isAdmin(currentUserId)) {

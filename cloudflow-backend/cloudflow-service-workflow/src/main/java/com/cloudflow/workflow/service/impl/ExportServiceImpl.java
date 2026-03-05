@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -63,8 +64,7 @@ public class ExportServiceImpl implements IExportService {
                 throw new WorkflowException("流程不存在: " + workflowId);
             }
             Long currentTenantId = UserContext.getTenantId();
-            if (currentTenantId != null && definition.getTenantId() != null
-                    && !currentTenantId.equals(definition.getTenantId())) {
+            if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
                 throw WorkflowException.permissionDenied("导出其他租户流程");
             }
 

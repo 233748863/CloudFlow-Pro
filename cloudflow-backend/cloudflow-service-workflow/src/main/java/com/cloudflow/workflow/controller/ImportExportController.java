@@ -40,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -262,8 +263,7 @@ public class ImportExportController {
         if (definition == null) {
             throw WorkflowException.processNotFound(workflowId);
         }
-        if (currentTenantId != null && definition.getTenantId() != null
-                && !currentTenantId.equals(definition.getTenantId())) {
+        if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
             throw new PermissionDeniedException("无权导出其他租户流程");
         }
 
