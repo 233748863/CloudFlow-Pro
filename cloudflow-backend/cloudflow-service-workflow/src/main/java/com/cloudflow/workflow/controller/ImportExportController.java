@@ -50,6 +50,17 @@ import java.util.Set;
 @RestController
 @RequestMapping("/import-export")
 public class ImportExportController {
+    /**
+     * 导入文件大小上限：10MB。
+     * 示例：10.5MB 文件会被直接拒绝，避免一次性读入内存导致接口抖动。
+     */
+    private static final long MAX_IMPORT_FILE_SIZE = 10L * 1024 * 1024;
+
+    /**
+     * 批量导入文件数上限。
+     * 示例：一次上传 200 个文件会被拒绝，防止瞬时放大导入压力。
+     */
+    private static final int MAX_BATCH_IMPORT_FILE_COUNT = 100;
 
     @Autowired
     private IExportService exportService;
@@ -142,6 +153,7 @@ public class ImportExportController {
         log.info("Validate import file, fileName={}, size={}", file.getOriginalFilename(), file.getSize());
 
         try {
+            validateImportUploadFile(file);
             String json = new String(file.getBytes(), StandardCharsets.UTF_8);
             if (isBatchPayload(json)) {
                 List<WorkflowExportFormat> batchFormats = parseBatchPayload(json);
@@ -161,6 +173,8 @@ public class ImportExportController {
 
             WorkflowExportFormat exportFormat = ExportFormatUtil.deserialize(json);
             return R.ok(importValidator.validate(exportFormat));
+        } catch (WorkflowException e) {
+            return R.ok(buildInvalidValidation(e.getMessage()));
         } catch (Exception e) {
             log.error("Validate import file failed", e);
             return R.fail("校验失败: " + e.getMessage());
@@ -179,6 +193,7 @@ public class ImportExportController {
         log.info("Import workflow, fileName={}, conflictStrategy={}", file.getOriginalFilename(), conflictStrategy);
 
         try {
+            validateImportUploadFile(file);
             String json = new String(file.getBytes(), StandardCharsets.UTF_8);
             ConflictStrategy strategy = conflictResolver.parseStrategy(conflictStrategy);
 
@@ -207,6 +222,10 @@ public class ImportExportController {
             WorkflowExportFormat exportFormat = ExportFormatUtil.deserializeAndVerify(json);
             ImportResultDTO result = importService.importWorkflow(exportFormat, strategy);
             return R.ok(result);
+        } catch (WorkflowException e) {
+            String fileName = file != null && file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            ImportResultDTO failedResult = ImportResultDTO.failure(fileName, "导入失败：" + e.getMessage());
+            return R.ok(failedResult);
         } catch (Exception e) {
             log.error("Import workflow failed", e);
             String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -223,26 +242,42 @@ public class ImportExportController {
         if (files == null || files.isEmpty()) {
             return R.fail("导入文件不能为空");
         }
+        if (files.size() > MAX_BATCH_IMPORT_FILE_COUNT) {
+            return R.fail("单次批量导入文件数量不能超过 " + MAX_BATCH_IMPORT_FILE_COUNT + " 个");
+        }
 
         log.info("Batch import workflows, count={}, conflictStrategy={}", files.size(), conflictStrategy);
 
         try {
+            List<ImportResultDTO> invalidResults = new ArrayList<>();
             List<WorkflowExportFormat> exportFormats = new ArrayList<>();
             for (MultipartFile file : files) {
+                String fileName = file != null && file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
                 try {
+                    validateImportUploadFile(file);
                     String json = new String(file.getBytes(), StandardCharsets.UTF_8);
                     if (isBatchPayload(json)) {
                         exportFormats.addAll(parseBatchPayload(json));
                     } else {
                         exportFormats.add(ExportFormatUtil.deserializeAndVerify(json));
                     }
+                } catch (WorkflowException e) {
+                    invalidResults.add(ImportResultDTO.failure(fileName, "导入失败: " + e.getMessage()));
                 } catch (Exception e) {
-                    log.error("Parse import file failed, fileName={}", file.getOriginalFilename(), e);
+                    log.error("Parse import file failed, fileName={}", fileName, e);
+                    invalidResults.add(ImportResultDTO.failure(fileName, "导入失败: " + e.getMessage()));
                 }
+            }
+
+            if (exportFormats.isEmpty()) {
+                return R.ok(invalidResults);
             }
 
             ConflictStrategy strategy = conflictResolver.parseStrategy(conflictStrategy);
             List<ImportResultDTO> results = importService.importWorkflows(exportFormats, strategy);
+            if (!invalidResults.isEmpty()) {
+                results.addAll(invalidResults);
+            }
 
             long successCount = results.stream().filter(r -> Boolean.TRUE.equals(r.getSuccess())).count();
             long failedCount = results.stream().filter(r -> !Boolean.TRUE.equals(r.getSuccess())).count();
@@ -423,4 +458,19 @@ public class ImportExportController {
         summary.setWarnings(warnings);
         return summary;
     }
+
+    private void validateImportUploadFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw WorkflowException.validationError("上传文件不能为空");
+        }
+        if (file.getSize() > MAX_IMPORT_FILE_SIZE) {
+            throw WorkflowException.validationError("上传文件不能超过 10MB");
+        }
+        // 示例：workflow-demo.json 合法；workflow-demo.zip 会被拒绝
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename != null && !originalFilename.toLowerCase().endsWith(".json")) {
+            throw WorkflowException.validationError("仅支持 json 文件导入");
+        }
+    }
 }
+
