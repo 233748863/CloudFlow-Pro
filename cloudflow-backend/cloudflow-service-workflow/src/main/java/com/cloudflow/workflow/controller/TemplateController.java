@@ -68,7 +68,7 @@ public class TemplateController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<TemplateDTO> createTemplate(@RequestBody CreateTemplateRequest request) {
         try {
             TemplateDTO template = templateService.createTemplate(request);
@@ -80,7 +80,7 @@ public class TemplateController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<TemplateDTO> updateTemplate(
             @PathVariable String id,
             @RequestBody UpdateTemplateRequest request) {
@@ -94,7 +94,7 @@ public class TemplateController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<Void> deleteTemplate(@PathVariable String id) {
         try {
             templateService.deleteTemplate(id);
@@ -132,7 +132,7 @@ public class TemplateController {
     }
 
     @GetMapping("/categories/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<TemplateCategory> getCategory(@PathVariable String id) {
         try {
             TemplateCategory category = categoryService.getById(id);
@@ -144,7 +144,7 @@ public class TemplateController {
     }
 
     @PostMapping("/categories")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<TemplateCategory> createCategory(@RequestBody TemplateCategoryRequest request) {
         try {
             TemplateCategory category = fillCategoryFromRequest(new TemplateCategory(), request);
@@ -157,7 +157,7 @@ public class TemplateController {
     }
 
     @PutMapping("/categories/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<TemplateCategory> updateCategory(
             @PathVariable String id,
             @RequestBody TemplateCategoryRequest request) {
@@ -174,7 +174,7 @@ public class TemplateController {
     }
 
     @DeleteMapping("/categories/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<Void> deleteCategory(@PathVariable String id) {
         try {
             categoryService.delete(id);
