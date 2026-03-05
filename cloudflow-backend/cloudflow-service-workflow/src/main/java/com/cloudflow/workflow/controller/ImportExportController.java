@@ -73,6 +73,7 @@ public class ImportExportController {
     private WorkflowPermissionService permissionService;
 
     @GetMapping("/export/{workflowId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> exportWorkflow(
             @PathVariable String workflowId,
             @RequestParam(defaultValue = "false") Boolean includeSensitive) {
@@ -136,6 +137,7 @@ public class ImportExportController {
     }
 
     @PostMapping("/import/validate")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<ValidationResultDTO> validateImportFile(@RequestParam("file") MultipartFile file) {
         log.info("Validate import file, fileName={}, size={}", file.getOriginalFilename(), file.getSize());
 
@@ -166,6 +168,7 @@ public class ImportExportController {
     }
 
     @PostMapping("/import")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<ImportResultDTO> importWorkflow(
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false, defaultValue = "skip") String conflictStrategy) {

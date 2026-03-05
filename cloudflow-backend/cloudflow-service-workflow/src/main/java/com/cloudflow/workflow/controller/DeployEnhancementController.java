@@ -30,6 +30,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "检查当前是否在发布窗口内")
     @GetMapping("/window/check")
+    @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> checkDeployWindow() {
         return deployEnhancementService.checkDeployWindow();
     }
@@ -81,6 +82,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "查询发布通知记录")
     @GetMapping("/notification/list/{deployId}")
+    @PreAuthorize("isAuthenticated()")
     public R<List<WfDeployNotification>> listDeployNotifications(@PathVariable("deployId") Long deployId) {
         return deployEnhancementService.listDeployNotifications(deployId);
     }
@@ -103,18 +105,21 @@ public class DeployEnhancementController {
 
     @Operation(summary = "获取可回滚的版本列表")
     @GetMapping("/rollback/versions/{processDefId}")
+    @PreAuthorize("isAuthenticated()")
     public R<List<WfProcessVersionSnapshot>> listRollbackVersions(@PathVariable("processDefId") String processDefId) {
         return deployEnhancementService.listRollbackVersions(processDefId);
     }
 
     @Operation(summary = "查询回滚历史")
     @GetMapping("/rollback/history/{processDefId}")
+    @PreAuthorize("isAuthenticated()")
     public R<List<WfDeployRollbackHistory>> listRollbackHistory(@PathVariable("processDefId") String processDefId) {
         return deployEnhancementService.listRollbackHistory(processDefId);
     }
 
     @Operation(summary = "获取版本快照详情")
     @GetMapping("/snapshot/{processDefId}/{version}")
+    @PreAuthorize("isAuthenticated()")
     public R<WfProcessVersionSnapshot> getVersionSnapshot(@PathVariable("processDefId") String processDefId,
                                                           @PathVariable("version") Integer version) {
         return deployEnhancementService.getVersionSnapshot(processDefId, version);
@@ -122,6 +127,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "发布影响分析")
     @GetMapping("/impact/analyze/{processDefId}")
+    @PreAuthorize("isAuthenticated()")
     public R<ImpactAnalysisDTO> analyzeDeployImpact(@PathVariable("processDefId") String processDefId) {
         return deployEnhancementService.analyzeDeployImpact(processDefId);
     }
@@ -138,6 +144,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "审批发布请求")
     @PostMapping("/approval/approve/{approvalId}/{stepId}")
+    @PreAuthorize("isAuthenticated()")
     public R<?> approveDeployRequest(@PathVariable("approvalId") Long approvalId,
                                      @PathVariable("stepId") Long stepId,
                                      @RequestParam("action") String action,
@@ -147,6 +154,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "查询待审批的发布请求")
     @GetMapping("/approval/pending")
+    @PreAuthorize("isAuthenticated()")
     public R<List<WfDeployApproval>> listPendingApprovals() {
         Long userId = UserContext.getUserId();
         return deployEnhancementService.listPendingApprovals(userId);
@@ -154,18 +162,21 @@ public class DeployEnhancementController {
 
     @Operation(summary = "查询审批详情")
     @GetMapping("/approval/detail/{approvalId}")
+    @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> getApprovalDetail(@PathVariable("approvalId") Long approvalId) {
         return deployEnhancementService.getApprovalDetail(approvalId);
     }
 
     @Operation(summary = "取消发布审批")
     @PostMapping("/approval/cancel/{approvalId}")
+    @PreAuthorize("isAuthenticated()")
     public R<?> cancelDeployApproval(@PathVariable("approvalId") Long approvalId) {
         return deployEnhancementService.cancelDeployApproval(approvalId);
     }
 
     @Operation(summary = "查询我提交的审批")
     @GetMapping("/approval/my-submitted")
+    @PreAuthorize("isAuthenticated()")
     public R<List<WfDeployApproval>> listMySubmittedApprovals() {
         Long userId = UserContext.getUserId();
         return deployEnhancementService.listMySubmittedApprovals(userId);
@@ -173,6 +184,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "获取发布统计信息")
     @GetMapping("/statistics/{processDefId}")
+    @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> getDeployStatistics(@PathVariable("processDefId") String processDefId) {
         return deployEnhancementService.getDeployStatistics(processDefId);
     }
