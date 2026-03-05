@@ -69,7 +69,7 @@ import {
   FormDefinition,
   User,
 } from "../types";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useHistory } from "../hooks/useHistory";
 import {
   saveProcessDefinition,
@@ -5336,6 +5336,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   availableUsers,
 }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const routeWorkflowId = (searchParams.get("id") || "").trim();
+  const currentWorkflowId = routeWorkflowId || workflow?.id || "";
 
   // P2: 获取当前用户信息（用于数据权限）
   const { user } = useAuth();
@@ -6219,8 +6222,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
   // 查看版本历史
   const handleViewVersionHistory = () => {
-    if (workflow?.id && !workflow.id.startsWith("new_")) {
-      navigate(`/workflow/versions/${workflow.id}`);
+    if (currentWorkflowId && !currentWorkflowId.startsWith("new_")) {
+      navigate(`/workflow/versions/${currentWorkflowId}`);
     }
   };
 
@@ -6271,7 +6274,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       <WorkflowToolbar
         workflowName={workflowName}
         workflowKey={workflowKey}
-        workflowId={workflow?.id}
+        workflowId={currentWorkflowId}
         onNameChange={setWorkflowName}
         onKeyChange={setWorkflowKey}
         onSave={handleSave}
