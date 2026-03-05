@@ -113,7 +113,7 @@ public class WorkflowMonitorController {
      * 处理超时告警
      */
     @Operation(summary = "处理超时告警", description = "发送通知或升级处理超时告警")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     @PostMapping("/timeout/{alertId}/handle")
     public R<?> handleTimeoutAlert(
             @PathVariable Long alertId,
@@ -145,7 +145,7 @@ public class WorkflowMonitorController {
      * 解决异常告警
      */
     @Operation(summary = "解决异常告警", description = "标记异常告警为已解决并添加解决说明")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     @PostMapping("/anomaly/{alertId}/resolve")
     public R<?> resolveAnomalyAlert(
             @PathVariable Long alertId,

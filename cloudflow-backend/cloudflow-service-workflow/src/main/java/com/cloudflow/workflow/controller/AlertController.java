@@ -70,7 +70,7 @@ public class AlertController {
     /**
      * 解决超时告警
      */
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     @PutMapping("/timeout/{alertId}/resolve")
     public R<Void> resolveTimeoutAlert(
             @PathVariable Long alertId,
@@ -83,7 +83,7 @@ public class AlertController {
     /**
      * 升级超时告警
      */
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     @PutMapping("/timeout/{alertId}/escalate")
     public R<Void> escalateTimeoutAlert(@PathVariable Long alertId) {
         timeoutDetectionService.escalateTimeoutAlert(alertId);
@@ -160,7 +160,7 @@ public class AlertController {
     /**
      * 解决异常告警
      */
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     @PutMapping("/anomaly/{alertId}/resolve")
     public R<Void> resolveAnomalyAlert(
             @PathVariable Long alertId,

@@ -37,7 +37,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "获取所有发布窗口配置")
     @GetMapping("/window/list")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<List<WfDeployWindow>> listDeployWindows() {
         return deployEnhancementService.listDeployWindows();
     }
@@ -51,21 +51,21 @@ public class DeployEnhancementController {
 
     @Operation(summary = "更新发布窗口配置")
     @PutMapping("/window/update")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> updateDeployWindow(@RequestBody DeployWindowDTO dto) {
         return deployEnhancementService.updateDeployWindow(dto);
     }
 
     @Operation(summary = "删除发布窗口配置")
     @DeleteMapping("/window/delete/{windowId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> deleteDeployWindow(@PathVariable("windowId") Long windowId) {
         return deployEnhancementService.deleteDeployWindow(windowId);
     }
 
     @Operation(summary = "启用/禁用发布窗口")
     @PutMapping("/window/toggle/{windowId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> toggleDeployWindow(@PathVariable("windowId") Long windowId, @RequestParam("enabled") Boolean enabled) {
         return deployEnhancementService.toggleDeployWindow(windowId, enabled);
     }
@@ -74,7 +74,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "发送发布通知")
     @PostMapping("/notification/send/{deployId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> sendDeployNotification(@PathVariable("deployId") Long deployId,
                                        @RequestBody List<NotificationConfigDTO> configs) {
         return deployEnhancementService.sendDeployNotification(deployId, configs);
@@ -89,7 +89,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "重发失败的通知")
     @PostMapping("/notification/resend/{deployId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> resendFailedNotifications(@PathVariable("deployId") Long deployId) {
         return deployEnhancementService.resendFailedNotifications(deployId);
     }
@@ -98,7 +98,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "执行版本回滚")
     @PostMapping("/rollback")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> rollbackDeploy(@RequestBody RollbackRequestDTO dto) {
         return deployEnhancementService.rollbackDeploy(dto);
     }
@@ -136,7 +136,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "提交发布审批")
     @PostMapping("/approval/submit/{definitionId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
     public R<?> submitDeployApproval(@PathVariable("definitionId") String definitionId,
                                      @RequestBody DeployApprovalDTO dto) {
         return deployEnhancementService.submitDeployApproval(definitionId, dto);
