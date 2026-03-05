@@ -426,6 +426,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Override
     public PageResult<WfProcessInstance> getMyInstances(Long userId, PageQuery pageQuery) {
         Page<WfProcessInstance> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
+        Map<String, Object> params = pageQuery.getParams() != null ? pageQuery.getParams() : Collections.emptyMap();
         LambdaQueryWrapper<WfProcessInstance> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WfProcessInstance::getStartUserId, userId);
         Long currentTenantId = UserContext.getTenantId();
@@ -433,12 +434,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             queryWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
         }
 
-        String status = (String) pageQuery.getParams().get("status");
+        String status = (String) params.get("status");
         if (StringUtils.hasText(status)) {
             queryWrapper.eq(WfProcessInstance::getStatus, status);
         }
 
-        String keyword = (String) pageQuery.getParams().get("keyword");
+        String keyword = (String) params.get("keyword");
         if (StringUtils.hasText(keyword)) {
             queryWrapper.and(w -> w
                 .like(WfProcessInstance::getTitle, keyword)
@@ -448,31 +449,31 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         }
 
         // 与前端筛选参数对齐：流程类型
-        String processDefKey = (String) pageQuery.getParams().get("processDefKey");
+        String processDefKey = (String) params.get("processDefKey");
         if (StringUtils.hasText(processDefKey)) {
             queryWrapper.eq(WfProcessInstance::getProcessDefKey, processDefKey);
         }
 
         // 与前端筛选参数对齐：优先级
-        String priority = (String) pageQuery.getParams().get("priority");
+        String priority = (String) params.get("priority");
         if (StringUtils.hasText(priority)) {
             queryWrapper.eq(WfProcessInstance::getPriority, priority);
         }
 
         // 与前端筛选参数对齐：流程编号（单独搜索）
-        String processNo = (String) pageQuery.getParams().get("processNo");
+        String processNo = (String) params.get("processNo");
         if (StringUtils.hasText(processNo)) {
             queryWrapper.like(WfProcessInstance::getProcessNo, processNo);
         }
 
         // 与前端筛选参数对齐：发起人姓名（我的申请场景通常为当前用户，但保持兼容）
-        String startUserName = (String) pageQuery.getParams().get("startUserName");
+        String startUserName = (String) params.get("startUserName");
         if (StringUtils.hasText(startUserName)) {
             queryWrapper.like(WfProcessInstance::getStartUserName, startUserName);
         }
 
         // 与前端筛选参数对齐：开始时间范围（yyyy-MM-dd）
-        String startTimeFrom = (String) pageQuery.getParams().get("startTimeFrom");
+        String startTimeFrom = (String) params.get("startTimeFrom");
         if (StringUtils.hasText(startTimeFrom)) {
             try {
                 LocalDateTime fromDate = java.time.LocalDate
@@ -484,7 +485,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             }
         }
 
-        String startTimeTo = (String) pageQuery.getParams().get("startTimeTo");
+        String startTimeTo = (String) params.get("startTimeTo");
         if (StringUtils.hasText(startTimeTo)) {
             try {
                 LocalDateTime toDate = java.time.LocalDate
