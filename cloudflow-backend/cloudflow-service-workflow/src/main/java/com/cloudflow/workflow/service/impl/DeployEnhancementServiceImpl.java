@@ -9,6 +9,7 @@ import com.cloudflow.workflow.domain.enums.DeployEnums.*;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -563,6 +565,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         if (!ApprovalStatus.PENDING.getCode().equals(step.getStepStatus())) {
             return R.fail("该步骤已处理");
         }
+        if (!canCurrentUserApproveStep(step, userId)) {
+            return R.fail("无权限审批当前步骤");
+        }
 
         // 3. 更新步骤状态
         step.setActualApproverId(userId);
@@ -787,5 +792,31 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     private Long resolveTenantId(Long resourceTenantId) {
         return resourceTenantId != null ? resourceTenantId : UserContext.getTenantId();
+    }
+
+    private boolean canCurrentUserApproveStep(WfDeployApprovalStep step, Long userId) {
+        if (step == null || userId == null) {
+            return false;
+        }
+        if (!"USER".equalsIgnoreCase(step.getApproverType())) {
+            // ROLE/DEPT 场景保持历史行为，避免影响存量流程配置
+            return true;
+        }
+        if (!StringUtils.hasText(step.getApproverIds())) {
+            return false;
+        }
+
+        try {
+            List<Long> approverIds = objectMapper.readValue(
+                step.getApproverIds(),
+                new TypeReference<List<Long>>() {}
+            );
+            return approverIds != null && approverIds.stream().anyMatch(id -> Objects.equals(id, userId));
+        } catch (Exception ex) {
+            log.warn("解析审批人列表失败，降级使用字符串匹配校验, stepId={}", step.getId(), ex);
+            String userIdText = userId.toString();
+            return step.getApproverIds().contains("\"" + userIdText + "\"")
+                || step.getApproverIds().contains(userIdText);
+        }
     }
 }
