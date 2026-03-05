@@ -47,6 +47,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         log.info("[getTaskStatistics] 查询任务统计, userId={}, startTime={}, endTime={}", userId, startTime, endTime);
 
         Map<String, Object> stats = new HashMap<>();
+        Long currentTenantId = UserContext.getTenantId();
 
         if (userId == null) {
             userId = UserContext.getUserId();
@@ -56,45 +57,56 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         Map<String, Object> timePeriodStats = new HashMap<>();
 
         LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
-        Long todayTodoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(todayStart))
-        );
+        LambdaQueryWrapper<WfTask> todayTodoQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(todayStart));
+        if (currentTenantId != null) {
+            todayTodoQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Long todayTodoCount = taskMapper.selectCount(todayTodoQuery);
         timePeriodStats.put("todayTodo", todayTodoCount != null ? todayTodoCount : 0);
 
         LocalDateTime weekStart = LocalDateTime.now().with(DayOfWeek.MONDAY).withHour(0).withMinute(0).withSecond(0);
-        Long weekTodoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(weekStart))
-        );
+        LambdaQueryWrapper<WfTask> weekTodoQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(weekStart));
+        if (currentTenantId != null) {
+            weekTodoQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Long weekTodoCount = taskMapper.selectCount(weekTodoQuery);
         timePeriodStats.put("weekTodo", weekTodoCount != null ? weekTodoCount : 0);
 
         LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
-        Long monthTodoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(monthStart))
-        );
+        LambdaQueryWrapper<WfTask> monthTodoQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            .ge(WfTask::getCreateTime, java.sql.Timestamp.valueOf(monthStart));
+        if (currentTenantId != null) {
+            monthTodoQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Long monthTodoCount = taskMapper.selectCount(monthTodoQuery);
         timePeriodStats.put("monthTodo", monthTodoCount != null ? monthTodoCount : 0);
         stats.put("timePeriod", timePeriodStats);
 
         // 2. 按任务状态统计
         Map<String, Object> statusStats = new HashMap<>();
 
-        Long todoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
+        LambdaQueryWrapper<WfTask> todoCountQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
+        if (currentTenantId != null) {
+            todoCountQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Long todoCount = taskMapper.selectCount(todoCountQuery);
         statusStats.put("todo", todoCount != null ? todoCount : 0);
 
         LambdaQueryWrapper<WfTaskHistory> doneWrapper = new LambdaQueryWrapper<WfTaskHistory>()
             .eq(WfTaskHistory::getOperatorId, userId);
+        if (currentTenantId != null) {
+            doneWrapper.eq(WfTaskHistory::getTenantId, currentTenantId);
+        }
         if (startTime != null) {
             doneWrapper.ge(WfTaskHistory::getCreateTime, java.sql.Timestamp.valueOf(startTime));
         }
@@ -104,27 +116,33 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         Long doneCount = taskHistoryMapper.selectCount(doneWrapper);
         statusStats.put("done", doneCount != null ? doneCount : 0);
 
-        Long timeoutCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-                .eq(WfTask::getIsTimeout, 1)
-        );
+        LambdaQueryWrapper<WfTask> timeoutQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+            .eq(WfTask::getIsTimeout, 1);
+        if (currentTenantId != null) {
+            timeoutQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Long timeoutCount = taskMapper.selectCount(timeoutQuery);
         statusStats.put("timeout", timeoutCount != null ? timeoutCount : 0);
         stats.put("status", statusStats);
 
         // 3. 按流程类型统计
-        List<WfTask> userTasks = taskMapper.selectList(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
+        LambdaQueryWrapper<WfTask> userTasksQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
+        if (currentTenantId != null) {
+            userTasksQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        List<WfTask> userTasks = taskMapper.selectList(userTasksQuery);
 
         Map<String, Long> processTypeStats = new HashMap<>();
         if (!userTasks.isEmpty()) {
             List<String> instanceIds = userTasks.stream()
                 .map(WfTask::getInstanceId).distinct().collect(Collectors.toList());
-            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+            List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds).stream()
+                .filter(inst -> currentTenantId == null || Objects.equals(currentTenantId, inst.getTenantId()))
+                .collect(Collectors.toList());
             Map<String, String> instanceDefKeyMap = instances.stream()
                 .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
             for (WfTask task : userTasks) {
@@ -137,8 +155,12 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         // 4. 按处理人统计（管理员视角）
         if (permissionService.isAdmin(userId)) {
             List<Map<String, Object>> assigneeStats = new ArrayList<>();
-            List<WfTask> allTasks = taskMapper.selectList(
-                new LambdaQueryWrapper<WfTask>().eq(WfTask::getStatus, WfTaskStatus.TODO.getCode()));
+            LambdaQueryWrapper<WfTask> allTasksQuery = new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
+            if (currentTenantId != null) {
+                allTasksQuery.eq(WfTask::getTenantId, currentTenantId);
+            }
+            List<WfTask> allTasks = taskMapper.selectList(allTasksQuery);
             Map<Long, Long> assigneeCountMap = allTasks.stream()
                 .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
             for (Map.Entry<Long, Long> entry : assigneeCountMap.entrySet()) {
@@ -155,11 +177,13 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         }
 
         // 5. 平均处理时长
-        List<WfTaskHistory> histories = taskHistoryMapper.selectList(
-            new LambdaQueryWrapper<WfTaskHistory>()
-                .eq(WfTaskHistory::getOperatorId, userId)
-                .isNotNull(WfTaskHistory::getDurationSeconds)
-        );
+        LambdaQueryWrapper<WfTaskHistory> historiesQuery = new LambdaQueryWrapper<WfTaskHistory>()
+            .eq(WfTaskHistory::getOperatorId, userId)
+            .isNotNull(WfTaskHistory::getDurationSeconds);
+        if (currentTenantId != null) {
+            historiesQuery.eq(WfTaskHistory::getTenantId, currentTenantId);
+        }
+        List<WfTaskHistory> histories = taskHistoryMapper.selectList(historiesQuery);
         if (!histories.isEmpty()) {
             double avgDuration = histories.stream().mapToInt(WfTaskHistory::getDurationSeconds).average().orElse(0.0);
             stats.put("avgDurationSeconds", (long) avgDuration);
@@ -179,8 +203,12 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         }
 
         // 7. 我发起的流程数
-        Long myInstanceCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStartUserId, userId));
+        LambdaQueryWrapper<WfProcessInstance> myInstanceQuery = new LambdaQueryWrapper<WfProcessInstance>()
+            .eq(WfProcessInstance::getStartUserId, userId);
+        if (currentTenantId != null) {
+            myInstanceQuery.eq(WfProcessInstance::getTenantId, currentTenantId);
+        }
+        Long myInstanceCount = processInstanceMapper.selectCount(myInstanceQuery);
         stats.put("myInstanceCount", myInstanceCount != null ? myInstanceCount : 0);
 
         log.info("[getTaskStatistics] 统计完成, userId={}, 待办={}, 已办={}", userId, todoCount, doneCount);
@@ -194,14 +222,17 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         if (userId == null) {
             userId = UserContext.getUserId();
         }
+        Long currentTenantId = UserContext.getTenantId();
 
         Map<String, Object> groups = new HashMap<>();
 
-        List<WfTask> tasks = taskMapper.selectList(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
+        LambdaQueryWrapper<WfTask> tasksQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
+        if (currentTenantId != null) {
+            tasksQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        List<WfTask> tasks = taskMapper.selectList(tasksQuery);
         groups.put("total", tasks.size());
 
         if (tasks.isEmpty()) {
@@ -213,7 +244,9 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
 
         // 1. 按流程类型分组
         List<String> instanceIds = tasks.stream().map(WfTask::getInstanceId).distinct().collect(Collectors.toList());
-        List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+        List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds).stream()
+            .filter(inst -> currentTenantId == null || Objects.equals(currentTenantId, inst.getTenantId()))
+            .collect(Collectors.toList());
         Map<String, String> instanceDefKeyMap = instances.stream()
             .collect(Collectors.toMap(WfProcessInstance::getInstanceId, WfProcessInstance::getProcessDefKey));
 
@@ -241,8 +274,12 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
 
         // 4. 管理员视角：按处理人分组
         if (permissionService.isAdmin(userId)) {
-            List<WfTask> allTasks = taskMapper.selectList(
-                new LambdaQueryWrapper<WfTask>().eq(WfTask::getStatus, WfTaskStatus.TODO.getCode()));
+            LambdaQueryWrapper<WfTask> allTasksQuery = new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
+            if (currentTenantId != null) {
+                allTasksQuery.eq(WfTask::getTenantId, currentTenantId);
+            }
+            List<WfTask> allTasks = taskMapper.selectList(allTasksQuery);
             Map<Long, Long> byAssignee = allTasks.stream()
                 .collect(Collectors.groupingBy(WfTask::getAssignee, Collectors.counting()));
             List<Map<String, Object>> assigneeGroups = new ArrayList<>();
@@ -266,20 +303,31 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
     @Override
     public Map<String, Integer> getTasksCount(Long userId) {
         Map<String, Integer> counts = new HashMap<>();
+        Long currentTenantId = UserContext.getTenantId();
 
-        Long todoCount = taskMapper.selectCount(
-            new LambdaQueryWrapper<WfTask>()
-                .eq(WfTask::getAssignee, userId)
-                .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
-        );
+        LambdaQueryWrapper<WfTask> todoCountQuery = new LambdaQueryWrapper<WfTask>()
+            .eq(WfTask::getAssignee, userId)
+            .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode());
+        if (currentTenantId != null) {
+            todoCountQuery.eq(WfTask::getTenantId, currentTenantId);
+        }
+        Long todoCount = taskMapper.selectCount(todoCountQuery);
         counts.put("todoCount", todoCount != null ? todoCount.intValue() : 0);
 
-        Long doneCount = taskHistoryMapper.selectCount(
-            new LambdaQueryWrapper<WfTaskHistory>().eq(WfTaskHistory::getOperatorId, userId));
+        LambdaQueryWrapper<WfTaskHistory> doneCountQuery = new LambdaQueryWrapper<WfTaskHistory>()
+            .eq(WfTaskHistory::getOperatorId, userId);
+        if (currentTenantId != null) {
+            doneCountQuery.eq(WfTaskHistory::getTenantId, currentTenantId);
+        }
+        Long doneCount = taskHistoryMapper.selectCount(doneCountQuery);
         counts.put("doneCount", doneCount != null ? doneCount.intValue() : 0);
 
-        Long myInstanceCount = processInstanceMapper.selectCount(
-            new LambdaQueryWrapper<WfProcessInstance>().eq(WfProcessInstance::getStartUserId, userId));
+        LambdaQueryWrapper<WfProcessInstance> myInstanceQuery = new LambdaQueryWrapper<WfProcessInstance>()
+            .eq(WfProcessInstance::getStartUserId, userId);
+        if (currentTenantId != null) {
+            myInstanceQuery.eq(WfProcessInstance::getTenantId, currentTenantId);
+        }
+        Long myInstanceCount = processInstanceMapper.selectCount(myInstanceQuery);
         counts.put("myInstanceCount", myInstanceCount != null ? myInstanceCount.intValue() : 0);
 
         return counts;
