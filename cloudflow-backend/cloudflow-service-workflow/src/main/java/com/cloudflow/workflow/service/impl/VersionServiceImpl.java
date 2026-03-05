@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WorkflowVersion;
@@ -24,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -60,6 +62,7 @@ public class VersionServiceImpl implements IVersionService {
     @Transactional(rollbackFor = Exception.class)
     public WorkflowVersion createVersion(String workflowId, String definition, String changeLog, String createdBy) {
         log.info("开始创建流程版本, workflowId={}, createdBy={}", workflowId, createdBy);
+        requireWorkflowAndTenantAccess(workflowId, "创建流程版本");
 
         try {
             // 获取最新版本
@@ -126,6 +129,7 @@ public class VersionServiceImpl implements IVersionService {
     @Override
     public List<VersionDTO> getVersionHistory(String workflowId) {
         log.info("查询流程版本历史, workflowId={}", workflowId);
+        requireWorkflowAndTenantAccess(workflowId, "查询流程版本历史");
 
         LambdaQueryWrapper<WorkflowVersion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowVersion::getWorkflowId, workflowId)
@@ -153,6 +157,7 @@ public class VersionServiceImpl implements IVersionService {
         if (version == null) {
             throw new WorkflowException("版本不存在: " + versionId);
         }
+        requireWorkflowAndTenantAccess(version.getWorkflowId(), "查询版本详情");
 
         return convertToDetailDTO(version);
     }
@@ -162,6 +167,7 @@ public class VersionServiceImpl implements IVersionService {
      */
     @Override
     public WorkflowVersion getLatestVersion(String workflowId) {
+        requireWorkflowAndTenantAccess(workflowId, "查询最新版本");
         LambdaQueryWrapper<WorkflowVersion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowVersion::getWorkflowId, workflowId)
                .orderByDesc(WorkflowVersion::getCreatedAt)
@@ -175,6 +181,7 @@ public class VersionServiceImpl implements IVersionService {
      */
     @Override
     public WorkflowVersion getVersionByNumber(String workflowId, String versionNumber) {
+        requireWorkflowAndTenantAccess(workflowId, "按版本号查询版本");
         LambdaQueryWrapper<WorkflowVersion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowVersion::getWorkflowId, workflowId)
                .eq(WorkflowVersion::getVersionNumber, versionNumber);
@@ -252,6 +259,7 @@ public class VersionServiceImpl implements IVersionService {
                                             Boolean forceRollback, String operatorId) {
         log.info("开始回滚流程版本, workflowId={}, targetVersionId={}, operatorId={}", 
             workflowId, targetVersionId, operatorId);
+        requireWorkflowAndTenantAccess(workflowId, "回滚流程版本");
 
         // 查询目标版本
         WorkflowVersion targetVersion = versionMapper.selectById(targetVersionId);
@@ -366,6 +374,7 @@ public class VersionServiceImpl implements IVersionService {
      */
     @Override
     public boolean hasRunningInstances(String workflowId) {
+        requireWorkflowAndTenantAccess(workflowId, "查询运行中实例");
         LambdaQueryWrapper<WfProcessInstance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfProcessInstance::getDefinitionId, workflowId)
                .in(WfProcessInstance::getStatus, "RUNNING", "SUSPENDED");
@@ -385,10 +394,7 @@ public class VersionServiceImpl implements IVersionService {
      * 这里采用“失败即抛异常”策略，确保版本记录与流程定义版本指针始终一致。
      */
     private void updateCurrentVersion(String workflowId, String currentVersion, String operatorId) {
-        WfProcessDefinition definition = definitionMapper.selectById(workflowId);
-        if (definition == null) {
-            throw WorkflowException.processNotFound(workflowId);
-        }
+        WfProcessDefinition definition = requireWorkflowAndTenantAccess(workflowId, "同步流程版本");
 
         definition.setCurrentVersion(currentVersion);
         definition.setUpdateTime(LocalDateTime.now());
@@ -400,5 +406,18 @@ public class VersionServiceImpl implements IVersionService {
         if (updated <= 0) {
             throw new WorkflowException("同步流程 currentVersion 失败, workflowId=" + workflowId);
         }
+    }
+
+    private WfProcessDefinition requireWorkflowAndTenantAccess(String workflowId, String operation) {
+        WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+        if (definition == null) {
+            throw WorkflowException.processNotFound(workflowId);
+        }
+
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
+            throw WorkflowException.permissionDenied(operation);
+        }
+        return definition;
     }
 }
