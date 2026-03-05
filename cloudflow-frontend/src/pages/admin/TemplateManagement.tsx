@@ -45,6 +45,17 @@ interface TemplateListResult {
   total: number;
 }
 
+const DEFAULT_TEMPLATE_DEFINITION = {
+  id: 'start',
+  type: 'START',
+  title: '开始',
+  next: {
+    id: 'end',
+    type: 'END',
+    title: '流程结束'
+  }
+};
+
 const flattenCategoryTree = (
   nodes: CategoryNode[],
   depth: number = 0,
@@ -101,7 +112,7 @@ export const TemplateManagement = () => {
     description: '',
     categoryId: '',
     tags: [] as string[],
-    definition: '{"nodes":[],"edges":[]}',
+    definition: JSON.stringify(DEFAULT_TEMPLATE_DEFINITION, null, 2),
     previewImage: '',
     status: 'active' as 'active' | 'inactive'
   });
@@ -177,7 +188,7 @@ export const TemplateManagement = () => {
       description: '',
       categoryId: '',
       tags: [],
-      definition: '{"nodes":[],"edges":[]}',
+      definition: JSON.stringify(DEFAULT_TEMPLATE_DEFINITION, null, 2),
       previewImage: '',
       status: 'active'
     });
@@ -192,7 +203,7 @@ export const TemplateManagement = () => {
       description: template.description || '',
       categoryId: template.categoryId || '',
       tags: template.tags || [],
-      definition: JSON.stringify(template.definition || { nodes: [], edges: [] }, null, 2),
+      definition: JSON.stringify(template.definition || DEFAULT_TEMPLATE_DEFINITION, null, 2),
       previewImage: template.previewImage || '',
       status: template.status || 'active'
     });
@@ -784,4 +795,3 @@ export const TemplateManagement = () => {
 };
 
 export default TemplateManagement;
-
