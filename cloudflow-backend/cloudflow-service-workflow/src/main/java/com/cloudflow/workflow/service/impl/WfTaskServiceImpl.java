@@ -14,6 +14,7 @@ import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.event.WorkflowEventPublisher;
+import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.job.TaskReminderJob;
 import com.cloudflow.workflow.mapper.*;
@@ -156,7 +157,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 taskReminderJob.cancelReminders(taskId);
                 cleanupTaskReadData(taskId);
 
-                WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+                WfProcessInstance instance = requireTaskInstanceForOperation(task, "处理");
 
                 // 保存实例快照
                 nodeExecutionService.saveProcessSnapshot(instance, task.getNodeKey(), task.getNodeName());
@@ -296,10 +297,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         taskMapper.deleteById(taskId);
 
         // 在目标节点创建新任务
-        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
-        if (instance == null) {
-            throw WorkflowException.instanceNotFound(task.getInstanceId());
-        }
+        WfProcessInstance instance = requireTaskInstanceForOperation(task, "驳回");
 
         WfProcessDefinition def = resolveDefinitionByInstance(instance);
         if (def == null || !StringUtils.hasText(def.getModelJson())) {
@@ -409,10 +407,10 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
-            throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
+            throw new PermissionDeniedException("无权访问该租户任务");
         }
         if (task.getAssignee() != null && !task.getAssignee().equals(userId) && !permissionService.isAdmin(userId)) {
-            throw new com.cloudflow.workflow.exception.PermissionDeniedException("您不是此任务的处理人，无法标记已读");
+            throw new PermissionDeniedException("您不是此任务的处理人，无法标记已读");
         }
 
         Long count = taskReadMapper.selectCount(new LambdaQueryWrapper<WfTaskRead>()
@@ -441,10 +439,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.taskNotFound(taskId);
         }
 
-        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
-        if (instance == null) {
-            throw WorkflowException.instanceNotFound(task.getInstanceId());
-        }
+        WfProcessInstance instance = requireTaskInstanceForOperation(task, "催办");
 
         permissionService.checkUrgePermission(instance);
 
@@ -550,7 +545,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         taskHistoryMapper.insert(history);
 
         if ("PASSED".equals(countersignResult) || "REJECTED".equals(countersignResult)) {
-            WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+            WfProcessInstance instance = requireTaskInstanceForOperation(task, "会签处理");
             nodeExecutionService.saveProcessSnapshot(instance, task.getNodeKey(), task.getNodeName());
 
             if ("REJECTED".equals(countersignResult)) {
@@ -997,12 +992,12 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
-            throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
+            throw new PermissionDeniedException("无权访问该租户任务");
         }
 
         // 权限校验：只有当前任务处理人可以加签
         if (!Objects.equals(task.getAssignee(), currentUserId) && !permissionService.isAdmin(currentUserId)) {
-            throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人可以加签");
+            throw new PermissionDeniedException("只有任务处理人可以加签");
         }
 
         // 检查是否为会签任务
@@ -1153,12 +1148,12 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
-            throw new com.cloudflow.workflow.exception.PermissionDeniedException("无权访问该租户任务");
+            throw new PermissionDeniedException("无权访问该租户任务");
         }
 
         // 权限校验：只有当前任务处理人或管理员可以减签
         if (!Objects.equals(task.getAssignee(), currentUserId) && !permissionService.isAdmin(currentUserId)) {
-            throw new com.cloudflow.workflow.exception.PermissionDeniedException("只有任务处理人或管理员可以减签");
+            throw new PermissionDeniedException("只有任务处理人或管理员可以减签");
         }
 
         // 检查是否为会签任务
@@ -1284,6 +1279,32 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 lock.unlock();
             }
         }
+    }
+
+    /**
+     * 统一校验任务归属的流程实例，防止异常数据导致跨租户误操作。
+     */
+    private WfProcessInstance requireTaskInstanceForOperation(WfTask task, String operation) {
+        if (task == null || !StringUtils.hasText(task.getInstanceId())) {
+            throw WorkflowException.validationError("任务缺少关联的流程实例信息");
+        }
+
+        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(task.getInstanceId());
+        }
+
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, instance.getTenantId())) {
+            throw new PermissionDeniedException("无权" + operation + "其他租户流程实例");
+        }
+
+        if (task.getTenantId() != null
+                && instance.getTenantId() != null
+                && !Objects.equals(task.getTenantId(), instance.getTenantId())) {
+            throw WorkflowException.invalidState("任务与流程实例租户不一致，拒绝继续" + operation + "操作");
+        }
+        return instance;
     }
 
     /**
