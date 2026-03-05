@@ -69,6 +69,7 @@ import {
   FormDefinition,
   User,
 } from "../types";
+import { useNavigate } from "react-router-dom";
 import { useHistory } from "../hooks/useHistory";
 import {
   saveProcessDefinition,
@@ -5334,6 +5335,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   availableRoles,
   availableUsers,
 }) => {
+  const navigate = useNavigate();
+
   // P2: 获取当前用户信息（用于数据权限）
   const { user } = useAuth();
 
@@ -6217,7 +6220,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   // 查看版本历史
   const handleViewVersionHistory = () => {
     if (workflow?.id && !workflow.id.startsWith("new_")) {
-      window.open(`/workflow/versions/${workflow.id}`, "_blank");
+      navigate(`/workflow/versions/${workflow.id}`);
     }
   };
 
