@@ -144,6 +144,7 @@ export const WorkflowDesign = () => {
   const inFlightLoadKeyRef = useRef<string | null>(null);
   const loadSequenceRef = useRef(0);
   const lastAutoSavedSignatureRef = useRef<string>('');
+  const skipNextUrlSyncRef = useRef(false);
 
   const syncWorkflowIdToUrl = useCallback(
     (definitionId: string) => {
@@ -311,6 +312,10 @@ export const WorkflowDesign = () => {
     if (!workflow?.id || workflow.id.startsWith('new_')) {
       return;
     }
+    if (skipNextUrlSyncRef.current) {
+      skipNextUrlSyncRef.current = false;
+      return;
+    }
     syncWorkflowIdToUrl(workflow.id);
   }, [workflow?.id, syncWorkflowIdToUrl]);
 
@@ -358,6 +363,8 @@ export const WorkflowDesign = () => {
         lastAutoSavedSignatureRef.current = currentSignature;
         const nextId = resolveSavedDefinitionId(result);
         if (nextId && wf.id !== nextId) {
+          // 自动保存只更新本地ID，不触发URL变更，避免“URL同步 -> 重新加载 -> 再次自动保存”循环。
+          skipNextUrlSyncRef.current = true;
           setWorkflow((prev) => (prev ? { ...prev, id: nextId } : prev));
           workflowIdRef.current = nextId;
         }
