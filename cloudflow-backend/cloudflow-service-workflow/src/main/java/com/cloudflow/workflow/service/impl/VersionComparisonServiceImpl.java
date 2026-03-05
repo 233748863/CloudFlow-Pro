@@ -1,8 +1,11 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WorkflowVersion;
 import com.cloudflow.workflow.domain.dto.VersionComparisonDTO;
 import com.cloudflow.workflow.exception.WorkflowException;
+import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.service.IVersionComparisonService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,6 +31,9 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
     private WorkflowVersionMapper versionMapper;
 
     @Autowired
+    private WfProcessDefinitionMapper definitionMapper;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     /**
@@ -49,6 +55,10 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
         if (toVersion == null) {
             throw new WorkflowException("目标版本不存在: " + toVersionId);
         }
+        if (!Objects.equals(fromVersion.getWorkflowId(), toVersion.getWorkflowId())) {
+            throw WorkflowException.validationError("仅支持同一流程版本对比");
+        }
+        assertWorkflowTenantAccess(fromVersion.getWorkflowId(), "版本对比");
 
         // 对比定义
         VersionComparisonDTO result = compareDefinitions(
@@ -66,6 +76,17 @@ public class VersionComparisonServiceImpl implements IVersionComparisonService {
             result.getModifiedNodes().size());
 
         return result;
+    }
+
+    private void assertWorkflowTenantAccess(String workflowId, String operation) {
+        WfProcessDefinition definition = definitionMapper.selectById(workflowId);
+        if (definition == null) {
+            throw WorkflowException.processNotFound(workflowId);
+        }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
+            throw WorkflowException.permissionDenied(operation);
+        }
     }
 
     /**
