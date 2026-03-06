@@ -23,6 +23,8 @@ import com.cloudflow.workflow.mapper.system.SysDeptMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
+import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
 import com.cloudflow.workflow.listener.GlobalListenerDispatcher;
@@ -94,6 +96,8 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
     @Autowired
     private com.cloudflow.workflow.service.monitor.IAnomalyDetectionService anomalyDetectionService;
+    @Autowired
+    private WorkflowModelBridge workflowModelBridge;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -188,7 +192,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
         } else {
             // 未知或开始节点，直接继续
-            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
         }
     }
 
@@ -265,28 +269,29 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
      * 处理排他网关（条件分支）
      */
     private void handleConditionGateway(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
-        List<WfNodeConfig> branches = node.getBranches();
+        BranchRouting routing = resolveBranchRouting(node, rootNode);
+        List<WfNodeConfig> branches = routing.branches();
         boolean branchTaken = false;
         if (branches != null && !branches.isEmpty()) {
             for (WfNodeConfig branch : branches) {
                 if (evaluateCondition(branch.getCondition(), variables)) {
-                    runNode(instance, branch, variables, depth + 1, rootNode);
+                    WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch);
+                    runNode(instance, branchEntry, variables, depth + 1, rootNode);
                     branchTaken = true;
                     return;
                 }
             }
         }
         if (!branchTaken) {
-            // P1-9: 排他网关无分支匹配时记录警告日志，便于运维排查
+            // P1-9: 排他网关无分支匹配时记录告警日志，便于排查配置问题。
             if (branches != null && !branches.isEmpty()) {
                 List<String> conditions = branches.stream()
                     .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
                     .collect(Collectors.toList());
-                log.warn("[handleConditionGateway] 排他网关 '{}' (id={}) 的所有分支条件均不满足，走默认路径(next)。" +
-                         " instanceId={}, 分支条件={}, 当前变量={}",
+                log.warn("[handleConditionGateway] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认路径(next)。 instanceId={}, 分支条件={}, 当前变量={}",
                     node.getTitle(), node.getId(), instance.getInstanceId(), conditions, variables);
             }
-            runNode(instance, node.getNext(), variables, depth + 1, rootNode);
+            runNode(instance, routing.defaultNext(), variables, depth + 1, rootNode);
         }
     }
 
@@ -300,26 +305,110 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
      * 因此这里对 CONDITION 类型的分支头节点做特殊处理：跳过条件评估，直接执行其 next 链。
      */
     private void handleParallelGateway(WfNodeConfig node, WfProcessInstance instance, Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
-        List<WfNodeConfig> branches = node.getBranches();
+        BranchRouting routing = resolveBranchRouting(node, rootNode);
+        List<WfNodeConfig> branches = routing.branches();
         if (branches != null) {
             for (WfNodeConfig branch : branches) {
-                if ("CONDITION".equals(branch.getType())) {
-                    // 并行网关中的 CONDITION 节点仅作为分支标签，不评估条件
-                    // 直接执行该分支的 next 链（分支内的实际业务节点）
-                    if (branch.getNext() != null) {
-                        runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
-                    }
-                    // 如果 CONDITION 分支自身也有嵌套 branches（理论上不应该出现在并行网关中），也执行
-                    if (branch.getBranches() != null && !branch.getBranches().isEmpty()) {
-                        for (WfNodeConfig subBranch : branch.getBranches()) {
-                            runNode(instance, subBranch, variables, depth + 1, rootNode);
-                        }
-                    }
-                } else {
-                    // 非 CONDITION 类型的分支节点，正常执行
-                    runNode(instance, branch, variables, depth + 1, rootNode);
-                }
+                WfNodeConfig branchEntry = resolveParallelBranchEntry(branch);
+                runNode(instance, branchEntry, variables, depth + 1, rootNode);
             }
+        }
+    }
+
+    private WorkflowRuntimeGraph resolveRuntimeGraph(WfNodeConfig rootNode) {
+        return workflowModelBridge.resolveRuntimeGraph(rootNode);
+    }
+
+    /**
+     * 统一解析节点分支与默认后继：
+     * 1. 优先按运行时图索引（nodes+edges）；
+     * 2. 无图索引时回退到树字段（next/branches）。
+     */
+    private BranchRouting resolveBranchRouting(WfNodeConfig currentNode, WfNodeConfig rootNode) {
+        if (currentNode == null) {
+            return BranchRouting.empty();
+        }
+
+        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(rootNode);
+        if (runtimeGraph == null || !StringUtils.hasText(currentNode.getId())) {
+            List<WfNodeConfig> branches = currentNode.getBranches() != null ? currentNode.getBranches() : List.of();
+            return new BranchRouting(branches, currentNode.getNext());
+        }
+
+        List<WorkflowRuntimeGraph.EdgeLink> outgoingEdges = runtimeGraph.getOutgoingEdges(currentNode.getId());
+        if (outgoingEdges == null || outgoingEdges.isEmpty()) {
+            return BranchRouting.empty();
+        }
+
+        if (outgoingEdges.size() == 1) {
+            WorkflowRuntimeGraph.EdgeLink edge = outgoingEdges.get(0);
+            WfNodeConfig nextNode = runtimeGraph.getNode(edge.getTargetId());
+            applyEdgeCondition(nextNode, edge.getCondition());
+            return new BranchRouting(List.of(), nextNode);
+        }
+
+        WorkflowRuntimeGraph.EdgeLink defaultEdge = null;
+        for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
+            if (edge.isDefault()) {
+                defaultEdge = edge;
+                break;
+            }
+        }
+
+        List<WfNodeConfig> branchNodes = new ArrayList<>();
+        WfNodeConfig defaultNext = null;
+        for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
+            WfNodeConfig targetNode = runtimeGraph.getNode(edge.getTargetId());
+            if (targetNode == null) {
+                continue;
+            }
+            applyEdgeCondition(targetNode, edge.getCondition());
+            if (defaultEdge != null && edge == defaultEdge) {
+                defaultNext = targetNode;
+            } else {
+                branchNodes.add(targetNode);
+            }
+        }
+
+        if (defaultEdge == null) {
+            // 无默认边时，全部出边都视为分支。
+            return new BranchRouting(branchNodes, null);
+        }
+        return new BranchRouting(branchNodes, defaultNext);
+    }
+
+    private void applyEdgeCondition(WfNodeConfig targetNode, String edgeCondition) {
+        if (targetNode == null) {
+            return;
+        }
+        if (!StringUtils.hasText(targetNode.getCondition()) && StringUtils.hasText(edgeCondition)) {
+            targetNode.setCondition(edgeCondition);
+        }
+    }
+
+    private WfNodeConfig resolveParallelBranchEntry(WfNodeConfig branch) {
+        if (branch == null) {
+            return null;
+        }
+        if ("CONDITION".equals(branch.getType()) && branch.getNext() != null) {
+            return branch.getNext();
+        }
+        return branch;
+    }
+
+    private WfNodeConfig resolveExclusiveBranchEntry(WfNodeConfig branch) {
+        if (branch == null) {
+            return null;
+        }
+        if ("CONDITION".equals(branch.getType()) && branch.getNext() != null) {
+            return branch.getNext();
+        }
+        return branch;
+    }
+
+    private record BranchRouting(List<WfNodeConfig> branches, WfNodeConfig defaultNext) {
+        private static BranchRouting empty() {
+            return new BranchRouting(List.of(), null);
         }
     }
 
@@ -328,11 +417,18 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Override
     public void advanceAfterNode(WfProcessInstance instance, WfNodeConfig currentNode, String currentNodeKey,
                                   Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
-        if (currentNode != null && currentNode.getBranches() != null && !currentNode.getBranches().isEmpty()) {
+        if (currentNode == null) {
+            completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+            return;
+        }
+
+        BranchRouting routing = resolveBranchRouting(currentNode, rootNode);
+        List<WfNodeConfig> branches = routing.branches();
+
+        if (branches != null && !branches.isEmpty()) {
             String strategy = StringUtils.hasText(currentNode.getBranchStrategy())
                 ? currentNode.getBranchStrategy().trim().toUpperCase(Locale.ROOT)
                 : "EXCLUSIVE";
-            List<WfNodeConfig> branches = currentNode.getBranches();
 
             if (!"EXCLUSIVE".equals(strategy) && !"PARALLEL".equals(strategy) && !"RACE".equals(strategy)) {
                 throw WorkflowException.validationError(String.format(
@@ -347,67 +443,43 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                     currentNode.getTitle(), currentNode.getId(), currentNode.getType(), strategy));
             }
 
-            if ("PARALLEL".equals(strategy)) {
-                // 与 handleParallelGateway 保持一致：CONDITION 类型分支头节点仅作标签，跳过条件评估
+            if ("PARALLEL".equals(strategy) || "RACE".equals(strategy)) {
                 for (WfNodeConfig branch : branches) {
-                    if ("CONDITION".equals(branch.getType())) {
-                        if (branch.getNext() != null) {
-                            runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
-                        }
-                    } else {
-                        runNode(instance, branch, variables, depth + 1, rootNode);
-                    }
+                    WfNodeConfig branchEntry = resolveParallelBranchEntry(branch);
+                    runNode(instance, branchEntry, variables, depth + 1, rootNode);
                 }
                 return;
-            } else if ("RACE".equals(strategy)) {
-                // P2-8: RACE（竞争模式）：所有分支并行启动，第一个完成的分支继续流转，其余分支被忽略
-                // 使用 Redis 计数器实现：只有第一个到达汇合点的分支（count==1）才继续执行 next
-                for (WfNodeConfig branch : branches) {
-                    if ("CONDITION".equals(branch.getType())) {
-                        if (branch.getNext() != null) {
-                            runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
-                        }
-                    } else {
-                        runNode(instance, branch, variables, depth + 1, rootNode);
-                    }
+            }
+
+            // EXCLUSIVE
+            boolean exclusiveBranchTaken = false;
+            for (WfNodeConfig branch : branches) {
+                if (evaluateCondition(branch.getCondition(), variables)) {
+                    exclusiveBranchTaken = true;
+                    WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch);
+                    runNode(instance, branchEntry, variables, depth + 1, rootNode);
+                    return;
                 }
-                // 注意：RACE 模式下，分支完成后的汇合逻辑由 runNode 中的并行汇聚检查处理
-                // 这里只负责启动所有分支，汇合时只有第一个到达的分支会继续
-                return;
-            } else {
-                // EXCLUSIVE 或默认策略
-                boolean exclusiveBranchTaken = false;
-                for (WfNodeConfig branch : branches) {
-                    if (evaluateCondition(branch.getCondition(), variables)) {
-                        exclusiveBranchTaken = true;
-                        if (branch.getNext() != null) {
-                            runNode(instance, branch.getNext(), variables, depth + 1, rootNode);
-                        }
-                        return;
-                    }
-                }
-                // P1-9: 排他网关无分支匹配时记录警告日志
-                if (!exclusiveBranchTaken) {
-                    List<String> conditions = branches.stream()
-                        .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
-                        .collect(Collectors.toList());
-                    log.warn("[advanceAfterNode] 排他网关 '{}' (id={}) 的所有分支条件均不满足，将走默认路径(next)。" +
-                             " instanceId={}, 分支条件={}, 当前变量={}",
-                        currentNode.getTitle(), currentNode.getId(), instance.getInstanceId(), conditions, variables);
-                }
+            }
+
+            if (!exclusiveBranchTaken) {
+                List<String> conditions = branches.stream()
+                    .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
+                    .collect(Collectors.toList());
+                log.warn("[advanceAfterNode] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认路径(next)。 instanceId={}, 分支条件={}, 当前变量={}",
+                    currentNode.getTitle(), currentNode.getId(), instance.getInstanceId(), conditions, variables);
             }
         }
 
-        // 没有分支或分支都不匹配，走 next
-        if (currentNode != null && currentNode.getNext() != null) {
-            runNode(instance, currentNode.getNext(), variables, depth + 1, rootNode);
+        WfNodeConfig nextNode = routing.defaultNext();
+        if (nextNode == null) {
+            nextNode = findNextNode(rootNode, currentNodeKey);
+        }
+
+        if (nextNode != null) {
+            runNode(instance, nextNode, variables, depth + 1, rootNode);
         } else {
-            WfNodeConfig nextNode = findNextNode(rootNode, currentNodeKey);
-            if (nextNode != null) {
-                runNode(instance, nextNode, variables, depth + 1, rootNode);
-            } else {
-                completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
-            }
+            completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
         }
     }
 
@@ -458,24 +530,40 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
     @Override
     public WfNodeConfig findNode(WfNodeConfig root, String nodeId) {
-        if (root == null) return null;
-        if (nodeId.equals(root.getId())) return root;
+        if (root == null || !StringUtils.hasText(nodeId)) {
+            return null;
+        }
 
-        WfNodeConfig found = findNode(root.getNext(), nodeId);
-        if (found != null) return found;
-
-        if (root.getBranches() != null) {
-            for (WfNodeConfig branch : root.getBranches()) {
-                found = findNode(branch, nodeId);
-                if (found != null) return found;
+        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
+        if (runtimeGraph != null) {
+            WfNodeConfig graphNode = runtimeGraph.getNode(nodeId);
+            if (graphNode != null) {
+                return graphNode;
             }
         }
-        return null;
+
+        return findNodeByTree(root, nodeId);
     }
 
     @Override
     public WfNodeConfig findNextNode(WfNodeConfig root, String currentNodeId) {
-        java.util.LinkedList<WfNodeConfig> path = new java.util.LinkedList<>();
+        if (root == null || !StringUtils.hasText(currentNodeId)) {
+            return null;
+        }
+
+        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
+        if (runtimeGraph != null) {
+            WorkflowRuntimeGraph.EdgeLink edge = runtimeGraph.findDefaultOrFirstOutgoingEdge(currentNodeId);
+            if (edge != null) {
+                WfNodeConfig nextNode = runtimeGraph.getNode(edge.getTargetId());
+                applyEdgeCondition(nextNode, edge.getCondition());
+                if (nextNode != null) {
+                    return nextNode;
+                }
+            }
+        }
+
+        LinkedList<WfNodeConfig> path = new LinkedList<>();
         if (findPath(root, currentNodeId, path)) {
             while (!path.isEmpty()) {
                 WfNodeConfig node = path.removeLast();
@@ -487,14 +575,46 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         return null;
     }
 
-    private boolean findPath(WfNodeConfig current, String targetId, java.util.LinkedList<WfNodeConfig> path) {
-        if (current == null) return false;
+    private WfNodeConfig findNodeByTree(WfNodeConfig root, String nodeId) {
+        if (root == null) {
+            return null;
+        }
+        if (nodeId.equals(root.getId())) {
+            return root;
+        }
+
+        WfNodeConfig found = findNodeByTree(root.getNext(), nodeId);
+        if (found != null) {
+            return found;
+        }
+
+        if (root.getBranches() != null) {
+            for (WfNodeConfig branch : root.getBranches()) {
+                found = findNodeByTree(branch, nodeId);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean findPath(WfNodeConfig current, String targetId, LinkedList<WfNodeConfig> path) {
+        if (current == null) {
+            return false;
+        }
         path.add(current);
-        if (targetId.equals(current.getId())) return true;
-        if (findPath(current.getNext(), targetId, path)) return true;
+        if (targetId.equals(current.getId())) {
+            return true;
+        }
+        if (findPath(current.getNext(), targetId, path)) {
+            return true;
+        }
         if (current.getBranches() != null) {
             for (WfNodeConfig branch : current.getBranches()) {
-                if (findPath(branch, targetId, path)) return true;
+                if (findPath(branch, targetId, path)) {
+                    return true;
+                }
             }
         }
         path.removeLast();
@@ -502,16 +622,37 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     }
 
     private WfNodeConfig findParentGateway(WfNodeConfig root, String targetNodeId) {
-        if (root == null) return null;
+        if (root == null || !StringUtils.hasText(targetNodeId)) {
+            return null;
+        }
+
+        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
+        if (runtimeGraph != null) {
+            for (String nodeId : runtimeGraph.getNodeIds()) {
+                WfNodeConfig candidate = runtimeGraph.getNode(nodeId);
+                if (candidate == null || !"PARALLEL".equals(candidate.getType())) {
+                    continue;
+                }
+                WorkflowRuntimeGraph.EdgeLink defaultEdge = runtimeGraph.findDefaultOrFirstOutgoingEdge(nodeId);
+                if (defaultEdge != null && targetNodeId.equals(defaultEdge.getTargetId())) {
+                    return candidate;
+                }
+            }
+        }
+
         if ("PARALLEL".equals(root.getType()) && root.getNext() != null && targetNodeId.equals(root.getNext().getId())) {
             return root;
         }
         WfNodeConfig found = findParentGateway(root.getNext(), targetNodeId);
-        if (found != null) return found;
+        if (found != null) {
+            return found;
+        }
         if (root.getBranches() != null) {
             for (WfNodeConfig branch : root.getBranches()) {
                 found = findParentGateway(branch, targetNodeId);
-                if (found != null) return found;
+                if (found != null) {
+                    return found;
+                }
             }
         }
         return null;
@@ -1132,3 +1273,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
     }
 }
+
+
+
+
