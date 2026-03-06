@@ -54,20 +54,6 @@ public class WorkflowModelBridge {
     }
 
     /**
-     * 将 modelJson 归一化为运行时树 JSON（用于复用既有树校验器）。
-     */
-    public String toRuntimeTreeJson(String modelJson) {
-        try {
-            WfNodeConfig root = parseRuntimeRoot(modelJson);
-            return objectMapper.writeValueAsString(root);
-        } catch (WorkflowException e) {
-            throw e;
-        } catch (Exception e) {
-            throw WorkflowException.validationError("流程模型转换失败: " + e.getMessage());
-        }
-    }
-
-    /**
      * 校验图模型基础结构是否合法。
      */
     public boolean validateGraphModel(String modelJson) {
