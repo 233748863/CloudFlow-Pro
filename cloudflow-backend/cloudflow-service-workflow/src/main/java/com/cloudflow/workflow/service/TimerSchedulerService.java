@@ -186,7 +186,7 @@ public class TimerSchedulerService {
             // 查找下一个节点
             WfNodeConfig nextNode = null;
             if (StringUtils.hasText(nextNodeKey)) {
-                nextNode = findNode(root, nextNodeKey);
+                nextNode = nodeExecutionService.findNode(root, nextNodeKey);
             }
             
             if (nextNode == null) {
@@ -221,25 +221,6 @@ public class TimerSchedulerService {
         } catch (Exception e) {
             log.warn("[cleanup] 清理定时任务数据失败, timerKey={}: {}", timerKey, e.getMessage());
         }
-    }
-
-    /**
-     * 递归查找节点
-     */
-    private WfNodeConfig findNode(WfNodeConfig root, String nodeId) {
-        if (root == null) return null;
-        if (nodeId.equals(root.getId())) return root;
-        
-        WfNodeConfig found = findNode(root.getNext(), nodeId);
-        if (found != null) return found;
-        
-        if (root.getBranches() != null) {
-            for (WfNodeConfig branch : root.getBranches()) {
-                found = findNode(branch, nodeId);
-                if (found != null) return found;
-            }
-        }
-        return null;
     }
 
     /**
