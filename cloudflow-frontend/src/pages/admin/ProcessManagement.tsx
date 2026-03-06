@@ -176,7 +176,13 @@ export const ProcessManagement = () => {
       return null;
     }
 
-    return convertGraphToWorkflowTree(graph);
+    try {
+      return convertGraphToWorkflowTree(graph);
+    } catch (error) {
+      onError();
+      console.warn(`[ProcessManagement] modelJson 图结构校验失败，流程: ${workflowName}`, error);
+      return null;
+    }
   };
 
   /**

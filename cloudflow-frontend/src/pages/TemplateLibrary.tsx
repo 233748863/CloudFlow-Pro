@@ -53,7 +53,7 @@ interface PreviewNode {
 interface PreviewEdge {
   source: string;
   target: string;
-  name?: string;
+  condition?: string;
 }
 
 const COMMON_TAGS = ['审批', '请假', '报销', '采购', '合同', '财务', '人事'];
@@ -92,23 +92,26 @@ const parseTemplateDefinition = (definition: unknown): { nodes: PreviewNode[]; e
   const nodes = graph.nodes.map((item, index) => {
     const source = (item || {}) as Record<string, unknown>;
     const id = String(source.id ?? ('node-' + (index + 1)));
-    const name = String(source.title ?? source.label ?? source.name ?? ('节点 ' + (index + 1)));
+    const name = String(source.title ?? ('节点 ' + (index + 1)));
     const type = String(source.type ?? 'task');
     return { id, name, type };
   });
 
   const edges = graph.edges
     .map((item) => {
-      const source = (item || {}) as Record<string, unknown>;
-      const from = source.source;
-      const to = source.target;
-      if (!from || !to) {
+      const source = item?.source;
+      const target = item?.target;
+      if (!source || !target) {
         return null;
       }
+      const condition =
+        typeof item.condition === 'string' && item.condition.trim().length > 0
+          ? item.condition.trim()
+          : undefined;
       return {
-        source: String(from),
-        target: String(to),
-        name: source.name ? String(source.name) : source.label ? String(source.label) : undefined
+        source: String(source),
+        target: String(target),
+        condition
       } as PreviewEdge;
     })
     .filter((item): item is PreviewEdge => Boolean(item));
@@ -532,7 +535,7 @@ export const TemplateLibrary: React.FC = () => {
                       {previewGraph.edges.map((edge, index) => (
                         <div key={`${edge.source}-${edge.target}-${index}`} className="text-sm bg-white border rounded px-2 py-1">
                           {edge.source} → {edge.target}
-                          {edge.name ? <span className="text-gray-400"> ({edge.name})</span> : null}
+                          {edge.condition ? <span className="text-gray-400"> ({edge.condition})</span> : null}
                         </div>
                       ))}
                     </div>

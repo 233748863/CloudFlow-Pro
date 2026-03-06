@@ -60,8 +60,6 @@ export const createDefaultWorkflowGraph = (): WorkflowGraphDefinition => ({
   edges: [{ id: 'start->end', source: 'start', target: 'end' }],
 });
 
-const defaultTreeNode = (): WorkflowNode => ({ type: NodeType.START, title: '开始', id: 'start' });
-
 const isDefaultEdge = (edge: WorkflowGraphEdge): boolean => {
   const raw: unknown = edge.isDefault;
   if (typeof raw === 'boolean') return raw;
@@ -85,43 +83,77 @@ const extractEdgeCondition = (edge: WorkflowGraphEdge): string | undefined => {
  */
 export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): WorkflowNode => {
   if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) {
-    return defaultTreeNode();
+    throw new Error('流程图节点不能为空');
   }
 
   const nodeMap = new Map<string, WorkflowGraphNode>();
   graph.nodes.forEach((node) => {
-    if (node?.id) nodeMap.set(node.id, node);
+    if (!node?.id) {
+      throw new Error('流程图存在缺少 id 的节点');
+    }
+    if (nodeMap.has(node.id)) {
+      throw new Error(`流程图存在重复节点ID: ${node.id}`);
+    }
+    nodeMap.set(node.id, node);
   });
 
-  if (nodeMap.size === 0) {
-    return defaultTreeNode();
-  }
-
   const outgoing = new Map<string, WorkflowGraphEdge[]>();
-  const incoming = new Map<string, number>();
-  nodeMap.forEach((_, id) => incoming.set(id, 0));
+  const incomingCount = new Map<string, number>();
+  nodeMap.forEach((_, id) => incomingCount.set(id, 0));
 
   (Array.isArray(graph.edges) ? graph.edges : []).forEach((edge) => {
     const source = edge?.source;
     const target = edge?.target;
-    if (!source || !target) return;
-    if (!nodeMap.has(source) || !nodeMap.has(target)) return;
+    if (!source || !target) {
+      throw new Error('流程图存在 source/target 缺失的连线');
+    }
+    if (!nodeMap.has(source) || !nodeMap.has(target)) {
+      throw new Error(`流程图连线引用了不存在的节点: ${source} -> ${target}`);
+    }
 
     const edges = outgoing.get(source) ?? [];
     edges.push(edge);
     outgoing.set(source, edges);
-    incoming.set(target, (incoming.get(target) ?? 0) + 1);
+    incomingCount.set(target, (incomingCount.get(target) ?? 0) + 1);
   });
 
-  const startNode =
-    Array.from(nodeMap.values()).find(
-      (node) => String(node.type || '').toUpperCase() === NodeType.START,
-    ) ??
-    Array.from(nodeMap.values()).find((node) => (incoming.get(node.id) ?? 0) === 0) ??
-    Array.from(nodeMap.values())[0];
+  const startNodes = Array.from(nodeMap.values()).filter(
+    (node) => String(node.type || '').toUpperCase() === NodeType.START,
+  );
+  if (startNodes.length !== 1) {
+    throw new Error('流程图必须且只能包含一个 START 节点');
+  }
+  const startNode = startNodes[0];
+
+  incomingCount.forEach((count, nodeId) => {
+    if (nodeId !== startNode.id && count > 1) {
+      throw new Error(`暂不支持多入边汇聚节点，请先拆分节点: ${nodeId}`);
+    }
+  });
+
+  const reachable = new Set<string>();
+  const collectReachable = (nodeId: string, path: Set<string>) => {
+    if (path.has(nodeId)) {
+      throw new Error(`流程图存在循环，节点ID: ${nodeId}`);
+    }
+    if (reachable.has(nodeId)) {
+      return;
+    }
+    reachable.add(nodeId);
+    const nextPath = new Set(path);
+    nextPath.add(nodeId);
+    const nextEdges = outgoing.get(nodeId) ?? [];
+    nextEdges.forEach((edge) => collectReachable(edge.target, nextPath));
+  };
+  collectReachable(startNode.id, new Set());
+  if (reachable.size !== nodeMap.size) {
+    throw new Error('流程图存在不可达节点，请删除孤立节点后重试');
+  }
 
   const build = (nodeId: string, path: Set<string>): WorkflowNode | undefined => {
-    if (path.has(nodeId)) return undefined;
+    if (path.has(nodeId)) {
+      throw new Error(`流程图存在循环，节点ID: ${nodeId}`);
+    }
     const source = nodeMap.get(nodeId);
     if (!source) return undefined;
 
@@ -149,7 +181,11 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
       const next = buildFromEdge(nextEdges[0]);
       if (next) node.next = next;
     } else if (nextEdges.length > 1) {
-      const defaultEdge = nextEdges.find((edge) => isDefaultEdge(edge));
+      const defaultEdges = nextEdges.filter((edge) => isDefaultEdge(edge));
+      if (defaultEdges.length > 1) {
+        throw new Error(`节点存在多条默认连线: ${node.id}`);
+      }
+      const defaultEdge = defaultEdges[0];
       const branchEdges = nextEdges.filter((edge) => edge !== defaultEdge);
       const branches = branchEdges
         .map((edge) => buildFromEdge(edge))
@@ -166,7 +202,11 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     return node;
   };
 
-  return build(startNode.id, new Set()) ?? defaultTreeNode();
+  const root = build(startNode.id, new Set());
+  if (!root) {
+    throw new Error('流程图解析失败，未生成可执行根节点');
+  }
+  return root;
 };
 
 /**
