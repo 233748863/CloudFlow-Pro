@@ -86,12 +86,7 @@ export const FormDesign = () => {
       };
 
       const result: any = await saveFormDefinition(payload as any);
-
-      // 兼容后端返回 string(formId) 和 object({ id/formId }) 两种格式
-      const savedId =
-        typeof result === 'string'
-          ? result
-          : (result as any)?.id || (result as any)?.formId;
+      const savedId = (result as any)?.id || (result as any)?.formId;
 
       if (savedId) {
         const updatedForm = { ...form, id: savedId };
