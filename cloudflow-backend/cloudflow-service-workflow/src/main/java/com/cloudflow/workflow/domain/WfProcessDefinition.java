@@ -290,12 +290,4 @@ public class WfProcessDefinition implements Serializable {
         return processName;
     }
 
-    /** Alias for modelJson - used by DeployEnhancementServiceImpl */
-    public String getModelContent() {
-        return modelJson;
-    }
-
-    public void setModelContent(String modelContent) {
-        this.modelJson = modelContent;
-    }
 }

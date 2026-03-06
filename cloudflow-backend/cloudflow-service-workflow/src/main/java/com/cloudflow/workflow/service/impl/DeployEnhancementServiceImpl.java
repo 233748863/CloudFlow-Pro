@@ -324,7 +324,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             return R.fail("流程定义不存在");
         }
         assertTenantAccess(definition.getTenantId(), "执行版本回滚");
-        definition.setModelContent(snapshot.getSnapshotData());
+        definition.setModelJson(snapshot.getSnapshotData());
         definition.setVersion(targetVersion);
         processDefinitionMapper.updateById(definition);
 
@@ -649,7 +649,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
                 snapshot.setProcessDefId(processDefId);
                 snapshot.setVersion(record.getVersion());
                 snapshot.setDeployId(record.getId());
-                snapshot.setSnapshotData(definition.getModelContent());
+                snapshot.setSnapshotData(definition.getModelJson());
                 snapshot.setCreatedBy(approval.getSubmitterId());
                 snapshot.setCreatedTime(LocalDateTime.now());
                 versionSnapshotMapper.insert(snapshot);
