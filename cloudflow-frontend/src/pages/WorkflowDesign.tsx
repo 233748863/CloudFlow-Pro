@@ -31,12 +31,12 @@ const createDefaultWorkflow = (): WorkflowDefinition => ({
 
 /**
  * 解析流程节点定义。
- * 支持对象与 JSON 字符串，解析失败时返回默认开始节点。
+ * 仅接受合法的 nodes+edges 图模型，异常时直接抛错。
  */
-const parseWorkflowNodes = (raw: unknown) => {
+const parseWorkflowNodes = (raw: unknown, workflowName: string) => {
   const graph = parseWorkflowGraphDefinition(raw);
   if (!graph) {
-    return { type: NodeType.START, title: '开始', id: 'start' };
+    throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
   }
   return convertGraphToWorkflowTree(graph);
 };
@@ -53,15 +53,10 @@ const resolveDefinitionId = (w: any): string => {
 };
 
 /**
- * 兼容保存接口返回格式：
- * - 新版：{ id: string }
- * - 旧版：string
+ * 解析保存接口返回的 definitionId。
+ * nodes+edges 重构后仅接受对象结构：{ id: string }。
  */
 const resolveSavedDefinitionId = (result: unknown): string | undefined => {
-  if (typeof result === 'string') {
-    const trimmed = result.trim();
-    return trimmed ? trimmed : undefined;
-  }
   if (result && typeof result === 'object') {
     const rawId = (result as { id?: unknown }).id;
     if (typeof rawId === 'string') {
@@ -78,7 +73,7 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   key: w?.processKey || w?.key || 'new_process',
   version: Number(w?.version || 1),
   formId: w?.formId,
-  nodes: parseWorkflowNodes(w?.modelJson),
+  nodes: parseWorkflowNodes(w?.modelJson, w?.processName || w?.name || '未命名流程'),
   description: w?.description,
   category: w?.category,
   tags: typeof w?.tags === 'string' ? w.tags : w?.tags ? JSON.stringify(w.tags) : undefined,

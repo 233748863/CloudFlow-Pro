@@ -16,7 +16,7 @@ import {
   FileDown,
   Upload
 } from 'lucide-react';
-import { WorkflowDefinition as BaseWorkflowDefinition, NodeType } from '../../types';
+import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';
 import { 
   getProcessDefinitions, 
   saveProcessDefinition, 
@@ -111,13 +111,6 @@ export const ProcessManagement = () => {
     '紧急', '重要', '常用'
   ];
 
-  // 默认流程结构（模型解析失败时兜底）
-  const buildDefaultNodes = (): BaseWorkflowDefinition['nodes'] => ({
-    type: NodeType.START,
-    title: '开始',
-    id: 'start'
-  });
-
   const parseTagsSafely = (
     rawTags: unknown,
     workflowName: string,
@@ -169,30 +162,28 @@ export const ProcessManagement = () => {
     rawModelJson: unknown,
     workflowName: string,
     onError: () => void
-  ): BaseWorkflowDefinition['nodes'] => {
+  ): BaseWorkflowDefinition['nodes'] | null => {
     if (!rawModelJson) {
-      return buildDefaultNodes();
+      onError();
+      console.warn(`[ProcessManagement] modelJson 为空，流程: ${workflowName}`);
+      return null;
     }
 
     const graph = parseWorkflowGraphDefinition(rawModelJson);
     if (!graph) {
       onError();
       console.warn(`[ProcessManagement] modelJson 不是合法的 nodes+edges 图模型，流程: ${workflowName}`);
-      return buildDefaultNodes();
+      return null;
     }
 
     return convertGraphToWorkflowTree(graph);
   };
 
   /**
-   * 兼容保存流程接口返回：
-   * 1) 对象结构：{ id: string }
-   * 2) 旧版结构：string
+   * 解析保存接口返回的 definitionId。
+   * nodes+edges 重构后仅接受对象结构：{ id: string }。
    */
   const resolveSavedDefinitionId = (result: unknown): string => {
-    if (typeof result === 'string') {
-      return result.trim();
-    }
     if (result && typeof result === 'object') {
       const rawId = (result as { id?: unknown }).id;
       if (typeof rawId === 'string') {
@@ -235,6 +226,12 @@ export const ProcessManagement = () => {
                 : Array.isArray(w.tags)
                   ? JSON.stringify(w.tags)
                   : undefined;
+            const parsedNodes = parseNodesSafely(w.modelJson, workflowName, () => {
+              invalidModelCount += 1;
+            });
+            if (!parsedNodes) {
+              return null;
+            }
             return {
               id: definitionId,
               name: workflowName,
@@ -256,9 +253,7 @@ export const ProcessManagement = () => {
               }),
               tagsRaw,
               description: w.description || '',
-              nodes: parseNodesSafely(w.modelJson, workflowName, () => {
-                invalidModelCount += 1;
-              }),
+              nodes: parsedNodes,
               workflowCreatorId: String(
                 w.createBy ?? w.createdBy ?? w.creatorId ?? w.creator ?? ''
               )
@@ -276,7 +271,7 @@ export const ProcessManagement = () => {
           toast.warning(`有 ${invalidTagsCount} 条流程标签格式异常，已按空标签处理`);
         }
         if (invalidModelCount > 0) {
-          toast.warning(`有 ${invalidModelCount} 条流程模型异常，已回退为默认开始节点`);
+          toast.warning(`有 ${invalidModelCount} 条流程模型异常，已跳过加载`);
         }
       }
     } catch (error) {
