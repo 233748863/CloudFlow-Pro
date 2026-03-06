@@ -14,7 +14,6 @@ import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.ITemplateService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -255,59 +254,11 @@ public class TemplateServiceImpl implements ITemplateService {
     @Override
     public boolean validateTemplateStructure(String definition) {
         try {
-            if (workflowModelBridge.isGraphModel(definition)) {
-                return workflowModelBridge.validateGraphModel(definition);
-            }
-            JsonNode root = objectMapper.readTree(definition);
-            if (!isDesignerTreeNode(root)) {
-                return false;
-            }
-            return containsNodeTypeInTree(root, "start") && containsNodeTypeInTree(root, "end");
+            return workflowModelBridge.validateGraphModel(definition);
         } catch (Exception e) {
             log.error("验证模板结构失败", e);
             return false;
         }
-    }
-
-    private boolean containsNodeTypeInTree(JsonNode node, String expectedType) {
-        if (!isDesignerTreeNode(node)) {
-            return false;
-        }
-        if (isExpectedType(node, expectedType)) {
-            return true;
-        }
-
-        JsonNode nextNode = node.get("next");
-        if (containsNodeTypeInTree(nextNode, expectedType)) {
-            return true;
-        }
-
-        JsonNode branches = node.get("branches");
-        if (branches != null && branches.isArray()) {
-            for (JsonNode branch : branches) {
-                if (containsNodeTypeInTree(branch, expectedType)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean isExpectedType(JsonNode node, String expectedType) {
-        if (node == null || !node.isObject()) {
-            return false;
-        }
-        JsonNode typeNode = node.get("type");
-        return typeNode != null
-                && !typeNode.isNull()
-                && expectedType.equalsIgnoreCase(typeNode.asText());
-    }
-
-    private boolean isDesignerTreeNode(JsonNode node) {
-        return node != null
-                && node.isObject()
-                && node.hasNonNull("id")
-                && node.hasNonNull("type");
     }
 
     /**

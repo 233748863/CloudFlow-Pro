@@ -26,7 +26,6 @@ import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
 import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
-import com.cloudflow.workflow.validator.JsonSchemaValidator;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,8 +67,6 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     @Autowired
     private WorkflowAuditService auditService;
     @Autowired
-    private JsonSchemaValidator jsonSchemaValidator;
-    @Autowired
     private WorkflowSecurityUtils securityUtils;
     @Autowired
     private IVersionService versionService;
@@ -98,15 +95,11 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         // JSON 结构校验 + P0-5: 递归 XSS 过滤 modelJson 内所有节点文本字段
         if (StringUtils.hasText(definition.getModelJson())) {
-            if (workflowModelBridge.isGraphModel(definition.getModelJson())) {
-                if (!workflowModelBridge.validateGraphModel(definition.getModelJson())) {
-                    throw WorkflowException.validationError("流程定义图模型校验失败");
-                }
-            } else {
-                jsonSchemaValidator.validateProcessDefinitionJson(definition.getModelJson());
+            if (!workflowModelBridge.validateGraphModel(definition.getModelJson())) {
+                throw WorkflowException.validationError("流程定义图模型校验失败");
             }
             validateModelIntegrity(definition.getModelJson());
-            // P0-5: 对 modelJson 内部节点的 title/condition/props 等字段做 XSS 过滤
+            // P0-5: 对 modelJson 内部节点字段做 XSS 过滤
             definition.setModelJson(sanitizeModelJson(definition.getModelJson()));
         }
 
@@ -198,13 +191,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         validateBoundFormTenant(def.getFormId(), def.getTenantId(), "发布");
 
-        // 发布前完整性检查
-        if (workflowModelBridge.isGraphModel(def.getModelJson())) {
-            if (!workflowModelBridge.validateGraphModel(def.getModelJson())) {
-                throw WorkflowException.validationError("流程定义图模型校验失败");
-            }
-        } else {
-            jsonSchemaValidator.validateProcessDefinitionJson(def.getModelJson());
+        if (!workflowModelBridge.validateGraphModel(def.getModelJson())) {
+            throw WorkflowException.validationError("流程定义图模型校验失败");
         }
 
         // 更新状态

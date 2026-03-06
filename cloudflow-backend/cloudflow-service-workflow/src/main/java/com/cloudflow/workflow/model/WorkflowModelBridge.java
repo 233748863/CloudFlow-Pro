@@ -34,20 +34,18 @@ public class WorkflowModelBridge {
 
     /**
      * 将 modelJson 解析为运行时节点树。
-     * 支持：
-     * - 图模型：{ nodes: [...], edges: [...] }
-     * - 兼容树模型：{ id, type, next, branches }
+     * 仅支持图模型：{ nodes: [...], edges: [...] }
      */
     public WfNodeConfig parseRuntimeRoot(String modelJson) {
         if (!StringUtils.hasText(modelJson)) {
-            throw WorkflowException.validationError("流程模型为空");
+            throw WorkflowException.validationError("流程模型不能为空");
         }
         try {
             JsonNode root = objectMapper.readTree(modelJson);
-            if (isGraphModel(root)) {
-                return convertGraphToTree(root);
+            if (!isGraphModel(root)) {
+                throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
             }
-            return objectMapper.treeToValue(root, WfNodeConfig.class);
+            return convertGraphToTree(root);
         } catch (WorkflowException e) {
             throw e;
         } catch (Exception e) {

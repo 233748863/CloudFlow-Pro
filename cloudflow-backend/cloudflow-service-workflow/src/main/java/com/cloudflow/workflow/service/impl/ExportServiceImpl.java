@@ -283,9 +283,6 @@ public class ExportServiceImpl implements IExportService {
                             }
                         }
                     }
-                } else if (defMap.get("type") != null) {
-                    // 兼容 CloudFlow 树结构模型（root + next + branches）
-                    collectDependenciesFromTree(defMap, nodeTypes, integrations);
                 }
             }
         } catch (Exception e) {
@@ -297,47 +294,5 @@ public class ExportServiceImpl implements IExportService {
         dependencies.setMinCompatibleVersion("1.0.0");
 
         return dependencies;
-    }
-
-    /**
-     * 递归提取树结构流程模型中的节点类型与集成配置。
-     */
-    @SuppressWarnings("unchecked")
-    private void collectDependenciesFromTree(Map<String, Object> node,
-                                             List<String> nodeTypes,
-                                             List<String> integrations) {
-        if (node == null) {
-            return;
-        }
-
-        Object typeObj = node.get("type");
-        if (typeObj != null) {
-            String type = String.valueOf(typeObj);
-            if (!nodeTypes.contains(type)) {
-                nodeTypes.add(type);
-            }
-        }
-
-        Object integrationObj = node.get("integration");
-        if (integrationObj != null) {
-            String integration = String.valueOf(integrationObj);
-            if (!integrations.contains(integration)) {
-                integrations.add(integration);
-            }
-        }
-
-        Object nextObj = node.get("next");
-        if (nextObj instanceof Map) {
-            collectDependenciesFromTree((Map<String, Object>) nextObj, nodeTypes, integrations);
-        }
-
-        Object branchesObj = node.get("branches");
-        if (branchesObj instanceof List) {
-            for (Object branch : (List<?>) branchesObj) {
-                if (branch instanceof Map) {
-                    collectDependenciesFromTree((Map<String, Object>) branch, nodeTypes, integrations);
-                }
-            }
-        }
     }
 }
