@@ -20,6 +20,7 @@ import com.cloudflow.workflow.model.WorkflowModelBridge;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -594,9 +595,74 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         List<Map<String, Object>> edges = new ArrayList<>();
 
         try {
-            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-            int[] position = {0}; // 用于自动布局的Y坐标计数器
-            buildFlowchartNodes(root, nodes, edges, finishedNodeKeys, activeNodeKeys, instance.getStatus(), position, null);
+            JsonNode graphRoot = objectMapper.readTree(def.getModelJson());
+            if (!workflowModelBridge.isGraphModel(graphRoot)) {
+                throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
+            }
+
+            JsonNode modelNodes = graphRoot.path("nodes");
+            JsonNode modelEdges = graphRoot.path("edges");
+            Map<String, String> nodeStatus = new HashMap<>();
+            int index = 0;
+            for (JsonNode node : modelNodes) {
+                String nodeId = jsonText(node, "id");
+                if (!StringUtils.hasText(nodeId)) {
+                    continue;
+                }
+
+                String status = resolveNodeRuntimeStatus(
+                    nodeId,
+                    jsonText(node, "type"),
+                    finishedNodeKeys,
+                    activeNodeKeys,
+                    instance.getStatus()
+                );
+                nodeStatus.put(nodeId, status);
+
+                Map<String, Object> nodeData = new HashMap<>();
+                nodeData.put("id", nodeId);
+                nodeData.put("type", jsonText(node, "type"));
+                nodeData.put("label", firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), "未命名节点"));
+                nodeData.put("status", status);
+                nodeData.put("x", node.hasNonNull("x") ? node.get("x").asInt() : 250);
+                nodeData.put("y", node.hasNonNull("y") ? node.get("y").asInt() : (index * 120 + 60));
+
+                String icon = firstNotBlank(jsonText(node, "icon"), jsonText(node.path("props"), "icon"));
+                if (StringUtils.hasText(icon)) {
+                    nodeData.put("icon", icon);
+                }
+                if (StringUtils.hasText(jsonText(node, "approverType"))) {
+                    nodeData.put("approverType", jsonText(node, "approverType"));
+                }
+                nodes.add(nodeData);
+                index++;
+            }
+
+            for (JsonNode edge : modelEdges) {
+                String source = firstNotBlank(jsonText(edge, "source"), jsonText(edge, "from"));
+                String target = firstNotBlank(jsonText(edge, "target"), jsonText(edge, "to"));
+                if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
+                    continue;
+                }
+                Map<String, Object> edgeData = new HashMap<>();
+                edgeData.put("id", firstNotBlank(jsonText(edge, "id"), source + "->" + target));
+                edgeData.put("source", source);
+                edgeData.put("target", target);
+
+                String targetStatus = nodeStatus.getOrDefault(target, "pending");
+                edgeData.put("status", ("completed".equals(targetStatus) || "active".equals(targetStatus)) ? "active" : "pending");
+
+                String condition = firstNotBlank(
+                    jsonText(edge, "condition"),
+                    jsonText(edge, "expression"),
+                    jsonText(edge, "expr"),
+                    jsonText(edge, "label")
+                );
+                if (StringUtils.hasText(condition)) {
+                    edgeData.put("label", condition);
+                }
+                edges.add(edgeData);
+            }
         } catch (Exception e) {
             log.error("[getFlowchartData] 解析流程模型失败: {}", e.getMessage(), e);
             throw new WorkflowException("PARSE_FAILED", "解析流程模型失败", e);
@@ -610,81 +676,43 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         return result;
     }
 
-    /**
-     * 递归构建流程图节点和连线
-     *
-     * @param node             当前节点配置
-     * @param nodes            节点列表（输出）
-     * @param edges            连线列表（输出）
-     * @param finishedNodeKeys 已完成节点Key集合
-     * @param activeNodeKeys   活动节点Key集合
-     * @param processStatus    流程实例状态
-     * @param position         Y坐标计数器（自动布局）
-     * @param parentId         父节点ID（用于生成连线）
-     */
-    private void buildFlowchartNodes(WfNodeConfig node, List<Map<String, Object>> nodes,
-                                     List<Map<String, Object>> edges, Set<String> finishedNodeKeys,
-                                     Set<String> activeNodeKeys, String processStatus,
-                                     int[] position, String parentId) {
-        if (node == null) return;
-
-        String nodeId = node.getId();
-        String nodeType = node.getType();
-
-        // 确定节点运行时状态
-        String status;
+    private String resolveNodeRuntimeStatus(String nodeId, String nodeType,
+                                            Set<String> finishedNodeKeys,
+                                            Set<String> activeNodeKeys,
+                                            String processStatus) {
         if (finishedNodeKeys.contains(nodeId)) {
-            status = "completed";
-        } else if (activeNodeKeys.contains(nodeId)) {
-            status = "active";
-        } else if ("END".equals(nodeType) && "COMPLETED".equals(processStatus)) {
-            status = "completed";
-        } else if ("START".equals(nodeType)) {
-            status = "completed"; // 开始节点始终已完成
-        } else {
-            status = "pending";
+            return "completed";
         }
+        if (activeNodeKeys.contains(nodeId)) {
+            return "active";
+        }
+        if ("END".equalsIgnoreCase(nodeType) && "COMPLETED".equals(processStatus)) {
+            return "completed";
+        }
+        if ("START".equalsIgnoreCase(nodeType)) {
+            return "completed";
+        }
+        return "pending";
+    }
 
-        // 构建节点数据
-        Map<String, Object> nodeData = new HashMap<>();
-        nodeData.put("id", nodeId);
-        nodeData.put("type", nodeType);
-        nodeData.put("label", node.getTitle());
-        nodeData.put("status", status);
-        nodeData.put("x", 250); // 默认X坐标（居中）
-        nodeData.put("y", position[0] * 120 + 60); // 按顺序纵向排列
-        // icon 存储在 props Map 中
-        if (node.getProps() != null && node.getProps().get("icon") != null) {
-            nodeData.put("icon", node.getProps().get("icon"));
+    private String jsonText(JsonNode node, String field) {
+        if (node == null || node.isNull() || node.isMissingNode() || !node.has(field) || node.get(field).isNull()) {
+            return null;
         }
-        if (node.getApproverType() != null) {
-            nodeData.put("approverType", node.getApproverType());
-        }
-        nodes.add(nodeData);
-        position[0]++;
+        String value = node.get(field).asText();
+        return StringUtils.hasText(value) ? value : null;
+    }
 
-        // 生成从父节点到当前节点的连线
-        if (parentId != null) {
-            Map<String, Object> edge = new HashMap<>();
-            edge.put("id", parentId + "->" + nodeId);
-            edge.put("source", parentId);
-            edge.put("target", nodeId);
-            // 连线状态：如果目标节点已完成或活动，则连线高亮
-            edge.put("status", "completed".equals(status) || "active".equals(status) ? "active" : "pending");
-            edges.add(edge);
+    private String firstNotBlank(String... values) {
+        if (values == null || values.length == 0) {
+            return null;
         }
-
-        // 处理分支（条件网关/并行网关）
-        if (node.getBranches() != null && !node.getBranches().isEmpty()) {
-            for (WfNodeConfig branch : node.getBranches()) {
-                buildFlowchartNodes(branch, nodes, edges, finishedNodeKeys, activeNodeKeys, processStatus, position, nodeId);
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value;
             }
         }
-
-        // 处理下一个节点
-        if (node.getNext() != null) {
-            buildFlowchartNodes(node.getNext(), nodes, edges, finishedNodeKeys, activeNodeKeys, processStatus, position, nodeId);
-        }
+        return null;
     }
 
     // ==================== P1-7: 作废流程 ====================

@@ -8,7 +8,6 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -367,9 +366,65 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         List<Map<String, Object>> edges = new ArrayList<>();
 
         try {
-            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-            int[] position = {0};
-            buildStructureNodes(root, nodes, edges, position, null);
+            JsonNode graphRoot = objectMapper.readTree(def.getModelJson());
+            if (!workflowModelBridge.isGraphModel(graphRoot)) {
+                throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
+            }
+
+            JsonNode modelNodes = graphRoot.path("nodes");
+            JsonNode modelEdges = graphRoot.path("edges");
+            int idx = 0;
+            for (JsonNode node : modelNodes) {
+                String nodeId = jsonText(node, "id");
+                if (!StringUtils.hasText(nodeId)) {
+                    continue;
+                }
+
+                Map<String, Object> nodeData = new HashMap<>();
+                nodeData.put("id", nodeId);
+                nodeData.put("type", jsonText(node, "type"));
+                nodeData.put("label", firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), "未命名节点"));
+                nodeData.put("x", node.hasNonNull("x") ? node.get("x").asInt() : 250);
+                nodeData.put("y", node.hasNonNull("y") ? node.get("y").asInt() : (idx * 120 + 60));
+
+                String icon = firstNotBlank(jsonText(node, "icon"), jsonText(node.path("props"), "icon"));
+                if (StringUtils.hasText(icon)) {
+                    nodeData.put("icon", icon);
+                }
+                if (StringUtils.hasText(jsonText(node, "approverType"))) {
+                    nodeData.put("approverType", jsonText(node, "approverType"));
+                }
+                if (StringUtils.hasText(jsonText(node, "approverValue"))) {
+                    nodeData.put("approverValue", jsonText(node, "approverValue"));
+                }
+                if (StringUtils.hasText(jsonText(node, "condition"))) {
+                    nodeData.put("condition", jsonText(node, "condition"));
+                }
+                nodes.add(nodeData);
+                idx++;
+            }
+
+            for (JsonNode edge : modelEdges) {
+                String source = firstNotBlank(jsonText(edge, "source"), jsonText(edge, "from"));
+                String target = firstNotBlank(jsonText(edge, "target"), jsonText(edge, "to"));
+                if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
+                    continue;
+                }
+                Map<String, Object> edgeData = new HashMap<>();
+                edgeData.put("id", firstNotBlank(jsonText(edge, "id"), source + "->" + target));
+                edgeData.put("source", source);
+                edgeData.put("target", target);
+                String condition = firstNotBlank(
+                    jsonText(edge, "condition"),
+                    jsonText(edge, "expression"),
+                    jsonText(edge, "expr"),
+                    jsonText(edge, "label")
+                );
+                if (StringUtils.hasText(condition)) {
+                    edgeData.put("label", condition);
+                }
+                edges.add(edgeData);
+            }
         } catch (WorkflowException e) {
             throw e;
         } catch (Exception e) {
@@ -387,63 +442,6 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         return result;
     }
 
-    /**
-     * 递归构建流程图结构节点和连线（仅定义级别，不含运行时状态）
-     */
-    private void buildStructureNodes(WfNodeConfig node, List<Map<String, Object>> nodes,
-                                     List<Map<String, Object>> edges, int[] position, String parentId) {
-        if (node == null) return;
-
-        String nodeId = node.getId();
-
-        // 构建节点数据
-        Map<String, Object> nodeData = new HashMap<>();
-        nodeData.put("id", nodeId);
-        nodeData.put("type", node.getType());
-        nodeData.put("label", node.getTitle());
-        nodeData.put("x", 250);
-        nodeData.put("y", position[0] * 120 + 60);
-        // icon 存储在 props Map 中
-        if (node.getProps() != null && node.getProps().get("icon") != null) {
-            nodeData.put("icon", node.getProps().get("icon"));
-        }
-        if (node.getApproverType() != null) {
-            nodeData.put("approverType", node.getApproverType());
-        }
-        if (node.getApproverValue() != null) {
-            nodeData.put("approverValue", node.getApproverValue());
-        }
-        if (node.getCondition() != null) {
-            nodeData.put("condition", node.getCondition());
-        }
-        nodes.add(nodeData);
-        position[0]++;
-
-        // 生成连线
-        if (parentId != null) {
-            Map<String, Object> edge = new HashMap<>();
-            edge.put("id", parentId + "->" + nodeId);
-            edge.put("source", parentId);
-            edge.put("target", nodeId);
-            if (node.getCondition() != null) {
-                edge.put("label", node.getCondition()); // 条件分支显示条件表达式
-            }
-            edges.add(edge);
-        }
-
-        // 处理分支
-        if (node.getBranches() != null && !node.getBranches().isEmpty()) {
-            for (WfNodeConfig branch : node.getBranches()) {
-                buildStructureNodes(branch, nodes, edges, position, nodeId);
-            }
-        }
-
-        // 处理下一个节点
-        if (node.getNext() != null) {
-            buildStructureNodes(node.getNext(), nodes, edges, position, nodeId);
-        }
-    }
-
     // ==================== P0-5: modelJson XSS 过滤 ====================
 
     /**
@@ -458,47 +456,6 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         } catch (Exception e) {
             log.warn("[sanitizeModelJson] XSS过滤失败，保留原始JSON: {}", e.getMessage());
             return modelJson;
-        }
-    }
-
-    /**
-     * 递归清理单个节点及其子节点的文本字段
-     */
-    private void sanitizeNodeRecursive(WfNodeConfig node) {
-        if (node == null) return;
-
-        // 清理节点标题
-        if (StringUtils.hasText(node.getTitle())) {
-            node.setTitle(securityUtils.sanitizeXss(node.getTitle()));
-        }
-        // 清理条件表达式（仅过滤 HTML 标签，保留表达式语法）
-        if (StringUtils.hasText(node.getCondition())) {
-            node.setCondition(securityUtils.sanitizeXss(node.getCondition()));
-        }
-        // 清理描述
-        if (StringUtils.hasText(node.getDescription())) {
-            node.setDescription(securityUtils.sanitizeXss(node.getDescription()));
-        }
-        // 清理 props 中的所有字符串值
-        if (node.getProps() != null) {
-            Map<String, Object> sanitizedProps = new HashMap<>();
-            for (Map.Entry<String, Object> entry : node.getProps().entrySet()) {
-                if (entry.getValue() instanceof String) {
-                    sanitizedProps.put(entry.getKey(), securityUtils.sanitizeXss((String) entry.getValue()));
-                } else {
-                    sanitizedProps.put(entry.getKey(), entry.getValue());
-                }
-            }
-            node.setProps(sanitizedProps);
-        }
-
-        // 递归处理 next 节点
-        sanitizeNodeRecursive(node.getNext());
-        // 递归处理分支节点
-        if (node.getBranches() != null) {
-            for (WfNodeConfig branch : node.getBranches()) {
-                sanitizeNodeRecursive(branch);
-            }
         }
     }
 
@@ -574,12 +531,65 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
      */
     private void validateModelIntegrity(String modelJson) {
         try {
-            WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(modelJson);
-            if (root == null) {
-                throw WorkflowException.validationError("流程模型为空");
+            JsonNode graphRoot = objectMapper.readTree(modelJson);
+            if (!workflowModelBridge.isGraphModel(graphRoot)) {
+                throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
             }
-            Set<String> visitedNodes = new HashSet<>();
-            validateNodeConnections(root, visitedNodes, 0);
+
+            JsonNode nodesNode = graphRoot.path("nodes");
+            JsonNode edgesNode = graphRoot.path("edges");
+            if (!nodesNode.isArray() || nodesNode.isEmpty()) {
+                throw WorkflowException.validationError("流程图节点不能为空");
+            }
+            if (!edgesNode.isArray()) {
+                throw WorkflowException.validationError("流程图边结构无效");
+            }
+
+            Map<String, JsonNode> nodeMap = new LinkedHashMap<>();
+            Map<String, Integer> outgoingCount = new HashMap<>();
+            for (JsonNode node : nodesNode) {
+                String nodeId = jsonText(node, "id");
+                if (!StringUtils.hasText(nodeId)) {
+                    throw WorkflowException.validationError("存在未配置 id 的流程节点");
+                }
+                if (nodeMap.containsKey(nodeId)) {
+                    throw WorkflowException.validationError("检测到重复节点ID: " + nodeId);
+                }
+                nodeMap.put(nodeId, node);
+                outgoingCount.put(nodeId, 0);
+                validateNodeModel(node);
+            }
+
+            for (JsonNode edge : edgesNode) {
+                String source = firstNotBlank(jsonText(edge, "source"), jsonText(edge, "from"));
+                String target = firstNotBlank(jsonText(edge, "target"), jsonText(edge, "to"));
+                if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
+                    throw WorkflowException.validationError("存在 source/target 缺失的连线");
+                }
+                if (!nodeMap.containsKey(source) || !nodeMap.containsKey(target)) {
+                    throw WorkflowException.validationError("流程图连线引用了不存在的节点: " + source + " -> " + target);
+                }
+                outgoingCount.put(source, outgoingCount.getOrDefault(source, 0) + 1);
+            }
+
+            // P0-3: PARALLEL 节点会签模式与分支互斥校验（图模型：分支 = 多条外连线）
+            for (Map.Entry<String, JsonNode> entry : nodeMap.entrySet()) {
+                JsonNode node = entry.getValue();
+                if (!"PARALLEL".equalsIgnoreCase(jsonText(node, "type"))) {
+                    continue;
+                }
+                String signType = jsonText(node, "signType");
+                boolean hasSignType = StringUtils.hasText(signType)
+                    && ("ALL".equals(signType) || "ANY".equals(signType)
+                    || "PERCENT".equals(signType) || "SEQUENTIAL".equals(signType));
+                int branchCount = outgoingCount.getOrDefault(entry.getKey(), 0);
+                if (hasSignType && branchCount > 1) {
+                    throw WorkflowException.validationError(
+                        "并行节点 [" + firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), entry.getKey())
+                        + "] 同时配置了会签模式(" + signType
+                        + ")和分支(" + branchCount + "个)，两者互斥，请移除分支或取消会签配置");
+                }
+            }
         } catch (WorkflowException e) {
             throw e;
         } catch (Exception e) {
@@ -587,83 +597,81 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
     }
 
-    private void validateNodeConnections(WfNodeConfig node, Set<String> visited, int depth) {
-        if (node == null) return;
-        if (depth > 200) {
-            throw WorkflowException.validationError("流程模型深度超限，可能存在循环引用");
+    private void validateNodeModel(JsonNode node) {
+        String nodeType = jsonText(node, "type");
+        String nodeTitle = firstNotBlank(jsonText(node, "title"), jsonText(node, "label"), jsonText(node, "id"), "未命名节点");
+        String approverType = jsonText(node, "approverType");
+        String approverValue = jsonText(node, "approverValue");
+
+        if ("APPROVAL".equalsIgnoreCase(nodeType) && !StringUtils.hasText(approverType)) {
+            throw WorkflowException.validationError("审批节点 [" + nodeTitle + "] 未配置审批人");
         }
-        if (node.getId() != null) {
-            if (visited.contains(node.getId())) {
-                throw WorkflowException.validationError("检测到循环引用，节点ID: " + node.getId());
-            }
-            visited.add(node.getId());
+        if ("MANUAL".equalsIgnoreCase(nodeType) && !StringUtils.hasText(approverType)) {
+            throw WorkflowException.validationError("人工任务节点 [" + nodeTitle + "] 未配置处理人");
         }
-        if ("APPROVAL".equals(node.getType()) && !StringUtils.hasText(node.getApproverType())) {
-            throw WorkflowException.validationError("审批节点 [" + node.getTitle() + "] 未配置审批人");
-        }
-        if ("MANUAL".equals(node.getType()) && !StringUtils.hasText(node.getApproverType())) {
-            throw WorkflowException.validationError("人工任务节点 [" + node.getTitle() + "] 未配置处理人");
-        }
+
         // P1-5: COPY（抄送）节点校验 — 必须配置抄送人
-        if ("COPY".equals(node.getType())) {
-            boolean hasApproverType = StringUtils.hasText(node.getApproverType());
+        if ("COPY".equalsIgnoreCase(nodeType)) {
+            boolean hasApproverType = StringUtils.hasText(approverType);
             boolean requiresApproverValue = hasApproverType
-                    && !"DIRECT_LEADER".equals(node.getApproverType())
-                    && !"DEPT_MANAGER".equals(node.getApproverType());
-            boolean hasApproverValue = StringUtils.hasText(node.getApproverValue());
+                    && !"DIRECT_LEADER".equals(approverType)
+                    && !"DEPT_MANAGER".equals(approverType);
+            boolean hasApproverValue = StringUtils.hasText(approverValue);
 
             // 兼容历史模型字段（copyUserIds/copyRoleKey/copyDeptId）
-            Map<String, Object> nodeProps = node.getProps();
-            Object legacyUserIds = nodeProps != null ? nodeProps.get("copyUserIds") : null;
+            JsonNode propsNode = node.path("props");
+            JsonNode legacyUserIds = propsNode.get("copyUserIds");
             boolean hasLegacyUserIds = false;
-            if (legacyUserIds instanceof String) {
-                hasLegacyUserIds = StringUtils.hasText((String) legacyUserIds);
-            } else if (legacyUserIds instanceof Collection) {
-                hasLegacyUserIds = !((Collection<?>) legacyUserIds).isEmpty();
+            if (legacyUserIds != null && !legacyUserIds.isNull()) {
+                if (legacyUserIds.isTextual()) {
+                    hasLegacyUserIds = StringUtils.hasText(legacyUserIds.asText());
+                } else if (legacyUserIds.isArray()) {
+                    hasLegacyUserIds = legacyUserIds.size() > 0;
+                }
             }
-            Object legacyRoleKey = nodeProps != null ? nodeProps.get("copyRoleKey") : null;
-            Object legacyDeptId = nodeProps != null ? nodeProps.get("copyDeptId") : null;
-            boolean hasLegacyCopyConfig = nodeProps != null && (
+            JsonNode legacyRoleKey = propsNode.get("copyRoleKey");
+            JsonNode legacyDeptId = propsNode.get("copyDeptId");
+            boolean hasLegacyCopyConfig = propsNode != null && !propsNode.isMissingNode() && (
                     hasLegacyUserIds
-                            || (legacyRoleKey instanceof String && StringUtils.hasText((String) legacyRoleKey))
-                            || (legacyDeptId instanceof String && StringUtils.hasText((String) legacyDeptId))
-                            || (legacyDeptId instanceof Number)
+                            || (legacyRoleKey != null && legacyRoleKey.isTextual() && StringUtils.hasText(legacyRoleKey.asText()))
+                            || (legacyDeptId != null && ((legacyDeptId.isTextual() && StringUtils.hasText(legacyDeptId.asText())) || legacyDeptId.isNumber()))
             );
 
             boolean validByApprover = hasApproverType && (!requiresApproverValue || hasApproverValue);
             if (!validByApprover && !hasLegacyCopyConfig) {
                 throw WorkflowException.validationError(
-                        "抄送节点 [" + node.getTitle() + "] 未配置抄送人（请设置 approverType，且在需要时设置 approverValue）");
+                        "抄送节点 [" + nodeTitle + "] 未配置抄送人（请设置 approverType，且在需要时设置 approverValue）");
             }
         }
+
         // P1-6: NOTIFICATION（通知）节点校验 — 必须配置通知标题或内容
-        if ("NOTIFICATION".equals(node.getType())) {
-            Map<String, Object> nodeProps = node.getProps();
-            boolean hasTitle = nodeProps != null && StringUtils.hasText((String) nodeProps.get("notificationTitle"));
-            boolean hasContent = nodeProps != null && StringUtils.hasText((String) nodeProps.get("notificationContent"));
+        if ("NOTIFICATION".equalsIgnoreCase(nodeType)) {
+            JsonNode propsNode = node.path("props");
+            boolean hasTitle = StringUtils.hasText(jsonText(propsNode, "notificationTitle"));
+            boolean hasContent = StringUtils.hasText(jsonText(propsNode, "notificationContent"));
             if (!hasTitle && !hasContent) {
-                throw WorkflowException.validationError("通知节点 [" + node.getTitle() + "] 未配置通知标题或内容");
+                throw WorkflowException.validationError("通知节点 [" + nodeTitle + "] 未配置通知标题或内容");
             }
         }
-        // P0-3: PARALLEL 节点会签模式与分支互斥校验
-        // 防止攻击者绕过前端直接提交同时包含 signType 和 branches 的 PARALLEL 节点
-        if ("PARALLEL".equals(node.getType())) {
-            String signType = node.getSignType();
-            boolean hasSignType = StringUtils.hasText(signType)
-                    && ("ALL".equals(signType) || "ANY".equals(signType)
-                        || "PERCENT".equals(signType) || "SEQUENTIAL".equals(signType));
-            boolean hasBranches = node.getBranches() != null && !node.getBranches().isEmpty();
-            if (hasSignType && hasBranches) {
-                throw WorkflowException.validationError(
-                    "并行节点 [" + node.getTitle() + "] 同时配置了会签模式(" + signType
-                    + ")和分支(" + node.getBranches().size() + "个)，两者互斥，请移除分支或取消会签配置");
+    }
+
+    private String jsonText(JsonNode node, String field) {
+        if (node == null || node.isNull() || node.isMissingNode() || !node.has(field) || node.get(field).isNull()) {
+            return null;
+        }
+        String value = node.get(field).asText();
+        return StringUtils.hasText(value) ? value : null;
+    }
+
+    private String firstNotBlank(String... values) {
+        if (values == null || values.length == 0) {
+            return null;
+        }
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value;
             }
         }
-        validateNodeConnections(node.getNext(), visited, depth + 1);
-        if (node.getBranches() != null) {
-            for (WfNodeConfig branch : node.getBranches()) {
-                validateNodeConnections(branch, visited, depth + 1);
-            }
-        }
+        return null;
     }
 }
