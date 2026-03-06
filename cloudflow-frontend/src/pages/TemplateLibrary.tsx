@@ -41,7 +41,6 @@ interface TemplateListResult {
 }
 
 interface CreateWorkflowResponse {
-  id?: string;
   definitionId?: string;
 }
 
@@ -238,7 +237,7 @@ export const TemplateLibrary: React.FC = () => {
       toast.success('流程创建成功');
       setShowCreateModal(false);
 
-      const definitionId = data?.definitionId || data?.id;
+      const definitionId = data?.definitionId;
       if (definitionId) {
         window.location.href = `/workflow/design?id=${definitionId}`;
       } else {
