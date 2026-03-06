@@ -39,13 +39,15 @@ export const CodeGeneration = () => {
 
           let invalidModelCount = 0;
           const mapped: WorkflowDefinition[] = Array.from(latestPublishedMap.values())
+            .filter((w: any) => typeof w?.definitionId === 'string' && w.definitionId.trim() !== '')
+            .filter((w: any) => typeof w?.processKey === 'string' && w.processKey.trim() !== '')
             .map((w: any): WorkflowDefinition | null => {
-              const workflowName = w.processName || w.name || w.processKey || w.key || '未命名流程';
+              const workflowName = w.processName || w.processKey || '未命名流程';
               try {
                 return {
-                  id: w.definitionId || w.processKey,
+                  id: w.definitionId,
                   name: workflowName,
-                  key: w.processKey || w.key,
+                  key: w.processKey,
                   version: w.version,
                   formId: w.formId,
                   nodes: parseWorkflowNodes(w.modelJson, workflowName)

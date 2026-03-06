@@ -45,7 +45,7 @@ const parseWorkflowNodes = (raw: unknown, workflowName: string) => {
  * 统一映射后端流程数据，确保设计器使用稳定的 definitionId。
  */
 const resolveDefinitionId = (w: any): string => {
-  const rawId = w?.definitionId ?? w?.id;
+  const rawId = w?.definitionId;
   if (rawId === undefined || rawId === null) {
     return '';
   }
@@ -68,12 +68,12 @@ const resolveSavedDefinitionId = (result: unknown): string | undefined => {
 };
 
 const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
-  id: resolveDefinitionId(w) || `new_${Date.now()}`,
-  name: w?.processName || w?.name || '未命名流程',
-  key: w?.processKey || w?.key || 'new_process',
+  id: resolveDefinitionId(w),
+  name: w?.processName || '未命名流程',
+  key: w?.processKey || 'new_process',
   version: Number(w?.version || 1),
   formId: w?.formId,
-  nodes: parseWorkflowNodes(w?.modelJson, w?.processName || w?.name || '未命名流程'),
+  nodes: parseWorkflowNodes(w?.modelJson, w?.processName || '未命名流程'),
   description: w?.description,
   category: w?.category,
   tags: typeof w?.tags === 'string' ? w.tags : w?.tags ? JSON.stringify(w.tags) : undefined,
@@ -286,7 +286,8 @@ export const WorkflowDesign = () => {
         toast.warning('指定流程不存在或已失效，已切换到新建流程');
       }
       if (selectedWorkflow && !resolveDefinitionId(selectedWorkflow)) {
-        toast.warning('检测到流程缺少定义ID，已切换为新建模式以避免误覆盖');
+        selectedWorkflow = null;
+        toast.warning('检测到流程缺少 definitionId，已切换为新建模式');
       }
 
       const nextWorkflow = selectedWorkflow ? mapBackendWorkflow(selectedWorkflow) : createDefaultWorkflow();

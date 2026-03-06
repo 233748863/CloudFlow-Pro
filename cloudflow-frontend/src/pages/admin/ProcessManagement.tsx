@@ -207,6 +207,7 @@ export const ProcessManagement = () => {
       const res = await getProcessDefinitions();
       if (Array.isArray(res)) {
         let missingDefinitionIdCount = 0;
+        let missingProcessKeyCount = 0;
         let invalidTagsCount = 0;
         let invalidModelCount = 0;
 
@@ -219,7 +220,14 @@ export const ProcessManagement = () => {
               return null;
             }
 
-            const workflowName = (w.processName || w.name || definitionId) as string;
+            const processKey = typeof w.processKey === 'string' ? w.processKey.trim() : '';
+            if (!processKey) {
+              missingProcessKeyCount += 1;
+              console.warn('[ProcessManagement] 跳过缺少 processKey 的流程记录:', w);
+              return null;
+            }
+
+            const workflowName = (w.processName || definitionId) as string;
             const tagsRaw =
               typeof w.tags === 'string'
                 ? w.tags
@@ -235,7 +243,7 @@ export const ProcessManagement = () => {
             return {
               id: definitionId,
               name: workflowName,
-              key: w.processKey || w.key || '',
+              key: processKey,
               version: w.version,
               formId: w.formId,
               startPermissionType: w.startPermissionType,
@@ -266,6 +274,9 @@ export const ProcessManagement = () => {
 
         if (missingDefinitionIdCount > 0) {
           toast.warning(`有 ${missingDefinitionIdCount} 条流程缺少 definitionId，已自动跳过`);
+        }
+        if (missingProcessKeyCount > 0) {
+          toast.warning(`有 ${missingProcessKeyCount} 条流程缺少 processKey，已自动跳过`);
         }
         if (invalidTagsCount > 0) {
           toast.warning(`有 ${invalidTagsCount} 条流程标签格式异常，已按空标签处理`);
