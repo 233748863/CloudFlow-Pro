@@ -257,63 +257,6 @@ const isNodeInsideBranchScope = (
   return null;
 };
 
-/**
- * 历史模型兼容处理：
- * 非 PARALLEL 节点若误配置为 PARALLEL/RACE 分支策略，加载时自动回正为 EXCLUSIVE。
- */
-const normalizeLegacyBranchStrategy = (
-  node: WorkflowNode,
-): { node: WorkflowNode; fixedNodeTitles: string[] } => {
-  const fixedNodeTitles: string[] = [];
-
-  const nextResult = node.next
-    ? normalizeLegacyBranchStrategy(node.next)
-    : undefined;
-  const branchResults = node.branches?.map((branch) =>
-    normalizeLegacyBranchStrategy(branch),
-  );
-
-  if (nextResult?.fixedNodeTitles?.length) {
-    fixedNodeTitles.push(...nextResult.fixedNodeTitles);
-  }
-  if (branchResults?.length) {
-    branchResults.forEach((result) => {
-      if (result.fixedNodeTitles.length) {
-        fixedNodeTitles.push(...result.fixedNodeTitles);
-      }
-    });
-  }
-
-  const invalidStrategy =
-    node.type !== NodeType.PARALLEL &&
-    (node.branchStrategy === "PARALLEL" || node.branchStrategy === "RACE");
-  if (invalidStrategy) {
-    fixedNodeTitles.push(node.title || node.id);
-  }
-
-  const nextNode = nextResult?.node;
-  const nextBranches = branchResults?.map((result) => result.node);
-  const hasChildChanged =
-    (node.next && nextNode && node.next !== nextNode) ||
-    (node.branches &&
-      nextBranches &&
-      node.branches.some((branch, idx) => branch !== nextBranches[idx]));
-
-  if (!invalidStrategy && !hasChildChanged) {
-    return { node, fixedNodeTitles };
-  }
-
-  return {
-    node: {
-      ...node,
-      branchStrategy: invalidStrategy ? "EXCLUSIVE" : node.branchStrategy,
-      next: nextNode,
-      branches: nextBranches,
-    },
-    fixedNodeTitles,
-  };
-};
-
 // ==================== 常量配置 ====================
 
 const NODE_TYPE_LABELS: Record<string, string> = {
@@ -5420,7 +5363,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     onConfirm: () => void;
   }>({ open: false, message: "", onConfirm: () => {} });
   const canvasRef = useRef<HTMLDivElement>(null);
-  const legacyBranchStrategyHintRef = useRef<string>("");
 
   const parseTagsToArray = useCallback((raw?: string) => {
     if (!raw || !raw.trim()) return [] as string[];
@@ -5493,28 +5435,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   useEffect(() => {
     if (!workflow) return;
 
-    const normalized = normalizeLegacyBranchStrategy(
-      workflow.nodes || defaultRoot,
-    );
-    const nextRoot = normalized.node;
+    const nextRoot = workflow.nodes || defaultRoot;
     const parsedTags = parseTagsToArray(workflow.tags);
     resetRoot(nextRoot);
     rootRef.current = nextRoot;
     setSelectedNode(null);
-
-    if (normalized.fixedNodeTitles.length > 0) {
-      const hintKey = `${workflow.id}:${normalized.fixedNodeTitles.join("|")}`;
-      if (legacyBranchStrategyHintRef.current !== hintKey) {
-        legacyBranchStrategyHintRef.current = hintKey;
-        const preview = normalized.fixedNodeTitles.slice(0, 3).join("、");
-        const remaining = normalized.fixedNodeTitles.length - 3;
-        const summary =
-          remaining > 0 ? `${preview} 等${normalized.fixedNodeTitles.length}个节点` : preview;
-        toast.warning(
-          `检测到历史分支策略配置，已自动兼容修复为单选分支（${summary}）`,
-        );
-      }
-    }
 
     setWorkflowName(workflow.name || "未命名流程");
     setWorkflowKey(workflow.key || "new_process");
