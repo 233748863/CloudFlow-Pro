@@ -45,7 +45,7 @@ export const DeployStatistics: React.FC = () => {
       setProcesses(list);
       if (list.length > 0) {
         const first = list[0] as any;
-        setSelectedProcess(first.id || first.definitionId || first.processKey || '');
+        setSelectedProcess(String(first.definitionId || ''));
       }
     } catch (error) {
       toast.error('加载流程列表失败');
@@ -103,7 +103,9 @@ export const DeployStatistics: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {processes.map(p => (
-                        <SelectItem key={String(p.id || p.definitionId || p.processKey)} value={String(p.id || p.definitionId || p.processKey)}>{p.name || p.processName || p.processKey}</SelectItem>
+                        <SelectItem key={String((p as any).definitionId)} value={String((p as any).definitionId)}>
+                          {(p as any).processName || (p as any).processKey}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

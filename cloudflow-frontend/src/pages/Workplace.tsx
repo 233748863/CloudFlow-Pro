@@ -127,7 +127,7 @@ export const Workplace = () => {
 
           const latestPublishedMap = new Map<string, any>();
           for (const item of publishedOnly) {
-            const processKey = String(item?.processKey || item?.key || '').trim();
+            const processKey = String(item?.processKey || '').trim();
             if (!processKey) continue;
             const current = latestPublishedMap.get(processKey);
             const currentVersion = Number(current?.version || 0);

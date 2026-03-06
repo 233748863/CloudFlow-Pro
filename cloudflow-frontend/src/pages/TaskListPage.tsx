@@ -209,7 +209,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
         // 按 processKey 聚合：优先已发布版本，其次版本号更高，避免筛选项展示旧版/草稿名称
         const latestByKey = new Map<string, any>();
         for (const def of res) {
-          const defKey = String(def.processKey || def.key || '').trim();
+          const defKey = String(def.processKey || '').trim();
           if (!defKey) continue;
 
           const current = latestByKey.get(defKey);
@@ -233,8 +233,8 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
         const options: { key: string; name: string }[] = Array.from(latestByKey.values())
           .map((def: any) => {
-            const defKey = String(def.processKey || def.key || '').trim();
-            const defName = def.processName || def.name || defKey;
+            const defKey = String(def.processKey || '').trim();
+            const defName = def.processName || defKey;
             return { key: defKey, name: defName };
           })
           .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));

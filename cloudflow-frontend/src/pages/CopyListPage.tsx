@@ -128,8 +128,8 @@ export const CopyListPage: React.FC = () => {
         const seen = new Set<string>();
         const options: { key: string; name: string }[] = [];
         for (const def of res) {
-          const defKey = (def as any).processKey || (def as any).key;
-          const defName = (def as any).processName || (def as any).name || defKey;
+          const defKey = (def as any).processKey;
+          const defName = (def as any).processName || defKey;
           if (defKey && !seen.has(defKey)) {
             seen.add(defKey);
             options.push({ key: defKey, name: defName });

@@ -50,7 +50,7 @@ export const VersionHistoryPage: React.FC = () => {
           </button>
           <div>
             <h1 className="text-xl font-bold text-slate-800">
-              {workflowInfo?.processName || workflowInfo?.name || '流程'} - 版本历史
+              {workflowInfo?.processName || '流程'} - 版本历史
             </h1>
             {workflowInfo?.description && (
               <p className="text-sm text-slate-500 mt-1">{workflowInfo.description}</p>

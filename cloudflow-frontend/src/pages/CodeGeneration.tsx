@@ -27,7 +27,7 @@ export const CodeGeneration = () => {
           // 按流程 Key 保留最高发布版本，避免多版本重复项影响选择与代码生成
           const latestPublishedMap = new Map<string, any>();
           for (const item of res) {
-            const processKey = String(item?.processKey || item?.key || '').trim();
+            const processKey = String(item?.processKey || '').trim();
             if (!processKey) continue;
             const current = latestPublishedMap.get(processKey);
             const currentVersion = Number(current?.version || 0);
