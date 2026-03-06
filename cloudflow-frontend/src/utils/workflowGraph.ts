@@ -4,7 +4,6 @@ export interface WorkflowGraphNode {
   id: string;
   type: string;
   title?: string;
-  label?: string;
   [key: string]: unknown;
 }
 
@@ -14,9 +13,6 @@ export interface WorkflowGraphEdge {
   target: string;
   condition?: string;
   isDefault?: boolean;
-  default?: boolean;
-  label?: string;
-  expression?: string;
   [key: string]: unknown;
 }
 
@@ -67,8 +63,7 @@ export const createDefaultWorkflowGraph = (): WorkflowGraphDefinition => ({
 const defaultTreeNode = (): WorkflowNode => ({ type: NodeType.START, title: '开始', id: 'start' });
 
 const isDefaultEdge = (edge: WorkflowGraphEdge): boolean => {
-  const raw: unknown =
-    edge.isDefault ?? edge.default ?? (edge as Record<string, unknown>).is_default;
+  const raw: unknown = edge.isDefault;
   if (typeof raw === 'boolean') return raw;
   if (typeof raw === 'number') return raw !== 0;
   if (typeof raw === 'string') {
@@ -79,7 +74,7 @@ const isDefaultEdge = (edge: WorkflowGraphEdge): boolean => {
 };
 
 const extractEdgeCondition = (edge: WorkflowGraphEdge): string | undefined => {
-  const candidate = edge.condition ?? edge.expression ?? edge.label;
+  const candidate = edge.condition;
   if (typeof candidate !== 'string') return undefined;
   const trimmed = candidate.trim();
   return trimmed ? trimmed : undefined;
@@ -130,12 +125,12 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     const source = nodeMap.get(nodeId);
     if (!source) return undefined;
 
-    const { id, type, title, label, ...rest } = source;
+    const { id, type, title, ...rest } = source;
     const node: WorkflowNode = {
       ...(rest as Omit<WorkflowNode, 'id' | 'type' | 'title'>),
       id,
       type: ((type as NodeType) || NodeType.APPROVAL) as NodeType,
-      title: String(title || label || '未命名节点'),
+      title: String(title || '未命名节点'),
     };
 
     const nextPath = new Set(path);

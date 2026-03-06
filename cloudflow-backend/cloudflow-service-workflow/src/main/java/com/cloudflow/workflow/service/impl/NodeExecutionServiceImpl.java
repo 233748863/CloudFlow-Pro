@@ -329,14 +329,22 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     public void advanceAfterNode(WfProcessInstance instance, WfNodeConfig currentNode, String currentNodeKey,
                                   Map<String, Object> variables, int depth, WfNodeConfig rootNode) {
         if (currentNode != null && currentNode.getBranches() != null && !currentNode.getBranches().isEmpty()) {
-            String strategy = currentNode.getBranchStrategy();
+            String strategy = StringUtils.hasText(currentNode.getBranchStrategy())
+                ? currentNode.getBranchStrategy().trim().toUpperCase(Locale.ROOT)
+                : "EXCLUSIVE";
             List<WfNodeConfig> branches = currentNode.getBranches();
 
-            // 防御性兜底：仅 PARALLEL 节点允许 PARALLEL/RACE，其他节点一律按 EXCLUSIVE 处理
-            if (!"PARALLEL".equals(currentNode.getType()) && !"EXCLUSIVE".equals(strategy)) {
-                log.warn("[advanceAfterNode] 节点 {}({}) 使用了不兼容分支策略 {}, 已自动回退为 EXCLUSIVE",
-                    currentNode.getTitle(), currentNode.getId(), strategy);
-                strategy = "EXCLUSIVE";
+            if (!"EXCLUSIVE".equals(strategy) && !"PARALLEL".equals(strategy) && !"RACE".equals(strategy)) {
+                throw WorkflowException.validationError(String.format(
+                    "节点 %s(%s) 的 branchStrategy=%s 非法，仅支持 EXCLUSIVE/PARALLEL/RACE",
+                    currentNode.getTitle(), currentNode.getId(), strategy));
+            }
+
+            // 严格模式：仅并行网关允许 PARALLEL/RACE，其他节点配置该策略直接报错
+            if (!"PARALLEL".equals(currentNode.getType()) && ("PARALLEL".equals(strategy) || "RACE".equals(strategy))) {
+                throw WorkflowException.validationError(String.format(
+                    "节点 %s(%s) 类型为 %s，不允许使用分支策略 %s",
+                    currentNode.getTitle(), currentNode.getId(), currentNode.getType(), strategy));
             }
 
             if ("PARALLEL".equals(strategy)) {
@@ -354,7 +362,6 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             } else if ("RACE".equals(strategy)) {
                 // P2-8: RACE（竞争模式）：所有分支并行启动，第一个完成的分支继续流转，其余分支被忽略
                 // 使用 Redis 计数器实现：只有第一个到达汇合点的分支（count==1）才继续执行 next
-                String raceKey = "sys:wf:race:" + instance.getInstanceId() + ":" + currentNodeKey;
                 for (WfNodeConfig branch : branches) {
                     if ("CONDITION".equals(branch.getType())) {
                         if (branch.getNext() != null) {

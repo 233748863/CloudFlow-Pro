@@ -92,8 +92,8 @@ public class WorkflowModelBridge {
 
             List<EdgeLink> startOutgoing = new ArrayList<>();
             for (JsonNode edge : edgesNode) {
-                String source = firstNotBlank(text(edge, "source"), text(edge, "from"));
-                String target = firstNotBlank(text(edge, "target"), text(edge, "to"));
+                String source = text(edge, "source");
+                String target = text(edge, "target");
                 if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
                     continue;
                 }
@@ -150,7 +150,9 @@ public class WorkflowModelBridge {
         return root != null
                 && root.isObject()
                 && root.has("nodes")
-                && root.get("nodes").isArray();
+                && root.get("nodes").isArray()
+                && root.has("edges")
+                && root.get("edges").isArray();
     }
 
     private WfNodeConfig convertGraphToTree(JsonNode graphRoot) {
@@ -184,8 +186,8 @@ public class WorkflowModelBridge {
         Map<String, List<EdgeLink>> outgoing = new LinkedHashMap<>();
         if (edgesNode != null) {
             for (JsonNode edge : edgesNode) {
-                String source = firstNotBlank(text(edge, "source"), text(edge, "from"));
-                String target = firstNotBlank(text(edge, "target"), text(edge, "to"));
+                String source = text(edge, "source");
+                String target = text(edge, "target");
                 if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
                     throw WorkflowException.validationError("存在 source/target 缺失的连线");
                 }
@@ -194,7 +196,7 @@ public class WorkflowModelBridge {
                 }
                 outgoing.computeIfAbsent(source, k -> new ArrayList<>())
                         .add(EdgeLink.of(target,
-                                firstNotBlank(text(edge, "condition"), text(edge, "expression"), text(edge, "expr"), text(edge, "label")),
+                                text(edge, "condition"),
                                 parseEdgeDefault(edge)));
                 incomingCount.put(target, incomingCount.getOrDefault(target, 0) + 1);
             }
@@ -302,7 +304,7 @@ public class WorkflowModelBridge {
         WfNodeConfig config = new WfNodeConfig();
         config.setId(text(node, "id"));
         config.setType(text(node, "type"));
-        config.setTitle(firstNotBlank(text(node, "title"), text(node, "label")));
+        config.setTitle(text(node, "title"));
         config.setDescription(text(node, "description"));
         config.setApproverType(text(node, "approverType"));
         config.setApproverValue(text(node, "approverValue"));
@@ -348,15 +350,6 @@ public class WorkflowModelBridge {
         return StringUtils.hasText(value) ? value : null;
     }
 
-    private String firstNotBlank(String... values) {
-        for (String value : values) {
-            if (StringUtils.hasText(value)) {
-                return value;
-            }
-        }
-        return null;
-    }
-
     private void applyEdgeCondition(WfNodeConfig target, EdgeLink edge) {
         if (target == null || edge == null) {
             return;
@@ -385,9 +378,7 @@ public class WorkflowModelBridge {
         if (edge == null || edge.isNull()) {
             return false;
         }
-        return parseBooleanField(edge, "isDefault")
-                || parseBooleanField(edge, "default")
-                || parseBooleanField(edge, "is_default");
+        return parseBooleanField(edge, "isDefault");
     }
 
     private boolean parseBooleanField(JsonNode node, String field) {
