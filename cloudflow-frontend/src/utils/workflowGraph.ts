@@ -12,6 +12,11 @@ export interface WorkflowGraphEdge {
   id?: string;
   source: string;
   target: string;
+  condition?: string;
+  isDefault?: boolean;
+  default?: boolean;
+  label?: string;
+  expression?: string;
   [key: string]: unknown;
 }
 
@@ -61,6 +66,25 @@ export const createDefaultWorkflowGraph = (): WorkflowGraphDefinition => ({
 
 const defaultTreeNode = (): WorkflowNode => ({ type: NodeType.START, title: '开始', id: 'start' });
 
+const isDefaultEdge = (edge: WorkflowGraphEdge): boolean => {
+  const raw: unknown =
+    edge.isDefault ?? edge.default ?? (edge as Record<string, unknown>).is_default;
+  if (typeof raw === 'boolean') return raw;
+  if (typeof raw === 'number') return raw !== 0;
+  if (typeof raw === 'string') {
+    const normalized = raw.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'y';
+  }
+  return false;
+};
+
+const extractEdgeCondition = (edge: WorkflowGraphEdge): string | undefined => {
+  const candidate = edge.condition ?? edge.expression ?? edge.label;
+  if (typeof candidate !== 'string') return undefined;
+  const trimmed = candidate.trim();
+  return trimmed ? trimmed : undefined;
+};
+
 /**
  * 编辑器内部暂时保留树形结构，这里负责图 -> 树适配。
  */
@@ -78,7 +102,7 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     return defaultTreeNode();
   }
 
-  const outgoing = new Map<string, string[]>();
+  const outgoing = new Map<string, WorkflowGraphEdge[]>();
   const incoming = new Map<string, number>();
   nodeMap.forEach((_, id) => incoming.set(id, 0));
 
@@ -88,9 +112,9 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     if (!source || !target) return;
     if (!nodeMap.has(source) || !nodeMap.has(target)) return;
 
-    const targets = outgoing.get(source) ?? [];
-    targets.push(target);
-    outgoing.set(source, targets);
+    const edges = outgoing.get(source) ?? [];
+    edges.push(edge);
+    outgoing.set(source, edges);
     incoming.set(target, (incoming.get(target) ?? 0) + 1);
   });
 
@@ -116,17 +140,31 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
 
     const nextPath = new Set(path);
     nextPath.add(nodeId);
-    const nextIds = outgoing.get(nodeId) ?? [];
+    const nextEdges = outgoing.get(nodeId) ?? [];
+    const buildFromEdge = (edge: WorkflowGraphEdge): WorkflowNode | undefined => {
+      const child = build(edge.target, nextPath);
+      const edgeCondition = extractEdgeCondition(edge);
+      if (child && !child.condition && edgeCondition) {
+        child.condition = edgeCondition;
+      }
+      return child;
+    };
 
-    if (nextIds.length === 1) {
-      const next = build(nextIds[0], nextPath);
+    if (nextEdges.length === 1) {
+      const next = buildFromEdge(nextEdges[0]);
       if (next) node.next = next;
-    } else if (nextIds.length > 1) {
-      const branches = nextIds
-        .map((nextId) => build(nextId, nextPath))
+    } else if (nextEdges.length > 1) {
+      const defaultEdge = nextEdges.find((edge) => isDefaultEdge(edge));
+      const branchEdges = nextEdges.filter((edge) => edge !== defaultEdge);
+      const branches = branchEdges
+        .map((edge) => buildFromEdge(edge))
         .filter(Boolean) as WorkflowNode[];
       if (branches.length > 0) {
         node.branches = branches;
+      }
+      if (defaultEdge) {
+        const next = buildFromEdge(defaultEdge);
+        if (next) node.next = next;
       }
     }
 
@@ -145,11 +183,11 @@ export const convertWorkflowTreeToGraph = (root: WorkflowNode): WorkflowGraphDef
   const visited = new Set<string>();
   const edgeIds = new Set<string>();
 
-  const appendEdge = (source: string, target: string) => {
+  const appendEdge = (source: string, target: string, extra: Partial<WorkflowGraphEdge> = {}) => {
     const key = `${source}->${target}`;
     if (edgeIds.has(key)) return;
     edgeIds.add(key);
-    edges.push({ id: key, source, target });
+    edges.push({ id: key, source, target, ...extra });
   };
 
   const walk = (node?: WorkflowNode) => {
@@ -163,14 +201,16 @@ export const convertWorkflowTreeToGraph = (root: WorkflowNode): WorkflowGraphDef
     }
 
     if (node.next?.id) {
-      appendEdge(node.id, node.next.id);
+      const markDefault = Array.isArray(node.branches) && node.branches.length > 0;
+      appendEdge(node.id, node.next.id, markDefault ? { isDefault: true } : {});
       walk(node.next);
     }
 
     if (Array.isArray(node.branches)) {
       node.branches.forEach((branch) => {
         if (!branch?.id) return;
-        appendEdge(node.id, branch.id);
+        const branchCondition = typeof branch.condition === 'string' ? branch.condition.trim() : '';
+        appendEdge(node.id, branch.id, branchCondition ? { condition: branchCondition } : {});
         walk(branch);
       });
     }
