@@ -4,31 +4,17 @@ import { WorkflowDefinition, NodeType } from '../types';
 import { getProcessDefinitions } from '../services/api/workflow';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { toast } from 'sonner';
+import { convertGraphToWorkflowTree, parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 /**
  * 解析流程模型，兼容对象与 JSON 字符串，异常时回退到开始节点。
  */
 const parseWorkflowNodes = (rawModelJson: unknown): WorkflowDefinition['nodes'] => {
-  if (!rawModelJson) {
+  const graph = parseWorkflowGraphDefinition(rawModelJson);
+  if (!graph) {
     return { type: NodeType.START, title: '开始', id: 'start' };
   }
-
-  if (typeof rawModelJson === 'object') {
-    return rawModelJson as WorkflowDefinition['nodes'];
-  }
-
-  if (typeof rawModelJson === 'string') {
-    try {
-      const parsed = JSON.parse(rawModelJson);
-      if (parsed && typeof parsed === 'object') {
-        return parsed as WorkflowDefinition['nodes'];
-      }
-    } catch {
-      // 兜底返回默认节点
-    }
-  }
-
-  return { type: NodeType.START, title: '开始', id: 'start' };
+  return convertGraphToWorkflowTree(graph);
 };
 
 export const CodeGeneration = () => {

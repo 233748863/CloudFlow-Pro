@@ -6,6 +6,7 @@ import { FormRenderer } from '../components/FormRenderer';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { convertGraphToWorkflowTree, parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 /**
  * 将后端返回的 tags 统一转换为字符串数组，避免页面内反复强制类型断言。
@@ -72,26 +73,11 @@ const mapBackendForm = (f: any): FormDefinition => {
  * 解析流程模型 JSON，单条数据异常时回退到默认开始节点，避免整页加载失败。
  */
 const parseWorkflowNodes = (rawModelJson: unknown): WorkflowDefinition['nodes'] => {
-  if (!rawModelJson) {
+  const graph = parseWorkflowGraphDefinition(rawModelJson);
+  if (!graph) {
     return { type: NodeType.START, title: '开始', id: 'start' };
   }
-
-  if (typeof rawModelJson === 'object') {
-    return rawModelJson as WorkflowDefinition['nodes'];
-  }
-
-  if (typeof rawModelJson === 'string') {
-    try {
-      const parsed = JSON.parse(rawModelJson);
-      if (parsed && typeof parsed === 'object') {
-        return parsed as WorkflowDefinition['nodes'];
-      }
-    } catch {
-      // 兜底返回默认节点
-    }
-  }
-
-  return { type: NodeType.START, title: '开始', id: 'start' };
+  return convertGraphToWorkflowTree(graph);
 };
 
 /**

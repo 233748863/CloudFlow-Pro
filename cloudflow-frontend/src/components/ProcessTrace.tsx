@@ -6,10 +6,11 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react';
 import { getProcessTrace, getProcessInstance, getProcessDefinition, getProcessDefinitions, urgeTask } from '../services/api/workflow';
-import { WorkflowDefinition, NodeType, WorkflowNode } from '../types';
+import { NodeType, WorkflowNode } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { BellRing } from 'lucide-react';
+import { convertGraphToWorkflowTree, parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 interface ProcessTraceProps {
   instanceId: string;
@@ -109,23 +110,11 @@ const formatTime = (timeStr?: string) => {
  * 统一解析流程模型节点，兼容对象和 JSON 字符串。
  */
 const parseWorkflowNodes = (rawModel: unknown): WorkflowNode | null => {
-  if (!rawModel) return null;
-  if (typeof rawModel === 'object') {
-    return rawModel as WorkflowNode;
+  const graph = parseWorkflowGraphDefinition(rawModel);
+  if (!graph) {
+    return null;
   }
-  if (typeof rawModel === 'string') {
-    try {
-      return JSON.parse(rawModel) as WorkflowNode;
-    } catch {
-      try {
-        const sanitized = rawModel.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
-        return JSON.parse(sanitized) as WorkflowNode;
-      } catch {
-        return null;
-      }
-    }
-  }
-  return null;
+  return convertGraphToWorkflowTree(graph);
 };
 
 export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
@@ -157,7 +146,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
       const defKey = (instanceRes as any)?.processDefKey || instanceRes?.workflowId;
       if (instanceRes && definitionId) {
           const def = await getProcessDefinition(String(definitionId));
-          const parsed = parseWorkflowNodes((def as any)?.nodes ?? (def as any)?.modelJson);
+          const parsed = parseWorkflowNodes((def as any)?.modelJson ?? (def as any)?.nodes);
           setRootNode(parsed);
       } else if (instanceRes && defKey) {
           const defs = await getProcessDefinitions({ latestOnly: false });
@@ -174,7 +163,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
               (item) => String(item?.status || '').toUpperCase() === 'PUBLISHED',
             );
             const preferred = (published.length > 0 ? published : byVersionDesc)[0];
-            const parsed = parseWorkflowNodes(preferred?.nodes ?? preferred?.modelJson);
+            const parsed = parseWorkflowNodes(preferred?.modelJson ?? preferred?.nodes);
             setRootNode(parsed);
           } else {
             setRootNode(null);

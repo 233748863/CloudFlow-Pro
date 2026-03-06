@@ -15,6 +15,11 @@ import { SkeletonForm } from '../components/ui/Skeleton';
 import { EmptyWorkflows, EmptyError } from '../components/ui/EmptyState';
 import { toast } from 'sonner';
 import { logWorkflow } from '../lib/logger';
+import {
+  convertGraphToWorkflowTree,
+  convertWorkflowTreeToGraph,
+  parseWorkflowGraphDefinition,
+} from '../utils/workflowGraph';
 
 const createDefaultWorkflow = (): WorkflowDefinition => ({
   id: `new_${Date.now()}`,
@@ -28,156 +33,12 @@ const createDefaultWorkflow = (): WorkflowDefinition => ({
  * 解析流程节点定义。
  * 支持对象与 JSON 字符串，解析失败时返回默认开始节点。
  */
-interface GraphNode {
-  id: string;
-  type: string;
-  title?: string;
-  label?: string;
-  [key: string]: unknown;
-}
-
-interface GraphEdge {
-  id?: string;
-  source: string;
-  target: string;
-  [key: string]: unknown;
-}
-
-interface GraphDefinition {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-}
-
-const isGraphDefinition = (value: unknown): value is GraphDefinition => {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Record<string, unknown>;
-  return Array.isArray(candidate.nodes);
-};
-
-const convertWorkflowTreeToGraph = (root: WorkflowDefinition['nodes']): GraphDefinition => {
-  const nodes: GraphNode[] = [];
-  const edges: GraphEdge[] = [];
-  const visited = new Set<string>();
-
-  const walk = (node?: WorkflowDefinition['nodes']) => {
-    if (!node || !node.id) return;
-    if (!visited.has(node.id)) {
-      const rawNode = node as unknown as Record<string, unknown>;
-      const { next, branches, ...rest } = rawNode;
-      nodes.push(rest as GraphNode);
-      visited.add(node.id);
-    }
-
-    if (node.next?.id) {
-      edges.push({ id: `${node.id}->${node.next.id}`, source: node.id, target: node.next.id });
-      walk(node.next);
-    }
-
-    if (Array.isArray(node.branches)) {
-      node.branches.forEach((branch) => {
-        if (!branch?.id) return;
-        edges.push({ id: `${node.id}->${branch.id}`, source: node.id, target: branch.id });
-        walk(branch);
-      });
-    }
-  };
-
-  walk(root);
-  return { nodes, edges };
-};
-
-const convertGraphToWorkflowTree = (graph: GraphDefinition): WorkflowDefinition['nodes'] => {
-  if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) {
+const parseWorkflowNodes = (raw: unknown) => {
+  const graph = parseWorkflowGraphDefinition(raw);
+  if (!graph) {
     return { type: NodeType.START, title: '开始', id: 'start' };
   }
-
-  const nodeMap = new Map<string, GraphNode>();
-  graph.nodes.forEach((node) => {
-    if (node?.id) nodeMap.set(node.id, node);
-  });
-
-  const outgoing = new Map<string, string[]>();
-  const incoming = new Map<string, number>();
-  nodeMap.forEach((_, id) => incoming.set(id, 0));
-
-  (Array.isArray(graph.edges) ? graph.edges : []).forEach((edge) => {
-    const source = edge?.source;
-    const target = edge?.target;
-    if (!source || !target) return;
-    if (!nodeMap.has(source) || !nodeMap.has(target)) return;
-    const list = outgoing.get(source) ?? [];
-    list.push(target);
-    outgoing.set(source, list);
-    incoming.set(target, (incoming.get(target) ?? 0) + 1);
-  });
-
-  const startNode =
-    graph.nodes.find((node) => String(node.type || '').toUpperCase() === NodeType.START) ??
-    graph.nodes.find((node) => (incoming.get(node.id) ?? 0) === 0) ??
-    graph.nodes[0];
-
-  const build = (nodeId: string, path: Set<string>): WorkflowDefinition['nodes'] | undefined => {
-    if (path.has(nodeId)) return undefined;
-    const source = nodeMap.get(nodeId);
-    if (!source) return undefined;
-
-    const { id, type, title, label, ...rest } = source;
-    const node: WorkflowDefinition['nodes'] = {
-      ...(rest as Omit<WorkflowDefinition['nodes'], 'id' | 'type' | 'title'>),
-      id,
-      type: ((type as NodeType) || NodeType.APPROVAL) as NodeType,
-      title: String(title || label || '未命名节点'),
-    };
-
-    const nextPath = new Set(path);
-    nextPath.add(nodeId);
-    const nextIds = outgoing.get(nodeId) ?? [];
-    if (nextIds.length === 1) {
-      const next = build(nextIds[0], nextPath);
-      if (next) node.next = next;
-    } else if (nextIds.length > 1) {
-      const branches = nextIds
-        .map((nextId) => build(nextId, nextPath))
-        .filter(Boolean) as WorkflowDefinition['nodes'][];
-      if (branches.length) node.branches = branches;
-    }
-    return node;
-  };
-
-  return build(startNode.id, new Set()) ?? { type: NodeType.START, title: '开始', id: 'start' };
-};
-
-const parseWorkflowNodes = (raw: unknown) => {
-  if (raw && typeof raw === 'object') {
-    if (isGraphDefinition(raw)) {
-      return convertGraphToWorkflowTree(raw);
-    }
-    return raw as WorkflowDefinition['nodes'];
-  }
-
-  if (typeof raw === 'string' && raw.trim()) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (isGraphDefinition(parsed)) {
-        return convertGraphToWorkflowTree(parsed);
-      }
-      return parsed as WorkflowDefinition['nodes'];
-    } catch {
-      // 兼容后端偶发的非法转义
-      try {
-        const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
-        const parsed = JSON.parse(sanitized);
-        if (isGraphDefinition(parsed)) {
-          return convertGraphToWorkflowTree(parsed);
-        }
-        return parsed as WorkflowDefinition['nodes'];
-      } catch {
-        return { type: NodeType.START, title: '开始', id: 'start' };
-      }
-    }
-  }
-
-  return { type: NodeType.START, title: '开始', id: 'start' };
+  return convertGraphToWorkflowTree(graph);
 };
 
 /**
@@ -217,7 +78,7 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   key: w?.processKey || w?.key || 'new_process',
   version: Number(w?.version || 1),
   formId: w?.formId,
-  nodes: parseWorkflowNodes(w?.nodes ?? w?.modelJson),
+  nodes: parseWorkflowNodes(w?.modelJson ?? w?.nodes),
   description: w?.description,
   category: w?.category,
   tags: typeof w?.tags === 'string' ? w.tags : w?.tags ? JSON.stringify(w.tags) : undefined,

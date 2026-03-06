@@ -91,6 +91,7 @@ import { DatePicker } from "./ui/date-picker";
 import { Button } from "./ui/button";
 import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { useAuth } from "../context/AuthContext";
+import { convertWorkflowTreeToGraph } from "../utils/workflowGraph";
 
 // ==================== 辅助函数 ====================
 
@@ -6065,7 +6066,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         : workflowRef.current?.id,
       processName: workflowName,
       processKey: workflowKey,
-      modelJson: JSON.stringify(rootRef.current),
+      modelJson: JSON.stringify(convertWorkflowTreeToGraph(rootRef.current)),
       ...buildSettingsState(),
     };
   }, [workflowName, workflowKey, buildSettingsState]);

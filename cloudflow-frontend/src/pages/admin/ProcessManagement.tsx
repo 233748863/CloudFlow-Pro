@@ -27,13 +27,13 @@ import {
   checkOperationSafety 
 } from '../../services/api/workflow';
 import { toast } from 'sonner';
+import { convertGraphToWorkflowTree, convertWorkflowTreeToGraph, parseWorkflowGraphDefinition } from '../../utils/workflowGraph';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 
 // 扩展 WorkflowDefinition 类型，tags 解析为数组
 interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
   tags: string[]; // 已解析的标签数组
   tagsRaw?: string; // 后端原始标签串（用于避免批量编辑时覆盖异常数据）
-  modelJsonRaw?: string; // 后端原始模型串（用于避免批量编辑时覆盖异常数据）
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   workflowCreatorId: string; // 流程创建者ID（用于权限判断）
 }
@@ -174,29 +174,14 @@ export const ProcessManagement = () => {
       return buildDefaultNodes();
     }
 
-    if (typeof rawModelJson === 'string') {
-      try {
-        const parsed = JSON.parse(rawModelJson);
-        if (parsed && typeof parsed === 'object') {
-          return parsed as BaseWorkflowDefinition['nodes'];
-        }
-        onError();
-        console.warn(`[ProcessManagement] modelJson 解析结果无效，流程: ${workflowName}`);
-        return buildDefaultNodes();
-      } catch (error) {
-        onError();
-        console.warn(`[ProcessManagement] modelJson JSON 解析失败，流程: ${workflowName}`, error);
-        return buildDefaultNodes();
-      }
+    const graph = parseWorkflowGraphDefinition(rawModelJson);
+    if (!graph) {
+      onError();
+      console.warn(`[ProcessManagement] modelJson 不是合法的 nodes+edges 图模型，流程: ${workflowName}`);
+      return buildDefaultNodes();
     }
 
-    if (typeof rawModelJson === 'object') {
-      return rawModelJson as BaseWorkflowDefinition['nodes'];
-    }
-
-    onError();
-    console.warn(`[ProcessManagement] modelJson 字段类型不支持，流程: ${workflowName}`, rawModelJson);
-    return buildDefaultNodes();
+    return convertGraphToWorkflowTree(graph);
   };
 
   /**
@@ -250,12 +235,6 @@ export const ProcessManagement = () => {
                 : Array.isArray(w.tags)
                   ? JSON.stringify(w.tags)
                   : undefined;
-            const modelJsonRaw =
-              typeof w.modelJson === 'string'
-                ? w.modelJson
-                : w.modelJson && typeof w.modelJson === 'object'
-                  ? JSON.stringify(w.modelJson)
-                  : undefined;
             return {
               id: definitionId,
               name: workflowName,
@@ -280,7 +259,6 @@ export const ProcessManagement = () => {
               nodes: parseNodesSafely(w.modelJson, workflowName, () => {
                 invalidModelCount += 1;
               }),
-              modelJsonRaw,
               workflowCreatorId: String(
                 w.createBy ?? w.createdBy ?? w.creatorId ?? w.creator ?? ''
               )
@@ -381,7 +359,7 @@ export const ProcessManagement = () => {
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: workflow.modelJsonRaw || JSON.stringify(workflow.nodes),
+          modelJson: JSON.stringify(convertWorkflowTreeToGraph(workflow.nodes)),
           category: batchCategory,
           tags:
             workflow.tagsRaw !== undefined
@@ -452,7 +430,7 @@ export const ProcessManagement = () => {
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: workflow.modelJsonRaw || JSON.stringify(workflow.nodes),
+          modelJson: JSON.stringify(convertWorkflowTreeToGraph(workflow.nodes)),
           category: workflow.category,
           tags: JSON.stringify(mergedTags),
           description: workflow.description,
