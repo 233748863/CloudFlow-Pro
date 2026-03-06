@@ -618,27 +618,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
                     && !"DEPT_MANAGER".equals(approverType);
             boolean hasApproverValue = StringUtils.hasText(approverValue);
 
-            // 兼容历史模型字段（copyUserIds/copyRoleKey/copyDeptId）
-            JsonNode propsNode = node.path("props");
-            JsonNode legacyUserIds = propsNode.get("copyUserIds");
-            boolean hasLegacyUserIds = false;
-            if (legacyUserIds != null && !legacyUserIds.isNull()) {
-                if (legacyUserIds.isTextual()) {
-                    hasLegacyUserIds = StringUtils.hasText(legacyUserIds.asText());
-                } else if (legacyUserIds.isArray()) {
-                    hasLegacyUserIds = legacyUserIds.size() > 0;
-                }
-            }
-            JsonNode legacyRoleKey = propsNode.get("copyRoleKey");
-            JsonNode legacyDeptId = propsNode.get("copyDeptId");
-            boolean hasLegacyCopyConfig = propsNode != null && !propsNode.isMissingNode() && (
-                    hasLegacyUserIds
-                            || (legacyRoleKey != null && legacyRoleKey.isTextual() && StringUtils.hasText(legacyRoleKey.asText()))
-                            || (legacyDeptId != null && ((legacyDeptId.isTextual() && StringUtils.hasText(legacyDeptId.asText())) || legacyDeptId.isNumber()))
-            );
-
             boolean validByApprover = hasApproverType && (!requiresApproverValue || hasApproverValue);
-            if (!validByApprover && !hasLegacyCopyConfig) {
+            if (!validByApprover) {
                 throw WorkflowException.validationError(
                         "抄送节点 [" + nodeTitle + "] 未配置抄送人（请设置 approverType，且在需要时设置 approverValue）");
             }
