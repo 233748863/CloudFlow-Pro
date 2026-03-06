@@ -199,10 +199,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         try {
             if (StringUtils.hasText(def.getModelJson())) {
                 WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-                // 跳过 START 节点，执行 next
-                WfNodeConfig firstNode = root;
-                if ("START".equals(root.getType()) && root.getNext() != null) {
-                    firstNode = root.getNext();
+                String firstNodeId = workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
+                WfNodeConfig firstNode = StringUtils.hasText(firstNodeId)
+                        ? nodeExecutionService.findNode(root, firstNodeId)
+                        : root;
+                if (firstNode == null) {
+                    throw WorkflowException.validationError("流程启动失败：未找到首个可执行节点");
                 }
                 nodeExecutionService.runNode(instance, firstNode, variables != null ? variables : new HashMap<>(), 0, root);
             }

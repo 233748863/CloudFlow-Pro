@@ -6,6 +6,7 @@ import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
+import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.handler.INodeHandler;
 import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
@@ -184,7 +185,14 @@ public class SubprocessNodeHandler implements INodeHandler {
 
             // 解析子流程模型并启动执行
             WfNodeConfig subRoot = workflowModelBridge.parseRuntimeRoot(subDef.getModelJson());
-            nodeExecutionService.runNode(subInstance, subRoot, subVariables, 0, subRoot);
+            String firstNodeId = workflowModelBridge.resolveFirstExecutableNodeId(subDef.getModelJson());
+            WfNodeConfig firstNode = StringUtils.hasText(firstNodeId)
+                    ? nodeExecutionService.findNode(subRoot, firstNodeId)
+                    : subRoot;
+            if (firstNode == null) {
+                throw WorkflowException.validationError("子流程启动失败：未找到首个可执行节点");
+            }
+            nodeExecutionService.runNode(subInstance, firstNode, subVariables, 0, subRoot);
 
             log.info("[SubprocessNodeHandler] 子流程已启动, subInstanceId={}, subProcessKey={}, waitForCompletion={}",
                     subInstance.getInstanceId(), subprocessId, waitForCompletion);

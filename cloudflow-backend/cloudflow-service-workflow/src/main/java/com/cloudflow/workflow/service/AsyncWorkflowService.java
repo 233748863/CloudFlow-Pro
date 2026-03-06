@@ -5,6 +5,7 @@ import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
+import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.model.WorkflowModelBridge;
@@ -55,6 +56,8 @@ public class AsyncWorkflowService {
     private IWorkflowSagaService sagaService;
     @Autowired
     private WorkflowModelBridge workflowModelBridge;
+    @Autowired
+    private INodeExecutionService nodeExecutionService;
 
     /**
      * 异步执行流程节点解析和任务创建
@@ -83,7 +86,13 @@ public class AsyncWorkflowService {
             }
 
             WfNodeConfig rootNode = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-            WfNodeConfig nextNode = rootNode.getNext();
+            String firstNodeId = workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
+            WfNodeConfig nextNode = StringUtils.hasText(firstNodeId)
+                    ? nodeExecutionService.findNode(rootNode, firstNodeId)
+                    : rootNode;
+            if (nextNode == null) {
+                throw WorkflowException.validationError("流程启动失败：未找到首个可执行节点");
+            }
 
             // 执行节点（通过回调委托给 WorkflowServiceImpl）
             nodeRunner.run(instance, nextNode, variables, 0, rootNode);

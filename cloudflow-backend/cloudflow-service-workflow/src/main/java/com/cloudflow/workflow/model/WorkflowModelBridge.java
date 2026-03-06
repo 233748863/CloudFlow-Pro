@@ -54,6 +54,72 @@ public class WorkflowModelBridge {
     }
 
     /**
+     * 解析图模型并返回“第一个可执行节点ID”（即 START 的首条外连线目标）。
+     * 若存在默认连线则优先默认连线，否则按 edges 中出现顺序取第一条。
+     */
+    public String resolveFirstExecutableNodeId(String modelJson) {
+        if (!StringUtils.hasText(modelJson)) {
+            throw WorkflowException.validationError("流程模型不能为空");
+        }
+        try {
+            JsonNode root = objectMapper.readTree(modelJson);
+            if (!isGraphModel(root)) {
+                throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
+            }
+
+            JsonNode nodesNode = root.get("nodes");
+            JsonNode edgesNode = root.get("edges");
+            if (nodesNode == null || !nodesNode.isArray() || nodesNode.isEmpty()) {
+                throw WorkflowException.validationError("流程图节点不能为空");
+            }
+            if (edgesNode != null && !edgesNode.isArray()) {
+                throw WorkflowException.validationError("流程图边结构无效");
+            }
+
+            Map<String, JsonNode> nodeMap = new LinkedHashMap<>();
+            for (JsonNode node : nodesNode) {
+                String nodeId = text(node, "id");
+                if (!StringUtils.hasText(nodeId)) {
+                    throw WorkflowException.validationError("存在未配置 id 的流程节点");
+                }
+                nodeMap.put(nodeId, node);
+            }
+
+            String startId = resolveSingleStartNodeId(nodeMap);
+            if (edgesNode == null || edgesNode.isEmpty()) {
+                return startId;
+            }
+
+            List<EdgeLink> startOutgoing = new ArrayList<>();
+            for (JsonNode edge : edgesNode) {
+                String source = firstNotBlank(text(edge, "source"), text(edge, "from"));
+                String target = firstNotBlank(text(edge, "target"), text(edge, "to"));
+                if (!StringUtils.hasText(source) || !StringUtils.hasText(target)) {
+                    continue;
+                }
+                if (!startId.equals(source)) {
+                    continue;
+                }
+                startOutgoing.add(EdgeLink.of(target, null, parseEdgeDefault(edge)));
+            }
+
+            if (startOutgoing.isEmpty()) {
+                return startId;
+            }
+            if (startOutgoing.size() == 1) {
+                return startOutgoing.get(0).targetId();
+            }
+
+            EdgeLink defaultEdge = resolveDefaultEdge(startId, startOutgoing);
+            return defaultEdge != null ? defaultEdge.targetId() : startOutgoing.get(0).targetId();
+        } catch (WorkflowException e) {
+            throw e;
+        } catch (Exception e) {
+            throw WorkflowException.validationError("流程模型解析失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 校验图模型基础结构是否合法。
      */
     public boolean validateGraphModel(String modelJson) {
