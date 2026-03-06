@@ -146,7 +146,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
       const defKey = (instanceRes as any)?.processDefKey || instanceRes?.workflowId;
       if (instanceRes && definitionId) {
           const def = await getProcessDefinition(String(definitionId));
-          const parsed = parseWorkflowNodes((def as any)?.modelJson ?? (def as any)?.nodes);
+          const parsed = parseWorkflowNodes((def as any)?.modelJson);
           setRootNode(parsed);
       } else if (instanceRes && defKey) {
           const defs = await getProcessDefinitions({ latestOnly: false });
@@ -163,7 +163,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
               (item) => String(item?.status || '').toUpperCase() === 'PUBLISHED',
             );
             const preferred = (published.length > 0 ? published : byVersionDesc)[0];
-            const parsed = parseWorkflowNodes(preferred?.modelJson ?? preferred?.nodes);
+            const parsed = parseWorkflowNodes(preferred?.modelJson);
             setRootNode(parsed);
           } else {
             setRootNode(null);

@@ -78,7 +78,7 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   key: w?.processKey || w?.key || 'new_process',
   version: Number(w?.version || 1),
   formId: w?.formId,
-  nodes: parseWorkflowNodes(w?.modelJson ?? w?.nodes),
+  nodes: parseWorkflowNodes(w?.modelJson),
   description: w?.description,
   category: w?.category,
   tags: typeof w?.tags === 'string' ? w.tags : w?.tags ? JSON.stringify(w.tags) : undefined,

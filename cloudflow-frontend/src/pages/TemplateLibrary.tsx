@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import request from '../services/api/request';
+import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 interface TemplateItem {
   id: string;
@@ -84,45 +85,24 @@ const normalizeTags = (rawTags: unknown): string[] => {
 };
 
 const parseTemplateDefinition = (definition: unknown): { nodes: PreviewNode[]; edges: PreviewEdge[] } => {
-  /**
-   * 预览解析逻辑：
-   * 1. 兼容 definition 为 JSON 字符串或对象；
-   * 2. 兼容不同字段命名（nodes/nodeList/activities，edges/lines/connections）；
-   * 3. 解析失败时不抛错，回退为空结构，避免预览弹窗崩溃。
-   */
-  let parsed: unknown = definition;
-  if (typeof definition === 'string' && definition.trim()) {
-    try {
-      parsed = JSON.parse(definition);
-    } catch {
-      return { nodes: [], edges: [] };
-    }
-  }
-
-  if (!parsed || typeof parsed !== 'object') {
+  const graph = parseWorkflowGraphDefinition(definition);
+  if (!graph) {
     return { nodes: [], edges: [] };
   }
 
-  const objectValue = parsed as Record<string, unknown>;
-  const nodeCandidates = [objectValue.nodes, objectValue.nodeList, objectValue.activities, objectValue.steps];
-  const edgeCandidates = [objectValue.edges, objectValue.lines, objectValue.connections, objectValue.transitions];
-
-  const rawNodes = nodeCandidates.find((item) => Array.isArray(item));
-  const rawEdges = edgeCandidates.find((item) => Array.isArray(item));
-
-  const nodes = (Array.isArray(rawNodes) ? rawNodes : []).map((item, index) => {
+  const nodes = graph.nodes.map((item, index) => {
     const source = (item || {}) as Record<string, unknown>;
-    const id = String(source.id ?? source.key ?? source.nodeId ?? `node-${index + 1}`);
-    const name = String(source.name ?? source.title ?? source.label ?? `节点 ${index + 1}`);
-    const type = String(source.type ?? source.nodeType ?? 'task');
+    const id = String(source.id ?? ('node-' + (index + 1)));
+    const name = String(source.title ?? source.label ?? source.name ?? ('节点 ' + (index + 1)));
+    const type = String(source.type ?? 'task');
     return { id, name, type };
   });
 
-  const edges = (Array.isArray(rawEdges) ? rawEdges : [])
+  const edges = graph.edges
     .map((item) => {
       const source = (item || {}) as Record<string, unknown>;
-      const from = source.source ?? source.from ?? source.sourceId;
-      const to = source.target ?? source.to ?? source.targetId;
+      const from = source.source;
+      const to = source.target;
       if (!from || !to) {
         return null;
       }
@@ -133,39 +113,6 @@ const parseTemplateDefinition = (definition: unknown): { nodes: PreviewNode[]; e
       } as PreviewEdge;
     })
     .filter((item): item is PreviewEdge => Boolean(item));
-
-  // 兼容设计器链式结构：{ id, type, next, branches }
-  if (nodes.length === 0 && !rawNodes && typeof objectValue.type === 'string') {
-    const treeNodes: PreviewNode[] = [];
-    const treeEdges: PreviewEdge[] = [];
-    const visited = new Set<string>();
-
-    const walk = (nodeLike: unknown, parentId?: string) => {
-      if (!nodeLike || typeof nodeLike !== 'object') {
-        return;
-      }
-      const source = nodeLike as Record<string, unknown>;
-      const id = String(source.id ?? source.key ?? source.nodeId ?? `node-${treeNodes.length + 1}`);
-      const name = String(source.name ?? source.title ?? source.label ?? `节点 ${treeNodes.length + 1}`);
-      const type = String(source.type ?? source.nodeType ?? 'task');
-
-      if (!visited.has(id)) {
-        treeNodes.push({ id, name, type });
-        visited.add(id);
-      }
-      if (parentId) {
-        treeEdges.push({ source: parentId, target: id });
-      }
-
-      walk(source.next, id);
-      if (Array.isArray(source.branches)) {
-        source.branches.forEach((branch) => walk(branch, id));
-      }
-    };
-
-    walk(objectValue);
-    return { nodes: treeNodes, edges: treeEdges };
-  }
 
   return { nodes, edges };
 };
