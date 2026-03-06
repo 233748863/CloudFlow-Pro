@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { SourceCodeViewer } from '../components/SourceCodeViewer';
-import { WorkflowDefinition, NodeType } from '../types';
+import { WorkflowDefinition } from '../types';
 import { getProcessDefinitions } from '../services/api/workflow';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { toast } from 'sonner';
 import { convertGraphToWorkflowTree, parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 /**
- * 解析流程模型，兼容对象与 JSON 字符串，异常时回退到开始节点。
+ * 解析流程模型，仅接受合法的 nodes+edges 图模型。
  */
-const parseWorkflowNodes = (rawModelJson: unknown): WorkflowDefinition['nodes'] => {
+const parseWorkflowNodes = (rawModelJson: unknown, workflowName: string): WorkflowDefinition['nodes'] => {
   const graph = parseWorkflowGraphDefinition(rawModelJson);
   if (!graph) {
-    return { type: NodeType.START, title: '开始', id: 'start' };
+    throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
   }
   return convertGraphToWorkflowTree(graph);
 };
@@ -37,15 +37,30 @@ export const CodeGeneration = () => {
             }
           }
 
-          const mapped = Array.from(latestPublishedMap.values()).map((w: any) => ({
-              id: w.definitionId || w.processKey,
-              name: w.processName || w.name,
-              key: w.processKey || w.key,
-              version: w.version,
-              formId: w.formId,
-              nodes: parseWorkflowNodes(w.modelJson)
-          }));
+          let invalidModelCount = 0;
+          const mapped: WorkflowDefinition[] = Array.from(latestPublishedMap.values())
+            .map((w: any): WorkflowDefinition | null => {
+              const workflowName = w.processName || w.name || w.processKey || w.key || '未命名流程';
+              try {
+                return {
+                  id: w.definitionId || w.processKey,
+                  name: workflowName,
+                  key: w.processKey || w.key,
+                  version: w.version,
+                  formId: w.formId,
+                  nodes: parseWorkflowNodes(w.modelJson, workflowName)
+                };
+              } catch (error) {
+                invalidModelCount += 1;
+                console.warn(`[CodeGeneration] 跳过模型异常流程: ${workflowName}`, error);
+                return null;
+              }
+            })
+            .filter((item): item is WorkflowDefinition => item !== null);
           setWorkflows(mapped);
+          if (invalidModelCount > 0) {
+            toast.warning(`有 ${invalidModelCount} 条流程模型异常，已跳过加载`);
+          }
           if (mapped.length > 0) setSelectedWorkflow(mapped[0]);
        }
     }).catch((err) => {

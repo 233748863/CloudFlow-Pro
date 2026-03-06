@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, DollarSign, Clock, Monitor, FileBadge, GitMerge, ArrowRightCircle, FormInput, AlertTriangle, Tag, FolderOpen, X } from 'lucide-react';
-import { WorkflowDefinition, NodeType, FormDefinition } from '../types';
+import { WorkflowDefinition, FormDefinition } from '../types';
 import { getProcessDefinitions, getFormDefinition, getFormDefinitions, startProcess } from '../services/api/workflow';
 import { FormRenderer } from '../components/FormRenderer';
 import { useAuth } from '../context/AuthContext';
@@ -70,12 +70,12 @@ const mapBackendForm = (f: any): FormDefinition => {
 };
 
 /**
- * 解析流程模型 JSON，单条数据异常时回退到默认开始节点，避免整页加载失败。
+ * 解析流程模型 JSON，仅接受合法的 nodes+edges 图模型。
  */
-const parseWorkflowNodes = (rawModelJson: unknown): WorkflowDefinition['nodes'] => {
+const parseWorkflowNodes = (rawModelJson: unknown, workflowName: string): WorkflowDefinition['nodes'] => {
   const graph = parseWorkflowGraphDefinition(rawModelJson);
   if (!graph) {
-    return { type: NodeType.START, title: '开始', id: 'start' };
+    throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
   }
   return convertGraphToWorkflowTree(graph);
 };
@@ -137,22 +137,36 @@ export const Workplace = () => {
             }
           }
 
-          const mapped = Array.from(latestPublishedMap.values())
+          let invalidModelCount = 0;
+          const mapped: WorkflowDefinition[] = Array.from(latestPublishedMap.values())
             .filter((w: any) => typeof (w?.processKey || w?.key) === 'string' && String(w.processKey || w.key).trim() !== '')
-            .map((w: any) => ({
-              id: w.definitionId || w.processKey,
-              name: w.processName || w.name,
-              key: w.processKey || w.key,
-              version: w.version,
-              formId: w.formId,
-              // P3: 映射分类和标签字段
-              category: w.category || '',
-              // 与 WorkflowDefinition.tags 类型保持一致，统一存为 JSON 字符串
-              tags: typeof w.tags === 'string' ? w.tags : JSON.stringify(normalizeTags(w.tags)),
-              description: w.description || '',
-              nodes: parseWorkflowNodes(w.modelJson)
-          }));
+            .map((w: any): WorkflowDefinition | null => {
+              const workflowName = w.processName || w.name || w.processKey || w.key || '未命名流程';
+              try {
+                return {
+                  id: w.definitionId || w.processKey,
+                  name: workflowName,
+                  key: w.processKey || w.key,
+                  version: w.version,
+                  formId: w.formId,
+                  // P3: 映射分类和标签字段
+                  category: w.category || '',
+                  // 与 WorkflowDefinition.tags 类型保持一致，统一存为 JSON 字符串
+                  tags: typeof w.tags === 'string' ? w.tags : JSON.stringify(normalizeTags(w.tags)),
+                  description: w.description || '',
+                  nodes: parseWorkflowNodes(w.modelJson, workflowName)
+                };
+              } catch (error) {
+                invalidModelCount += 1;
+                console.warn(`[Workplace] 跳过模型异常流程: ${workflowName}`, error);
+                return null;
+              }
+          })
+            .filter((item): item is WorkflowDefinition => item !== null);
           setWorkflows(mapped);
+          if (invalidModelCount > 0) {
+            toast.warning(`有 ${invalidModelCount} 条流程模型异常，已跳过加载`);
+          }
        }
     }).catch((error) => {
       console.error('加载流程列表失败:', error);
