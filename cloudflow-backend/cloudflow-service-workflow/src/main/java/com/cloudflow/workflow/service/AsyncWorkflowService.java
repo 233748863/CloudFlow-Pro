@@ -79,7 +79,7 @@ public class AsyncWorkflowService {
 
         try {
             if (!StringUtils.hasText(def.getModelJson())) {
-                // Legacy 模式由同步方法处理，此处不应到达
+                // 图模型为空时不执行节点，直接标记成功并返回
                 log.warn("[asyncStartProcessNodes] 无模型JSON, instanceId={}", instanceId);
                 setAsyncStatus(instanceId, "SUCCESS", null);
                 return;
