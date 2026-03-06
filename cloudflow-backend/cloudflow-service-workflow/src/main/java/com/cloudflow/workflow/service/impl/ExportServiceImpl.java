@@ -86,7 +86,7 @@ public class ExportServiceImpl implements IExportService {
             // 创建流程数据
             WorkflowExportFormat.WorkflowData workflowData = new WorkflowExportFormat.WorkflowData();
             workflowData.setId(definition.getDefinitionId());
-            workflowData.setName(definition.getName());
+            workflowData.setName(definition.getProcessName());
             workflowData.setDescription(definition.getDescription());
             workflowData.setProcessKey(definition.getProcessKey());
             workflowData.setCategoryId(definition.getCategory());
@@ -139,7 +139,7 @@ public class ExportServiceImpl implements IExportService {
             String checksum = ExportFormatUtil.calculateChecksum(exportFormat);
             exportFormat.setChecksum(checksum);
 
-            log.info("流程导出成功, workflowId={}, workflowName={}", workflowId, definition.getName());
+            log.info("流程导出成功, workflowId={}, workflowName={}", workflowId, definition.getProcessName());
             return exportFormat;
 
         } catch (Exception e) {

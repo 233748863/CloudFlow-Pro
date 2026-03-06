@@ -285,9 +285,4 @@ public class WfProcessDefinition implements Serializable {
         this.delFlag = delFlag;
     }
 
-    /** Alias for processName used by P4 compareVersions */
-    public String getName() {
-        return processName;
-    }
-
 }
