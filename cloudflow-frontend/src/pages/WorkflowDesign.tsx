@@ -105,12 +105,12 @@ const mapBackendForms = (forms: any[]): FormDefinition[] =>
         }
       }
     } else {
-      fields = f.fields || f.fieldsJson || [];
+      fields = [];
     }
 
     return {
-      id: f.id || f.formId,
-      name: f.name || f.formName,
+      id: f.formId,
+      name: f.formName,
       fields,
     };
   });

@@ -36,7 +36,7 @@ const normalizeTags = (rawTags: unknown): string[] => {
 };
 
 /**
- * 统一解析后端表单结构，兼容 fieldsJson / formSchema / fields 三种返回格式。
+ * 统一解析后端表单结构，仅接受 fieldsJson / formSchema。
  */
 const mapBackendForm = (f: any): FormDefinition => {
   let fields: any[] = [];
@@ -59,12 +59,12 @@ const mapBackendForm = (f: any): FormDefinition => {
       }
     }
   } else {
-    fields = f?.fields || f?.fieldsJson || [];
+    fields = [];
   }
 
   return {
-    id: String(f?.id || f?.formId || ''),
-    name: f?.name || f?.formName || '未命名表单',
+    id: String(f?.formId || ''),
+    name: f?.formName || '未命名表单',
     fields,
   };
 };
