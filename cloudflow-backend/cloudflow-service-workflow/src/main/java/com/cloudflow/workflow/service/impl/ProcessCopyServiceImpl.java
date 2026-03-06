@@ -199,15 +199,9 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
     private void enrichCopyRecords(List<WfProcessCopy> records) {
         Long tenantId = UserContext.getTenantId();
 
-        // 收集所有 instanceId 和 processDefKey
+        // 收集所有 instanceId
         List<String> instanceIds = records.stream()
                 .map(WfProcessCopy::getInstanceId)
-                .distinct()
-                .collect(Collectors.toList());
-
-        List<String> processKeys = records.stream()
-                .map(WfProcessCopy::getProcessDefKey)
-                .filter(StringUtils::hasText)
                 .distinct()
                 .collect(Collectors.toList());
 
@@ -246,24 +240,6 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
             }
         }
 
-        // 兼容历史实例（definitionId 为空）回退按 processKey 取最新版本
-        Map<String, String> processNameByKey = new HashMap<>();
-        if (!processKeys.isEmpty()) {
-            LambdaQueryWrapper<WfProcessDefinition> processKeyQuery = new LambdaQueryWrapper<WfProcessDefinition>()
-                    .in(WfProcessDefinition::getProcessKey, processKeys)
-                    .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                            .or()
-                            .isNull(WfProcessDefinition::getStatus))
-                    .orderByDesc(WfProcessDefinition::getVersion);
-            if (tenantId != null) {
-                processKeyQuery.eq(WfProcessDefinition::getTenantId, tenantId);
-            }
-            List<WfProcessDefinition> definitions = processDefinitionMapper.selectList(processKeyQuery);
-            for (WfProcessDefinition def : definitions) {
-                processNameByKey.putIfAbsent(def.getProcessKey(), def.getProcessName());
-            }
-        }
-
         // 填充
         for (WfProcessCopy copy : records) {
             WfProcessInstance inst = instanceMap.get(copy.getInstanceId());
@@ -272,12 +248,7 @@ public class ProcessCopyServiceImpl implements IProcessCopyService {
                 String processName = processNameByDefinitionId.get(inst.getDefinitionId());
                 if (StringUtils.hasText(processName)) {
                     copy.setProcessName(processName);
-                    continue;
                 }
-            }
-            String processName = processNameByKey.get(copy.getProcessDefKey());
-            if (processName != null) {
-                copy.setProcessName(processName);
             }
         }
     }

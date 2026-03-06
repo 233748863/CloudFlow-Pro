@@ -580,39 +580,23 @@ public class WfTaskServiceImpl implements IWfTaskService {
     }
 
     /**
-     * 优先按实例锁定的 definitionId 读取流程定义，避免审批流转读取到新版本模型；
-     * 兼容历史实例（definitionId 为空）时回退 processKey 最新版本。
+     * 严格按实例锁定的 definitionId 读取流程定义。
      */
     private WfProcessDefinition resolveDefinitionByInstance(WfProcessInstance instance) {
         if (instance == null) {
             return null;
         }
-
-        if (StringUtils.hasText(instance.getDefinitionId())) {
-            WfProcessDefinition byId = processDefinitionMapper.selectById(instance.getDefinitionId());
-            if (byId != null) {
-                return byId;
-            }
-            log.warn("[resolveDefinitionByInstance] definitionId={} 不存在，回退 processKey={} 最新版本",
-                instance.getDefinitionId(), instance.getProcessDefKey());
-        }
-
-        if (!StringUtils.hasText(instance.getProcessDefKey())) {
+        if (!StringUtils.hasText(instance.getDefinitionId())) {
+            log.warn("[resolveDefinitionByInstance] instanceId={} 缺少 definitionId，无法按实例版本解析",
+                instance.getInstanceId());
             return null;
         }
-
-        LambdaQueryWrapper<WfProcessDefinition> latestDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
-            .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-            .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                .or()
-                .isNull(WfProcessDefinition::getStatus))
-            .orderByDesc(WfProcessDefinition::getVersion)
-            .last("LIMIT 1");
-        Long tenantId = instance.getTenantId() != null ? instance.getTenantId() : UserContext.getTenantId();
-        if (tenantId != null) {
-            latestDefQuery.eq(WfProcessDefinition::getTenantId, tenantId);
+        WfProcessDefinition byId = processDefinitionMapper.selectById(instance.getDefinitionId());
+        if (byId == null) {
+            log.warn("[resolveDefinitionByInstance] definitionId={} 不存在，无法按实例版本解析",
+                instance.getDefinitionId());
         }
-        return processDefinitionMapper.selectOne(latestDefQuery);
+        return byId;
     }
 
     /**
@@ -732,14 +716,13 @@ public class WfTaskServiceImpl implements IWfTaskService {
      * 批量填充待办任务的关联信息（流程实例、定义、已读状态、步骤信息、按钮权限）
      */
     private void enrichTodoTasks(List<WfTask> tasks, Long userId) {
-        Long currentTenantId = UserContext.getTenantId();
         // 批量查询实例
         List<String> instanceIds = tasks.stream().map(WfTask::getInstanceId).distinct().collect(Collectors.toList());
         List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
         Map<String, WfProcessInstance> instanceMap = instances.stream()
             .collect(Collectors.toMap(WfProcessInstance::getInstanceId, inst -> inst));
 
-        // 批量查询流程定义（优先按实例 definitionId 锁定，回退 processKey 最新版本）
+        // 批量查询流程定义（严格按实例 definitionId 锁定）
         List<String> definitionIds = instances.stream()
             .map(WfProcessInstance::getDefinitionId)
             .filter(StringUtils::hasText)
@@ -752,32 +735,6 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 for (WfProcessDefinition def : defsById) {
                     if (def != null && StringUtils.hasText(def.getDefinitionId())) {
                         defById.put(def.getDefinitionId(), def);
-                    }
-                }
-            }
-        }
-
-        List<String> processKeys = instances.stream()
-            .map(WfProcessInstance::getProcessDefKey)
-            .filter(StringUtils::hasText)
-            .distinct()
-            .collect(Collectors.toList());
-        Map<String, WfProcessDefinition> latestDefByKey = new HashMap<>();
-        if (!processKeys.isEmpty()) {
-            LambdaQueryWrapper<WfProcessDefinition> defsByKeyQuery = new LambdaQueryWrapper<WfProcessDefinition>()
-                .in(WfProcessDefinition::getProcessKey, processKeys)
-                .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                    .or()
-                    .isNull(WfProcessDefinition::getStatus))
-                .orderByDesc(WfProcessDefinition::getVersion);
-            if (currentTenantId != null) {
-                defsByKeyQuery.eq(WfProcessDefinition::getTenantId, currentTenantId);
-            }
-            List<WfProcessDefinition> defsByKey = processDefinitionMapper.selectList(defsByKeyQuery);
-            if (defsByKey != null) {
-                for (WfProcessDefinition def : defsByKey) {
-                    if (def != null && StringUtils.hasText(def.getProcessKey())) {
-                        latestDefByKey.putIfAbsent(def.getProcessKey(), def);
                     }
                 }
             }
@@ -818,7 +775,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 task.setStartUserName(instance.getStartUserName());
                 task.setInstanceTitle(instance.getTitle());
 
-                WfProcessDefinition def = resolveDefinitionForInstance(instance, defById, latestDefByKey);
+                WfProcessDefinition def = resolveDefinitionForInstance(instance, defById);
                 if (def != null) {
                     task.setProcessName(def.getProcessName());
                     task.setFormId(def.getFormId());
@@ -852,12 +809,15 @@ public class WfTaskServiceImpl implements IWfTaskService {
             // 填充步骤信息和按钮权限
             try {
                 if (instance == null) continue;
-                String definitionCacheKey = StringUtils.hasText(instance.getDefinitionId())
-                    ? "ID:" + instance.getDefinitionId()
-                    : "KEY:" + instance.getProcessDefKey();
+                if (!StringUtils.hasText(instance.getDefinitionId())) {
+                    log.warn("[enrichTodoTasks] instanceId={} 缺少 definitionId，跳过步骤信息解析",
+                        instance.getInstanceId());
+                    continue;
+                }
+                String definitionCacheKey = "ID:" + instance.getDefinitionId();
                 List<Map<String, String>> steps = stepsCache.get(definitionCacheKey);
                 if (steps == null) {
-                    WfProcessDefinition def = resolveDefinitionForInstance(instance, defById, latestDefByKey);
+                    WfProcessDefinition def = resolveDefinitionForInstance(instance, defById);
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
                         WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
                         steps = nodeExecutionService.extractApprovalSteps(root);
@@ -896,30 +856,19 @@ public class WfTaskServiceImpl implements IWfTaskService {
     }
 
     /**
-     * 在批量富化场景下解析实例对应流程定义：
-     * 1) 优先按 definitionId（实例锁定版本）；
-     * 2) 回退到 processKey 最新版本（兼容历史实例）。
+     * 在批量富化场景下解析实例对应流程定义（仅按 definitionId）。
      */
     private WfProcessDefinition resolveDefinitionForInstance(
         WfProcessInstance instance,
-        Map<String, WfProcessDefinition> defById,
-        Map<String, WfProcessDefinition> latestDefByKey
+        Map<String, WfProcessDefinition> defById
     ) {
         if (instance == null) {
             return null;
         }
-
-        if (StringUtils.hasText(instance.getDefinitionId())) {
-            WfProcessDefinition byId = defById.get(instance.getDefinitionId());
-            if (byId != null) {
-                return byId;
-            }
-        }
-
-        if (!StringUtils.hasText(instance.getProcessDefKey())) {
+        if (!StringUtils.hasText(instance.getDefinitionId())) {
             return null;
         }
-        return latestDefByKey.get(instance.getProcessDefKey());
+        return defById.get(instance.getDefinitionId());
     }
 
     /**

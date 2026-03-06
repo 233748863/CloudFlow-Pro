@@ -150,32 +150,16 @@ public class TimerSchedulerService {
                 return;
             }
             
-            // 优先按实例 definitionId 读取流程定义，避免定时触发时被新版本模型污染
-            WfProcessDefinition def = null;
-            if (StringUtils.hasText(instance.getDefinitionId())) {
-                def = processDefinitionMapper.selectById(instance.getDefinitionId());
-                if (def == null) {
-                    log.warn("[triggerTimer] definitionId={} 不存在，回退 processDefKey={} 最新版本",
-                        instance.getDefinitionId(), instance.getProcessDefKey());
-                }
+            if (!StringUtils.hasText(instance.getDefinitionId())) {
+                log.warn("[triggerTimer] instanceId={} 缺少 definitionId，终止定时触发",
+                    instance.getInstanceId());
+                cleanup(timerKey);
+                return;
             }
-
-            // 兼容历史实例（definitionId 为空）回退按 processKey 取最新版本
-            if (def == null) {
-                def = processDefinitionMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WfProcessDefinition>()
-                        .eq(WfProcessDefinition::getProcessKey, instance.getProcessDefKey())
-                        .and(w -> w.ne(WfProcessDefinition::getStatus, "DRAFT")
-                            .or()
-                            .isNull(WfProcessDefinition::getStatus))
-                        .orderByDesc(WfProcessDefinition::getVersion)
-                        .last("LIMIT 1")
-                );
-            }
-            
+            WfProcessDefinition def = processDefinitionMapper.selectById(instance.getDefinitionId());
             if (def == null || !StringUtils.hasText(def.getModelJson())) {
-                log.warn("[triggerTimer] 流程定义不存在或模型为空, processDefKey={}", 
-                    instance.getProcessDefKey());
+                log.warn("[triggerTimer] 流程定义不存在或模型为空, definitionId={}",
+                    instance.getDefinitionId());
                 cleanup(timerKey);
                 return;
             }
