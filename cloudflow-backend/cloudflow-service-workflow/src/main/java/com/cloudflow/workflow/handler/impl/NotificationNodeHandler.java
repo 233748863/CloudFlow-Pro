@@ -52,11 +52,9 @@ public class NotificationNodeHandler implements INodeHandler {
                 return true; // 自动继续
             }
 
-            // 兼容前端两种字段名
-            String noticeTitle = (String) props.getOrDefault("notificationTitle",
-                    (String) props.getOrDefault("noticeTitle", node.getTitle()));
-            String noticeContent = (String) props.getOrDefault("notificationContent",
-                    (String) props.getOrDefault("noticeContent", "流程通知"));
+            // 仅使用标准字段，避免旧字段双线维护
+            String noticeTitle = (String) props.getOrDefault("notificationTitle", node.getTitle());
+            String noticeContent = (String) props.getOrDefault("notificationContent", "流程通知");
             String noticeType = (String) props.getOrDefault("noticeType", "1");
             String recipientType = (String) props.getOrDefault("recipientType", "INITIATOR");
 

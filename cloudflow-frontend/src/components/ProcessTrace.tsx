@@ -5,7 +5,7 @@ import {
   CreditCard, FileText, Briefcase, MessageSquare,
   ChevronDown, ChevronUp
 } from 'lucide-react';
-import { getProcessTrace, getProcessInstance, getProcessDefinition, getProcessDefinitions, urgeTask } from '../services/api/workflow';
+import { getProcessTrace, getProcessInstance, getProcessDefinition, urgeTask } from '../services/api/workflow';
 import { NodeType, WorkflowNode } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -141,34 +141,16 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
       const instanceRes = await getProcessInstance(instanceId);
       setInstance(instanceRes);
       
-      // 3. 获取流程定义（用于流程图渲染）
-      const definitionId = (instanceRes as any)?.definitionId;
-      const defKey = (instanceRes as any)?.processDefKey || instanceRes?.workflowId;
-      if (instanceRes && definitionId) {
-          const def = await getProcessDefinition(String(definitionId));
-          const parsed = parseWorkflowNodes((def as any)?.modelJson);
-          setRootNode(parsed);
-      } else if (instanceRes && defKey) {
-          const defs = await getProcessDefinitions({ latestOnly: false });
-          const matchedDefs = (defs as any[]).filter(d =>
-            d.processKey === defKey || d.key === defKey || d.id === defKey
-          );
-
-          if (matchedDefs.length > 0) {
-            // 优先使用已发布版本，若不存在则回退到最高版本
-            const byVersionDesc = [...matchedDefs].sort(
-              (a, b) => Number(b?.version || 0) - Number(a?.version || 0),
-            );
-            const published = byVersionDesc.filter(
-              (item) => String(item?.status || '').toUpperCase() === 'PUBLISHED',
-            );
-            const preferred = (published.length > 0 ? published : byVersionDesc)[0];
-            const parsed = parseWorkflowNodes(preferred?.modelJson);
-            setRootNode(parsed);
-          } else {
-            setRootNode(null);
-          }
+      // 3. 获取流程定义（用于流程图渲染），严格依赖 definitionId
+      const definitionId = String((instanceRes as any)?.definitionId || '').trim();
+      if (!definitionId) {
+        console.warn('[ProcessTrace] 缺少 definitionId，无法加载流程图', { instanceId });
+        setRootNode(null);
+        return;
       }
+      const def = await getProcessDefinition(definitionId);
+      const parsed = parseWorkflowNodes((def as any)?.modelJson);
+      setRootNode(parsed);
     } catch (e) {
       console.error(e);
       setError("加载流程追踪失败");
