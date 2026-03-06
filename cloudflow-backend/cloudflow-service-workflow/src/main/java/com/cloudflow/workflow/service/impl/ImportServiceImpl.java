@@ -295,7 +295,7 @@ public class ImportServiceImpl implements IImportService {
             }
         }
 
-        // 同步导入可选字段（向后兼容旧导出格式）
+        // 同步导入可选字段（仅使用标准字段）
         WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
         String formId = resolveWorkflowFormId(workflow);
         if (StringUtils.hasText(formId)) {
@@ -345,11 +345,10 @@ public class ImportServiceImpl implements IImportService {
         /**
          * 导入流程时必须保证 processKey 可用且唯一：
          * 1. 优先使用导出文件中的 processKey；
-         * 2. 兼容旧导出文件，尝试从 metadata.processKey 读取；
-         * 3. 仍为空时基于流程名生成；
-         * 4. 与库中重复时自动追加后缀。
+         * 2. 缺失时直接阻断导入；
+         * 3. 与库中重复时自动追加后缀。
          */
-        String processKey = resolveProcessKey(exportFormat, resolution);
+        String processKey = resolveProcessKey(exportFormat);
         definition.setProcessKey(processKey);
         
         // 设置描述
@@ -417,111 +416,52 @@ public class ImportServiceImpl implements IImportService {
     /**
      * 解析并生成可用的流程 key。
      */
-    private String resolveProcessKey(WorkflowExportFormat exportFormat, ConflictResolution resolution) {
-        String processKey = null;
+    private String resolveProcessKey(WorkflowExportFormat exportFormat) {
         WorkflowExportFormat.WorkflowData workflow = exportFormat.getWorkflow();
-
-        if (workflow != null && StringUtils.hasText(workflow.getProcessKey())) {
-            processKey = workflow.getProcessKey();
+        if (workflow == null || !StringUtils.hasText(workflow.getProcessKey())) {
+            throw WorkflowException.validationError("导入失败：workflow.processKey 不能为空");
         }
-
-        // 向后兼容：老导出格式可能把 processKey 放在 metadata 里
-        if (!StringUtils.hasText(processKey) && workflow != null && workflow.getMetadata() != null) {
-            Object metadataKey = workflow.getMetadata().get("processKey");
-            if (metadataKey != null) {
-                processKey = String.valueOf(metadataKey);
-            }
-        }
-
-        if (!StringUtils.hasText(processKey)) {
-            processKey = resolution.getNewName();
-            log.warn("导入文件未提供 processKey，使用流程名称生成: workflowName={}", resolution.getNewName());
-        }
-
-        return generateUniqueProcessKey(processKey);
+        return generateUniqueProcessKey(workflow.getProcessKey());
     }
 
     /**
-     * 解析导入文件中的 formId，兼容旧格式 metadata.formId。
+     * 解析导入文件中的 formId。
      */
     private String resolveWorkflowFormId(WorkflowExportFormat.WorkflowData workflow) {
         if (workflow == null) {
             return null;
         }
-        if (StringUtils.hasText(workflow.getFormId())) {
-            return workflow.getFormId();
-        }
-        if (workflow.getMetadata() != null) {
-            Object value = workflow.getMetadata().get("formId");
-            if (value != null && StringUtils.hasText(String.valueOf(value))) {
-                return String.valueOf(value);
-            }
-        }
-        return null;
+        return StringUtils.hasText(workflow.getFormId()) ? workflow.getFormId() : null;
     }
 
     /**
-     * 解析导入文件中的发起权限类型，兼容旧格式 metadata.startPermissionType。
+     * 解析导入文件中的发起权限类型。
      */
     private String resolveStartPermissionType(WorkflowExportFormat.WorkflowData workflow) {
         if (workflow == null) {
             return null;
         }
-        if (StringUtils.hasText(workflow.getStartPermissionType())) {
-            return workflow.getStartPermissionType();
-        }
-        if (workflow.getMetadata() != null) {
-            Object value = workflow.getMetadata().get("startPermissionType");
-            if (value != null && StringUtils.hasText(String.valueOf(value))) {
-                return String.valueOf(value);
-            }
-        }
-        return null;
+        return StringUtils.hasText(workflow.getStartPermissionType()) ? workflow.getStartPermissionType() : null;
     }
 
     /**
-     * 解析导入文件中的发起权限值，兼容旧格式 metadata.startPermissionValue。
+     * 解析导入文件中的发起权限值。
      */
     private String resolveStartPermissionValue(WorkflowExportFormat.WorkflowData workflow) {
         if (workflow == null) {
             return null;
         }
-        if (StringUtils.hasText(workflow.getStartPermissionValue())) {
-            return workflow.getStartPermissionValue();
-        }
-        if (workflow.getMetadata() != null) {
-            Object value = workflow.getMetadata().get("startPermissionValue");
-            if (value != null && StringUtils.hasText(String.valueOf(value))) {
-                return String.valueOf(value);
-            }
-        }
-        return null;
+        return StringUtils.hasText(workflow.getStartPermissionValue()) ? workflow.getStartPermissionValue() : null;
     }
 
     /**
-     * 解析导入文件中的数据权限部门，兼容旧格式 metadata.deptId。
+     * 解析导入文件中的数据权限部门。
      */
     private Long resolveDeptId(WorkflowExportFormat.WorkflowData workflow) {
         if (workflow == null) {
             return null;
         }
-        if (workflow.getDeptId() != null) {
-            return workflow.getDeptId();
-        }
-        if (workflow.getMetadata() != null) {
-            Object value = workflow.getMetadata().get("deptId");
-            if (value instanceof Number) {
-                return ((Number) value).longValue();
-            }
-            if (value != null) {
-                try {
-                    return Long.valueOf(String.valueOf(value));
-                } catch (NumberFormatException ignored) {
-                    log.warn("导入文件 deptId 非法: {}", value);
-                }
-            }
-        }
-        return null;
+        return workflow.getDeptId();
     }
 
     /**

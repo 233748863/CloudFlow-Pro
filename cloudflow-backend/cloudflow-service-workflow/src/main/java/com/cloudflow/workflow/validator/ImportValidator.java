@@ -158,6 +158,9 @@ public class ImportValidator {
         if (workflow.getName() == null || workflow.getName().trim().isEmpty()) {
             errors.add("流程名称不能为空");
         }
+        if (workflow.getProcessKey() == null || workflow.getProcessKey().trim().isEmpty()) {
+            errors.add("流程标识 processKey 不能为空");
+        }
 
         if (workflow.getDefinition() == null) {
             errors.add("流程定义不能为空");
