@@ -115,7 +115,7 @@ public class WorkflowModelBridge {
             incomingCount.put(nodeId, 0);
         }
 
-        Map<String, List<String>> outgoing = new LinkedHashMap<>();
+        Map<String, List<EdgeLink>> outgoing = new LinkedHashMap<>();
         if (edgesNode != null) {
             for (JsonNode edge : edgesNode) {
                 String source = firstNotBlank(text(edge, "source"), text(edge, "from"));
@@ -126,7 +126,10 @@ public class WorkflowModelBridge {
                 if (!nodeMap.containsKey(source) || !nodeMap.containsKey(target)) {
                     throw WorkflowException.validationError("流程图连线引用了不存在的节点: " + source + " -> " + target);
                 }
-                outgoing.computeIfAbsent(source, k -> new ArrayList<>()).add(target);
+                outgoing.computeIfAbsent(source, k -> new ArrayList<>())
+                        .add(EdgeLink.of(target,
+                                firstNotBlank(text(edge, "condition"), text(edge, "expression"), text(edge, "expr"), text(edge, "label")),
+                                parseEdgeDefault(edge)));
                 incomingCount.put(target, incomingCount.getOrDefault(target, 0) + 1);
             }
         }
@@ -170,7 +173,7 @@ public class WorkflowModelBridge {
     }
 
     private void collectReachable(String current,
-                                  Map<String, List<String>> outgoing,
+                                  Map<String, List<EdgeLink>> outgoing,
                                   Set<String> reachable,
                                   Set<String> path) {
         if (!StringUtils.hasText(current) || path.contains(current)) {
@@ -178,15 +181,15 @@ public class WorkflowModelBridge {
         }
         path.add(current);
         reachable.add(current);
-        for (String next : outgoing.getOrDefault(current, List.of())) {
-            collectReachable(next, outgoing, reachable, path);
+        for (EdgeLink next : outgoing.getOrDefault(current, List.of())) {
+            collectReachable(next.targetId(), outgoing, reachable, path);
         }
         path.remove(current);
     }
 
     private WfNodeConfig buildTree(String currentId,
                                    Map<String, JsonNode> nodeMap,
-                                   Map<String, List<String>> outgoing,
+                                   Map<String, List<EdgeLink>> outgoing,
                                    Set<String> path) {
         if (path.contains(currentId)) {
             throw WorkflowException.validationError("流程图存在循环，节点ID: " + currentId);
@@ -199,15 +202,30 @@ public class WorkflowModelBridge {
         }
 
         WfNodeConfig config = toNodeConfig(node);
-        List<String> nextIds = outgoing.getOrDefault(currentId, List.of());
-        if (nextIds.size() == 1) {
-            config.setNext(buildTree(nextIds.get(0), nodeMap, outgoing, new LinkedHashSet<>(path)));
-        } else if (nextIds.size() > 1) {
+        List<EdgeLink> nextEdges = outgoing.getOrDefault(currentId, List.of());
+        if (nextEdges.size() == 1) {
+            WfNodeConfig next = buildTree(nextEdges.get(0).targetId(), nodeMap, outgoing, new LinkedHashSet<>(path));
+            applyEdgeCondition(next, nextEdges.get(0));
+            config.setNext(next);
+        } else if (nextEdges.size() > 1) {
+            EdgeLink defaultEdge = resolveDefaultEdge(currentId, nextEdges);
             List<WfNodeConfig> branches = new ArrayList<>();
-            for (String nextId : nextIds) {
-                branches.add(buildTree(nextId, nodeMap, outgoing, new LinkedHashSet<>(path)));
+            for (EdgeLink edge : nextEdges) {
+                if (edge == defaultEdge) {
+                    continue;
+                }
+                WfNodeConfig branch = buildTree(edge.targetId(), nodeMap, outgoing, new LinkedHashSet<>(path));
+                applyEdgeCondition(branch, edge);
+                branches.add(branch);
             }
-            config.setBranches(branches);
+            if (!branches.isEmpty()) {
+                config.setBranches(branches);
+            }
+            if (defaultEdge != null) {
+                WfNodeConfig next = buildTree(defaultEdge.targetId(), nodeMap, outgoing, new LinkedHashSet<>(path));
+                applyEdgeCondition(next, defaultEdge);
+                config.setNext(next);
+            }
         }
 
         path.remove(currentId);
@@ -271,5 +289,65 @@ public class WorkflowModelBridge {
             }
         }
         return null;
+    }
+
+    private void applyEdgeCondition(WfNodeConfig target, EdgeLink edge) {
+        if (target == null || edge == null) {
+            return;
+        }
+        // 允许在连线上声明条件，若目标节点未显式配置 condition，则回填到目标节点。
+        if (!StringUtils.hasText(target.getCondition()) && StringUtils.hasText(edge.condition())) {
+            target.setCondition(edge.condition());
+        }
+    }
+
+    private EdgeLink resolveDefaultEdge(String sourceId, List<EdgeLink> edges) {
+        EdgeLink defaultEdge = null;
+        for (EdgeLink edge : edges) {
+            if (!edge.isDefault()) {
+                continue;
+            }
+            if (defaultEdge != null) {
+                throw WorkflowException.validationError("节点存在多条默认连线: " + sourceId);
+            }
+            defaultEdge = edge;
+        }
+        return defaultEdge;
+    }
+
+    private boolean parseEdgeDefault(JsonNode edge) {
+        if (edge == null || edge.isNull()) {
+            return false;
+        }
+        return parseBooleanField(edge, "isDefault")
+                || parseBooleanField(edge, "default")
+                || parseBooleanField(edge, "is_default");
+    }
+
+    private boolean parseBooleanField(JsonNode node, String field) {
+        if (node == null || !node.has(field) || node.get(field).isNull()) {
+            return false;
+        }
+        JsonNode value = node.get(field);
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isNumber()) {
+            return value.asInt() != 0;
+        }
+        String text = value.asText();
+        if (!StringUtils.hasText(text)) {
+            return false;
+        }
+        return "true".equalsIgnoreCase(text)
+                || "1".equals(text)
+                || "yes".equalsIgnoreCase(text)
+                || "y".equalsIgnoreCase(text);
+    }
+
+    private record EdgeLink(String targetId, String condition, boolean isDefault) {
+        private static EdgeLink of(String targetId, String condition, boolean isDefault) {
+            return new EdgeLink(targetId, condition, isDefault);
+        }
     }
 }
