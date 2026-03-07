@@ -91,7 +91,11 @@ import { DatePicker } from "./ui/date-picker";
 import { Button } from "./ui/button";
 import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { useAuth } from "../context/AuthContext";
-import { convertWorkflowTreeToGraph } from "../utils/workflowGraph";
+import {
+  convertGraphToWorkflowTree,
+  convertWorkflowTreeToGraph,
+  parseWorkflowGraphDefinition,
+} from "../utils/workflowGraph";
 
 // ==================== 辅助函数 ====================
 
@@ -5300,6 +5304,24 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     },
   };
 
+  const resolveRootNode = useCallback((raw: unknown): WorkflowNode => {
+    const graphModel = parseWorkflowGraphDefinition(raw);
+    if (graphModel) {
+      try {
+        // 过渡阶段：编辑器仍使用树操作，先把 nodes+edges 转成运行树
+        return convertGraphToWorkflowTree(graphModel);
+      } catch (error) {
+        console.warn("[WorkflowBuilder] 图模型转换失败，回退默认流程", error);
+      }
+    }
+
+    if (raw && typeof raw === "object" && "id" in (raw as Record<string, unknown>)) {
+      return raw as WorkflowNode;
+    }
+
+    return defaultRoot;
+  }, []);
+
   const {
     state: root,
     set: setRoot,
@@ -5308,7 +5330,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     redo,
     canUndo,
     canRedo,
-  } = useHistory<WorkflowNode>(workflow?.nodes || defaultRoot);
+  } = useHistory<WorkflowNode>(resolveRootNode(workflow?.nodes));
   // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
   const rootRef = useRef(root);
   rootRef.current = root;
@@ -5435,7 +5457,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   useEffect(() => {
     if (!workflow) return;
 
-    const nextRoot = workflow.nodes || defaultRoot;
+    const nextRoot = resolveRootNode(workflow.nodes);
     const parsedTags = parseTagsToArray(workflow.tags);
     resetRoot(nextRoot);
     rootRef.current = nextRoot;
@@ -5460,7 +5482,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       startPermissionType: workflow.startPermissionType || "ALL",
       startPermissionValue: workflow.startPermissionValue || undefined,
     });
-  }, [workflow?.id, parseTagsToArray, resetRoot, normalizeDeptId, user?.deptId]);
+  }, [workflow?.id, parseTagsToArray, resetRoot, normalizeDeptId, user?.deptId, resolveRootNode]);
 
   useEffect(() => {
     if (!onChange || !workflowRef.current) return;
