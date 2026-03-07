@@ -276,6 +276,12 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             for (WfNodeConfig branch : branches) {
                 if (evaluateCondition(branch.getCondition(), variables)) {
                     WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch, rootNode);
+                    if (branchEntry == null) {
+                        throw WorkflowException.validationError(String.format(
+                            "排他分支节点 %s(%s) 未配置有效后继节点",
+                            branch.getTitle(),
+                            branch.getId()));
+                    }
                     runNode(instance, branchEntry, variables, depth + 1, rootNode);
                     branchTaken = true;
                     return;
@@ -310,6 +316,12 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         if (branches != null) {
             for (WfNodeConfig branch : branches) {
                 WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, rootNode);
+                if (branchEntry == null) {
+                    throw WorkflowException.validationError(String.format(
+                        "并行分支节点 %s(%s) 未配置有效后继节点",
+                        branch.getTitle(),
+                        branch.getId()));
+                }
                 runNode(instance, branchEntry, variables, depth + 1, rootNode);
             }
         }
@@ -396,13 +408,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             return null;
         }
         if ("CONDITION".equals(branch.getType())) {
-            BranchRouting routing = resolveBranchRouting(branch, rootNode);
-            if (routing.defaultNext() != null) {
-                return routing.defaultNext();
-            }
-            if (routing.branches() != null && !routing.branches().isEmpty()) {
-                return routing.branches().get(0);
-            }
+            return resolveConditionBranchEntry(branch, rootNode, "并行网关");
         }
         return branch;
     }
@@ -412,15 +418,33 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             return null;
         }
         if ("CONDITION".equals(branch.getType())) {
-            BranchRouting routing = resolveBranchRouting(branch, rootNode);
-            if (routing.defaultNext() != null) {
-                return routing.defaultNext();
-            }
-            if (routing.branches() != null && !routing.branches().isEmpty()) {
-                return routing.branches().get(0);
-            }
+            return resolveConditionBranchEntry(branch, rootNode, "排他网关");
         }
         return branch;
+    }
+
+    /**
+     * 条件分支头节点必须能解析出唯一后继，避免“首边兜底”误流转。
+     */
+    private WfNodeConfig resolveConditionBranchEntry(WfNodeConfig conditionNode,
+                                                     WfNodeConfig rootNode,
+                                                     String gatewayType) {
+        BranchRouting routing = resolveBranchRouting(conditionNode, rootNode);
+        if (routing.defaultNext() != null) {
+            return routing.defaultNext();
+        }
+        List<WfNodeConfig> branchNodes = routing.branches();
+        if (branchNodes == null || branchNodes.isEmpty()) {
+            return null;
+        }
+        if (branchNodes.size() == 1) {
+            return branchNodes.get(0);
+        }
+        throw WorkflowException.validationError(String.format(
+            "%s 分支入口节点 %s(%s) 存在多条非默认出边，无法确定唯一下一节点，请配置 default 边",
+            gatewayType,
+            conditionNode.getTitle(),
+            conditionNode.getId()));
     }
 
     private record BranchRouting(List<WfNodeConfig> branches, WfNodeConfig defaultNext) {
@@ -463,6 +487,12 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             if ("PARALLEL".equals(strategy) || "RACE".equals(strategy)) {
                 for (WfNodeConfig branch : branches) {
                     WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, rootNode);
+                    if (branchEntry == null) {
+                        throw WorkflowException.validationError(String.format(
+                            "并行分支节点 %s(%s) 未配置有效后继节点",
+                            branch.getTitle(),
+                            branch.getId()));
+                    }
                     runNode(instance, branchEntry, variables, depth + 1, rootNode);
                 }
                 return;
@@ -474,6 +504,12 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 if (evaluateCondition(branch.getCondition(), variables)) {
                     exclusiveBranchTaken = true;
                     WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch, rootNode);
+                    if (branchEntry == null) {
+                        throw WorkflowException.validationError(String.format(
+                            "排他分支节点 %s(%s) 未配置有效后继节点",
+                            branch.getTitle(),
+                            branch.getId()));
+                    }
                     runNode(instance, branchEntry, variables, depth + 1, rootNode);
                     return;
                 }
