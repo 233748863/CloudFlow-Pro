@@ -100,6 +100,7 @@ import {
   convertWorkflowTreeToGraph,
   parseWorkflowGraphDefinition,
   removeWorkflowGraphBranch,
+  removeWorkflowGraphNode,
   patchWorkflowGraphNode,
 } from "../utils/workflowGraph";
 
@@ -6704,6 +6705,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
   const rootRef = useRef(root);
   rootRef.current = root;
+  // 用 ref 保持最新 graphModel，避免确认弹窗中的图编辑闭包过时
+  const graphModelRef = useRef(graphModel);
+  graphModelRef.current = graphModel;
   const setRoot = useCallback(
     (nextRoot: WorkflowTreeNode) => {
       rootRef.current = nextRoot;
@@ -7307,7 +7311,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         message: `您即将删除整个条件分支，该分支下的所有节点也将一并被删除，是否继续？`,
         onConfirm: () => {
           const nextGraph = removeWorkflowGraphBranch(
-            graphModel,
+            graphModelRef.current,
             parentNode.id,
             id,
           );
@@ -7326,19 +7330,21 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         open: true,
         message: `节点"${node.title}"自身下方挂载了 ${node.branches.length} 个分支，删除该节点将导致这些分支结构彻底毁坏并丢失。是否继续？`,
         onConfirm: () => {
-          const newRoot = deleteNodeInTree(rootRef.current, id);
-          if (newRoot) {
-            applyTreeChange(newRoot, { clearSelection: true, successMessage: "节点及其分支已删除" });
-          }
+          const nextGraph = removeWorkflowGraphNode(graphModelRef.current, id);
+          applyGraphChange(nextGraph, {
+            clearSelection: true,
+            successMessage: "节点及其分支已删除",
+          });
         },
       });
       return;
     }
 
-    const newRoot = deleteNodeInTree(currentRoot, id);
-    if (newRoot) {
-      applyTreeChange(newRoot, { clearSelection: true, successMessage: "节点已删除" });
-    }
+    const nextGraph = removeWorkflowGraphNode(graphModelRef.current, id);
+    applyGraphChange(nextGraph, {
+      clearSelection: true,
+      successMessage: "节点已删除",
+    });
   };
 
   const handleDrop = (dragId: string, dropId: string) => {

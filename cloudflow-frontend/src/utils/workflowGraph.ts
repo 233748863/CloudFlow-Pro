@@ -347,6 +347,103 @@ export const appendWorkflowGraphBranch = (
 };
 
 /**
+ * 删除普通节点并保留主干后继，避免节点删除再次回退到树模型编辑。
+ */
+export const removeWorkflowGraphNode = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): WorkflowGraphDefinition => {
+  if (!graph.nodes.some((node) => node.id === nodeId)) {
+    return graph;
+  }
+
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const incomingEdges = graph.edges.filter((edge) => edge.target === nodeId);
+  const outgoingEdges = graph.edges.filter((edge) => edge.source === nodeId);
+
+  const keepEdge = (() => {
+    const defaultEdge = outgoingEdges.find((edge) => isDefaultEdge(edge));
+    if (defaultEdge) {
+      return defaultEdge;
+    }
+
+    if (outgoingEdges.length !== 1) {
+      return undefined;
+    }
+
+    const [singleEdge] = outgoingEdges;
+    const singleTarget = nodeMap.get(singleEdge.target);
+    if (!singleTarget) {
+      return undefined;
+    }
+
+    const singleTargetType = String(singleTarget.type || '').toUpperCase();
+    const targetCondition =
+      typeof singleTarget.condition === 'string' ? singleTarget.condition.trim() : '';
+    if (
+      singleTargetType === NodeType.CONDITION ||
+      !!extractEdgeCondition(singleEdge) ||
+      !!targetCondition
+    ) {
+      return undefined;
+    }
+
+    return singleEdge;
+  })();
+
+  const keepTargetId = keepEdge?.target;
+  const idsToRemove = new Set<string>([nodeId]);
+  const stack = outgoingEdges
+    .filter((edge) => edge.target !== keepTargetId)
+    .map((edge) => edge.target);
+
+  while (stack.length > 0) {
+    const currentId = stack.pop();
+    if (!currentId || idsToRemove.has(currentId)) {
+      continue;
+    }
+
+    idsToRemove.add(currentId);
+    graph.edges
+      .filter((edge) => edge.source === currentId)
+      .forEach((edge) => {
+        if (edge.target !== keepTargetId) {
+          stack.push(edge.target);
+        }
+      });
+  }
+
+  let edges = graph.edges.filter(
+    (edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target),
+  );
+
+  if (keepTargetId) {
+    const buildEdgeKey = (edge: WorkflowGraphEdge) =>
+      `${edge.source}->${edge.target}|${extractEdgeCondition(edge) || ''}|${isDefaultEdge(edge) ? '1' : '0'}`;
+    const existingEdgeKeys = new Set(edges.map((edge) => buildEdgeKey(edge)));
+
+    incomingEdges
+      .filter((edge) => !idsToRemove.has(edge.source))
+      .forEach((edge) => {
+        const rewiredEdge: WorkflowGraphEdge = {
+          ...edge,
+          id: `${edge.source}->${keepTargetId}`,
+          target: keepTargetId,
+        };
+        const rewiredKey = buildEdgeKey(rewiredEdge);
+        if (existingEdgeKeys.has(rewiredKey)) {
+          return;
+        }
+        existingEdgeKeys.add(rewiredKey);
+        edges.push(rewiredEdge);
+      });
+  }
+
+  const nodes = graph.nodes.filter((node) => !idsToRemove.has(node.id));
+  return { nodes, edges };
+};
+
+/**
  * 删除指定条件分支的整棵子图，并在最后一个分支被移除时回收父节点分支配置。
  */
 export const removeWorkflowGraphBranch = (
