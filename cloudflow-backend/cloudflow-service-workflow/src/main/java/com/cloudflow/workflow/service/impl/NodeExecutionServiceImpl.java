@@ -133,7 +133,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                                 // 24 小时足以覆盖绝大多数业务场景，超过此时间的流程应通过 SLA 超时机制处理
                                 redisCache.expire(joinKey, 24, TimeUnit.HOURS);
                             }
-                            int totalBranches = gateway.getBranches() != null ? gateway.getBranches().size() : 0;
+                            int totalBranches = resolveBranchRouting(gateway, rootNode).branches().size();
                             // P1-14: 防御性检查 - 如果 count 超过 totalBranches，说明计数器可能被重置过
                             if (count > totalBranches && totalBranches > 0) {
                                 log.warn("[runNode] 并行汇聚计数异常: instanceId={}, gatewayId={}, count={}, totalBranches={}，" +
@@ -633,7 +633,13 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 if (candidate == null || !"PARALLEL".equals(candidate.getType())) {
                     continue;
                 }
-                WorkflowRuntimeGraph.EdgeLink defaultEdge = runtimeGraph.findDefaultOrFirstOutgoingEdge(nodeId);
+                WorkflowRuntimeGraph.EdgeLink defaultEdge = null;
+                for (WorkflowRuntimeGraph.EdgeLink edge : runtimeGraph.getOutgoingEdges(nodeId)) {
+                    if (edge.isDefault()) {
+                        defaultEdge = edge;
+                        break;
+                    }
+                }
                 if (defaultEdge != null && targetNodeId.equals(defaultEdge.getTargetId())) {
                     return candidate;
                 }
