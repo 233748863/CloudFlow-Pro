@@ -8,7 +8,6 @@ import {
   FormDefinition, 
   Task, 
   TaskStatus,
-  WorkflowNode,
   Role 
 } from '../types';
 
@@ -79,16 +78,17 @@ export enum TraceNodeStatus {
 /**
  * 流程轨迹节点
  */
-export interface ProcessTraceNode extends WorkflowNode {
+export interface ProcessTraceNode {
+  id: string;
+  type: string;
+  title: string;
   status: TraceNodeStatus;
   assigneeId?: string;
   assigneeName?: string;
   startTime?: string;
   endTime?: string;
   comment?: string;
-  // 递归结构
-  next?: ProcessTraceNode;
-  branches?: ProcessTraceNode[];
+  condition?: string;
 }
 
 /**
@@ -130,7 +130,7 @@ export interface ProcessTrace {
   applicantName?: string;
   startTime?: string;
   endTime?: string;
-  nodes?: ProcessTraceNode;
+  nodes?: ProcessTraceNode[];
   logs?: ProcessLog[];
   // 后端实际返回的字段
   finished: string[];
