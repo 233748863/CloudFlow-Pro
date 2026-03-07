@@ -521,6 +521,26 @@ export const countWorkflowGraphBranches = (
 /**
  * 在指定节点后插入一段新的子图，并保留原有主干后继。
  */
+/**
+ * 提取指定节点为根的完整子图，不携带外部入边。
+ */
+export const extractWorkflowGraphSubgraph = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): WorkflowGraphDefinition | null => {
+  if (!graph.nodes.some((node) => node.id === nodeId)) {
+    return null;
+  }
+
+  const includedIds = collectGraphSubtreeIds(graph, [nodeId]);
+  return {
+    nodes: graph.nodes.filter((node) => includedIds.has(node.id)),
+    edges: graph.edges.filter(
+      (edge) => includedIds.has(edge.source) && includedIds.has(edge.target),
+    ),
+  };
+};
+
 const resolveWorkflowGraphNodeIdPrefix = (node: WorkflowGraphNode): string => {
   if (node.id?.startsWith('branch')) {
     return 'branch';

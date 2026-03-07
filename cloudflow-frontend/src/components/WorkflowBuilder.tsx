@@ -104,6 +104,7 @@ import {
   isWorkflowGraphBranchRoot,
   findWorkflowGraphParentNodeId,
   findWorkflowGraphNode,
+  extractWorkflowGraphSubgraph,
   findWorkflowGraphMainTargetId,
   insertWorkflowGraphNodeAfter,
   insertWorkflowGraphSubgraphAfter,
@@ -127,24 +128,6 @@ const generateNodeId = (prefix: string = "node"): string => {
   }
   // 降级方案：时间戳 + 随机字符串
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-};
-
-const findNodeById = (
-  root: WorkflowTreeNode,
-  targetId: string,
-): WorkflowTreeNode | null => {
-  if (root.id === targetId) return root;
-  if (root.next) {
-    const f = findNodeById(root.next, targetId);
-    if (f) return f;
-  }
-  if (root.branches) {
-    for (const b of root.branches) {
-      const f = findNodeById(b, targetId);
-      if (f) return f;
-    }
-  }
-  return null;
 };
 
 const NODE_TYPE_LABELS: Record<string, string> = {
@@ -6618,10 +6601,23 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const selectedNode = useMemo(
-    () => (selectedNodeId ? findNodeById(root, selectedNodeId) : null),
-    [root, selectedNodeId],
-  );
+  const selectedNode = useMemo(() => {
+    if (!selectedNodeId) {
+      return null;
+    }
+
+    const selectedSubgraph = extractWorkflowGraphSubgraph(graphModel, selectedNodeId);
+    if (!selectedSubgraph) {
+      return null;
+    }
+
+    try {
+      return convertGraphToWorkflowTree(selectedSubgraph);
+    } catch (error) {
+      console.warn("[WorkflowBuilder] 选中节点子图恢复失败", error);
+      return null;
+    }
+  }, [graphModel, selectedNodeId]);
   const [saving, setSaving] = useState(false);
   const [workflowName, setWorkflowName] = useState(
     workflow?.name || "未命名流程",
