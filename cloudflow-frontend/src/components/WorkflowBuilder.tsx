@@ -6744,7 +6744,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
-  const [selectedNode, setSelectedNode] = useState<WorkflowTreeNode | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const selectedNode = useMemo(
+    () => (selectedNodeId ? findNodeById(root, selectedNodeId) : null),
+    [root, selectedNodeId],
+  );
   const [saving, setSaving] = useState(false);
   const [workflowName, setWorkflowName] = useState(
     workflow?.name || "未命名流程",
@@ -6868,7 +6872,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     const nextGraph = resolveGraphModel(workflow.nodes);
     replaceGraphState(nextGraph, { resetHistory: true, fallbackToDefault: true });
     const parsedTags = parseTagsToArray(workflow.tags);
-    setSelectedNode(null);
+    setSelectedNodeId(null);
 
     setWorkflowName(workflow.name || "未命名流程");
     setWorkflowKey(workflow.key || "new_process");
@@ -6999,7 +7003,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       nextRoot: WorkflowTreeNode | null,
       options?: {
         clearSelection?: boolean;
-        updateSelection?: { id: string; data: Partial<WorkflowTreeNode> };
         successMessage?: string;
       },
     ) => {
@@ -7011,14 +7014,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       setRoot(nextRoot);
 
       if (options?.clearSelection) {
-        setSelectedNode(null);
-      }
-
-      if (options?.updateSelection) {
-        const { id, data } = options.updateSelection;
-        setSelectedNode((prev) =>
-          prev && prev.id === id ? { ...prev, ...data } : prev,
-        );
+        setSelectedNodeId(null);
       }
 
       if (options?.successMessage) {
@@ -7251,7 +7247,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       ...node,
       ...data,
     }));
-    applyTreeChange(newRoot, { updateSelection: { id, data } });
+    applyTreeChange(newRoot);
   };
 
   const handleDeleteNode = (id: string) => {
@@ -7449,7 +7445,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       toast.error("模板应用失败：图模型结构异常");
       return;
     }
-    setSelectedNode(null);
+    setSelectedNodeId(null);
     setWorkflowName(template.name);
     toast.success(`已应用模板: ${template.name}`);
   };
@@ -7653,7 +7649,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     () => ({
       onAddNext: handleAddNext,
       onAddBranch: handleAddBranch,
-      onSelect: setSelectedNode,
+      onSelect: (node) => setSelectedNodeId(node.id),
       onDrop: handleDrop,
       onCopy: handleCopyNode,
       setDraggingGlobal,
@@ -7717,7 +7713,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         onPointerLeave={() => setIsPanning(false)}
         onClick={() => {
           setActiveQuickAddId(null);
-          setSelectedNode(null);
+          setSelectedNodeId(null);
         }}
       >
         {/* 动态网格背景，随漫游移动 */}
@@ -7775,7 +7771,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           <FlowNode
             node={root}
             invalidNodes={invalidNodeIds}
-            selectedNodeId={selectedNode?.id}
+            selectedNodeId={selectedNodeId}
             isDraggingGlobal={isDraggingGlobal}
             draggingNodeId={draggingNodeId}
             activeQuickAddId={activeQuickAddId}
@@ -7789,7 +7785,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       {selectedNode && (
         <PropertyPanel
           node={selectedNode}
-          onClose={() => setSelectedNode(null)}
+          onClose={() => setSelectedNodeId(null)}
           onUpdate={handleUpdateNode}
           onDelete={handleDeleteNode}
           onConfirmAction={(message, onConfirm) =>
