@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Settings, FileText, Tag, FolderOpen, Shield, Users } from 'lucide-react';
 import { Input } from './ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
-import { getFormDefinitions } from '../services/api/workflow';
-import { getRoleList, getUserList, getDeptTree } from '../services/api/auth';
-import { FormDefinitionListItem } from '../types/workflow';
+import { getDeptTree } from '../services/api/auth';
+import { FormDefinition } from '../types';
 import { SysRole, SysUser, SysDept } from '../services/api/auth';
 import { toast } from 'sonner';
 
@@ -42,6 +41,9 @@ interface WorkflowSettingsModalProps {
   formId: string;
   startPermissionType: string;
   startPermissionValue: string;
+  availableForms?: FormDefinition[];
+  availableRoles?: SysRole[];
+  availableUsers?: SysUser[];
   onSave: (settings: {
     description: string;
     category: string;
@@ -63,6 +65,9 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   formId: initialFormId,
   startPermissionType: initialStartPermissionType,
   startPermissionValue: initialStartPermissionValue,
+  availableForms = [],
+  availableRoles = [],
+  availableUsers = [],
   onSave,
 }) => {
   const [description, setDescription] = useState(initialDescription);
@@ -74,16 +79,12 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   // P2: 启动权限配置状态
   const [startPermissionType, setStartPermissionType] = useState(initialStartPermissionType || 'ALL');
   const [startPermissionValue, setStartPermissionValue] = useState(initialStartPermissionValue || '');
-  
-  // P1: 表单列表状态
-  const [formList, setFormList] = useState<FormDefinitionListItem[]>([]);
-  const [loadingForms, setLoadingForms] = useState(false);
-  
-  // P2: 权限配置数据状态
+  const [formList, setFormList] = useState<Array<{ id: string; name: string }>>([]);
   const [roleList, setRoleList] = useState<SysRole[]>([]);
   const [userList, setUserList] = useState<SysUser[]>([]);
   const [deptList, setDeptList] = useState<SysDept[]>([]);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const loadingForms = false;
 
   // 同步外部状态变化
   useEffect(() => {
@@ -93,48 +94,61 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
     setFormId(initialFormId);
     setStartPermissionType(initialStartPermissionType || 'ALL');
     setStartPermissionValue(initialStartPermissionValue || '');
-  }, [initialDescription, initialCategory, initialTags, initialFormId, initialStartPermissionType, initialStartPermissionValue]);
+  }, [
+    initialDescription,
+    initialCategory,
+    initialTags,
+    initialFormId,
+    initialStartPermissionType,
+    initialStartPermissionValue,
+  ]);
 
-  // P1: 加载表单列表
   useEffect(() => {
-    if (open) {
-      loadForms();
-      loadPermissionData();
-    }
-  }, [open]);
+    setFormList(
+      availableForms.map((form) => ({
+        id: String(form.id),
+        name: String(form.name),
+      })),
+    );
+  }, [availableForms]);
 
-  const loadForms = async () => {
-    try {
-      setLoadingForms(true);
-      const forms = await getFormDefinitions();
-      setFormList(forms || []);
-    } catch (error) {
-      console.error('加载表单列表失败:', error);
-      toast.error('加载表单列表失败');
-    } finally {
-      setLoadingForms(false);
-    }
-  };
+  useEffect(() => {
+    setRoleList(Array.isArray(availableRoles) ? availableRoles : []);
+  }, [availableRoles]);
 
-  // P2: 加载权限配置数据（角色、用户、部门）
-  const loadPermissionData = async () => {
-    try {
-      setLoadingPermissions(true);
-      const [roles, users, depts] = await Promise.all([
-        getRoleList().catch(() => []),
-        getUserList().catch(() => ({ rows: [] })),
-        getDeptTree().catch(() => [])
-      ]);
-      setRoleList(Array.isArray(roles) ? roles : roles.rows || []);
-      setUserList(Array.isArray(users) ? users : users.rows || []);
-      setDeptList(Array.isArray(depts) ? depts : []);
-    } catch (error) {
-      console.error('加载权限数据失败:', error);
-      // 不显示错误提示，静默失败
-    } finally {
-      setLoadingPermissions(false);
+  useEffect(() => {
+    setUserList(Array.isArray(availableUsers) ? availableUsers : []);
+  }, [availableUsers]);
+
+  // 仅在打开且选择“指定部门”时拉取部门树，避免每次弹窗都重复请求。
+  useEffect(() => {
+    if (!open || startPermissionType !== 'DEPT' || deptList.length > 0) {
+      return;
     }
-  };
+    let cancelled = false;
+    const loadDeptList = async () => {
+      try {
+        setLoadingPermissions(true);
+        const depts = await getDeptTree();
+        if (!cancelled) {
+          setDeptList(Array.isArray(depts) ? depts : []);
+        }
+      } catch (error) {
+        console.error('加载部门列表失败:', error);
+        if (!cancelled) {
+          toast.error('加载部门列表失败');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPermissions(false);
+        }
+      }
+    };
+    void loadDeptList();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, startPermissionType, deptList.length]);
 
   const handleAddTag = (tag: string) => {
     const trimmedTag = tag.trim();

@@ -5291,6 +5291,25 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   // P2: 获取当前用户信息（用于数据权限）
   const { user } = useAuth();
 
+  // 优先使用上层已加载的数据预热审批人缓存，减少设计器内重复请求。
+  useEffect(() => {
+    if (Array.isArray(availableRoles) && availableRoles.length > 0) {
+      writeApproverCache("ROLE", availableRoles);
+    }
+  }, [availableRoles]);
+
+  useEffect(() => {
+    if (!Array.isArray(availableUsers) || availableUsers.length === 0) {
+      return;
+    }
+    const normalizedUsers = availableUsers.map((item) => ({
+      userId: Number(item.id) || item.id,
+      userName: item.username || item.name,
+      nickName: item.name,
+    }));
+    writeApproverCache("USER", normalizedUsers);
+  }, [availableUsers]);
+
   const defaultRoot: WorkflowTreeNode = {
     id: "node_start",
     type: NodeType.START,
@@ -6373,6 +6392,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         formId={selectedFormId}
         startPermissionType={startPermissionType}
         startPermissionValue={startPermissionValue}
+        availableForms={availableForms}
+        availableRoles={availableRoles}
+        availableUsers={availableUsers?.map((user) => ({
+          userId: Number(user.id) || undefined,
+          userName: user.username || user.name,
+          nickName: user.name,
+        }))}
         onSave={handleSettingsSave}
       />
 
