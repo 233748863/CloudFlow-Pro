@@ -122,22 +122,6 @@ const generateNodeId = (prefix: string = "node"): string => {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 };
 
-const updateNodeInTree = (
-  root: WorkflowTreeNode,
-  targetId: string,
-  updater: (node: WorkflowTreeNode) => WorkflowTreeNode,
-): WorkflowTreeNode => {
-  if (root.id === targetId) return updater(root);
-  const newRoot = { ...root };
-  if (newRoot.next)
-    newRoot.next = updateNodeInTree(newRoot.next, targetId, updater);
-  if (newRoot.branches)
-    newRoot.branches = newRoot.branches.map((b) =>
-      updateNodeInTree(b, targetId, updater),
-    );
-  return newRoot;
-};
-
 const findNodeById = (
   root: WorkflowTreeNode,
   targetId: string,
@@ -156,44 +140,9 @@ const findNodeById = (
   return null;
 };
 
-const deleteNodeInTree = (
-  root: WorkflowTreeNode,
-  targetId: string,
-): WorkflowTreeNode | null => {
-  if (root.id === targetId) return root.next || null;
-  const newRoot = { ...root };
-  if (newRoot.next) {
-    const res = deleteNodeInTree(newRoot.next, targetId);
-    newRoot.next = res || undefined;
-  }
-  if (newRoot.branches) {
-    const nb: WorkflowTreeNode[] = [];
-    for (const b of newRoot.branches) {
-      const res = deleteNodeInTree(b, targetId);
-      if (res) nb.push(res);
-    }
-    newRoot.branches = nb.length > 0 ? nb : undefined;
-  }
-  return newRoot;
-};
-
-const hasEndNode = (root: WorkflowTreeNode): boolean => {
-  if (root.type === NodeType.END) return true;
-  if (root.next && hasEndNode(root.next)) return true;
-  if (root.branches) {
-    for (const branch of root.branches) {
-      if (hasEndNode(branch)) return true;
-    }
-  }
-  return false;
-};
-
 // 检查 targetId 是否在 ancestorId 的 branches 子树中
-// 用于拖拽时防止循环引用：不能把节点拖到自己的分支子树中
-// 注意：只检查 branches 子树，不检查 next 链。
-// 因为 deleteNodeInTree 删除 dragNode 时会把 dragNode.next 重新连接到前驱节点，
-// 所以 next 链上的节点在删除后仍然在树中，拖到 next 链上是安全的。
-// 但 branches 中的节点会随 dragNode 一起被移除，拖到 branches 内部会导致节点丢失。
+// 用于拖拽时防止循环引用：节点移动会保留自身分支，但不携带原主干后续。
+// 因此只需要阻止拖入自身 branches 子树，拖到原 next 链仍然是安全的。
 const isDescendantOf = (
   root: WorkflowTreeNode,
   ancestorId: string,
