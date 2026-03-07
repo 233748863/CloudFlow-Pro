@@ -1,6 +1,5 @@
 package com.cloudflow.workflow.domain;
 
-import java.util.List;
 import java.util.Map;
 import java.io.Serializable;
 
@@ -14,8 +13,6 @@ public class WfNodeConfig implements Serializable {
     private String description;
     private String approverType; // 审批人类型：USER, USERS(USER_LIST), ROLE, DEPT, DEPT_MANAGER, DIRECT_LEADER
     private String approverValue;
-    private WfNodeConfig next;
-    private List<WfNodeConfig> branches;
     private String branchStrategy; // 分支策略：PARALLEL, RACE, EXCLUSIVE
     private String condition;
     private Boolean allowEdit;
@@ -82,22 +79,6 @@ public class WfNodeConfig implements Serializable {
         this.approverValue = approverValue;
     }
 
-    public WfNodeConfig getNext() {
-        return next;
-    }
-
-    public void setNext(WfNodeConfig next) {
-        this.next = next;
-    }
-
-    public List<WfNodeConfig> getBranches() {
-        return branches;
-    }
-
-    public void setBranches(List<WfNodeConfig> branches) {
-        this.branches = branches;
-    }
-    
     public String getBranchStrategy() {
         return branchStrategy;
     }
