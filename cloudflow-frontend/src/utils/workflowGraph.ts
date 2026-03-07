@@ -411,6 +411,114 @@ export const appendWorkflowGraphBranch = (
 };
 
 /**
+ * 按 ID 查找图模型节点。
+ */
+export const findWorkflowGraphNode = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): WorkflowGraphNode | null => {
+  return graph.nodes.find((node) => node.id === nodeId) || null;
+};
+
+/**
+ * 查找节点的唯一入边父节点 ID，无父节点时返回 null。
+ */
+export const findWorkflowGraphParentNodeId = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): string | null => {
+  return graph.edges.find((edge) => edge.target === nodeId)?.source || null;
+};
+
+/**
+ * 返回指定节点的条件分支根节点 ID 列表。
+ */
+export const getWorkflowGraphBranchChildIds = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): string[] => {
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  return graph.edges
+    .filter((edge) => edge.source === nodeId && isBranchEdge(edge, nodeMap))
+    .map((edge) => edge.target);
+};
+
+/**
+ * 判断节点是否是条件分支的根节点。
+ */
+export const isWorkflowGraphBranchRoot = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): boolean => {
+  const incomingEdge = graph.edges.find((edge) => edge.target === nodeId);
+  if (!incomingEdge) {
+    return false;
+  }
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  return isBranchEdge(incomingEdge, nodeMap);
+};
+
+/**
+ * 判断节点是否位于任意分支作用域内。
+ */
+export const isWorkflowGraphNodeInsideBranchScope = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): boolean | null => {
+  if (!graph.nodes.some((node) => node.id === nodeId)) {
+    return null;
+  }
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  let currentId: string | null = nodeId;
+  while (currentId) {
+    const incomingEdge = graph.edges.find((edge) => edge.target === currentId);
+    if (!incomingEdge) {
+      return false;
+    }
+    if (isBranchEdge(incomingEdge, nodeMap)) {
+      return true;
+    }
+    currentId = incomingEdge.source;
+  }
+  return false;
+};
+
+/**
+ * 判断 targetId 是否落在 ancestorId 的分支子树内。
+ */
+export const isWorkflowGraphNodeInBranchSubtree = (
+  graph: WorkflowGraphDefinition,
+  ancestorId: string,
+  targetId: string,
+): boolean => {
+  const branchChildIds = getWorkflowGraphBranchChildIds(graph, ancestorId);
+  if (branchChildIds.length === 0) {
+    return false;
+  }
+  return collectGraphSubtreeIds(graph, branchChildIds).has(targetId);
+};
+
+/**
+ * 返回指定节点的主干后继 ID，若不存在则返回 null。
+ */
+export const findWorkflowGraphMainTargetId = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): string | null => {
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  return resolveGraphMainEdge(graph, nodeId, nodeMap)?.target || null;
+};
+
+/**
+ * 统计指定节点直接挂载的条件分支数量。
+ */
+export const countWorkflowGraphBranches = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): number => {
+  return getWorkflowGraphBranchChildIds(graph, nodeId).length;
+};
+/**
  * 在指定节点后插入一段新的子图，并保留原有主干后继。
  */
 export const insertWorkflowGraphSubgraphAfter = (

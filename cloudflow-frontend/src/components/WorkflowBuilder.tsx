@@ -96,8 +96,15 @@ import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { useAuth } from "../context/AuthContext";
 import {
   appendWorkflowGraphBranch,
+  countWorkflowGraphBranches,
   convertGraphToWorkflowTree,
   convertWorkflowTreeToGraph,
+  isWorkflowGraphNodeInsideBranchScope,
+  isWorkflowGraphNodeInBranchSubtree,
+  isWorkflowGraphBranchRoot,
+  findWorkflowGraphParentNodeId,
+  findWorkflowGraphNode,
+  findWorkflowGraphMainTargetId,
   insertWorkflowGraphNodeAfter,
   insertWorkflowGraphSubgraphAfter,
   moveWorkflowGraphNode,
@@ -139,89 +146,6 @@ const findNodeById = (
   }
   return null;
 };
-
-// 检查 targetId 是否在 ancestorId 的 branches 子树中
-// 用于拖拽时防止循环引用：节点移动会保留自身分支，但不携带原主干后续。
-// 因此只需要阻止拖入自身 branches 子树，拖到原 next 链仍然是安全的。
-const isDescendantOf = (
-  root: WorkflowTreeNode,
-  ancestorId: string,
-  targetId: string,
-): boolean => {
-  const ancestor = findNodeById(root, ancestorId);
-  if (!ancestor || !ancestor.branches) return false;
-  // 在 branch 内部递归搜索（包括 branch 的 next 链和嵌套 branches）
-  const searchInSubtree = (node: WorkflowTreeNode): boolean => {
-    if (node.next) {
-      if (node.next.id === targetId) return true;
-      if (searchInSubtree(node.next)) return true;
-    }
-    if (node.branches) {
-      for (const b of node.branches) {
-        if (b.id === targetId) return true;
-        if (searchInSubtree(b)) return true;
-      }
-    }
-    return false;
-  };
-  // 只从 ancestor 的 branches 开始搜索，不搜索 ancestor.next
-  for (const b of ancestor.branches) {
-    if (b.id === targetId) return true;
-    if (searchInSubtree(b)) return true;
-  }
-  return false;
-};
-
-// 查找指定节点的父节点（即 next 或 branches 中包含 targetId 的节点）
-const findParentOfNode = (
-  root: WorkflowTreeNode,
-  targetId: string,
-  parent: WorkflowTreeNode | null = null,
-): WorkflowTreeNode | null => {
-  if (root.id === targetId) return parent;
-  if (root.next) {
-    const found = findParentOfNode(root.next, targetId, root);
-    if (found) return found;
-  }
-  if (root.branches) {
-    for (const b of root.branches) {
-      const found = findParentOfNode(b, targetId, root);
-      if (found) return found;
-    }
-  }
-  return null;
-};
-
-/**
- * 判断节点是否位于某个分支子树中（true=在分支内，false=在主干上）。
- * 用于限制跨作用域拖拽，避免主干与分支互拖导致结构难以预期。
- */
-const isNodeInsideBranchScope = (
-  root: WorkflowTreeNode,
-  targetId: string,
-  isInsideBranch: boolean = false,
-): boolean | null => {
-  if (root.id === targetId) {
-    return isInsideBranch;
-  }
-  if (root.next) {
-    const foundInNext = isNodeInsideBranchScope(root.next, targetId, isInsideBranch);
-    if (foundInNext !== null) {
-      return foundInNext;
-    }
-  }
-  if (root.branches) {
-    for (const branch of root.branches) {
-      const foundInBranch = isNodeInsideBranchScope(branch, targetId, true);
-      if (foundInBranch !== null) {
-        return foundInBranch;
-      }
-    }
-  }
-  return null;
-};
-
-// ==================== 常量配置 ====================
 
 const NODE_TYPE_LABELS: Record<string, string> = {
   [NodeType.START]: "开始",
@@ -7131,16 +7055,16 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     applyInsert(currentGraph);
   };
   const handleAddBranch = (targetId: string) => {
-    const currentRoot = rootRef.current;
+    const currentGraph = graphModelRef.current;
     let parentId = targetId;
-    let parentNode = findNodeById(currentRoot, targetId);
+    let parentNode = findWorkflowGraphNode(currentGraph, targetId);
 
-    // 修复: 如果是在 END 节点上方的“+”点击添加分支，其实应当是给 END 的前置父节点添加分支
+    // 修复：如果是在 END 节点上方的 + 点击添加分支，实际应当挂到 END 的前置父节点上
     if (parentNode?.type === NodeType.END) {
-      const endParent = findParentOfNode(currentRoot, targetId);
-      if (endParent) {
-        parentId = endParent.id;
-        parentNode = endParent;
+      const endParentId = findWorkflowGraphParentNodeId(currentGraph, targetId);
+      if (endParentId) {
+        parentId = endParentId;
+        parentNode = findWorkflowGraphNode(currentGraph, endParentId);
       } else {
         toast.error("无法在当前位置添加分支");
         return;
@@ -7152,7 +7076,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       const signType = parentNode.signType;
       if (
         signType &&
-        ["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(signType)
+        ["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(String(signType))
       ) {
         toast.error(
           `会签节点"${parentNode.title}"已配置${signType === "ALL" ? "全签" : signType === "ANY" ? "或签" : signType === "PERCENT" ? "比例签" : "顺序签"}模式，不能同时添加分支。如需使用并行分支，请先在属性面板中移除会签配置。`,
@@ -7167,18 +7091,16 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       title: "新分支",
       condition: "amount > 0",
     };
-    // 根据父节点类型决定默认分支策略
     const defaultStrategy =
       parentNode?.type === NodeType.PARALLEL ? "PARALLEL" : "EXCLUSIVE";
     const nextGraph = appendWorkflowGraphBranch(
-      graphModel,
+      currentGraph,
       parentId,
       newBranch,
       defaultStrategy,
     );
     applyGraphChange(nextGraph);
   };
-
   const handleUpdateNode = (id: string, data: Partial<WorkflowTreeNode>) => {
     const nextGraph = patchWorkflowGraphNode(
       graphModel,
@@ -7189,32 +7111,27 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   };
 
   const handleDeleteNode = (id: string) => {
-    const currentRoot = rootRef.current;
-    if (id === currentRoot.id) {
+    const currentGraph = graphModelRef.current;
+    const node = findWorkflowGraphNode(currentGraph, id);
+    if (!node) return;
+    if (node.type === NodeType.START) {
       toast.error("开始节点不可删除");
       return;
     }
-    const node = findNodeById(currentRoot, id);
-    if (!node) return;
     if (node.type === NodeType.END) {
       toast.error("结束节点不可删除");
       return;
     }
 
-    // 严禁单独删除条件分支的根节点
-    const parentNode = findParentOfNode(currentRoot, id);
-    if (
-      parentNode &&
-      parentNode.branches &&
-      parentNode.branches.some((b) => b.id === id)
-    ) {
+    const parentNodeId = findWorkflowGraphParentNodeId(currentGraph, id);
+    if (parentNodeId && isWorkflowGraphBranchRoot(currentGraph, id)) {
       setConfirmDialog({
         open: true,
         message: `您即将删除整个条件分支，该分支下的所有节点也将一并被删除，是否继续？`,
         onConfirm: () => {
           const nextGraph = removeWorkflowGraphBranch(
             graphModelRef.current,
-            parentNode.id,
+            parentNodeId,
             id,
           );
           applyGraphChange(nextGraph, {
@@ -7226,11 +7143,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       return;
     }
 
-    // P0-2 修复：删除带分支的节点时，提示用户分支内容将丢失
-    if (node.branches && node.branches.length > 0) {
+    const branchCount = countWorkflowGraphBranches(currentGraph, id);
+    if (branchCount > 0) {
       setConfirmDialog({
         open: true,
-        message: `节点"${node.title}"自身下方挂载了 ${node.branches.length} 个分支，删除该节点将导致这些分支结构彻底毁坏并丢失。是否继续？`,
+        message: `节点"${node.title}"自身下方挂载了 ${branchCount} 个分支，删除该节点将导致这些分支结构彻底毁坏并丢失。是否继续？`,
         onConfirm: () => {
           const nextGraph = removeWorkflowGraphNode(graphModelRef.current, id);
           applyGraphChange(nextGraph, {
@@ -7248,72 +7165,48 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       successMessage: "节点已删除",
     });
   };
-
   const handleDrop = (dragId: string, dropId: string) => {
-    const currentRoot = rootRef.current;
+    const currentGraph = graphModelRef.current;
 
-    // 基础校验：不能拖到自身
     if (dragId === dropId) return;
 
-    const dragNode = findNodeById(currentRoot, dragId);
+    const dragNode = findWorkflowGraphNode(currentGraph, dragId);
     if (!dragNode) return;
-    const dragInsideBranch = isNodeInsideBranchScope(currentRoot, dragId);
-    const dropInsideBranch = isNodeInsideBranchScope(currentRoot, dropId);
+    const dragInsideBranch = isWorkflowGraphNodeInsideBranchScope(currentGraph, dragId);
+    const dropInsideBranch = isWorkflowGraphNodeInsideBranchScope(currentGraph, dropId);
     if (dragInsideBranch === null || dropInsideBranch === null) {
       toast.error("拖拽目标已失效，请重试");
       return;
     }
-    // 主干与分支之间禁止直接拖拽，避免隐式改变链路组装语义
     if (dragInsideBranch !== dropInsideBranch) {
       toast.error("暂不支持主干与分支之间直接拖拽，请使用复制+删除方式调整");
       return;
     }
 
-    // 不能拖拽开始/结束节点
     if (dragNode.type === NodeType.START || dragNode.type === NodeType.END) {
       toast.error("开始和结束节点不能移动");
       return;
     }
 
-    // 检查被拖拽的节点是否是分支节点（条件分支不能独立移动）
-    const checkIfBranchNode = (
-      node: WorkflowTreeNode,
-      targetId: string,
-    ): boolean => {
-      if (node.branches) {
-        for (const branch of node.branches) {
-          if (branch.id === targetId) return true;
-          if (checkIfBranchNode(branch, targetId)) return true;
-        }
-      }
-      if (node.next) return checkIfBranchNode(node.next, targetId);
-      return false;
-    };
-
-    if (checkIfBranchNode(currentRoot, dragId)) {
+    if (dragInsideBranch) {
       toast.error("分支节点不能移动，这会破坏流程结构");
       return;
     }
 
-    // 防止循环引用：不能把节点拖到自己的子树中
-    if (isDescendantOf(currentRoot, dragId, dropId)) {
+    if (isWorkflowGraphNodeInBranchSubtree(currentGraph, dragId, dropId)) {
       toast.error("不能将节点移动到自己的子节点中，这会导致循环引用");
       return;
     }
 
-    // 检查是否是相邻节点的无意义移动（dragNode 已经紧跟在 dropId 后面）
-    const dropNode = findNodeById(currentRoot, dropId);
-    if (dropNode?.next?.id === dragId) {
+    if (findWorkflowGraphMainTargetId(currentGraph, dropId) === dragId) {
       toast.info("节点已在该位置，无需移动");
       return;
     }
 
-    // 执行移动：先从树中删除拖拽节点，再插入到目标位置
     const nextGraph = moveWorkflowGraphNode(graphModelRef.current, dragId, dropId);
     applyGraphChange(nextGraph, {
       successMessage: "节点已移动（仅移动当前节点，后续节点保留在原位）",
     });
-    // P1-10: 明确提示用户仅移动了当前节点
   };
   const handleApplyTemplate = (template: WorkflowTemplate) => {
     // P1-11: 应用模板时按图模型重生 node/edge ID，避免不同流程定义共享相同 nodeKey
