@@ -489,9 +489,6 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
 
         WfNodeConfig nextNode = routing.defaultNext();
-        if (nextNode == null) {
-            nextNode = findNextNode(rootNode, currentNodeKey);
-        }
 
         if (nextNode != null) {
             runNode(instance, nextNode, variables, depth + 1, rootNode);

@@ -29,15 +29,15 @@ public interface INodeExecutionService {
     void runNode(WfProcessInstance instance, WfNodeConfig node, Map<String, Object> variables, int depth, WfNodeConfig rootNode);
 
     /**
-     * 节点完成后的流转逻辑
-     * 先检查 branches（条件分支），再走 next，最后向上查找父节点的 next
+     * 节点完成后的流转逻辑（nodes+edges 图模型）。
+     * 优先处理当前节点的出边分支，再处理默认出边。
      *
      * @param instance       流程实例
      * @param currentNode    当前完成的节点
      * @param currentNodeKey 当前节点Key
      * @param variables      流程变量
      * @param depth          递归深度
-     * @param rootNode       流程定义根节点
+     * @param rootNode       流程定义入口节点（附带运行时图索引）
      */
     void advanceAfterNode(WfProcessInstance instance, WfNodeConfig currentNode, String currentNodeKey,
                           Map<String, Object> variables, int depth, WfNodeConfig rootNode);
@@ -51,19 +51,18 @@ public interface INodeExecutionService {
     void completeInstance(WfProcessInstance instance, String status);
 
     /**
-     * 在节点树中查找指定ID的节点
+     * 在运行时图索引中查找指定 ID 的节点。
      *
-     * @param root   根节点
+     * @param root   流程定义入口节点（附带运行时图索引）
      * @param nodeId 目标节点ID
      * @return 找到的节点，未找到返回 null
      */
     WfNodeConfig findNode(WfNodeConfig root, String nodeId);
 
     /**
-     * 查找当前节点完成后要执行的下一个节点
-     * 向上遍历树结构，找到最近的 next 节点
+     * 查找当前节点完成后要执行的下一个默认出边节点（图模型）。
      *
-     * @param root          根节点
+     * @param root          流程定义入口节点（附带运行时图索引）
      * @param currentNodeId 当前节点ID
      * @return 下一个节点，未找到返回 null
      */
@@ -98,9 +97,9 @@ public interface INodeExecutionService {
     List<Long> resolveMultipleAssignees(WfNodeConfig node, WfProcessInstance instance);
 
     /**
-     * 从流程定义中提取主线审批步骤列表
+     * 从流程定义图中提取主线审批步骤列表。
      *
-     * @param root 流程定义根节点
+     * @param root 流程定义入口节点（附带运行时图索引）
      * @return 步骤列表 [{nodeKey, nodeTitle, approverType, ...}]
      */
     List<Map<String, String>> extractApprovalSteps(WfNodeConfig root);
