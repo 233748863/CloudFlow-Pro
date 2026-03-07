@@ -6661,13 +6661,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   // 用 ref 保持最新 graphModel，避免确认弹窗中的图编辑闭包过时
   const graphModelRef = useRef(graphModel);
   graphModelRef.current = graphModel;
-  const setRoot = useCallback(
-    (nextRoot: WorkflowTreeNode) => {
-      rootRef.current = nextRoot;
-      setGraphModel(convertWorkflowTreeToGraph(nextRoot));
-    },
-    [setGraphModel],
-  );
   const replaceGraphState = useCallback(
     (
       nextGraph: WorkflowGraphDefinition,
@@ -6957,34 +6950,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       canvas.removeEventListener("wheel", handleWheel);
     };
   }, []);
-
-  const applyTreeChange = useCallback(
-    (
-      nextRoot: WorkflowTreeNode | null,
-      options?: {
-        clearSelection?: boolean;
-        successMessage?: string;
-      },
-    ) => {
-      if (!nextRoot) {
-        return false;
-      }
-
-      // 统一收口树编辑结果，避免各编辑动作各自同步 root、选中态和提示。
-      setRoot(nextRoot);
-
-      if (options?.clearSelection) {
-        setSelectedNodeId(null);
-      }
-
-      if (options?.successMessage) {
-        toast.success(options.successMessage);
-      }
-
-      return true;
-    },
-    [setRoot],
-  );
 
   const applyGraphChange = useCallback(
     (
