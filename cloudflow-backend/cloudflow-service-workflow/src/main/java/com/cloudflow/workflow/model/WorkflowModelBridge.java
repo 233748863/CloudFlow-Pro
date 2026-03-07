@@ -291,7 +291,10 @@ public class WorkflowModelBridge {
             return startOutgoing.get(0).targetId();
         }
         EdgeLink defaultEdge = resolveDefaultEdge(startId, startOutgoing);
-        return defaultEdge != null ? defaultEdge.targetId() : startOutgoing.get(0).targetId();
+        if (defaultEdge == null) {
+            throw WorkflowException.validationError("START 节点存在多条出边但未配置 default，无法确定首个可执行节点");
+        }
+        return defaultEdge.targetId();
     }
 
     private void collectReachable(String current,
