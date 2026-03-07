@@ -69,19 +69,26 @@ public class WorkflowRuntimeGraph implements Serializable {
     }
 
     /**
-     * 查找默认边；若未配置默认边，按 edges 原始顺序返回首条边。
+     * 查找默认出边。
+     * 规则：
+     * 1. 仅有一条出边时，直接返回该边；
+     * 2. 存在多条出边时，仅返回标记为 default 的出边；
+     * 3. 多出边且未配置 default 时，返回 null。
      */
     public EdgeLink findDefaultOrFirstOutgoingEdge(String sourceId) {
         List<EdgeLink> outgoing = getOutgoingEdges(sourceId);
         if (outgoing.isEmpty()) {
             return null;
         }
+        if (outgoing.size() == 1) {
+            return outgoing.get(0);
+        }
         for (EdgeLink edge : outgoing) {
             if (edge.isDefault()) {
                 return edge;
             }
         }
-        return outgoing.get(0);
+        return null;
     }
 
     private static Map<String, WfNodeConfig> unmodifiableNodeMap(Map<String, WfNodeConfig> source) {
