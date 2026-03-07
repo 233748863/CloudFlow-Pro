@@ -294,7 +294,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 List<String> conditions = branches.stream()
                     .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
                     .collect(Collectors.toList());
-                log.warn("[handleConditionGateway] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认路径(next)。 instanceId={}, 分支条件={}, 当前变量={}",
+                log.warn("[handleConditionGateway] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认出边(default)。 instanceId={}, 分支条件={}, 当前变量={}",
                     node.getTitle(), node.getId(), instance.getInstanceId(), conditions, variables);
             }
             runNode(instance, routing.defaultNext(), variables, depth + 1, rootNode);
@@ -519,7 +519,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 List<String> conditions = branches.stream()
                     .map(b -> b.getCondition() != null ? b.getCondition() : "(空)")
                     .collect(Collectors.toList());
-                log.warn("[advanceAfterNode] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认路径(next)。 instanceId={}, 分支条件={}, 当前变量={}",
+                log.warn("[advanceAfterNode] 排他网关 '{}' (id={}) 所有分支条件均不满足，将走默认出边(default)。 instanceId={}, 分支条件={}, 当前变量={}",
                     currentNode.getTitle(), currentNode.getId(), instance.getInstanceId(), conditions, variables);
             }
         }
