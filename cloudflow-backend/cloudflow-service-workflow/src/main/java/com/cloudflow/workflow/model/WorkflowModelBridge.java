@@ -19,9 +19,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 工作流模型桥接器：
- * 1. 对外只接受 nodes+edges 图模型；
- * 2. 对内构建运行时图索引（WorkflowRuntimeGraph）并兼容生成树结构（WfNodeConfig）供现有执行引擎复用。
+ * 工作流模型桥接器
+ * 1. 对外只接受 nodes+edges 图模型。
+ * 2. 对内构建运行时图索引（WorkflowRuntimeGraph）供执行引擎直接使用。
  */
 @Component
 public class WorkflowModelBridge {
@@ -34,13 +34,14 @@ public class WorkflowModelBridge {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     /**
-     * 解析 modelJson 为运行时树结构，同时把运行时图索引挂到 root.props["__runtimeGraph"]。
+     * 解析 modelJson 并返回运行时根节点（START 节点），
+     * 同时把运行时图索引挂到 root.props["__runtimeGraph"]。
      */
     public WfNodeConfig parseRuntimeRoot(String modelJson) {
         try {
             GraphParseResult parsed = parseGraph(modelJson);
-            WfNodeConfig root = convertGraphToTree(parsed);
-            WorkflowRuntimeGraph runtimeGraph = buildRuntimeGraph(root, parsed);
+            WorkflowRuntimeGraph runtimeGraph = buildRuntimeGraph(parsed);
+            WfNodeConfig root = buildRuntimeRoot(parsed, runtimeGraph);
             attachRuntimeGraph(root, runtimeGraph);
             return root;
         } catch (WorkflowException e) {
@@ -54,12 +55,14 @@ public class WorkflowModelBridge {
      * 解析 modelJson 为运行时图索引。
      */
     public WorkflowRuntimeGraph parseRuntimeGraph(String modelJson) {
-        WfNodeConfig root = parseRuntimeRoot(modelJson);
-        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
-        if (runtimeGraph == null) {
-            throw WorkflowException.validationError("流程运行时图索引构建失败");
+        try {
+            GraphParseResult parsed = parseGraph(modelJson);
+            return buildRuntimeGraph(parsed);
+        } catch (WorkflowException e) {
+            throw e;
+        } catch (Exception e) {
+            throw WorkflowException.validationError("流程模型解析失败: " + e.getMessage());
         }
-        return runtimeGraph;
     }
 
     /**
@@ -95,7 +98,7 @@ public class WorkflowModelBridge {
      */
     public boolean validateGraphModel(String modelJson) {
         try {
-            parseRuntimeRoot(modelJson);
+            parseRuntimeGraph(modelJson);
             return true;
         } catch (Exception e) {
             return false;
@@ -190,7 +193,7 @@ public class WorkflowModelBridge {
 
         String startId = resolveSingleStartNodeId(nodeMap);
 
-        // 过渡期限制：执行引擎仍保留一部分树语义，先禁止多入边汇聚。
+        // 目前执行器尚未支持任意多入边汇聚，先在模型层阻断以保证行为确定性。
         for (Map.Entry<String, Integer> entry : incomingCount.entrySet()) {
             String nodeId = entry.getKey();
             int inDegree = entry.getValue();
@@ -215,41 +218,14 @@ public class WorkflowModelBridge {
         return new GraphParseResult(nodeMap, outgoing, incoming, startId);
     }
 
-    private WfNodeConfig convertGraphToTree(GraphParseResult parsed) {
-        return buildTree(parsed.startNodeId(), parsed.nodeMap(), parsed.outgoing(), new LinkedHashSet<>());
-    }
-
-    private WorkflowRuntimeGraph buildRuntimeGraph(WfNodeConfig root, GraphParseResult parsed) {
+    private WorkflowRuntimeGraph buildRuntimeGraph(GraphParseResult parsed) {
         Map<String, WfNodeConfig> nodeIndex = new LinkedHashMap<>();
-        collectTreeNodeIndex(root, nodeIndex, new HashSet<>());
-
-        Map<String, List<WorkflowRuntimeGraph.EdgeLink>> outgoingIndex = new LinkedHashMap<>();
-        for (Map.Entry<String, List<EdgeLink>> entry : parsed.outgoing().entrySet()) {
-            List<WorkflowRuntimeGraph.EdgeLink> converted = new ArrayList<>();
-            for (EdgeLink edge : entry.getValue()) {
-                converted.add(new WorkflowRuntimeGraph.EdgeLink(
-                        edge.sourceId(),
-                        edge.targetId(),
-                        edge.condition(),
-                        edge.isDefault()
-                ));
-            }
-            outgoingIndex.put(entry.getKey(), converted);
+        for (Map.Entry<String, JsonNode> entry : parsed.nodeMap().entrySet()) {
+            nodeIndex.put(entry.getKey(), toNodeConfig(entry.getValue()));
         }
 
-        Map<String, List<WorkflowRuntimeGraph.EdgeLink>> incomingIndex = new LinkedHashMap<>();
-        for (Map.Entry<String, List<EdgeLink>> entry : parsed.incoming().entrySet()) {
-            List<WorkflowRuntimeGraph.EdgeLink> converted = new ArrayList<>();
-            for (EdgeLink edge : entry.getValue()) {
-                converted.add(new WorkflowRuntimeGraph.EdgeLink(
-                        edge.sourceId(),
-                        edge.targetId(),
-                        edge.condition(),
-                        edge.isDefault()
-                ));
-            }
-            incomingIndex.put(entry.getKey(), converted);
-        }
+        Map<String, List<WorkflowRuntimeGraph.EdgeLink>> outgoingIndex = convertEdgeIndex(parsed.outgoing());
+        Map<String, List<WorkflowRuntimeGraph.EdgeLink>> incomingIndex = convertEdgeIndex(parsed.incoming());
 
         String firstExecutableNodeId = resolveFirstExecutableNodeId(parsed.startNodeId(), parsed.outgoing());
         return new WorkflowRuntimeGraph(
@@ -261,6 +237,31 @@ public class WorkflowModelBridge {
         );
     }
 
+    private Map<String, List<WorkflowRuntimeGraph.EdgeLink>> convertEdgeIndex(Map<String, List<EdgeLink>> edgeIndex) {
+        Map<String, List<WorkflowRuntimeGraph.EdgeLink>> converted = new LinkedHashMap<>();
+        for (Map.Entry<String, List<EdgeLink>> entry : edgeIndex.entrySet()) {
+            List<WorkflowRuntimeGraph.EdgeLink> links = new ArrayList<>();
+            for (EdgeLink edge : entry.getValue()) {
+                links.add(new WorkflowRuntimeGraph.EdgeLink(
+                        edge.sourceId(),
+                        edge.targetId(),
+                        edge.condition(),
+                        edge.isDefault()
+                ));
+            }
+            converted.put(entry.getKey(), links);
+        }
+        return converted;
+    }
+
+    private WfNodeConfig buildRuntimeRoot(GraphParseResult parsed, WorkflowRuntimeGraph runtimeGraph) {
+        WfNodeConfig root = runtimeGraph.getNode(parsed.startNodeId());
+        if (root == null) {
+            throw WorkflowException.validationError("流程运行时根节点构建失败");
+        }
+        return root;
+    }
+
     private void attachRuntimeGraph(WfNodeConfig root, WorkflowRuntimeGraph runtimeGraph) {
         if (root == null || runtimeGraph == null) {
             return;
@@ -268,23 +269,6 @@ public class WorkflowModelBridge {
         Map<String, Object> props = root.getProps() != null ? new HashMap<>(root.getProps()) : new HashMap<>();
         props.put(RUNTIME_GRAPH_PROP_KEY, runtimeGraph);
         root.setProps(props);
-    }
-
-    private void collectTreeNodeIndex(WfNodeConfig node,
-                                      Map<String, WfNodeConfig> nodeIndex,
-                                      Set<String> visited) {
-        if (node == null || !StringUtils.hasText(node.getId()) || visited.contains(node.getId())) {
-            return;
-        }
-        visited.add(node.getId());
-        nodeIndex.put(node.getId(), node);
-
-        collectTreeNodeIndex(node.getNext(), nodeIndex, visited);
-        if (node.getBranches() != null) {
-            for (WfNodeConfig branch : node.getBranches()) {
-                collectTreeNodeIndex(branch, nodeIndex, visited);
-            }
-        }
     }
 
     private String resolveSingleStartNodeId(Map<String, JsonNode> nodeMap) {
@@ -323,51 +307,6 @@ public class WorkflowModelBridge {
             collectReachable(next.targetId(), outgoing, reachable, path);
         }
         path.remove(current);
-    }
-
-    private WfNodeConfig buildTree(String currentId,
-                                   Map<String, JsonNode> nodeMap,
-                                   Map<String, List<EdgeLink>> outgoing,
-                                   Set<String> path) {
-        if (path.contains(currentId)) {
-            throw WorkflowException.validationError("流程图存在循环，节点ID: " + currentId);
-        }
-        path.add(currentId);
-
-        JsonNode node = nodeMap.get(currentId);
-        if (node == null) {
-            throw WorkflowException.validationError("流程节点不存在: " + currentId);
-        }
-
-        WfNodeConfig config = toNodeConfig(node);
-        List<EdgeLink> nextEdges = outgoing.getOrDefault(currentId, List.of());
-        if (nextEdges.size() == 1) {
-            WfNodeConfig next = buildTree(nextEdges.get(0).targetId(), nodeMap, outgoing, new LinkedHashSet<>(path));
-            applyEdgeCondition(next, nextEdges.get(0));
-            config.setNext(next);
-        } else if (nextEdges.size() > 1) {
-            EdgeLink defaultEdge = resolveDefaultEdge(currentId, nextEdges);
-            List<WfNodeConfig> branches = new ArrayList<>();
-            for (EdgeLink edge : nextEdges) {
-                if (edge == defaultEdge) {
-                    continue;
-                }
-                WfNodeConfig branch = buildTree(edge.targetId(), nodeMap, outgoing, new LinkedHashSet<>(path));
-                applyEdgeCondition(branch, edge);
-                branches.add(branch);
-            }
-            if (!branches.isEmpty()) {
-                config.setBranches(branches);
-            }
-            if (defaultEdge != null) {
-                WfNodeConfig next = buildTree(defaultEdge.targetId(), nodeMap, outgoing, new LinkedHashSet<>(path));
-                applyEdgeCondition(next, defaultEdge);
-                config.setNext(next);
-            }
-        }
-
-        path.remove(currentId);
-        return config;
     }
 
     private WfNodeConfig toNodeConfig(JsonNode node) {
@@ -418,16 +357,6 @@ public class WorkflowModelBridge {
         }
         String value = node.get(field).asText();
         return StringUtils.hasText(value) ? value : null;
-    }
-
-    private void applyEdgeCondition(WfNodeConfig target, EdgeLink edge) {
-        if (target == null || edge == null) {
-            return;
-        }
-        // 允许在边上声明条件；若目标节点未显式配置 condition，则回填到目标节点。
-        if (!StringUtils.hasText(target.getCondition()) && StringUtils.hasText(edge.condition())) {
-            target.setCondition(edge.condition());
-        }
     }
 
     private EdgeLink resolveDefaultEdge(String sourceId, List<EdgeLink> edges) {

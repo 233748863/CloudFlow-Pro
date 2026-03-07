@@ -275,7 +275,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         if (branches != null && !branches.isEmpty()) {
             for (WfNodeConfig branch : branches) {
                 if (evaluateCondition(branch.getCondition(), variables)) {
-                    WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch);
+                    WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch, rootNode);
                     runNode(instance, branchEntry, variables, depth + 1, rootNode);
                     branchTaken = true;
                     return;
@@ -309,7 +309,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         List<WfNodeConfig> branches = routing.branches();
         if (branches != null) {
             for (WfNodeConfig branch : branches) {
-                WfNodeConfig branchEntry = resolveParallelBranchEntry(branch);
+                WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, rootNode);
                 runNode(instance, branchEntry, variables, depth + 1, rootNode);
             }
         }
@@ -319,21 +319,26 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         return workflowModelBridge.resolveRuntimeGraph(rootNode);
     }
 
+    private WorkflowRuntimeGraph requireRuntimeGraph(WfNodeConfig rootNode) {
+        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(rootNode);
+        if (runtimeGraph == null) {
+            throw WorkflowException.validationError("流程运行时图索引缺失，仅支持 nodes+edges 主模型");
+        }
+        return runtimeGraph;
+    }
+
     /**
-     * 统一解析节点分支与默认后继：
-     * 1. 优先按运行时图索引（nodes+edges）；
-     * 2. 无图索引时回退到树字段（next/branches）。
+     * 统一解析节点分支与默认后继（仅支持 nodes+edges 运行时图索引）。
      */
     private BranchRouting resolveBranchRouting(WfNodeConfig currentNode, WfNodeConfig rootNode) {
         if (currentNode == null) {
             return BranchRouting.empty();
         }
 
-        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(rootNode);
-        if (runtimeGraph == null || !StringUtils.hasText(currentNode.getId())) {
-            List<WfNodeConfig> branches = currentNode.getBranches() != null ? currentNode.getBranches() : List.of();
-            return new BranchRouting(branches, currentNode.getNext());
+        if (!StringUtils.hasText(currentNode.getId())) {
+            throw WorkflowException.validationError("节点ID缺失，无法按图模型流转");
         }
+        WorkflowRuntimeGraph runtimeGraph = requireRuntimeGraph(rootNode);
 
         List<WorkflowRuntimeGraph.EdgeLink> outgoingEdges = runtimeGraph.getOutgoingEdges(currentNode.getId());
         if (outgoingEdges == null || outgoingEdges.isEmpty()) {
@@ -386,22 +391,34 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
     }
 
-    private WfNodeConfig resolveParallelBranchEntry(WfNodeConfig branch) {
+    private WfNodeConfig resolveParallelBranchEntry(WfNodeConfig branch, WfNodeConfig rootNode) {
         if (branch == null) {
             return null;
         }
-        if ("CONDITION".equals(branch.getType()) && branch.getNext() != null) {
-            return branch.getNext();
+        if ("CONDITION".equals(branch.getType())) {
+            BranchRouting routing = resolveBranchRouting(branch, rootNode);
+            if (routing.defaultNext() != null) {
+                return routing.defaultNext();
+            }
+            if (routing.branches() != null && !routing.branches().isEmpty()) {
+                return routing.branches().get(0);
+            }
         }
         return branch;
     }
 
-    private WfNodeConfig resolveExclusiveBranchEntry(WfNodeConfig branch) {
+    private WfNodeConfig resolveExclusiveBranchEntry(WfNodeConfig branch, WfNodeConfig rootNode) {
         if (branch == null) {
             return null;
         }
-        if ("CONDITION".equals(branch.getType()) && branch.getNext() != null) {
-            return branch.getNext();
+        if ("CONDITION".equals(branch.getType())) {
+            BranchRouting routing = resolveBranchRouting(branch, rootNode);
+            if (routing.defaultNext() != null) {
+                return routing.defaultNext();
+            }
+            if (routing.branches() != null && !routing.branches().isEmpty()) {
+                return routing.branches().get(0);
+            }
         }
         return branch;
     }
@@ -445,7 +462,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
             if ("PARALLEL".equals(strategy) || "RACE".equals(strategy)) {
                 for (WfNodeConfig branch : branches) {
-                    WfNodeConfig branchEntry = resolveParallelBranchEntry(branch);
+                    WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, rootNode);
                     runNode(instance, branchEntry, variables, depth + 1, rootNode);
                 }
                 return;
@@ -456,7 +473,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             for (WfNodeConfig branch : branches) {
                 if (evaluateCondition(branch.getCondition(), variables)) {
                     exclusiveBranchTaken = true;
-                    WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch);
+                    WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch, rootNode);
                     runNode(instance, branchEntry, variables, depth + 1, rootNode);
                     return;
                 }
@@ -533,16 +550,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         if (root == null || !StringUtils.hasText(nodeId)) {
             return null;
         }
-
-        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
-        if (runtimeGraph != null) {
-            WfNodeConfig graphNode = runtimeGraph.getNode(nodeId);
-            if (graphNode != null) {
-                return graphNode;
-            }
-        }
-
-        return findNodeByTree(root, nodeId);
+        return requireRuntimeGraph(root).getNode(nodeId);
     }
 
     @Override
@@ -550,75 +558,14 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         if (root == null || !StringUtils.hasText(currentNodeId)) {
             return null;
         }
-
-        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
-        if (runtimeGraph != null) {
-            WorkflowRuntimeGraph.EdgeLink edge = runtimeGraph.findDefaultOrFirstOutgoingEdge(currentNodeId);
-            if (edge != null) {
-                WfNodeConfig nextNode = runtimeGraph.getNode(edge.getTargetId());
-                applyEdgeCondition(nextNode, edge.getCondition());
-                if (nextNode != null) {
-                    return nextNode;
-                }
-            }
-        }
-
-        LinkedList<WfNodeConfig> path = new LinkedList<>();
-        if (findPath(root, currentNodeId, path)) {
-            while (!path.isEmpty()) {
-                WfNodeConfig node = path.removeLast();
-                if (node.getNext() != null) {
-                    return node.getNext();
-                }
-            }
-        }
-        return null;
-    }
-
-    private WfNodeConfig findNodeByTree(WfNodeConfig root, String nodeId) {
-        if (root == null) {
+        WorkflowRuntimeGraph runtimeGraph = requireRuntimeGraph(root);
+        WorkflowRuntimeGraph.EdgeLink edge = runtimeGraph.findDefaultOrFirstOutgoingEdge(currentNodeId);
+        if (edge == null) {
             return null;
         }
-        if (nodeId.equals(root.getId())) {
-            return root;
-        }
-
-        WfNodeConfig found = findNodeByTree(root.getNext(), nodeId);
-        if (found != null) {
-            return found;
-        }
-
-        if (root.getBranches() != null) {
-            for (WfNodeConfig branch : root.getBranches()) {
-                found = findNodeByTree(branch, nodeId);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
-    }
-
-    private boolean findPath(WfNodeConfig current, String targetId, LinkedList<WfNodeConfig> path) {
-        if (current == null) {
-            return false;
-        }
-        path.add(current);
-        if (targetId.equals(current.getId())) {
-            return true;
-        }
-        if (findPath(current.getNext(), targetId, path)) {
-            return true;
-        }
-        if (current.getBranches() != null) {
-            for (WfNodeConfig branch : current.getBranches()) {
-                if (findPath(branch, targetId, path)) {
-                    return true;
-                }
-            }
-        }
-        path.removeLast();
-        return false;
+        WfNodeConfig nextNode = runtimeGraph.getNode(edge.getTargetId());
+        applyEdgeCondition(nextNode, edge.getCondition());
+        return nextNode;
     }
 
     private WfNodeConfig findParentGateway(WfNodeConfig root, String targetNodeId) {
@@ -626,39 +573,21 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
             return null;
         }
 
-        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
-        if (runtimeGraph != null) {
-            for (String nodeId : runtimeGraph.getNodeIds()) {
-                WfNodeConfig candidate = runtimeGraph.getNode(nodeId);
-                if (candidate == null || !"PARALLEL".equals(candidate.getType())) {
-                    continue;
-                }
-                WorkflowRuntimeGraph.EdgeLink defaultEdge = null;
-                for (WorkflowRuntimeGraph.EdgeLink edge : runtimeGraph.getOutgoingEdges(nodeId)) {
-                    if (edge.isDefault()) {
-                        defaultEdge = edge;
-                        break;
-                    }
-                }
-                if (defaultEdge != null && targetNodeId.equals(defaultEdge.getTargetId())) {
-                    return candidate;
+        WorkflowRuntimeGraph runtimeGraph = requireRuntimeGraph(root);
+        for (String nodeId : runtimeGraph.getNodeIds()) {
+            WfNodeConfig candidate = runtimeGraph.getNode(nodeId);
+            if (candidate == null || !"PARALLEL".equals(candidate.getType())) {
+                continue;
+            }
+            WorkflowRuntimeGraph.EdgeLink defaultEdge = null;
+            for (WorkflowRuntimeGraph.EdgeLink edge : runtimeGraph.getOutgoingEdges(nodeId)) {
+                if (edge.isDefault()) {
+                    defaultEdge = edge;
+                    break;
                 }
             }
-        }
-
-        if ("PARALLEL".equals(root.getType()) && root.getNext() != null && targetNodeId.equals(root.getNext().getId())) {
-            return root;
-        }
-        WfNodeConfig found = findParentGateway(root.getNext(), targetNodeId);
-        if (found != null) {
-            return found;
-        }
-        if (root.getBranches() != null) {
-            for (WfNodeConfig branch : root.getBranches()) {
-                found = findParentGateway(branch, targetNodeId);
-                if (found != null) {
-                    return found;
-                }
+            if (defaultEdge != null && targetNodeId.equals(defaultEdge.getTargetId())) {
+                return candidate;
             }
         }
         return null;
@@ -703,15 +632,11 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Override
     public List<Map<String, String>> extractApprovalSteps(WfNodeConfig root) {
         List<Map<String, String>> steps = new ArrayList<>();
-        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
-        if (runtimeGraph != null) {
-            String entryNodeId = StringUtils.hasText(runtimeGraph.getFirstExecutableNodeId())
-                    ? runtimeGraph.getFirstExecutableNodeId()
-                    : runtimeGraph.getStartNodeId();
-            collectApprovalStepsByGraph(root, entryNodeId, steps, new HashSet<>());
-            return steps;
-        }
-        collectApprovalSteps(root, steps);
+        WorkflowRuntimeGraph runtimeGraph = requireRuntimeGraph(root);
+        String entryNodeId = StringUtils.hasText(runtimeGraph.getFirstExecutableNodeId())
+                ? runtimeGraph.getFirstExecutableNodeId()
+                : runtimeGraph.getStartNodeId();
+        collectApprovalStepsByGraph(root, entryNodeId, steps, new HashSet<>());
         return steps;
     }
 
@@ -741,7 +666,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 try {
                     List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
                     for (WfNodeConfig branch : routing.branches()) {
-                        WfNodeConfig branchEntry = resolveParallelBranchEntry(branch);
+                        WfNodeConfig branchEntry = resolveParallelBranchEntry(branch, root);
                         if (branchEntry == null || !StringUtils.hasText(branchEntry.getId())) {
                             continue;
                         }
@@ -771,7 +696,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 try {
                     List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
                     for (WfNodeConfig branch : routing.branches()) {
-                        WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch);
+                        WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch, root);
                         if (branchEntry == null || !StringUtils.hasText(branchEntry.getId())) {
                             continue;
                         }
@@ -809,83 +734,6 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
         if (routing.defaultNext() != null && StringUtils.hasText(routing.defaultNext().getId())) {
             collectApprovalStepsByGraph(root, routing.defaultNext().getId(), steps, visited);
-        }
-    }
-
-    private void collectApprovalSteps(WfNodeConfig node, List<Map<String, String>> steps) {
-        if (node == null) return;
-
-        if ("PARALLEL".equals(node.getType())) {
-            Map<String, String> step = new HashMap<>();
-            step.put("nodeKey", node.getId());
-            step.put("nodeTitle", node.getTitle() != null ? node.getTitle() : "并行审批");
-            step.put("nodeType", "PARALLEL");
-            step.put("branchStrategy", node.getBranchStrategy() != null ? node.getBranchStrategy() : "PARALLEL");
-            if (node.getBranches() != null && !node.getBranches().isEmpty()) {
-                try {
-                    List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
-                    for (WfNodeConfig branch : node.getBranches()) {
-                        List<Map<String, String>> branchSteps = new ArrayList<>();
-                        collectApprovalSteps(branch, branchSteps);
-                        branchStepsList.add(branchSteps);
-                    }
-                    step.put("branches", objectMapper.writeValueAsString(branchStepsList));
-                } catch (Exception e) {
-                    step.put("branches", "[]");
-                }
-            }
-            steps.add(step);
-            collectApprovalSteps(node.getNext(), steps);
-            return;
-        }
-
-        if ("CONDITION".equals(node.getType()) || "GATEWAY".equals(node.getType())) {
-            Map<String, String> step = new HashMap<>();
-            step.put("nodeKey", node.getId());
-            step.put("nodeTitle", node.getTitle() != null ? node.getTitle() : "条件分支");
-            step.put("nodeType", "CONDITION");
-            step.put("branchStrategy", "EXCLUSIVE");
-            if (node.getBranches() != null && !node.getBranches().isEmpty()) {
-                try {
-                    List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
-                    for (WfNodeConfig branch : node.getBranches()) {
-                        List<Map<String, String>> branchSteps = new ArrayList<>();
-                        collectApprovalSteps(branch, branchSteps);
-                        branchStepsList.add(branchSteps);
-                    }
-                    step.put("branches", objectMapper.writeValueAsString(branchStepsList));
-                } catch (Exception e) {
-                    step.put("branches", "[]");
-                }
-            }
-            steps.add(step);
-            collectApprovalSteps(node.getNext(), steps);
-            return;
-        }
-
-        if ("APPROVAL".equals(node.getType()) || "MANUAL".equals(node.getType())) {
-            Map<String, String> step = new HashMap<>();
-            step.put("nodeKey", node.getId());
-            step.put("nodeTitle", node.getTitle());
-            step.put("nodeType", node.getType());
-            step.put("approverType", node.getApproverType());
-            step.put("approverValue", node.getApproverValue());
-            if (node.getSignType() != null && !node.getSignType().isEmpty()) {
-                step.put("signType", node.getSignType());
-                if (node.getPassPercent() != null) {
-                    step.put("passPercent", String.valueOf(node.getPassPercent()));
-                }
-            }
-            steps.add(step);
-        }
-
-        collectApprovalSteps(node.getNext(), steps);
-
-        if (node.getBranches() != null && !"PARALLEL".equals(node.getType())
-                && !"CONDITION".equals(node.getType()) && !"GATEWAY".equals(node.getType())) {
-            for (WfNodeConfig branch : node.getBranches()) {
-                collectApprovalSteps(branch, steps);
-            }
         }
     }
 
@@ -1384,6 +1232,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
     }
 }
+
 
 
 
