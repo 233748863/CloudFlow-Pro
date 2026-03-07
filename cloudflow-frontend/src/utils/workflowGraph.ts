@@ -331,3 +331,58 @@ export const appendWorkflowGraphBranch = (
 
   return { nodes, edges };
 };
+
+/**
+ * 删除指定条件分支的整棵子图，并在最后一个分支被移除时回收父节点分支配置。
+ */
+export const removeWorkflowGraphBranch = (
+  graph: WorkflowGraphDefinition,
+  parentId: string,
+  branchId: string,
+): WorkflowGraphDefinition => {
+  const parentNode = graph.nodes.find((node) => node.id === parentId);
+  if (!parentNode) {
+    return graph;
+  }
+
+  const idsToRemove = new Set<string>();
+  const stack = [branchId];
+  while (stack.length > 0) {
+    const currentId = stack.pop();
+    if (!currentId || idsToRemove.has(currentId)) {
+      continue;
+    }
+    idsToRemove.add(currentId);
+    graph.edges
+      .filter((edge) => edge.source === currentId)
+      .forEach((edge) => stack.push(edge.target));
+  }
+
+  let edges = graph.edges.filter(
+    (edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target),
+  );
+  const remainingOutgoing = edges.filter((edge) => edge.source === parentId);
+  const hasRemainingBranches = remainingOutgoing.some((edge) => !isDefaultEdge(edge));
+
+  if (!hasRemainingBranches) {
+    edges = edges.map((edge) => {
+      if (edge.source !== parentId || !isDefaultEdge(edge)) {
+        return edge;
+      }
+      const { isDefault, ...rest } = edge;
+      return rest;
+    });
+  }
+
+  const nodes = graph.nodes
+    .filter((node) => !idsToRemove.has(node.id))
+    .map((node) => {
+      if (node.id !== parentId || hasRemainingBranches) {
+        return node;
+      }
+      const { branchStrategy, ...rest } = node;
+      return rest;
+    });
+
+  return { nodes, edges };
+};

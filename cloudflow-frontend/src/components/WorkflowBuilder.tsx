@@ -99,6 +99,7 @@ import {
   convertGraphToWorkflowTree,
   convertWorkflowTreeToGraph,
   parseWorkflowGraphDefinition,
+  removeWorkflowGraphBranch,
   patchWorkflowGraphNode,
 } from "../utils/workflowGraph";
 
@@ -7305,21 +7306,15 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         open: true,
         message: `您即将删除整个条件分支，该分支下的所有节点也将一并被删除，是否继续？`,
         onConfirm: () => {
-          // 只过滤自身，也就是将其从 parentNode.branches 里面移除
-          const newRoot = updateNodeInTree(
-            rootRef.current,
+          const nextGraph = removeWorkflowGraphBranch(
+            graphModel,
             parentNode.id,
-            (n) => {
-              const nextBranches = n.branches?.filter((b) => b.id !== id) || [];
-              return {
-                ...n,
-                branches: nextBranches.length > 0 ? nextBranches : undefined,
-                branchStrategy:
-                  nextBranches.length > 0 ? n.branchStrategy : undefined,
-              };
-            },
+            id,
           );
-          applyTreeChange(newRoot, { clearSelection: true, successMessage: "已删除分支" });
+          applyGraphChange(nextGraph, {
+            clearSelection: true,
+            successMessage: "已删除分支",
+          });
         },
       });
       return;
