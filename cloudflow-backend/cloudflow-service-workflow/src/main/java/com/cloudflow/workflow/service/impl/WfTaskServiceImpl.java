@@ -193,12 +193,13 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 // 流程流转
                 WfProcessDefinition def = resolveDefinitionByInstance(instance);
+                WfNodeConfig completedNode = null;
 
                 try {
                     if (def != null && StringUtils.hasText(def.getModelJson())) {
                         WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-                        WfNodeConfig currentNode = nodeExecutionService.findNode(root, task.getNodeKey());
-                        nodeExecutionService.advanceAfterNode(instance, currentNode, task.getNodeKey(), mergedVariables, 0, root);
+                        completedNode = nodeExecutionService.findNode(root, task.getNodeKey());
+                        nodeExecutionService.advanceAfterNode(instance, completedNode, task.getNodeKey(), mergedVariables, 0, root);
                     } else {
                         nodeExecutionService.completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
                     }
@@ -211,12 +212,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
                 // 审批后置处理
                 try {
-                    if (def != null && StringUtils.hasText(def.getModelJson())) {
-                        WfNodeConfig postRoot = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-                        WfNodeConfig completedNode = nodeExecutionService.findNode(postRoot, task.getNodeKey());
-                        if (completedNode != null) {
-                            approvalPostProcessor.process(completedNode, instance, normalizedAction, mergedVariables);
-                        }
+                    if (completedNode != null) {
+                        approvalPostProcessor.process(completedNode, instance, normalizedAction, mergedVariables);
                     }
                 } catch (Exception e) {
                     log.warn("[completeTask] 审批后置处理失败, taskId={}: {}", taskId, e.getMessage());
