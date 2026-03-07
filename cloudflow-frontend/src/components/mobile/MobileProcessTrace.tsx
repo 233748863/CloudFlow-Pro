@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getProcessTrace } from '../../services/api/workflow';
 import { ArrowLeft, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TraceNode {
   id: string;
+  nodeKey: string;
   name: string;
   type: string;
   status: 'finished' | 'active' | 'pending' | 'rejected' | 'skipped';
@@ -12,8 +13,6 @@ interface TraceNode {
   operatorName?: string;
   comment?: string;
   time?: string;
-  next?: TraceNode;
-  branches?: TraceNode[];
 }
 
 interface MobileProcessTraceProps {
@@ -49,6 +48,84 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
   },
 };
 
+const normalizeStatus = (raw: unknown): TraceNode['status'] => {
+  const value = String(raw || '').trim().toLowerCase();
+  if (value === 'finished' || value === 'completed') return 'finished';
+  if (value === 'active' || value === 'running') return 'active';
+  if (value === 'rejected' || value === 'reject') return 'rejected';
+  if (value === 'skipped' || value === 'skip') return 'skipped';
+  return 'pending';
+};
+
+const mapActionToStatus = (action: unknown): TraceNode['status'] => {
+  const value = String(action || '').trim().toUpperCase();
+  if (value.includes('REJECT') || value.includes('RETURN')) return 'rejected';
+  if (value.includes('APPROVE') || value.includes('START') || value.includes('SUBMIT') || value.includes('COMPLETE')) {
+    return 'finished';
+  }
+  return 'finished';
+};
+
+const toTimestamp = (value?: string): number => {
+  if (!value) return 0;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+};
+
+/**
+ * 仅按 nodes+edges 时代轨迹结构（historyDetails/activeDetails）构建移动端时间线。
+ */
+const normalizeTraceNodes = (trace: any): TraceNode[] => {
+  const historyDetails = Array.isArray(trace?.historyDetails) ? trace.historyDetails : [];
+  const activeDetails = Array.isArray(trace?.activeDetails) ? trace.activeDetails : [];
+
+  const historyNodes: TraceNode[] = historyDetails.map((item: any, index: number) => ({
+    id: String(item?.historyId || item?.taskId || item?.nodeKey || `history_${index}`),
+    nodeKey: String(item?.nodeKey || ''),
+    name: String(item?.nodeName || '未命名节点'),
+    type: 'HISTORY',
+    status: mapActionToStatus(item?.action),
+    operator: item?.operatorId !== undefined && item?.operatorId !== null ? String(item.operatorId) : undefined,
+    operatorName: item?.operatorName ? String(item.operatorName) : undefined,
+    comment: item?.comment ? String(item.comment) : undefined,
+    time: item?.completeTime || item?.createTime,
+  }));
+
+  const activeNodes: TraceNode[] = activeDetails.map((item: any, index: number) => ({
+    id: String(item?.taskId || item?.nodeKey || `active_${index}`),
+    nodeKey: String(item?.nodeKey || ''),
+    name: String(item?.nodeName || '未命名节点'),
+    type: 'ACTIVE',
+    status: 'active',
+    operator: item?.assigneeId !== undefined && item?.assigneeId !== null ? String(item.assigneeId) : undefined,
+    operatorName: item?.assigneeName ? String(item.assigneeName) : undefined,
+    comment: undefined,
+    time: item?.createTime,
+  }));
+
+  const merged = [...historyNodes, ...activeNodes];
+  if (merged.length > 0) {
+    return merged.sort((a, b) => toTimestamp(a.time) - toTimestamp(b.time));
+  }
+
+  // 兜底兼容：若后端仍返回 nodes 数组，则按线性列表展示（不再解析 next/branches 树结构）
+  const fallbackNodes = Array.isArray(trace?.nodes)
+    ? trace.nodes.map((item: any, index: number) => ({
+        id: String(item?.id || item?.nodeKey || `node_${index}`),
+        nodeKey: String(item?.nodeKey || item?.id || ''),
+        name: String(item?.title || item?.name || '未命名节点'),
+        type: String(item?.type || 'NODE'),
+        status: normalizeStatus(item?.status),
+        operator: item?.operatorId !== undefined && item?.operatorId !== null ? String(item.operatorId) : undefined,
+        operatorName: item?.operatorName ? String(item.operatorName) : undefined,
+        comment: item?.comment ? String(item.comment) : undefined,
+        time: item?.endTime || item?.startTime || item?.time,
+      }))
+    : [];
+
+  return fallbackNodes.sort((a, b) => toTimestamp(a.time) - toTimestamp(b.time));
+};
+
 /**
  * 移动端流程追踪组件
  * 垂直时间线布局，适配移动端屏幕
@@ -62,7 +139,7 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadTrace();
+    void loadTrace();
   }, [instanceId]);
 
   const loadTrace = async () => {
@@ -70,8 +147,7 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
       setLoading(true);
       setError(null);
       const data = await getProcessTrace(instanceId);
-      const flatNodes = flattenNodes(data?.nodes || data);
-      setNodes(flatNodes);
+      setNodes(normalizeTraceNodes(data));
     } catch (err) {
       const msg = err instanceof Error ? err.message : '加载流程轨迹失败';
       setError(msg);
@@ -79,38 +155,6 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  // 将树形节点展平为线性列表
-  const flattenNodes = (node: any): TraceNode[] => {
-    if (!node) return [];
-    if (Array.isArray(node)) return node;
-
-    const result: TraceNode[] = [];
-    let current = node;
-    while (current) {
-      result.push({
-        id: current.id,
-        name: current.name || current.title || '未命名节点',
-        type: current.type,
-        status: current.status || 'pending',
-        operator: current.operator,
-        operatorName: current.operatorName,
-        comment: current.comment,
-        time: current.time || current.completedTime,
-      });
-
-      // 处理分支
-      if (current.branches && current.branches.length > 0) {
-        current.branches.forEach((branch: any) => {
-          const branchNodes = flattenNodes(branch);
-          result.push(...branchNodes);
-        });
-      }
-
-      current = current.next;
-    }
-    return result;
   };
 
   if (loading) {
@@ -147,7 +191,6 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* 顶部导航 */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white sticky top-0 z-30">
         <button onClick={onBack} className="p-1">
           <ArrowLeft size={20} className="text-slate-600" />
@@ -156,25 +199,21 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
         <span className="text-xs text-slate-500 ml-auto">{nodes.length} 个节点</span>
       </div>
 
-      {/* 时间线 */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {nodes.length === 0 ? (
           <div className="text-center text-sm text-slate-500 py-8">暂无流程轨迹</div>
         ) : (
           <div className="relative">
-            {/* 垂直连接线 */}
             <div className="absolute left-[21px] top-4 bottom-4 w-0.5 bg-slate-200" />
 
             {nodes.map((node, index) => {
               const config = statusConfig[node.status] || statusConfig.pending;
               return (
-                <div key={node.id || index} className="relative flex gap-3 mb-4 last:mb-0">
-                  {/* 状态图标 */}
+                <div key={`${node.id}_${index}`} className="relative flex gap-3 mb-4 last:mb-0">
                   <div className={`relative z-10 w-[44px] h-[44px] shrink-0 rounded-full border-2 flex items-center justify-center bg-white ${config.color}`}>
                     {config.icon}
                   </div>
 
-                  {/* 节点信息 */}
                   <div className="flex-1 min-w-0 pt-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-slate-800 truncate">{node.name}</span>
@@ -193,7 +232,7 @@ export const MobileProcessTrace: React.FC<MobileProcessTraceProps> = ({
                     )}
 
                     {node.comment && (
-                      <p className="text-xs text-slate-600 mt-1 bg-slate-50 rounded px-2 py-1">
+                      <p className="text-xs text-slate-600 mt-1 bg-slate-50 rounded px-2 py-1 break-words">
                         "{node.comment}"
                       </p>
                     )}
