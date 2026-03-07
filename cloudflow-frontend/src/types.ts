@@ -73,15 +73,15 @@ export interface RetryConfig {
   delayMs: number; // 毫秒
 }
 
-export interface WorkflowNode {
+export interface WorkflowTreeNode {
   // 1. Basic Identity
   id: string;
   type: NodeType | string; // 支持自定义类型（插件）
   title: string;
   
   // 2. Structure (Recursive + Linked List)
-  next?: WorkflowNode;      // 下一个节点（串行）
-  branches?: WorkflowNode[];// 子分支（并行/排他）
+  next?: WorkflowTreeNode;      // 下一个节点（串行）
+  branches?: WorkflowTreeNode[];// 子分支（并行/排他）
   
   // 3. Execution Strategy
   branchStrategy?: 'PARALLEL' | 'RACE' | 'EXCLUSIVE'; 

@@ -63,7 +63,7 @@ import {
   FileDown,
 } from "lucide-react";
 import {
-  WorkflowNode,
+  WorkflowTreeNode,
   NodeType,
   WorkflowDefinition,
   FormDefinition,
@@ -112,10 +112,10 @@ const generateNodeId = (prefix: string = "node"): string => {
 };
 
 const updateNodeInTree = (
-  root: WorkflowNode,
+  root: WorkflowTreeNode,
   targetId: string,
-  updater: (node: WorkflowNode) => WorkflowNode,
-): WorkflowNode => {
+  updater: (node: WorkflowTreeNode) => WorkflowTreeNode,
+): WorkflowTreeNode => {
   if (root.id === targetId) return updater(root);
   const newRoot = { ...root };
   if (newRoot.next)
@@ -128,9 +128,9 @@ const updateNodeInTree = (
 };
 
 const findNodeById = (
-  root: WorkflowNode,
+  root: WorkflowTreeNode,
   targetId: string,
-): WorkflowNode | null => {
+): WorkflowTreeNode | null => {
   if (root.id === targetId) return root;
   if (root.next) {
     const f = findNodeById(root.next, targetId);
@@ -146,9 +146,9 @@ const findNodeById = (
 };
 
 const deleteNodeInTree = (
-  root: WorkflowNode,
+  root: WorkflowTreeNode,
   targetId: string,
-): WorkflowNode | null => {
+): WorkflowTreeNode | null => {
   if (root.id === targetId) return root.next || null;
   const newRoot = { ...root };
   if (newRoot.next) {
@@ -156,7 +156,7 @@ const deleteNodeInTree = (
     newRoot.next = res || undefined;
   }
   if (newRoot.branches) {
-    const nb: WorkflowNode[] = [];
+    const nb: WorkflowTreeNode[] = [];
     for (const b of newRoot.branches) {
       const res = deleteNodeInTree(b, targetId);
       if (res) nb.push(res);
@@ -166,7 +166,7 @@ const deleteNodeInTree = (
   return newRoot;
 };
 
-const hasEndNode = (root: WorkflowNode): boolean => {
+const hasEndNode = (root: WorkflowTreeNode): boolean => {
   if (root.type === NodeType.END) return true;
   if (root.next && hasEndNode(root.next)) return true;
   if (root.branches) {
@@ -184,14 +184,14 @@ const hasEndNode = (root: WorkflowNode): boolean => {
 // 所以 next 链上的节点在删除后仍然在树中，拖到 next 链上是安全的。
 // 但 branches 中的节点会随 dragNode 一起被移除，拖到 branches 内部会导致节点丢失。
 const isDescendantOf = (
-  root: WorkflowNode,
+  root: WorkflowTreeNode,
   ancestorId: string,
   targetId: string,
 ): boolean => {
   const ancestor = findNodeById(root, ancestorId);
   if (!ancestor || !ancestor.branches) return false;
   // 在 branch 内部递归搜索（包括 branch 的 next 链和嵌套 branches）
-  const searchInSubtree = (node: WorkflowNode): boolean => {
+  const searchInSubtree = (node: WorkflowTreeNode): boolean => {
     if (node.next) {
       if (node.next.id === targetId) return true;
       if (searchInSubtree(node.next)) return true;
@@ -214,10 +214,10 @@ const isDescendantOf = (
 
 // 查找指定节点的父节点（即 next 或 branches 中包含 targetId 的节点）
 const findParentOfNode = (
-  root: WorkflowNode,
+  root: WorkflowTreeNode,
   targetId: string,
-  parent: WorkflowNode | null = null,
-): WorkflowNode | null => {
+  parent: WorkflowTreeNode | null = null,
+): WorkflowTreeNode | null => {
   if (root.id === targetId) return parent;
   if (root.next) {
     const found = findParentOfNode(root.next, targetId, root);
@@ -237,7 +237,7 @@ const findParentOfNode = (
  * 用于限制跨作用域拖拽，避免主干与分支互拖导致结构难以预期。
  */
 const isNodeInsideBranchScope = (
-  root: WorkflowNode,
+  root: WorkflowTreeNode,
   targetId: string,
   isInsideBranch: boolean = false,
 ): boolean | null => {
@@ -430,7 +430,7 @@ interface WorkflowTemplate {
   category: string;
   icon: React.FC<{ size?: number; className?: string }>;
   color: string;
-  nodes: WorkflowNode;
+  nodes: WorkflowTreeNode;
 }
 
 const TEMPLATE_CATEGORIES = [
@@ -2709,9 +2709,9 @@ const PropertyPanel = ({
   onDelete,
   onConfirmAction,
 }: {
-  node: WorkflowNode;
+  node: WorkflowTreeNode;
   onClose: () => void;
-  onUpdate: (id: string, data: Partial<WorkflowNode>) => void;
+  onUpdate: (id: string, data: Partial<WorkflowTreeNode>) => void;
   onDelete: (id: string) => void;
   onConfirmAction: (message: string, onConfirm: () => void) => void;
 }) => {
@@ -2720,7 +2720,7 @@ const PropertyPanel = ({
   useEffect(() => {
     setFormData(node);
   }, [node.id, node.branches, node.branchStrategy, node.props]);
-  const handleChange = (field: keyof WorkflowNode, value: any) => {
+  const handleChange = (field: keyof WorkflowTreeNode, value: any) => {
     // 切换审批方式时，清空之前选择的审批人，避免残留旧数据
     if (field === "approverType") {
       const updated = { ...formData, approverType: value, approverValue: "" };
@@ -3943,7 +3943,7 @@ const ConnectorDropZone = ({
 interface FlowNodeActionsContextValue {
   onAddNext: (parentId: string, type?: NodeType) => void;
   onAddBranch: (parentId: string) => void;
-  onSelect: (node: WorkflowNode) => void;
+  onSelect: (node: WorkflowTreeNode) => void;
   onDrop: (dragId: string, dropId: string) => void;
   onCopy: (nodeId: string) => void;
   setDraggingGlobal: (value: boolean) => void;
@@ -3956,7 +3956,7 @@ const noop = () => {};
 const flowNodeActionsFallback: FlowNodeActionsContextValue = {
   onAddNext: noop,
   onAddBranch: noop,
-  onSelect: noop as (node: WorkflowNode) => void,
+  onSelect: noop as (node: WorkflowTreeNode) => void,
   onDrop: noop as (dragId: string, dropId: string) => void,
   onCopy: noop as (nodeId: string) => void,
   setDraggingGlobal: noop as (value: boolean) => void,
@@ -3981,7 +3981,7 @@ const FlowNode = ({
   selectedNodeId,
   isInsideBranch,
 }: {
-  node: WorkflowNode;
+  node: WorkflowTreeNode;
   invalidNodes: string[];
   draggingNodeId: string | null;
   isDraggingGlobal: boolean;
@@ -4676,7 +4676,7 @@ const FlowNode = ({
 
 // ==================== 校验 ====================
 
-function validateWorkflow(root: WorkflowNode): {
+function validateWorkflow(root: WorkflowTreeNode): {
   errors: string[];
   errorNodes: string[];
 } {
@@ -4685,7 +4685,7 @@ function validateWorkflow(root: WorkflowNode): {
 
   // 结构完整性校验：节点 ID 必须全局唯一，否则拖拽/编辑时会出现定位错乱
   const nodeIdCounter = new Map<string, number>();
-  const collectNodeIds = (node: WorkflowNode) => {
+  const collectNodeIds = (node: WorkflowTreeNode) => {
     if (node.id) {
       nodeIdCounter.set(node.id, (nodeIdCounter.get(node.id) || 0) + 1);
     }
@@ -4705,7 +4705,7 @@ function validateWorkflow(root: WorkflowNode): {
   }
 
   let hasEnd = false;
-  const checkEnd = (node: WorkflowNode) => {
+  const checkEnd = (node: WorkflowTreeNode) => {
     if (node.type === NodeType.END) hasEnd = true;
     if (node.next) checkEnd(node.next);
     if (node.branches) node.branches.forEach(checkEnd);
@@ -4715,7 +4715,7 @@ function validateWorkflow(root: WorkflowNode): {
     errors.push("流程缺少结束节点");
     errorNodes.push(root.id);
   }
-  const checkApprover = (node: WorkflowNode) => {
+  const checkApprover = (node: WorkflowTreeNode) => {
     if (node.type === NodeType.APPROVAL || node.type === NodeType.PARALLEL) {
       if (!node.approverType) {
         errors.push(
@@ -4737,7 +4737,7 @@ function validateWorkflow(root: WorkflowNode): {
   };
   checkApprover(root);
   // 会签节点一致性校验
-  const checkParallel = (node: WorkflowNode) => {
+  const checkParallel = (node: WorkflowTreeNode) => {
     if (
       node.branches &&
       node.branches.length > 0 &&
@@ -4782,7 +4782,7 @@ function validateWorkflow(root: WorkflowNode): {
   };
   checkParallel(root);
   // P1-12: 扩展校验，覆盖 NOTIFICATION/SCRIPT/TIMER/SUBPROCESS/MANUAL/COPY 节点的必填字段
-  const checkNodeProps = (node: WorkflowNode) => {
+  const checkNodeProps = (node: WorkflowTreeNode) => {
     if (node.type === NodeType.NOTIFICATION) {
       if (!node.props?.notificationTitle && !node.props?.notificationContent) {
         errors.push(`通知节点"${node.title}"未配置通知标题或内容`);
@@ -4864,7 +4864,7 @@ function validateWorkflow(root: WorkflowNode): {
     if (node.branches) node.branches.forEach(checkNodeProps);
   };
   checkNodeProps(root);
-  const checkTitle = (node: WorkflowNode) => {
+  const checkTitle = (node: WorkflowTreeNode) => {
     if (!node.title || node.title.trim() === "") {
       errors.push(`有节点缺少名称`);
       errorNodes.push(node.id);
@@ -4875,7 +4875,7 @@ function validateWorkflow(root: WorkflowNode): {
   checkTitle(root);
 
   // JSON 格式防御性校验
-  const checkJSON = (node: WorkflowNode) => {
+  const checkJSON = (node: WorkflowTreeNode) => {
     try {
       if (node.props?.apiHeaders && typeof node.props.apiHeaders === "string") {
         const text = node.props.apiHeaders.trim();
@@ -5291,7 +5291,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   // P2: 获取当前用户信息（用于数据权限）
   const { user } = useAuth();
 
-  const defaultRoot: WorkflowNode = {
+  const defaultRoot: WorkflowTreeNode = {
     id: "node_start",
     type: NodeType.START,
     title: "发起申请",
@@ -5304,7 +5304,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     },
   };
 
-  const resolveRootNode = useCallback((raw: unknown): WorkflowNode => {
+  const resolveRootNode = useCallback((raw: unknown): WorkflowTreeNode => {
     const graphModel = parseWorkflowGraphDefinition(raw);
     if (graphModel) {
       try {
@@ -5326,13 +5326,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     redo,
     canUndo,
     canRedo,
-  } = useHistory<WorkflowNode>(resolveRootNode(workflow?.nodes));
+  } = useHistory<WorkflowTreeNode>(resolveRootNode(workflow?.nodes));
   // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
   const rootRef = useRef(root);
   rootRef.current = root;
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
-  const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<WorkflowTreeNode | null>(null);
   const [saving, setSaving] = useState(false);
   const [workflowName, setWorkflowName] = useState(
     workflow?.name || "未命名流程",
@@ -5593,9 +5593,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
 
       const cloneNodeTree = (
-        source: WorkflowNode,
+        source: WorkflowTreeNode,
         options?: { keepNext?: boolean },
-      ): WorkflowNode => {
+      ): WorkflowTreeNode => {
         const idPrefix = source.id?.startsWith("branch")
           ? "branch"
           : source.type === NodeType.START
@@ -5603,7 +5603,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             : source.type === NodeType.END
               ? "end"
               : "node";
-        const cloned: WorkflowNode = {
+        const cloned: WorkflowTreeNode = {
           ...source,
           id: generateNodeId(idPrefix),
         };
@@ -5624,7 +5624,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         return cloned;
       };
 
-      const copiedNode: WorkflowNode = {
+      const copiedNode: WorkflowTreeNode = {
         ...cloneNodeTree(node, { keepNext: false }),
         title: `${node.title} (副本)`,
       };
@@ -5653,7 +5653,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         onConfirm: () => {
           const latestRoot = rootRef.current;
           // 用户确认,删除后续节点并添加END节点
-          const newNode: WorkflowNode = {
+          const newNode: WorkflowTreeNode = {
             id: generateNodeId("node"),
             type: NodeType.END,
             title: "流程结束",
@@ -5693,7 +5693,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
     };
 
-    const newNode: WorkflowNode = {
+    const newNode: WorkflowTreeNode = {
       id: generateNodeId("node"),
       type: nodeType,
       title: getTitleByType(nodeType),
@@ -5786,7 +5786,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
     }
 
-    const newBranch: WorkflowNode = {
+    const newBranch: WorkflowTreeNode = {
       id: generateNodeId("branch"),
       type: NodeType.CONDITION,
       title: "新分支",
@@ -5804,7 +5804,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setRoot(newRoot);
   };
 
-  const handleUpdateNode = (id: string, data: Partial<WorkflowNode>) => {
+  const handleUpdateNode = (id: string, data: Partial<WorkflowTreeNode>) => {
     // 通过 rootRef.current 获取最新的 root，解决确认对话框等异步回调中闭包过时的问题
     // 立即更新 ref，确保连续同步调用（如 onChange + onLabelChange）不会互相覆盖
     const newRoot = updateNodeInTree(rootRef.current, id, (node) => ({
@@ -5920,7 +5920,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     // 检查被拖拽的节点是否是分支节点（条件分支不能独立移动）
     const checkIfBranchNode = (
-      node: WorkflowNode,
+      node: WorkflowTreeNode,
       targetId: string,
     ): boolean => {
       if (node.branches) {
@@ -5980,8 +5980,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
   const handleApplyTemplate = (template: WorkflowTemplate) => {
     // P1-11: 应用模板时递归重新生成所有节点 ID，避免不同流程定义共享相同 nodeKey
-    const regenerateIds = (node: WorkflowNode): WorkflowNode => {
-      const newNode: WorkflowNode = {
+    const regenerateIds = (node: WorkflowTreeNode): WorkflowTreeNode => {
+      const newNode: WorkflowTreeNode = {
         ...node,
         id:
           node.type === NodeType.START

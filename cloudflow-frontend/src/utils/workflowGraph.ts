@@ -3,7 +3,7 @@ import {
   WorkflowGraphDefinition,
   WorkflowGraphEdge,
   WorkflowGraphNode,
-  WorkflowNode,
+  WorkflowTreeNode,
 } from '../types';
 
 /**
@@ -66,7 +66,7 @@ const extractEdgeCondition = (edge: WorkflowGraphEdge): string | undefined => {
 /**
  * 编辑器内部暂时保留树形结构，这里负责图 -> 树适配。
  */
-export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): WorkflowNode => {
+export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): WorkflowTreeNode => {
   if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) {
     throw new Error('流程图节点不能为空');
   }
@@ -135,7 +135,7 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     throw new Error('流程图存在不可达节点，请删除孤立节点后重试');
   }
 
-  const build = (nodeId: string, path: Set<string>): WorkflowNode | undefined => {
+  const build = (nodeId: string, path: Set<string>): WorkflowTreeNode | undefined => {
     if (path.has(nodeId)) {
       throw new Error(`流程图存在循环，节点ID: ${nodeId}`);
     }
@@ -143,8 +143,8 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     if (!source) return undefined;
 
     const { id, type, title, ...rest } = source;
-    const node: WorkflowNode = {
-      ...(rest as Omit<WorkflowNode, 'id' | 'type' | 'title'>),
+    const node: WorkflowTreeNode = {
+      ...(rest as Omit<WorkflowTreeNode, 'id' | 'type' | 'title'>),
       id,
       type: ((type as NodeType) || NodeType.APPROVAL) as NodeType,
       title: String(title || '未命名节点'),
@@ -153,7 +153,7 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     const nextPath = new Set(path);
     nextPath.add(nodeId);
     const nextEdges = outgoing.get(nodeId) ?? [];
-    const buildFromEdge = (edge: WorkflowGraphEdge): WorkflowNode | undefined => {
+    const buildFromEdge = (edge: WorkflowGraphEdge): WorkflowTreeNode | undefined => {
       const child = build(edge.target, nextPath);
       const edgeCondition = extractEdgeCondition(edge);
       if (child && !child.condition && edgeCondition) {
@@ -174,7 +174,7 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
       const branchEdges = nextEdges.filter((edge) => edge !== defaultEdge);
       const branches = branchEdges
         .map((edge) => buildFromEdge(edge))
-        .filter(Boolean) as WorkflowNode[];
+        .filter(Boolean) as WorkflowTreeNode[];
       if (branches.length > 0) {
         node.branches = branches;
       }
@@ -197,7 +197,7 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
 /**
  * 保存时统一输出图结构，避免树模型回写到后端。
  */
-export const convertWorkflowTreeToGraph = (root: WorkflowNode): WorkflowGraphDefinition => {
+export const convertWorkflowTreeToGraph = (root: WorkflowTreeNode): WorkflowGraphDefinition => {
   const nodes: WorkflowGraphNode[] = [];
   const edges: WorkflowGraphEdge[] = [];
   const visited = new Set<string>();
@@ -210,7 +210,7 @@ export const convertWorkflowTreeToGraph = (root: WorkflowNode): WorkflowGraphDef
     edges.push({ id: key, source, target, ...extra });
   };
 
-  const walk = (node?: WorkflowNode) => {
+  const walk = (node?: WorkflowTreeNode) => {
     if (!node || !node.id) return;
 
     if (!visited.has(node.id)) {
