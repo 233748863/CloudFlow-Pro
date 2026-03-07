@@ -6558,12 +6558,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     try {
       return convertGraphToWorkflowTree(graphModel);
     } catch (error) {
-      console.warn("[WorkflowBuilder] 图模型恢复编辑树失败，回退默认流程", error);
+      console.warn("[WorkflowBuilder] ?????????????????", error);
       return defaultRoot;
     }
-  }, [defaultGraphModel, graphModel]);
-  // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
-  // 用 ref 保持最新 graphModel，避免确认弹窗中的图编辑闭包过时
+  }, [graphModel, defaultRoot]);
+
+  // ? ref ???? graphModel????????????????
   const graphModelRef = useRef(graphModel);
   graphModelRef.current = graphModel;
   const replaceGraphState = useCallback(
@@ -6571,31 +6571,25 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       nextGraph: WorkflowGraphDefinition,
       options?: { resetHistory?: boolean; fallbackToDefault?: boolean },
     ) => {
-      let nextRoot: WorkflowTreeNode | null = null;
       let nextStateGraph = nextGraph;
 
       try {
-        nextRoot = convertGraphToWorkflowTree(nextGraph);
+        convertGraphToWorkflowTree(nextGraph);
       } catch (error) {
         if (!options?.fallbackToDefault) {
           throw error;
         }
         console.warn("[WorkflowBuilder] failed to apply graph state, fallback to default workflow", error);
-        nextRoot = defaultRoot;
         nextStateGraph = defaultGraphModel;
       }
 
-      if (!nextRoot) {
-        throw new Error("graph state apply failed");
-      }
       if (options?.resetHistory) {
         resetGraphModel(nextStateGraph);
       } else {
         setGraphModel(nextStateGraph);
       }
-      return nextRoot;
     },
-    [defaultGraphModel, defaultRoot, resetGraphModel, setGraphModel],
+    [defaultGraphModel, resetGraphModel, setGraphModel],
   );
 
   const workflowRef = useRef(workflow);
