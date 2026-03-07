@@ -516,6 +516,98 @@ export const replaceWorkflowGraphNextNode = (
 };
 
 /**
+ * 移动普通节点到新的主干位置，保留节点自身分支，但不携带原主干后续。
+ */
+export const moveWorkflowGraphNode = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+  targetParentId: string,
+): WorkflowGraphDefinition => {
+  if (nodeId === targetParentId) {
+    return graph;
+  }
+  if (
+    !graph.nodes.some((node) => node.id === nodeId) ||
+    !graph.nodes.some((node) => node.id === targetParentId)
+  ) {
+    return graph;
+  }
+
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const sourceMainEdge = resolveGraphMainEdge(graph, nodeId, nodeMap);
+  const branchTargets = graph.edges
+    .filter((edge) => edge.source === nodeId && edge !== sourceMainEdge)
+    .map((edge) => edge.target);
+  const movedBranchIds = collectGraphSubtreeIds(graph, branchTargets);
+  const movedIds = new Set<string>([nodeId, ...movedBranchIds]);
+  const incomingEdges = graph.edges.filter(
+    (edge) => edge.target === nodeId && !movedIds.has(edge.source),
+  );
+
+  const buildEdgeKey = (edge: WorkflowGraphEdge) =>
+    `${edge.source}->${edge.target}|${extractEdgeCondition(edge) || ''}|${isDefaultEdge(edge) ? '1' : '0'}`;
+
+  let edges = graph.edges.filter((edge) => {
+    if (incomingEdges.includes(edge)) {
+      return false;
+    }
+    if (sourceMainEdge && edge === sourceMainEdge) {
+      return false;
+    }
+    return true;
+  });
+
+  if (sourceMainEdge) {
+    const existingEdgeKeys = new Set(edges.map((edge) => buildEdgeKey(edge)));
+    incomingEdges.forEach((edge) => {
+      const rewiredEdge: WorkflowGraphEdge = {
+        ...edge,
+        id: `${edge.source}->${sourceMainEdge.target}` ,
+        target: sourceMainEdge.target,
+      };
+      const rewiredKey = buildEdgeKey(rewiredEdge);
+      if (existingEdgeKeys.has(rewiredKey)) {
+        return;
+      }
+      existingEdgeKeys.add(rewiredKey);
+      edges.push(rewiredEdge);
+    });
+  }
+
+  const detachedGraph: WorkflowGraphDefinition = {
+    nodes: [...graph.nodes],
+    edges,
+  };
+  const targetMainEdge = resolveGraphMainEdge(detachedGraph, targetParentId, nodeMap);
+  const targetOtherOutgoingEdges = edges.filter(
+    (edge) => edge.source === targetParentId && edge !== targetMainEdge,
+  );
+  const shouldMarkDefault =
+    targetOtherOutgoingEdges.length > 0 ||
+    (!!targetMainEdge && isDefaultEdge(targetMainEdge));
+
+  edges = edges.filter((edge) => edge !== targetMainEdge);
+  edges.push({
+    id: `${targetParentId}->${nodeId}`,
+    source: targetParentId,
+    target: nodeId,
+    isDefault: shouldMarkDefault || undefined,
+  });
+
+  if (targetMainEdge) {
+    edges.push({
+      id: `${nodeId}->${targetMainEdge.target}`,
+      source: nodeId,
+      target: targetMainEdge.target,
+    });
+  }
+
+  return {
+    nodes: [...graph.nodes],
+    edges,
+  };
+};
+/**
  * 删除普通节点并保留主干后继，避免节点删除再次回退到树模型编辑。
  */
 export const removeWorkflowGraphNode = (

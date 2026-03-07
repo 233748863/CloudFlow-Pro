@@ -100,6 +100,7 @@ import {
   convertWorkflowTreeToGraph,
   insertWorkflowGraphNodeAfter,
   insertWorkflowGraphSubgraphAfter,
+  moveWorkflowGraphNode,
   parseWorkflowGraphDefinition,
   removeWorkflowGraphBranch,
   removeWorkflowGraphNode,
@@ -7394,32 +7395,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     }
 
     // 执行移动：先从树中删除拖拽节点，再插入到目标位置
-    let newRoot = deleteNodeInTree(currentRoot, dragId);
-    if (newRoot) {
-      // 防御性保护：若删除后落点不存在，则中止本次拖拽，避免异常场景下结构丢失
-      const dropNodeAfterDelete = findNodeById(newRoot, dropId);
-      if (!dropNodeAfterDelete) {
-        toast.error("目标位置已失效，请重试拖拽");
-        return;
-      }
-
-      // 移动时只移动节点本身，不带子树（next 断开）
-      const nodeToInsert = { ...dragNode, next: undefined };
-
-      // 统一处理：插入到落点节点之后。
-      // 因为现在所有的拖入都只会触发 ConnectorDropZone（发生在父节点和next节点之间的连线区），dropId就是此连线前方的节点ID
-      newRoot = updateNodeInTree(newRoot, dropId, (node) => ({
-        ...node,
-        next: { ...nodeToInsert, next: node.next },
-      }));
-
-      applyTreeChange(newRoot, {
-        successMessage: "节点已移动（仅移动当前节点，后续节点保留在原位）",
-      });
-      // P1-10: 明确提示用户仅移动了当前节点
-    }
+    const nextGraph = moveWorkflowGraphNode(graphModelRef.current, dragId, dropId);
+    applyGraphChange(nextGraph, {
+      successMessage: "节点已移动（仅移动当前节点，后续节点保留在原位）",
+    });
+    // P1-10: 明确提示用户仅移动了当前节点
   };
-
   const handleApplyTemplate = (template: WorkflowTemplate) => {
     // P1-11: 应用模板时按图模型重生 node/edge ID，避免不同流程定义共享相同 nodeKey
     const nodeIdMap = new Map<string, string>();
