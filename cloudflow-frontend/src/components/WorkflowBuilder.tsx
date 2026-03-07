@@ -5286,7 +5286,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const routeWorkflowId = (searchParams.get("id") || "").trim();
-  const currentWorkflowId = routeWorkflowId || workflow?.id || "";
+  const currentWorkflowId = (workflow?.id || "").trim() || routeWorkflowId;
 
   // P2: 获取当前用户信息（用于数据权限）
   const { user } = useAuth();
