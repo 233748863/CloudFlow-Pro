@@ -244,3 +244,90 @@ export const convertWorkflowTreeToGraph = (root: WorkflowTreeNode): WorkflowGrap
 
   return { nodes, edges };
 };
+
+/**
+ * 基于图模型直接更新节点字段，避免属性面板修改再绕回树模型。
+ */
+export const patchWorkflowGraphNode = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+  patch: Partial<WorkflowGraphNode>,
+): WorkflowGraphDefinition => {
+  let updated = false;
+  const nodes = graph.nodes.map((node) => {
+    if (node.id !== nodeId) return node;
+    updated = true;
+    return { ...node, ...patch };
+  });
+
+  if (!updated) {
+    return graph;
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(patch, "condition")) {
+    return { nodes, edges: [...graph.edges] };
+  }
+
+  const normalizedCondition =
+    typeof patch.condition === "string" ? patch.condition.trim() : "";
+  const edges = graph.edges.map((edge) => {
+    if (edge.target !== nodeId || isDefaultEdge(edge)) {
+      return edge;
+    }
+    return {
+      ...edge,
+      condition: normalizedCondition || undefined,
+    };
+  });
+
+  return { nodes, edges };
+};
+
+/**
+ * 在图模型中给指定父节点追加条件分支，并在首次分支化时保留默认主干。
+ */
+export const appendWorkflowGraphBranch = (
+  graph: WorkflowGraphDefinition,
+  parentId: string,
+  branchNode: WorkflowGraphNode,
+  defaultStrategy: string,
+): WorkflowGraphDefinition => {
+  const parentNode = graph.nodes.find((node) => node.id === parentId);
+  if (!parentNode) {
+    return graph;
+  }
+
+  const outgoingEdges = graph.edges.filter((edge) => edge.source === parentId);
+  const edges = graph.edges.map((edge) => {
+    if (edge.source !== parentId) {
+      return edge;
+    }
+    if (outgoingEdges.length === 1 && !isDefaultEdge(edge)) {
+      return { ...edge, isDefault: true };
+    }
+    return edge;
+  });
+
+  const normalizedCondition =
+    typeof branchNode.condition === "string" ? branchNode.condition.trim() : "";
+  const nodes = graph.nodes.map((node) => {
+    if (node.id !== parentId) {
+      return node;
+    }
+    const branchStrategy =
+      typeof node.branchStrategy === "string" && node.branchStrategy.trim()
+        ? node.branchStrategy
+        : defaultStrategy;
+    return { ...node, branchStrategy };
+  });
+
+  nodes.push(branchNode);
+  edges.push({
+    id: `${parentId}->${branchNode.id}`,
+    source: parentId,
+    target: branchNode.id,
+    condition: normalizedCondition || undefined,
+  });
+
+  return { nodes, edges };
+};

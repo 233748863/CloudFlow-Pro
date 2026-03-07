@@ -95,9 +95,11 @@ import { Button } from "./ui/button";
 import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { useAuth } from "../context/AuthContext";
 import {
+  appendWorkflowGraphBranch,
   convertGraphToWorkflowTree,
   convertWorkflowTreeToGraph,
   parseWorkflowGraphDefinition,
+  patchWorkflowGraphNode,
 } from "../utils/workflowGraph";
 
 // ==================== 辅助函数 ====================
@@ -7026,6 +7028,35 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     [setRoot],
   );
 
+  const applyGraphChange = useCallback(
+    (
+      nextGraph: WorkflowGraphDefinition,
+      options?: {
+        clearSelection?: boolean;
+        successMessage?: string;
+      },
+    ) => {
+      try {
+        replaceGraphState(nextGraph);
+      } catch (error) {
+        console.error("[WorkflowBuilder] graph edit apply failed", error);
+        toast.error("图模型更新失败，请重试");
+        return false;
+      }
+
+      if (options?.clearSelection) {
+        setSelectedNodeId(null);
+      }
+
+      if (options?.successMessage) {
+        toast.success(options.successMessage);
+      }
+
+      return true;
+    },
+    [replaceGraphState],
+  );
+
   const handleCopyNode = useCallback(
     (nodeId: string) => {
       const currentRoot = rootRef.current;
@@ -7223,7 +7254,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
     }
 
-    const newBranch: WorkflowTreeNode = {
+    const newBranch: WorkflowGraphNode = {
       id: generateNodeId("branch"),
       type: NodeType.CONDITION,
       title: "新分支",
@@ -7232,22 +7263,22 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     // 根据父节点类型决定默认分支策略
     const defaultStrategy =
       parentNode?.type === NodeType.PARALLEL ? "PARALLEL" : "EXCLUSIVE";
-    const newRoot = updateNodeInTree(currentRoot, parentId, (node) => ({
-      ...node,
-      branches: [...(node.branches || []), newBranch],
-      branchStrategy: node.branchStrategy || defaultStrategy,
-    }));
-    applyTreeChange(newRoot);
+    const nextGraph = appendWorkflowGraphBranch(
+      graphModel,
+      parentId,
+      newBranch,
+      defaultStrategy,
+    );
+    applyGraphChange(nextGraph);
   };
 
   const handleUpdateNode = (id: string, data: Partial<WorkflowTreeNode>) => {
-    // 通过 rootRef.current 获取最新的 root，解决确认对话框等异步回调中闭包过时的问题
-    // 立即更新 ref，确保连续同步调用（如 onChange + onLabelChange）不会互相覆盖
-    const newRoot = updateNodeInTree(rootRef.current, id, (node) => ({
-      ...node,
-      ...data,
-    }));
-    applyTreeChange(newRoot);
+    const nextGraph = patchWorkflowGraphNode(
+      graphModel,
+      id,
+      data as Partial<WorkflowGraphNode>,
+    );
+    applyGraphChange(nextGraph);
   };
 
   const handleDeleteNode = (id: string) => {
