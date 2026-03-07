@@ -95,7 +95,6 @@ import { Button } from "./ui/button";
 import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { useAuth } from "../context/AuthContext";
 import {
-  createDefaultWorkflowGraph,
   convertGraphToWorkflowTree,
   convertWorkflowTreeToGraph,
   parseWorkflowGraphDefinition,
@@ -6648,26 +6647,37 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     writeApproverCache("USER", normalizedUsers);
   }, [availableUsers]);
 
-  const defaultRoot: WorkflowTreeNode = {
-    id: "node_start",
-    type: NodeType.START,
-    title: "发起申请",
-    next: {
-      id: "node_1",
-      type: NodeType.APPROVAL,
-      title: "部门经理审批",
-      approverType: "DEPT_MANAGER",
-      next: { id: "node_end", type: NodeType.END, title: "流程结束" },
-    },
-  };
+  const defaultGraphModel = useMemo<WorkflowGraphDefinition>(
+    () => ({
+      nodes: [
+        { id: "node_start", type: NodeType.START, title: "发起申请" },
+        {
+          id: "node_1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        { id: "node_end", type: NodeType.END, title: "流程结束" },
+      ],
+      edges: [
+        { id: "node_start->node_1", source: "node_start", target: "node_1" },
+        { id: "node_1->node_end", source: "node_1", target: "node_end" },
+      ],
+    }),
+    [],
+  );
 
+  const defaultRoot = useMemo(
+    () => convertGraphToWorkflowTree(defaultGraphModel),
+    [defaultGraphModel],
+  );
 
   const resolveGraphModel = useCallback(
     (raw: unknown): WorkflowGraphDefinition => {
       const graphModel = parseWorkflowGraphDefinition(raw);
-      return graphModel || createDefaultWorkflowGraph();
+      return graphModel || defaultGraphModel;
     },
-    [],
+    [defaultGraphModel],
   );
 
   const {
@@ -6687,7 +6697,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       console.warn("[WorkflowBuilder] 图模型恢复编辑树失败，回退默认流程", error);
       return defaultRoot;
     }
-  }, [graphModel]);
+  }, [defaultGraphModel, graphModel]);
   // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
   const rootRef = useRef(root);
   rootRef.current = root;
@@ -6714,7 +6724,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         }
         console.warn("[WorkflowBuilder] failed to apply graph state, fallback to default workflow", error);
         nextRoot = defaultRoot;
-        nextStateGraph = createDefaultWorkflowGraph();
+        nextStateGraph = defaultGraphModel;
       }
 
       if (!nextRoot) {
@@ -6729,7 +6739,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
       return nextRoot;
     },
-    [defaultRoot, resetGraphModel, setGraphModel],
+    [defaultGraphModel, defaultRoot, resetGraphModel, setGraphModel],
   );
 
   const workflowRef = useRef(workflow);
