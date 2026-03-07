@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   CheckCircle2, Circle, Clock, AlertCircle, 
   ArrowDown, GitBranch, GitMerge, User, Shield, 
@@ -6,11 +6,11 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react';
 import { getProcessTrace, getProcessInstance, getProcessDefinition, urgeTask } from '../services/api/workflow';
-import { NodeType, WorkflowNode } from '../types';
+import { NodeType, WorkflowGraphDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { BellRing } from 'lucide-react';
-import { convertGraphToWorkflowTree, parseWorkflowGraphDefinition } from '../utils/workflowGraph';
+import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 interface ProcessTraceProps {
   instanceId: string;
@@ -107,21 +107,33 @@ const formatTime = (timeStr?: string) => {
 };
 
 /**
- * 统一解析流程模型节点，兼容对象和 JSON 字符串。
+ * 统一解析流程模型，仅接受 nodes+edges 图结构。
  */
-const parseWorkflowNodes = (rawModel: unknown): WorkflowNode | null => {
+const parseWorkflowGraph = (rawModel: unknown): WorkflowGraphDefinition | null => {
   const graph = parseWorkflowGraphDefinition(rawModel);
   if (!graph) {
     return null;
   }
-  return convertGraphToWorkflowTree(graph);
+  return graph;
+};
+
+const isDefaultEdge = (edge: { isDefault?: unknown }) => {
+  const raw = edge.isDefault;
+  if (typeof raw === 'boolean') return raw;
+  if (typeof raw === 'number') return raw !== 0;
+  if (typeof raw === 'string') {
+    const normalized = raw.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'y';
+  }
+  return false;
 };
 
 export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [trace, setTrace] = useState<TraceData>({ finished: [], active: [] });
-  const [rootNode, setRootNode] = useState<WorkflowNode | null>(null);
+  const [graphModel, setGraphModel] = useState<WorkflowGraphDefinition | null>(null);
+  const [rootNodeId, setRootNodeId] = useState<string | null>(null);
   const [instance, setInstance] = useState<any>(null);
   const [error, setError] = useState('');
   // 子Tab：审批记录 / 流程图
@@ -145,12 +157,22 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
       const definitionId = String((instanceRes as any)?.definitionId || '').trim();
       if (!definitionId) {
         console.warn('[ProcessTrace] 缺少 definitionId，无法加载流程图', { instanceId });
-        setRootNode(null);
+        setGraphModel(null);
+        setRootNodeId(null);
         return;
       }
       const def = await getProcessDefinition(definitionId);
-      const parsed = parseWorkflowNodes((def as any)?.modelJson);
-      setRootNode(parsed);
+      const parsed = parseWorkflowGraph((def as any)?.modelJson);
+      setGraphModel(parsed);
+      if (!parsed || parsed.nodes.length === 0) {
+        setRootNodeId(null);
+        return;
+      }
+      const startNode = parsed.nodes.find(
+        (node) => String((node as any)?.type || '').toUpperCase() === NodeType.START,
+      );
+      const resolvedRootId = String((startNode || parsed.nodes[0]).id || '').trim();
+      setRootNodeId(resolvedRootId || null);
     } catch (e) {
       console.error(e);
       setError("加载流程追踪失败");
@@ -174,36 +196,90 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   };
 
   // 流程图递归渲染
-  const renderNode = (node: WorkflowNode) => {
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, WorkflowGraphDefinition['nodes'][number]>();
+    (graphModel?.nodes || []).forEach((node) => {
+      const nodeId = String((node as any)?.id || '').trim();
+      if (nodeId) {
+        map.set(nodeId, node);
+      }
+    });
+    return map;
+  }, [graphModel]);
+
+  const outgoingMap = useMemo(() => {
+    const map = new Map<string, WorkflowGraphDefinition['edges']>();
+    (graphModel?.edges || []).forEach((edge) => {
+      const source = String((edge as any)?.source || '').trim();
+      const target = String((edge as any)?.target || '').trim();
+      if (!source || !target) {
+        return;
+      }
+      const current = map.get(source) || [];
+      current.push(edge);
+      map.set(source, current);
+    });
+    return map;
+  }, [graphModel]);
+
+  // 流程图递归渲染（直接基于 nodes+edges）
+  const renderNode = (nodeId: string, visited = new Set<string>()) => {
+    if (!nodeId || visited.has(nodeId)) return null;
+    const node = nodeMap.get(nodeId);
     if (!node) return null;
 
-    const isFinished = trace.finished.includes(node.id);
-    const isActive = trace.active.includes(node.id);
-    const status = isActive ? 'active' : (isFinished ? 'finished' : 'pending');
+    const nextVisited = new Set(visited);
+    nextVisited.add(nodeId);
+
+    const nodeType = String((node as any)?.type || NodeType.APPROVAL);
+    const nodeTitle = String((node as any)?.title || '未命名节点');
+    const isFinished = trace.finished.includes(nodeId);
+    const isActive = trace.active.includes(nodeId);
+    const status: 'finished' | 'active' | 'pending' = isActive
+      ? 'active'
+      : (isFinished ? 'finished' : 'pending');
     const isInitiator = user && instance && String(instance.startUserId) === String(user.id);
 
-    // 从 historyDetails 中查找该节点的处理信息
-    const nodeHistory = trace.historyDetails?.find(h => h.nodeKey === node.id);
-    const nodeActive = trace.activeDetails?.find(a => a.nodeKey === node.id);
+    const nodeHistory = trace.historyDetails?.find((h) => h.nodeKey === nodeId);
+    const nodeActive = trace.activeDetails?.find((a) => a.nodeKey === nodeId);
+    const outgoingEdges = outgoingMap.get(nodeId) || [];
+
+    let nextNodeId: string | null = null;
+    let branchNodeIds: string[] = [];
+    if (outgoingEdges.length === 1) {
+      nextNodeId = String((outgoingEdges[0] as any)?.target || '').trim() || null;
+    } else if (outgoingEdges.length > 1) {
+      const defaultEdges = outgoingEdges.filter((edge) => isDefaultEdge(edge));
+      const defaultEdge = defaultEdges.length === 1 ? defaultEdges[0] : undefined;
+      if (defaultEdge) {
+        nextNodeId = String((defaultEdge as any)?.target || '').trim() || null;
+        branchNodeIds = outgoingEdges
+          .filter((edge) => edge !== defaultEdge)
+          .map((edge) => String((edge as any)?.target || '').trim())
+          .filter(Boolean);
+      } else {
+        branchNodeIds = outgoingEdges
+          .map((edge) => String((edge as any)?.target || '').trim())
+          .filter(Boolean);
+      }
+    }
 
     return (
       <div className="flex flex-col items-center">
         <div className="relative flex flex-col items-center group">
-          <NodeIcon type={node.type} title={node.title} status={status} />
+          <NodeIcon type={nodeType} title={nodeTitle} status={status} />
           
           <div className={`mt-2 px-3 py-1.5 rounded-lg border text-xs font-medium max-w-[140px] text-center transition-colors
              ${status === 'active' ? 'bg-pink-50 border-pink-100 text-pink-600 shadow-sm' : 
                status === 'finished' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
                'bg-white border-slate-200 text-slate-500'}
           `}>
-            {node.title}
-            {/* 已完成节点显示处理人 */}
+            {nodeTitle}
             {nodeHistory && (
               <div className="text-[9px] mt-0.5 opacity-75">
                 {nodeHistory.operatorName} · {getActionStyle(nodeHistory.action).label}
               </div>
             )}
-            {/* 活动节点显示当前处理人 */}
             {nodeActive && (
               <div className="text-[9px] mt-0.5 text-pink-400">
                 待: {nodeActive.assigneeName || '待认领'}
@@ -211,12 +287,11 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             )}
           </div>
           
-          {/* 催办按钮 */}
           {isActive && isInitiator && nodeActive?.taskId && (
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  void handleUrge(nodeActive.taskId!, node.title);
+                  void handleUrge(nodeActive.taskId!, nodeTitle);
                 }}
                 className="absolute -right-8 top-0 bg-amber-100 text-amber-600 p-1 rounded-full hover:bg-amber-200 transition-colors"
                 title="催办"
@@ -226,36 +301,33 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
           )}
         </div>
 
-        {/* 分支 */}
-        {node.branches && node.branches.length > 0 && (
+        {branchNodeIds.length > 0 && (
            <div className="flex flex-col items-center mt-4 w-full">
               <div className="h-4 w-0.5 bg-slate-300 mb-2"></div>
               <div className="flex justify-center items-start gap-8 relative">
                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 mx-auto" style={{ width: `calc(100% - 4rem)` }}></div>
-                 {node.branches.map((branch, idx) => (
-                    <div key={branch.id || idx} className="flex flex-col items-center pt-4 relative">
+                 {branchNodeIds.map((branchId, idx) => (
+                    <div key={`${branchId}-${idx}`} className="flex flex-col items-center pt-4 relative">
                        <div className="absolute top-0 w-0.5 h-4 bg-slate-300"></div>
-                       {renderNode(branch)}
+                       {renderNode(branchId, nextVisited)}
                     </div>
                  ))}
               </div>
            </div>
         )}
 
-        {/* 下一节点 */}
-        {node.next && (
+        {nextNodeId && (
            <div className="flex flex-col items-center">
-             <div className={`h-8 w-0.5 ${trace.finished.includes(node.id) ? 'bg-emerald-300' : 'bg-slate-300'}`}></div>
-             <ArrowDown size={14} className={`${trace.finished.includes(node.id) ? 'text-emerald-300' : 'text-slate-300'} -mt-1`} />
+             <div className={`h-8 w-0.5 ${trace.finished.includes(nodeId) ? 'bg-emerald-300' : 'bg-slate-300'}`}></div>
+             <ArrowDown size={14} className={`${trace.finished.includes(nodeId) ? 'text-emerald-300' : 'text-slate-300'} -mt-1`} />
              <div className="h-4 w-0.5 bg-transparent"></div>
-             {renderNode(node.next)}
+             {renderNode(nextNodeId, nextVisited)}
            </div>
         )}
       </div>
     );
   };
 
-  // 渲染审批记录时间线
   const renderTimeline = () => {
     const historyItems = trace.historyDetails || [];
     const activeItems = trace.activeDetails || [];
@@ -388,7 +460,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
       </div>
 
       {/* 流程图 - 可折叠 */}
-      {rootNode && (
+      {graphModel && rootNodeId && (
         <div className="border border-slate-100 rounded-xl overflow-hidden">
           <button
             onClick={() => setDiagramExpanded(!diagramExpanded)}
@@ -402,7 +474,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
           </button>
           {diagramExpanded && (
             <div className="bg-slate-50 p-6 overflow-auto max-h-[400px] flex justify-center">
-              {renderNode(rootNode)}
+              {renderNode(rootNodeId)}
             </div>
           )}
         </div>
