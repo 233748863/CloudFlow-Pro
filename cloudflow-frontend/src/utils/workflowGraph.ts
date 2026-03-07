@@ -63,6 +63,70 @@ const extractEdgeCondition = (edge: WorkflowGraphEdge): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const hasNodeCondition = (node?: WorkflowGraphNode): boolean => {
+  const candidate = node?.condition;
+  return typeof candidate === 'string' && !!candidate.trim();
+};
+
+const isBranchEdge = (
+  edge: WorkflowGraphEdge,
+  nodeMap: Map<string, WorkflowGraphNode>,
+): boolean => {
+  if (isDefaultEdge(edge)) {
+    return false;
+  }
+
+  const targetNode = nodeMap.get(edge.target);
+  return (
+    String(targetNode?.type || '').toUpperCase() === NodeType.CONDITION ||
+    !!extractEdgeCondition(edge) ||
+    hasNodeCondition(targetNode)
+  );
+};
+
+// 默认边优先代表主干，只有单条且非条件边时才回退为主干
+const resolveGraphMainEdge = (
+  graph: WorkflowGraphDefinition,
+  sourceId: string,
+  nodeMap: Map<string, WorkflowGraphNode>,
+): WorkflowGraphEdge | undefined => {
+  const outgoingEdges = graph.edges.filter((edge) => edge.source === sourceId);
+  const defaultEdge = outgoingEdges.find((edge) => isDefaultEdge(edge));
+  if (defaultEdge) {
+    return defaultEdge;
+  }
+
+  if (outgoingEdges.length !== 1) {
+    return undefined;
+  }
+
+  const [singleEdge] = outgoingEdges;
+  return isBranchEdge(singleEdge, nodeMap) ? undefined : singleEdge;
+};
+
+// 截断后续子图时，要一次性回收被丢弃的整条主干子树
+const collectGraphSubtreeIds = (
+  graph: WorkflowGraphDefinition,
+  startIds: string[],
+): Set<string> => {
+  const idsToRemove = new Set<string>();
+  const stack = [...startIds];
+
+  while (stack.length > 0) {
+    const currentId = stack.pop();
+    if (!currentId || idsToRemove.has(currentId)) {
+      continue;
+    }
+
+    idsToRemove.add(currentId);
+    graph.edges
+      .filter((edge) => edge.source === currentId)
+      .forEach((edge) => stack.push(edge.target));
+  }
+
+  return idsToRemove;
+};
+
 /**
  * 编辑器内部暂时保留树形结构，这里负责图 -> 树适配。
  */
@@ -344,6 +408,89 @@ export const appendWorkflowGraphBranch = (
   });
 
   return { nodes, edges };
+};
+
+/**
+ * 在指定节点后插入新的主干节点，并保留原有主干后继。
+ */
+export const insertWorkflowGraphNodeAfter = (
+  graph: WorkflowGraphDefinition,
+  parentId: string,
+  newNode: WorkflowGraphNode,
+): WorkflowGraphDefinition => {
+  if (
+    !graph.nodes.some((node) => node.id === parentId) ||
+    graph.nodes.some((node) => node.id === newNode.id)
+  ) {
+    return graph;
+  }
+
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const mainEdge = resolveGraphMainEdge(graph, parentId, nodeMap);
+  const otherOutgoingEdges = graph.edges.filter(
+    (edge) => edge.source === parentId && edge !== mainEdge,
+  );
+  const shouldMarkDefault =
+    otherOutgoingEdges.length > 0 || (!!mainEdge && isDefaultEdge(mainEdge));
+
+  const edges = graph.edges.filter((edge) => edge !== mainEdge);
+  edges.push({
+    id: `${parentId}->${newNode.id}`,
+    source: parentId,
+    target: newNode.id,
+    isDefault: shouldMarkDefault || undefined,
+  });
+
+  if (mainEdge) {
+    edges.push({
+      id: `${newNode.id}->${mainEdge.target}`,
+      source: newNode.id,
+      target: mainEdge.target,
+    });
+  }
+
+  return {
+    nodes: [...graph.nodes, newNode],
+    edges,
+  };
+};
+
+/**
+ * 用新的主干节点替换当前后继，并删除被截断的旧后续子图。
+ */
+export const replaceWorkflowGraphNextNode = (
+  graph: WorkflowGraphDefinition,
+  parentId: string,
+  newNode: WorkflowGraphNode,
+): WorkflowGraphDefinition => {
+  if (
+    !graph.nodes.some((node) => node.id === parentId) ||
+    graph.nodes.some((node) => node.id === newNode.id)
+  ) {
+    return graph;
+  }
+
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const mainEdge = resolveGraphMainEdge(graph, parentId, nodeMap);
+  const idsToRemove = mainEdge
+    ? collectGraphSubtreeIds(graph, [mainEdge.target])
+    : new Set<string>();
+
+  const edges = graph.edges.filter(
+    (edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target),
+  );
+  const hasRemainingBranches = edges.some((edge) => edge.source === parentId);
+  edges.push({
+    id: `${parentId}->${newNode.id}`,
+    source: parentId,
+    target: newNode.id,
+    isDefault: hasRemainingBranches || undefined,
+  });
+
+  return {
+    nodes: [...graph.nodes.filter((node) => !idsToRemove.has(node.id)), newNode],
+    edges,
+  };
 };
 
 /**

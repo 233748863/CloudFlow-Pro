@@ -98,9 +98,11 @@ import {
   appendWorkflowGraphBranch,
   convertGraphToWorkflowTree,
   convertWorkflowTreeToGraph,
+  insertWorkflowGraphNodeAfter,
   parseWorkflowGraphDefinition,
   removeWorkflowGraphBranch,
   removeWorkflowGraphNode,
+  replaceWorkflowGraphNextNode,
   patchWorkflowGraphNode,
 } from "../utils/workflowGraph";
 
@@ -7117,33 +7119,25 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   );
 
   const handleAddNext = (parentId: string, type?: NodeType) => {
-    const currentRoot = rootRef.current;
+    const currentGraph = graphModelRef.current;
     const nodeType = type || NodeType.APPROVAL;
 
-    // 如果要添加END节点,检查是否已存在END节点
-    if (nodeType === NodeType.END && hasEndNode(currentRoot)) {
-      // 显示自定义确认对话框
-      setConfirmDialog({
-        open: true,
-        message:
-          "流程中已存在结束节点。添加新的结束节点将会删除当前节点之后的所有节点。是否继续?",
-        onConfirm: () => {
-          const latestRoot = rootRef.current;
-          // 用户确认,删除后续节点并添加END节点
-          const newNode: WorkflowTreeNode = {
-            id: generateNodeId("node"),
-            type: NodeType.END,
-            title: "流程结束",
-          };
-          const nextRoot = updateNodeInTree(latestRoot, parentId, (node) => ({
-            ...node,
-            next: newNode,
-          }));
-          applyTreeChange(nextRoot, { successMessage: "已添加结束节点" });
-        },
-      });
-      return;
-    }
+    const resolveAnchorId = (
+      graph: WorkflowGraphDefinition,
+      targetId: string,
+    ): string | null => {
+      const targetNode = graph.nodes.find((node) => node.id === targetId);
+      if (!targetNode) {
+        return null;
+      }
+
+      if (String(targetNode.type || "").toUpperCase() !== NodeType.END) {
+        return targetId;
+      }
+
+      const incomingEdge = graph.edges.find((edge) => edge.target === targetId);
+      return incomingEdge?.source || null;
+    };
 
     const getTitleByType = (type: NodeType): string => {
       switch (type) {
@@ -7168,66 +7162,57 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
     };
 
-    const newNode: WorkflowTreeNode = {
+    const buildNewNode = (): WorkflowGraphNode => ({
       id: generateNodeId("node"),
       type: nodeType,
       title: getTitleByType(nodeType),
       ...(nodeType === NodeType.APPROVAL
         ? { approverType: "ROLE" as const }
         : {}),
-      // 会签节点默认设置 signType='ALL'，避免后端校验器误判为并行网关要求必须有分支
       ...(nodeType === NodeType.PARALLEL
         ? { approverType: "ROLE" as const, signType: "ALL" as const }
         : {}),
       ...(nodeType === NodeType.MANUAL
         ? { approverType: "ROLE" as const }
         : {}),
-    };
+    });
 
-    // 关键修复：当 parentId 是 END 节点时，新节点应插入到 END 之前，而不是之后
-    // 即找到 END 的父节点，把新节点插在父节点和 END 之间
-    const targetNode = findNodeById(currentRoot, parentId);
-    if (targetNode && targetNode.type === NodeType.END) {
-      const endParent = findParentOfNode(currentRoot, parentId);
-      if (endParent) {
-        // 在 END 的父节点上操作：把 END 原有的位置替换为新节点，新节点的 next 指向 END
-        // 这里必须要在 endParent 处执行更新：让 endParent.next 指向新节点，新节点指向 END
-
-        // 分支下的 END：如果 END 是通过 branches 连接的，而不是 next，此时 endParent 就是条件分支节点。
-        // 但通常连线只会通过 next。由于架构里 branches 里只能放一个 node（分支的头部），其余的逻辑都在 next 链里。
-
-        const newRoot = updateNodeInTree(currentRoot, endParent.id, (node) => {
-          // 如果 END 在这个父节点的 next 上
-          if (node.next && node.next.id === targetNode.id) {
-            return {
-              ...node,
-              next: { ...newNode, next: node.next },
-            };
-          }
-          // 如果 END 直接在这个父节点的分支数组里（这通常不发生，因为我们会默认有个分支头）
-          if (node.branches) {
-            return {
-              ...node,
-              branches: node.branches.map((b) =>
-                b.id === targetNode.id ? { ...newNode, next: b } : b,
-              ),
-            };
-          }
-          return node;
-        });
-        applyTreeChange(newRoot);
+    const applyInsert = (
+      graph: WorkflowGraphDefinition,
+      successMessage?: string,
+    ) => {
+      // 当落点是 END 时，实际应插入到 END 的前驱和 END 之间
+      const anchorId = resolveAnchorId(graph, parentId);
+      if (!anchorId) {
+        toast.error("无法在当前位置添加节点");
         return;
       }
+
+      const nextGraph =
+        nodeType === NodeType.END
+          ? replaceWorkflowGraphNextNode(graph, anchorId, buildNewNode())
+          : insertWorkflowGraphNodeAfter(graph, anchorId, buildNewNode());
+      applyGraphChange(nextGraph, successMessage ? { successMessage } : undefined);
+    };
+
+    const hasEndInGraph = currentGraph.nodes.some(
+      (node) => String(node.type || "").toUpperCase() === NodeType.END,
+    );
+
+    if (nodeType === NodeType.END && hasEndInGraph) {
+      setConfirmDialog({
+        open: true,
+        message:
+          "流程中已存在结束节点。添加新的结束节点将会删除当前节点之后的所有节点。是否继续?",
+        onConfirm: () => {
+          applyInsert(graphModelRef.current, "已添加结束节点");
+        },
+      });
+      return;
     }
 
-    // 普通情况：在 parentId 节点后面插入新节点
-    const newRoot = updateNodeInTree(currentRoot, parentId, (node) => ({
-      ...node,
-      next: node.next ? { ...newNode, next: node.next } : newNode,
-    }));
-    applyTreeChange(newRoot);
+    applyInsert(currentGraph);
   };
-
   const handleAddBranch = (targetId: string) => {
     const currentRoot = rootRef.current;
     let parentId = targetId;
