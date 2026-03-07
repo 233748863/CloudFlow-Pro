@@ -4925,6 +4925,78 @@ function validateWorkflow(root: WorkflowTreeNode): {
   };
 }
 
+function collectGraphValidationNodeIds(
+  graph: WorkflowGraphDefinition,
+  message: string,
+): string[] {
+  const nodeIds = new Set(
+    (graph.nodes as WorkflowGraphNode[])
+      .map((node) => (typeof node?.id === "string" ? node.id : ""))
+      .filter(Boolean),
+  );
+
+  const matchedIds = Array.from(
+    new Set(
+      Array.from(message.matchAll(/[A-Za-z0-9_-]{2,}/g))
+        .map(([token]) => token)
+        .filter((token) => nodeIds.has(token)),
+    ),
+  );
+  if (matchedIds.length > 0) {
+    return matchedIds;
+  }
+
+  const edgeNodeIds = (graph.edges as WorkflowGraphEdge[])
+    .flatMap((edge) => [edge?.source, edge?.target])
+    .filter(
+      (nodeId): nodeId is string =>
+        typeof nodeId === "string" && nodeId.trim().length > 0 && nodeIds.has(nodeId),
+    );
+  if (edgeNodeIds.length > 0) {
+    return Array.from(new Set(edgeNodeIds));
+  }
+
+  const startNodeId = (graph.nodes as WorkflowGraphNode[]).find(
+    (node) => node?.type === NodeType.START,
+  )?.id;
+  return typeof startNodeId === "string" && startNodeId.trim().length > 0
+    ? [startNodeId]
+    : [];
+}
+
+function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
+  errors: string[];
+  errorNodes: string[];
+} {
+  if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) {
+    return {
+      errors: ["流程图节点不能为空"],
+      errorNodes: [],
+    };
+  }
+
+  if (!Array.isArray(graph.edges)) {
+    return {
+      errors: ["流程图连线不能为空"],
+      errorNodes: [],
+    };
+  }
+
+  try {
+    const root = convertGraphToWorkflowTree(graph);
+    return validateWorkflow(root);
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "流程图结构校验失败";
+    return {
+      errors: [message],
+      errorNodes: collectGraphValidationNodeIds(graph, message),
+    };
+  }
+}
+
 // ==================== 全局属性面板 ====================
 
 const GlobalPropertyPanel = ({
@@ -6106,7 +6178,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   }, [graphModel, workflowName, workflowKey, buildSettingsState]);
 
   const handleSave = async () => {
-    const { errors, errorNodes } = validateWorkflow(rootRef.current);
+    const { errors, errorNodes } = validateWorkflowGraph(graphModel);
     setInvalidNodeIds(errorNodes);
 
     // P1: 增加对 processKey 和 processName 的非空和格式验证
@@ -6157,7 +6229,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   };
 
   const handleDeploy = async () => {
-    const { errors, errorNodes } = validateWorkflow(rootRef.current);
+    const { errors, errorNodes } = validateWorkflowGraph(graphModel);
     setInvalidNodeIds(errorNodes);
 
     // P1: 增加对 processKey 和 processName 的非空和格式验证
