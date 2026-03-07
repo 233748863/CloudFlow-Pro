@@ -6994,6 +6994,42 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     };
   }, []);
 
+  const applyTreeChange = useCallback(
+    (
+      nextRoot: WorkflowTreeNode | null,
+      options?: {
+        clearSelection?: boolean;
+        updateSelection?: { id: string; data: Partial<WorkflowTreeNode> };
+        successMessage?: string;
+      },
+    ) => {
+      if (!nextRoot) {
+        return false;
+      }
+
+      // 统一收口树编辑结果，避免各编辑动作各自同步 root、选中态和提示。
+      setRoot(nextRoot);
+
+      if (options?.clearSelection) {
+        setSelectedNode(null);
+      }
+
+      if (options?.updateSelection) {
+        const { id, data } = options.updateSelection;
+        setSelectedNode((prev) =>
+          prev && prev.id === id ? { ...prev, ...data } : prev,
+        );
+      }
+
+      if (options?.successMessage) {
+        toast.success(options.successMessage);
+      }
+
+      return true;
+    },
+    [setRoot],
+  );
+
   const handleCopyNode = useCallback(
     (nodeId: string) => {
       const currentRoot = rootRef.current;
@@ -7043,10 +7079,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         ...n,
         next: n.next ? { ...copiedNode, next: n.next } : copiedNode,
       }));
-      setRoot(newRoot);
-      toast.success("节点已复制");
+      applyTreeChange(newRoot, { successMessage: "节点已复制" });
     },
-    [],
+    [applyTreeChange],
   );
 
   const handleAddNext = (parentId: string, type?: NodeType) => {
@@ -7072,8 +7107,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             ...node,
             next: newNode,
           }));
-          setRoot(nextRoot);
-          toast.success("已添加结束节点");
+          applyTreeChange(nextRoot, { successMessage: "已添加结束节点" });
         },
       });
       return;
@@ -7149,7 +7183,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           }
           return node;
         });
-        setRoot(newRoot);
+        applyTreeChange(newRoot);
         return;
       }
     }
@@ -7159,7 +7193,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       ...node,
       next: node.next ? { ...newNode, next: node.next } : newNode,
     }));
-    setRoot(newRoot);
+    applyTreeChange(newRoot);
   };
 
   const handleAddBranch = (targetId: string) => {
@@ -7207,7 +7241,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       branches: [...(node.branches || []), newBranch],
       branchStrategy: node.branchStrategy || defaultStrategy,
     }));
-    setRoot(newRoot);
+    applyTreeChange(newRoot);
   };
 
   const handleUpdateNode = (id: string, data: Partial<WorkflowTreeNode>) => {
@@ -7217,10 +7251,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       ...node,
       ...data,
     }));
-    setRoot(newRoot);
-    setSelectedNode((prev) =>
-      prev && prev.id === id ? { ...prev, ...data } : prev,
-    );
+    applyTreeChange(newRoot, { updateSelection: { id, data } });
   };
 
   const handleDeleteNode = (id: string) => {
@@ -7261,9 +7292,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
               };
             },
           );
-          setRoot(newRoot);
-          setSelectedNode(null);
-          toast.success("已删除分支");
+          applyTreeChange(newRoot, { clearSelection: true, successMessage: "已删除分支" });
         },
       });
       return;
@@ -7277,9 +7306,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         onConfirm: () => {
           const newRoot = deleteNodeInTree(rootRef.current, id);
           if (newRoot) {
-            setRoot(newRoot);
-            setSelectedNode(null);
-            toast.success("节点及其分支已删除");
+            applyTreeChange(newRoot, { clearSelection: true, successMessage: "节点及其分支已删除" });
           }
         },
       });
@@ -7288,9 +7315,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     const newRoot = deleteNodeInTree(currentRoot, id);
     if (newRoot) {
-      setRoot(newRoot);
-      setSelectedNode(null);
-      toast.success("节点已删除");
+      applyTreeChange(newRoot, { clearSelection: true, successMessage: "节点已删除" });
     }
   };
 
@@ -7373,9 +7398,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         next: { ...nodeToInsert, next: node.next },
       }));
 
-      setRoot(newRoot);
+      applyTreeChange(newRoot, {
+        successMessage: "节点已移动（仅移动当前节点，后续节点保留在原位）",
+      });
       // P1-10: 明确提示用户仅移动了当前节点
-      toast.success("节点已移动（仅移动当前节点，后续节点保留在原位）");
     }
   };
 
