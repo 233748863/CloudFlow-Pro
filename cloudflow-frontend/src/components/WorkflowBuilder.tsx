@@ -5805,281 +5805,6 @@ const FlowNode = ({
 
 // ==================== 校验 ====================
 
-function validateWorkflow(root: WorkflowTreeNode): {
-  errors: string[];
-  errorNodes: string[];
-} {
-  const errorNodes: string[] = [];
-  const errors: string[] = [];
-
-  // 结构完整性校验：节点 ID 必须全局唯一，否则拖拽/编辑时会出现定位错乱
-  const nodeIdCounter = new Map<string, number>();
-  const collectNodeIds = (node: WorkflowTreeNode) => {
-    if (node.id) {
-      nodeIdCounter.set(node.id, (nodeIdCounter.get(node.id) || 0) + 1);
-    }
-    if (node.next) collectNodeIds(node.next);
-    if (node.branches) node.branches.forEach(collectNodeIds);
-  };
-  collectNodeIds(root);
-
-  const duplicateNodeIds = Array.from(nodeIdCounter.entries())
-    .filter(([, count]) => count > 1)
-    .map(([id]) => id);
-  if (duplicateNodeIds.length > 0) {
-    errors.push(
-      `检测到重复节点ID（${duplicateNodeIds.length}个），请删除重复节点后再保存/发布`,
-    );
-    errorNodes.push(...duplicateNodeIds);
-  }
-
-  let hasEnd = false;
-  const checkEnd = (node: WorkflowTreeNode) => {
-    if (node.type === NodeType.END) hasEnd = true;
-    if (node.next) checkEnd(node.next);
-    if (node.branches) node.branches.forEach(checkEnd);
-  };
-  checkEnd(root);
-  if (!hasEnd) {
-    errors.push("流程缺少结束节点");
-    errorNodes.push(root.id);
-  }
-  const checkApprover = (node: WorkflowTreeNode) => {
-    if (node.type === NodeType.APPROVAL || node.type === NodeType.PARALLEL) {
-      if (!node.approverType) {
-        errors.push(
-          `${node.type === NodeType.PARALLEL ? "会签" : "审批"}节点"${node.title}"未配置审批方式`,
-        );
-        errorNodes.push(node.id);
-      } else if (
-        !["DIRECT_LEADER", "DEPT_MANAGER"].includes(node.approverType) &&
-        !node.approverValue
-      ) {
-        errors.push(
-          `${node.type === NodeType.PARALLEL ? "会签" : "审批"}节点"${node.title}"未配置具体的审批人`,
-        );
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.next) checkApprover(node.next);
-    if (node.branches) node.branches.forEach(checkApprover);
-  };
-  checkApprover(root);
-  // 会签节点一致性校验
-  const checkParallel = (node: WorkflowTreeNode) => {
-    if (
-      node.branches &&
-      node.branches.length > 0 &&
-      node.type !== NodeType.PARALLEL &&
-      node.branchStrategy &&
-      node.branchStrategy !== "EXCLUSIVE"
-    ) {
-      errors.push(
-        `节点"${node.title}"不是并行网关，仅支持单选分支（EXCLUSIVE），请调整分支策略`,
-      );
-      errorNodes.push(node.id);
-    }
-    if (node.type === NodeType.PARALLEL) {
-      const signType = node.signType || "ALL";
-      // 会签模式（ALL/ANY/PERCENT/SEQUENTIAL）不应有条件分支
-      if (
-        (signType === "ALL" ||
-          signType === "ANY" ||
-          signType === "PERCENT" ||
-          signType === "SEQUENTIAL") &&
-        node.branches &&
-        node.branches.length > 0
-      ) {
-        errors.push(
-          `会签节点"${node.title}"设置了${signType === "ALL" ? "全签" : signType === "ANY" ? "或签" : signType === "PERCENT" ? "比例签" : "顺序签"}模式，但仍包含 ${node.branches.length} 个条件分支，请先清除分支或改用并行分支策略`,
-        );
-        errorNodes.push(node.id);
-      }
-      // 比例签必须设置百分比
-      if (
-        signType === "PERCENT" &&
-        (!node.passPercent || node.passPercent <= 0 || node.passPercent > 100)
-      ) {
-        errors.push(
-          `会签节点"${node.title}"使用比例签模式，但未设置有效的通过比例（1-100%）`,
-        );
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.next) checkParallel(node.next);
-    if (node.branches) node.branches.forEach(checkParallel);
-  };
-  checkParallel(root);
-  // P1-12: 扩展校验，覆盖 NOTIFICATION/SCRIPT/TIMER/SUBPROCESS/MANUAL/COPY 节点的必填字段
-  const checkNodeProps = (node: WorkflowTreeNode) => {
-    if (node.type === NodeType.NOTIFICATION) {
-      if (!node.props?.notificationTitle && !node.props?.notificationContent) {
-        errors.push(`通知节点"${node.title}"未配置通知标题或内容`);
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.type === NodeType.SCRIPT) {
-      const st = node.props?.scriptType;
-      if (st === "API" && !node.props?.apiUrl) {
-        errors.push(
-          `脚本节点"${node.title}"选择了 API 调用模式，但未配置 API URL`,
-        );
-        errorNodes.push(node.id);
-      }
-      if (
-        (st === "GROOVY" || st === "JAVASCRIPT") &&
-        !node.props?.scriptContent
-      ) {
-        errors.push(`脚本节点"${node.title}"未填写脚本内容`);
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.type === NodeType.TIMER) {
-      if (
-        node.props?.timerType === "DELAY" &&
-        (!node.props?.delayMinutes || node.props.delayMinutes <= 0)
-      ) {
-        errors.push(
-          `定时节点"${node.title}"选择了延迟模式，但未设置有效的延迟时间`,
-        );
-        errorNodes.push(node.id);
-      }
-      if (node.props?.timerType === "SCHEDULE" && !node.props?.scheduleTime) {
-        errors.push(`定时节点"${node.title}"选择了定时模式，但未设置定时时间`);
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.type === NodeType.SUBPROCESS) {
-      if (!node.props?.subprocessId) {
-        errors.push(`子流程节点"${node.title}"未配置子流程 ID`);
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.type === NodeType.MANUAL) {
-      if (!node.approverType) {
-        errors.push(`人工任务节点"${node.title}"未配置处理人方式`);
-        errorNodes.push(node.id);
-      } else if (
-        !["DIRECT_LEADER", "DEPT_MANAGER"].includes(node.approverType) &&
-        !node.approverValue
-      ) {
-        errors.push(`人工任务节点"${node.title}"未配置具体的处理人`);
-        errorNodes.push(node.id);
-      }
-      if (!node.props?.taskDescription) {
-        errors.push(`人工任务节点"${node.title}"未配置任务描述`);
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.type === NodeType.COPY) {
-      if (!node.approverType) {
-        errors.push(`抄送节点"${node.title}"未配置抄送方式`);
-        errorNodes.push(node.id);
-      } else if (
-        !["DIRECT_LEADER", "DEPT_MANAGER"].includes(node.approverType) &&
-        !node.approverValue
-      ) {
-        errors.push(`抄送节点"${node.title}"未配置具体的抄送人`);
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.type === NodeType.CONDITION) {
-      if (!node.condition || node.condition.trim() === "") {
-        errors.push(`条件分支"${node.title}"未配置触发条件`);
-        errorNodes.push(node.id);
-      }
-    }
-    if (node.next) checkNodeProps(node.next);
-    if (node.branches) node.branches.forEach(checkNodeProps);
-  };
-  checkNodeProps(root);
-  const checkTitle = (node: WorkflowTreeNode) => {
-    if (!node.title || node.title.trim() === "") {
-      errors.push(`有节点缺少名称`);
-      errorNodes.push(node.id);
-    }
-    if (node.next) checkTitle(node.next);
-    if (node.branches) node.branches.forEach(checkTitle);
-  };
-  checkTitle(root);
-
-  // JSON 格式防御性校验
-  const checkJSON = (node: WorkflowTreeNode) => {
-    try {
-      if (node.props?.apiHeaders && typeof node.props.apiHeaders === "string") {
-        const text = node.props.apiHeaders.trim();
-        if (text && (!text.startsWith("{") || !text.endsWith("}")))
-          throw new Error();
-      }
-      if (node.props?.apiBody && typeof node.props.apiBody === "string") {
-        const text = node.props.apiBody.trim();
-        if (text && (!text.startsWith("{") || !text.endsWith("}")))
-          throw new Error();
-      }
-      if (
-        node.props?.variableMapping &&
-        typeof node.props.variableMapping === "string"
-      ) {
-        const text = node.props.variableMapping.trim();
-        if (text && (!text.startsWith("{") || !text.endsWith("}")))
-          throw new Error();
-      }
-    } catch (e) {
-      errors.push(
-        `节点"${node.title}"配置的 JSON 格式可能不正确，必须完整包含 {}`,
-      );
-      errorNodes.push(node.id);
-    }
-    if (node.next) checkJSON(node.next);
-    if (node.branches) node.branches.forEach(checkJSON);
-  };
-  checkJSON(root);
-
-  return {
-    errors: Array.from(new Set(errors)),
-    errorNodes: Array.from(new Set(errorNodes)),
-  };
-}
-
-function collectGraphValidationNodeIds(
-  graph: WorkflowGraphDefinition,
-  message: string,
-): string[] {
-  const nodeIds = new Set(
-    (graph.nodes as WorkflowGraphNode[])
-      .map((node) => (typeof node?.id === "string" ? node.id : ""))
-      .filter(Boolean),
-  );
-
-  const matchedIds = Array.from(
-    new Set(
-      Array.from(message.matchAll(/[A-Za-z0-9_-]{2,}/g))
-        .map(([token]) => token)
-        .filter((token) => nodeIds.has(token)),
-    ),
-  );
-  if (matchedIds.length > 0) {
-    return matchedIds;
-  }
-
-  const edgeNodeIds = (graph.edges as WorkflowGraphEdge[])
-    .flatMap((edge) => [edge?.source, edge?.target])
-    .filter(
-      (nodeId): nodeId is string =>
-        typeof nodeId === "string" && nodeId.trim().length > 0 && nodeIds.has(nodeId),
-    );
-  if (edgeNodeIds.length > 0) {
-    return Array.from(new Set(edgeNodeIds));
-  }
-
-  const startNodeId = (graph.nodes as WorkflowGraphNode[]).find(
-    (node) => node?.type === NodeType.START,
-  )?.id;
-  return typeof startNodeId === "string" && startNodeId.trim().length > 0
-    ? [startNodeId]
-    : [];
-}
-
 function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
   errors: string[];
   errorNodes: string[];
@@ -6098,22 +5823,262 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     };
   }
 
-  try {
-    const root = convertGraphToWorkflowTree(graph);
-    return validateWorkflow(root);
-  } catch (error) {
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : "流程图结构校验失败";
-    return {
-      errors: [message],
-      errorNodes: collectGraphValidationNodeIds(graph, message),
-    };
-  }
-}
+  const errors: string[] = [];
+  const errorNodeIds = new Set<string>();
 
-// ==================== 全局属性面板 ====================
+  const pushError = (
+    message: string,
+    nodeIds: Array<string | undefined | null> = [],
+  ) => {
+    errors.push(message);
+    nodeIds.forEach((nodeId) => {
+      if (typeof nodeId === "string" && nodeId.trim()) {
+        errorNodeIds.add(nodeId);
+      }
+    });
+  };
+
+  const normalizeNodeType = (type: unknown): string =>
+    String(type || "").toUpperCase();
+
+  const getNodeTitle = (node: WorkflowGraphNode): string => {
+    const title = typeof node.title === "string" ? node.title.trim() : "";
+    return title || "未命名节点";
+  };
+
+  const isDefaultEdge = (edge: WorkflowGraphEdge): boolean => {
+    const raw: unknown = edge.isDefault;
+    if (typeof raw === "boolean") return raw;
+    if (typeof raw === "number") return raw !== 0;
+    if (typeof raw === "string") {
+      const normalized = raw.trim().toLowerCase();
+      return (
+        normalized === "true" ||
+        normalized === "1" ||
+        normalized === "yes" ||
+        normalized === "y"
+      );
+    }
+    return false;
+  };
+
+  const hasNodeCondition = (node: WorkflowGraphNode): boolean =>
+    typeof node.condition === "string" && node.condition.trim().length > 0;
+
+  const hasIncomingEdgeCondition = (edges: WorkflowGraphEdge[]): boolean =>
+    edges.some(
+      (edge) =>
+        typeof edge.condition === "string" && edge.condition.trim().length > 0,
+    );
+
+  const isJsonObjectText = (value: unknown): boolean => {
+    if (typeof value !== "string") {
+      return true;
+    }
+    const text = value.trim();
+    return !text || (text.startsWith("{") && text.endsWith("}"));
+  };
+
+  // 先完成节点索引和唯一性校验。
+  const nodeMap = new Map<string, WorkflowGraphNode>();
+  const outgoing = new Map<string, WorkflowGraphEdge[]>();
+  const incoming = new Map<string, WorkflowGraphEdge[]>();
+
+  const validateApprover = (
+    node: WorkflowGraphNode,
+    nodeId: string,
+    nodeLabel: string,
+    subjectLabel: string,
+  ) => {
+    const nodeTitle = getNodeTitle(node);
+    if (!node.approverType) {
+      pushError(
+        nodeLabel + '节点"' + nodeTitle + '"未配置' + subjectLabel + '方式',
+        [nodeId],
+      );
+      return;
+    }
+    if (
+      !["DIRECT_LEADER", "DEPT_MANAGER"].includes(String(node.approverType)) &&
+      !node.approverValue
+    ) {
+      pushError(
+        nodeLabel + '节点"' + nodeTitle + '"未配置具体的' + subjectLabel + '人',
+        [nodeId],
+      );
+    }
+  };
+
+  graph.nodes.forEach((node) => {
+    const nodeId = typeof node.id === "string" ? node.id : "";
+    if (!nodeId || !nodeMap.has(nodeId)) {
+      return;
+    }
+
+    const nodeType = normalizeNodeType(node.type);
+    const nodeTitle = getNodeTitle(node);
+    const branchCount = countWorkflowGraphBranches(graph, nodeId);
+    const props =
+      node.props && typeof node.props === "object"
+        ? (node.props as Record<string, any>)
+        : {};
+    const incomingEdges = incoming.get(nodeId) ?? [];
+
+    if (!node.title || !String(node.title).trim()) {
+      pushError('有节点缺少名称', [nodeId]);
+    }
+
+    if (nodeType === NodeType.APPROVAL) {
+      validateApprover(node, nodeId, '审批', '审批');
+    }
+
+    if (
+      branchCount > 0 &&
+      nodeType !== NodeType.PARALLEL &&
+      node.branchStrategy &&
+      node.branchStrategy !== "EXCLUSIVE"
+    ) {
+      pushError(
+        '节点"' +
+          nodeTitle +
+          '"不是并行网关，仅支持单选分支（EXCLUSIVE），请调整分支策略',
+        [nodeId],
+      );
+    }
+
+    if (nodeType === NodeType.PARALLEL) {
+      validateApprover(node, nodeId, '会签', '审批');
+      const signType = String(node.signType || "ALL");
+      if (
+        ["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(signType) &&
+        branchCount > 0
+      ) {
+        const signLabel =
+          signType === "ALL"
+            ? '全签'
+            : signType === "ANY"
+              ? '或签'
+              : signType === "PERCENT"
+                ? '比例签'
+                : '顺序签';
+        pushError(
+          '会签节点"' +
+            nodeTitle +
+            '"设置了' +
+            signLabel +
+            '模式，但仍包含 ' +
+            branchCount +
+            ' 个条件分支，请先清除分支或改用并行分支策略',
+          [nodeId],
+        );
+      }
+      const passPercent = Number(node.passPercent);
+      if (
+        signType === "PERCENT" &&
+        (!Number.isFinite(passPercent) || passPercent <= 0 || passPercent > 100)
+      ) {
+        pushError(
+          '会签节点"' +
+            nodeTitle +
+            '"使用比例签模式，但未设置有效的通过比例（1-100%）',
+          [nodeId],
+        );
+      }
+    }
+
+    if (nodeType === NodeType.NOTIFICATION) {
+      if (!props.notificationTitle && !props.notificationContent) {
+        pushError(
+          '通知节点"' + nodeTitle + '"未配置通知标题或内容',
+          [nodeId],
+        );
+      }
+    }
+
+    if (nodeType === NodeType.SCRIPT) {
+      const scriptType = props.scriptType;
+      if (scriptType === "API" && !props.apiUrl) {
+        pushError(
+          '脚本节点"' + nodeTitle + '"选择了 API 调用模式，但未配置 API URL',
+          [nodeId],
+        );
+      }
+      if (
+        (scriptType === "GROOVY" || scriptType === "JAVASCRIPT") &&
+        !props.scriptContent
+      ) {
+        pushError('脚本节点"' + nodeTitle + '"未填写脚本内容', [nodeId]);
+      }
+    }
+
+    if (nodeType === NodeType.TIMER) {
+      if (
+        props.timerType === "DELAY" &&
+        (!props.delayMinutes || props.delayMinutes <= 0)
+      ) {
+        pushError(
+          '定时节点"' + nodeTitle + '"选择了延迟模式，但未设置有效的延迟时间',
+          [nodeId],
+        );
+      }
+      if (props.timerType === "SCHEDULE" && !props.scheduleTime) {
+        pushError(
+          '定时节点"' + nodeTitle + '"选择了定时模式，但未设置定时时间',
+          [nodeId],
+        );
+      }
+    }
+
+    if (nodeType === NodeType.SUBPROCESS) {
+      if (!props.subprocessId) {
+        pushError('子流程节点"' + nodeTitle + '"未配置子流程 ID', [nodeId]);
+      }
+    }
+
+    if (nodeType === NodeType.MANUAL) {
+      validateApprover(node, nodeId, '人工任务', '处理');
+      if (!props.taskDescription) {
+        pushError('人工任务节点"' + nodeTitle + '"未配置任务描述', [nodeId]);
+      }
+    }
+
+    if (nodeType === NodeType.COPY) {
+      validateApprover(node, nodeId, '抄送', '抄送');
+    }
+
+    if (
+      nodeType === NodeType.CONDITION &&
+      !hasNodeCondition(node) &&
+      !hasIncomingEdgeCondition(incomingEdges)
+    ) {
+      pushError('条件分支"' + nodeTitle + '"未配置触发条件', [nodeId]);
+    }
+
+    if (!isJsonObjectText(props.apiHeaders)) {
+      pushError(
+        '节点"' + nodeTitle + '"配置的 API Headers JSON 格式可能不正确，必须完整包含 {}',
+        [nodeId],
+      );
+    }
+    if (!isJsonObjectText(props.apiBody)) {
+      pushError(
+        '节点"' + nodeTitle + '"配置的 API Body JSON 格式可能不正确，必须完整包含 {}',
+        [nodeId],
+      );
+    }
+    if (!isJsonObjectText(props.variableMapping)) {
+      pushError(
+        '节点"' + nodeTitle + '"配置的 variableMapping JSON 格式可能不正确，必须完整包含 {}',
+        [nodeId],
+      );
+    }
+  });
+
+  return {
+    errors: Array.from(new Set(errors)),
+    errorNodes: Array.from(errorNodeIds),
+  };
+}
 
 const GlobalPropertyPanel = ({
   open,
