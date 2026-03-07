@@ -67,6 +67,7 @@ import {
   WorkflowDefinition,
   FormDefinition,
   User,
+  WorkflowGraphDefinition,
 } from "../types";
 import { WorkflowTreeNode } from "../types/workflowEditor";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -430,7 +431,7 @@ interface WorkflowTemplate {
   category: string;
   icon: React.FC<{ size?: number; className?: string }>;
   color: string;
-  nodes: WorkflowTreeNode;
+  graph: WorkflowGraphDefinition;
 }
 
 const TEMPLATE_CATEGORIES = [
@@ -444,7 +445,9 @@ const TEMPLATE_CATEGORIES = [
   { id: "other", label: "其他" },
 ];
 
-const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+const WORKFLOW_TEMPLATE_SEEDS: Array<
+  Omit<WorkflowTemplate, "graph"> & { nodes: WorkflowTreeNode }
+> = [
   // ===== 行政办公 =====
   {
     id: "leave",
@@ -2094,6 +2097,13 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     },
   },
 ];
+
+const WORKFLOW_TEMPLATES: WorkflowTemplate[] = WORKFLOW_TEMPLATE_SEEDS.map(
+  ({ nodes, ...template }) => ({
+    ...template,
+    graph: convertWorkflowTreeToGraph(nodes),
+  }),
+);
 
 // ==================== 模板选择器 ====================
 
@@ -5998,23 +6008,50 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   };
 
   const handleApplyTemplate = (template: WorkflowTemplate) => {
-    // P1-11: 应用模板时递归重新生成所有节点 ID，避免不同流程定义共享相同 nodeKey
-    const regenerateIds = (node: WorkflowTreeNode): WorkflowTreeNode => {
-      const newNode: WorkflowTreeNode = {
+    // P1-11: 应用模板时按图模型重生 node/edge ID，避免不同流程定义共享相同 nodeKey
+    const nodeIdMap = new Map<string, string>();
+    const nextGraphNodes = template.graph.nodes.map((node) => {
+      const normalizedType = String(node.type || "").toUpperCase();
+      const prefix =
+        normalizedType === NodeType.START
+          ? "start"
+          : normalizedType === NodeType.END
+            ? "end"
+            : String(node.id || "").startsWith("branch")
+              ? "branch"
+              : "node";
+      const nextId = generateNodeId(prefix);
+      nodeIdMap.set(node.id, nextId);
+      return {
         ...node,
-        id:
-          node.type === NodeType.START
-            ? generateNodeId("start")
-            : node.type === NodeType.END
-              ? generateNodeId("end")
-              : generateNodeId("node"),
+        id: nextId,
       };
-      if (newNode.next) newNode.next = regenerateIds(newNode.next);
-      if (newNode.branches)
-        newNode.branches = newNode.branches.map((b) => regenerateIds(b));
-      return newNode;
-    };
-    const nextRoot = regenerateIds(template.nodes);
+    });
+    const nextGraphEdges = template.graph.edges
+      .map((edge) => {
+        const source = nodeIdMap.get(edge.source);
+        const target = nodeIdMap.get(edge.target);
+        if (!source || !target) return null;
+        return {
+          ...edge,
+          id: `${source}->${target}`,
+          source,
+          target,
+        };
+      })
+      .filter((edge): edge is NonNullable<typeof edge> => edge !== null);
+
+    let nextRoot: WorkflowTreeNode;
+    try {
+      nextRoot = convertGraphToWorkflowTree({
+        nodes: nextGraphNodes,
+        edges: nextGraphEdges,
+      });
+    } catch (error) {
+      console.error("[WorkflowBuilder] 模板图模型转换失败", error);
+      toast.error("模板应用失败：图模型结构异常");
+      return;
+    }
     rootRef.current = nextRoot;
     setRoot(nextRoot);
     setWorkflowName(template.name);

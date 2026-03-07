@@ -192,7 +192,7 @@ public interface IWorkflowService {
     /**
      * 定时节点到期后继续流转
      * 由 TimerScanJob 调用，根据 instanceId 和 nodeKey 找到定时节点，
-     * 然后通过 advanceAfterNode 继续执行后续节点（支持 branches 和 next）。
+     * 然后通过 advanceAfterNode 按图模型继续执行后续节点（基于 nodes+edges 出边）。
      *
      * @param instanceId 流程实例ID
      * @param nodeKey    定时节点Key

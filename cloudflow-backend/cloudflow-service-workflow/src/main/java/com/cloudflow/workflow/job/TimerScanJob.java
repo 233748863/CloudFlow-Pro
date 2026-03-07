@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  * 
  * 定时扫描 Redis ZSet 中的定时任务，触发到期的定时节点继续流转。
  * 通过调用 WorkflowService.continueFromTimerNode() 实现完整的流程引擎流转，
- * 支持定时节点的 branches（条件分支）和 next（后续节点）。
+ * 支持定时节点基于 nodes+edges 图模型继续流转。
  * 
  * 核心流程：
  * 1. 每分钟扫描 Redis ZSet（sys:wf:timers），获取 score <= 当前时间的到期任务
@@ -112,7 +112,7 @@ public class TimerScanJob {
      * 处理单个到期的定时任务（完整版）
      * 
      * 通过调用 WorkflowService.continueFromTimerNode() 触发完整的流程引擎流转，
-     * 确保定时节点的 branches（条件分支）和 next（后续节点）都能正确处理。
+     * 确保定时节点的图模型出边都能正确处理。
      * 
      * 处理流程：
      * 1. 从 Redis 读取定时任务数据
@@ -173,7 +173,7 @@ public class TimerScanJob {
             //   - 再次校验实例状态
             //   - 从流程定义中找到定时节点
             //   - 合并变量
-            //   - 通过 advanceAfterNode 继续流转（支持 branches + next）
+            //   - 通过 advanceAfterNode 继续流转（基于图模型出边）
             //   - 使用分布式锁防并发
             //   - 保存快照和审计日志
             workflowService.continueFromTimerNode(instanceId, nodeKey, variables);
