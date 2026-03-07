@@ -703,8 +703,113 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Override
     public List<Map<String, String>> extractApprovalSteps(WfNodeConfig root) {
         List<Map<String, String>> steps = new ArrayList<>();
+        WorkflowRuntimeGraph runtimeGraph = resolveRuntimeGraph(root);
+        if (runtimeGraph != null) {
+            String entryNodeId = StringUtils.hasText(runtimeGraph.getFirstExecutableNodeId())
+                    ? runtimeGraph.getFirstExecutableNodeId()
+                    : runtimeGraph.getStartNodeId();
+            collectApprovalStepsByGraph(root, entryNodeId, steps, new HashSet<>());
+            return steps;
+        }
         collectApprovalSteps(root, steps);
         return steps;
+    }
+
+    private void collectApprovalStepsByGraph(WfNodeConfig root,
+                                             String nodeId,
+                                             List<Map<String, String>> steps,
+                                             Set<String> visited) {
+        if (!StringUtils.hasText(nodeId) || visited.contains(nodeId)) {
+            return;
+        }
+        visited.add(nodeId);
+
+        WfNodeConfig node = findNode(root, nodeId);
+        if (node == null) {
+            return;
+        }
+
+        BranchRouting routing = resolveBranchRouting(node, root);
+
+        if ("PARALLEL".equals(node.getType())) {
+            Map<String, String> step = new HashMap<>();
+            step.put("nodeKey", node.getId());
+            step.put("nodeTitle", node.getTitle() != null ? node.getTitle() : "并行审批");
+            step.put("nodeType", "PARALLEL");
+            step.put("branchStrategy", node.getBranchStrategy() != null ? node.getBranchStrategy() : "PARALLEL");
+            if (routing.branches() != null && !routing.branches().isEmpty()) {
+                try {
+                    List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
+                    for (WfNodeConfig branch : routing.branches()) {
+                        WfNodeConfig branchEntry = resolveParallelBranchEntry(branch);
+                        if (branchEntry == null || !StringUtils.hasText(branchEntry.getId())) {
+                            continue;
+                        }
+                        List<Map<String, String>> branchSteps = new ArrayList<>();
+                        collectApprovalStepsByGraph(root, branchEntry.getId(), branchSteps, new HashSet<>(visited));
+                        branchStepsList.add(branchSteps);
+                    }
+                    step.put("branches", objectMapper.writeValueAsString(branchStepsList));
+                } catch (Exception e) {
+                    step.put("branches", "[]");
+                }
+            }
+            steps.add(step);
+            if (routing.defaultNext() != null && StringUtils.hasText(routing.defaultNext().getId())) {
+                collectApprovalStepsByGraph(root, routing.defaultNext().getId(), steps, visited);
+            }
+            return;
+        }
+
+        if ("CONDITION".equals(node.getType()) || "GATEWAY".equals(node.getType())) {
+            Map<String, String> step = new HashMap<>();
+            step.put("nodeKey", node.getId());
+            step.put("nodeTitle", node.getTitle() != null ? node.getTitle() : "条件分支");
+            step.put("nodeType", "CONDITION");
+            step.put("branchStrategy", "EXCLUSIVE");
+            if (routing.branches() != null && !routing.branches().isEmpty()) {
+                try {
+                    List<List<Map<String, String>>> branchStepsList = new ArrayList<>();
+                    for (WfNodeConfig branch : routing.branches()) {
+                        WfNodeConfig branchEntry = resolveExclusiveBranchEntry(branch);
+                        if (branchEntry == null || !StringUtils.hasText(branchEntry.getId())) {
+                            continue;
+                        }
+                        List<Map<String, String>> branchSteps = new ArrayList<>();
+                        collectApprovalStepsByGraph(root, branchEntry.getId(), branchSteps, new HashSet<>(visited));
+                        branchStepsList.add(branchSteps);
+                    }
+                    step.put("branches", objectMapper.writeValueAsString(branchStepsList));
+                } catch (Exception e) {
+                    step.put("branches", "[]");
+                }
+            }
+            steps.add(step);
+            if (routing.defaultNext() != null && StringUtils.hasText(routing.defaultNext().getId())) {
+                collectApprovalStepsByGraph(root, routing.defaultNext().getId(), steps, visited);
+            }
+            return;
+        }
+
+        if ("APPROVAL".equals(node.getType()) || "MANUAL".equals(node.getType())) {
+            Map<String, String> step = new HashMap<>();
+            step.put("nodeKey", node.getId());
+            step.put("nodeTitle", node.getTitle());
+            step.put("nodeType", node.getType());
+            step.put("approverType", node.getApproverType());
+            step.put("approverValue", node.getApproverValue());
+            if (node.getSignType() != null && !node.getSignType().isEmpty()) {
+                step.put("signType", node.getSignType());
+                if (node.getPassPercent() != null) {
+                    step.put("passPercent", String.valueOf(node.getPassPercent()));
+                }
+            }
+            steps.add(step);
+        }
+
+        if (routing.defaultNext() != null && StringUtils.hasText(routing.defaultNext().getId())) {
+            collectApprovalStepsByGraph(root, routing.defaultNext().getId(), steps, visited);
+        }
     }
 
     private void collectApprovalSteps(WfNodeConfig node, List<Map<String, String>> steps) {
