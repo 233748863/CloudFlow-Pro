@@ -68,52 +68,6 @@ export enum NodeType {
   // 新增：支持自定义字符串类型（插件扩展）
 }
 
-export interface RetryConfig {
-  maxRetries: number;
-  delayMs: number; // 毫秒
-}
-
-export interface WorkflowTreeNode {
-  // 1. Basic Identity
-  id: string;
-  type: NodeType | string; // 支持自定义类型（插件）
-  title: string;
-  
-  // 2. Structure (Recursive + Linked List)
-  next?: WorkflowTreeNode;      // 下一个节点（串行）
-  branches?: WorkflowTreeNode[];// 子分支（并行/排他）
-  
-  // 3. Execution Strategy
-  branchStrategy?: 'PARALLEL' | 'RACE' | 'EXCLUSIVE'; 
-  condition?: string;       // 入口条件表达式
-
-  // 4. Data Flow (I/O)
-  inputs?: Record<string, string>;  // { "targetVar": "expression/source" }
-  outputs?: Record<string, string>; // { "contextVar": "result" }
-
-  // 5. Resilience & Config
-  // P1-7: SLA 字段改为平铺，与后端 WfNodeConfig.slaHours/slaAction 对齐
-  slaHours?: number;        // SLA 超时小时数
-  slaAction?: 'AUTO_PASS' | 'AUTO_REJECT'; // SLA 超时动作
-  retry?: RetryConfig;
-  
-  // 6. Plugin Properties (Flexible container)
-  props?: Record<string, any>; // 存储特定配置，如 API URL、审批人设置等
-
-  // 会签配置（顶层字段，与后端 WfNodeConfig 对齐）
-  /** 会签类型，仅 PARALLEL 节点 */
-  signType?: 'ALL' | 'ANY' | 'PERCENT' | 'SEQUENTIAL';
-  /** 会签通过百分比，仅 PERCENT 类型 */
-  passPercent?: number;
-
-  // 兼容性/直接属性（向后兼容或便捷访问）
-  description?: string;
-  icon?: string;
-  approverType?: 'ROLE' | 'USER' | 'USERS' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT';
-  approverValue?: string;
-  allowEdit?: boolean;
-}
-
 export interface WorkflowGraphNode {
   id: string;
   type: string;

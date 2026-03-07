@@ -3,8 +3,8 @@ import {
   WorkflowGraphDefinition,
   WorkflowGraphEdge,
   WorkflowGraphNode,
-  WorkflowTreeNode,
 } from '../types';
+import { WorkflowTreeNode } from '../types/workflowEditor';
 
 /**
  * 仅判定 nodes+edges 图结构，树结构不再视为合法模型。

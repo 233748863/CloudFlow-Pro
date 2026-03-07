@@ -63,12 +63,12 @@ import {
   FileDown,
 } from "lucide-react";
 import {
-  WorkflowTreeNode,
   NodeType,
   WorkflowDefinition,
   FormDefinition,
   User,
 } from "../types";
+import { WorkflowTreeNode } from "../types/workflowEditor";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useHistory } from "../hooks/useHistory";
 import {
