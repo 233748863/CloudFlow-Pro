@@ -17,6 +17,7 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.listener.GlobalListenerDispatcher;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -199,7 +200,10 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         try {
             if (StringUtils.hasText(def.getModelJson())) {
                 WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-                String firstNodeId = workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
+                WorkflowRuntimeGraph runtimeGraph = workflowModelBridge.resolveRuntimeGraph(root);
+                String firstNodeId = runtimeGraph != null
+                        ? runtimeGraph.getFirstExecutableNodeId()
+                        : workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
                 WfNodeConfig firstNode = StringUtils.hasText(firstNodeId)
                         ? nodeExecutionService.findNode(root, firstNodeId)
                         : root;

@@ -9,6 +9,7 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,7 +87,10 @@ public class AsyncWorkflowService {
             }
 
             WfNodeConfig rootNode = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-            String firstNodeId = workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
+            WorkflowRuntimeGraph runtimeGraph = workflowModelBridge.resolveRuntimeGraph(rootNode);
+            String firstNodeId = runtimeGraph != null
+                    ? runtimeGraph.getFirstExecutableNodeId()
+                    : workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
             WfNodeConfig nextNode = StringUtils.hasText(firstNodeId)
                     ? nodeExecutionService.findNode(rootNode, firstNodeId)
                     : rootNode;
