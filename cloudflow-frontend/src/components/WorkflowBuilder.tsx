@@ -67,7 +67,9 @@ import {
   WorkflowDefinition,
   FormDefinition,
   User,
+  WorkflowGraphEdge,
   WorkflowGraphDefinition,
+  WorkflowGraphNode,
 } from "../types";
 import { WorkflowTreeNode } from "../types/workflowEditor";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -93,6 +95,7 @@ import { Button } from "./ui/button";
 import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { useAuth } from "../context/AuthContext";
 import {
+  createDefaultWorkflowGraph,
   convertGraphToWorkflowTree,
   convertWorkflowTreeToGraph,
   parseWorkflowGraphDefinition,
@@ -5347,18 +5350,49 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     return defaultRoot;
   }, []);
 
+  const resolveGraphModel = useCallback(
+    (raw: unknown): WorkflowGraphDefinition => {
+      const graphModel = parseWorkflowGraphDefinition(raw);
+      return graphModel || createDefaultWorkflowGraph();
+    },
+    [],
+  );
+
   const {
-    state: root,
-    set: setRoot,
-    reset: resetRoot,
+    state: graphModel,
+    set: setGraphModel,
+    reset: resetGraphModel,
     undo,
     redo,
     canUndo,
     canRedo,
-  } = useHistory<WorkflowTreeNode>(resolveRootNode(workflow?.nodes));
+  } = useHistory<WorkflowGraphDefinition>(resolveGraphModel(workflow?.nodes));
+
+  const root = useMemo(() => {
+    try {
+      return convertGraphToWorkflowTree(graphModel);
+    } catch (error) {
+      console.warn("[WorkflowBuilder] 图模型恢复编辑树失败，回退默认流程", error);
+      return defaultRoot;
+    }
+  }, [graphModel]);
   // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
   const rootRef = useRef(root);
   rootRef.current = root;
+  const setRoot = useCallback(
+    (nextRoot: WorkflowTreeNode) => {
+      rootRef.current = nextRoot;
+      setGraphModel(convertWorkflowTreeToGraph(nextRoot));
+    },
+    [setGraphModel],
+  );
+  const resetRoot = useCallback(
+    (nextRoot: WorkflowTreeNode) => {
+      rootRef.current = nextRoot;
+      resetGraphModel(convertWorkflowTreeToGraph(nextRoot));
+    },
+    [resetGraphModel],
+  );
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
   const [selectedNode, setSelectedNode] = useState<WorkflowTreeNode | null>(null);
@@ -5471,20 +5505,21 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     if (!currentWorkflow) return null;
     return {
       ...currentWorkflow,
-      nodes: convertWorkflowTreeToGraph(rootRef.current),
+      nodes: graphModel,
       name: workflowName,
       key: workflowKey,
       ...buildSettingsState(),
     };
-  }, [workflowName, workflowKey, buildSettingsState]);
+  }, [graphModel, workflowName, workflowKey, buildSettingsState]);
 
   // P1: 从 workflow 对象初始化流程设置状态，并在切换流程时重置画布状态
   useEffect(() => {
     if (!workflow) return;
 
-    const nextRoot = resolveRootNode(workflow.nodes);
+    const nextGraph = resolveGraphModel(workflow.nodes);
+    const nextRoot = resolveRootNode(nextGraph);
     const parsedTags = parseTagsToArray(workflow.tags);
-    resetRoot(nextRoot);
+    resetGraphModel(nextGraph);
     rootRef.current = nextRoot;
     setSelectedNode(null);
 
@@ -5507,7 +5542,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       startPermissionType: workflow.startPermissionType || "ALL",
       startPermissionValue: workflow.startPermissionValue || undefined,
     });
-  }, [workflow?.id, parseTagsToArray, resetRoot, normalizeDeptId, user?.deptId, resolveRootNode]);
+  }, [workflow?.id, parseTagsToArray, resetGraphModel, normalizeDeptId, user?.deptId, resolveGraphModel, resolveRootNode]);
 
   useEffect(() => {
     if (!onChange || !workflowRef.current) return;
@@ -6065,10 +6100,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         : workflowRef.current?.id,
       processName: workflowName,
       processKey: workflowKey,
-      modelJson: JSON.stringify(convertWorkflowTreeToGraph(rootRef.current)),
+      modelJson: JSON.stringify(graphModel),
       ...buildSettingsState(),
     };
-  }, [workflowName, workflowKey, buildSettingsState]);
+  }, [graphModel, workflowName, workflowKey, buildSettingsState]);
 
   const handleSave = async () => {
     const { errors, errorNodes } = validateWorkflow(rootRef.current);

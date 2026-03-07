@@ -20,6 +20,99 @@ import {
   parseWorkflowGraphDefinition,
 } from '../utils/workflowGraph';
 
+type WorkflowDesignContextPayload = {
+  forms: FormDefinition[];
+  roles: any[];
+  users: User[];
+};
+
+let workflowDesignContextCache: WorkflowDesignContextPayload | null = null;
+let workflowDesignContextPromise: Promise<WorkflowDesignContextPayload> | null = null;
+const processDefinitionPromiseCache = new Map<string, Promise<any | null>>();
+let processDefinitionsListPromise: Promise<any[]> | null = null;
+
+const loadWorkflowDesignContext = async (): Promise<WorkflowDesignContextPayload> => {
+  if (workflowDesignContextCache) {
+    return workflowDesignContextCache;
+  }
+  if (workflowDesignContextPromise) {
+    return workflowDesignContextPromise;
+  }
+
+  workflowDesignContextPromise = Promise.all([
+    getFormDefinitions().catch((err) => {
+      logWorkflow.warn('鍔犺浇琛ㄥ崟鍒楄〃澶辫触:', err);
+      toast.warning('表单列表加载失败，暂时无法绑定表单');
+      return [];
+    }),
+    getRoleList().catch((err) => {
+      logWorkflow.warn('鍔犺浇瑙掕壊鍒楄〃澶辫触:', err);
+      toast.warning('角色列表加载失败，部分审批人配置不可用');
+      return [];
+    }),
+    getUserList().catch((err) => {
+      logWorkflow.warn('鍔犺浇鐢ㄦ埛鍒楄〃澶辫触:', err);
+      toast.warning('用户列表加载失败，部分审批人配置不可用');
+      return [];
+    }),
+  ])
+    .then(([forms, roles, users]) => {
+      const payload: WorkflowDesignContextPayload = {
+        forms: Array.isArray(forms) ? mapBackendForms(forms) : [],
+        roles: Array.isArray(roles) ? roles : [],
+        users: Array.isArray(users) ? users.map(mapBackendUserToFrontend) : [],
+      };
+      workflowDesignContextCache = payload;
+      return payload;
+    })
+    .finally(() => {
+      workflowDesignContextPromise = null;
+    });
+
+  return workflowDesignContextPromise;
+};
+
+const loadProcessDefinitionById = async (definitionId: string): Promise<any | null> => {
+  const normalizedId = definitionId.trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const cachedPromise = processDefinitionPromiseCache.get(normalizedId);
+  if (cachedPromise) {
+    return cachedPromise;
+  }
+
+  const requestPromise = getProcessDefinition(normalizedId)
+    .catch((err) => {
+      logWorkflow.warn('鎸?ID 鍔犺浇娴佺▼澶辫触锛屽皾璇曞垪琛ㄥ厹搴?', err);
+      return null;
+    })
+    .finally(() => {
+      processDefinitionPromiseCache.delete(normalizedId);
+    });
+
+  processDefinitionPromiseCache.set(normalizedId, requestPromise);
+  return requestPromise;
+};
+
+const loadProcessDefinitionsList = async (): Promise<any[]> => {
+  if (processDefinitionsListPromise) {
+    return processDefinitionsListPromise;
+  }
+
+  processDefinitionsListPromise = getProcessDefinitions()
+    .catch((err) => {
+      logWorkflow.warn('鍔犺浇娴佺▼瀹氫箟鍒楄〃澶辫触:', err);
+      return [];
+    })
+    .finally(() => {
+      processDefinitionsListPromise = null;
+    });
+
+  return processDefinitionsListPromise;
+};
+
 const createDefaultWorkflow = (): WorkflowDefinition => ({
   id: `new_${Date.now()}`,
   name: '新流程',
@@ -29,9 +122,7 @@ const createDefaultWorkflow = (): WorkflowDefinition => ({
 });
 
 /**
- * 解析流程节点定义。
- * 仅接受合法的 nodes+edges 图模型，异常时直接抛错。
- */
+ * 瑙ｆ瀽娴佺▼鑺傜偣瀹氫箟銆? * 浠呮帴鍙楀悎娉曠殑 nodes+edges 鍥炬ā鍨嬶紝寮傚父鏃剁洿鎺ユ姏閿欍€? */
 const parseWorkflowNodes = (raw: unknown, workflowName: string) => {
   const graph = parseWorkflowGraphDefinition(raw);
   if (!graph) {
@@ -41,8 +132,7 @@ const parseWorkflowNodes = (raw: unknown, workflowName: string) => {
 };
 
 /**
- * 统一映射后端流程数据，确保设计器使用稳定的 definitionId。
- */
+ * 缁熶竴鏄犲皠鍚庣娴佺▼鏁版嵁锛岀‘淇濊璁″櫒浣跨敤绋冲畾鐨?definitionId銆? */
 const resolveDefinitionId = (w: any): string => {
   const rawId = w?.definitionId;
   if (rawId === undefined || rawId === null) {
@@ -52,9 +142,7 @@ const resolveDefinitionId = (w: any): string => {
 };
 
 /**
- * 解析保存接口返回的 definitionId。
- * nodes+edges 重构后仅接受对象结构：{ id: string }。
- */
+ * 瑙ｆ瀽淇濆瓨鎺ュ彛杩斿洖鐨?definitionId銆? * nodes+edges 閲嶆瀯鍚庝粎鎺ュ彈瀵硅薄缁撴瀯锛歿 id: string }銆? */
 const resolveSavedDefinitionId = (result: unknown): string | undefined => {
   if (result && typeof result === 'object') {
     const rawId = (result as { id?: unknown }).id;
@@ -99,7 +187,7 @@ const mapBackendForms = (forms: any[]): FormDefinition[] =>
           const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
           fields = JSON.parse(sanitized);
         } catch (parseError) {
-          logWorkflow.error('解析表单字段失败:', parseError);
+          logWorkflow.error('瑙ｆ瀽琛ㄥ崟瀛楁澶辫触:', parseError);
           fields = [];
         }
       }
@@ -129,8 +217,7 @@ const buildWorkflowSavePayload = (wf: WorkflowDefinition) => ({
 });
 
 /**
- * 自动保存签名：忽略 definitionId，仅关注流程内容是否真正变化。
- */
+ * 鑷姩淇濆瓨绛惧悕锛氬拷鐣?definitionId锛屼粎鍏虫敞娴佺▼鍐呭鏄惁鐪熸鍙樺寲銆? */
 const buildWorkflowContentSignature = (wf: WorkflowDefinition | null | undefined): string => {
   if (!wf) return '';
   return JSON.stringify({
@@ -186,7 +273,7 @@ export const WorkflowDesign = () => {
       if (!prev) {
         return next;
       }
-      // 设计器可能在异步保存后短暂回传旧 definitionId；已持久化流程始终以父状态 id 为准，避免回滚触发循环请求
+      // 已持久化流程始终以父状态 id 为准，避免异步回传旧 id 导致循环请求。
       const keepPrevId =
         !!prev.id &&
         !prev.id.startsWith('new_') &&
@@ -199,7 +286,7 @@ export const WorkflowDesign = () => {
         buildWorkflowContentSignature(prev) ===
         buildWorkflowContentSignature(normalizedNext);
 
-      // 避免编辑器回传“等价快照”导致父状态抖动，进而触发自动保存误判
+      // 等价快照不再触发父状态更新，避免自动保存误判。
       if (sameId && sameContent) {
         return prev;
       }
@@ -212,63 +299,43 @@ export const WorkflowDesign = () => {
     if (inFlightLoadKeyRef.current === loadKey) {
       return;
     }
-    // URL 同步引起的同 ID 重入不再重复请求后端
     if (requestedWorkflowId && workflowIdRef.current === requestedWorkflowId) {
       return;
     }
+
     inFlightLoadKeyRef.current = loadKey;
     const currentLoadSeq = ++loadSequenceRef.current;
+
     try {
       setLoading(true);
       setError(null);
 
-      // 基础上下文（表单/角色/用户）在设计页生命周期内只加载一次，避免切换流程时重复请求。
       if (!contextLoadedRef.current) {
-        const [forms, roles, users] = await Promise.all([
-          getFormDefinitions().catch((err) => {
-            logWorkflow.warn('加载表单列表失败:', err);
-            toast.warning('表单列表加载失败，暂时无法绑定表单');
-            return [];
-          }),
-          getRoleList().catch((err) => {
-            logWorkflow.warn('加载角色列表失败:', err);
-            toast.warning('角色列表加载失败，部分审批人配置不可用');
-            return [];
-          }),
-          getUserList().catch((err) => {
-            logWorkflow.warn('加载用户列表失败:', err);
-            toast.warning('用户列表加载失败，部分审批人配置不可用');
-            return [];
-          }),
-        ]);
+        const context = await loadWorkflowDesignContext();
         if (currentLoadSeq !== loadSequenceRef.current) {
           return;
         }
 
-        if (Array.isArray(forms)) {
-          setSavedForms(mapBackendForms(forms));
-        }
-        if (Array.isArray(roles)) setAvailableRoles(roles);
-        if (Array.isArray(users)) setAvailableUsers(users.map(mapBackendUserToFrontend));
+        setSavedForms(context.forms);
+        setAvailableRoles(context.roles);
+        setAvailableUsers(context.users);
         contextLoadedRef.current = true;
       }
 
-      // 先按 URL id 精确加载，避免串流程
       let selectedWorkflow: any = null;
       if (requestedWorkflowId) {
-        try {
-          selectedWorkflow = await getProcessDefinition(requestedWorkflowId);
-        } catch (err) {
-          logWorkflow.warn('按 ID 加载流程失败，尝试列表兜底:', err);
-        }
-      }
-
-      // 兜底：从列表中匹配，仍找不到则回退到第一条
-      if (!selectedWorkflow) {
-        const workflows = await getProcessDefinitions().catch(() => []);
+        selectedWorkflow = await loadProcessDefinitionById(requestedWorkflowId);
         if (currentLoadSeq !== loadSequenceRef.current) {
           return;
         }
+      }
+
+      if (!selectedWorkflow) {
+        const workflows = await loadProcessDefinitionsList();
+        if (currentLoadSeq !== loadSequenceRef.current) {
+          return;
+        }
+
         if (Array.isArray(workflows) && workflows.length > 0) {
           if (requestedWorkflowId) {
             selectedWorkflow = workflows.find((item: any) => {
@@ -345,7 +412,7 @@ export const WorkflowDesign = () => {
     }
   };
 
-  // 自动保存：仅对已持久化流程启用
+  // 自动保存仅对已持久化流程启用。
   useAutoSave(
     workflow,
     async (wf) => {
@@ -366,7 +433,7 @@ export const WorkflowDesign = () => {
         lastAutoSavedSignatureRef.current = currentSignature;
         const nextId = resolveSavedDefinitionId(result);
         if (nextId && wf.id !== nextId) {
-          // 自动保存只更新本地ID，不触发URL变更，避免“URL同步 -> 重新加载 -> 再次自动保存”循环。
+          // 自动保存只更新本地 id，不触发 URL 同步，避免重复加载。
           skipNextUrlSyncRef.current = true;
           setWorkflow((prev) => (prev ? { ...prev, id: nextId } : prev));
           workflowIdRef.current = nextId;
