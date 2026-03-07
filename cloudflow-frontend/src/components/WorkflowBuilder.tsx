@@ -5408,19 +5408,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     },
   };
 
-  const resolveRootNode = useCallback((raw: unknown): WorkflowTreeNode => {
-    const graphModel = parseWorkflowGraphDefinition(raw);
-    if (graphModel) {
-      try {
-        // 过渡阶段：编辑器仍使用树操作，先把 nodes+edges 转成运行树
-        return convertGraphToWorkflowTree(graphModel);
-      } catch (error) {
-        console.warn("[WorkflowBuilder] 图模型转换失败，回退默认流程", error);
-      }
-    }
-
-    return defaultRoot;
-  }, []);
 
   const resolveGraphModel = useCallback(
     (raw: unknown): WorkflowGraphDefinition => {
@@ -5458,13 +5445,40 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     },
     [setGraphModel],
   );
-  const resetRoot = useCallback(
-    (nextRoot: WorkflowTreeNode) => {
+  const replaceGraphState = useCallback(
+    (
+      nextGraph: WorkflowGraphDefinition,
+      options?: { resetHistory?: boolean; fallbackToDefault?: boolean },
+    ) => {
+      let nextRoot: WorkflowTreeNode | null = null;
+      let nextStateGraph = nextGraph;
+
+      try {
+        nextRoot = convertGraphToWorkflowTree(nextGraph);
+      } catch (error) {
+        if (!options?.fallbackToDefault) {
+          throw error;
+        }
+        console.warn("[WorkflowBuilder] failed to apply graph state, fallback to default workflow", error);
+        nextRoot = defaultRoot;
+        nextStateGraph = createDefaultWorkflowGraph();
+      }
+
+      if (!nextRoot) {
+        throw new Error("graph state apply failed");
+      }
+
       rootRef.current = nextRoot;
-      resetGraphModel(convertWorkflowTreeToGraph(nextRoot));
+      if (options?.resetHistory) {
+        resetGraphModel(nextStateGraph);
+      } else {
+        setGraphModel(nextStateGraph);
+      }
+      return nextRoot;
     },
-    [resetGraphModel],
+    [defaultRoot, resetGraphModel, setGraphModel],
   );
+
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
   const [selectedNode, setSelectedNode] = useState<WorkflowTreeNode | null>(null);
@@ -5589,10 +5603,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     if (!workflow) return;
 
     const nextGraph = resolveGraphModel(workflow.nodes);
-    const nextRoot = resolveRootNode(nextGraph);
+    replaceGraphState(nextGraph, { resetHistory: true, fallbackToDefault: true });
     const parsedTags = parseTagsToArray(workflow.tags);
-    resetGraphModel(nextGraph);
-    rootRef.current = nextRoot;
     setSelectedNode(null);
 
     setWorkflowName(workflow.name || "未命名流程");
@@ -5614,7 +5626,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       startPermissionType: workflow.startPermissionType || "ALL",
       startPermissionValue: workflow.startPermissionValue || undefined,
     });
-  }, [workflow?.id, parseTagsToArray, resetGraphModel, normalizeDeptId, user?.deptId, resolveGraphModel, resolveRootNode]);
+  }, [workflow?.id, parseTagsToArray, normalizeDeptId, user?.deptId, resolveGraphModel, replaceGraphState]);
 
   useEffect(() => {
     if (!onChange || !workflowRef.current) return;
@@ -6148,19 +6160,17 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       })
       .filter((edge): edge is NonNullable<typeof edge> => edge !== null);
 
-    let nextRoot: WorkflowTreeNode;
     try {
-      nextRoot = convertGraphToWorkflowTree({
+      replaceGraphState({
         nodes: nextGraphNodes,
         edges: nextGraphEdges,
       });
     } catch (error) {
-      console.error("[WorkflowBuilder] 模板图模型转换失败", error);
+      console.error("[WorkflowBuilder] template graph transform failed", error);
       toast.error("模板应用失败：图模型结构异常");
       return;
     }
-    rootRef.current = nextRoot;
-    setRoot(nextRoot);
+    setSelectedNode(null);
     setWorkflowName(template.name);
     toast.success(`已应用模板: ${template.name}`);
   };
