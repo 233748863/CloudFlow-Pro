@@ -1,25 +1,10 @@
-import { NodeType, WorkflowNode } from '../types';
-
-export interface WorkflowGraphNode {
-  id: string;
-  type: string;
-  title?: string;
-  [key: string]: unknown;
-}
-
-export interface WorkflowGraphEdge {
-  id?: string;
-  source: string;
-  target: string;
-  condition?: string;
-  isDefault?: boolean;
-  [key: string]: unknown;
-}
-
-export interface WorkflowGraphDefinition {
-  nodes: WorkflowGraphNode[];
-  edges: WorkflowGraphEdge[];
-}
+import {
+  NodeType,
+  WorkflowGraphDefinition,
+  WorkflowGraphEdge,
+  WorkflowGraphNode,
+  WorkflowNode,
+} from '../types';
 
 /**
  * 仅判定 nodes+edges 图结构，树结构不再视为合法模型。

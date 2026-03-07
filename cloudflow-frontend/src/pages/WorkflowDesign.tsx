@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
-import { WorkflowDefinition, NodeType, FormDefinition, User } from '../types';
+import { WorkflowDefinition, FormDefinition, User } from '../types';
 import {
   getProcessDefinition,
   getProcessDefinitions,
@@ -16,8 +16,7 @@ import { EmptyWorkflows, EmptyError } from '../components/ui/EmptyState';
 import { toast } from 'sonner';
 import { logWorkflow } from '../lib/logger';
 import {
-  convertGraphToWorkflowTree,
-  convertWorkflowTreeToGraph,
+  createDefaultWorkflowGraph,
   parseWorkflowGraphDefinition,
 } from '../utils/workflowGraph';
 
@@ -26,7 +25,7 @@ const createDefaultWorkflow = (): WorkflowDefinition => ({
   name: '新流程',
   key: 'new_process',
   version: 1,
-  nodes: { type: NodeType.START, title: '开始', id: 'start' },
+  nodes: createDefaultWorkflowGraph(),
 });
 
 /**
@@ -38,7 +37,7 @@ const parseWorkflowNodes = (raw: unknown, workflowName: string) => {
   if (!graph) {
     throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
   }
-  return convertGraphToWorkflowTree(graph);
+  return graph;
 };
 
 /**
@@ -120,7 +119,7 @@ const buildWorkflowSavePayload = (wf: WorkflowDefinition) => ({
   processName: wf.name,
   processKey: wf.key,
   formId: wf.formId,
-  modelJson: JSON.stringify(convertWorkflowTreeToGraph(wf.nodes)),
+  modelJson: JSON.stringify(wf.nodes),
   description: wf.description,
   category: wf.category,
   tags: wf.tags,
@@ -138,7 +137,7 @@ const buildWorkflowContentSignature = (wf: WorkflowDefinition | null | undefined
     processName: wf.name || '',
     processKey: wf.key || '',
     formId: wf.formId || '',
-    modelJson: JSON.stringify(convertWorkflowTreeToGraph(wf.nodes)),
+    modelJson: JSON.stringify(wf.nodes),
     description: wf.description || '',
     category: wf.category || '',
     tags: wf.tags || '',

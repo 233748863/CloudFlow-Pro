@@ -4,7 +4,7 @@ import { WorkflowDefinition } from '../types';
 import { getProcessDefinitions } from '../services/api/workflow';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { toast } from 'sonner';
-import { convertGraphToWorkflowTree, parseWorkflowGraphDefinition } from '../utils/workflowGraph';
+import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 /**
  * 解析流程模型，仅接受合法的 nodes+edges 图模型。
@@ -14,7 +14,7 @@ const parseWorkflowNodes = (rawModelJson: unknown, workflowName: string): Workfl
   if (!graph) {
     throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
   }
-  return convertGraphToWorkflowTree(graph);
+  return graph;
 };
 
 export const CodeGeneration = () => {

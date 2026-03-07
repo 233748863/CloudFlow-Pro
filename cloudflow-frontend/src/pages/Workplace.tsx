@@ -6,7 +6,7 @@ import { FormRenderer } from '../components/FormRenderer';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { convertGraphToWorkflowTree, parseWorkflowGraphDefinition } from '../utils/workflowGraph';
+import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 
 /**
  * 将后端返回的 tags 统一转换为字符串数组，避免页面内反复强制类型断言。
@@ -77,7 +77,7 @@ const parseWorkflowNodes = (rawModelJson: unknown, workflowName: string): Workfl
   if (!graph) {
     throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
   }
-  return convertGraphToWorkflowTree(graph);
+  return graph;
 };
 
 /**

@@ -114,13 +114,34 @@ export interface WorkflowNode {
   allowEdit?: boolean;
 }
 
+export interface WorkflowGraphNode {
+  id: string;
+  type: string;
+  title?: string;
+  [key: string]: unknown;
+}
+
+export interface WorkflowGraphEdge {
+  id?: string;
+  source: string;
+  target: string;
+  condition?: string;
+  isDefault?: boolean;
+  [key: string]: unknown;
+}
+
+export interface WorkflowGraphDefinition {
+  nodes: WorkflowGraphNode[];
+  edges: WorkflowGraphEdge[];
+}
+
 export interface WorkflowDefinition {
   id: string;
   name: string;
   key: string;
   version: number;
   formId?: string; // 绑定动态表单
-  nodes: WorkflowNode;
+  nodes: WorkflowGraphDefinition;
   // P1: 新增字段（与后端 WfProcessDefinition 对齐）
   description?: string;
   category?: string;

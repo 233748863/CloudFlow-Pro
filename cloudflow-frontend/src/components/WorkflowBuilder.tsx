@@ -5315,10 +5315,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
     }
 
-    if (raw && typeof raw === "object" && "id" in (raw as Record<string, unknown>)) {
-      return raw as WorkflowNode;
-    }
-
     return defaultRoot;
   }, []);
 
@@ -5446,7 +5442,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     if (!currentWorkflow) return null;
     return {
       ...currentWorkflow,
-      nodes: rootRef.current,
+      nodes: convertWorkflowTreeToGraph(rootRef.current),
       name: workflowName,
       key: workflowKey,
       ...buildSettingsState(),

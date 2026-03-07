@@ -27,7 +27,7 @@ import {
   checkOperationSafety 
 } from '../../services/api/workflow';
 import { toast } from 'sonner';
-import { convertGraphToWorkflowTree, convertWorkflowTreeToGraph, parseWorkflowGraphDefinition } from '../../utils/workflowGraph';
+import { parseWorkflowGraphDefinition } from '../../utils/workflowGraph';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 
 // 扩展 WorkflowDefinition 类型，tags 解析为数组
@@ -177,7 +177,7 @@ export const ProcessManagement = () => {
     }
 
     try {
-      return convertGraphToWorkflowTree(graph);
+      return graph;
     } catch (error) {
       onError();
       console.warn(`[ProcessManagement] modelJson 图结构校验失败，流程: ${workflowName}`, error);
@@ -371,7 +371,7 @@ export const ProcessManagement = () => {
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: JSON.stringify(convertWorkflowTreeToGraph(workflow.nodes)),
+          modelJson: JSON.stringify(workflow.nodes),
           category: batchCategory,
           tags:
             workflow.tagsRaw !== undefined
@@ -442,7 +442,7 @@ export const ProcessManagement = () => {
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: JSON.stringify(convertWorkflowTreeToGraph(workflow.nodes)),
+          modelJson: JSON.stringify(workflow.nodes),
           category: workflow.category,
           tags: JSON.stringify(mergedTags),
           description: workflow.description,
