@@ -99,6 +99,7 @@ import {
   convertGraphToWorkflowTree,
   convertWorkflowTreeToGraph,
   insertWorkflowGraphNodeAfter,
+  insertWorkflowGraphSubgraphAfter,
   parseWorkflowGraphDefinition,
   removeWorkflowGraphBranch,
   removeWorkflowGraphNode,
@@ -7089,7 +7090,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           id: generateNodeId(idPrefix),
         };
         if (source.branches && source.branches.length > 0) {
-          // 关键修复：复制节点时保留分支完整子树，避免仅复制分支头导致配置丢失
+          // 复制节点时保留分支完整子树，但不携带主干后续
           cloned.branches = source.branches.map((branch) =>
             cloneNodeTree(branch, { keepNext: true }),
           );
@@ -7099,25 +7100,26 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         if (options?.keepNext && source.next) {
           cloned.next = cloneNodeTree(source.next, { keepNext: true });
         } else {
-          // 顶层复制仍然只复制当前节点，不连带主干后续链路
           cloned.next = undefined;
         }
         return cloned;
       };
 
-      const copiedNode: WorkflowTreeNode = {
+      const copiedNodeTree: WorkflowTreeNode = {
         ...cloneNodeTree(node, { keepNext: false }),
         title: `${node.title} (副本)`,
       };
-      const newRoot = updateNodeInTree(currentRoot, nodeId, (n) => ({
-        ...n,
-        next: n.next ? { ...copiedNode, next: n.next } : copiedNode,
-      }));
-      applyTreeChange(newRoot, { successMessage: "节点已复制" });
+      const copiedGraph = convertWorkflowTreeToGraph(copiedNodeTree);
+      const nextGraph = insertWorkflowGraphSubgraphAfter(
+        graphModelRef.current,
+        nodeId,
+        copiedGraph,
+        copiedNodeTree.id,
+      );
+      applyGraphChange(nextGraph, { successMessage: "节点已复制" });
     },
-    [applyTreeChange],
+    [applyGraphChange],
   );
-
   const handleAddNext = (parentId: string, type?: NodeType) => {
     const currentGraph = graphModelRef.current;
     const nodeType = type || NodeType.APPROVAL;

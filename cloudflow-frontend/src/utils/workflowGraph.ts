@@ -411,17 +411,23 @@ export const appendWorkflowGraphBranch = (
 };
 
 /**
- * 在指定节点后插入新的主干节点，并保留原有主干后继。
+ * 在指定节点后插入一段新的子图，并保留原有主干后继。
  */
-export const insertWorkflowGraphNodeAfter = (
+export const insertWorkflowGraphSubgraphAfter = (
   graph: WorkflowGraphDefinition,
   parentId: string,
-  newNode: WorkflowGraphNode,
+  subgraph: WorkflowGraphDefinition,
+  rootId: string,
 ): WorkflowGraphDefinition => {
-  if (
-    !graph.nodes.some((node) => node.id === parentId) ||
-    graph.nodes.some((node) => node.id === newNode.id)
-  ) {
+  if (!graph.nodes.some((node) => node.id === parentId)) {
+    return graph;
+  }
+  if (!subgraph.nodes.some((node) => node.id === rootId)) {
+    return graph;
+  }
+
+  const existingIds = new Set(graph.nodes.map((node) => node.id));
+  if (subgraph.nodes.some((node) => existingIds.has(node.id))) {
     return graph;
   }
 
@@ -434,27 +440,43 @@ export const insertWorkflowGraphNodeAfter = (
     otherOutgoingEdges.length > 0 || (!!mainEdge && isDefaultEdge(mainEdge));
 
   const edges = graph.edges.filter((edge) => edge !== mainEdge);
+  edges.push(...subgraph.edges);
   edges.push({
-    id: `${parentId}->${newNode.id}`,
+    id: `${parentId}->${rootId}`,
     source: parentId,
-    target: newNode.id,
+    target: rootId,
     isDefault: shouldMarkDefault || undefined,
   });
 
   if (mainEdge) {
     edges.push({
-      id: `${newNode.id}->${mainEdge.target}`,
-      source: newNode.id,
+      id: `${rootId}->${mainEdge.target}`,
+      source: rootId,
       target: mainEdge.target,
     });
   }
 
   return {
-    nodes: [...graph.nodes, newNode],
+    nodes: [...graph.nodes, ...subgraph.nodes],
     edges,
   };
 };
 
+/**
+ * 在指定节点后插入新的主干节点，并保留原有主干后继。
+ */
+export const insertWorkflowGraphNodeAfter = (
+  graph: WorkflowGraphDefinition,
+  parentId: string,
+  newNode: WorkflowGraphNode,
+): WorkflowGraphDefinition => {
+  return insertWorkflowGraphSubgraphAfter(
+    graph,
+    parentId,
+    { nodes: [newNode], edges: [] },
+    newNode.id,
+  );
+};
 /**
  * 用新的主干节点替换当前后继，并删除被截断的旧后续子图。
  */
