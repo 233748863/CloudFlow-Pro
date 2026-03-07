@@ -163,8 +163,22 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     };
 
     if (nextEdges.length === 1) {
-      const next = buildFromEdge(nextEdges[0]);
-      if (next) node.next = next;
+      const singleEdge = nextEdges[0];
+      const next = buildFromEdge(singleEdge);
+      const targetNode = nodeMap.get(singleEdge.target);
+      const shouldTreatAsBranch =
+        !isDefaultEdge(singleEdge) &&
+        (
+          String(targetNode?.type || "").toUpperCase() === NodeType.CONDITION ||
+          !!extractEdgeCondition(singleEdge)
+        );
+      if (next) {
+        if (shouldTreatAsBranch) {
+          node.branches = [next];
+        } else {
+          node.next = next;
+        }
+      }
     } else if (nextEdges.length > 1) {
       const defaultEdges = nextEdges.filter((edge) => isDefaultEdge(edge));
       if (defaultEdges.length > 1) {
