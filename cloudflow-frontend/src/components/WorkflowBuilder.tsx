@@ -97,8 +97,8 @@ import { useAuth } from "../context/AuthContext";
 import {
   appendWorkflowGraphBranch,
   countWorkflowGraphBranches,
+  cloneWorkflowGraphSubgraph,
   convertGraphToWorkflowTree,
-  convertWorkflowTreeToGraph,
   isWorkflowGraphNodeInsideBranchScope,
   isWorkflowGraphNodeInBranchSubtree,
   isWorkflowGraphBranchRoot,
@@ -6580,8 +6580,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     }
   }, [defaultGraphModel, graphModel]);
   // 用 ref 保持最新的 root 引用，解决确认对话框等异步回调中闭包过时的问题
-  const rootRef = useRef(root);
-  rootRef.current = root;
   // 用 ref 保持最新 graphModel，避免确认弹窗中的图编辑闭包过时
   const graphModelRef = useRef(graphModel);
   graphModelRef.current = graphModel;
@@ -6607,8 +6605,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       if (!nextRoot) {
         throw new Error("graph state apply failed");
       }
-
-      rootRef.current = nextRoot;
       if (options?.resetHistory) {
         resetGraphModel(nextStateGraph);
       } else {
@@ -6906,54 +6902,29 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
   const handleCopyNode = useCallback(
     (nodeId: string) => {
-      const currentRoot = rootRef.current;
-      const node = findNodeById(currentRoot, nodeId);
+      const currentGraph = graphModelRef.current;
+      const node = findWorkflowGraphNode(currentGraph, nodeId);
       if (!node || node.type === NodeType.START || node.type === NodeType.END) {
         toast.error("此节点不可复制");
         return;
       }
 
-      const cloneNodeTree = (
-        source: WorkflowTreeNode,
-        options?: { keepNext?: boolean },
-      ): WorkflowTreeNode => {
-        const idPrefix = source.id?.startsWith("branch")
-          ? "branch"
-          : source.type === NodeType.START
-            ? "start"
-            : source.type === NodeType.END
-              ? "end"
-              : "node";
-        const cloned: WorkflowTreeNode = {
-          ...source,
-          id: generateNodeId(idPrefix),
-        };
-        if (source.branches && source.branches.length > 0) {
-          // 复制节点时保留分支完整子树，但不携带主干后续
-          cloned.branches = source.branches.map((branch) =>
-            cloneNodeTree(branch, { keepNext: true }),
-          );
-        } else {
-          cloned.branches = undefined;
-        }
-        if (options?.keepNext && source.next) {
-          cloned.next = cloneNodeTree(source.next, { keepNext: true });
-        } else {
-          cloned.next = undefined;
-        }
-        return cloned;
-      };
-
-      const copiedNodeTree: WorkflowTreeNode = {
-        ...cloneNodeTree(node, { keepNext: false }),
-        title: `${node.title} (副本)`,
-      };
-      const copiedGraph = convertWorkflowTreeToGraph(copiedNodeTree);
-      const nextGraph = insertWorkflowGraphSubgraphAfter(
-        graphModelRef.current,
+      const copiedSubgraph = cloneWorkflowGraphSubgraph(
+        currentGraph,
         nodeId,
-        copiedGraph,
-        copiedNodeTree.id,
+        generateNodeId,
+        { titleSuffix: " (副本)" },
+      );
+      if (!copiedSubgraph) {
+        toast.error("节点复制失败");
+        return;
+      }
+
+      const nextGraph = insertWorkflowGraphSubgraphAfter(
+        currentGraph,
+        nodeId,
+        copiedSubgraph.subgraph,
+        copiedSubgraph.rootId,
       );
       applyGraphChange(nextGraph, { successMessage: "节点已复制" });
     },

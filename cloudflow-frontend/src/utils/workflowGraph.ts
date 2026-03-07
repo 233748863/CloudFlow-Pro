@@ -521,6 +521,99 @@ export const countWorkflowGraphBranches = (
 /**
  * 在指定节点后插入一段新的子图，并保留原有主干后继。
  */
+const resolveWorkflowGraphNodeIdPrefix = (node: WorkflowGraphNode): string => {
+  if (node.id?.startsWith('branch')) {
+    return 'branch';
+  }
+
+  const nodeType = String(node.type || '').toUpperCase();
+  if (nodeType === NodeType.START) {
+    return 'start';
+  }
+  if (nodeType === NodeType.END) {
+    return 'end';
+  }
+  return 'node';
+};
+
+/**
+ * 复制指定节点本身及其分支子图，默认不携带主干后续。
+ */
+export const cloneWorkflowGraphSubgraph = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+  createNodeId: (prefix?: string) => string,
+  options?: { includeMainPath?: boolean; titleSuffix?: string },
+): { subgraph: WorkflowGraphDefinition; rootId: string } | null => {
+  if (!graph.nodes.some((node) => node.id === nodeId)) {
+    return null;
+  }
+
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const mainEdge = resolveGraphMainEdge(graph, nodeId, nodeMap);
+  const idsToClone = new Set<string>([nodeId]);
+
+  collectGraphSubtreeIds(graph, getWorkflowGraphBranchChildIds(graph, nodeId)).forEach((id) => {
+    idsToClone.add(id);
+  });
+
+  if (options?.includeMainPath && mainEdge?.target) {
+    collectGraphSubtreeIds(graph, [mainEdge.target]).forEach((id) => {
+      idsToClone.add(id);
+    });
+  }
+
+  const idMap = new Map<string, string>();
+  const nodes = graph.nodes
+    .filter((node) => idsToClone.has(node.id))
+    .map((node) => {
+      const clonedId = createNodeId(resolveWorkflowGraphNodeIdPrefix(node));
+      idMap.set(node.id, clonedId);
+
+      const clonedNode: WorkflowGraphNode = {
+        ...node,
+        id: clonedId,
+      };
+
+      if (node.id === nodeId && options?.titleSuffix) {
+        const baseTitle = typeof node.title === 'string' ? node.title : '';
+        clonedNode.title = `${baseTitle}${options.titleSuffix}`;
+      }
+
+      return clonedNode;
+    });
+
+  const edges = graph.edges.reduce((result: WorkflowGraphEdge[], edge) => {
+    if (!idsToClone.has(edge.source) || !idsToClone.has(edge.target)) {
+      return result;
+    }
+
+    const clonedSource = idMap.get(edge.source);
+    const clonedTarget = idMap.get(edge.target);
+    if (!clonedSource || !clonedTarget) {
+      return result;
+    }
+
+    result.push({
+      ...edge,
+      id: `${clonedSource}->${clonedTarget}`,
+      source: clonedSource,
+      target: clonedTarget,
+    });
+    return result;
+  }, []);
+
+  const rootId = idMap.get(nodeId);
+  if (!rootId) {
+    return null;
+  }
+
+  return {
+    subgraph: { nodes, edges },
+    rootId,
+  };
+};
+
 export const insertWorkflowGraphSubgraphAfter = (
   graph: WorkflowGraphDefinition,
   parentId: string,
