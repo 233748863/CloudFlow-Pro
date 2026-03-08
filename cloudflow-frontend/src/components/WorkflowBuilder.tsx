@@ -6560,6 +6560,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const selectedGraphNode = useMemo(
+    () =>
+      selectedNodeId ? findWorkflowGraphNode(graphModel, selectedNodeId) : null,
+    [graphModel, selectedNodeId],
+  );
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) {
       return null;
@@ -6778,15 +6783,18 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         ) {
           return;
         }
-        if (selectedNode && selectedNode.type !== NodeType.START) {
+        if (
+          selectedGraphNode &&
+          selectedGraphNode.type !== NodeType.START
+        ) {
           e.preventDefault(); // 防止 Backspace 导致页面回退
-          handleDeleteNode(selectedNode.id);
+          handleDeleteNode(selectedGraphNode.id);
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canUndo, canRedo, undo, redo, selectedNode]);
+  }, [canUndo, canRedo, undo, redo, selectedGraphNode]);
 
   const handleZoomIn = useCallback(
     () => setZoom((z) => Math.min(z + 0.1, 2)),
@@ -7415,7 +7423,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       {/* 画布 */}
       <div
         ref={canvasRef}
-        className={`flex-1 overflow-hidden p-10 flex justify-center relative transition-all duration-300 ease-out bg-slate-50 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedNode ? "mr-96" : ""}`}
+        className={`flex-1 overflow-hidden p-10 flex justify-center relative transition-all duration-300 ease-out bg-slate-50 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-96" : ""}`}
         onPointerDown={(e) => {
           // 在空白处左键 或 中键 按下启动漫游 (pan)
           if (
@@ -7511,7 +7519,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       </div>
 
       {/* 属性面板 */}
-      {selectedNode && (
+      {selectedGraphNode && selectedNode && (
         <PropertyPanel
           node={selectedNode}
           onClose={() => setSelectedNodeId(null)}
