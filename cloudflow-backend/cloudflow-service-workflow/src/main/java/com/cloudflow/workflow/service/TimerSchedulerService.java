@@ -47,9 +47,9 @@ public class TimerSchedulerService {
     private WorkflowGraphModelResolver workflowGraphModelResolver;
 
     /**
-     * 兼容保留：旧版定时器扫描逻辑。
-     * 当前生产调度统一由 TimerScanJob 执行，这里不再挂载 @Scheduled，
-     * 避免同一 Redis ZSet 被两个调度器并发消费导致重复触发或流转不一致。
+     * 由 TimerScanJob 统一调度的定时节点扫描入口。
+     * 这里不再挂载 @Scheduled，避免同一 Redis ZSet 被两个调度器并发消费，
+     * 从而导致重复触发或流程流转不一致。
      */
     public void scanAndTriggerTimers() {
         String lockKey = "lock:scheduled:scanAndTriggerTimers";

@@ -714,7 +714,7 @@ export const moveWorkflowGraphNode = (
   };
 };
 /**
- * 删除普通节点并保留主干后继，避免节点删除再次回退到树模型编辑。
+ * 删除普通节点并保留主干后继，保持图编辑主链连通。
  */
 export const removeWorkflowGraphNode = (
   graph: WorkflowGraphDefinition,
