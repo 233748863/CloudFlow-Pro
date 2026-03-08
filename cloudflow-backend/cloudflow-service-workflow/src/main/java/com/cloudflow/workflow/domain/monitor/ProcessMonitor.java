@@ -95,4 +95,26 @@ public class ProcessMonitor {
     /** 更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+
+    public String getProcessDefName() {
+        return processDefName != null ? processDefName : processName;
+    }
+
+    public void setProcessDefName(String processDefName) {
+        this.processDefName = processDefName;
+        if (this.processName == null) {
+            this.processName = processDefName;
+        }
+    }
+
+    public String getProcessName() {
+        return processName != null ? processName : processDefName;
+    }
+
+    public void setProcessName(String processName) {
+        this.processName = processName;
+        if (this.processDefName == null) {
+            this.processDefName = processName;
+        }
+    }
 }

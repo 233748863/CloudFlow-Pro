@@ -5,6 +5,7 @@
     <resultMap id="ProcessMonitorResult" type="com.cloudflow.workflow.domain.monitor.ProcessMonitor">
         <id property="id" column="id"/>
         <result property="instanceId" column="instance_id"/>
+        <result property="processDefId" column="process_def_id"/>
         <result property="processDefKey" column="process_def_key"/>
         <result property="processDefName" column="process_name"/>
         <result property="processName" column="process_name"/>
@@ -105,6 +106,7 @@
         SELECT 
             p.id,
             p.instance_id,
+            p.process_def_id,
             p.process_def_key,
             p.process_def_name as process_name,
             p.status,
@@ -140,6 +142,7 @@
         SELECT 
             p.id,
             p.instance_id,
+            p.process_def_id,
             p.process_def_key,
             p.process_def_name as process_name,
             p.status,
@@ -183,6 +186,7 @@
         SELECT 
             p.id,
             p.instance_id,
+            p.process_def_id,
             p.process_def_key,
             p.process_def_name as process_name,
             p.status,
@@ -205,6 +209,7 @@
         SELECT 
             p.id,
             p.instance_id,
+            p.process_def_id,
             p.process_def_key,
             p.process_def_name as process_name,
             p.status,
@@ -232,6 +237,7 @@
         SELECT 
             p.id,
             p.instance_id,
+            p.process_def_id,
             p.process_def_key,
             p.process_def_name as process_name,
             p.status,

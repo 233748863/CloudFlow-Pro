@@ -308,7 +308,7 @@ const WorkflowMonitor: React.FC = () => {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">成功率</span>
               <span className="text-lg font-semibold text-green-600">
-                {((overview?.successRate || 0) * 100).toFixed(1)}%
+                {(overview?.successRate || 0).toFixed(1)}%
               </span>
             </div>
           </div>

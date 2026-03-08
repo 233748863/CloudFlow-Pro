@@ -179,7 +179,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         try {
             processMonitorService.recordProcessStart(
                 instance.getInstanceId(),
-                def.getProcessKey(),
+                def.getDefinitionId(),
                 processDefKey,
                 def.getProcessName(),
                 businessKey,

@@ -86,9 +86,9 @@ const PerformanceStats: React.FC = () => {
         formatDuration(stat.avgDurationMs),
         formatDuration(stat.maxDurationMs),
         formatDuration(stat.minDurationMs),
-        `${(stat.successRate * 100).toFixed(1)}%`,
-        `${(stat.timeoutRate * 100).toFixed(1)}%`,
-        `${(stat.anomalyRate * 100).toFixed(1)}%`
+        `${stat.successRate.toFixed(1)}%`,
+        `${stat.timeoutRate.toFixed(1)}%`,
+        `${stat.anomalyRate.toFixed(1)}%`
       ].join(','))
     ].join('\n');
 
@@ -218,7 +218,7 @@ const PerformanceStats: React.FC = () => {
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <p className="text-3xl font-bold text-green-600">
-            {(summary.successRate * 100).toFixed(1)}%
+            {summary.successRate.toFixed(1)}%
           </p>
         </div>
 
@@ -228,7 +228,7 @@ const PerformanceStats: React.FC = () => {
             <TrendingUp className="w-5 h-5 text-yellow-600" />
           </div>
           <p className="text-3xl font-bold text-yellow-600">
-            {(summary.timeoutRate * 100).toFixed(1)}%
+            {summary.timeoutRate.toFixed(1)}%
           </p>
         </div>
       </div>
@@ -306,29 +306,29 @@ const PerformanceStats: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <span className={`font-medium ${
-                        stat.successRate >= 0.95 ? 'text-green-600' :
-                        stat.successRate >= 0.8 ? 'text-yellow-600' :
+                        stat.successRate >= 95 ? 'text-green-600' :
+                        stat.successRate >= 80 ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
-                        {(stat.successRate * 100).toFixed(1)}%
+                        {stat.successRate.toFixed(1)}%
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <span className={`font-medium ${
-                        stat.timeoutRate <= 0.05 ? 'text-green-600' :
-                        stat.timeoutRate <= 0.2 ? 'text-yellow-600' :
+                        stat.timeoutRate <= 5 ? 'text-green-600' :
+                        stat.timeoutRate <= 20 ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
-                        {(stat.timeoutRate * 100).toFixed(1)}%
+                        {stat.timeoutRate.toFixed(1)}%
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <span className={`font-medium ${
-                        stat.anomalyRate <= 0.05 ? 'text-green-600' :
-                        stat.anomalyRate <= 0.2 ? 'text-yellow-600' :
+                        stat.anomalyRate <= 5 ? 'text-green-600' :
+                        stat.anomalyRate <= 20 ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
-                        {(stat.anomalyRate * 100).toFixed(1)}%
+                        {stat.anomalyRate.toFixed(1)}%
                       </span>
                     </td>
                   </tr>
