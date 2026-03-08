@@ -99,13 +99,12 @@ import {
   countWorkflowGraphBranches,
   cloneWorkflowGraphSubgraph,
   convertGraphToWorkflowTree,
+  findWorkflowGraphMainTargetId,
+  findWorkflowGraphNode,
+  findWorkflowGraphParentNodeId,
   isWorkflowGraphNodeInsideBranchScope,
   isWorkflowGraphNodeInBranchSubtree,
   isWorkflowGraphBranchRoot,
-  findWorkflowGraphParentNodeId,
-  findWorkflowGraphNode,
-  extractWorkflowGraphSubgraph,
-  findWorkflowGraphMainTargetId,
   insertWorkflowGraphNodeAfter,
   insertWorkflowGraphSubgraphAfter,
   moveWorkflowGraphNode,
@@ -129,6 +128,17 @@ const generateNodeId = (prefix: string = "node"): string => {
   // 降级方案：时间戳 + 随机字符串
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 };
+
+type EditableWorkflowNode = Omit<WorkflowTreeNode, "next" | "branches"> &
+  WorkflowGraphNode;
+
+const toEditableWorkflowNode = (
+  node: WorkflowGraphNode,
+): EditableWorkflowNode =>
+  ({
+    ...node,
+    title: typeof node.title === "string" ? node.title : "",
+  }) as EditableWorkflowNode;
 
 const NODE_TYPE_LABELS: Record<string, string> = {
   [NodeType.START]: "开始",
@@ -3839,7 +3849,7 @@ const PropertyPanel = ({
   onDelete,
   onConfirmAction,
 }: {
-  node: WorkflowTreeNode;
+  node: EditableWorkflowNode;
   branchCount: number;
   onClose: () => void;
   onUpdate: (id: string, data: Partial<WorkflowGraphNode>) => void;
@@ -3851,7 +3861,7 @@ const PropertyPanel = ({
   useEffect(() => {
     setFormData(node);
   }, [node.id, branchCount, node.branchStrategy, node.props]);
-  const handleChange = (field: keyof WorkflowGraphNode, value: any) => {
+  const handleChange = (field: keyof EditableWorkflowNode, value: any) => {
     // 切换审批方式时，清空之前选择的审批人，避免残留旧数据
     if (field === "approverType") {
       const updated = { ...formData, approverType: value, approverValue: "" };
@@ -6567,6 +6577,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       selectedNodeId ? findWorkflowGraphNode(graphModel, selectedNodeId) : null,
     [graphModel, selectedNodeId],
   );
+  const selectedEditorNode = useMemo(
+    () => (selectedGraphNode ? toEditableWorkflowNode(selectedGraphNode) : null),
+    [selectedGraphNode],
+  );
   const selectedNodeBranchCount = useMemo(
     () =>
       selectedGraphNode
@@ -6574,23 +6588,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         : 0,
     [graphModel, selectedGraphNode],
   );
-  const selectedNode = useMemo(() => {
-    if (!selectedNodeId) {
-      return null;
-    }
-
-    const selectedSubgraph = extractWorkflowGraphSubgraph(graphModel, selectedNodeId);
-    if (!selectedSubgraph) {
-      return null;
-    }
-
-    try {
-      return convertGraphToWorkflowTree(selectedSubgraph);
-    } catch (error) {
-      console.warn("[WorkflowBuilder] 选中节点子图恢复失败", error);
-      return null;
-    }
-  }, [graphModel, selectedNodeId]);
   const [saving, setSaving] = useState(false);
   const [workflowName, setWorkflowName] = useState(
     workflow?.name || "未命名流程",
@@ -7528,9 +7525,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       </div>
 
       {/* 属性面板 */}
-      {selectedGraphNode && selectedNode && (
+      {selectedEditorNode && (
         <PropertyPanel
-          node={selectedNode}
+          node={selectedEditorNode}
           branchCount={selectedNodeBranchCount}
           onClose={() => setSelectedNodeId(null)}
           onUpdate={handleUpdateNode}
