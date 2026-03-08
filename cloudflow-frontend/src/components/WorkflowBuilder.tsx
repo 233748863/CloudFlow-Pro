@@ -71,7 +71,6 @@ import {
   WorkflowGraphDefinition,
   WorkflowGraphNode,
 } from "../types";
-import { WorkflowTreeNode } from "../types/workflowEditor";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useHistory } from "../hooks/useHistory";
 import {
@@ -130,8 +129,33 @@ const generateNodeId = (prefix: string = "node"): string => {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 };
 
-type EditableWorkflowNode = Omit<WorkflowTreeNode, "next" | "branches"> &
-  WorkflowGraphNode;
+type EditableWorkflowNode = WorkflowGraphNode & {
+  title: string;
+  branchStrategy?: "PARALLEL" | "RACE" | "EXCLUSIVE";
+  condition?: string;
+  inputs?: Record<string, string>;
+  outputs?: Record<string, string>;
+  slaHours?: number;
+  slaAction?: "AUTO_PASS" | "AUTO_REJECT";
+  retry?: {
+    maxRetries: number;
+    delayMs: number;
+  };
+  props?: Record<string, any>;
+  signType?: "ALL" | "ANY" | "PERCENT" | "SEQUENTIAL";
+  passPercent?: number;
+  description?: string;
+  icon?: string;
+  approverType?:
+    | "ROLE"
+    | "USER"
+    | "USERS"
+    | "DEPT_MANAGER"
+    | "DIRECT_LEADER"
+    | "DEPT";
+  approverValue?: string;
+  allowEdit?: boolean;
+};
 
 const toEditableWorkflowNode = (
   node: WorkflowGraphNode,
