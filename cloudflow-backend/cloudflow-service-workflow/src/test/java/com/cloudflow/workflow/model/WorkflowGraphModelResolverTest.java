@@ -11,9 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class WorkflowModelBridgeTest {
+class WorkflowGraphModelResolverTest {
 
-    private final WorkflowModelBridge workflowModelBridge = new WorkflowModelBridge();
+    private final WorkflowGraphModelResolver workflowGraphModelResolver = new WorkflowGraphModelResolver();
 
     @Test
     void parseRuntimeGraphShouldBuildNodeAndEdgeIndexes() {
@@ -31,7 +31,7 @@ class WorkflowModelBridgeTest {
                 }
                 """;
 
-        WorkflowRuntimeGraph runtimeGraph = workflowModelBridge.parseRuntimeGraph(modelJson);
+        WorkflowRuntimeGraph runtimeGraph = workflowGraphModelResolver.parseRuntimeGraph(modelJson);
 
         assertEquals("start", runtimeGraph.getStartNodeId());
         assertEquals("approval_1", runtimeGraph.getFirstExecutableNodeId());
@@ -66,8 +66,8 @@ class WorkflowModelBridgeTest {
                 }
                 """;
 
-        WfNodeConfig rootNode = workflowModelBridge.parseRuntimeRoot(modelJson);
-        WorkflowRuntimeGraph runtimeGraph = workflowModelBridge.resolveRuntimeGraph(rootNode);
+        WfNodeConfig rootNode = workflowGraphModelResolver.parseRuntimeRoot(modelJson);
+        WorkflowRuntimeGraph runtimeGraph = workflowGraphModelResolver.resolveRuntimeGraph(rootNode);
 
         assertNotNull(rootNode);
         assertEquals("start", rootNode.getId());
@@ -94,11 +94,11 @@ class WorkflowModelBridgeTest {
 
         WorkflowException exception = assertThrows(
                 WorkflowException.class,
-                () -> workflowModelBridge.parseRuntimeGraph(legacyTreeJson)
+                () -> workflowGraphModelResolver.parseRuntimeGraph(legacyTreeJson)
         );
 
         assertEquals("VALIDATION_ERROR", exception.getCode());
-        assertFalse(workflowModelBridge.validateGraphModel(legacyTreeJson));
+        assertFalse(workflowGraphModelResolver.validateGraphModel(legacyTreeJson));
     }
 
     @Test
@@ -123,11 +123,11 @@ class WorkflowModelBridgeTest {
 
         WorkflowException exception = assertThrows(
                 WorkflowException.class,
-                () -> workflowModelBridge.parseRuntimeGraph(invalidGraphJson)
+                () -> workflowGraphModelResolver.parseRuntimeGraph(invalidGraphJson)
         );
 
         assertEquals("VALIDATION_ERROR", exception.getCode());
-        assertFalse(workflowModelBridge.validateGraphModel(invalidGraphJson));
+        assertFalse(workflowGraphModelResolver.validateGraphModel(invalidGraphJson));
     }
 
     @Test
@@ -149,11 +149,11 @@ class WorkflowModelBridgeTest {
 
         WorkflowException exception = assertThrows(
                 WorkflowException.class,
-                () -> workflowModelBridge.parseRuntimeGraph(invalidGraphJson)
+                () -> workflowGraphModelResolver.parseRuntimeGraph(invalidGraphJson)
         );
 
         assertEquals("VALIDATION_ERROR", exception.getCode());
-        assertNull(workflowModelBridge.resolveRuntimeGraph(null));
+        assertNull(workflowGraphModelResolver.resolveRuntimeGraph(null));
         assertTrue(exception.getMessage() != null && !exception.getMessage().isBlank());
     }
 }

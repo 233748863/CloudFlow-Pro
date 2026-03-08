@@ -23,7 +23,7 @@ import com.cloudflow.workflow.mapper.system.SysDeptMapper;
 import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
@@ -97,7 +97,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     @Autowired
     private com.cloudflow.workflow.service.monitor.IAnomalyDetectionService anomalyDetectionService;
     @Autowired
-    private WorkflowModelBridge workflowModelBridge;
+    private WorkflowGraphModelResolver workflowGraphModelResolver;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -328,7 +328,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     }
 
     private WorkflowRuntimeGraph resolveRuntimeGraph(WfNodeConfig rootNode) {
-        return workflowModelBridge.resolveRuntimeGraph(rootNode);
+        return workflowGraphModelResolver.resolveRuntimeGraph(rootNode);
     }
 
     private WorkflowRuntimeGraph requireRuntimeGraph(WfNodeConfig rootNode) {

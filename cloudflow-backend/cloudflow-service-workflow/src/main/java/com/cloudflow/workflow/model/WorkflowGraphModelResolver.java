@@ -24,7 +24,7 @@ import java.util.Set;
  * 2. 对内构建运行时图索引（WorkflowRuntimeGraph）供执行引擎直接使用。
  */
 @Component
-public class WorkflowModelBridge {
+public class WorkflowGraphModelResolver {
 
     private static final TypeReference<Map<String, String>> STRING_MAP_TYPE = new TypeReference<>() {};
     private static final TypeReference<Map<String, Object>> OBJECT_MAP_TYPE = new TypeReference<>() {};

@@ -1,7 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.workflow.exception.WorkflowException;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import org.junit.jupiter.api.Test;
 
@@ -90,7 +90,7 @@ class WfDefinitionServiceImplTest {
 
     private WfDefinitionServiceImpl createService() {
         WfDefinitionServiceImpl service = new WfDefinitionServiceImpl();
-        injectField(service, "workflowModelBridge", new WorkflowModelBridge());
+        injectField(service, "workflowGraphModelResolver", new WorkflowGraphModelResolver());
         injectField(service, "securityUtils", new WorkflowSecurityUtils());
         return service;
     }

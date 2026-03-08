@@ -10,7 +10,7 @@ import com.cloudflow.workflow.domain.dto.UpdateTemplateRequest;
 import com.cloudflow.workflow.domain.dto.TemplateDTO;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WorkflowTemplateMapper;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.ITemplateService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
@@ -46,7 +46,7 @@ public class TemplateServiceImpl implements ITemplateService {
     @Autowired
     private IWfDefinitionService definitionService;
     @Autowired
-    private WorkflowModelBridge workflowModelBridge;
+    private WorkflowGraphModelResolver workflowGraphModelResolver;
 
     /**
      * 分页查询模板列表（支持多条件筛选）
@@ -254,7 +254,7 @@ public class TemplateServiceImpl implements ITemplateService {
     @Override
     public boolean validateTemplateStructure(String definition) {
         try {
-            return workflowModelBridge.validateGraphModel(definition);
+            return workflowGraphModelResolver.validateGraphModel(definition);
         } catch (Exception e) {
             log.error("验证模板结构失败", e);
             return false;

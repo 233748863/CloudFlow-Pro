@@ -8,7 +8,7 @@ import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public class AsyncWorkflowService {
     @Autowired
     private IWorkflowSagaService sagaService;
     @Autowired
-    private WorkflowModelBridge workflowModelBridge;
+    private WorkflowGraphModelResolver workflowGraphModelResolver;
     @Autowired
     private INodeExecutionService nodeExecutionService;
 
@@ -86,11 +86,11 @@ public class AsyncWorkflowService {
                 return;
             }
 
-            WfNodeConfig rootNode = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-            WorkflowRuntimeGraph runtimeGraph = workflowModelBridge.resolveRuntimeGraph(rootNode);
+            WfNodeConfig rootNode = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+            WorkflowRuntimeGraph runtimeGraph = workflowGraphModelResolver.resolveRuntimeGraph(rootNode);
             String firstNodeId = runtimeGraph != null
                     ? runtimeGraph.getFirstExecutableNodeId()
-                    : workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
+                    : workflowGraphModelResolver.resolveFirstExecutableNodeId(def.getModelJson());
             WfNodeConfig nextNode = StringUtils.hasText(firstNodeId)
                     ? nodeExecutionService.findNode(rootNode, firstNodeId)
                     : rootNode;

@@ -7,7 +7,7 @@ import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.service.INodeExecutionService;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,7 +45,7 @@ public class SubprocessCompletedListener {
     private final WfProcessDefinitionMapper processDefinitionMapper;
     @Lazy
     private final INodeExecutionService nodeExecutionService;
-    private final WorkflowModelBridge workflowModelBridge;
+    private final WorkflowGraphModelResolver workflowGraphModelResolver;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -53,11 +53,11 @@ public class SubprocessCompletedListener {
     public SubprocessCompletedListener(WfProcessInstanceMapper processInstanceMapper,
                                         WfProcessDefinitionMapper processDefinitionMapper,
                                         @Lazy INodeExecutionService nodeExecutionService,
-                                        WorkflowModelBridge workflowModelBridge) {
+                                        WorkflowGraphModelResolver workflowGraphModelResolver) {
         this.processInstanceMapper = processInstanceMapper;
         this.processDefinitionMapper = processDefinitionMapper;
         this.nodeExecutionService = nodeExecutionService;
-        this.workflowModelBridge = workflowModelBridge;
+        this.workflowGraphModelResolver = workflowGraphModelResolver;
     }
 
     /**
@@ -119,7 +119,7 @@ public class SubprocessCompletedListener {
             }
 
             // 4. 解析父流程模型
-            WfNodeConfig rootNode = workflowModelBridge.parseRuntimeRoot(parentDef.getModelJson());
+            WfNodeConfig rootNode = workflowGraphModelResolver.parseRuntimeRoot(parentDef.getModelJson());
 
             // 5. 定位触发子流程的节点
             WfNodeConfig subprocessNode = nodeExecutionService.findNode(rootNode, parentNodeKey);

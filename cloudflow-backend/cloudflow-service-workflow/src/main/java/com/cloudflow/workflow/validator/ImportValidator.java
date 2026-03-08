@@ -6,7 +6,7 @@ import com.cloudflow.workflow.domain.dto.ValidationResultDTO;
 import com.cloudflow.workflow.domain.dto.WorkflowExportFormat;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.util.ExportFormatUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,7 @@ public class ImportValidator {
     @Autowired
     private WfProcessDefinitionMapper definitionMapper;
     @Autowired
-    private WorkflowModelBridge workflowModelBridge;
+    private WorkflowGraphModelResolver workflowGraphModelResolver;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -304,7 +304,7 @@ public class ImportValidator {
             }
 
             String definitionJson = objectMapper.writeValueAsString(definition);
-            if (!workflowModelBridge.validateGraphModel(definitionJson)) {
+            if (!workflowGraphModelResolver.validateGraphModel(definitionJson)) {
                 errors.add("流程定义必须为合法的 nodes+edges 图模型");
             }
         } catch (Exception e) {

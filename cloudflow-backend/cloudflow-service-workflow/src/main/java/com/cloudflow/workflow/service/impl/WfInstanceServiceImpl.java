@@ -16,7 +16,7 @@ import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.listener.GlobalListenerDispatcher;
 import com.cloudflow.workflow.mapper.*;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.*;
@@ -85,7 +85,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Autowired(required = false)
     private TimerSchedulerService timerSchedulerService;
     @Autowired
-    private WorkflowModelBridge workflowModelBridge;
+    private WorkflowGraphModelResolver workflowGraphModelResolver;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -199,11 +199,11 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 解析流程模型并执行第一个节点
         try {
             if (StringUtils.hasText(def.getModelJson())) {
-                WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
-                WorkflowRuntimeGraph runtimeGraph = workflowModelBridge.resolveRuntimeGraph(root);
+                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+                WorkflowRuntimeGraph runtimeGraph = workflowGraphModelResolver.resolveRuntimeGraph(root);
                 String firstNodeId = runtimeGraph != null
                         ? runtimeGraph.getFirstExecutableNodeId()
-                        : workflowModelBridge.resolveFirstExecutableNodeId(def.getModelJson());
+                        : workflowGraphModelResolver.resolveFirstExecutableNodeId(def.getModelJson());
                 WfNodeConfig firstNode = StringUtils.hasText(firstNodeId)
                         ? nodeExecutionService.findNode(root, firstNodeId)
                         : root;
@@ -398,7 +398,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         try {
             WfProcessDefinition def = resolveDefinitionByInstance(instance);
             if (def != null && StringUtils.hasText(def.getModelJson())) {
-                WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
+                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
                 List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
                 String currentNodeKey = activeNodeKeys.isEmpty() ? null : activeNodeKeys.get(0);
                 stepsDetail = nodeExecutionService.buildAllStepsDetail(steps, histories, currentNodeKey);
@@ -535,7 +535,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 WfProcessDefinition def = resolveDefinitionByInstance(instance);
 
                 if (def != null && StringUtils.hasText(def.getModelJson())) {
-                    WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(def.getModelJson());
+                    WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
                     WfNodeConfig timerNode = nodeExecutionService.findNode(root, nodeKey);
                     if (timerNode != null) {
                         nodeExecutionService.advanceAfterNode(instance, timerNode, nodeKey, variables, 0, root);
@@ -602,7 +602,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
 
         try {
             JsonNode graphRoot = objectMapper.readTree(def.getModelJson());
-            if (!workflowModelBridge.isGraphModel(graphRoot)) {
+            if (!workflowGraphModelResolver.isGraphModel(graphRoot)) {
                 throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
             }
 

@@ -11,7 +11,7 @@ import com.cloudflow.workflow.handler.INodeHandler;
 import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.model.WorkflowRuntimeGraph;
 import com.cloudflow.workflow.service.INodeExecutionService;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -63,7 +63,7 @@ public class SubprocessNodeHandler implements INodeHandler {
     @Lazy
     private INodeExecutionService nodeExecutionService;
     @Autowired
-    private WorkflowModelBridge workflowModelBridge;
+    private WorkflowGraphModelResolver workflowGraphModelResolver;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -185,11 +185,11 @@ public class SubprocessNodeHandler implements INodeHandler {
             processInstanceMapper.insert(subInstance);
 
             // 解析子流程模型并启动执行
-            WfNodeConfig subRoot = workflowModelBridge.parseRuntimeRoot(subDef.getModelJson());
-            WorkflowRuntimeGraph runtimeGraph = workflowModelBridge.resolveRuntimeGraph(subRoot);
+            WfNodeConfig subRoot = workflowGraphModelResolver.parseRuntimeRoot(subDef.getModelJson());
+            WorkflowRuntimeGraph runtimeGraph = workflowGraphModelResolver.resolveRuntimeGraph(subRoot);
             String firstNodeId = runtimeGraph != null
                     ? runtimeGraph.getFirstExecutableNodeId()
-                    : workflowModelBridge.resolveFirstExecutableNodeId(subDef.getModelJson());
+                    : workflowGraphModelResolver.resolveFirstExecutableNodeId(subDef.getModelJson());
             WfNodeConfig firstNode = StringUtils.hasText(firstNodeId)
                     ? nodeExecutionService.findNode(subRoot, firstNodeId)
                     : subRoot;

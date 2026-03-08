@@ -13,7 +13,7 @@ import java.util.Set;
 
 /**
  * JSON 校验器。
- * 说明：流程定义已统一走 nodes+edges 图模型校验（WorkflowModelBridge），
+ * 说明：流程定义已统一走 nodes+edges 图模型校验（WorkflowGraphModelResolver），
  * 这里仅保留表单 Schema 校验逻辑。
  */
 @Component

@@ -19,7 +19,7 @@ import com.cloudflow.workflow.mapper.WfFormDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
@@ -70,7 +70,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     @Autowired
     private IVersionService versionService;
     @Autowired
-    private WorkflowModelBridge workflowModelBridge;
+    private WorkflowGraphModelResolver workflowGraphModelResolver;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -94,7 +94,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         // JSON 结构校验 + P0-5: 递归 XSS 过滤 modelJson 内所有节点文本字段
         if (StringUtils.hasText(definition.getModelJson())) {
-            if (!workflowModelBridge.validateGraphModel(definition.getModelJson())) {
+            if (!workflowGraphModelResolver.validateGraphModel(definition.getModelJson())) {
                 throw WorkflowException.validationError("流程定义图模型校验失败");
             }
             validateModelIntegrity(definition.getModelJson());
@@ -190,7 +190,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         validateBoundFormTenant(def.getFormId(), def.getTenantId(), "发布");
 
-        if (!workflowModelBridge.validateGraphModel(def.getModelJson())) {
+        if (!workflowGraphModelResolver.validateGraphModel(def.getModelJson())) {
             throw WorkflowException.validationError("流程定义图模型校验失败");
         }
 
@@ -367,7 +367,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
 
         try {
             JsonNode graphRoot = objectMapper.readTree(def.getModelJson());
-            if (!workflowModelBridge.isGraphModel(graphRoot)) {
+            if (!workflowGraphModelResolver.isGraphModel(graphRoot)) {
                 throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
             }
 
@@ -532,7 +532,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     private void validateModelIntegrity(String modelJson) {
         try {
             JsonNode graphRoot = objectMapper.readTree(modelJson);
-            if (!workflowModelBridge.isGraphModel(graphRoot)) {
+            if (!workflowGraphModelResolver.isGraphModel(graphRoot)) {
                 throw WorkflowException.validationError("仅支持 nodes+edges 图模型");
             }
 

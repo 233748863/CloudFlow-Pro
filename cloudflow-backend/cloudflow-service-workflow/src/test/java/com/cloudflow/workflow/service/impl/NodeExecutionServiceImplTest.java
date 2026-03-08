@@ -3,7 +3,7 @@ package com.cloudflow.workflow.service.impl;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.exception.WorkflowException;
-import com.cloudflow.workflow.model.WorkflowModelBridge;
+import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -18,12 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NodeExecutionServiceImplTest {
 
-    private final WorkflowModelBridge workflowModelBridge = new WorkflowModelBridge();
+    private final WorkflowGraphModelResolver workflowGraphModelResolver = new WorkflowGraphModelResolver();
 
     @Test
     void findNextNodeShouldPreferDefaultEdgeWhenMultipleOutgoingEdgesExist() {
         TestNodeExecutionService service = createService();
-        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot("""
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot("""
                 {
                   "nodes": [
                     { "id": "start", "type": "START", "title": "开始" },
@@ -52,7 +52,7 @@ class NodeExecutionServiceImplTest {
     @Test
     void advanceAfterNodeShouldRouteToMatchedExclusiveBranch() {
         TestNodeExecutionService service = createService();
-        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(buildExclusiveGraphJson());
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(buildExclusiveGraphJson());
         WfNodeConfig gateway = service.findNode(root, "gateway");
         Map<String, Object> variables = Map.of("route_branch", true);
 
@@ -64,7 +64,7 @@ class NodeExecutionServiceImplTest {
     @Test
     void advanceAfterNodeShouldFallbackToDefaultEdgeWhenNoBranchMatches() {
         TestNodeExecutionService service = createService();
-        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot(buildExclusiveGraphJson());
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(buildExclusiveGraphJson());
         WfNodeConfig gateway = service.findNode(root, "gateway");
         Map<String, Object> variables = Map.of("route_branch", false);
 
@@ -76,7 +76,7 @@ class NodeExecutionServiceImplTest {
     @Test
     void advanceAfterNodeShouldRejectAmbiguousConditionBranchEntry() {
         TestNodeExecutionService service = createService();
-        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot("""
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot("""
                 {
                   "nodes": [
                     { "id": "start", "type": "START", "title": "开始" },
@@ -115,7 +115,7 @@ class NodeExecutionServiceImplTest {
     @Test
     void advanceAfterNodeShouldForkAllParallelBranches() {
         TestNodeExecutionService service = createService();
-        WfNodeConfig root = workflowModelBridge.parseRuntimeRoot("""
+        WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot("""
                 {
                   "nodes": [
                     { "id": "start", "type": "START", "title": "开始" },
@@ -143,7 +143,7 @@ class NodeExecutionServiceImplTest {
 
     private TestNodeExecutionService createService() {
         TestNodeExecutionService service = new TestNodeExecutionService();
-        injectField(service, "workflowModelBridge", workflowModelBridge);
+        injectField(service, "workflowGraphModelResolver", workflowGraphModelResolver);
         return service;
     }
 
