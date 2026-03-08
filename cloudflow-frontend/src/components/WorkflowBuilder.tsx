@@ -3840,7 +3840,7 @@ const PropertyPanel = ({
 }: {
   node: WorkflowTreeNode;
   onClose: () => void;
-  onUpdate: (id: string, data: Partial<WorkflowTreeNode>) => void;
+  onUpdate: (id: string, data: Partial<WorkflowGraphNode>) => void;
   onDelete: (id: string) => void;
   onConfirmAction: (message: string, onConfirm: () => void) => void;
 }) => {
@@ -3849,7 +3849,7 @@ const PropertyPanel = ({
   useEffect(() => {
     setFormData(node);
   }, [node.id, node.branches, node.branchStrategy, node.props]);
-  const handleChange = (field: keyof WorkflowTreeNode, value: any) => {
+  const handleChange = (field: keyof WorkflowGraphNode, value: any) => {
     // 切换审批方式时，清空之前选择的审批人，避免残留旧数据
     if (field === "approverType") {
       const updated = { ...formData, approverType: value, approverValue: "" };
@@ -7027,12 +7027,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     );
     applyGraphChange(nextGraph);
   };
-  const handleUpdateNode = (id: string, data: Partial<WorkflowTreeNode>) => {
-    const nextGraph = patchWorkflowGraphNode(
-      graphModel,
-      id,
-      data as Partial<WorkflowGraphNode>,
-    );
+  const handleUpdateNode = (id: string, data: Partial<WorkflowGraphNode>) => {
+    const nextGraph = patchWorkflowGraphNode(graphModel, id, data);
     applyGraphChange(nextGraph);
   };
 
