@@ -5140,6 +5140,9 @@ const FlowNode = ({
   const displayNode = graphNode ?? (node as EditableWorkflowNode);
   const branchCount =
     actions.getBranchCount(node.id) || node.branches?.length || 0;
+  const nextDisplayNode = node.next
+    ? actions.getNode(node.next.id) ?? (node.next as EditableWorkflowNode)
+    : null;
   const [isDragging, setIsDragging] = useState(false);
   const showQuickAdd = activeQuickAddId === node.id;
   const isSelected = selectedNodeId === node.id;
@@ -5334,7 +5337,7 @@ const FlowNode = ({
         </div>
 
         {/* END节点的添加按钮 - 在节点上方，稍微拉开距离防止挡住上面的线和卡片 */}
-        {node.type === NodeType.END && (
+        {displayNode.type === NodeType.END && (
           <div
             className="absolute -top-6 left-1/2 -translate-x-1/2 z-30"
             style={{ pointerEvents: "auto" }}
@@ -5778,7 +5781,7 @@ const FlowNode = ({
       )}
 
       {/* 下一个节点 */}
-      {node.next && node.next.type !== NodeType.END && (
+      {node.next && nextDisplayNode?.type !== NodeType.END && (
         <div className="flex flex-col items-center w-full">
           <ConnectorDropZone
             parentId={node.id}
@@ -5801,7 +5804,7 @@ const FlowNode = ({
       )}
 
       {/* 结束节点: 因为添加节点永远是在被点加号的节点"后面"插入，如果是END节点，则是特例插入到END之前，所以连线也得对应过去 */}
-      {node.next && node.next.type === NodeType.END && (
+      {node.next && nextDisplayNode?.type === NodeType.END && (
         <div className="flex flex-col items-center w-full relative">
           <ConnectorDropZone
             parentId={node.id}
