@@ -5277,9 +5277,9 @@ const FlowNode = ({
                 {node.approverValue && (
                   <div className="text-[10px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1 border border-slate-100">
                     <span className="text-slate-400">
-                      {node.approverType === "ROLE"
+                      {displayNode.approverType === "ROLE"
                         ? "参与角色: "
-                        : node.approverType === "USER"
+                        : displayNode.approverType === "USER"
                           ? "参与人员: "
                           : "参与人: "}
                     </span>
@@ -5325,9 +5325,9 @@ const FlowNode = ({
               </div>
             )}
             {/* 条件标签 */}
-            {node.condition && (
+            {displayNode.condition && (
               <div className="mt-1.5 text-[10px] bg-amber-50 text-amber-700 px-2 py-1 rounded-lg truncate font-mono border border-amber-100">
-                条件: {node.condition}
+                条件: {displayNode.condition}
               </div>
             )}
           </div>
