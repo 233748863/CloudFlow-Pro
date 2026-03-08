@@ -5087,6 +5087,8 @@ interface FlowNodeActionsContextValue {
   onSelect: (nodeId: string) => void;
   onDrop: (dragId: string, dropId: string) => void;
   onCopy: (nodeId: string) => void;
+  getNode: (nodeId: string) => EditableWorkflowNode | null;
+  getBranchCount: (nodeId: string) => number;
   setDraggingGlobal: (value: boolean) => void;
   setDraggingNodeId: (id: string | null) => void;
   setActiveQuickAddId: (id: string | null) => void;
@@ -5100,6 +5102,8 @@ const flowNodeActionsFallback: FlowNodeActionsContextValue = {
   onSelect: noop as (nodeId: string) => void,
   onDrop: noop as (dragId: string, dropId: string) => void,
   onCopy: noop as (nodeId: string) => void,
+  getNode: () => null,
+  getBranchCount: () => 0,
   setDraggingGlobal: noop as (value: boolean) => void,
   setDraggingNodeId: noop as (id: string | null) => void,
   setActiveQuickAddId: noop as (id: string | null) => void,
@@ -5132,24 +5136,32 @@ const FlowNode = ({
   isInsideBranch: boolean;
 }) => {
   const actions = React.useContext(FlowNodeActionsContext);
+  const graphNode = actions.getNode(node.id);
+  const displayNode = graphNode ?? (node as EditableWorkflowNode);
+  const branchCount =
+    actions.getBranchCount(node.id) || node.branches?.length || 0;
   const [isDragging, setIsDragging] = useState(false);
   const showQuickAdd = activeQuickAddId === node.id;
   const isSelected = selectedNodeId === node.id;
   const isInvalid = invalidNodes.includes(node.id);
-  const visual = getNodeVisual(node.type);
+  const visual = getNodeVisual(displayNode.type);
   const NIcon = visual.icon;
   // 分支子树节点禁止拖拽：拖拽会破坏分支结构，改为前置禁用避免误操作
   const canDrag =
-    !isInsideBranch && node.type !== NodeType.START && node.type !== NodeType.END;
+    !isInsideBranch &&
+    displayNode.type !== NodeType.START &&
+    displayNode.type !== NodeType.END;
 
   // 画布悬停逻辑优化（去鼠标追踪依赖，改为直接点击触发）
   const canShowHover = !activeQuickAddId || activeQuickAddId === node.id;
 
   // 判断能否添加条件分支
   const canAddBranch =
-    node.type !== NodeType.PARALLEL ||
-    (node.signType &&
-      !["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(node.signType));
+    displayNode.type !== NodeType.PARALLEL ||
+    (displayNode.signType &&
+      !["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(
+        String(displayNode.signType),
+      ));
 
   return (
     <div className="flex flex-col items-center relative group/node animate-in fade-in zoom-in-95 duration-300 ease-out">
@@ -5209,28 +5221,24 @@ const FlowNode = ({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-slate-700 truncate">
-                  {node.title}
+                  {displayNode.title}
                 </div>
                 <div className="text-[10px] text-slate-400">
-                  {node.type === NodeType.PARALLEL
-                    ? node.branches &&
-                      node.branches.length > 0 &&
-                      node.branchStrategy
-                      ? BRANCH_STRATEGY_LABELS[node.branchStrategy] ||
-                        node.branchStrategy
-                      : node.signType === "ANY"
+                  {displayNode.type === NodeType.PARALLEL
+                    ? branchCount > 0 && displayNode.branchStrategy
+                      ? BRANCH_STRATEGY_LABELS[displayNode.branchStrategy] ||
+                        displayNode.branchStrategy
+                      : displayNode.signType === "ANY"
                         ? "或签模式"
-                        : node.signType === "PERCENT"
+                        : displayNode.signType === "PERCENT"
                           ? "比例签模式"
-                          : node.signType === "SEQUENTIAL"
+                          : displayNode.signType === "SEQUENTIAL"
                             ? "顺序签模式"
                             : "全签模式"
-                    : node.branches &&
-                        node.branches.length > 0 &&
-                        node.branchStrategy
-                      ? BRANCH_STRATEGY_LABELS[node.branchStrategy] ||
-                        node.branchStrategy
-                      : NODE_TYPE_LABELS[node.type] || node.type}
+                    : branchCount > 0 && displayNode.branchStrategy
+                      ? BRANCH_STRATEGY_LABELS[displayNode.branchStrategy] ||
+                        displayNode.branchStrategy
+                      : NODE_TYPE_LABELS[displayNode.type] || displayNode.type}
                 </div>
               </div>
               {canDrag && (
@@ -5243,25 +5251,25 @@ const FlowNode = ({
               )}
             </div>
             {/* 会签信息展示 - 仅 PARALLEL 节点 */}
-            {node.type === NodeType.PARALLEL && (
+            {displayNode.type === NodeType.PARALLEL && (
               <div className="mt-1.5 space-y-1.5">
                 {/* 会签类型标签 */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700">
-                    {node.signType === "ANY"
+                    {displayNode.signType === "ANY"
                       ? "或签"
-                      : node.signType === "PERCENT"
-                        ? `比例签 ${node.passPercent || 0}%`
-                        : node.signType === "SEQUENTIAL"
+                      : displayNode.signType === "PERCENT"
+                        ? `比例签 ${displayNode.passPercent || 0}%`
+                        : displayNode.signType === "SEQUENTIAL"
                           ? "顺序签"
                           : "全签"}
                   </span>
-                  {node.approverType && (
+                  {displayNode.approverType && (
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}
                     >
-                      {APPROVER_TYPE_LABELS[node.approverType] ||
-                        node.approverType}
+                      {APPROVER_TYPE_LABELS[displayNode.approverType] ||
+                        displayNode.approverType}
                     </span>
                   )}
                 </div>
@@ -5278,7 +5286,8 @@ const FlowNode = ({
                     <span className="font-medium text-slate-600">
                       {(() => {
                         const displayText =
-                          node.props?.approverLabel || node.approverValue;
+                          displayNode.props?.approverLabel ||
+                          displayNode.approverValue;
                         const parts = displayText
                           .split(",")
                           .map((s: string) => s.trim());
@@ -5290,7 +5299,7 @@ const FlowNode = ({
                   </div>
                 )}
                 {/* 未配置审批人提示 */}
-                {!node.approverValue && (
+                {!displayNode.approverValue && (
                   <div className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1 border border-amber-100 flex items-center gap-1">
                     ⚠ 请在右侧面板配置审批人
                   </div>
@@ -5298,16 +5307,19 @@ const FlowNode = ({
               </div>
             )}
             {/* 审批人标签 - 非 PARALLEL 节点 */}
-            {node.type !== NodeType.PARALLEL && node.approverType && (
+            {displayNode.type !== NodeType.PARALLEL &&
+              displayNode.approverType && (
               <div className="flex items-center gap-1.5 mt-1">
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}
                 >
-                  {APPROVER_TYPE_LABELS[node.approverType] || node.approverType}
+                  {APPROVER_TYPE_LABELS[displayNode.approverType] ||
+                    displayNode.approverType}
                 </span>
-                {node.approverValue && (
+                {displayNode.approverValue && (
                   <span className="text-[10px] text-slate-500 truncate max-w-[140px]">
-                    {node.props?.approverLabel || node.approverValue}
+                    {displayNode.props?.approverLabel ||
+                      displayNode.approverValue}
                   </span>
                 )}
               </div>
@@ -7395,6 +7407,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       onSelect: (nodeId) => setSelectedNodeId(nodeId),
       onDrop: handleDrop,
       onCopy: handleCopyNode,
+      getNode: (nodeId) => {
+        const node = findWorkflowGraphNode(graphModelRef.current, nodeId);
+        return node ? toEditableWorkflowNode(node) : null;
+      },
+      getBranchCount: (nodeId) =>
+        countWorkflowGraphBranches(graphModelRef.current, nodeId),
       setDraggingGlobal,
       setDraggingNodeId,
       setActiveQuickAddId,
