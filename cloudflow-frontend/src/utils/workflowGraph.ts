@@ -4,7 +4,6 @@ import {
   WorkflowGraphEdge,
   WorkflowGraphNode,
 } from '../types';
-import { WorkflowTreeNode } from '../types/workflowEditor';
 
 /**
  * 仅判定 nodes+edges 图结构，树结构不再视为合法模型。
@@ -130,7 +129,9 @@ const collectGraphSubtreeIds = (
 /**
  * 编辑器内部暂时保留树形结构，这里负责图 -> 树适配。
  */
-export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): WorkflowTreeNode => {
+export const assertWorkflowGraphIntegrity = (
+  graph: WorkflowGraphDefinition,
+): void => {
   if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) {
     throw new Error('流程图节点不能为空');
   }
@@ -180,6 +181,12 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     }
   });
 
+  outgoing.forEach((edges, nodeId) => {
+    const defaultEdges = edges.filter((edge) => isDefaultEdge(edge));
+    if (defaultEdges.length > 1) {
+      throw new Error(`节点存在多条默认连线: ${nodeId}`);
+    }
+  });
   const reachable = new Set<string>();
   const collectReachable = (nodeId: string, path: Set<string>) => {
     if (path.has(nodeId)) {
@@ -199,132 +206,10 @@ export const convertGraphToWorkflowTree = (graph: WorkflowGraphDefinition): Work
     throw new Error('流程图存在不可达节点，请删除孤立节点后重试');
   }
 
-  const build = (nodeId: string, path: Set<string>): WorkflowTreeNode | undefined => {
-    if (path.has(nodeId)) {
-      throw new Error(`流程图存在循环，节点ID: ${nodeId}`);
-    }
-    const source = nodeMap.get(nodeId);
-    if (!source) return undefined;
-
-    const { id, type, title, ...rest } = source;
-    const node: WorkflowTreeNode = {
-      ...(rest as Omit<WorkflowTreeNode, 'id' | 'type' | 'title'>),
-      id,
-      type: ((type as NodeType) || NodeType.APPROVAL) as NodeType,
-      title: String(title || '未命名节点'),
-    };
-
-    const nextPath = new Set(path);
-    nextPath.add(nodeId);
-    const nextEdges = outgoing.get(nodeId) ?? [];
-    const buildFromEdge = (edge: WorkflowGraphEdge): WorkflowTreeNode | undefined => {
-      const child = build(edge.target, nextPath);
-      const edgeCondition = extractEdgeCondition(edge);
-      if (child && !child.condition && edgeCondition) {
-        child.condition = edgeCondition;
-      }
-      return child;
-    };
-
-    if (nextEdges.length === 1) {
-      const singleEdge = nextEdges[0];
-      const next = buildFromEdge(singleEdge);
-      const targetNode = nodeMap.get(singleEdge.target);
-      const shouldTreatAsBranch =
-        !isDefaultEdge(singleEdge) &&
-        (
-          String(targetNode?.type || "").toUpperCase() === NodeType.CONDITION ||
-          !!extractEdgeCondition(singleEdge)
-        );
-      if (next) {
-        if (shouldTreatAsBranch) {
-          node.branches = [next];
-        } else {
-          node.next = next;
-        }
-      }
-    } else if (nextEdges.length > 1) {
-      const defaultEdges = nextEdges.filter((edge) => isDefaultEdge(edge));
-      if (defaultEdges.length > 1) {
-        throw new Error(`节点存在多条默认连线: ${node.id}`);
-      }
-      const defaultEdge = defaultEdges[0];
-      const branchEdges = nextEdges.filter((edge) => edge !== defaultEdge);
-      const branches = branchEdges
-        .map((edge) => buildFromEdge(edge))
-        .filter(Boolean) as WorkflowTreeNode[];
-      if (branches.length > 0) {
-        node.branches = branches;
-      }
-      if (defaultEdge) {
-        const next = buildFromEdge(defaultEdge);
-        if (next) node.next = next;
-      }
-    }
-
-    return node;
-  };
-
-  const root = build(startNode.id, new Set());
-  if (!root) {
-    throw new Error('流程图解析失败，未生成可执行根节点');
-  }
-  return root;
 };
 
 /**
- * 保存时统一输出图结构，避免树模型回写到后端。
- */
-export const convertWorkflowTreeToGraph = (root: WorkflowTreeNode): WorkflowGraphDefinition => {
-  const nodes: WorkflowGraphNode[] = [];
-  const edges: WorkflowGraphEdge[] = [];
-  const visited = new Set<string>();
-  const edgeIds = new Set<string>();
-
-  const appendEdge = (source: string, target: string, extra: Partial<WorkflowGraphEdge> = {}) => {
-    const key = `${source}->${target}`;
-    if (edgeIds.has(key)) return;
-    edgeIds.add(key);
-    edges.push({ id: key, source, target, ...extra });
-  };
-
-  const walk = (node?: WorkflowTreeNode) => {
-    if (!node || !node.id) return;
-
-    if (!visited.has(node.id)) {
-      const rawNode = node as unknown as Record<string, unknown>;
-      const { next, branches, ...rest } = rawNode;
-      nodes.push(rest as WorkflowGraphNode);
-      visited.add(node.id);
-    }
-
-    if (node.next?.id) {
-      const markDefault = Array.isArray(node.branches) && node.branches.length > 0;
-      appendEdge(node.id, node.next.id, markDefault ? { isDefault: true } : {});
-      walk(node.next);
-    }
-
-    if (Array.isArray(node.branches)) {
-      node.branches.forEach((branch) => {
-        if (!branch?.id) return;
-        const branchCondition = typeof branch.condition === 'string' ? branch.condition.trim() : '';
-        appendEdge(node.id, branch.id, branchCondition ? { condition: branchCondition } : {});
-        walk(branch);
-      });
-    }
-  };
-
-  walk(root);
-
-  if (nodes.length === 0) {
-    return createDefaultWorkflowGraph();
-  }
-
-  return { nodes, edges };
-};
-
-/**
- * 基于图模型直接更新节点字段，避免属性面板修改再绕回树模型。
+ * ?????????????????????????????
  */
 export const patchWorkflowGraphNode = (
   graph: WorkflowGraphDefinition,

@@ -95,9 +95,9 @@ import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { useAuth } from "../context/AuthContext";
 import {
   appendWorkflowGraphBranch,
+  assertWorkflowGraphIntegrity,
   countWorkflowGraphBranches,
   cloneWorkflowGraphSubgraph,
-  convertGraphToWorkflowTree,
   findWorkflowGraphMainTargetId,
   findWorkflowGraphNode,
   findWorkflowGraphParentNodeId,
@@ -6591,7 +6591,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       let nextStateGraph = nextGraph;
 
       try {
-        convertGraphToWorkflowTree(nextGraph);
+        assertWorkflowGraphIntegrity(nextGraph);
       } catch (error) {
         if (!options?.fallbackToDefault) {
           throw error;
