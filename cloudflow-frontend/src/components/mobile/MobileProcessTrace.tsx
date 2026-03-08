@@ -108,22 +108,7 @@ const normalizeTraceNodes = (trace: any): TraceNode[] => {
     return merged.sort((a, b) => toTimestamp(a.time) - toTimestamp(b.time));
   }
 
-  // 兜底兼容：若后端仍返回 nodes 数组，则按线性列表展示（不再解析 next/branches 树结构）
-  const fallbackNodes = Array.isArray(trace?.nodes)
-    ? trace.nodes.map((item: any, index: number) => ({
-        id: String(item?.id || item?.nodeKey || `node_${index}`),
-        nodeKey: String(item?.nodeKey || item?.id || ''),
-        name: String(item?.title || item?.name || '未命名节点'),
-        type: String(item?.type || 'NODE'),
-        status: normalizeStatus(item?.status),
-        operator: item?.operatorId !== undefined && item?.operatorId !== null ? String(item.operatorId) : undefined,
-        operatorName: item?.operatorName ? String(item.operatorName) : undefined,
-        comment: item?.comment ? String(item.comment) : undefined,
-        time: item?.endTime || item?.startTime || item?.time,
-      }))
-    : [];
-
-  return fallbackNodes.sort((a, b) => toTimestamp(a.time) - toTimestamp(b.time));
+  return [];
 };
 
 /**

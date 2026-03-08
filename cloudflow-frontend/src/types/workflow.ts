@@ -75,25 +75,6 @@ export enum TraceNodeStatus {
   SKIPPED = 'SKIPPED'
 }
 
-/**
- * 流程轨迹节点
- */
-export interface ProcessTraceNode {
-  id: string;
-  type: string;
-  title: string;
-  status: TraceNodeStatus;
-  assigneeId?: string;
-  assigneeName?: string;
-  startTime?: string;
-  endTime?: string;
-  comment?: string;
-  condition?: string;
-}
-
-/**
- * 流程轨迹历史详情
- */
 export interface ProcessTraceHistoryDetail {
   historyId: string;
   taskId: string;
@@ -130,7 +111,6 @@ export interface ProcessTrace {
   applicantName?: string;
   startTime?: string;
   endTime?: string;
-  nodes?: ProcessTraceNode[];
   logs?: ProcessLog[];
   // 后端实际返回的字段
   finished: string[];

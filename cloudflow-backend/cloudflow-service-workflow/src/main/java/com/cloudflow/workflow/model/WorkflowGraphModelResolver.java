@@ -19,9 +19,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 工作流模型桥接器
+ * 工作流图模型解析器。
  * 1. 对外只接受 nodes+edges 图模型。
- * 2. 对内构建运行时图索引（WorkflowRuntimeGraph）供执行引擎直接使用。
+ * 2. 对内构建 WorkflowRuntimeGraph 供执行引擎直接使用。
  */
 @Component
 public class WorkflowGraphModelResolver {
