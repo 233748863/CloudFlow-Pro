@@ -158,11 +158,11 @@ export const ProcessManagement = () => {
     return [];
   };
 
-  const parseNodesSafely = (
+  const parseGraphSafely = (
     rawModelJson: unknown,
     workflowName: string,
     onError: () => void
-  ): BaseWorkflowDefinition['nodes'] | null => {
+  ): BaseWorkflowDefinition['graph'] | null => {
     if (!rawModelJson) {
       onError();
       console.warn(`[ProcessManagement] modelJson 为空，流程: ${workflowName}`);
@@ -240,10 +240,10 @@ export const ProcessManagement = () => {
                 : Array.isArray(w.tags)
                   ? JSON.stringify(w.tags)
                   : undefined;
-            const parsedNodes = parseNodesSafely(w.modelJson, workflowName, () => {
+            const parsedGraph = parseGraphSafely(w.modelJson, workflowName, () => {
               invalidModelCount += 1;
             });
-            if (!parsedNodes) {
+            if (!parsedGraph) {
               return null;
             }
             return {
@@ -267,7 +267,7 @@ export const ProcessManagement = () => {
               }),
               tagsRaw,
               description: w.description || '',
-              nodes: parsedNodes,
+              graph: parsedGraph,
               workflowCreatorId: String(
                 w.createBy ?? w.createdBy ?? w.creatorId ?? w.creator ?? ''
               )
@@ -371,7 +371,7 @@ export const ProcessManagement = () => {
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: JSON.stringify(workflow.nodes),
+          modelJson: JSON.stringify(workflow.graph),
           category: batchCategory,
           tags:
             workflow.tagsRaw !== undefined
@@ -442,7 +442,7 @@ export const ProcessManagement = () => {
           definitionId: id,
           processName: workflow.name,
           processKey: workflow.key,
-          modelJson: JSON.stringify(workflow.nodes),
+          modelJson: JSON.stringify(workflow.graph),
           category: workflow.category,
           tags: JSON.stringify(mergedTags),
           description: workflow.description,

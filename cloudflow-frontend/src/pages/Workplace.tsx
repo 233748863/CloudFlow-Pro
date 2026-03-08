@@ -72,7 +72,7 @@ const mapBackendForm = (f: any): FormDefinition => {
 /**
  * 解析流程模型 JSON，仅接受合法的 nodes+edges 图模型。
  */
-const parseWorkflowNodes = (rawModelJson: unknown, workflowName: string): WorkflowDefinition['nodes'] => {
+const parseWorkflowGraph = (rawModelJson: unknown, workflowName: string): WorkflowDefinition['graph'] => {
   const graph = parseWorkflowGraphDefinition(rawModelJson);
   if (!graph) {
     throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
@@ -155,7 +155,7 @@ export const Workplace = () => {
                   // 与 WorkflowDefinition.tags 类型保持一致，统一存为 JSON 字符串
                   tags: typeof w.tags === 'string' ? w.tags : JSON.stringify(normalizeTags(w.tags)),
                   description: w.description || '',
-                  nodes: parseWorkflowNodes(w.modelJson, workflowName)
+                  graph: parseWorkflowGraph(w.modelJson, workflowName)
                 };
               } catch (error) {
                 invalidModelCount += 1;

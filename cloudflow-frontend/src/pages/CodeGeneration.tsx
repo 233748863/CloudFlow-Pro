@@ -9,7 +9,7 @@ import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 /**
  * 解析流程模型，仅接受合法的 nodes+edges 图模型。
  */
-const parseWorkflowNodes = (rawModelJson: unknown, workflowName: string): WorkflowDefinition['nodes'] => {
+const parseWorkflowGraph = (rawModelJson: unknown, workflowName: string): WorkflowDefinition['graph'] => {
   const graph = parseWorkflowGraphDefinition(rawModelJson);
   if (!graph) {
     throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
@@ -50,7 +50,7 @@ export const CodeGeneration = () => {
                   key: w.processKey,
                   version: w.version,
                   formId: w.formId,
-                  nodes: parseWorkflowNodes(w.modelJson, workflowName)
+                  graph: parseWorkflowGraph(w.modelJson, workflowName)
                 };
               } catch (error) {
                 invalidModelCount += 1;

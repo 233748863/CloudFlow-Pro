@@ -6569,7 +6569,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     redo,
     canUndo,
     canRedo,
-  } = useHistory<WorkflowGraphDefinition>(resolveGraphModel(workflow?.nodes));
+  } = useHistory<WorkflowGraphDefinition>(resolveGraphModel(workflow?.graph));
 
   const rootNodeId = useMemo(() => {
     const resolveStartNodeId = (currentGraph: WorkflowGraphDefinition) =>
@@ -6737,7 +6737,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     if (!currentWorkflow) return null;
     return {
       ...currentWorkflow,
-      nodes: graphModel,
+      graph: graphModel,
       name: workflowName,
       key: workflowKey,
       ...buildSettingsState(),
@@ -6748,7 +6748,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   useEffect(() => {
     if (!workflow) return;
 
-    const nextGraph = resolveGraphModel(workflow.nodes);
+    const nextGraph = resolveGraphModel(workflow.graph);
     replaceGraphState(nextGraph, { resetHistory: true, fallbackToDefault: true });
     const parsedTags = parseTagsToArray(workflow.tags);
     setSelectedNodeId(null);

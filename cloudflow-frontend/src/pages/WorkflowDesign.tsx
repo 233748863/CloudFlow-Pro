@@ -117,12 +117,13 @@ const createDefaultWorkflow = (): WorkflowDefinition => ({
   name: '新流程',
   key: 'new_process',
   version: 1,
-  nodes: createDefaultWorkflowGraph(),
+  graph: createDefaultWorkflowGraph(),
 });
 
 /**
- * 瑙ｆ瀽娴佺▼鑺傜偣瀹氫箟銆? * 浠呮帴鍙楀悎娉曠殑 nodes+edges 鍥炬ā鍨嬶紝寮傚父鏃剁洿鎺ユ姏閿欍€? */
-const parseWorkflowNodes = (raw: unknown, workflowName: string) => {
+ * 解析流程图定义，只接受合法的 nodes+edges 图模型。
+ */
+const parseWorkflowGraph = (raw: unknown, workflowName: string) => {
   const graph = parseWorkflowGraphDefinition(raw);
   if (!graph) {
     throw new Error(`流程 "${workflowName}" 的 modelJson 不是合法的 nodes+edges 图模型`);
@@ -159,7 +160,7 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   key: w?.processKey || 'new_process',
   version: Number(w?.version || 1),
   formId: w?.formId,
-  nodes: parseWorkflowNodes(w?.modelJson, w?.processName || '未命名流程'),
+  graph: parseWorkflowGraph(w?.modelJson, w?.processName || '未命名流程'),
   description: w?.description,
   category: w?.category,
   tags: typeof w?.tags === 'string' ? w.tags : w?.tags ? JSON.stringify(w.tags) : undefined,
@@ -206,7 +207,7 @@ const buildWorkflowSavePayload = (wf: WorkflowDefinition) => ({
   processName: wf.name,
   processKey: wf.key,
   formId: wf.formId,
-  modelJson: JSON.stringify(wf.nodes),
+  modelJson: JSON.stringify(wf.graph),
   description: wf.description,
   category: wf.category,
   tags: wf.tags,
@@ -223,7 +224,7 @@ const buildWorkflowContentSignature = (wf: WorkflowDefinition | null | undefined
     processName: wf.name || '',
     processKey: wf.key || '',
     formId: wf.formId || '',
-    modelJson: JSON.stringify(wf.nodes),
+    modelJson: JSON.stringify(wf.graph),
     description: wf.description || '',
     category: wf.category || '',
     tags: wf.tags || '',

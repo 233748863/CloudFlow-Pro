@@ -95,7 +95,7 @@ export interface WorkflowDefinition {
   key: string;
   version: number;
   formId?: string; // 绑定动态表单
-  nodes: WorkflowGraphDefinition;
+  graph: WorkflowGraphDefinition; // 前端内部统一保存完整图模型
   // P1: 新增字段（与后端 WfProcessDefinition 对齐）
   description?: string;
   category?: string;
