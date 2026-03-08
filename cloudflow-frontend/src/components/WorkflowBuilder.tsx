@@ -5072,7 +5072,7 @@ const ConnectorDropZone = ({
 interface FlowNodeActionsContextValue {
   onAddNext: (parentId: string, type?: NodeType) => void;
   onAddBranch: (parentId: string) => void;
-  onSelect: (node: WorkflowTreeNode) => void;
+  onSelect: (nodeId: string) => void;
   onDrop: (dragId: string, dropId: string) => void;
   onCopy: (nodeId: string) => void;
   setDraggingGlobal: (value: boolean) => void;
@@ -5085,7 +5085,7 @@ const noop = () => {};
 const flowNodeActionsFallback: FlowNodeActionsContextValue = {
   onAddNext: noop,
   onAddBranch: noop,
-  onSelect: noop as (node: WorkflowTreeNode) => void,
+  onSelect: noop as (nodeId: string) => void,
   onDrop: noop as (dragId: string, dropId: string) => void,
   onCopy: noop as (nodeId: string) => void,
   setDraggingGlobal: noop as (value: boolean) => void,
@@ -5166,7 +5166,7 @@ const FlowNode = ({
           } active:scale-95 active:shadow-sm`}
           onClick={(e) => {
             e.stopPropagation();
-            actions.onSelect(node);
+            actions.onSelect(node.id);
             actions.setActiveQuickAddId(null);
           }}
           onMouseEnter={() => canShowHover && actions.setHoveredNodeId(node.id)}
@@ -7378,7 +7378,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     () => ({
       onAddNext: handleAddNext,
       onAddBranch: handleAddBranch,
-      onSelect: (node) => setSelectedNodeId(node.id),
+      onSelect: (nodeId) => setSelectedNodeId(nodeId),
       onDrop: handleDrop,
       onCopy: handleCopyNode,
       setDraggingGlobal,
