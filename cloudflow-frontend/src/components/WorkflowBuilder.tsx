@@ -3833,12 +3833,14 @@ const ApproverValueSelector = ({
 
 const PropertyPanel = ({
   node,
+  branchCount,
   onClose,
   onUpdate,
   onDelete,
   onConfirmAction,
 }: {
   node: WorkflowTreeNode;
+  branchCount: number;
   onClose: () => void;
   onUpdate: (id: string, data: Partial<WorkflowGraphNode>) => void;
   onDelete: (id: string) => void;
@@ -3848,7 +3850,7 @@ const PropertyPanel = ({
   // 当节点 ID 变化或节点内容（分支、props）变化时同步 formData
   useEffect(() => {
     setFormData(node);
-  }, [node.id, node.branches, node.branchStrategy, node.props]);
+  }, [node.id, branchCount, node.branchStrategy, node.props]);
   const handleChange = (field: keyof WorkflowGraphNode, value: any) => {
     // 切换审批方式时，清空之前选择的审批人，避免残留旧数据
     if (field === "approverType") {
@@ -4809,7 +4811,7 @@ const PropertyPanel = ({
               </div>
             </div>
           )}
-          {node.branches && node.branches.length > 0 && (
+          {branchCount > 0 && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                 <GitBranch size={12} /> 分支规则
@@ -6565,6 +6567,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       selectedNodeId ? findWorkflowGraphNode(graphModel, selectedNodeId) : null,
     [graphModel, selectedNodeId],
   );
+  const selectedNodeBranchCount = useMemo(
+    () =>
+      selectedGraphNode
+        ? countWorkflowGraphBranches(graphModel, selectedGraphNode.id)
+        : 0,
+    [graphModel, selectedGraphNode],
+  );
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) {
       return null;
@@ -7522,6 +7531,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       {selectedGraphNode && selectedNode && (
         <PropertyPanel
           node={selectedNode}
+          branchCount={selectedNodeBranchCount}
           onClose={() => setSelectedNodeId(null)}
           onUpdate={handleUpdateNode}
           onDelete={handleDeleteNode}
