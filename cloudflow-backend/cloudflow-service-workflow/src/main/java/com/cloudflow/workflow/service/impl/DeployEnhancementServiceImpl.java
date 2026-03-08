@@ -433,7 +433,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
         // 1. 分析运行中的实例
         LambdaQueryWrapper<WfProcessInstance> instanceWrapper = new LambdaQueryWrapper<>();
-        instanceWrapper.eq(WfProcessInstance::getProcessDefId, processDefId)
+        instanceWrapper.eq(WfProcessInstance::getDefinitionId, processDefId)
                 .eq(WfProcessInstance::getStatus, "RUNNING");
         if (currentTenantId != null) {
             instanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
@@ -647,6 +647,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
                 WfProcessVersionSnapshot snapshot = new WfProcessVersionSnapshot();
                 snapshot.setTenantId(resolveTenantId(definition.getTenantId()));
                 snapshot.setProcessDefId(processDefId);
+                snapshot.setProcessKey(definition.getProcessKey());
                 snapshot.setVersion(record.getVersion());
                 snapshot.setDeployId(record.getId());
                 snapshot.setSnapshotData(definition.getModelJson());

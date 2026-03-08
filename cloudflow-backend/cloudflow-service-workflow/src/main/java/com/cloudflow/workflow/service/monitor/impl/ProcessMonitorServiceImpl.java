@@ -210,7 +210,7 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
                 stats.setTenantId(monitor.getTenantId());
                 stats.setStatDate(statDate);
                 stats.setProcessDefKey(monitor.getProcessDefKey());
-                stats.setProcessName(monitor.getProcessDefName());
+                stats.setProcessDefName(monitor.getProcessDefName());
                 stats.setTotalCount(0);
                 stats.setCompletedCount(0);
                 stats.setFailedCount(0);

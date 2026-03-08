@@ -226,6 +226,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         try {
             com.cloudflow.workflow.domain.WfProcessVersionSnapshot snapshot = new com.cloudflow.workflow.domain.WfProcessVersionSnapshot();
             snapshot.setProcessDefId(definitionId);
+            snapshot.setProcessKey(def.getProcessKey());
             snapshot.setVersion(def.getVersion() != null ? def.getVersion() : 1);
             snapshot.setDeployId(deployRecord.getId());
             snapshot.setSnapshotData(def.getModelJson());

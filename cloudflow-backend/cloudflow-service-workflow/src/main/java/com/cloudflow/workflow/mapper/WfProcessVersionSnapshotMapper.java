@@ -20,7 +20,16 @@ public interface WfProcessVersionSnapshotMapper extends BaseMapper<WfProcessVers
     @Select("SELECT * FROM wf_process_version_snapshot WHERE process_def_id = #{processDefId} AND version = #{version}")
     WfProcessVersionSnapshot selectByProcessDefIdAndVersion(@Param("processDefId") String processDefId, @Param("version") Integer version);
 
-    @Select("SELECT * FROM wf_process_version_snapshot WHERE deploy_id = #{deployId}")
+    @Select("""
+            SELECT s.*
+            FROM wf_process_version_snapshot s
+            INNER JOIN wf_deploy_record d
+                ON d.process_def_id = s.process_def_id
+               AND d.version = s.version
+            WHERE d.id = #{deployId}
+            ORDER BY s.id DESC
+            LIMIT 1
+            """)
     WfProcessVersionSnapshot selectByDeployId(@Param("deployId") Long deployId);
 
     @Select("SELECT * FROM wf_process_version_snapshot WHERE process_def_id = #{processDefId} ORDER BY version DESC LIMIT 1")

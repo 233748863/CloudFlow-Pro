@@ -6,6 +6,7 @@
         <id property="id" column="id"/>
         <result property="instanceId" column="instance_id"/>
         <result property="processDefKey" column="process_def_key"/>
+        <result property="processDefName" column="process_name"/>
         <result property="processName" column="process_name"/>
         <result property="status" column="status"/>
         <result property="startTime" column="start_time"/>
