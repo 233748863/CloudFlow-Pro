@@ -6778,7 +6778,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         ) {
           return;
         }
-        if (selectedNode && selectedNode.id !== root.id) {
+        if (selectedNode && selectedNode.type !== NodeType.START) {
           e.preventDefault(); // 防止 Backspace 导致页面回退
           handleDeleteNode(selectedNode.id);
         }
@@ -6786,7 +6786,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canUndo, canRedo, undo, redo, selectedNode, root]); // 依赖项包含 root 以确保 handleDeleteNode 获取最新状态
+  }, [canUndo, canRedo, undo, redo, selectedNode]);
 
   const handleZoomIn = useCallback(
     () => setZoom((z) => Math.min(z + 0.1, 2)),
