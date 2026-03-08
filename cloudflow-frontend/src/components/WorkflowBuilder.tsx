@@ -102,6 +102,7 @@ import {
   findWorkflowGraphMainTargetId,
   findWorkflowGraphNode,
   findWorkflowGraphParentNodeId,
+  getWorkflowGraphBranchChildIds,
   isWorkflowGraphNodeInsideBranchScope,
   isWorkflowGraphNodeInBranchSubtree,
   isWorkflowGraphBranchRoot,
@@ -5089,6 +5090,8 @@ interface FlowNodeActionsContextValue {
   onCopy: (nodeId: string) => void;
   getNode: (nodeId: string) => EditableWorkflowNode | null;
   getBranchCount: (nodeId: string) => number;
+  getBranchChildIds: (nodeId: string) => string[];
+  getMainTargetId: (nodeId: string) => string | null;
   setDraggingGlobal: (value: boolean) => void;
   setDraggingNodeId: (id: string | null) => void;
   setActiveQuickAddId: (id: string | null) => void;
@@ -5104,6 +5107,8 @@ const flowNodeActionsFallback: FlowNodeActionsContextValue = {
   onCopy: noop as (nodeId: string) => void,
   getNode: () => null,
   getBranchCount: () => 0,
+  getBranchChildIds: () => [],
+  getMainTargetId: () => null,
   setDraggingGlobal: noop as (value: boolean) => void,
   setDraggingNodeId: noop as (id: string | null) => void,
   setActiveQuickAddId: noop as (id: string | null) => void,
@@ -5117,7 +5122,7 @@ const FlowNodeActionsContext = React.createContext<FlowNodeActionsContextValue>(
 // ==================== 节点组件 ====================
 
 const FlowNode = ({
-  node,
+  nodeId,
   invalidNodes,
   draggingNodeId,
   isDraggingGlobal,
@@ -5126,7 +5131,7 @@ const FlowNode = ({
   selectedNodeId,
   isInsideBranch,
 }: {
-  node: WorkflowTreeNode;
+  nodeId: string;
   invalidNodes: string[];
   draggingNodeId: string | null;
   isDraggingGlobal: boolean;
@@ -5136,17 +5141,18 @@ const FlowNode = ({
   isInsideBranch: boolean;
 }) => {
   const actions = React.useContext(FlowNodeActionsContext);
-  const graphNode = actions.getNode(node.id);
-  const displayNode = graphNode ?? (node as EditableWorkflowNode);
-  const branchCount =
-    actions.getBranchCount(node.id) || node.branches?.length || 0;
-  const nextDisplayNode = node.next
-    ? actions.getNode(node.next.id) ?? (node.next as EditableWorkflowNode)
-    : null;
+  const displayNode = actions.getNode(nodeId);
+  const branchChildIds = actions.getBranchChildIds(nodeId);
+  const branchCount = branchChildIds.length || actions.getBranchCount(nodeId);
+  const nextNodeId = actions.getMainTargetId(nodeId);
+  const nextDisplayNode = nextNodeId ? actions.getNode(nextNodeId) : null;
   const [isDragging, setIsDragging] = useState(false);
-  const showQuickAdd = activeQuickAddId === node.id;
-  const isSelected = selectedNodeId === node.id;
-  const isInvalid = invalidNodes.includes(node.id);
+  const showQuickAdd = activeQuickAddId === nodeId;
+  const isSelected = selectedNodeId === nodeId;
+  const isInvalid = invalidNodes.includes(nodeId);
+  if (!displayNode) {
+    return null;
+  }
   const visual = getNodeVisual(displayNode.type);
   const NIcon = visual.icon;
   // 分支子树节点禁止拖拽：拖拽会破坏分支结构，改为前置禁用避免误操作
@@ -5156,7 +5162,7 @@ const FlowNode = ({
     displayNode.type !== NodeType.END;
 
   // 画布悬停逻辑优化（去鼠标追踪依赖，改为直接点击触发）
-  const canShowHover = !activeQuickAddId || activeQuickAddId === node.id;
+  const canShowHover = !activeQuickAddId || activeQuickAddId === nodeId;
 
   // 判断能否添加条件分支
   const canAddBranch =
@@ -5193,18 +5199,18 @@ const FlowNode = ({
           } active:scale-95 active:shadow-sm`}
           onClick={(e) => {
             e.stopPropagation();
-            actions.onSelect(node.id);
+            actions.onSelect(nodeId);
             actions.setActiveQuickAddId(null);
           }}
-          onMouseEnter={() => canShowHover && actions.setHoveredNodeId(node.id)}
+          onMouseEnter={() => canShowHover && actions.setHoveredNodeId(nodeId)}
           onMouseLeave={() => canShowHover && actions.setHoveredNodeId(null)}
           draggable={canDrag}
           onDragStart={(e) => {
-            e.dataTransfer.setData("nodeId", node.id);
+            e.dataTransfer.setData("nodeId", nodeId);
             e.dataTransfer.effectAllowed = "move";
             setIsDragging(true);
             actions.setDraggingGlobal(true);
-            actions.setDraggingNodeId(node.id);
+            actions.setDraggingNodeId(nodeId);
           }}
           onDragEnd={() => {
             setIsDragging(false);
@@ -5277,7 +5283,7 @@ const FlowNode = ({
                   )}
                 </div>
                 {/* 参与人展示 */}
-                {node.approverValue && (
+                {displayNode.approverValue && (
                   <div className="text-[10px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1 border border-slate-100">
                     <span className="text-slate-400">
                       {displayNode.approverType === "ROLE"
@@ -5343,15 +5349,15 @@ const FlowNode = ({
             style={{ pointerEvents: "auto" }}
           >
             <div
-              className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? "opacity-100" : "opacity-0"}`}
+              className={`relative transition-opacity duration-200 ${hoveredNodeId === nodeId || showQuickAdd ? "opacity-100" : "opacity-0"}`}
             >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  actions.setActiveQuickAddId(showQuickAdd ? null : node.id);
+                  actions.setActiveQuickAddId(showQuickAdd ? null : nodeId);
                 }}
                 onMouseEnter={() =>
-                  canShowHover && actions.setHoveredNodeId(node.id)
+                  canShowHover && actions.setHoveredNodeId(nodeId)
                 }
                 onMouseLeave={() =>
                   canShowHover && !showQuickAdd && actions.setHoveredNodeId(null)
@@ -5371,7 +5377,7 @@ const FlowNode = ({
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();
-                    actions.setHoveredNodeId(node.id); // 强制保持当前节点的 hover 状态
+                    actions.setHoveredNodeId(nodeId); // 强制保持当前节点的 hover 状态
                   }}
                   onMouseLeave={(e) => {
                     e.stopPropagation();
@@ -5483,9 +5489,9 @@ const FlowNode = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           if ("isBranch" in item && item.isBranch) {
-                            actions.onAddBranch(node.id);
+                            actions.onAddBranch(nodeId);
                           } else {
-                            actions.onAddNext(node.id, item.type as NodeType);
+                            actions.onAddNext(nodeId, item.type as NodeType);
                           }
                           actions.setActiveQuickAddId(null);
                         }}
@@ -5513,21 +5519,21 @@ const FlowNode = ({
         )}
 
         {/* 非END节点的添加按钮 - 在节点卡片下方 */}
-        {node.type !== NodeType.END && (
+        {displayNode.type !== NodeType.END && (
           <div
             className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-30"
             style={{ pointerEvents: "auto" }}
           >
             <div
-              className={`relative transition-opacity duration-200 ${hoveredNodeId === node.id || showQuickAdd ? "opacity-100" : "opacity-0"}`}
+              className={`relative transition-opacity duration-200 ${hoveredNodeId === nodeId || showQuickAdd ? "opacity-100" : "opacity-0"}`}
             >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  actions.setActiveQuickAddId(showQuickAdd ? null : node.id);
+                  actions.setActiveQuickAddId(showQuickAdd ? null : nodeId);
                 }}
                 onMouseEnter={() =>
-                  canShowHover && actions.setHoveredNodeId(node.id)
+                  canShowHover && actions.setHoveredNodeId(nodeId)
                 }
                 onMouseLeave={() =>
                   canShowHover && !showQuickAdd && actions.setHoveredNodeId(null)
@@ -5547,7 +5553,7 @@ const FlowNode = ({
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();
-                    actions.setHoveredNodeId(node.id); // 强制保持当前节点的 hover 状态
+                    actions.setHoveredNodeId(nodeId); // 强制保持当前节点的 hover 状态
                   }}
                   onMouseLeave={(e) => {
                     e.stopPropagation();
@@ -5668,9 +5674,9 @@ const FlowNode = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           if ("isBranch" in item && item.isBranch) {
-                            actions.onAddBranch(node.id);
+                            actions.onAddBranch(nodeId);
                           } else {
-                            actions.onAddNext(node.id, item.type as NodeType);
+                            actions.onAddNext(nodeId, item.type as NodeType);
                           }
                           actions.setActiveQuickAddId(null);
                         }}
@@ -5696,7 +5702,7 @@ const FlowNode = ({
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
-                        actions.onCopy(node.id);
+                        actions.onCopy(nodeId);
                         actions.setActiveQuickAddId(null);
                       }}
                     >
@@ -5711,7 +5717,7 @@ const FlowNode = ({
       </div>
 
       {/* 分支 */}
-      {node.branches && node.branches.length > 0 && (
+      {branchChildIds.length > 0 && (
         <div className="flex flex-col items-center w-full mt-6 flex-none">
           {/* 从父节点到分支点的垂直连接线 */}
           <div className="h-6 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
@@ -5725,14 +5731,14 @@ const FlowNode = ({
             <div
               className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"
               style={{
-                left: `${100 / node.branches.length / 2}%`,
-                right: `${100 / node.branches.length / 2}%`,
+                left: `${100 / branchChildIds.length / 2}%`,
+                right: `${100 / branchChildIds.length / 2}%`,
               }}
             ></div>
 
-            {node.branches.map((branch, index) => (
+            {branchChildIds.map((branchId, index) => (
               <div
-                key={branch.id}
+                key={branchId}
                 className="flex flex-col items-center relative w-full"
               >
                 {/* 从顶部水平线往下的垂线 */}
@@ -5749,7 +5755,7 @@ const FlowNode = ({
                 {/* 节点渲染区块 - 给它包裹 flex-none 保证子节点自然内容高，不被 stretch */}
                 <div className="flex-none flex justify-center w-full">
                   <FlowNode
-                    node={branch}
+                    nodeId={branchId}
                     invalidNodes={invalidNodes}
                     selectedNodeId={selectedNodeId}
                     isDraggingGlobal={isDraggingGlobal}
@@ -5769,8 +5775,8 @@ const FlowNode = ({
             <div
               className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"
               style={{
-                left: `${100 / node.branches.length / 2}%`,
-                right: `${100 / node.branches.length / 2}%`,
+                left: `${100 / branchChildIds.length / 2}%`,
+                right: `${100 / branchChildIds.length / 2}%`,
               }}
             ></div>
           </div>
@@ -5781,17 +5787,17 @@ const FlowNode = ({
       )}
 
       {/* 下一个节点 */}
-      {node.next && nextDisplayNode?.type !== NodeType.END && (
+      {nextNodeId && nextDisplayNode?.type !== NodeType.END && (
         <div className="flex flex-col items-center w-full">
           <ConnectorDropZone
-            parentId={node.id}
+            parentId={nodeId}
             isDraggingGlobal={isDraggingGlobal}
             draggingNodeId={draggingNodeId}
-            selfNodeId={node.next.id}
+            selfNodeId={nextNodeId}
             onDrop={actions.onDrop}
           />
           <FlowNode
-            node={node.next}
+            nodeId={nextNodeId}
             invalidNodes={invalidNodes}
             selectedNodeId={selectedNodeId}
             isDraggingGlobal={isDraggingGlobal}
@@ -5804,18 +5810,18 @@ const FlowNode = ({
       )}
 
       {/* 结束节点: 因为添加节点永远是在被点加号的节点"后面"插入，如果是END节点，则是特例插入到END之前，所以连线也得对应过去 */}
-      {node.next && nextDisplayNode?.type === NodeType.END && (
+      {nextNodeId && nextDisplayNode?.type === NodeType.END && (
         <div className="flex flex-col items-center w-full relative">
           <ConnectorDropZone
-            parentId={node.id}
+            parentId={nodeId}
             isDraggingGlobal={isDraggingGlobal}
             draggingNodeId={draggingNodeId}
-            selfNodeId={node.next.id}
+            selfNodeId={nextNodeId}
             onDrop={actions.onDrop}
           />
 
           <FlowNode
-            node={node.next}
+            nodeId={nextNodeId}
             invalidNodes={invalidNodes}
             selectedNodeId={selectedNodeId}
             isDraggingGlobal={isDraggingGlobal}
@@ -6523,11 +6529,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     [],
   );
 
-  const defaultRoot = useMemo(
-    () => convertGraphToWorkflowTree(defaultGraphModel),
-    [defaultGraphModel],
-  );
-
   const resolveGraphModel = useCallback(
     (raw: unknown): WorkflowGraphDefinition => {
       const graphModel = parseWorkflowGraphDefinition(raw);
@@ -6546,14 +6547,14 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     canRedo,
   } = useHistory<WorkflowGraphDefinition>(resolveGraphModel(workflow?.nodes));
 
-  const root = useMemo(() => {
-    try {
-      return convertGraphToWorkflowTree(graphModel);
-    } catch (error) {
-      console.warn("[WorkflowBuilder] ?????????????????", error);
-      return defaultRoot;
-    }
-  }, [graphModel, defaultRoot]);
+  const rootNodeId = useMemo(() => {
+    const resolveStartNodeId = (currentGraph: WorkflowGraphDefinition) =>
+      currentGraph.nodes.find(
+        (node) => String(node.type || "").toUpperCase() === NodeType.START,
+      )?.id || currentGraph.nodes[0]?.id || null;
+
+    return resolveStartNodeId(graphModel) ?? resolveStartNodeId(defaultGraphModel);
+  }, [defaultGraphModel, graphModel]);
 
   // ? ref ???? graphModel????????????????
   const graphModelRef = useRef(graphModel);
@@ -6758,7 +6759,6 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   }, [
     onChange,
     workflow?.id,
-    root,
     workflowName,
     workflowKey,
     workflowDescription,
@@ -7416,6 +7416,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       },
       getBranchCount: (nodeId) =>
         countWorkflowGraphBranches(graphModelRef.current, nodeId),
+      getBranchChildIds: (nodeId) =>
+        getWorkflowGraphBranchChildIds(graphModelRef.current, nodeId),
+      getMainTargetId: (nodeId) =>
+        findWorkflowGraphMainTargetId(graphModelRef.current, nodeId),
       setDraggingGlobal,
       setDraggingNodeId,
       setActiveQuickAddId,
@@ -7532,16 +7536,18 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             transform: `translate(${panOrigin.x}px, ${panOrigin.y}px) scale(${zoom})`,
           }}
         >
-          <FlowNode
-            node={root}
-            invalidNodes={invalidNodeIds}
-            selectedNodeId={selectedNodeId}
-            isDraggingGlobal={isDraggingGlobal}
-            draggingNodeId={draggingNodeId}
-            activeQuickAddId={activeQuickAddId}
-            hoveredNodeId={hoveredNodeId}
-            isInsideBranch={false}
-          />
+          {rootNodeId && (
+            <FlowNode
+              nodeId={rootNodeId}
+              invalidNodes={invalidNodeIds}
+              selectedNodeId={selectedNodeId}
+              isDraggingGlobal={isDraggingGlobal}
+              draggingNodeId={draggingNodeId}
+              activeQuickAddId={activeQuickAddId}
+              hoveredNodeId={hoveredNodeId}
+              isInsideBranch={false}
+            />
+          )}
         </div>
       </div>
 
