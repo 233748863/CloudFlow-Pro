@@ -127,7 +127,7 @@ const collectGraphSubtreeIds = (
 };
 
 /**
- * 编辑器内部暂时保留树形结构，这里负责图 -> 树适配。
+ * 纯图模型结构校验，供设计器在切换状态前快速兜底。
  */
 export const assertWorkflowGraphIntegrity = (
   graph: WorkflowGraphDefinition,
