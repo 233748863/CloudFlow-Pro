@@ -6,17 +6,7 @@ import { toBackendDateString } from '@/utils/dateFormat';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
-import {
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui';
-import { DatePicker } from '@/components/ui/date-picker';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 
 export const MobileVehicleBooking: React.FC = () => {

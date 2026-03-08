@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RotateCcw, Trash2, Eye, X, RefreshCw, Download } from 'lucide-react';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { toast } from 'sonner';
 import {
   getSysLogPage, getSysLogTrend, getSysLogDetail, deleteSysLogs,

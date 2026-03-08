@@ -3,10 +3,7 @@ import { ClipboardCheck, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Papercl
 import { attendanceAppealApi, AttendanceAppeal } from '../services/api/attendanceAppeal';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { Input } from '../components/ui/input';
-import { DatePicker } from '../components/ui/date-picker';
-import { Textarea } from '../components/ui/textarea';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 补卡/外勤申请页面 */
 export const AttendanceAppealPage: React.FC = () => {

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye } from 'lucide-react';
 import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { DatePicker } from '../components/ui/date-picker';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 export const PaymentRequestPage: React.FC = () => {
   const [payments, setPayments] = useState<PaymentRequest[]>([]);

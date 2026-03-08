@@ -5,11 +5,7 @@ import {
   FolderTree, Plus, Pencil, Trash2, ChevronRight, ChevronDown,
   Layers, Briefcase, Users, DollarSign, Building2, FolderKanban
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
-import { Card } from '../../components/ui/card';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Button, Card, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 /** 图标映射 */
 const iconMap: Record<string, React.ReactNode> = {

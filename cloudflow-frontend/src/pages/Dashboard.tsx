@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '../components/ui/card';
+import { Button, Card } from '@/components/ui';
 import {
   CheckCircle2, FileText, PlayCircle, MailOpen, Calendar, Megaphone, ArrowRight, Users,
   Car, Building2, ClipboardCheck, ChevronRight, Briefcase, CreditCard, UserCheck,
@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
 import request from '../services/api/request';
 
 // 提取分页总数

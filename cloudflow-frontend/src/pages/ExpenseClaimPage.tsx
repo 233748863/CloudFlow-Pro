@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Receipt, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, FileText } from 'lucide-react';
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '../services/api/expense';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { DatePicker } from '../components/ui/date-picker';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 export const ExpenseClaimPage: React.FC = () => {
   const [claims, setClaims] = useState<ExpenseClaim[]>([]);

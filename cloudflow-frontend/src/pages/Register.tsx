@@ -4,7 +4,7 @@ import { register as apiRegister } from '../services/api/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SliderCaptcha } from '../components/SliderCaptcha';
-import { Button } from '../components/ui/button';
+import { Button } from '@/components/ui';
 
 export const Register = () => {
   const [loading, setLoading] = useState(false);

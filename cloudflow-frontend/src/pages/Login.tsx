@@ -5,7 +5,7 @@ import { login as apiLogin } from '@/services/api/auth';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { SliderCaptcha } from '@/components/SliderCaptcha';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui';
 import { logger } from '@/utils/logger';
 
 export const Login = () => {

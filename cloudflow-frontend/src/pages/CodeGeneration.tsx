@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SourceCodeViewer } from '../components/SourceCodeViewer';
 import { WorkflowDefinition } from '../types';
 import { getProcessDefinitions } from '../services/api/workflow';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { toast } from 'sonner';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 

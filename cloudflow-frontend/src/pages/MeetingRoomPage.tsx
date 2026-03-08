@@ -13,10 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { DatePicker } from '../components/ui/date-picker';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 // ==================== 类型定义 ====================
 interface UserBrief {

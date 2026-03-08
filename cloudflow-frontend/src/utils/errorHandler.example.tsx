@@ -16,8 +16,7 @@ import {
   ApiErrorResponse,
   ConflictStrategy,
 } from './errorHandler';
-import { ConflictResolutionDialog } from '@/components/ui/ConflictResolutionDialog';
-import { WarningConfirmDialog } from '@/components/ui/WarningConfirmDialog';
+import { ConflictResolutionDialog, WarningConfirmDialog } from '@/components/ui';
 import request from '@/services/api/request';
 
 /**

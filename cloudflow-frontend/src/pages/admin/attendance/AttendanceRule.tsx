@@ -1,19 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { useMount } from '@/hooks/useMount';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Input,
-  Label,
-  Switch,
-  Textarea
-} from '@/components/ui';
-import { DatePicker } from '@/components/ui/date-picker';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DatePicker, Input, Label, Switch, Textarea } from '@/components/ui';
 import { toast } from 'sonner';
 
 const WEEKDAYS = [

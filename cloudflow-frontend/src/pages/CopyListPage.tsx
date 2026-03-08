@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getMyCopyList, getCopyUnreadCount, markCopyAsRead, batchMarkCopyAsRead, getProcessDefinitions } from '../services/api/workflow';
 import { useAuth } from '../context/AuthContext';
 import { RefreshCw, Search, ChevronLeft, ChevronRight, Eye, CheckCheck, Mail, MailOpen, X, FileText } from 'lucide-react';
-import { SkeletonCard } from '../components/ui/Skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SkeletonCard } from '@/components/ui';
 import { toast } from 'sonner';
 import { ProcessTrace } from '../components/ProcessTrace';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 
 /** 每页条数 */
 const PAGE_SIZE = 12;

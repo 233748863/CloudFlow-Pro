@@ -11,7 +11,7 @@ import {
 import { toast } from 'sonner';
 import request from '../../services/api/request';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
-import { PermissionGuard } from '../../components/ui/PermissionGuard';
+import { PermissionGuard } from '@/components/ui';
 
 interface TemplateItem {
   id: string;

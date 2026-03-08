@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { addAsset, updateAsset, Asset } from '@/services/api/admin';
-import {
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui'
-import { DatePicker } from '@/components/ui/date-picker';
-import { Textarea } from '@/components/ui/textarea';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 interface AssetFormProps {
   /** 编辑时传入已有资产数据 */

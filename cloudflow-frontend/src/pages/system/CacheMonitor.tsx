@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Server, Database, Activity, Key, Loader2, ChevronRight, ChevronDown, Search, Trash2, Eye, FolderOpen, Folder, X, Copy, Clock, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCacheInfo, getCacheKeys, getCacheKeyValue, deleteCacheKey, deleteCacheByPrefix, CacheKeyDetail } from '../../services/api/system';
-import { Input } from '../../components/ui/input';
+import { Input } from '@/components/ui';
 
 // ==================== 类型定义 ====================
 

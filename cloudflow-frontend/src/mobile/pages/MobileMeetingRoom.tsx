@@ -5,7 +5,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
 import { format, addHours, startOfHour } from 'date-fns';
 import { getMeetingRooms, createEvent } from '@/services/api/schedule';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePicker } from '@/components/ui';
 
 interface MeetingRoom {
   id: number;

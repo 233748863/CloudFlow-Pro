@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Search, X, Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { toast } from 'sonner';
 import { getUserList, addUser, updateUser, deleteUser, getRoleList, getDeptTree } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';

@@ -3,10 +3,7 @@ import { Plane, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip } from
 import { businessTripApi, BusinessTrip } from '../services/api/businessTrip';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { DatePicker } from '../components/ui/date-picker';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 出差申请页面 */
 export const BusinessTripPage: React.FC = () => {

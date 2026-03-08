@@ -5,7 +5,7 @@ import {
   getAuditLogPage, getAuditLogDetail, deleteAuditLogs,
   SysAuditLog, AuditLogQuery
 } from '@/services/api/log';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePicker } from '@/components/ui';
 
 /**
  * 审计日志页面

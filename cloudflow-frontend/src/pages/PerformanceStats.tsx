@@ -14,8 +14,7 @@ import {
   Download,
   Filter
 } from 'lucide-react';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { DatePicker } from '../components/ui/date-picker';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { 
   getPerformanceStats,
   PerformanceStats as PerformanceStatsType

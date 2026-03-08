@@ -128,11 +128,11 @@ function migrateFile(filePath: string): { changed: boolean; mergedCount: number;
   }
 
   let nextContent = original
-  const sortedDeclarations = [...bucket.declarations].sort((a, b) => b.getFullStart() - a.getFullStart())
-  const insertionOffset = Math.min(...bucket.declarations.map((declaration) => declaration.getFullStart()))
+  const sortedDeclarations = [...bucket.declarations].sort((a, b) => b.getStart() - a.getStart())
+  const insertionOffset = Math.min(...bucket.declarations.map((declaration) => declaration.getStart()))
 
   for (const declaration of sortedDeclarations) {
-    nextContent = removeRangeWithTrailingNewline(nextContent, declaration.getFullStart(), declaration.getEnd())
+    nextContent = removeRangeWithTrailingNewline(nextContent, declaration.getStart(), declaration.getEnd())
   }
 
   nextContent = `${nextContent.slice(0, insertionOffset)}${mergedImportBlock}\n${nextContent.slice(insertionOffset)}`

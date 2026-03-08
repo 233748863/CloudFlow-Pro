@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui';
 import { Settings, Clock, GitBranch, CheckCircle, BarChart3 } from 'lucide-react';
 import { DeployWindowManagement } from '@/components/deploy/DeployWindowManagement';
 import { DeployApprovalManagement } from '@/components/deploy/DeployApprovalManagement';

@@ -4,10 +4,7 @@ import { overtimeApi, OvertimeRequest } from '../services/api/overtime';
 import { FileUpload } from '../components/FileUpload';
 import { toBackendDateString, toLocalDatetimeString } from '../utils/dateFormat';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { DatePicker } from '../components/ui/date-picker';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 加班申请页面 */
 export const OvertimePage: React.FC = () => {

@@ -21,7 +21,7 @@ import {
 } from "../../services/api/workflow";
 import { toast } from "sonner";
 import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
-import { PermissionGuard } from "../../components/ui/PermissionGuard";
+import { PermissionGuard } from '@/components/ui';
 
 /**
  * 归档流程数据接口

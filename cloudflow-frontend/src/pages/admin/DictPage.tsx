@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Pencil, Trash2, Search, Tag } from 'lucide-react';
 import { dictTypeApi, dictDataApi, SysDictType, SysDictData } from '../../services/api/dict';
 import { toast } from 'sonner';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
-import { Card } from '../../components/ui/card';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Button, Card, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 /** 字典管理页面 */
 export const DictPage: React.FC = () => {

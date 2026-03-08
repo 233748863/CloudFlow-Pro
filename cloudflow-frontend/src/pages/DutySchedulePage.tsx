@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Search, RotateCcw, X, LogIn, LogOut, RefreshCw } from 'lucide-react';
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { Input } from '../components/ui/input';
-import { DatePicker } from '../components/ui/date-picker';
-import { Textarea } from '../components/ui/textarea';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 值班排班页面 */
 export const DutySchedulePage: React.FC = () => {

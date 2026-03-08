@@ -15,8 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Bell, Megaphone, AlertCircle, Eye, Plus, Edit, Trash2, X, Pin, Users, Search, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { DatePicker } from '../components/ui/date-picker';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 export const AnnouncementPage = () => {
   const { user } = useAuth();

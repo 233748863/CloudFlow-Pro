@@ -5,7 +5,7 @@ import {
   Download, RefreshCw
 } from 'lucide-react';
 import { getFileList, uploadFile, deleteFile } from '../../services/api/file';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { toast } from 'sonner';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';

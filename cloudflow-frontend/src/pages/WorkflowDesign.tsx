@@ -11,8 +11,7 @@ import {
 import { getRoleList, getUserList } from '../services/api/auth';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { SkeletonForm } from '../components/ui/Skeleton';
-import { EmptyWorkflows, EmptyError } from '../components/ui/EmptyState';
+import { EmptyError, EmptyWorkflows, SkeletonForm } from '@/components/ui';
 import { toast } from 'sonner';
 import { logWorkflow } from '../lib/logger';
 import {

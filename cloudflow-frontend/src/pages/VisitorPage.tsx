@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserCheck, Plus, Search, RotateCcw, X, LogIn, LogOut, CheckCircle, XCircle } from 'lucide-react';
 import { visitorApi, Visitor } from '../services/api/visitor';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { Input } from '../components/ui/input';
-import { DatePicker } from '../components/ui/date-picker';
-import { Textarea } from '../components/ui/textarea';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 访客管理页面 */
 export const VisitorPage: React.FC = () => {

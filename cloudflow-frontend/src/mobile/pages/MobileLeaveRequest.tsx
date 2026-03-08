@@ -5,7 +5,7 @@ import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import { toast } from 'sonner';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { leaveApi } from '@/services/api/leave';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePicker } from '@/components/ui';
 
 type LeaveType = 'annual' | 'sick' | 'personal' | 'maternity' | 'bereavement' | 'other';
 

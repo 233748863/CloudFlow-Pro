@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPostList, addPost, updatePost, deletePost, type SysPost } from '../../services/api/system';
-import { Input } from '../../components/ui/input';
+import { Input } from '@/components/ui';
 
 export const PostList = () => {
   const [posts, setPosts] = useState<SysPost[]>([]);

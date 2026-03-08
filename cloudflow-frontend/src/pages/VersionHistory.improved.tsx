@@ -20,7 +20,7 @@ import {
   showWarning,
   ApiErrorResponse,
 } from '@/utils/errorHandler';
-import { WarningConfirmDialog } from '@/components/ui/WarningConfirmDialog';
+import { WarningConfirmDialog } from '@/components/ui';
 
 interface VersionHistoryProps {
   workflowId: string;

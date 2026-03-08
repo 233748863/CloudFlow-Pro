@@ -3,7 +3,7 @@ import { Plus, Edit, Trash2, Search, X, Loader2, Lock, ChevronLeft, ChevronRight
 import { toast } from 'sonner';
 import { getConfigList, addConfig, updateConfig, deleteConfig, type SysConfig } from '../../services/api/system';
 import { clearConfigCache } from '../../hooks/useSystemConfig';
-import { Input } from '../../components/ui/input';
+import { Input } from '@/components/ui';
 
 export const ConfigList = () => {
   const [configs, setConfigs] = useState<SysConfig[]>([]);

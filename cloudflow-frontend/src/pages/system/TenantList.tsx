@@ -3,9 +3,7 @@ import { Plus, Edit, Trash2, Search, X, Building2, Users, HardDrive, Calendar, L
 import { toast } from 'sonner';
 import { getTenantList, addTenant, updateTenant, deleteTenant, changeTenantStatus } from '../../services/api/tenant';
 import { useMount } from '../../hooks/useMount';
-import { Input } from '../../components/ui/input';
-import { Textarea } from '../../components/ui/textarea';
-import { DatePicker } from '../../components/ui/date-picker';
+import { DatePicker, Input, Textarea } from '@/components/ui';
 
 interface Tenant {
   tenantId: number;

@@ -8,13 +8,10 @@ import { getWorkTasks, updateWorkTaskStatus } from '../services/api/workTask';
 import { useAuth } from '../context/AuthContext';
 import { mapBackendTaskToFrontend, mapBackendInstanceToTask, mapTaskToUnified, mapWorkTaskToUnified } from '../utils/mappers';
 import { LayoutList, Kanban, RefreshCw, Search, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
-import { SkeletonCard } from '../components/ui/Skeleton';
-import { EmptyTasks, EmptyError } from '../components/ui/EmptyState';
+import { DatePicker, EmptyError, EmptyTasks, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SkeletonCard } from '@/components/ui';
 import { toast } from 'sonner';
 import { usePolling } from '../hooks/usePolling';
 import { logTask } from '../lib/logger';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
-import { DatePicker } from '../components/ui/date-picker';
 
 // 每页条数
 const PAGE_SIZE = 12;

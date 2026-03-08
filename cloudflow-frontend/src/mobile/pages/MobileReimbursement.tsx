@@ -5,7 +5,7 @@ import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { expenseClaimApi } from '@/services/api/expense';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePicker } from '@/components/ui';
 
 type ExpenseType = 'travel' | 'meal' | 'accommodation' | 'transportation' | 'office' | 'other';
 

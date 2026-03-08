@@ -4,28 +4,13 @@ import {
   CheckCircle, AlertCircle, ChevronRight, Search, ArrowLeftRight
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
 import { toBackendDateString } from '@/utils/dateFormat';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { FileUpload } from '@/components/FileUpload';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Textarea } from '@/components/ui/textarea';
 
 /** 车辆卡片组件 */
 const VehicleCard: React.FC<{
