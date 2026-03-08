@@ -2,6 +2,7 @@ package com.cloudflow.workflow.domain.monitor;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
@@ -36,6 +37,7 @@ public class ProcessMonitor {
     private String processDefName;
     
     /** 流程名称 */
+    @TableField(exist = false)
     private String processName;
     
     /** 业务Key */
@@ -56,6 +58,7 @@ public class ProcessMonitor {
     private Long duration;
     
     /** 持续时间(毫秒) - 别名 */
+    @TableField(exist = false)
     private Long durationMs;
     
     /** 节点数量 */
@@ -65,6 +68,7 @@ public class ProcessMonitor {
     private Integer taskCount;
     
     /** 已完成任务数量 */
+    @TableField(exist = false)
     private Integer completedTaskCount;
     
     /** 发起人ID */
@@ -74,9 +78,11 @@ public class ProcessMonitor {
     private String startUserName;
     
     /** 发起人 */
+    @TableField(exist = false)
     private String initiator;
     
     /** 发起人名称 */
+    @TableField(exist = false)
     private String initiatorName;
     
     /** 错误信息 */

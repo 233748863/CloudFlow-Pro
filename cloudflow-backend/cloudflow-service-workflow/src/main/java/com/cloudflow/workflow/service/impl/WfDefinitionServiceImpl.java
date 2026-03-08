@@ -214,6 +214,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         Long userId = UserContext.getUserId();
         com.cloudflow.workflow.domain.WfDeployRecord deployRecord = new com.cloudflow.workflow.domain.WfDeployRecord();
         deployRecord.setProcessDefId(definitionId);
+        deployRecord.setProcessKey(def.getProcessKey());
         deployRecord.setVersion(def.getVersion() != null ? def.getVersion() : 1);
         deployRecord.setDeployStatus("SUCCESS");
         deployRecord.setDeployBy(userId != null ? userId : 1L);
