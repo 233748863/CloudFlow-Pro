@@ -1,6 +1,5 @@
 import React from 'react';
-// @ts-ignore - react-window types may not match exactly
-import { FixedSizeList as List } from 'react-window';
+import { List } from 'react-window';
 
 interface VirtualListProps<T> {
   /** 数据列表 */
@@ -17,6 +16,22 @@ interface VirtualListProps<T> {
   className?: string;
   /** 空状态组件 */
   emptyComponent?: React.ReactNode;
+}
+
+interface VirtualListRowProps<T> {
+  index: number;
+  style: React.CSSProperties;
+  items: T[];
+  renderItem: (item: T, index: number) => React.ReactNode;
+}
+
+function VirtualListRow<T>({
+  index,
+  style,
+  items,
+  renderItem,
+}: VirtualListRowProps<T>) {
+  return <div style={style}>{renderItem(items[index], index)}</div>;
 }
 
 /**
@@ -38,19 +53,14 @@ export function VirtualList<T>({
   }
 
   return (
-    <div className={className}>
-      <List
-        height={height}
-        itemCount={items.length}
-        itemSize={itemHeight}
-        width={width}
-      >
-        {({ index, style }) => (
-          <div style={style}>
-            {renderItem(items[index], index)}
-          </div>
-        )}
-      </List>
-    </div>
+    <List
+      className={className}
+      defaultHeight={height}
+      rowComponent={VirtualListRow as never}
+      rowCount={items.length}
+      rowHeight={itemHeight}
+      rowProps={{ items, renderItem } as never}
+      style={{ height, width }}
+    />
   );
 }

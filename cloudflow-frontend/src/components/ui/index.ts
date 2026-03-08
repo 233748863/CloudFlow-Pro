@@ -87,3 +87,20 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs'
  * 包含：Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption
  */
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './table'
+
+// ============================================
+// 扩展组件
+// ============================================
+
+export * from './ConfirmDialog'
+export * from './ConflictResolutionDialog'
+export * from './date-picker'
+export * from './EmptyState'
+export * from './ErrorBoundary'
+export * from './PermissionGuard'
+export * from './RoleSelector'
+export * from './RouteGuard'
+export * from './Skeleton'
+export * from './UserSelector'
+export * from './VirtualList'
+export * from './WarningConfirmDialog'
