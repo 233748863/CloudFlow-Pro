@@ -273,7 +273,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         history.setOperatorId(UserContext.getUserId());
         history.setOperatorName(UserContext.getUserName());
         history.setComment(comment);
-        history.setAction("REJECT_TO_" + targetNodeKey);
+        history.setAction("REJECT");
         history.setCreateTime(LocalDateTime.now());
 
         try {

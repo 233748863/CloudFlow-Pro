@@ -1,4 +1,4 @@
--- =========================================================
+﻿-- =========================================================
 -- CloudFlow Pro - 公共基础模块数据库脚本
 -- 模块：用户管理、角色权限、部门组织、菜单、多租户、文件管理
 -- 版本：v1.0
@@ -361,11 +361,15 @@ INSERT INTO sys_user_post VALUES(9, 4, 100000);  -- 后端测试 → 普通员�
 
 -- 9. 初始化角色菜单关联（新二级菜单结构）
 -- ═══════════════════════════════════════════════════
--- ADMIN (role_id=1): 拥有所有菜单（不需要配置，代码中 isAdmin 直接返回全部）
+-- ADMIN (role_id=1): keep explicit sys_role_menu mappings for permission aggregation
 -- ═══════════════════════════════════════════════════
 
 -- MANAGER (role_id=2): 工作台 + 办公协同 + 流程中心 + 流程管理 + 行政管理
 -- 一级目录
+-- Ensure ADMIN keeps full menu-permission mappings for auth permission checks.
+INSERT IGNORE INTO sys_role_menu (role_id, menu_id, tenant_id)
+SELECT 1, menu_id, 100000 FROM sys_menu;
+
 INSERT INTO sys_role_menu VALUES(2, 1, 100000);
 INSERT INTO sys_role_menu VALUES(2, 2, 100000);
 INSERT INTO sys_role_menu VALUES(2, 3, 100000);

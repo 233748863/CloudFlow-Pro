@@ -10,12 +10,7 @@ import org.springframework.util.PatternMatchUtils;
 import java.util.Set;
 
 /**
- * 权限校验服务（参考 Poco 的 PermissionService）
- * 从 Spring Cache 中获取用户权限进行匹配
- * 
- * 在 Controller 中可通过 SpEL 使用：
- * @PreAuthorize("@pms.hasPermission('system:user:list')")
- * 或通过 @HasPermission 注解 + AOP 切面使用
+ * 权限校验服务。
  */
 @Component("pms")
 public class PermissionService {
@@ -24,51 +19,43 @@ public class PermissionService {
     private ISysUserService userService;
 
     /**
-     * 判断当前用户是否拥有任一指定权限
+     * 判断当前用户是否拥有任一指定权限。
      */
     public boolean hasPermission(String... permissions) {
         if (permissions == null || permissions.length == 0) {
             return false;
         }
 
+        // 先用当前 token 已携带的权限做判断，避免切租户后再按目标租户重算权限。
+        if (matchAnyPermission(UserContext.getPermissions(), permissions)) {
+            return true;
+        }
+
         String username = UserContext.getUserName();
         if (username == null) {
             return false;
         }
 
-        // 从 Spring Cache 获取用户信息（含权限集合）
         UserInfo userInfo = userService.findUserInfo(username);
         if (userInfo == null) {
             return false;
         }
 
-        Set<String> userPerms = userInfo.getPermissions();
-        if (userPerms == null || userPerms.isEmpty()) {
-            return false;
-        }
-
-        // 管理员拥有所有权限
-        if (userPerms.contains("*:*:*")) {
-            return true;
-        }
-
-        // 任一权限匹配即通过（支持通配符）
-        for (String perm : permissions) {
-            if (userPerms.stream().anyMatch(userPerm -> PatternMatchUtils.simpleMatch(perm, userPerm))) {
-                return true;
-            }
-        }
-        return false;
+        return matchAnyPermission(userInfo.getPermissions(), permissions);
     }
 
     /**
-     * 判断当前用户是否拥有指定角色
+     * 判断当前用户是否拥有任一指定角色。
      */
     public boolean hasRole(String... roles) {
         if (roles == null || roles.length == 0) {
             return false;
         }
 
+        if (matchAnyRole(UserContext.getRoles(), roles)) {
+            return true;
+        }
+
         String username = UserContext.getUserName();
         if (username == null) {
             return false;
@@ -79,14 +66,39 @@ public class PermissionService {
             return false;
         }
 
-        Set<String> userRoles = userInfo.getRoles();
+        return matchAnyRole(userInfo.getRoles(), roles);
+    }
+
+    private boolean matchAnyPermission(Set<String> userPerms, String... permissions) {
+        if (userPerms == null || userPerms.isEmpty()) {
+            return false;
+        }
+
+        if (userPerms.contains("*:*:*")) {
+            return true;
+        }
+
+        for (String requiredPerm : permissions) {
+            for (String userPerm : userPerms) {
+                if (PatternMatchUtils.simpleMatch(userPerm, requiredPerm)
+                        || PatternMatchUtils.simpleMatch(requiredPerm, userPerm)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean matchAnyRole(Set<String> userRoles, String... roles) {
         if (userRoles == null || userRoles.isEmpty()) {
             return false;
         }
 
-        for (String role : roles) {
-            if (userRoles.contains(role)) {
-                return true;
+        for (String requiredRole : roles) {
+            for (String userRole : userRoles) {
+                if (userRole != null && userRole.equalsIgnoreCase(requiredRole)) {
+                    return true;
+                }
             }
         }
         return false;

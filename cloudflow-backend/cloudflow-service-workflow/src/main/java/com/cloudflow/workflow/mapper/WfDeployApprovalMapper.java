@@ -25,7 +25,10 @@ public interface WfDeployApprovalMapper extends BaseMapper<WfDeployApproval> {
 
     @Select("SELECT da.* FROM wf_deploy_approval da " +
             "INNER JOIN wf_deploy_approval_step das ON da.id = das.approval_id " +
-            "WHERE das.step_status = 'PENDING' AND (das.approver_type = 'USER' AND FIND_IN_SET(#{userId}, das.approver_ids) > 0) " +
+            "WHERE das.step_status = 'PENDING' " +
+            "AND das.approver_type = 'USER' " +
+            "AND FIND_IN_SET(CAST(#{userId} AS CHAR), " +
+            "REPLACE(REPLACE(REPLACE(REPLACE(IFNULL(das.approver_ids, ''), '[', ''), ']', ''), '\"', ''), ' ', '')) > 0 " +
             "ORDER BY da.submit_time DESC")
     List<WfDeployApproval> listPendingForUser(@Param("userId") Long userId);
 }

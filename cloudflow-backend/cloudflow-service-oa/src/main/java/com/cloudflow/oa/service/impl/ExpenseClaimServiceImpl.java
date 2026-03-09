@@ -21,6 +21,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -65,7 +66,10 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         claim.setUserName(UserContext.getUserName());
         claim.setDeptId(UserContext.getDeptId());
         claim.setDeptName(UserContext.getDeptName());
+        LocalDateTime now = LocalDateTime.now();
         claim.setCreateBy(UserContext.getUserName());
+        claim.setCreateTime(now);
+        claim.setUpdateTime(now);
         // 生成报销单号
         claim.setClaimNo(generateClaimNo());
         claim.setStatus("DRAFT");
@@ -193,6 +197,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         claim.setCategory("TRANSPORT"); // 车辆费用归类为交通类
         claim.setStatus("DRAFT");
         claim.setDescription("车辆费用转报销（共" + vehicleExpenses.size() + "笔）");
+        LocalDateTime now = LocalDateTime.now();
+        claim.setCreateTime(now);
+        claim.setUpdateTime(now);
         
         // 3. 计算总金额
         BigDecimal totalAmount = vehicleExpenses.stream()
@@ -212,7 +219,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             item.setClaimId(claim.getId());
             item.setExpenseType(mapVehicleExpenseType(ve.getExpenseType()));
             item.setAmount(ve.getAmount());
-            item.setExpenseDate(ve.getExpenseDate());
+            if (ve.getExpenseDate() != null) {
+                item.setExpenseDate(ve.getExpenseDate().atStartOfDay());
+            }
             item.setDescription(ve.getDescription());
             item.setReceiptUrl(ve.getReceiptUrl());
             item.setVehicleExpenseId(ve.getExpenseId()); // 关联原始车辆费用ID

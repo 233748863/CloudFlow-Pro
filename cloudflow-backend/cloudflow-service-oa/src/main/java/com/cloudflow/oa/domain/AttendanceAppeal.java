@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -42,7 +43,7 @@ public class AttendanceAppeal implements Serializable {
 
     /** 补卡/外勤日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDateTime appealDate;
+    private LocalDate appealDate;
 
     /** 补卡时间(补卡类型必填) */
     private String appealTime;

@@ -1,5 +1,6 @@
 package com.cloudflow.oa.domain;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -58,22 +59,25 @@ public class BizExpenseClaim implements Serializable {
     private String deptName;
 
     /** 删除标志 */
+    @TableField(fill = FieldFill.INSERT)
     private String delFlag;
 
     /** 创建者 */
+    @TableField(fill = FieldFill.INSERT)
     private String createBy;
 
     /** 创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
     /** 更新者 */
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updateBy;
 
     /** 更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
     /** 报销明细列表（非数据库字段） */

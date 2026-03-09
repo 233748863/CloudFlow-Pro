@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -33,7 +34,7 @@ public class DutySchedule implements Serializable {
 
     /** 值班日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDateTime dutyDate;
+    private LocalDate dutyDate;
 
     /** 班次(DAY白班/NIGHT夜班/FULL全天) */
     private String shiftType;

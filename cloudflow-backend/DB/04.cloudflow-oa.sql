@@ -320,7 +320,7 @@ CREATE TABLE sys_vehicle_expense (
   description       VARCHAR(500)    DEFAULT NULL COMMENT '费用说明',
   receipt_url       VARCHAR(255)    DEFAULT NULL COMMENT '票据图片URL',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
-  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (expense_id),
   KEY idx_vehicle_expense_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆费用记录表';
@@ -381,9 +381,9 @@ CREATE TABLE biz_expense_claim (
   dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
-  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
-  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_claim_no (claim_no),
   KEY idx_claim_user (user_id),
@@ -394,6 +394,7 @@ CREATE TABLE biz_expense_claim (
 -- 16. 报销明细表
 DROP TABLE IF EXISTS biz_expense_item;
 CREATE TABLE biz_expense_item (
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT 'tenant_id',
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   claim_id          BIGINT(20)      NOT NULL COMMENT '报销申请ID',
   expense_type      VARCHAR(20)     NOT NULL COMMENT '费用类型(MEAL餐费/HOTEL住宿/TRANSPORT交通/OFFICE办公用品/COMM通讯/OTHER其他)',
@@ -403,7 +404,8 @@ CREATE TABLE biz_expense_item (
   receipt_url       VARCHAR(255)    DEFAULT NULL COMMENT '票据图片URL',
   vehicle_expense_id BIGINT(20)     DEFAULT NULL COMMENT '关联车辆费用ID',
   PRIMARY KEY (id),
-  KEY idx_item_claim (claim_id)
+  KEY idx_item_claim (claim_id),
+  KEY idx_item_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='报销明细表';
 
 -- 17. 付款申请表
@@ -428,9 +430,9 @@ CREATE TABLE biz_payment_request (
   dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
-  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
-  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_payment_no (payment_no),
   KEY idx_payment_user (user_id),

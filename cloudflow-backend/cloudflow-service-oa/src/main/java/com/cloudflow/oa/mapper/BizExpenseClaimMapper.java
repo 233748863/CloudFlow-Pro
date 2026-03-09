@@ -24,7 +24,7 @@ public interface BizExpenseClaimMapper extends BaseMapper<BizExpenseClaim> {
      * 获取今日报销单号最大序号
      */
     @Select("SELECT MAX(CAST(SUBSTRING(claim_no, 11) AS UNSIGNED)) FROM biz_expense_claim " +
-            "WHERE DATE(create_time) = CURDATE() AND claim_no LIKE CONCAT('BX', DATE_FORMAT(NOW(), '%Y%m%d'), '%')")
+            "WHERE claim_no LIKE CONCAT('BX', DATE_FORMAT(NOW(), '%Y%m%d'), '%')")
     Integer getTodayMaxSeq();
 
     /**

@@ -24,6 +24,9 @@ public class WfDeployRollbackHistory {
     /** 回滚后的发布记录ID */
     private Long rollbackDeployId;
 
+    /** 流程定义ID */
+    private String processDefId;
+
     /** 从哪个版本回滚 */
     private Integer fromVersion;
 

@@ -1,4 +1,5 @@
 import request from './request';
+import { contactApi } from './contact';
 import { MeetingRoom, SysScheduleEvent } from '../../types';
 
 // 会议室 - 增删改查
@@ -38,7 +39,16 @@ export interface UserBriefItem {
 }
 
 export const getUserListForAttendees = async (): Promise<UserBriefItem[]> => {
-  return request.get('/auth/system/user/list') as unknown as Promise<UserBriefItem[]>;
+  const result = await contactApi.list({ pageNum: 1, pageSize: 500 });
+  const records = Array.isArray(result?.records) ? result.records : [];
+  return records.map((item: any) => ({
+    userId: Number(item.user_id ?? item.userId ?? 0),
+    userName: String(item.user_name ?? item.userName ?? ''),
+    nickName: String(item.nick_name ?? item.nickName ?? item.user_name ?? item.userName ?? ''),
+    email: item.email ?? undefined,
+    deptId: item.dept_id ?? item.deptId ?? undefined,
+    deptName: item.dept_name ?? item.deptName ?? undefined,
+  }));
 };
 
 // 部门树 - 用于组织架构选择
@@ -50,11 +60,28 @@ export interface DeptTreeItem {
   children?: DeptTreeItem[];
 }
 
-export const getDeptTree = async (): Promise<DeptTreeItem[]> => {
-  return request.get('/auth/system/dept/tree') as unknown as Promise<DeptTreeItem[]>;
+const buildDeptTree = (items: DeptTreeItem[], parentId = 0): DeptTreeItem[] => {
+  return items
+    .filter((item) => item.parentId === parentId)
+    .sort((a, b) => (a.orderNum ?? 0) - (b.orderNum ?? 0))
+    .map((item) => ({
+      ...item,
+      children: buildDeptTree(items, item.deptId),
+    }));
 };
 
-// 日程事件
+export const getDeptTree = async (): Promise<DeptTreeItem[]> => {
+  const result = await contactApi.deptTree();
+  const records = Array.isArray(result) ? result : [];
+  const flatItems: DeptTreeItem[] = records.map((item: any) => ({
+    deptId: Number(item.dept_id ?? item.deptId ?? 0),
+    parentId: Number(item.parent_id ?? item.parentId ?? 0),
+    deptName: String(item.dept_name ?? item.deptName ?? ''),
+    orderNum: Number(item.order_num ?? item.orderNum ?? 0),
+  }));
+  return buildDeptTree(flatItems);
+};
+
 export const getMyEvents = async (start: string, end: string): Promise<SysScheduleEvent[]> => {
   return request.get('/oa/schedule/my-events', { params: { start, end } }) as unknown as Promise<SysScheduleEvent[]>;
 };

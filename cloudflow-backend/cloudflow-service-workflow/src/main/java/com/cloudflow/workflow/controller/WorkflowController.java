@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -316,8 +318,12 @@ public class WorkflowController {
     @PreAuthorize("isAuthenticated()")
     public R<?> addSignature(@RequestBody Map<String, Object> body) {
         String taskId = (String) body.get("taskId");
-        @SuppressWarnings("unchecked")
-        List<Long> userIds = (List<Long>) body.get("userIds");
+        List<Long> userIds;
+        try {
+            userIds = parseUserIds(body.get("userIds"));
+        } catch (IllegalArgumentException ex) {
+            return R.fail(ex.getMessage());
+        }
         String comment = (String) body.get("comment");
 
         if (taskId == null || taskId.isBlank()) {
@@ -347,8 +353,12 @@ public class WorkflowController {
     @PreAuthorize("isAuthenticated()")
     public R<?> reductionSignature(@RequestBody Map<String, Object> body) {
         String taskId = (String) body.get("taskId");
-        @SuppressWarnings("unchecked")
-        List<Long> userIds = (List<Long>) body.get("userIds");
+        List<Long> userIds;
+        try {
+            userIds = parseUserIds(body.get("userIds"));
+        } catch (IllegalArgumentException ex) {
+            return R.fail(ex.getMessage());
+        }
         String comment = (String) body.get("comment");
 
         if (taskId == null || taskId.isBlank()) {
@@ -408,5 +418,45 @@ public class WorkflowController {
                 throw new IllegalArgumentException("时间参数格式错误，请使用 yyyy-MM-dd 或 yyyy-MM-ddTHH:mm:ss");
             }
         }
+    }
+
+    private List<Long> parseUserIds(Object rawUserIds) {
+        List<Long> userIds = new ArrayList<>();
+        if (rawUserIds == null) {
+            return userIds;
+        }
+        if (rawUserIds instanceof Collection<?> collection) {
+            for (Object item : collection) {
+                appendUserId(userIds, item);
+            }
+            return userIds;
+        }
+        appendUserId(userIds, rawUserIds);
+        return userIds;
+    }
+
+    private void appendUserId(List<Long> userIds, Object rawValue) {
+        if (rawValue == null) {
+            return;
+        }
+        if (rawValue instanceof Number number) {
+            userIds.add(number.longValue());
+            return;
+        }
+        if (rawValue instanceof String text) {
+            for (String part : text.split(",")) {
+                String trimmed = part.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                try {
+                    userIds.add(Long.parseLong(trimmed));
+                } catch (NumberFormatException ex) {
+                    throw new IllegalArgumentException("userIds 包含无效的用户ID: " + trimmed);
+                }
+            }
+            return;
+        }
+        throw new IllegalArgumentException("userIds 参数格式错误");
     }
 }

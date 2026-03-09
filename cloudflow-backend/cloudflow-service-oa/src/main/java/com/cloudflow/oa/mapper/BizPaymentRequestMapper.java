@@ -19,7 +19,7 @@ public interface BizPaymentRequestMapper extends BaseMapper<BizPaymentRequest> {
      * 获取今日付款单号最大序号
      */
     @Select("SELECT MAX(CAST(SUBSTRING(payment_no, 11) AS UNSIGNED)) FROM biz_payment_request " +
-            "WHERE DATE(create_time) = CURDATE() AND payment_no LIKE CONCAT('FK', DATE_FORMAT(NOW(), '%Y%m%d'), '%')")
+            "WHERE payment_no LIKE CONCAT('FK', DATE_FORMAT(NOW(), '%Y%m%d'), '%')")
     Integer getTodayMaxSeq();
 
     /**

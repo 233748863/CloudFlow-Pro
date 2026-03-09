@@ -302,13 +302,32 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         assertTenantAccess(deployRecord.getTenantId(), "执行版本回滚");
 
         String processDefId = deployRecord.getProcessDefId();
+        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
+        if (definition == null) {
+            return R.fail("流程定义不存在");
+        }
+        assertTenantAccess(definition.getTenantId(), "执行版本回滚");
 
         // 2. 获取目标版本快照
         WfProcessVersionSnapshot snapshot = versionSnapshotMapper
                 .selectByProcessDefIdAndVersion(processDefId, targetVersion);
+        if (snapshot == null && StringUtils.hasText(definition.getProcessKey())) {
+            snapshot = versionSnapshotMapper.selectByProcessKeyAndVersion(definition.getProcessKey(), targetVersion);
+        }
         if (snapshot == null) {
             return R.fail("目标版本 " + targetVersion + " 的快照不存在，无法回滚");
         }
+
+        List<WfProcessVersionSnapshot> availableSnapshots = StringUtils.hasText(definition.getProcessKey())
+                ? versionSnapshotMapper.listByProcessKey(definition.getProcessKey())
+                : versionSnapshotMapper.listByProcessDefId(processDefId);
+        int nextVersion = definition.getVersion() != null ? definition.getVersion() : 0;
+        for (WfProcessVersionSnapshot item : availableSnapshots) {
+            if (item != null && item.getVersion() != null) {
+                nextVersion = Math.max(nextVersion, item.getVersion());
+            }
+        }
+        nextVersion += 1;
 
         // 3. 如果不是强制回滚，检查影响
         if (!Boolean.TRUE.equals(dto.getForceRollback())) {
@@ -319,20 +338,16 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         }
 
         // 4. 更新流程定义为目标版本
-        WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
-        if (definition == null) {
-            return R.fail("流程定义不存在");
-        }
-        assertTenantAccess(definition.getTenantId(), "执行版本回滚");
         definition.setModelJson(snapshot.getSnapshotData());
-        definition.setVersion(targetVersion);
+        definition.setVersion(nextVersion);
         processDefinitionMapper.updateById(definition);
 
         // 5. 创建新的发布记录
         WfDeployRecord rollbackRecord = new WfDeployRecord();
         rollbackRecord.setTenantId(resolveTenantId(definition.getTenantId()));
         rollbackRecord.setProcessDefId(processDefId);
-        rollbackRecord.setVersion(targetVersion);
+        rollbackRecord.setProcessKey(definition.getProcessKey());
+        rollbackRecord.setVersion(nextVersion);
         rollbackRecord.setDeployStatus("SUCCESS");
         rollbackRecord.setDeployBy(userId);
         rollbackRecord.setDeployTime(LocalDateTime.now());
@@ -342,11 +357,25 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         rollbackRecord.setRollbackTime(LocalDateTime.now());
         deployRecordMapper.insert(rollbackRecord);
 
-        // 6. 记录回滚历史
+        // 6. 为新的回滚版本补齐快照
+        WfProcessVersionSnapshot rollbackSnapshot = new WfProcessVersionSnapshot();
+        rollbackSnapshot.setTenantId(resolveTenantId(definition.getTenantId()));
+        rollbackSnapshot.setProcessDefId(processDefId);
+        rollbackSnapshot.setProcessKey(definition.getProcessKey());
+        rollbackSnapshot.setVersion(nextVersion);
+        rollbackSnapshot.setSnapshotData(snapshot.getSnapshotData());
+        rollbackSnapshot.setBpmnXml(snapshot.getBpmnXml());
+        rollbackSnapshot.setFormConfig(snapshot.getFormConfig());
+        rollbackSnapshot.setNodeConfig(snapshot.getNodeConfig());
+        rollbackSnapshot.setCreatedTime(LocalDateTime.now());
+        versionSnapshotMapper.insert(rollbackSnapshot);
+
+        // 7. 记录回滚历史
         WfDeployRollbackHistory history = new WfDeployRollbackHistory();
         history.setTenantId(resolveTenantId(definition.getTenantId()));
         history.setOriginalDeployId(deployId);
         history.setRollbackDeployId(rollbackRecord.getId());
+        history.setProcessDefId(processDefId);
         history.setFromVersion(deployRecord.getVersion());
         history.setToVersion(targetVersion);
         history.setRollbackReason(reason);
@@ -356,8 +385,8 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         history.setRollbackTime(LocalDateTime.now());
         rollbackHistoryMapper.insert(history);
 
-        log.info("流程定义 {} 已从版本 {} 回滚到版本 {}", processDefId, deployRecord.getVersion(), targetVersion);
-        return R.ok("回滚成功，已恢复到版本 " + targetVersion);
+        log.info("流程定义 {} 已从版本 {} 回滚到版本 {} 的内容，并生成新版本 {}", processDefId, deployRecord.getVersion(), targetVersion, nextVersion);
+        return R.ok("回滚成功，已基于版本 " + targetVersion + " 生成回滚版本 " + nextVersion);
     }
 
     @Override
@@ -368,9 +397,14 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         }
         assertTenantAccess(definition.getTenantId(), "查看可回滚版本");
         Long currentTenantId = UserContext.getTenantId();
-        List<WfProcessVersionSnapshot> list = versionSnapshotMapper.listByProcessDefId(processDefId).stream()
+        List<WfProcessVersionSnapshot> rawList = StringUtils.hasText(definition.getProcessKey())
+                ? versionSnapshotMapper.listByProcessKey(definition.getProcessKey())
+                : versionSnapshotMapper.listByProcessDefId(processDefId);
+        Map<Integer, WfProcessVersionSnapshot> uniqueByVersion = new LinkedHashMap<>();
+        rawList.stream()
                 .filter(s -> currentTenantId == null || Objects.equals(currentTenantId, s.getTenantId()))
-                .collect(Collectors.toList());
+                .forEach(snapshot -> uniqueByVersion.putIfAbsent(snapshot.getVersion(), snapshot));
+        List<WfProcessVersionSnapshot> list = new ArrayList<>(uniqueByVersion.values());
         return R.ok(list);
     }
 
@@ -411,6 +445,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         assertTenantAccess(definition.getTenantId(), "查看版本快照");
         WfProcessVersionSnapshot snapshot = versionSnapshotMapper
                 .selectByProcessDefIdAndVersion(processDefId, version);
+        if (snapshot == null && StringUtils.hasText(definition.getProcessKey())) {
+            snapshot = versionSnapshotMapper.selectByProcessKeyAndVersion(definition.getProcessKey(), version);
+        }
         if (snapshot == null) {
             return R.fail("版本快照不存在");
         }
@@ -627,6 +664,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
                 WfDeployRecord record = new WfDeployRecord();
                 record.setTenantId(resolveTenantId(approval.getTenantId()));
                 record.setProcessDefId(processDefId);
+                record.setProcessKey(definition.getProcessKey());
                 record.setVersion(definition.getVersion() != null ? definition.getVersion() + 1 : 1);
                 record.setDeployStatus("SUCCESS");
                 record.setDeployBy(approval.getSubmitterId());

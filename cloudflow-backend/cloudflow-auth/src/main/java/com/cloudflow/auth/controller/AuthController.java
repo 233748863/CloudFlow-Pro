@@ -307,9 +307,18 @@ public class AuthController {
         }
 
         // 检查是否为超级管理员
-        @SuppressWarnings("unchecked")
-        List<String> roles = (List<String>) userMap.get("roles");
-        if (roles == null || !roles.contains("ADMIN")) {
+        Object rolesObj = userMap.get("roles");
+        Set<String> roles = new HashSet<>();
+        if (rolesObj instanceof Collection<?>) {
+            for (Object roleObj : (Collection<?>) rolesObj) {
+                if (roleObj != null) {
+                    roles.add(roleObj.toString().toUpperCase());
+                }
+            }
+        } else if (rolesObj != null) {
+            roles.add(rolesObj.toString().toUpperCase());
+        }
+        if (!roles.contains("ADMIN")) {
             return R.fail(403, "只有超级管理员才能切换租户");
         }
 

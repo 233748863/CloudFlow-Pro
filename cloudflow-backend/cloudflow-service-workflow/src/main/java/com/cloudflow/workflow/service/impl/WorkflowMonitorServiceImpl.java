@@ -115,7 +115,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
     @Override
     public ProcessMonitor getProcessMonitor(String instanceId) {
         log.info("获取流程监控详情: instanceId={}", instanceId);
-        return processMonitorMapper.selectById(instanceId);
+        return processMonitorMapper.selectByInstanceId(instanceId);
     }
 
     @Override

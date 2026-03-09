@@ -11,6 +11,7 @@ import com.cloudflow.oa.service.IPaymentRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -69,7 +70,10 @@ public class PaymentRequestController {
         payment.setUserName(UserContext.getUserName());
         payment.setDeptId(UserContext.getDeptId());
         payment.setDeptName(UserContext.getDeptName());
+        LocalDateTime now = LocalDateTime.now();
         payment.setCreateBy(UserContext.getUserName());
+        payment.setCreateTime(now);
+        payment.setUpdateTime(now);
         payment.setPaymentNo(paymentRequestService.generatePaymentNo());
         payment.setStatus("DRAFT");
         return paymentRequestService.save(payment) ? R.ok() : R.fail("创建失败");

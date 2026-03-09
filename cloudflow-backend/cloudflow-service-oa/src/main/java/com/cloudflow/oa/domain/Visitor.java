@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -54,7 +55,7 @@ public class Visitor implements Serializable {
 
     /** 预约来访日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDateTime visitDate;
+    private LocalDate visitDate;
 
     /** 预计到达时间 */
     private String visitTimeStart;

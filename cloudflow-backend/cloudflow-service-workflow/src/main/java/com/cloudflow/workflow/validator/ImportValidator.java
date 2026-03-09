@@ -36,8 +36,9 @@ public class ImportValidator {
      * 系统支持的节点类型
      */
     private static final Set<String> SUPPORTED_NODE_TYPES = new HashSet<>(Arrays.asList(
-        "start", "end", "approval", "condition", "parallel", "subprocess",
-        "userTask", "serviceTask", "scriptTask", "timer", "message"
+        "START", "END", "APPROVAL", "CONDITION", "PARALLEL", "GATEWAY",
+        "SUBPROCESS", "NOTIFICATION", "SCRIPT", "TIMER", "MANUAL", "COPY",
+        "USERTASK", "SERVICETASK", "SCRIPTTASK", "MESSAGE"
     ));
 
     /**
@@ -218,7 +219,7 @@ public class ImportValidator {
             exportFormat.getDependencies().getNodeTypes() != null) {
             
             for (String nodeType : exportFormat.getDependencies().getNodeTypes()) {
-                if (!SUPPORTED_NODE_TYPES.contains(nodeType)) {
+                if (!SUPPORTED_NODE_TYPES.contains(normalizeNodeType(nodeType))) {
                     unsupportedTypes.add(nodeType);
                 }
             }
@@ -243,7 +244,7 @@ public class ImportValidator {
             exportFormat.getDependencies().getIntegrations() != null) {
             
             for (String integration : exportFormat.getDependencies().getIntegrations()) {
-                if (!SUPPORTED_INTEGRATIONS.contains(integration)) {
+                if (!SUPPORTED_INTEGRATIONS.contains(normalizeIntegration(integration))) {
                     unsupportedIntegrations.add(integration);
                 }
             }
@@ -347,5 +348,23 @@ public class ImportValidator {
         }
 
         return 0;
+    }
+
+    private String normalizeNodeType(String nodeType) {
+        if (nodeType == null) {
+            return "";
+        }
+        return nodeType.trim()
+            .replace("_", "")
+            .replace("-", "")
+            .replace(" ", "")
+            .toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeIntegration(String integration) {
+        if (integration == null) {
+            return "";
+        }
+        return integration.trim().toLowerCase(Locale.ROOT);
     }
 }
