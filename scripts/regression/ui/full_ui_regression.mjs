@@ -25,6 +25,44 @@ function normalizeText(text) {
   return String(text || "").replace(/\s+/g, " ").trim();
 }
 
+function normalizeApiPath(url) {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return String(url || "");
+  }
+}
+
+function shouldIgnoreRequestFailure(entry) {
+  return (
+    entry?.method === "OPTIONS" &&
+    normalizeApiPath(entry?.url) === "/api/auth/login" &&
+    entry?.failure === "net::ERR_ABORTED"
+  );
+}
+
+function buildBlockingIssueMessage(pageErrors, requestFailures, responseFailures) {
+  const details = [];
+  if (pageErrors.length > 0) {
+    details.push(`页面异常 ${pageErrors.length} 项: ${pageErrors.join(" | ")}`);
+  }
+  if (requestFailures.length > 0) {
+    details.push(
+      `请求失败 ${requestFailures.length} 项: ${requestFailures
+        .map((item) => `${item.method} ${normalizeApiPath(item.url)} ${item.failure}`)
+        .join(" | ")}`,
+    );
+  }
+  if (responseFailures.length > 0) {
+    details.push(
+      `接口异常 ${responseFailures.length} 项: ${responseFailures
+        .map((item) => `${item.status} ${normalizeApiPath(item.url)}`)
+        .join(" | ")}`,
+    );
+  }
+  return details.join(" ; ");
+}
+
 function toRows(data) {
   if (Array.isArray(data)) {
     return data;
@@ -261,16 +299,34 @@ async function openAndCheck(context, item) {
       await item.assert(page);
     }
 
+    const blockingPageErrors = pageErrors.slice(0, 10);
+    const ignoredRequestFailures = requestFailures.filter(shouldIgnoreRequestFailure).slice(0, 10);
+    const blockingRequestFailures = requestFailures
+      .filter((entry) => !shouldIgnoreRequestFailure(entry))
+      .slice(0, 10);
+    const blockingResponseFailures = responseFailures.slice(0, 10);
+
+    if (blockingPageErrors.length > 0 || blockingRequestFailures.length > 0 || blockingResponseFailures.length > 0) {
+      throw new Error(
+        buildBlockingIssueMessage(
+          blockingPageErrors,
+          blockingRequestFailures,
+          blockingResponseFailures,
+        ),
+      );
+    }
+
     const diagnostics = await captureDiagnostics(page);
     await page.close();
     return {
       name: item.name,
       status: "passed",
       path: item.path,
-      pageErrors: pageErrors.slice(0, 10),
+      pageErrors: blockingPageErrors,
       consoleErrors: consoleErrors.slice(0, 10),
-      requestFailures: requestFailures.slice(0, 10),
-      responseFailures: responseFailures.slice(0, 10),
+      requestFailures: blockingRequestFailures,
+      ignoredRequestFailures,
+      responseFailures: blockingResponseFailures,
       diagnostics,
     };
   } catch (error) {
@@ -283,7 +339,8 @@ async function openAndCheck(context, item) {
       error: summarizeError(error),
       pageErrors: pageErrors.slice(0, 10),
       consoleErrors: consoleErrors.slice(0, 10),
-      requestFailures: requestFailures.slice(0, 10),
+      requestFailures: requestFailures.filter((entry) => !shouldIgnoreRequestFailure(entry)).slice(0, 10),
+      ignoredRequestFailures: requestFailures.filter(shouldIgnoreRequestFailure).slice(0, 10),
       responseFailures: responseFailures.slice(0, 10),
       diagnostics,
     };
