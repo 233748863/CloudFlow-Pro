@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Task, TaskStatus, FormDefinition, UnifiedTask, WorkTaskStatus } from '../types';
+import { Task, TaskStatus, FormDefinition, UnifiedTask, WorkTaskStatus, Role } from '../types';
 import { TaskList } from '../components/TaskList';
 import { TaskHandleModal } from '../components/TaskHandleModal';
 import { TaskBoard } from '../components/TaskBoard';
@@ -253,6 +253,11 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
   // 加载表单定义（只需一次）
   useEffect(() => {
+    if (!user || user.role !== Role.ADMIN) {
+      setSavedForms([]);
+      return;
+    }
+
     getFormDefinitions().then(res => {
         if(Array.isArray(res)) {
             const mapped = res.map((f: any) => mapBackendForm(f));
@@ -265,7 +270,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
           hasShownFormListLoadWarningRef.current = true;
         }
     });
-  }, []);
+  }, [user]);
 
   // 非管理员无法获取全量表单时，按任务中的 formId 懒加载，保证审批详情可展示动态表单
   useEffect(() => {

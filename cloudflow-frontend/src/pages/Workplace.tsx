@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, DollarSign, Clock, Monitor, FileBadge, GitMerge, ArrowRightCircle, FormInput, AlertTriangle, Tag, FolderOpen, X } from 'lucide-react';
-import { WorkflowDefinition, FormDefinition } from '../types';
+import { WorkflowDefinition, FormDefinition, Role } from '../types';
 import { getProcessDefinitions, getFormDefinition, getFormDefinitions, startProcess } from '../services/api/workflow';
 import { FormRenderer } from '../components/FormRenderer';
 import { useAuth } from '../context/AuthContext';
@@ -175,6 +175,11 @@ export const Workplace = () => {
     });
 
     // 全量表单接口需要管理员权限，非管理员失败时忽略，后续按 formId 懒加载
+    if (!user || user.role !== Role.ADMIN) {
+      setSavedForms([]);
+      return;
+    }
+
     getFormDefinitions()
       .then((res) => {
         if (Array.isArray(res)) {
@@ -184,7 +189,7 @@ export const Workplace = () => {
       .catch(() => {
         setSavedForms([]);
       });
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!isFormOpen || !targetWorkflow?.formId) {
