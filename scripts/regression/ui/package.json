@@ -1,0 +1,12 @@
+{
+  "name": "cloudflow-ui-regression",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "node full_ui_regression.mjs",
+    "run:oa": "node oa_ui_regression.cjs"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

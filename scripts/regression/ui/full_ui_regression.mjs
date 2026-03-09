@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -7,9 +9,59 @@ const currentFile = fileURLToPath(import.meta.url);
 const rootDir = path.resolve(path.dirname(currentFile), "..", "..", "..");
 const tokenFile = path.join(rootDir, ".codex-temp", "ui_session_tokens.json");
 const outputFile = path.join(rootDir, ".codex-temp", "ui_regression_result.json");
+const tokenRefreshScript = path.join(rootDir, "scripts", "regression", "refresh_ui_tokens.py");
 
 const uiBaseUrl = process.env.CF_UI_BASE_URL || "http://127.0.0.1:3000";
 const gatewayBaseUrl = process.env.CF_GATEWAY_BASE_URL || "http://127.0.0.1:9000";
+
+const localServicePorts = [
+  { name: "\u524d\u7aef", host: "127.0.0.1", port: 3000 },
+  { name: "\u7f51\u5173", host: "127.0.0.1", port: 9000 },
+  { name: "\u8ba4\u8bc1\u670d\u52a1", host: "127.0.0.1", port: 9001 },
+  { name: "\u5de5\u4f5c\u6d41\u670d\u52a1", host: "127.0.0.1", port: 9002 },
+  { name: "OA \u670d\u52a1", host: "127.0.0.1", port: 9003 },
+];
+
+function assertPortOpen(host, port, timeoutMs = 2500) {
+  return new Promise((resolve, reject) => {
+    const socket = new net.Socket();
+    let settled = false;
+
+    const finalize = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      socket.destroy();
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => finalize());
+    socket.once("timeout", () => finalize(new Error(`\u7aef\u53e3\u8fde\u63a5\u8d85\u65f6 ${host}:${port}`)));
+    socket.once("error", (error) => finalize(error));
+    socket.connect(port, host);
+  });
+}
+
+async function runLocalServicePreflight() {
+  const failures = [];
+  for (const service of localServicePorts) {
+    try {
+      await assertPortOpen(service.host, service.port);
+    } catch (error) {
+      failures.push(`${service.name}(${service.port}): ${summarizeError(error)}`);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`\u672c\u5730\u670d\u52a1\u9884\u68c0\u5931\u8d25: ${failures.join(" | ")}`);
+  }
+}
 
 function summarizeError(error) {
   if (!error) {
@@ -44,18 +96,18 @@ function shouldIgnoreRequestFailure(entry) {
 function buildBlockingIssueMessage(pageErrors, requestFailures, responseFailures) {
   const details = [];
   if (pageErrors.length > 0) {
-    details.push(`页面异常 ${pageErrors.length} 项: ${pageErrors.join(" | ")}`);
+    details.push(`\u9875\u9762\u5f02\u5e38 ${pageErrors.length} \u9879: ${pageErrors.join(" | ")}`);
   }
   if (requestFailures.length > 0) {
     details.push(
-      `请求失败 ${requestFailures.length} 项: ${requestFailures
+      `\u8bf7\u6c42\u5931\u8d25 ${requestFailures.length} \u9879: ${requestFailures
         .map((item) => `${item.method} ${normalizeApiPath(item.url)} ${item.failure}`)
         .join(" | ")}`,
     );
   }
   if (responseFailures.length > 0) {
     details.push(
-      `接口异常 ${responseFailures.length} 项: ${responseFailures
+      `\u63a5\u53e3\u5f02\u5e38 ${responseFailures.length} \u9879: ${responseFailures
         .map((item) => `${item.status} ${normalizeApiPath(item.url)}`)
         .join(" | ")}`,
     );
@@ -107,6 +159,19 @@ async function readSessions() {
   return JSON.parse(await fs.readFile(tokenFile, "utf-8"));
 }
 
+function refreshUiTokens() {
+  const result = spawnSync(process.env.PYTHON || "python", [tokenRefreshScript], {
+    cwd: rootDir,
+    stdio: "inherit",
+  });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`\u5237\u65b0 UI token \u5931\u8d25\uff0c\u9000\u51fa\u7801: ${result.status}`);
+  }
+}
+
 function getRuntimeSession(rawSessions, username) {
   if (rawSessions?.[username]?.token) {
     return { username, ...rawSessions[username] };
@@ -147,6 +212,51 @@ async function buildSession(runtimeSession) {
     token: runtimeSession.token,
     user: mapUserInfo(info),
   };
+}
+
+async function ensureRawSessions(usernames) {
+  let rawSessions = null;
+  try {
+    rawSessions = await readSessions();
+  } catch (_error) {
+    rawSessions = null;
+  }
+
+  let invalidUsers = [];
+  if (rawSessions) {
+    for (const username of usernames) {
+      try {
+        const runtimeSession = getRuntimeSession(rawSessions, username);
+        await fetchJson(`${gatewayBaseUrl}/auth/info`, runtimeSession.token);
+      } catch (_error) {
+        invalidUsers.push(username);
+      }
+    }
+  } else {
+    invalidUsers = [...usernames];
+  }
+
+  if (invalidUsers.length === 0) {
+    return rawSessions;
+  }
+
+  refreshUiTokens();
+  rawSessions = await readSessions();
+  invalidUsers = [];
+  for (const username of usernames) {
+    try {
+      const runtimeSession = getRuntimeSession(rawSessions, username);
+      await fetchJson(`${gatewayBaseUrl}/auth/info`, runtimeSession.token);
+    } catch (_error) {
+      invalidUsers.push(username);
+    }
+  }
+
+  if (invalidUsers.length > 0) {
+    throw new Error(`\u8fd9\u4e9b\u7528\u6237\u7684 UI token \u4ecd\u7136\u4e0d\u53ef\u7528: ${invalidUsers.join(", ")}`);
+  }
+
+  return rawSessions;
 }
 
 async function resolveDynamicWorkflowId(token) {
@@ -349,7 +459,8 @@ async function openAndCheck(context, item) {
 
 async function main() {
   const startedAt = new Date().toISOString();
-  const rawSessions = await readSessions();
+  await runLocalServicePreflight();
+  const rawSessions = await ensureRawSessions(["admin", "zhang"]);
   const adminSession = await buildSession(getRuntimeSession(rawSessions, "admin"));
   const zhangSession = await buildSession(getRuntimeSession(rawSessions, "zhang"));
   const workflowId = await resolveDynamicWorkflowId(adminSession.token);
