@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input } from '@/components/ui';
 import { toast } from 'sonner';
 import { Eye, RefreshCw, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import {
@@ -20,12 +20,12 @@ const LoginDetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = 
       <div className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">??????</h3>
-            <p className="mt-1 text-sm text-slate-500">??????????????</p>
+            <h3 className="text-lg font-semibold text-slate-900">登录日志详情</h3>
+            <p className="mt-1 text-sm text-slate-500">查看该条登录日志的详细技术参数</p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X size={18} />
-          </button>
+          </Button>
         </div>
         <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
           <div className="rounded-xl bg-slate-50 p-4">
@@ -157,21 +157,23 @@ export const LoginLogPage: React.FC = () => {
           <p className="mt-1 text-sm text-slate-500">???????? / ??????????????</p>
         </div>
         <div className="flex gap-3">
-          <button
+          <Button
+            variant="outline"
             onClick={() => void fetchPage()}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            className="gap-2"
           >
             <RefreshCw size={16} />
-            ??
-          </button>
-          <button
+            刷新
+          </Button>
+          <Button
+            variant="destructive"
             onClick={() => void handleDelete(selectedIds)}
-            className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="gap-2"
             disabled={!selectedIds.length}
           >
             <Trash2 size={16} />
-            ????
-          </button>
+            批量删除
+          </Button>
         </div>
       </div>
 
@@ -193,21 +195,19 @@ export const LoginLogPage: React.FC = () => {
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid gap-4 md:grid-cols-5">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">???</label>
-            <input
+            <label className="mb-2 block text-sm font-medium text-slate-700">用户名</label>
+            <Input
               value={query.createBy || ''}
               onChange={(event) => setQuery((prev) => ({ ...prev, createBy: event.target.value, pageNum: 1 }))}
-              placeholder="??????"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-pink-400"
+              placeholder="请输入用户名"
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">??? IP</label>
-            <input
+            <label className="mb-2 block text-sm font-medium text-slate-700">客户端 IP</label>
+            <Input
               value={query.remoteAddr || ''}
               onChange={(event) => setQuery((prev) => ({ ...prev, remoteAddr: event.target.value, pageNum: 1 }))}
-              placeholder="??? IP"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-pink-400"
+              placeholder="请输入 IP"
             />
           </div>
           <div>
@@ -242,20 +242,21 @@ export const LoginLogPage: React.FC = () => {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
-          <button
+          <Button
             onClick={() => void fetchPage()}
-            className="inline-flex items-center gap-2 rounded-xl bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600"
+            className="bg-pink-500 hover:bg-pink-600 gap-2"
           >
             <Search size={16} />
-            ??
-          </button>
-          <button
+            查询
+          </Button>
+          <Button
+            variant="outline"
             onClick={handleReset}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            className="gap-2"
           >
             <RotateCcw size={16} />
-            ??
-          </button>
+            重置
+          </Button>
         </div>
       </div>
 
@@ -300,14 +301,14 @@ export const LoginLogPage: React.FC = () => {
                   <td className="px-4 py-3 text-slate-600">{item.time ?? 0} ms</td>
                   <td className="max-w-[260px] truncate px-4 py-3 text-slate-500" title={item.userAgent || ''}>{item.userAgent || '-'}</td>
                   <td className="px-4 py-3 text-slate-500">{item.createTime || '-'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => void handleView(item.logId)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-pink-500" title="????">
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => void handleView(item.logId)} className="h-8 w-8 text-slate-500 hover:text-pink-500" title="查看详情">
                         <Eye size={16} />
-                      </button>
-                      <button onClick={() => void handleDelete([item.logId])} className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600" title="??">
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => void handleDelete([item.logId])} className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50" title="删除">
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -317,23 +318,25 @@ export const LoginLogPage: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4 text-sm text-slate-500">
-          <span>? {total} ???</span>
+          <span>共 {total} 条记录</span>
           <div className="flex items-center gap-2">
-            <button
-              className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={(query.pageNum || 1) <= 1}
               onClick={() => setQuery((prev) => ({ ...prev, pageNum: Math.max((prev.pageNum || 1) - 1, 1) }))}
             >
-              ???
-            </button>
-            <span>? {query.pageNum || 1} ?</span>
-            <button
-              className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+              上一页
+            </Button>
+            <span className="min-w-[4rem] text-center">第 {query.pageNum || 1} 页</span>
+            <Button
+              variant="outline"
+              size="sm"
               disabled={(query.pageNum || 1) * (query.pageSize || 10) >= total}
               onClick={() => setQuery((prev) => ({ ...prev, pageNum: (prev.pageNum || 1) + 1 }))}
             >
-              ???
-            </button>
+              下一页
+            </Button>
           </div>
         </div>
       </div>

@@ -539,10 +539,11 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       setTempMinute(min);
       if (type === 'date') {
         emitChange(formatDate(y, m, d));
+        setOpen(false);
       } else if (type === 'datetime-local') {
         emitChange(`${formatDate(y, m, d)}T${formatTime(h, min)}`);
       }
-    }, [currentDate, currentTime, tempHour, tempMinute, emitChange, type]);
+    }, [currentDate, currentTime, tempHour, tempMinute, emitChange, type, setOpen]);
 
     /** 清空值 */
     const handleClear = (e: React.MouseEvent) => {
@@ -630,7 +631,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             <div className="flex flex-col md:flex-row items-stretch">
               {/* 日期面板 */}
               {(type === 'date' || type === 'datetime-local') && (
-                <div className="shrink-0 md:basis-[72%] md:max-w-[72%]">
+                <div className="shrink-0 md:basis-[82%] md:max-w-[82%]">
                   <CalendarPanel
                     year={viewYear}
                     month={viewMonth}
@@ -644,7 +645,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
 
               {/* 时间面板 */}
               {(type === 'time' || type === 'datetime-local') && (
-                <div className="shrink-0 md:basis-[28%] md:max-w-[28%]">
+                <div className="shrink-0 md:basis-[18%] md:max-w-[18%]">
                   <TimePanel
                     hour={tempHour}
                     minute={tempMinute}

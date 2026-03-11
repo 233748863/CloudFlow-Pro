@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Laptop, LogOut, RefreshCw, RotateCcw, Search, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button, Input } from '@/components/ui';
 import {
   forceLogoutOnlineUsers,
   getOnlineUserPage,
@@ -135,21 +136,23 @@ export const OnlineUserPage: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
+          <Button
+            variant="outline"
             onClick={() => void loadData()}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            className="gap-2"
           >
             <RefreshCw size={16} />
             刷新
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="destructive"
             onClick={() => void handleForceLogout(selectedTokens)}
             disabled={!selectedTokens.length}
-            className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-rose-200"
+            className="gap-2"
           >
             <ShieldAlert size={16} />
             批量强退
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -172,34 +175,31 @@ export const OnlineUserPage: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">账号</label>
-            <input
+            <Input
               value={query.username || ''}
               onChange={(event) => setQuery((prev) => ({ ...prev, username: event.target.value }))}
               placeholder="请输入账号"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
             />
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">昵称</label>
-            <input
+            <Input
               value={query.nickName || ''}
               onChange={(event) => setQuery((prev) => ({ ...prev, nickName: event.target.value }))}
               placeholder="请输入昵称"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
             />
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">部门</label>
-            <input
+            <Input
               value={query.deptName || ''}
               onChange={(event) => setQuery((prev) => ({ ...prev, deptName: event.target.value }))}
               placeholder="请输入部门名称"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
             />
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">租户</label>
-            <input
+            <Input
               type="number"
               value={query.tenantId ?? ''}
               onChange={(event) => setQuery((prev) => ({
@@ -209,24 +209,24 @@ export const OnlineUserPage: React.FC = () => {
                   : undefined,
               }))}
               placeholder="请输入租户 ID"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
             />
           </div>
           <div className="flex items-end gap-3">
-            <button
+            <Button
               onClick={handleSearch}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-pink-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-pink-600"
+              className="flex-1 bg-pink-500 hover:bg-pink-600 gap-2"
             >
               <Search size={16} />
               查询
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               onClick={handleReset}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              className="gap-2"
             >
               <RotateCcw size={16} />
               重置
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -302,14 +302,16 @@ export const OnlineUserPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => void handleForceLogout([item.token])}
                       disabled={!!item.currentLogin}
-                      className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                      className="gap-2 text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:border-slate-200 disabled:text-slate-300"
                     >
                       <LogOut size={14} />
                       强制下线
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -320,21 +322,23 @@ export const OnlineUserPage: React.FC = () => {
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4 text-sm text-slate-500">
           <span>共 {total} 条在线会话</span>
           <div className="flex items-center gap-2">
-            <button
-              className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={currentPage <= 1}
               onClick={() => setQuery((prev) => ({ ...prev, pageNum: Math.max((prev.pageNum || 1) - 1, 1) }))}
             >
               上一页
-            </button>
+            </Button>
             <span>第 {currentPage} / {totalPages} 页</span>
-            <button
-              className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={currentPage >= totalPages}
               onClick={() => setQuery((prev) => ({ ...prev, pageNum: (prev.pageNum || 1) + 1 }))}
             >
               下一页
-            </button>
+            </Button>
           </div>
         </div>
       </div>

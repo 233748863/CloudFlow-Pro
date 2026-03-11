@@ -31,7 +31,7 @@ import {
   type TenantStatisticsItem,
 } from '../../services/api/tenant';
 import { useMount } from '../../hooks/useMount';
-import { DatePicker, Input, Textarea } from '@/components/ui';
+import { DatePicker, Input, Textarea, Button } from '@/components/ui';
 
 interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
@@ -335,12 +335,12 @@ export const TenantList: React.FC = () => {
     <div className="p-6 h-full flex flex-col bg-slate-50 gap-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-800">租户管理</h1>
-        <button
+        <Button
           onClick={openCreateModal}
-          className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
+          className="bg-pink-500 hover:bg-pink-600"
         >
-          <Plus size={18} /> 新增租户
-        </button>
+          <Plus size={18} className="mr-2" /> 新增租户
+        </Button>
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-sm">
@@ -355,9 +355,9 @@ export const TenantList: React.FC = () => {
               onChange={(event) => setSearchTerm(event.target.value)}
             />
           </div>
-          <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors">
+          <Button type="submit" className="bg-slate-800 hover:bg-slate-900 px-6">
             搜索
-          </button>
+          </Button>
         </form>
       </div>
 
@@ -510,17 +510,19 @@ export const TenantList: React.FC = () => {
 
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-2 items-start">
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleToggleStatus(tenant)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                            className={`h-6 px-3 rounded-full text-xs font-medium flex items-center gap-1 ${
                               tenant.status === '0'
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800'
+                                : 'bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800'
                             }`}
                           >
                             {tenant.status === '0' ? <Power size={12} /> : <PowerOff size={12} />}
                             {tenant.status === '0' ? '正常' : '停用'}
-                          </button>
+                          </Button>
 
                           {tenant.expired ? (
                             <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">已过期</span>
@@ -531,31 +533,37 @@ export const TenantList: React.FC = () => {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        <div className="flex flex-wrap gap-3">
-                          <button
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleOpenModal(tenant)}
-                            className="text-pink-500 hover:text-pink-700 flex items-center gap-1"
+                            className="h-8 px-2 text-pink-500 hover:text-pink-700 hover:bg-pink-50"
                           >
-                            <Edit size={16} /> ??
-                          </button>
-                          <button
+                            <Edit size={16} className="mr-1" /> 编辑
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => void handleRefreshStorage(tenant.tenantId)}
                             disabled={refreshingTenantId === tenant.tenantId}
-                            className="text-slate-600 hover:text-slate-900 flex items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="h-8 px-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                           >
                             {refreshingTenantId === tenant.tenantId ? (
-                              <Loader2 size={16} className="animate-spin" />
+                              <Loader2 size={16} className="animate-spin mr-1" />
                             ) : (
-                              <RefreshCw size={16} />
+                              <RefreshCw size={16} className="mr-1" />
                             )}
-                            ????
-                          </button>
-                          <button
+                            刷新
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDelete(tenant.tenantId)}
-                            className="text-red-600 hover:text-red-900 flex items-center gap-1"
+                            className="h-8 px-2 text-red-600 hover:text-red-900 hover:bg-red-50"
                           >
-                            <Trash2 size={16} /> ??
-                          </button>
+                            <Trash2 size={16} className="mr-1" /> 删除
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -572,9 +580,9 @@ export const TenantList: React.FC = () => {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(event) => event.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-800">{isEdit ? '编辑租户' : '新增租户'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
-              </button>
+              </Button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
@@ -689,20 +697,20 @@ export const TenantList: React.FC = () => {
             </form>
 
             <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
-              <button
+              <Button
+                variant="outline"
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={(event) => void handleSubmit(event as any)}
-                className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
+                className="bg-pink-500 hover:bg-pink-600"
               >
                 {isEdit ? '保存修改' : '立即创建'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
