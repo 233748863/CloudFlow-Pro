@@ -4,7 +4,7 @@ import { register as apiRegister } from '../services/api/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SliderCaptcha } from '../components/SliderCaptcha';
-import { Button, Input, Label, Card } from '@/components/ui';
+import { Button, Input, Label } from '@/components/ui';
 
 export const Register = () => {
   const [loading, setLoading] = useState(false);
@@ -123,8 +123,7 @@ export const Register = () => {
             <p className="text-sm text-slate-500">填写以下信息完成注册</p>
           </div>
 
-          <Card className="border-0 shadow-none p-0">
-            <form onSubmit={handleRegisterClick} className="space-y-4">
+          <form onSubmit={handleRegisterClick} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">用户名</Label>
                 <div className="relative">
@@ -204,7 +203,6 @@ export const Register = () => {
                 立即注册
               </Button>
             </form>
-          </Card>
           
           <div className="text-center text-sm">
             <span className="text-slate-500">已有账号? </span>

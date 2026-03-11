@@ -5,7 +5,7 @@ import { login as apiLogin } from '@/services/api/auth';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { SliderCaptcha } from '@/components/SliderCaptcha';
-import { Button, Input, Label, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui';
+import { Button, Input, Label } from '@/components/ui';
 import { logger } from '@/utils/logger';
 
 export const Login = () => {
@@ -120,8 +120,7 @@ export const Login = () => {
             <p className="text-sm text-slate-500">请输入您的账号和密码以登录系统</p>
           </div>
 
-          <Card className="border-0 shadow-none p-0">
-            <form onSubmit={handleLoginClick} className="space-y-4">
+          <form onSubmit={handleLoginClick} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">账号</Label>
                 <div className="relative">
@@ -179,7 +178,6 @@ export const Login = () => {
                 登录系统
               </Button>
             </form>
-          </Card>
           
           <div className="text-center text-sm">
             <span className="text-slate-500">还没有账号? </span>
