@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { UserCheck, Lock, Loader2, X } from 'lucide-react';
+import { UserCheck, Lock, Loader2, X, Activity, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { login as apiLogin } from '@/services/api/auth';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { SliderCaptcha } from '@/components/SliderCaptcha';
-import { Button } from '@/components/ui';
+import { Button, Input, Label, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui';
 import { logger } from '@/utils/logger';
 
 export const Login = () => {
@@ -55,79 +55,151 @@ export const Login = () => {
   };
 
   return (
-  <div className="min-h-screen w-full bg-gradient-to-br from-pink-50 via-white to-rose-100 relative overflow-hidden flex items-center justify-center font-[Inter]">
-    {/* 背景光晕 */}
-    <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-300/40 rounded-full blur-[120px]" />
-       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-rose-200/40 rounded-full blur-[120px]" />
-    </div>
+    <div className="flex min-h-screen w-full font-[Inter] bg-white">
+      {/* 左侧品牌区域 - 仅在大屏显示 */}
+      <div className="hidden lg:flex w-1/2 relative bg-slate-900 flex-col items-center justify-center p-12 text-white overflow-hidden">
+        {/* 背景装饰 */}
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900/95 to-pink-900/40"></div>
+        
+        {/* 内容 */}
+        <div className="relative z-10 max-w-lg">
+          <div className="mb-8 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-pink-500 text-white shadow-lg shadow-pink-500/30">
+              <Activity size={28} />
+            </div>
+            <span className="text-3xl font-bold tracking-tight">CloudFlow Pro</span>
+          </div>
+          
+          <h2 className="mb-6 text-4xl font-bold leading-tight">
+            企业级微服务中台<br/>
+            <span className="text-pink-400">可视化工作流</span> & 低代码平台
+          </h2>
+          
+          <p className="text-lg text-slate-300 leading-relaxed mb-8">
+            一站式解决企业数字化转型难题。提供强大的流程引擎、灵活的表单设计、完善的权限管理，助您快速构建企业级应用。
+          </p>
 
-    {/* 登录卡片 */}
-    <div className="relative z-10 w-full max-w-md p-8 bg-white/70 backdrop-blur-xl border border-pink-100 rounded-2xl shadow-2xl shadow-pink-200/30">
-      <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold text-slate-800 mb-2">CloudFlow Pro V2.0</h1>
-        <p className="text-slate-500">企业级微服务中台 / 可视化工作流 / 低代码平台</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-slate-300">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-500/20 text-pink-400">
+                <ChevronRight size={14} />
+              </div>
+              <span>可视化流程编排，拖拽式表单设计</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-300">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-500/20 text-pink-400">
+                <ChevronRight size={14} />
+              </div>
+              <span>Spring Cloud Alibaba 微服务架构</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-300">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-500/20 text-pink-400">
+                <ChevronRight size={14} />
+              </div>
+              <span>企业级权限控制与多租户支持</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute bottom-8 text-sm text-slate-500">
+          © 2024 CloudFlow Pro. All rights reserved.
+        </div>
       </div>
-      
-      <form onSubmit={handleLoginClick} className="space-y-6">
-        <div>
-            <label className="block text-slate-600 text-sm font-bold mb-2" htmlFor="username">账号</label>
-            <div className="relative">
-                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-pink-400" size={18} />
-                <input 
+
+      {/* 右侧登录表单 */}
+      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-8 bg-white">
+        <div className="w-full max-w-[400px] space-y-6">
+          <div className="flex flex-col space-y-2 text-center lg:text-left">
+            <div className="lg:hidden flex justify-center mb-4">
+               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500 text-white shadow-lg shadow-pink-500/30">
+                 <Activity size={20} />
+               </div>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">欢迎回来</h1>
+            <p className="text-sm text-slate-500">请输入您的账号和密码以登录系统</p>
+          </div>
+
+          <Card className="border-0 shadow-none p-0">
+            <form onSubmit={handleLoginClick} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">账号</Label>
+                <div className="relative">
+                  <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <Input 
                     id="username"
                     type="text" 
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-pink-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                    className="pl-10 h-11"
                     placeholder="请输入用户名 (如: admin)"
                     required
-                />
-            </div>
-        </div>
+                  />
+                </div>
+              </div>
 
-        <div>
-            <label className="block text-slate-600 text-sm font-bold mb-2" htmlFor="password">密码</label>
-            <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-pink-400" size={18} />
-                <input 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">密码</Label>
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-xs text-pink-500 hover:text-pink-600 font-medium"
+                    onClick={(e) => e.preventDefault()} // 暂时禁用，因为没有这个页面
+                  >
+                    忘记密码?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <Input 
                     id="password"
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-pink-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+                    className="pl-10 h-11"
                     placeholder="请输入密码"
                     required
-                />
-            </div>
-        </div>
-        
-        {error && <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded-lg border border-red-100">{error}</div>}
+                  />
+                </div>
+              </div>
+              
+              {error && (
+                <div className="text-red-500 text-sm flex items-center gap-2 bg-red-50 p-3 rounded-lg border border-red-100">
+                  <X size={14} />
+                  {error}
+                </div>
+              )}
 
-        <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-pink-500 hover:bg-pink-400 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-pink-300/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-            {loading ? <Loader2 className="animate-spin" size={20}/> : '登录系统'}
-        </Button>
-      </form>
-      
-      <div className="mt-8 text-center text-slate-400 text-xs border-t border-pink-100 pt-4">
-        <div className="mb-4">
-            <Link to="/register" className="text-pink-500 hover:text-pink-400 text-sm transition-colors">
-                没有账号？立即注册
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 bg-pink-500 hover:bg-pink-600 text-white font-bold shadow-lg shadow-pink-500/20 transition-all"
+              >
+                {loading ? <Loader2 className="animate-spin mr-2" size={18}/> : null}
+                登录系统
+              </Button>
+            </form>
+          </Card>
+          
+          <div className="text-center text-sm">
+            <span className="text-slate-500">还没有账号? </span>
+            <Link to="/register" className="text-pink-500 hover:text-pink-600 font-medium hover:underline underline-offset-4">
+              立即注册
             </Link>
-        </div>
-        {process.env.NODE_ENV === 'development' && (
-          <p className="mb-2 text-slate-400">开发环境 - 默认账号: admin, li, wang, zhao, zhang</p>
-        )}
-        <p>系统环境: React 18 + Spring Cloud Alibaba | 当前版本: 2.1.0 (Dev)</p>
-      </div>
-    </div>
+          </div>
 
-    {/* 验证码弹窗 */}
-    {showCaptchaModal && (
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-8 p-4 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-500">
+              <p className="font-semibold mb-1">开发环境提示:</p>
+              <p>默认账号: admin, li, wang, zhao, zhang</p>
+              <p className="mt-1">React 18 + Spring Cloud Alibaba</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 验证码弹窗 */}
+      {showCaptchaModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-[fadeIn_0.3s_ease-out]">
             <div className="bg-white rounded-2xl shadow-2xl p-6 w-[340px] relative animate-[zoomIn_0.3s_ease-out]">
                 <button 
@@ -143,7 +215,7 @@ export const Login = () => {
                 </div>
             </div>
         </div>
-    )}
-  </div>
+      )}
+    </div>
   );
 };
