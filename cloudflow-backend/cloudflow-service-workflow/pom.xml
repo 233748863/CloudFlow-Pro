@@ -67,6 +67,11 @@
             <artifactId>cloudflow-common-security</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-sensitive</artifactId>
+        </dependency>
+
         <!-- 公共多数据源模块（包含 MyBatis-Plus、MySQL 驱动、dynamic-datasource） -->
         <!-- 通过 @DS("数据源名") 注解在 Mapper 层切换数据源 -->
         <dependency>

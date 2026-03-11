@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.security;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -54,17 +55,6 @@ public class WorkflowSecurityUtils {
         "URL", "URLConnection", "HttpURLConnection",
         "Socket", "ServerSocket",
         "T(", "new "
-    ));
-
-    // S.2/9.B: 敏感字段名称（需要脱敏）
-    private static final Set<String> SENSITIVE_FIELDS = new HashSet<>(Arrays.asList(
-        "password", "pwd", "secret", "token", "accessToken", "refreshToken",
-        "idCard", "idNumber", "identityCard", "身份证",
-        "phone", "mobile", "telephone", "手机号", "电话",
-        "email", "邮箱",
-        "bankCard", "bankAccount", "银行卡",
-        "salary", "薪资", "工资",
-        "address", "地址"
     ));
 
     /**
@@ -149,88 +139,14 @@ public class WorkflowSecurityUtils {
     }
 
     /**
-     * S.2/9.B: 数据脱敏
+     * S.2/9.B: ????
      */
     public Map<String, Object> maskSensitiveData(Map<String, Object> data) {
         if (data == null || data.isEmpty()) {
             return data;
         }
-
-        Map<String, Object> masked = new HashMap<>(data);
-        for (Map.Entry<String, Object> entry : masked.entrySet()) {
-            String key = entry.getKey().toLowerCase();
-            if (isSensitiveField(key) && entry.getValue() != null) {
-                String value = String.valueOf(entry.getValue());
-                masked.put(entry.getKey(), maskValue(key, value));
-            }
-        }
-        return masked;
-    }
-
-    /**
-     * 判断是否为敏感字段
-     */
-    private boolean isSensitiveField(String fieldName) {
-        String lower = fieldName.toLowerCase();
-        for (String sensitive : SENSITIVE_FIELDS) {
-            if (lower.contains(sensitive.toLowerCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 根据字段类型进行脱敏
-     */
-    private String maskValue(String fieldName, String value) {
-        if (value == null || value.isEmpty()) {
-            return value;
-        }
-
-        String lower = fieldName.toLowerCase();
-
-        // 手机号脱敏: 138****1234
-        if (lower.contains("phone") || lower.contains("mobile") || lower.contains("telephone") || lower.contains("手机")) {
-            if (value.length() >= 11) {
-                return value.substring(0, 3) + "****" + value.substring(value.length() - 4);
-            }
-        }
-
-        // 身份证脱敏: 110***********1234
-        if (lower.contains("idcard") || lower.contains("idnumber") || lower.contains("identity") || lower.contains("身份证")) {
-            if (value.length() >= 15) {
-                return value.substring(0, 3) + "***********" + value.substring(value.length() - 4);
-            }
-        }
-
-        // 邮箱脱敏: a***@example.com
-        if (lower.contains("email") || lower.contains("邮箱")) {
-            int atIndex = value.indexOf('@');
-            if (atIndex > 1) {
-                return value.charAt(0) + "***" + value.substring(atIndex);
-            }
-        }
-
-        // 银行卡脱敏: 6222 **** **** 1234
-        if (lower.contains("bank") || lower.contains("银行卡")) {
-            if (value.length() >= 12) {
-                return value.substring(0, 4) + " **** **** " + value.substring(value.length() - 4);
-            }
-        }
-
-        // 密码/token完全脱敏
-        if (lower.contains("password") || lower.contains("pwd") || lower.contains("secret") || lower.contains("token")) {
-            return "******";
-        }
-
-        // 默认脱敏: 保留前后各1/4
-        int len = value.length();
-        if (len <= 4) {
-            return "****";
-        }
-        int quarter = len / 4;
-        return value.substring(0, quarter) + "****" + value.substring(len - quarter);
+        // ?????????? common-sensitive ?????????????????
+        return SensitiveUtils.maskMap(data);
     }
 
     /**

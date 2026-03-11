@@ -19,6 +19,11 @@
             <artifactId>cloudflow-common-core</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-sensitive</artifactId>
+        </dependency>
+
         <!-- Redis模块（可选依赖，用于从sys_config读取日志配置） -->
         <dependency>
             <groupId>com.cloudflow</groupId>

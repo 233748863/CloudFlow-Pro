@@ -6,6 +6,7 @@ import com.cloudflow.common.log.domain.SysLogEntity;
 import com.cloudflow.common.log.enums.LogTypeEnum;
 import com.cloudflow.common.log.event.SysLogEvent;
 import com.cloudflow.common.log.util.SysLogUtils;
+import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -95,7 +96,9 @@ public class SysLogAspect {
                 }
             }
             if (!logArgs.isEmpty() && StrUtil.isBlank(logEntity.getParams())) {
-                logEntity.setParams(objectMapper.writeValueAsString(logArgs));
+                // ????????????????????????????????
+                Object maskedArgs = SensitiveUtils.maskObject(logArgs);
+                logEntity.setParams(objectMapper.writeValueAsString(maskedArgs));
             }
         } catch (Exception e) {
             log.warn("操作日志参数序列化失败: {}", e.getMessage());

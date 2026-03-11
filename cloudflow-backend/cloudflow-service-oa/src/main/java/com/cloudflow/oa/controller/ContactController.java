@@ -1,6 +1,7 @@
 package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -64,18 +65,14 @@ public class ContactController {
 
         List<Map<String, Object>> records = jdbcTemplate.queryForList(sql.toString());
 
-        // 手机号脱敏处理
+        // ????????????????????????????????
         for (Map<String, Object> record : records) {
             Object phone = record.get("phonenumber");
             if (phone != null) {
-                String phoneStr = phone.toString();
-                if (phoneStr.length() >= 7) {
-                    record.put("phonenumber", phoneStr.substring(0, 3) + "****" + phoneStr.substring(7));
-                }
+                record.put("phonenumber", SensitiveUtils.maskPhone(phone.toString()));
             }
         }
 
-        // 构造分页结果
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("records", records);
         result.put("total", total != null ? total : 0);

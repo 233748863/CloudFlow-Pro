@@ -7,6 +7,7 @@ import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.http.HttpUtil;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.log.config.CloudFlowLogProperties;
+import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.log.domain.SysLogEntity;
 import com.cloudflow.common.log.enums.LogTypeEnum;
@@ -76,9 +77,9 @@ public class SysLogUtils {
 
         // GET 参数脱敏处理
         CloudFlowLogProperties logProperties = SpringUtil.getBean(CloudFlowLogProperties.class);
-        Map<String, String[]> paramsMap = MapUtil.removeAny(
+        Map<String, String[]> paramsMap = SensitiveUtils.maskRequestParams(
                 new HashMap<>(request.getParameterMap()),
-                ArrayUtil.toArray(logProperties.getExcludeFields(), String.class)
+                logProperties.getExcludeFields()
         );
         sysLog.setParams(HttpUtil.toParams(paramsMap));
 
