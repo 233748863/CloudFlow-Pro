@@ -11,7 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input } from '@/components/ui';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import { deleteFile, getFileList, getFileStorageSummary, refreshFileStorageSummary, uploadFile } from '../../services/api/file';
@@ -193,16 +193,17 @@ export const FileList = () => {
           <p className="text-slate-500 mt-1">管理当前租户上传的附件文件和存储空间</p>
         </div>
         <div className="flex gap-3">
-          <button
+          <Button
+            variant="outline"
             onClick={() => void handleRefreshStorage()}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors"
+            className="gap-2"
             disabled={storageLoading}
           >
             <RefreshCw size={18} className={storageLoading ? 'animate-spin' : ''} />
             <span>{storageLoading ? '校准中...' : '校准空间'}</span>
-          </button>
+          </Button>
           <label
-            className={`flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-xl hover:bg-pink-400 transition-colors cursor-pointer shadow-lg shadow-pink-400/20 ${
+            className={`inline-flex items-center justify-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition-all cursor-pointer shadow-lg shadow-pink-400/20 text-sm font-medium ${
               uploading ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
@@ -256,17 +257,17 @@ export const FileList = () => {
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input
+          <Input
             type="text"
             placeholder="搜索文件名..."
-            className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-pink-400/20 focus:border-pink-400 transition-all"
+            className="pl-10 w-64"
             value={params.fileName}
             onChange={(event) => setParams({ ...params, fileName: event.target.value })}
           />
         </div>
 
         <Select value={params.fileType || 'all'} onValueChange={(value) => setParams({ ...params, fileType: value === 'all' ? '' : value })}>
-          <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="文件类型" />
           </SelectTrigger>
           <SelectContent>
@@ -278,24 +279,28 @@ export const FileList = () => {
           </SelectContent>
         </Select>
 
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => void handleSearch()}
-          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
+          className="hover:bg-slate-100"
           title="搜索"
         >
-          <Search size={20} />
-        </button>
+          <Search size={20} className="text-slate-600" />
+        </Button>
 
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => {
             setParams({ ...params, fileName: '', fileType: '' });
             void fetchData();
           }}
-          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
+          className="hover:bg-slate-100"
           title="重置"
         >
-          <RefreshCw size={20} />
-        </button>
+          <RefreshCw size={20} className="text-slate-600" />
+        </Button>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -345,20 +350,24 @@ export const FileList = () => {
                     <td className="px-6 py-4 text-slate-500 text-sm">{file.createTime}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-pink-500 rounded-lg transition-colors"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-500 hover:text-pink-500 hover:bg-slate-100"
                           title="下载"
                           onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
                         >
                           <Download size={16} />
-                        </button>
-                        <button
-                          className="p-1.5 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg transition-colors"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
                           onClick={() => void handleDelete(file.fileId)}
                           title="删除"
                         >
                           <Trash2 size={16} />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -371,20 +380,22 @@ export const FileList = () => {
         <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
           <div className="text-sm text-slate-500">共 {total} 条记录</div>
           <div className="flex gap-2">
-            <button
-              className="px-3 py-1 border border-slate-200 rounded-lg text-sm disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={params.pageNum === 1}
               onClick={() => setParams({ ...params, pageNum: params.pageNum - 1 })}
             >
               上一页
-            </button>
-            <button
-              className="px-3 py-1 border border-slate-200 rounded-lg text-sm disabled:opacity-50"
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               disabled={data.length < params.pageSize}
               onClick={() => setParams({ ...params, pageNum: params.pageNum + 1 })}
             >
               下一页
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -16,6 +16,7 @@ import {
   FileDown,
   Upload
 } from 'lucide-react';
+import { Button, Input } from '@/components/ui';
 import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';
 import { 
   getProcessDefinitions, 
@@ -662,28 +663,29 @@ export const ProcessManagement = () => {
           <p className="text-slate-500 mt-1 text-sm">管理流程定义，支持批量修改分类和标签</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => navigate('/templates')}
-            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2 shadow-sm"
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white gap-2 shadow-sm"
           >
             <FolderOpen size={16} />
             从模板创建
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => navigate('/workflow/import')}
-            className="px-4 py-2 bg-blue-500 text-white border border-blue-600 rounded-lg hover:bg-blue-600 transition-all flex items-center gap-2"
+            className="bg-blue-500 hover:bg-blue-600 text-white gap-2"
           >
             <Upload size={16} />
             导入流程
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
             onClick={loadWorkflows}
             disabled={loading}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2 disabled:opacity-50"
+            className="gap-2"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             刷新
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -692,8 +694,8 @@ export const ProcessManagement = () => {
         {/* 搜索框 */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
-          <input 
-            className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-full focus:ring-2 focus:ring-pink-400 outline-none" 
+          <Input 
+            className="pl-9" 
             placeholder="搜索流程名称..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
@@ -705,17 +707,19 @@ export const ProcessManagement = () => {
           <FolderOpen size={16} className="text-slate-400" />
           <span className="text-sm text-slate-600 font-medium">分类:</span>
           {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-            <button
+            <Button
               key={value}
+              variant={selectedCategory === value ? 'default' : 'ghost'}
+              size="sm"
               onClick={() => setSelectedCategory(value)}
-              className={`px-3 py-1.5 text-xs rounded-lg transition-all ${
+              className={`h-7 text-xs ${
                 selectedCategory === value
-                  ? 'bg-pink-500 text-white shadow-sm'
+                  ? 'bg-pink-500 hover:bg-pink-600 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               {label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -727,8 +731,10 @@ export const ProcessManagement = () => {
             {allTags.map(tag => {
               const isSelected = selectedTags.includes(tag);
               return (
-                <button
+                <Button
                   key={tag}
+                  variant={isSelected ? 'default' : 'ghost'}
+                  size="sm"
                   onClick={() => {
                     if (isSelected) {
                       setSelectedTags(selectedTags.filter(t => t !== tag));
@@ -736,24 +742,26 @@ export const ProcessManagement = () => {
                       setSelectedTags([...selectedTags, tag]);
                     }
                   }}
-                  className={`px-3 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1 ${
+                  className={`h-7 text-xs gap-1 ${
                     isSelected
-                      ? 'bg-blue-500 text-white shadow-sm'
+                      ? 'bg-blue-500 hover:bg-blue-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
                   {tag}
                   {isSelected && <X size={12} />}
-                </button>
+                </Button>
               );
             })}
             {selectedTags.length > 0 && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setSelectedTags([])}
-                className="px-3 py-1.5 text-xs rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-300 transition-all"
+                className="h-7 text-xs bg-slate-200 text-slate-600 hover:bg-slate-300"
               >
                 清除筛选
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -762,9 +770,10 @@ export const ProcessManagement = () => {
       {/* 批量操作工具栏 */}
       <div className="bg-white rounded-xl p-4 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            variant="ghost"
             onClick={handleSelectAll}
-            className="flex items-center gap-2 text-sm text-slate-600 hover:text-pink-500 transition-colors"
+            className="text-slate-600 hover:text-pink-500 hover:bg-transparent px-0 gap-2"
           >
             {selectedIds.length === filteredWorkflows.length && filteredWorkflows.length > 0 ? (
               <CheckSquare size={18} className="text-pink-500" />
@@ -772,46 +781,46 @@ export const ProcessManagement = () => {
               <Square size={18} />
             )}
             全选 ({selectedIds.length}/{filteredWorkflows.length})
-          </button>
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => openBatchEdit('category')}
             disabled={selectedIds.length === 0 || !isAdmin}
-            className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="bg-pink-500 hover:bg-pink-600 text-white gap-2"
             title={!isAdmin ? '仅管理员可批量修改分类' : '批量修改选中流程分类'}
           >
             <FolderOpen size={16} />
             批量修改分类
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => openBatchEdit('tags')}
             disabled={selectedIds.length === 0 || !isAdmin}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="bg-blue-500 hover:bg-blue-600 text-white gap-2"
             title={!isAdmin ? '仅管理员可批量添加标签' : '批量为选中流程添加标签'}
           >
             <Tag size={16} />
             批量添加标签
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={openBatchExportDialog}
             disabled={selectedIds.length === 0 || !canExportBatch}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="bg-green-500 hover:bg-green-600 text-white gap-2"
             title={!canExportBatch ? '仅管理员可批量导出' : '批量导出选中的流程'}
           >
             <Download size={16} />
             批量导出
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={openBatchArchiveDialog}
             disabled={selectedIds.length === 0 || !canBatchArchive}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="bg-orange-500 hover:bg-orange-600 text-white gap-2"
             title={!canBatchArchive ? '仅管理员可批量归档' : '批量归档选中的流程'}
           >
             <Archive size={16} />
             批量归档
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -912,32 +921,38 @@ export const ProcessManagement = () => {
                   <td className="px-4 py-3 text-sm text-slate-600">v{wf.version}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => navigate(`/workflow/design?id=${wf.id}`)}
                         disabled={!isAdmin}
-                        className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 text-sm disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 gap-1 disabled:text-slate-400"
                         title={isAdmin ? '编辑流程' : '仅管理员可编辑流程'}
                       >
                         <Edit size={16} />
                         编辑
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => navigate(`/workflow/versions/${wf.id}`)}
-                        className="text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1 text-sm"
+                        className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 gap-1"
                         title="查看版本历史"
                       >
                         <RefreshCw size={16} />
                         版本
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => openExportDialog(wf.id)}
                         disabled={!canExportSingleWorkflow(wf)}
-                        className="text-green-600 hover:text-green-700 transition-colors flex items-center gap-1 text-sm disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 gap-1 disabled:text-slate-400"
                         title={canExportSingleWorkflow(wf) ? '导出流程' : '仅流程创建者或管理员可导出'}
                       >
                         <FileDown size={16} />
                         导出
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -956,12 +971,14 @@ export const ProcessManagement = () => {
               <h3 className="text-lg font-bold text-slate-800">
                 {batchEditType === 'category' ? '批量修改分类' : '批量添加标签'}
               </h3>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowBatchEditModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 hover:text-slate-600"
               >
                 <X size={20} />
-              </button>
+              </Button>
             </div>
 
             {/* 模态框内容 */}
@@ -998,7 +1015,7 @@ export const ProcessManagement = () => {
                   
                   {/* 标签输入 */}
                   <div className="flex gap-2 mb-3">
-                    <input
+                    <Input
                       type="text"
                       value={batchTagInput}
                       onChange={(e) => setBatchTagInput(e.target.value)}
@@ -1009,19 +1026,19 @@ export const ProcessManagement = () => {
                         }
                       }}
                       placeholder="输入标签后按回车"
-                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm"
+                      className="flex-1"
                     />
-                    <button
+                    <Button
                       onClick={() => {
                         if (batchTagInput.trim()) {
                           addBatchTag(batchTagInput.trim());
                           setBatchTagInput('');
                         }
                       }}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all text-sm"
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
                     >
                       添加
-                    </button>
+                    </Button>
                   </div>
 
                   {/* 已添加的标签 */}
@@ -1052,14 +1069,16 @@ export const ProcessManagement = () => {
                     <div className="text-xs text-slate-600 mb-2">常用标签:</div>
                     <div className="flex flex-wrap gap-2">
                       {COMMON_TAGS.map(tag => (
-                        <button
+                        <Button
                           key={tag}
+                          variant="secondary"
+                          size="sm"
                           onClick={() => addBatchTag(tag)}
                           disabled={batchTags.includes(tag)}
-                          className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-6 text-xs bg-slate-100 text-slate-600 hover:bg-slate-200"
                         >
                           {tag}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -1069,20 +1088,20 @@ export const ProcessManagement = () => {
 
             {/* 模态框底部按钮 */}
             <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => setShowBatchEditModal(false)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={batchEditType === 'category' ? handleBatchUpdateCategory : handleBatchAddTags}
                 disabled={loading || (batchEditType === 'category' ? !batchCategory : batchTags.length === 0)}
-                className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-pink-500 hover:bg-pink-600 text-white gap-2"
               >
                 <Save size={16} />
                 {loading ? '保存中...' : '保存'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1098,12 +1117,14 @@ export const ProcessManagement = () => {
                 <Download size={20} className="text-green-500" />
                 {exportType === 'single' ? '导出流程' : '批量导出流程'}
               </h3>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowExportModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 hover:text-slate-600"
               >
                 <X size={20} />
-              </button>
+              </Button>
             </div>
 
             {/* 对话框内容 */}
@@ -1187,21 +1208,21 @@ export const ProcessManagement = () => {
 
             {/* 对话框底部按钮 */}
             <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => setShowExportModal(false)}
                 disabled={exporting}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-50"
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleExport}
                 disabled={exporting}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-green-500 hover:bg-green-600 text-white gap-2"
               >
                 <Download size={16} />
                 {exporting ? '导出中...' : '确认导出'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1217,16 +1238,18 @@ export const ProcessManagement = () => {
                 <Archive size={20} className="text-orange-500" />
                 批量归档流程
               </h3>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => {
                   setShowArchiveModal(false);
                   setShowSafetyWarning(false);
                   setSafetyWarnings([]);
                 }}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 hover:text-slate-600"
               >
                 <X size={20} />
-              </button>
+              </Button>
             </div>
 
             {/* 对话框内容 */}
@@ -1287,25 +1310,25 @@ export const ProcessManagement = () => {
 
             {/* 对话框底部按钮 */}
             <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-200">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => {
                   setShowArchiveModal(false);
                   setShowSafetyWarning(false);
                   setSafetyWarnings([]);
                 }}
                 disabled={archiving}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-50"
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleBatchArchive}
                 disabled={archiving || !archiveReason.trim()}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-orange-500 hover:bg-orange-600 text-white gap-2"
               >
                 <Archive size={16} />
                 {archiving ? '归档中...' : '确认归档'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
