@@ -12,8 +12,10 @@ import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.core.utils.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -87,7 +89,7 @@ public class AuthController {
             return R.fail("获取用户信息失败");
         }
 
-        // 创建 Token 并存入 Redis（Token 缓存仍用原有机制）
+        // 创建 Sa-Token 登录态并返回原始 Token
         Map<String, Object> loginUser = new HashMap<>();
         loginUser.put("userId", user.getUserId());
         loginUser.put("username", user.getUserName());
@@ -149,20 +151,17 @@ public class AuthController {
 
     @GetMapping("/info")
     public R<?> info(HttpServletRequest request) {
-        String token = request.getHeader("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-
-        Map<String, Object> userMap = tokenService.verifyToken(token);
+        Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
             return R.fail(401, "Token已过期或无效");
         }
 
-        String username = (String) userMap.get("username");
+        Long userId = toLong(userMap.get("userId"));
+        String username = extractUsername(userMap, userId);
 
-        // 从 Spring Cache 获取用户完整信息（命中缓存则不查库）
-        UserInfo userInfo = sysUserService.findUserInfo(username);
+        UserInfo userInfo = TenantBroker.applyWithoutTenant(ignored ->
+                StringUtils.hasText(username) ? sysUserService.findUserInfo(username) : null
+        );
         if (userInfo == null) {
             return R.fail(401, "用户信息不存在");
         }
@@ -175,8 +174,8 @@ public class AuthController {
         user.setUserName(cachedUser.getUserName());
         user.setNickName(cachedUser.getNickName());
         user.setAvatar(cachedUser.getAvatar());
-        user.setTenantId(cachedUser.getTenantId()); // 添加租户ID
-        user.setDeptId(cachedUser.getDeptId()); // 添加部门ID
+        user.setTenantId(resolveTenantId(userMap, cachedUser));
+        user.setDeptId(resolveDeptId(userMap, cachedUser));
 
         if (user.getAvatar() == null) {
             user.setAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.getUserName());
@@ -191,8 +190,8 @@ public class AuthController {
 
         Map<String, Object> data = new HashMap<>();
         data.put("user", user);
-        data.put("roles", userInfo.getRoles());
-        data.put("permissions", userInfo.getPermissions());
+        data.put("roles", resolveStringCollection(userMap.get("roles"), userInfo.getRoles()));
+        data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
 
         return R.ok(data);
     }
@@ -202,26 +201,19 @@ public class AuthController {
      */
     @GetMapping("/getRouters")
     public R<?> getRouters(HttpServletRequest request) {
-        String token = request.getHeader("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-
-        Map<String, Object> userMap = tokenService.verifyToken(token);
+        Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
             return R.fail(401, "Token已过期或无效");
         }
 
-        Object userIdObj = userMap.get("userId");
-        Long userId;
-        if (userIdObj instanceof Integer) {
-            userId = ((Integer) userIdObj).longValue();
-        } else {
-            userId = (Long) userIdObj;
+        Long userId = toLong(userMap.get("userId"));
+        if (userId == null) {
+            return R.fail(401, "登录用户信息异常");
         }
 
-        // 通过 Spring Cache 获取菜单树（@Cacheable 自动缓存，菜单变更时自动失效）
-        List<SysMenu> menus = menuService.selectMenuTreeByUserId(userId);
+        List<SysMenu> menus = TenantBroker.applyWithoutTenant(ignored ->
+                menuService.selectMenuTreeByUserId(userId)
+        );
         return R.ok(menus);
     }
 
@@ -231,43 +223,93 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public R<?> logout(HttpServletRequest request) {
-        String jwtToken = request.getHeader("Authorization");
-        if (jwtToken != null && jwtToken.startsWith("Bearer ")) {
-            jwtToken = jwtToken.substring(7);
-        }
+        String rawToken = resolveRawToken(request);
 
-        // 先验证 Token 获取用户信息
-        Map<String, Object> userMap = tokenService.verifyToken(jwtToken);
+        Map<String, Object> userMap = tokenService.verifyToken(rawToken);
         if (userMap != null) {
-            // 获取用户信息
             String username = (String) userMap.get("username");
-            Object userIdObj = userMap.get("userId");
-            String uuidToken = (String) userMap.get("token"); // 从 userMap 中获取 UUID token
-            
-            Long userId = null;
-            if (userIdObj instanceof Integer) {
-                userId = ((Integer) userIdObj).longValue();
-            } else if (userIdObj instanceof Long) {
-                userId = (Long) userIdObj;
-            }
+            Long userId = toLong(userMap.get("userId"));
 
-            // 清除用户信息缓存
             if (username != null) {
                 sysUserService.evictUserInfoCache(username);
             }
 
-            // 清除用户菜单树缓存
             if (userId != null) {
                 menuService.evictUserMenuCache(userId);
             }
+        }
 
-            // 删除 Token（从 Redis 中移除，使用 UUID token）
-            if (uuidToken != null) {
-                tokenService.deleteToken(uuidToken);
-            }
+        if (StringUtils.hasText(rawToken)) {
+            tokenService.deleteToken(rawToken);
         }
 
         return R.ok("退出成功");
+    }
+
+    private Map<String, Object> resolveLoginUser(HttpServletRequest request) {
+        return tokenService.verifyToken(resolveRawToken(request));
+    }
+
+    private String resolveRawToken(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (!StringUtils.hasText(token)) {
+            return null;
+        }
+        return token.startsWith("Bearer ") ? token.substring(7) : token;
+    }
+
+    private Long toLong(Object value) {
+        if (value instanceof Long longValue) {
+            return longValue;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String extractUsername(Map<String, Object> userMap, Long userId) {
+        Object usernameValue = userMap.get("username");
+        if (usernameValue != null && StringUtils.hasText(String.valueOf(usernameValue))) {
+            return String.valueOf(usernameValue);
+        }
+        if (userId == null) {
+            return null;
+        }
+        SysUser dbUser = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
+        return dbUser != null ? dbUser.getUserName() : null;
+    }
+
+    private Long resolveTenantId(Map<String, Object> userMap, SysUser cachedUser) {
+        Long tenantId = toLong(userMap.get("tenantId"));
+        return tenantId != null ? tenantId : cachedUser.getTenantId();
+    }
+
+    private Long resolveDeptId(Map<String, Object> userMap, SysUser cachedUser) {
+        Long deptId = toLong(userMap.get("deptId"));
+        return deptId != null ? deptId : cachedUser.getDeptId();
+    }
+
+    private Collection<String> resolveStringCollection(Object tokenValue, Collection<String> fallback) {
+        if (tokenValue instanceof Collection<?> collection) {
+            List<String> values = new ArrayList<>();
+            for (Object item : collection) {
+                if (item != null && StringUtils.hasText(String.valueOf(item))) {
+                    values.add(String.valueOf(item));
+                }
+            }
+            if (!values.isEmpty()) {
+                return values;
+            }
+        }
+        return fallback;
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -296,29 +338,13 @@ public class AuthController {
      */
     @PostMapping("/switchTenant")
     public R<?> switchTenant(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String token = request.getHeader("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-
-        Map<String, Object> userMap = tokenService.verifyToken(token);
+        String rawToken = resolveRawToken(request);
+        Map<String, Object> userMap = tokenService.verifyToken(rawToken);
         if (userMap == null) {
             return R.fail(401, "Token已过期或无效");
         }
 
-        // 检查是否为超级管理员
-        Object rolesObj = userMap.get("roles");
-        Set<String> roles = new HashSet<>();
-        if (rolesObj instanceof Collection<?>) {
-            for (Object roleObj : (Collection<?>) rolesObj) {
-                if (roleObj != null) {
-                    roles.add(roleObj.toString().toUpperCase());
-                }
-            }
-        } else if (rolesObj != null) {
-            roles.add(rolesObj.toString().toUpperCase());
-        }
-        if (!roles.contains("ADMIN")) {
+        if (!hasAdminRole(userMap.get("roles"))) {
             return R.fail(403, "只有超级管理员才能切换租户");
         }
 
@@ -341,10 +367,12 @@ public class AuthController {
             }
         }
 
-        // 更新Token中的租户ID
         userMap.put("tenantId", targetTenantId);
-        
-        // 重新生成Token
+
+        if (StringUtils.hasText(rawToken)) {
+            tokenService.deleteToken(rawToken);
+        }
+
         String newToken = tokenService.createToken(userMap);
 
         Map<String, Object> result = new HashMap<>();
@@ -353,6 +381,18 @@ public class AuthController {
         result.put("message", "租户切换成功");
 
         return R.ok(result);
+    }
+
+    private boolean hasAdminRole(Object rolesObj) {
+        if (rolesObj instanceof Collection<?> roles) {
+            for (Object role : roles) {
+                if (role != null && "ADMIN".equalsIgnoreCase(String.valueOf(role))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return rolesObj != null && "ADMIN".equalsIgnoreCase(String.valueOf(rolesObj));
     }
 
     /**

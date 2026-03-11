@@ -28,7 +28,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- 公共安全模块（JWT、TokenService、SecurityUtils） -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
+        </dependency>
+
+        <!-- 公共安全模块（Sa-Token、TokenService、SecurityUtils） -->
         <!-- 传递依赖：common-security -> common-redis -> common-core -->
         <dependency>
             <groupId>com.cloudflow</groupId>

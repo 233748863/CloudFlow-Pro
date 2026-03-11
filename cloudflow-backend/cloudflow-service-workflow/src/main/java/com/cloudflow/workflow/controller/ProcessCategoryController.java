@@ -4,7 +4,10 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessCategory;
 import com.cloudflow.workflow.service.IProcessCategoryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,7 +44,7 @@ public class ProcessCategoryController {
 
     /** 新增分类 */
     @PostMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> add(@RequestBody WfProcessCategory category) {
         categoryService.add(category);
         return R.ok();
@@ -49,7 +52,7 @@ public class ProcessCategoryController {
 
     /** 修改分类 */
     @PutMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> edit(@RequestBody WfProcessCategory category) {
         categoryService.update(category);
         return R.ok();
@@ -57,7 +60,7 @@ public class ProcessCategoryController {
 
     /** 删除分类 */
     @DeleteMapping("/{categoryId}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> remove(@PathVariable Long categoryId) {
         categoryService.delete(categoryId);
         return R.ok();

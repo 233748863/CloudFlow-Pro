@@ -5,7 +5,10 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.MeetingRoom;
 import com.cloudflow.oa.service.IMeetingRoomService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -28,21 +31,21 @@ public class MeetingRoomController {
 
     @SysLog("新增会议室")
     @PostMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Boolean> add(@RequestBody MeetingRoom meetingRoom) {
         return R.ok(meetingRoomService.save(meetingRoom));
     }
 
     @SysLog("编辑会议室")
     @PutMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Boolean> edit(@RequestBody MeetingRoom meetingRoom) {
         return R.ok(meetingRoomService.updateById(meetingRoom));
     }
 
     @SysLog("删除会议室")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Boolean> remove(@PathVariable("id") Long id) {
         return R.ok(meetingRoomService.removeById(id));
     }

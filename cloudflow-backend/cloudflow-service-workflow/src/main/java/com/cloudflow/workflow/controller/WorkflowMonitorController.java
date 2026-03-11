@@ -9,7 +9,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -37,7 +40,7 @@ public class WorkflowMonitorController {
      * 用于监控大屏首页展示
      */
     @Operation(summary = "获取监控概览", description = "获取今日统计、当前状态、告警统计、性能指标")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @GetMapping("/overview")
     public R<MonitorOverview> getMonitorOverview() {
         MonitorOverview overview = monitorService.getMonitorOverview();
@@ -49,7 +52,7 @@ public class WorkflowMonitorController {
      * 用于监控大屏图表展示
      */
     @Operation(summary = "获取流程趋势", description = "获取最近N天的流程启动、完成、超时、异常趋势")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @GetMapping("/trend")
     public R<List<ProcessTrend>> getProcessTrend(
             @RequestParam(defaultValue = "7") Integer days,
@@ -65,7 +68,7 @@ public class WorkflowMonitorController {
      * 分页查询流程执行监控记录
      */
     @Operation(summary = "获取流程监控列表", description = "分页查询流程执行监控记录")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @GetMapping("/process/list")
     public R<PageResult<ProcessMonitor>> getProcessMonitors(
             @RequestParam(required = false) String processDefKey,
@@ -83,7 +86,7 @@ public class WorkflowMonitorController {
      * 获取流程监控详情
      */
     @Operation(summary = "获取流程监控详情", description = "根据流程实例ID获取详细监控信息")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @GetMapping("/process/{instanceId}")
     public R<ProcessMonitor> getProcessMonitor(@PathVariable String instanceId) {
         ProcessMonitor monitor = monitorService.getProcessMonitor(instanceId);
@@ -96,7 +99,7 @@ public class WorkflowMonitorController {
      * 获取超时告警列表
      */
     @Operation(summary = "获取超时告警列表", description = "分页查询超时告警记录")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @GetMapping("/timeout/list")
     public R<PageResult<TimeoutAlert>> getTimeoutAlerts(
             @RequestParam(required = false) String alertType,
@@ -113,7 +116,7 @@ public class WorkflowMonitorController {
      * 处理超时告警
      */
     @Operation(summary = "处理超时告警", description = "发送通知或升级处理超时告警")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     @PostMapping("/timeout/{alertId}/handle")
     public R<?> handleTimeoutAlert(
             @PathVariable Long alertId,
@@ -128,7 +131,7 @@ public class WorkflowMonitorController {
      * 获取异常告警列表
      */
     @Operation(summary = "获取异常告警列表", description = "分页查询异常告警记录")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @GetMapping("/anomaly/list")
     public R<PageResult<AnomalyAlert>> getAnomalyAlerts(
             @RequestParam(required = false) String anomalyType,
@@ -145,7 +148,7 @@ public class WorkflowMonitorController {
      * 解决异常告警
      */
     @Operation(summary = "解决异常告警", description = "标记异常告警为已解决并添加解决说明")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     @PostMapping("/anomaly/{alertId}/resolve")
     public R<?> resolveAnomalyAlert(
             @PathVariable Long alertId,
@@ -160,7 +163,7 @@ public class WorkflowMonitorController {
      * 获取性能统计数据
      */
     @Operation(summary = "获取性能统计", description = "获取指定时间范围内的流程性能统计数据")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @GetMapping("/performance/stats")
     public R<List<PerformanceStats>> getPerformanceStats(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,

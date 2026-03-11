@@ -27,14 +27,24 @@ spring:
       password: ${REDIS_PASSWORD:Juwangkeji@2025}
       database: 0
 
-# Fallback JWT config (used if Nacos cloudflow-common.yaml is unavailable)
+# Fallback Sa-Token config (used if Nacos cloudflow-common.yaml is unavailable)
 cloudflow:
   security:
-    jwt:
-      secret: cloudflow-jwt-secret-key-change-in-production-environment-min-32-chars
     token:
       expiration: 1440
       refresh-time: 20
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  is-read-header: true
+  is-read-cookie: false
+  is-read-body: false
+  is-concurrent: false
+  is-share: false
+  timeout: 86400
+  active-timeout: -1
+  is-log: false
 
 management:
   endpoints:

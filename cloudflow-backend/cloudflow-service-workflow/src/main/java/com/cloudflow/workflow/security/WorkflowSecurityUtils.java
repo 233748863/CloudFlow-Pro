@@ -258,7 +258,7 @@ public class WorkflowSecurityUtils {
 
     /**
      * 获取当前登录用户ID
-     * 从 UserContext 中获取（由 SecurityContextFilter 或 UserContextInterceptor 填充）
+     * 从 UserContext 中获取（由 Sa-Token 链路和 UserContextInterceptor 填充）
      */
     public static Long getCurrentUserId() {
         try {
@@ -271,7 +271,7 @@ public class WorkflowSecurityUtils {
 
     /**
      * 获取当前租户ID
-     * 从 UserContext 中获取（由 SecurityContextFilter 或 UserContextInterceptor 填充）
+     * 从 UserContext 中获取（由 Sa-Token 链路和 UserContextInterceptor 填充）
      */
     public static Long getCurrentTenantId() {
         try {

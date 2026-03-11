@@ -1,4 +1,4 @@
-package com.cloudflow.oa.config;
+package com.cloudflow.workflow.config;
 
 import com.cloudflow.common.core.context.UserContext;
 import feign.RequestInterceptor;
@@ -10,13 +10,9 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
- * Feign 请求拦截器
+ * Feign 请求拦截器。
  *
- * 改造说明：
- * - 服务间统一透传 Authorization: Bearer <token>
- * - 租户信息继续通过 X-Tenant-Id 透传
- *
- * @author CloudFlow
+ * 统一透传 Bearer Token 和租户头，保证 workflow 调用其它服务时能够复用当前登录态。
  */
 @Configuration
 public class FeignRequestInterceptor implements RequestInterceptor {

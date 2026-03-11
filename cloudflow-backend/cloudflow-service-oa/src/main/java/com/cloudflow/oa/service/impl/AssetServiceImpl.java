@@ -3,6 +3,7 @@ package com.cloudflow.oa.service.impl;
 import cn.hutool.extra.qrcode.QrCodeUtil;
 import java.time.LocalDateTime;
 import cn.hutool.extra.qrcode.QrConfig;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
@@ -80,9 +81,11 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
         
         Long previousOwnerId = asset.getOwnerId();
         
-        asset.setStatus("1"); // 闲置
-        asset.setOwnerId(null);
-        updateById(asset);
+        // 显式更新为 NULL，避免 updateById 忽略空字段导致 ownerId 残留旧值
+        update(new LambdaUpdateWrapper<SysAsset>()
+            .eq(SysAsset::getAssetId, assetId)
+            .set(SysAsset::getStatus, "1")
+            .set(SysAsset::getOwnerId, null));
         
         // 记录资产归还日志
         saveAssetLog(assetId, "归还", previousOwnerId, "资产归还：" + asset.getName());
@@ -124,9 +127,11 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
             throw new ServiceException("该资产已经报废");
         }
         
-        asset.setStatus("4"); // 报废
-        asset.setOwnerId(null);
-        updateById(asset);
+        // 报废时也要显式清空领用人，避免空字段未落库
+        update(new LambdaUpdateWrapper<SysAsset>()
+            .eq(SysAsset::getAssetId, assetId)
+            .set(SysAsset::getStatus, "4")
+            .set(SysAsset::getOwnerId, null));
         
         // 记录报废日志
         String logRemark = "资产报废：" + asset.getName();

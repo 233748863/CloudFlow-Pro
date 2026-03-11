@@ -14,7 +14,10 @@ import com.cloudflow.workflow.service.ITemplateCategoryService;
 import com.cloudflow.workflow.service.ITemplateService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +38,7 @@ public class TemplateController {
     private ITemplateCategoryService categoryService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @SaCheckLogin
     public R<Page<TemplateDTO>> listTemplates(
             @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) String tags,
@@ -56,7 +59,7 @@ public class TemplateController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @SaCheckLogin
     public R<TemplateDTO> getTemplate(@PathVariable String id) {
         try {
             TemplateDTO template = templateService.getTemplateById(id);
@@ -68,7 +71,7 @@ public class TemplateController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<TemplateDTO> createTemplate(@RequestBody CreateTemplateRequest request) {
         try {
             TemplateDTO template = templateService.createTemplate(request);
@@ -80,7 +83,7 @@ public class TemplateController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<TemplateDTO> updateTemplate(
             @PathVariable String id,
             @RequestBody UpdateTemplateRequest request) {
@@ -94,7 +97,7 @@ public class TemplateController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> deleteTemplate(@PathVariable String id) {
         try {
             templateService.deleteTemplate(id);
@@ -106,7 +109,7 @@ public class TemplateController {
     }
 
     @PostMapping("/{id}/create-workflow")
-    @PreAuthorize("isAuthenticated()")
+    @SaCheckLogin
     public R<WfProcessDefinition> createWorkflowFromTemplate(
             @PathVariable String id,
             @RequestBody CreateFromTemplateRequest request) {
@@ -120,7 +123,7 @@ public class TemplateController {
     }
 
     @GetMapping("/categories")
-    @PreAuthorize("isAuthenticated()")
+    @SaCheckLogin
     public R<List<CategoryTreeNode>> getCategories() {
         try {
             List<CategoryTreeNode> categories = categoryService.listCategoryTree();
@@ -132,7 +135,7 @@ public class TemplateController {
     }
 
     @GetMapping("/categories/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<TemplateCategory> getCategory(@PathVariable String id) {
         try {
             TemplateCategory category = categoryService.getById(id);
@@ -144,7 +147,7 @@ public class TemplateController {
     }
 
     @PostMapping("/categories")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<TemplateCategory> createCategory(@RequestBody TemplateCategoryRequest request) {
         try {
             TemplateCategory category = fillCategoryFromRequest(new TemplateCategory(), request);
@@ -157,7 +160,7 @@ public class TemplateController {
     }
 
     @PutMapping("/categories/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<TemplateCategory> updateCategory(
             @PathVariable String id,
             @RequestBody TemplateCategoryRequest request) {
@@ -174,7 +177,7 @@ public class TemplateController {
     }
 
     @DeleteMapping("/categories/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> deleteCategory(@PathVariable String id) {
         try {
             categoryService.delete(id);

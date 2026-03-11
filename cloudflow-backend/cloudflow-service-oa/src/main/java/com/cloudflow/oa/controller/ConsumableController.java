@@ -6,7 +6,10 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysConsumable;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,7 +54,7 @@ public class ConsumableController {
      */
     @SysLog("新增耗材")
     @PostMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R add(@RequestBody SysConsumable consumable) {
         return R.result(consumableService.save(consumable));
     }
@@ -61,7 +64,7 @@ public class ConsumableController {
      */
     @SysLog("修改耗材")
     @PutMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R edit(@RequestBody SysConsumable consumable) {
         if (consumable.getConsumableId() == null) {
             return R.fail("耗材ID不能为空");
@@ -74,7 +77,7 @@ public class ConsumableController {
      */
     @SysLog("删除耗材")
     @DeleteMapping("/{ids}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R remove(@PathVariable("ids") List<Long> ids) {
         return R.result(consumableService.removeBatchByIds(ids));
     }
@@ -92,7 +95,7 @@ public class ConsumableController {
      */
     @SysLog("耗材入库")
     @PostMapping("/{id}/add-stock")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R addStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
         Integer quantity = params.get("quantity");
         if (quantity == null || quantity <= 0) {
@@ -106,7 +109,7 @@ public class ConsumableController {
      */
     @SysLog("耗材出库")
     @PostMapping("/{id}/reduce-stock")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R reduceStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
         Integer quantity = params.get("quantity");
         if (quantity == null || quantity <= 0) {

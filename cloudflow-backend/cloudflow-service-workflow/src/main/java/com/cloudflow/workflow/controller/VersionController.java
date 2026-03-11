@@ -17,7 +17,10 @@ import com.cloudflow.workflow.service.IVersionComparisonService;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +43,7 @@ import java.util.Objects;
 @Slf4j
 @RestController
 @RequestMapping("/versions")
-@PreAuthorize("isAuthenticated()")
+@SaCheckLogin
 public class VersionController {
 
     @Autowired

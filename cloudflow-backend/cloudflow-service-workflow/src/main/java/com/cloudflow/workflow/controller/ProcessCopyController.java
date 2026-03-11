@@ -7,7 +7,10 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessCopy;
 import com.cloudflow.workflow.service.IProcessCopyService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/copy")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
+@SaCheckLogin
 public class ProcessCopyController {
 
     private final IProcessCopyService processCopyService;

@@ -30,8 +30,7 @@
         <knife4j.version>4.5.0</knife4j.version>
         <mysql.version>8.0.33</mysql.version>
         <redisson.version>3.27.0</redisson.version>
-        <jjwt.version>0.9.1</jjwt.version>
-        <jaxb-api.version>2.3.1</jaxb-api.version>
+        <sa-token.version>1.45.0</sa-token.version>
         <ttl.version>2.14.5</ttl.version>
         <zxing.version>3.5.3</zxing.version>
         <groovy.version>3.0.19</groovy.version>
@@ -176,18 +175,24 @@
                 <version>${redisson.version}</version>
             </dependency>
 
-            <!-- JWT -->
+            <!-- Sa-Token Servlet Starter -->
             <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt</artifactId>
-                <version>${jjwt.version}</version>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-spring-boot3-starter</artifactId>
+                <version>${sa-token.version}</version>
             </dependency>
 
-            <!-- JAXB（Java 17 兼容） -->
+            <!-- Sa-Token Reactor Starter -->
             <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>${jaxb-api.version}</version>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-reactor-spring-boot3-starter</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
+            <!-- Sa-Token Redis 持久化 -->
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-redis-jackson</artifactId>
+                <version>${sa-token.version}</version>
             </dependency>
 
             <!-- TransmittableThreadLocal: 线程池上下文自动传递 -->

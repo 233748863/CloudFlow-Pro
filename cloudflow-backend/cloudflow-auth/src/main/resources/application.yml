@@ -31,16 +31,26 @@ spring:
       password: ${REDIS_PASSWORD:}
       database: 0
 
-# JWT 安全配置（本地后备，Nacos 配置优先）
+# Sa-Token 安全配置（本地后备，Nacos 配置优先）
 cloudflow:
   # 文件上传存储根路径
   profile: /data/cloudflow/profile
   security:
-    jwt:
-      secret: cloudflow-jwt-secret-key-change-in-production-environment-min-32-chars
     token:
       expiration: 1440
       refresh-time: 20
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  is-read-header: true
+  is-read-cookie: false
+  is-read-body: false
+  is-concurrent: false
+  is-share: false
+  timeout: 86400
+  active-timeout: -1
+  is-log: false
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*Mapper.xml

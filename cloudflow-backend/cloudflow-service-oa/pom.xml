@@ -41,8 +41,8 @@
         </dependency>
         <!-- Spring Boot Security -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
         </dependency>
         <!-- Spring Boot WebSocket -->
         <dependency>
@@ -50,7 +50,7 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
-        <!-- 公共安全模块（JWT、TokenService、SecurityUtils、@Inner） -->
+        <!-- 公共安全模块（Sa-Token、TokenService、SecurityUtils、@Inner） -->
         <!-- 传递依赖：common-security -> common-redis -> common-core -->
         <dependency>
             <groupId>com.cloudflow</groupId>

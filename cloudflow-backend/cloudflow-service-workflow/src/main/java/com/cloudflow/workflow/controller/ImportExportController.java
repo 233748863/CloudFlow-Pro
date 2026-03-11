@@ -26,7 +26,10 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -84,7 +87,7 @@ public class ImportExportController {
     private WorkflowPermissionService permissionService;
 
     @GetMapping("/export/{workflowId}")
-    @PreAuthorize("isAuthenticated()")
+    @SaCheckLogin
     public ResponseEntity<Resource> exportWorkflow(
             @PathVariable String workflowId,
             @RequestParam(defaultValue = "false") Boolean includeSensitive) {
@@ -115,7 +118,7 @@ public class ImportExportController {
     }
 
     @PostMapping("/export/batch")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public ResponseEntity<Resource> exportWorkflows(@RequestBody BatchExportRequest request) {
         if (request == null || request.getWorkflowIds() == null || request.getWorkflowIds().isEmpty()) {
             throw WorkflowException.validationError("workflowIds 不能为空");
@@ -148,7 +151,7 @@ public class ImportExportController {
     }
 
     @PostMapping("/import/validate")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<ValidationResultDTO> validateImportFile(@RequestParam("file") MultipartFile file) {
         log.info("Validate import file, fileName={}, size={}", file.getOriginalFilename(), file.getSize());
 
@@ -182,7 +185,7 @@ public class ImportExportController {
     }
 
     @PostMapping("/import")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<ImportResultDTO> importWorkflow(
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false, defaultValue = "skip") String conflictStrategy) {
@@ -235,7 +238,7 @@ public class ImportExportController {
     }
 
     @PostMapping("/import/batch")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<List<ImportResultDTO>> importWorkflows(
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam(required = false, defaultValue = "skip") String conflictStrategy) {

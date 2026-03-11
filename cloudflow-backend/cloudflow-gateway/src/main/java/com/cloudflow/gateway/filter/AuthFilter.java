@@ -2,7 +2,6 @@ package com.cloudflow.gateway.filter;
 
 import com.cloudflow.common.core.utils.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -21,13 +20,12 @@ import java.util.Map;
 
 /**
  * 网关认证过滤器
- * 
- * 改造说明（参考 RuoYi-Cloud-Plus 的 Sa-Token Session 共享思路）：
- * - 网关验证 Token 后，只传递 X-Auth-Token（JWT 中解析出的 UUID）给下游服务
- * - 不再传递 X-User-Id、X-User-Name、X-User-Roles、X-User-Dept-Name 等明文 Header
- * - 下游服务通过 X-Auth-Token 从 Redis 读取完整用户信息，避免 Header 伪造和中文编码问题
- * - 仅保留 X-User-Tenant-Id（纯数字，无编码问题，且租户过滤需要尽早生效）
- * 
+ *
+ * 改造说明：
+ * - 网关只负责校验 Bearer Token 是否有效
+ * - 下游服务统一从 Authorization 头读取原始 Token，并通过 Sa-Token / Redis 还原登录态
+ * - 清理旧版 X-Auth-Token、X-User-* 透传头，避免伪造和链路歧义
+ *
  * @author CloudFlow
  */
 @Component
@@ -38,10 +36,6 @@ public class AuthFilter implements GlobalFilter, Ordered {
     @Autowired
     private TokenService tokenService;
 
-    /** 默认租户ID，从配置文件读取，未配置时使用 100000 */
-    @Value("${cloudflow.tenant.default-tenant-id:100000}")
-    private String defaultTenantId;
-    
     // 白名单（WebSocket 认证由下游服务的 HandshakeInterceptor 处理，网关放行）
     private final List<String> whiteList = Arrays.asList(
             "/auth/login",
@@ -67,28 +61,22 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
 
-        token = token.substring(7);
-        
-        // 使用 TokenService 校验并自动续期
-        Map<String, Object> loginUser = tokenService.verifyToken(token);
+        String rawToken = token.substring(7);
+
+        Map<String, Object> loginUser = tokenService.verifyToken(rawToken);
         if (loginUser == null) {
             return unauthorized(exchange);
         }
-        
-        // 从 loginUser 中获取 Token UUID（登录时存入 Redis 的 UUID）
-        String authToken = (String) loginUser.get("token");
-        
-        // 获取租户ID（纯数字，无编码问题）
-        String tenantId = loginUser.containsKey("tenantId") 
-                ? String.valueOf(loginUser.get("tenantId")) 
-                : (request.getHeaders().getFirst("X-Tenant-Id") != null 
-                    ? request.getHeaders().getFirst("X-Tenant-Id") : defaultTenantId);
 
-        // 只传递 Token UUID 和租户ID，不再传递明文用户信息
-        // 下游服务的 UserContextInterceptor 会通过 X-Auth-Token 从 Redis 读取完整用户信息
         ServerHttpRequest mutableReq = request.mutate()
-                .header("X-Auth-Token", authToken)
-                .header("X-User-Tenant-Id", tenantId)
+                .headers(headers -> {
+                    headers.remove("X-Auth-Token");
+                    headers.remove("X-User-Id");
+                    headers.remove("X-User-Name");
+                    headers.remove("X-User-Roles");
+                    headers.remove("X-User-Dept-Name");
+                    headers.remove("X-User-Tenant-Id");
+                })
                 .build();
 
         return chain.filter(exchange.mutate().request(mutableReq).build());

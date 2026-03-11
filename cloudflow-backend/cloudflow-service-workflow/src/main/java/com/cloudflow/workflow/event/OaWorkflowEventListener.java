@@ -1,188 +1,212 @@
 package com.cloudflow.workflow.event;
 
+import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
+import org.springframework.util.StringUtils;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * OA 模块工作流事件监听器（示例）
+ * OA 工作流事件监听器。
  *
- * 演示外部业务模块如何通过新版类型安全事件与工作流引擎解耦。
- * 无需了解 WorkflowEvent 内部枚举，直接按事件类型监听即可。
- *
- * 使用方式：
- *   - @EventListener 直接监听具体事件类（如 ProcessStartedEvent）
- *   - 也可监听基类（如 ProcessEvent）捕获所有流程级事件
- *   - 通过 processDefKey 过滤特定流程类型
- *
- * 扩展指南：
- *   业务模块可参考此类创建自己的监听器，实现：
- *   - 请假流程启动后自动创建考勤记录
- *   - 报销流程完成后触发财务系统对接
- *   - 合同审批通过后生成电子签章任务
- *   - 流程拒绝后发送企业微信/钉钉通知
+ * <p>统一维护 OA 业务单据的流程实例 ID 和审批状态，
+ * 避免流程已完成但业务表仍停留在 PENDING 的状态脱节问题。</p>
  */
 @Component
 public class OaWorkflowEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(OaWorkflowEventListener.class);
+    private static final String WORKFLOW_UPDATE_BY = "workflow";
 
-    // ==================== 流程启动 ====================
+    private final Map<String, OaBusinessBinding> bindings = new HashMap<>();
 
-    /**
-     * 监听请假流程启动 — 自动创建考勤记录
-     */
-    @EventListener
-    @Async("workflowEventExecutor")
-    public void onLeaveProcessStarted(ProcessStartedEvent event) {
-        if (!"wf_leave".equals(event.getProcessDefKey())
-                && !"biz_leave".equals(event.getProcessDefKey())) {
-            return;
-        }
-        try {
-            log.info("[OA监听] 请假流程启动: instanceId={}, 发起人={}({}), businessKey={}",
-                    event.getInstanceId(), event.getOperatorName(),
-                    event.getOperatorId(), event.getBusinessKey());
-            // 扩展点：调用考勤服务创建请假记录
-            // 示例：attendanceService.createLeaveRecord(event.getOperatorId(), event.getBusinessKey());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理请假流程启动失败: {}", e.getMessage(), e);
-        }
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private WfProcessInstanceMapper processInstanceMapper;
+
+    public OaWorkflowEventListener() {
+        register("leave_request", "biz_leave_request", "id", "instance_id", "LEAVE_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
+        register("business_trip", "biz_business_trip", "id", "instance_id", "BUSINESS_TRIP:", "APPROVED", "REJECTED", "CANCELLED");
+        register("expense_claim", "biz_expense_claim", "id", "instance_id", "EXPENSE_CLAIM:", "APPROVED", "REJECTED", "CANCELLED");
+        register("payment_request", "biz_payment_request", "id", "instance_id", "PAYMENT_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
+        register("overtime_request", "biz_overtime_request", "id", "instance_id", "OVERTIME_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
+        register("attendance_appeal", "biz_attendance_appeal", "id", "instance_id", "ATTENDANCE_APPEAL:", "APPROVED", "REJECTED", "CANCELLED");
+        register("vehicle_approval", "sys_vehicle_usage", "usage_id", "process_instance_id", null, "1", "2", "5");
     }
 
-    /**
-     * 监听报销流程启动 — 初始化报销单状态
-     */
     @EventListener
     @Async("workflowEventExecutor")
-    public void onReimburseProcessStarted(ProcessStartedEvent event) {
-        if (!"wf_reimburse".equals(event.getProcessDefKey())
-                && !"biz_reimburse".equals(event.getProcessDefKey())) {
-            return;
-        }
-        try {
-            log.info("[OA监听] 报销流程启动: instanceId={}, 发起人={}({})",
-                    event.getInstanceId(), event.getOperatorName(), event.getOperatorId());
-            // 扩展点：调用财务服务初始化报销单
-            // 示例：financeService.initReimburseOrder(event.getBusinessKey(), event.getOperatorId());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理报销流程启动失败: {}", e.getMessage(), e);
-        }
+    public void onProcessStarted(ProcessStartedEvent event) {
+        syncByBusinessKey(event.getProcessDefKey(), event.getBusinessKey(), event.getInstanceId(), null, "流程启动");
     }
 
-    // ==================== 流程完成 ====================
-
-    /**
-     * 监听请假流程完成 — 更新考勤系统
-     */
     @EventListener
     @Async("workflowEventExecutor")
-    public void onLeaveProcessCompleted(ProcessCompletedEvent event) {
-        if (!"wf_leave".equals(event.getProcessDefKey())
-                && !"biz_leave".equals(event.getProcessDefKey())) {
-            return;
-        }
-        try {
-            log.info("[OA监听] 请假流程审批通过: instanceId={}", event.getInstanceId());
-            // 扩展点：更新考勤系统，扣减年假余额
-            // 示例：attendanceService.approveLeave(event.getInstanceId());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理请假流程完成失败: {}", e.getMessage(), e);
-        }
+    public void onProcessCompleted(ProcessCompletedEvent event) {
+        syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.APPROVED, "流程完成");
     }
 
-    /**
-     * 监听报销流程完成 — 触发财务打款
-     */
-    @EventListener
-    @Async("workflowEventExecutor")
-    public void onReimburseProcessCompleted(ProcessCompletedEvent event) {
-        if (!"wf_reimburse".equals(event.getProcessDefKey())
-                && !"biz_reimburse".equals(event.getProcessDefKey())) {
-            return;
-        }
-        try {
-            log.info("[OA监听] 报销流程审批通过: instanceId={}", event.getInstanceId());
-            // 扩展点：触发财务系统打款
-            // 示例：financeService.triggerPayment(event.getInstanceId());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理报销流程完成失败: {}", e.getMessage(), e);
-        }
-    }
-
-    // ==================== 流程拒绝 ====================
-
-    /**
-     * 监听所有流程拒绝 — 发送通知给发起人
-     */
     @EventListener
     @Async("workflowEventExecutor")
     public void onProcessRejected(ProcessRejectedEvent event) {
-        try {
-            log.info("[OA监听] 流程被拒绝: instanceId={}, processDefKey={}, 节点={}, 意见={}",
-                    event.getInstanceId(), event.getProcessDefKey(),
-                    event.getNodeName(), event.getComment());
-            // 扩展点：发送企业微信/钉钉通知给发起人
-            // 示例：notificationService.sendRejectionNotice(event.getInstanceId(), event.getComment());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理流程拒绝通知失败: {}", e.getMessage(), e);
-        }
+        syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.REJECTED, "流程驳回");
     }
 
-    // ==================== 流程作废 ====================
+    @EventListener
+    @Async("workflowEventExecutor")
+    public void onProcessRevoked(ProcessRevokedEvent event) {
+        syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.CANCELLED, "流程撤回");
+    }
 
-    /**
-     * 监听流程作废 — 清理业务数据
-     */
     @EventListener
     @Async("workflowEventExecutor")
     public void onProcessInvalidated(ProcessInvalidatedEvent event) {
-        try {
-            log.info("[OA监听] 流程被作废: instanceId={}, processDefKey={}, 原因={}, 删除任务数={}",
-                    event.getInstanceId(), event.getProcessDefKey(),
-                    event.getReason(), event.getDeletedTasks());
-            // 扩展点：根据流程类型清理对应的业务数据
-            // 示例：businessCleanupService.cleanup(event.getProcessDefKey(), event.getInstanceId());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理流程作废清理失败: {}", e.getMessage(), e);
-        }
+        syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.CANCELLED, "流程作废");
     }
 
-    // ==================== 任务级事件 ====================
-
-    /**
-     * 监听任务分配 — 发送待办提醒（所有流程通用）
-     */
-    @EventListener
-    @Async("workflowEventExecutor")
-    public void onTaskAssigned(TaskAssignedEvent event) {
-        try {
-            log.debug("[OA监听] 任务分配: instanceId={}, taskId={}, 分配给={}({})",
-                    event.getInstanceId(), event.getTaskId(),
-                    event.getAssigneeName(), event.getAssigneeId());
-            // 扩展点：发送待办提醒（站内信、邮件、APP推送等）
-            // 示例：pushService.sendTodoReminder(event.getAssigneeId(), event.getNodeName());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理任务分配提醒失败: {}", e.getMessage(), e);
+    private void syncByInstance(String processDefKey, String instanceId, SyncAction action, String trigger) {
+        OaBusinessBinding binding = bindings.get(processDefKey);
+        if (binding == null) {
+            return;
         }
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            log.warn("[OA回写] {} 时未找到流程实例: processDefKey={}, instanceId={}", trigger, processDefKey, instanceId);
+            return;
+        }
+        sync(binding, instance.getBusinessKey(), instanceId, action, trigger);
     }
 
-    /**
-     * 监听任务完成 — 记录审批轨迹（所有流程通用）
-     */
-    @EventListener
-    @Async("workflowEventExecutor")
-    public void onTaskCompleted(TaskCompletedEvent event) {
-        try {
-            log.debug("[OA监听] 任务完成: instanceId={}, taskId={}, action={}, 操作人={}",
-                    event.getInstanceId(), event.getTaskId(),
-                    event.getAction(), event.getOperatorName());
-            // 扩展点：记录到业务审批轨迹表
-            // 示例：auditTrailService.record(event.getInstanceId(), event.getAction(), event.getComment());
-        } catch (Exception e) {
-            log.error("[OA监听] 处理任务完成记录失败: {}", e.getMessage(), e);
+    private void syncByBusinessKey(String processDefKey, String businessKey, String instanceId, SyncAction action, String trigger) {
+        OaBusinessBinding binding = bindings.get(processDefKey);
+        if (binding == null) {
+            return;
+        }
+        sync(binding, businessKey, instanceId, action, trigger);
+    }
+
+    // 根据 processKey 与 businessKey 解析目标业务单据，并回写实例 ID / 状态。
+    private void sync(OaBusinessBinding binding, String businessKey, String instanceId, SyncAction action, String trigger) {
+        Long businessId = binding.resolveBusinessId(businessKey);
+        if (businessId == null) {
+            log.warn("[OA回写] {} 时 businessKey 无法解析: processDefKey={}, businessKey={}", trigger, binding.processDefKey, businessKey);
+            return;
+        }
+
+        int affectedRows;
+        if (action == null) {
+            affectedRows = jdbcTemplate.update(
+                    "UPDATE " + binding.tableName +
+                            " SET " + binding.instanceColumn + " = ?, update_by = ?, update_time = NOW() WHERE " + binding.idColumn + " = ?",
+                    instanceId, WORKFLOW_UPDATE_BY, businessId
+            );
+        } else {
+            affectedRows = jdbcTemplate.update(
+                    "UPDATE " + binding.tableName +
+                            " SET " + binding.instanceColumn + " = ?, status = ?, update_by = ?, update_time = NOW() WHERE " + binding.idColumn + " = ?",
+                    instanceId, binding.resolveStatus(action), WORKFLOW_UPDATE_BY, businessId
+            );
+        }
+
+        log.info("[OA回写] {}: processDefKey={}, businessKey={}, instanceId={}, table={}, businessId={}, status={}, affectedRows={}",
+                trigger,
+                binding.processDefKey,
+                businessKey,
+                instanceId,
+                binding.tableName,
+                businessId,
+                action == null ? "UNCHANGED" : binding.resolveStatus(action),
+                affectedRows);
+    }
+
+    private void register(String processDefKey,
+                          String tableName,
+                          String idColumn,
+                          String instanceColumn,
+                          String businessKeyPrefix,
+                          String approvedStatus,
+                          String rejectedStatus,
+                          String cancelledStatus) {
+        bindings.put(processDefKey, new OaBusinessBinding(
+                processDefKey,
+                tableName,
+                idColumn,
+                instanceColumn,
+                businessKeyPrefix,
+                approvedStatus,
+                rejectedStatus,
+                cancelledStatus
+        ));
+    }
+
+    private enum SyncAction {
+        APPROVED,
+        REJECTED,
+        CANCELLED
+    }
+
+    private static final class OaBusinessBinding {
+        private final String processDefKey;
+        private final String tableName;
+        private final String idColumn;
+        private final String instanceColumn;
+        private final String businessKeyPrefix;
+        private final String approvedStatus;
+        private final String rejectedStatus;
+        private final String cancelledStatus;
+
+        private OaBusinessBinding(String processDefKey,
+                                  String tableName,
+                                  String idColumn,
+                                  String instanceColumn,
+                                  String businessKeyPrefix,
+                                  String approvedStatus,
+                                  String rejectedStatus,
+                                  String cancelledStatus) {
+            this.processDefKey = processDefKey;
+            this.tableName = tableName;
+            this.idColumn = idColumn;
+            this.instanceColumn = instanceColumn;
+            this.businessKeyPrefix = businessKeyPrefix;
+            this.approvedStatus = approvedStatus;
+            this.rejectedStatus = rejectedStatus;
+            this.cancelledStatus = cancelledStatus;
+        }
+
+        private Long resolveBusinessId(String businessKey) {
+            if (!StringUtils.hasText(businessKey)) {
+                return null;
+            }
+            String rawId = businessKey;
+            if (StringUtils.hasText(businessKeyPrefix)) {
+                if (!businessKey.startsWith(businessKeyPrefix)) {
+                    return null;
+                }
+                rawId = businessKey.substring(businessKeyPrefix.length());
+            }
+            try {
+                return Long.parseLong(rawId);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+
+        private String resolveStatus(SyncAction action) {
+            return switch (action) {
+                case APPROVED -> approvedStatus;
+                case REJECTED -> rejectedStatus;
+                case CANCELLED -> cancelledStatus;
+            };
         }
     }
 }

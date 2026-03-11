@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>cloudflow-common-security</artifactId>
-    <description>CloudFlow 公共安全模块 - JWT、TokenService、@Inner 注解、SecurityUtils</description>
+    <description>CloudFlow 公共安全模块 - Sa-Token、TokenService、@Inner 注解、SecurityUtils</description>
 
     <dependencies>
         <!-- 依赖 redis 模块（TokenService 需要 RedisCache） -->
@@ -26,25 +26,17 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Spring Security（provided，SecurityContextFilter 需要填充 SecurityContext） -->
-        <!-- 下游服务（OA、workflow）自行引入 spring-boot-starter-security -->
-        <!-- 网关通过 excludeFilters 排除 SecurityContextFilter，不会加载此依赖 -->
+        <!-- Sa-Token Servlet Starter（由各业务服务按需引入运行时能力） -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
             <scope>provided</scope>
         </dependency>
 
-        <!-- JWT -->
+        <!-- Sa-Token Redis 持久化 -->
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt</artifactId>
-        </dependency>
-
-        <!-- JAXB（Java 17 需要，JWT 依赖） -->
-        <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redis-jackson</artifactId>
         </dependency>
     </dependencies>
 

@@ -43,6 +43,25 @@ mybatis-plus:
     cache-enabled: false
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
+# Sa-Token 本地后备配置（Nacos cloudflow-common.yaml 不可用时生效）
+cloudflow:
+  security:
+    token:
+      expiration: 1440
+      refresh-time: 20
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  is-read-header: true
+  is-read-cookie: false
+  is-read-body: false
+  is-concurrent: false
+  is-share: false
+  timeout: 86400
+  active-timeout: -1
+  is-log: false
+
 # 日志配置
 logging:
   level:

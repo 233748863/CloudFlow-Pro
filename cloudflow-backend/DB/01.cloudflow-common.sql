@@ -735,7 +735,7 @@ INSERT INTO sys_config VALUES(32, 100000, '日志管理-是否开启操作日志
 INSERT INTO sys_config VALUES(33, 100000, '日志管理-是否记录请求报文体',   'sys.log.requestEnabled',        'true',     'Y', '0', 'admin', NOW(), '', null, '是否记录请求参数到日志中');
 
 -- 安全认证配置（全局：Token策略统一管控）
-INSERT INTO sys_config VALUES(34, 100000, '安全认证-Token过期时间(分钟)',   'sys.security.token.expiration', '30',       'Y', '0', 'admin', NOW(), '', null, 'JWT Token过期时间，单位分钟');
+INSERT INTO sys_config VALUES(34, 100000, '安全认证-Token过期时间(分钟)',   'sys.security.token.expiration', '30',       'Y', '0', 'admin', NOW(), '', null, '登录 Token 过期时间，单位分钟');
 INSERT INTO sys_config VALUES(35, 100000, '安全认证-Token刷新时间(分钟)',   'sys.security.token.refreshTime','20',       'Y', '0', 'admin', NOW(), '', null, 'Token距过期不足此时间时自动刷新');
 
 -- 滑块验证码图片配置（全局）

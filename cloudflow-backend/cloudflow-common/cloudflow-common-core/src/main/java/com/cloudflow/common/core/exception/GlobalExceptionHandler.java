@@ -4,7 +4,10 @@ import com.cloudflow.common.core.domain.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,6 +40,24 @@ public class GlobalExceptionHandler {
         log.error(e.getMessage());
         String message = e.getBindingResult().getFieldError().getDefaultMessage();
         return R.fail(message);
+    }
+
+    /**
+     * 请求方式不匹配时，返回准确的 405，避免被通用异常分支包装成 500。
+     * 例如：接口只支持 POST，却误发成 GET 或 PUT。
+     */
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public R<?> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
+        String[] supportedMethods = e.getSupportedMethods();
+        String allowedMethods = supportedMethods == null || supportedMethods.length == 0
+            ? ""
+            : String.join(", ", supportedMethods);
+        log.warn("请求地址'{}', 请求方式'{}'不支持, 支持方式: {}", request.getRequestURI(), e.getMethod(), allowedMethods);
+        String message = allowedMethods.isEmpty()
+            ? "请求方法不支持"
+            : "请求方法不支持，请使用: " + allowedMethods;
+        return R.fail(HttpStatus.METHOD_NOT_ALLOWED.value(), message);
     }
 
     /**

@@ -4,7 +4,6 @@ import com.cloudflow.common.core.domain.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -14,7 +13,6 @@ import jakarta.servlet.http.HttpServletRequest;
 /**
  * 工作流模块异常处理器
  * 处理工作流特有的异常类型（WorkflowException、ValidationException、BusinessException、NotFoundException 等）
- * 以及 Spring Security 的 AccessDeniedException
  * 通用异常（RuntimeException、Exception 等）由 cloudflow-common 模块的 GlobalExceptionHandler 处理
  * 
  * @author CloudFlow
@@ -91,28 +89,6 @@ public class WorkflowExceptionHandler {
         String requestURI = request.getRequestURI();
         log.warn("权限不足 - 请求地址: {}, 错误信息: {}", requestURI, e.getMessage());
         return R.fail(HttpStatus.FORBIDDEN.value(), "权限不足: " + e.getMessage());
-    }
-
-    /**
-     * Spring Security 权限不足异常
-     * 捕获 @PreAuthorize 等注解抛出的 AccessDeniedException
-     * 返回 403 状态码和明确的权限错误提示
-     */
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    @ExceptionHandler(AccessDeniedException.class)
-    public R<?> handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request) {
-        String requestURI = request.getRequestURI();
-        log.warn("访问被拒绝 - 请求地址: {}, 错误信息: {}", requestURI, e.getMessage());
-        
-        // 提供更友好的错误提示
-        String message = "您没有权限执行此操作";
-        if (e.getMessage() != null && e.getMessage().contains("ROLE_ADMIN")) {
-            message = "此操作需要管理员权限，请联系系统管理员";
-        } else if (e.getMessage() != null && !e.getMessage().isEmpty()) {
-            message = "权限不足: " + e.getMessage();
-        }
-        
-        return R.fail(HttpStatus.FORBIDDEN.value(), message);
     }
 
     /**

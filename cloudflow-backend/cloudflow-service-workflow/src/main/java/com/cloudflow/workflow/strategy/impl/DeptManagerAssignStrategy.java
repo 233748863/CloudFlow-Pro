@@ -4,9 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.system.SysDept;
+import com.cloudflow.workflow.domain.system.SysRole;
 import com.cloudflow.workflow.domain.system.SysUser;
+import com.cloudflow.workflow.domain.system.SysUserRole;
 import com.cloudflow.workflow.mapper.system.SysDeptMapper;
+import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
+import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.strategy.AssignUserStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +19,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 部门经理/直属领导分配策略
@@ -34,6 +42,12 @@ public class DeptManagerAssignStrategy implements AssignUserStrategy {
 
     @Autowired
     private SysDeptMapper sysDeptMapper;
+
+    @Autowired
+    private SysUserRoleMapper sysUserRoleMapper;
+
+    @Autowired
+    private SysRoleMapper sysRoleMapper;
 
     @Override
     public Long resolve(WfNodeConfig node, WfProcessInstance instance) {
@@ -57,21 +71,20 @@ public class DeptManagerAssignStrategy implements AssignUserStrategy {
             return null;
         }
 
-        // 通过部门 leader 字段查找对应用户
-        String leaderUsername = dept.getLeader();
-        if (!StringUtils.hasText(leaderUsername)) {
-            log.warn("[DeptManagerAssignStrategy] 部门 {} 未设置负责人", dept.getDeptName());
-            return null;
+        // 优先使用部门 leader 字段；兼容 leader 可能存 userId / userName / nickName 的情况。
+        Long leaderUserId = resolveLeaderFromDeptField(dept);
+        if (leaderUserId != null) {
+            return leaderUserId;
         }
 
-        SysUser leader = sysUserMapper.selectOne(
-                new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserName, leaderUsername));
-        if (leader == null) {
-            log.warn("[DeptManagerAssignStrategy] 部门负责人用户不存在: {}", leaderUsername);
-            return null;
+        // 兜底策略：如果 leader 字段不可用，则回退到“当前部门/上级部门的 manager 用户”。
+        Long managerUserId = resolveManagerFromDeptChain(startUser.getDeptId(), new HashSet<>());
+        if (managerUserId != null) {
+            return managerUserId;
         }
 
-        return leader.getUserId();
+        log.warn("[DeptManagerAssignStrategy] 无法为部门 {} 解析经理审批人", dept.getDeptName());
+        return null;
     }
 
     @Override
@@ -95,5 +108,71 @@ public class DeptManagerAssignStrategy implements AssignUserStrategy {
             return "直属领导";
         }
         return "部门经理";
+    }
+
+    private Long resolveLeaderFromDeptField(SysDept dept) {
+        String leaderValue = dept.getLeader();
+        if (!StringUtils.hasText(leaderValue)) {
+            log.warn("[DeptManagerAssignStrategy] 部门 {} 未设置负责人", dept.getDeptName());
+            return null;
+        }
+
+        String normalized = leaderValue.trim();
+        try {
+            SysUser leaderById = sysUserMapper.selectById(Long.valueOf(normalized));
+            if (leaderById != null) {
+                return leaderById.getUserId();
+            }
+        } catch (NumberFormatException ignored) {
+        }
+
+        SysUser leader = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUserName, normalized)
+                .or()
+                .eq(SysUser::getNickName, normalized)
+                .last("LIMIT 1"));
+        if (leader != null) {
+            return leader.getUserId();
+        }
+
+        log.warn("[DeptManagerAssignStrategy] 部门负责人无法映射到系统用户: {}", normalized);
+        return null;
+    }
+
+    private Long resolveManagerFromDeptChain(Long deptId, Set<Long> visitedDeptIds) {
+        if (deptId == null || !visitedDeptIds.add(deptId)) {
+            return null;
+        }
+
+        List<Long> managerRoleIds = sysRoleMapper.selectList(new LambdaQueryWrapper<SysRole>()
+                        .eq(SysRole::getRoleKey, "manager"))
+                .stream()
+                .map(SysRole::getRoleId)
+                .collect(Collectors.toList());
+        if (!managerRoleIds.isEmpty()) {
+            List<Long> managerUserIds = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                            .in(SysUserRole::getRoleId, managerRoleIds))
+                    .stream()
+                    .map(SysUserRole::getUserId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!managerUserIds.isEmpty()) {
+                List<SysUser> deptManagers = sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
+                                .eq(SysUser::getDeptId, deptId)
+                                .in(SysUser::getUserId, managerUserIds))
+                        .stream()
+                        .sorted(Comparator.comparing(SysUser::getUserId))
+                        .collect(Collectors.toList());
+                if (!deptManagers.isEmpty()) {
+                    return deptManagers.get(0).getUserId();
+                }
+            }
+        }
+
+        SysDept currentDept = sysDeptMapper.selectById(deptId);
+        if (currentDept == null || currentDept.getParentId() == null || currentDept.getParentId() <= 0) {
+            return null;
+        }
+        return resolveManagerFromDeptChain(currentDept.getParentId(), visitedDeptIds);
     }
 }

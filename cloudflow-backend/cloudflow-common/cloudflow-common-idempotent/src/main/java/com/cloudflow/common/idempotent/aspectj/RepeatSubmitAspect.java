@@ -2,6 +2,7 @@ package com.cloudflow.common.idempotent.aspectj;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.crypto.SecureUtil;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.JoinPoint;
@@ -83,11 +84,8 @@ public class RepeatSubmitAspect {
         }
         HttpServletRequest request = attributes.getRequest();
 
-        // 获取用户ID（从请求头中获取，与 CloudFlow 的安全架构一致）
-        String userId = request.getHeader("X-User-Id");
-        if (ObjectUtil.isEmpty(userId)) {
-            userId = "anonymous";
-        }
+        Long currentUserId = UserContext.getUserId();
+        String userId = currentUserId != null ? String.valueOf(currentUserId) : "anonymous";
 
         // 请求 URI
         String uri = request.getRequestURI();

@@ -264,6 +264,9 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         instance.setEndTime(LocalDateTime.now());
         processInstanceMapper.updateById(instance);
 
+        // 撤回后发布事件，驱动 OA 业务状态同步回写。
+        workflowEventPublisher.publishProcessRevoked(instance);
+
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_RECALL, instanceId, "");
         return R.ok();
     }
@@ -784,13 +787,20 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         auditService.log(WorkflowAuditService.AuditAction.PROCESS_INVALIDATE, instanceId,
             "reason=" + sanitizedReason + ", deletedTasks=" + pendingTasks.size());
 
+        // 作废后发布事件，驱动 OA 业务状态同步回写。
+        workflowEventPublisher.publishProcessInvalidated(instance, sanitizedReason, pendingTasks.size());
+
         // 4. 通知流程发起人
         if (instance.getStartUserId() != null) {
             Long adminUserId = UserContext.getUserId();
             String adminUserName = UserContext.getUserName();
-            sysNoticeService.sendNotice(instance.getStartUserId(), "流程作废通知",
-                String.format("您发起的流程 [%s] 已被管理员作废，原因：%s", instance.getTitle(), sanitizedReason),
-                "SYSTEM", adminUserId != null ? adminUserId : 0L, adminUserName != null ? adminUserName : "系统");
+            try {
+                sysNoticeService.sendNotice(instance.getStartUserId(), "流程作废通知",
+                    String.format("您发起的流程 [%s] 已被管理员作废，原因：%s", instance.getTitle(), sanitizedReason),
+                    "SYSTEM", adminUserId != null ? adminUserId : 0L, adminUserName != null ? adminUserName : "系统");
+            } catch (Exception ex) {
+                log.warn("[invalidateProcess] 提交流程作废通知失败, instanceId={}, error={}", instanceId, ex.getMessage());
+            }
         }
 
         log.info("[invalidateProcess] 流程作废完成, 删除{}个待办任务", pendingTasks.size());

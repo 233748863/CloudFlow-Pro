@@ -6,7 +6,10 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +42,7 @@ public class SysAnnouncementController {
      */
     @SysLog("发布公告")
     @PostMapping("/publish")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
+    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> publish(@RequestBody SysAnnouncement announcement) {
         announcement.setSenderId(UserContext.getUserId());
         announcement.setCreateBy(String.valueOf(UserContext.getUserId()));
@@ -50,7 +53,7 @@ public class SysAnnouncementController {
      * 获取管理列表（分页）- 仅管理员/HR
      */
     @GetMapping("/manage-list")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
+    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Map<String, Object>> getManageList(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String type,
@@ -65,7 +68,7 @@ public class SysAnnouncementController {
      */
     @SysLog("编辑公告")
     @PutMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
+    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> update(@RequestBody SysAnnouncement announcement) {
         return R.ok(announcementService.updateAnnouncement(announcement));
     }
@@ -75,7 +78,7 @@ public class SysAnnouncementController {
      */
     @SysLog("删除公告")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Boolean> delete(@PathVariable("id") Long id) {
         return R.ok(announcementService.removeById(id));
     }
@@ -85,7 +88,7 @@ public class SysAnnouncementController {
      */
     @SysLog("撤销公告")
     @PostMapping("/revoke/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
+    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> revoke(@PathVariable("id") Long id) {
         return R.ok(announcementService.revokeAnnouncement(id));
     }
@@ -95,7 +98,7 @@ public class SysAnnouncementController {
      */
     @SysLog("切换公告置顶")
     @PostMapping("/toggle-top/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'hr')")
+    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> toggleTop(@PathVariable("id") Long id) {
         return R.ok(announcementService.toggleTop(id));
     }

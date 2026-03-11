@@ -11,7 +11,10 @@ import com.cloudflow.oa.service.IVehicleExpenseService;
 import com.cloudflow.oa.service.IVehicleService;
 import com.cloudflow.oa.service.IVehicleUsageService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -52,7 +55,7 @@ public class VehicleController {
     /** 新增车辆 - 仅管理员 */
     @SysLog("新增车辆")
     @PostMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> add(@RequestBody SysVehicle vehicle) {
         return R.result(vehicleService.save(vehicle));
     }
@@ -60,7 +63,7 @@ public class VehicleController {
     /** 编辑车辆 - 仅管理员 */
     @SysLog("编辑车辆")
     @PutMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> edit(@RequestBody SysVehicle vehicle) {
         return R.result(vehicleService.updateById(vehicle));
     }
@@ -68,7 +71,7 @@ public class VehicleController {
     /** 删除车辆 - 仅管理员 */
     @SysLog("删除车辆")
     @DeleteMapping("/{ids}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         return R.result(vehicleService.removeBatchByIds(ids));
     }
@@ -103,7 +106,7 @@ public class VehicleController {
     /** 审批用车申请 - 仅管理员/经理 */
     @SysLog("审批用车申请")
     @PutMapping("/usage/{id}/approve")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN', 'manager')")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R<Void> approveUsage(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
         boolean approved = Boolean.parseBoolean(String.valueOf(params.get("approved")));
         String remark = (String) params.getOrDefault("remark", "");

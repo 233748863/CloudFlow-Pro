@@ -1,5 +1,6 @@
 package com.cloudflow.common.ratelimiter.aspectj;
 
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
 import com.cloudflow.common.ratelimiter.enums.LimitType;
 import jakarta.servlet.http.HttpServletRequest;
@@ -120,10 +121,9 @@ public class RateLimiterAspect {
 
     private String getUserId() {
         try {
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes != null) {
-                String userId = attributes.getRequest().getHeader("X-User-Id");
-                return StringUtils.hasText(userId) ? userId : "anonymous";
+            Long userId = UserContext.getUserId();
+            if (userId != null) {
+                return String.valueOf(userId);
             }
         } catch (Exception e) {
             log.warn("[RateLimiter] 获取用户ID失败: {}", e.getMessage());

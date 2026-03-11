@@ -7,7 +7,10 @@ import com.cloudflow.workflow.service.IAuditLogService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -39,7 +42,7 @@ public class AuditLogController {
      * @return 审计日志分页列表
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Page<AuditLogDTO>> listAuditLogs(
             @RequestParam(required = false) String operationType,
             @RequestParam(required = false) String targetType,
@@ -72,7 +75,7 @@ public class AuditLogController {
      * @return 审计日志详情
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<AuditLogDTO> getAuditLog(@PathVariable String id) {
         log.info("获取审计日志详情: id={}", id);
 
@@ -91,7 +94,7 @@ public class AuditLogController {
      * @return 删除的记录数
      */
     @DeleteMapping("/expired")
-    @PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+    @SaCheckRole("admin")
     public R<Integer> deleteExpiredLogs(@RequestParam(defaultValue = "90") int daysToKeep) {
         log.info("删除过期的审计日志: daysToKeep={}", daysToKeep);
 

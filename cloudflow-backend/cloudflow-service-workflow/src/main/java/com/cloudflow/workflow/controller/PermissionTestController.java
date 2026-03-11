@@ -2,8 +2,9 @@ package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.prepost.PreAuthorize;
+
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/workflow/test/permission")
-@PreAuthorize("hasAnyRole('admin', 'ADMIN')")
+@SaCheckRole("admin")
 public class PermissionTestController {
 
     /**
@@ -33,36 +34,29 @@ public class PermissionTestController {
     }
 
     /**
-     * 测试 Spring Security 权限异常 (AccessDeniedException)
-     * 
-     * 访问此接口会抛出 Spring Security 的 AccessDeniedException
-     * 预期返回 403 状态码和友好的错误提示
+     * 测试权限拒绝异常。
+     *
+     * 访问此接口会抛出自定义 PermissionDeniedException。
      */
     @GetMapping("/security-denied")
     public R<?> testSecurityAccessDenied() {
-        throw new AccessDeniedException("Access is denied");
+        throw new PermissionDeniedException("模拟访问被拒绝");
     }
 
     /**
-     * 测试 @PreAuthorize 注解（需要管理员权限）
-     * 
-     * 使用非管理员用户访问此接口会触发 AccessDeniedException
-     * 预期返回 403 状态码和 "此操作需要管理员权限" 的提示
+     * 测试 Sa-Token 角色注解（需要管理员权限）。
      */
     @GetMapping("/admin-only")
-    @PreAuthorize("hasRole('ADMIN')")
+    @SaCheckRole("admin")
     public R<?> testAdminOnly() {
         return R.ok("管理员专属功能访问成功");
     }
 
     /**
-     * 测试 @PreAuthorize 注解（需要特定权限）
-     * 
-     * 使用没有 workflow:template:create 权限的用户访问会触发 AccessDeniedException
-     * 预期返回 403 状态码和权限不足的提示
+     * 测试 Sa-Token 权限注解（需要特定权限）。
      */
     @GetMapping("/template-create")
-    @PreAuthorize("hasAuthority('workflow:template:create')")
+    @SaCheckPermission("workflow:template:create")
     public R<?> testTemplateCreatePermission() {
         return R.ok("模板创建权限验证成功");
     }

@@ -27,5 +27,5 @@ public class SecurityConstants {
     /**
      * 租户ID请求头
      */
-    public static final String TENANT_ID_HEADER = "X-User-Tenant-Id";
+    public static final String TENANT_ID_HEADER = "X-Tenant-Id";
 }

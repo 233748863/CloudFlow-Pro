@@ -5,8 +5,8 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 /**
- * 安全配置属性
- * 对应 Nacos 配置: cloudflow-common.yaml
+ * 安全配置属性。
+ * 目前仅保留 Token 生命周期相关配置，认证状态由 Sa-Token 托管。
  */
 @Component
 @RefreshScope
@@ -14,22 +14,9 @@ import org.springframework.stereotype.Component;
 public class SecurityProperties {
 
     /**
-     * JWT 密钥
-     */
-    private Jwt jwt = new Jwt();
-
-    /**
-     * Token 配置
+     * Token 配置。
      */
     private Token token = new Token();
-
-    public Jwt getJwt() {
-        return jwt;
-    }
-
-    public void setJwt(Jwt jwt) {
-        this.jwt = jwt;
-    }
 
     public Token getToken() {
         return token;
@@ -39,26 +26,14 @@ public class SecurityProperties {
         this.token = token;
     }
 
-    public static class Jwt {
-        private String secret;
-
-        public String getSecret() {
-            return secret;
-        }
-
-        public void setSecret(String secret) {
-            this.secret = secret;
-        }
-    }
-
     public static class Token {
         /**
-         * 令牌有效期（分钟）
+         * 令牌有效期，单位：分钟。
          */
         private Integer expiration = 30;
 
         /**
-         * 令牌刷新时间（分钟）
+         * 令牌续期阈值，单位：分钟。
          */
         private Integer refreshTime = 20;
 
