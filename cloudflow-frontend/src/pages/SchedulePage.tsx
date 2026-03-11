@@ -149,16 +149,16 @@ export const SchedulePage = () => {
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>工作</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span>个人</span>
                 </div>
-                <button 
+                <Button 
                     onClick={() => {
                         setForm({ title: '', type: 'PERSONAL', isAllDay: false, startTime: toBackendDateString(new Date()), endTime: toBackendDateString(new Date()) });
                         setIsModalOpen(true);
                     }}
-                    className="bg-pink-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-pink-600 flex items-center gap-1"
+                    className="bg-pink-500 text-white hover:bg-pink-600 gap-1"
                 >
                     <Plus size={16} />
                     新建日程
-                </button>
+                </Button>
             </div>
         </div>
 
@@ -346,12 +346,14 @@ export const SchedulePage = () => {
                                     <Plus className="text-pink-500" size={20} />
                                     新建日程
                                 </h3>
-                                <button 
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-colors"
+                                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
                                 >
                                     <X size={20} />
-                                </button>
+                                </Button>
                             </div>
                             
                             <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -451,18 +453,19 @@ export const SchedulePage = () => {
                             </div>
 
                             <div className="p-6 border-t border-slate-100 flex gap-3">
-                                <button 
+                                <Button 
+                                    variant="outline"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 h-11 px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors border border-slate-200"
+                                    className="flex-1 h-11"
                                 >
                                     取消
-                                </button>
-                                <button 
+                                </Button>
+                                <Button 
                                     onClick={handleSubmit}
-                                    className="flex-[2] h-11 bg-pink-500 text-white font-bold rounded-xl hover:bg-pink-600 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
+                                    className="flex-[2] h-11 bg-pink-500 hover:bg-pink-600 text-white font-bold shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
                                 >
                                     创建日程
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
