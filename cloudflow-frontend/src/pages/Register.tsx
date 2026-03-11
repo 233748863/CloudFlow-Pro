@@ -111,29 +111,33 @@ export const Register = () => {
       </div>
 
       {/* 右侧注册表单 */}
-      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-8 bg-white">
-        <div className="w-full max-w-[400px] space-y-6">
+      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-8 bg-white relative overflow-hidden">
+        {/* iOS 风格装饰背景 */}
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-pink-100/40 rounded-full blur-3xl pointer-events-none opacity-60 animate-pulse"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-100/40 rounded-full blur-3xl pointer-events-none opacity-60 animate-pulse delay-700"></div>
+
+        <div className="w-full max-w-[400px] space-y-6 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="flex flex-col space-y-2 text-center lg:text-left">
             <div className="lg:hidden flex justify-center mb-4">
-               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500 text-white shadow-lg shadow-pink-500/30">
+               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30">
                  <Activity size={20} />
                </div>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">创建账户</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">创建账户</h1>
             <p className="text-sm text-slate-500">填写以下信息完成注册</p>
           </div>
 
-          <form onSubmit={handleRegisterClick} className="space-y-4">
+          <form onSubmit={handleRegisterClick} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="username">用户名</Label>
-                <div className="relative">
-                  <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Label htmlFor="username" className="text-slate-600 font-medium">用户名</Label>
+                <div className="relative group">
+                  <UserCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-pink-500 transition-colors" size={18} />
                   <Input 
                     id="username"
                     type="text" 
                     value={formData.username}
                     onChange={handleChange}
-                    className="pl-10 h-11"
+                    className="pl-11 h-12 bg-slate-50/50 border-slate-100 focus:bg-white focus:border-pink-200 focus:ring-4 focus:ring-pink-500/10 rounded-2xl transition-all duration-300"
                     placeholder="设置用户名"
                     required
                   />
@@ -141,30 +145,30 @@ export const Register = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">邮箱 (可选)</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Label htmlFor="email" className="text-slate-600 font-medium">邮箱 (可选)</Label>
+                <div className="relative group">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-pink-500 transition-colors" size={18} />
                   <Input 
                     id="email"
                     type="email" 
                     value={formData.email}
                     onChange={handleChange}
-                    className="pl-10 h-11"
+                    className="pl-11 h-12 bg-slate-50/50 border-slate-100 focus:bg-white focus:border-pink-200 focus:ring-4 focus:ring-pink-500/10 rounded-2xl transition-all duration-300"
                     placeholder="请输入邮箱地址"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Label htmlFor="password" className="text-slate-600 font-medium">密码</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-pink-500 transition-colors" size={18} />
                   <Input 
                     id="password"
                     type="password" 
                     value={formData.password}
                     onChange={handleChange}
-                    className="pl-10 h-11"
+                    className="pl-11 h-12 bg-slate-50/50 border-slate-100 focus:bg-white focus:border-pink-200 focus:ring-4 focus:ring-pink-500/10 rounded-2xl transition-all duration-300"
                     placeholder="设置登录密码"
                     required
                   />
@@ -172,15 +176,15 @@ export const Register = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">确认密码</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Label htmlFor="confirmPassword" className="text-slate-600 font-medium">确认密码</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-pink-500 transition-colors" size={18} />
                   <Input 
                     id="confirmPassword"
                     type="password" 
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="pl-10 h-11"
+                    className="pl-11 h-12 bg-slate-50/50 border-slate-100 focus:bg-white focus:border-pink-200 focus:ring-4 focus:ring-pink-500/10 rounded-2xl transition-all duration-300"
                     placeholder="再次输入密码"
                     required
                   />
@@ -188,7 +192,7 @@ export const Register = () => {
               </div>
 
               {error && (
-                <div className="text-red-500 text-sm flex items-center gap-2 bg-red-50 p-3 rounded-lg border border-red-100">
+                <div className="text-red-500 text-sm flex items-center gap-2 bg-red-50 p-3 rounded-xl border border-red-100 animate-in slide-in-from-top-2">
                   <X size={14} />
                   {error}
                 </div>
@@ -197,7 +201,7 @@ export const Register = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-pink-500 hover:bg-pink-600 text-white font-bold shadow-lg shadow-pink-500/20 transition-all"
+                className="w-full h-12 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-pink-500/25 transition-all transform hover:scale-[1.02] active:scale-[0.98] duration-200"
               >
                 {loading ? <Loader2 className="animate-spin mr-2" size={18}/> : null}
                 立即注册
@@ -206,7 +210,7 @@ export const Register = () => {
           
           <div className="text-center text-sm">
             <span className="text-slate-500">已有账号? </span>
-            <Link to="/login" className="text-pink-500 hover:text-pink-600 font-medium hover:underline underline-offset-4">
+            <Link to="/login" className="text-pink-600 hover:text-pink-700 font-semibold hover:underline underline-offset-4 transition-colors">
               去登录
             </Link>
           </div>

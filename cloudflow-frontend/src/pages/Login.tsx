@@ -108,29 +108,33 @@ export const Login = () => {
       </div>
 
       {/* 右侧登录表单 */}
-      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-8 bg-white">
-        <div className="w-full max-w-[400px] space-y-6">
+      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-8 bg-white relative overflow-hidden">
+        {/* iOS 风格装饰背景 */}
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-pink-100/40 rounded-full blur-3xl pointer-events-none opacity-60 animate-pulse"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-100/40 rounded-full blur-3xl pointer-events-none opacity-60 animate-pulse delay-700"></div>
+
+        <div className="w-full max-w-[400px] space-y-6 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="flex flex-col space-y-2 text-center lg:text-left">
             <div className="lg:hidden flex justify-center mb-4">
-               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500 text-white shadow-lg shadow-pink-500/30">
+               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30">
                  <Activity size={20} />
                </div>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">欢迎回来</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">欢迎回来</h1>
             <p className="text-sm text-slate-500">请输入您的账号和密码以登录系统</p>
           </div>
 
-          <form onSubmit={handleLoginClick} className="space-y-4">
+          <form onSubmit={handleLoginClick} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="username">账号</Label>
-                <div className="relative">
-                  <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Label htmlFor="username" className="text-slate-600 font-medium">账号</Label>
+                <div className="relative group">
+                  <UserCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-pink-500 transition-colors" size={18} />
                   <Input 
                     id="username"
                     type="text" 
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10 h-11"
+                    className="pl-11 h-12 bg-slate-50/50 border-slate-100 focus:bg-white focus:border-pink-200 focus:ring-4 focus:ring-pink-500/10 rounded-2xl transition-all duration-300"
                     placeholder="请输入用户名 (如: admin)"
                     required
                   />
@@ -139,23 +143,23 @@ export const Login = () => {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">密码</Label>
+                  <Label htmlFor="password" className="text-slate-600 font-medium">密码</Label>
                   <Link 
                     to="/forgot-password" 
-                    className="text-xs text-pink-500 hover:text-pink-600 font-medium"
+                    className="text-xs text-pink-500 hover:text-pink-600 font-medium hover:underline underline-offset-2 transition-all"
                     onClick={(e) => e.preventDefault()} // 暂时禁用，因为没有这个页面
                   >
                     忘记密码?
                   </Link>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <div className="relative group">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-pink-500 transition-colors" size={18} />
                   <Input 
                     id="password"
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 h-11"
+                    className="pl-11 h-12 bg-slate-50/50 border-slate-100 focus:bg-white focus:border-pink-200 focus:ring-4 focus:ring-pink-500/10 rounded-2xl transition-all duration-300"
                     placeholder="请输入密码"
                     required
                   />
@@ -163,7 +167,7 @@ export const Login = () => {
               </div>
               
               {error && (
-                <div className="text-red-500 text-sm flex items-center gap-2 bg-red-50 p-3 rounded-lg border border-red-100">
+                <div className="text-red-500 text-sm flex items-center gap-2 bg-red-50 p-3 rounded-xl border border-red-100 animate-in slide-in-from-top-2">
                   <X size={14} />
                   {error}
                 </div>
@@ -172,7 +176,7 @@ export const Login = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-pink-500 hover:bg-pink-600 text-white font-bold shadow-lg shadow-pink-500/20 transition-all"
+                className="w-full h-12 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-pink-500/25 transition-all transform hover:scale-[1.02] active:scale-[0.98] duration-200"
               >
                 {loading ? <Loader2 className="animate-spin mr-2" size={18}/> : null}
                 登录系统
@@ -181,18 +185,10 @@ export const Login = () => {
           
           <div className="text-center text-sm">
             <span className="text-slate-500">还没有账号? </span>
-            <Link to="/register" className="text-pink-500 hover:text-pink-600 font-medium hover:underline underline-offset-4">
+            <Link to="/register" className="text-pink-600 hover:text-pink-700 font-semibold hover:underline underline-offset-4 transition-colors">
               立即注册
             </Link>
           </div>
-
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-8 p-4 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-500">
-              <p className="font-semibold mb-1">开发环境提示:</p>
-              <p>默认账号: admin, li, wang, zhao, zhang</p>
-              <p className="mt-1">React 18 + Spring Cloud Alibaba</p>
-            </div>
-          )}
         </div>
       </div>
 

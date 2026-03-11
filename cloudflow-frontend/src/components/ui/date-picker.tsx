@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Calendar, Clock, X } from 'lucide-react';
 
 /** 选择器模式：仅日期、仅时间、日期+时间 */
 type PickerMode = 'date' | 'time' | 'datetime-local';
+type QuickDateKind = 'today' | 'tomorrow' | 'weekend' | 'nextMonday' | 'monthEnd';
 
 interface DatePickerProps {
   /** 选择器模式 */
@@ -94,13 +95,15 @@ interface CalendarPanelProps {
   selectedDate: { year: number; month: number; day: number } | null;
   onSelectDate: (year: number, month: number, day: number) => void;
   onChangeMonth: (year: number, month: number) => void;
+  onQuickDate?: (kind: QuickDateKind) => void;
 }
 
-function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth }: CalendarPanelProps) {
+function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth, onQuickDate }: CalendarPanelProps) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
   const today = new Date();
   const todayStr = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
+  const quickDateButtonClass = "px-2 py-1 text-xs text-pink-600 bg-pink-50 hover:bg-pink-100 rounded-md font-medium transition-colors shrink-0";
 
   // 上个月的尾部天数
   const prevMonthDays = getDaysInMonth(year, month - 1 < 0 ? 11 : month - 1);
@@ -145,28 +148,28 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth 
   return (
     <div className="p-3">
       {/* 月份导航 */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2.5">
         <button
           type="button"
           onClick={goToPrevMonth}
-          className="p-1 rounded hover:bg-pink-50 text-slate-500 hover:text-pink-500 transition-colors"
+          className="h-7 w-7 grid place-items-center rounded-lg hover:bg-pink-50 text-slate-500 hover:text-pink-600 transition-colors"
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="text-sm font-semibold text-slate-700">
+        <span className="text-sm font-bold text-slate-800">
           {year}年 {MONTH_NAMES[month]}
         </span>
         <button
           type="button"
           onClick={goToNextMonth}
-          className="p-1 rounded hover:bg-pink-50 text-slate-500 hover:text-pink-500 transition-colors"
+          className="h-7 w-7 grid place-items-center rounded-lg hover:bg-pink-50 text-slate-500 hover:text-pink-600 transition-colors"
         >
           <ChevronRight size={16} />
         </button>
       </div>
 
       {/* 星期标题 */}
-      <div className="grid grid-cols-7 mb-1">
+      <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAY_NAMES.map(name => (
           <div key={name} className="text-center text-xs font-medium text-slate-400 py-1">
             {name}
@@ -175,7 +178,7 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth 
       </div>
 
       {/* 日期网格 */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-1">
         {/* 上月尾部 */}
         {prevDays.map(day => (
           <button
@@ -186,7 +189,7 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth 
               else onSelectDate(year, month - 1, day);
               goToPrevMonth();
             }}
-            className="h-8 text-xs text-slate-300 hover:bg-slate-50 rounded transition-colors"
+            className="h-8 rounded-lg text-[11px] text-slate-300 hover:bg-slate-50 hover:text-slate-400 transition-colors"
           >
             {day}
           </button>
@@ -207,9 +210,9 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth 
               type="button"
               onClick={() => onSelectDate(year, month, day)}
               className={`
-                h-8 text-xs rounded transition-all
+                h-8 rounded-lg text-[11px] font-medium transition-all
                 ${isSelected
-                  ? 'bg-pink-500 text-white font-bold shadow-sm'
+                  ? 'bg-pink-500 text-white font-semibold shadow-sm shadow-pink-200'
                   : isToday
                     ? 'bg-pink-50 text-pink-600 font-semibold ring-1 ring-pink-200'
                     : 'text-slate-700 hover:bg-pink-50 hover:text-pink-600'
@@ -231,22 +234,56 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth 
               else onSelectDate(year, month + 1, day);
               goToNextMonth();
             }}
-            className="h-8 text-xs text-slate-300 hover:bg-slate-50 rounded transition-colors"
+            className="h-8 rounded-lg text-[11px] text-slate-300 hover:bg-slate-50 hover:text-slate-400 transition-colors"
           >
             {day}
           </button>
         ))}
       </div>
 
-      {/* 底部快捷操作 */}
-      <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
-        <button
-          type="button"
-          onClick={goToToday}
-          className="text-xs text-pink-500 hover:text-pink-700 font-medium transition-colors"
-        >
-          今天
-        </button>
+      {/* 底部快捷日期（同一行展示） */}
+      <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+        <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto hide-scrollbar">
+          <button
+            type="button"
+            onClick={() => (onQuickDate ? onQuickDate('today') : goToToday())}
+            className={quickDateButtonClass}
+          >
+            今天
+          </button>
+          {onQuickDate && (
+            <>
+              <button
+                type="button"
+                onClick={() => onQuickDate('tomorrow')}
+                className={quickDateButtonClass}
+              >
+                明天
+              </button>
+              <button
+                type="button"
+                onClick={() => onQuickDate('weekend')}
+                className={quickDateButtonClass}
+              >
+                本周末
+              </button>
+              <button
+                type="button"
+                onClick={() => onQuickDate('nextMonday')}
+                className={quickDateButtonClass}
+              >
+                下周一
+              </button>
+              <button
+                type="button"
+                onClick={() => onQuickDate('monthEnd')}
+                className={quickDateButtonClass}
+              >
+                本月末
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -277,13 +314,13 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
   }, [hour, minute]);
 
   return (
-    <div className="flex border-t border-slate-100 md:border-t-0 md:border-l h-48 md:h-[280px] md:w-32 flex-col">
+    <div className="flex border-t border-slate-100 md:border-t-0 md:border-l h-52 md:h-[300px] w-full flex-col bg-white">
       {/* 小时列 */}
       <div className="flex-1 flex flex-col border-b border-slate-100 min-h-0">
-        <div className="text-center text-xs font-medium text-slate-400 py-1.5 bg-slate-50 shrink-0">
+        <div className="text-center text-[11px] font-semibold text-slate-500 py-2 bg-slate-50/80 shrink-0">
           时
         </div>
-        <div ref={hourRef} className="flex-1 overflow-y-auto hide-scrollbar">
+        <div ref={hourRef} className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar">
           {Array.from({ length: 24 }, (_, i) => (
             <button
               key={i}
@@ -291,9 +328,9 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
               data-selected={i === hour}
               onClick={() => onChangeTime(i, minute)}
               className={`
-                w-full py-1.5 text-xs text-center transition-colors
+                w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
                 ${i === hour
-                  ? 'bg-pink-500 text-white font-bold'
+                  ? 'bg-pink-500 text-white font-semibold shadow-sm shadow-pink-200'
                   : 'text-slate-600 hover:bg-pink-50 hover:text-pink-600'
                 }
               `}
@@ -306,10 +343,10 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
 
       {/* 分钟列 */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="text-center text-xs font-medium text-slate-400 py-1.5 bg-slate-50 shrink-0">
+        <div className="text-center text-[11px] font-semibold text-slate-500 py-2 bg-slate-50/80 shrink-0">
           分
         </div>
-        <div ref={minuteRef} className="flex-1 overflow-y-auto hide-scrollbar">
+        <div ref={minuteRef} className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar">
           {Array.from({ length: 60 }, (_, i) => (
             <button
               key={i}
@@ -317,9 +354,9 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
               data-selected={i === minute}
               onClick={() => onChangeTime(hour, i)}
               className={`
-                w-full py-1.5 text-xs text-center transition-colors
+                w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
                 ${i === minute
-                  ? 'bg-pink-500 text-white font-bold'
+                  ? 'bg-pink-500 text-white font-semibold shadow-sm shadow-pink-200'
                   : 'text-slate-600 hover:bg-pink-50 hover:text-pink-600'
                 }
               `}
@@ -421,6 +458,92 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       }
     };
 
+    // 快捷时间按钮：基于“当前选中时间”进行计算，例如 14:25 +30min => 14:55
+    const applyQuickDateTime = useCallback((kind: 'now' | 'round' | 'add15' | 'add30' | 'add60') => {
+      const base = new Date();
+      if (currentDate) {
+        base.setFullYear(currentDate.year, currentDate.month, currentDate.day);
+      }
+      const baseHour = currentTime?.hour ?? tempHour ?? base.getHours();
+      const baseMinute = currentTime?.minute ?? tempMinute ?? base.getMinutes();
+      base.setHours(baseHour, baseMinute, 0, 0);
+
+      if (kind === 'now') {
+        // “此刻”直接使用当前系统时间
+        base.setTime(Date.now());
+      } else if (kind === 'round') {
+        // “整点”默认进位到下一个整点，例如 14:25 => 15:00
+        const needsCarry = base.getMinutes() > 0 || base.getSeconds() > 0;
+        if (needsCarry) {
+          base.setHours(base.getHours() + 1, 0, 0, 0);
+        } else {
+          base.setMinutes(0, 0, 0);
+        }
+      } else {
+        const deltaMinutes = kind === 'add15' ? 15 : kind === 'add30' ? 30 : 60;
+        base.setMinutes(base.getMinutes() + deltaMinutes);
+      }
+
+      const y = base.getFullYear();
+      const m = base.getMonth();
+      const d = base.getDate();
+      const h = base.getHours();
+      const min = base.getMinutes();
+      setViewYear(y);
+      setViewMonth(m);
+      setTempHour(h);
+      setTempMinute(min);
+      emitChange(`${formatDate(y, m, d)}T${formatTime(h, min)}`);
+    }, [currentDate, currentTime, tempHour, tempMinute, emitChange]);
+
+    // 快捷日期按钮：只改日期，时间保持“当前选中时间”
+    // 例：2026/03/10 14:25 -> 明天 14:25
+    // 本周末定义：周六为周末起点；若今天是周日，则取下周六
+    const applyQuickDate = useCallback((kind: 'today' | 'tomorrow' | 'weekend' | 'nextMonday' | 'monthEnd') => {
+      const base = new Date();
+      const ref = currentDate
+        ? new Date(currentDate.year, currentDate.month, currentDate.day)
+        : new Date();
+      const baseHour = currentTime?.hour ?? tempHour ?? base.getHours();
+      const baseMinute = currentTime?.minute ?? tempMinute ?? base.getMinutes();
+
+      let target = new Date(ref);
+      if (kind === 'today') {
+        target = new Date();
+      } else if (kind === 'tomorrow') {
+        target = new Date(ref);
+        target.setDate(ref.getDate() + 1);
+      } else if (kind === 'weekend') {
+        const day = ref.getDay(); // 0=周日, 6=周六
+        const diff = day === 0 ? 6 : 6 - day;
+        target = new Date(ref);
+        target.setDate(ref.getDate() + diff);
+      } else if (kind === 'nextMonday') {
+        const day = ref.getDay(); // 0=周日, 1=周一
+        const diff = day === 1 ? 7 : (8 - day) % 7;
+        target = new Date(ref);
+        target.setDate(ref.getDate() + diff);
+      } else if (kind === 'monthEnd') {
+        target = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
+      }
+
+      target.setHours(baseHour, baseMinute, 0, 0);
+      const y = target.getFullYear();
+      const m = target.getMonth();
+      const d = target.getDate();
+      const h = target.getHours();
+      const min = target.getMinutes();
+      setViewYear(y);
+      setViewMonth(m);
+      setTempHour(h);
+      setTempMinute(min);
+      if (type === 'date') {
+        emitChange(formatDate(y, m, d));
+      } else if (type === 'datetime-local') {
+        emitChange(`${formatDate(y, m, d)}T${formatTime(h, min)}`);
+      }
+    }, [currentDate, currentTime, tempHour, tempMinute, emitChange, type]);
+
     /** 清空值 */
     const handleClear = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -446,6 +569,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
 
     /** 默认占位文本 */
     const defaultPlaceholder = type === 'date' ? '选择日期' : type === 'time' ? '选择时间' : '选择日期和时间';
+    const quickTimeButtonClass = "px-2.5 py-1 text-[11px] rounded-md bg-white border border-slate-200 text-slate-600 hover:text-pink-600 hover:border-pink-200 hover:bg-pink-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
     return (
       <div ref={containerRef} className={`relative ${className}`}>
@@ -458,16 +582,26 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           disabled={disabled}
           onClick={() => !disabled && setOpen(!open)}
           className={`
-            w-full flex items-center gap-2 px-3 py-2 text-sm text-left
-            border border-slate-200 rounded-md bg-white
-            hover:border-pink-300 transition-colors
-            focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent
-            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200
-            ${open ? 'ring-2 ring-pink-400 border-transparent' : ''}
+            group w-full h-11 flex items-center gap-2 px-3 text-sm text-left
+            border border-slate-200 rounded-xl bg-white shadow-sm
+            hover:border-pink-300 hover:shadow transition-all
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300 focus-visible:ring-offset-1 focus-visible:ring-offset-white
+            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:shadow-none
+            ${open ? 'ring-2 ring-pink-300 border-pink-200 shadow-md' : ''}
           `}
         >
-          {type !== 'time' && <Calendar size={14} className="text-slate-400 shrink-0" />}
-          {type === 'time' && <Clock size={14} className="text-slate-400 shrink-0" />}
+          {type !== 'time' && (
+            <Calendar
+              size={14}
+              className={`shrink-0 ${open ? 'text-pink-500' : 'text-slate-400 group-hover:text-pink-500'}`}
+            />
+          )}
+          {type === 'time' && (
+            <Clock
+              size={14}
+              className={`shrink-0 ${open ? 'text-pink-500' : 'text-slate-400 group-hover:text-pink-500'}`}
+            />
+          )}
 
           <span className={`flex-1 truncate ${displayText ? 'text-slate-700' : 'text-slate-400'}`}>
             {displayText || placeholder || defaultPlaceholder}
@@ -476,7 +610,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           {value && !disabled && (
             <X
               size={14}
-              className="text-slate-300 hover:text-slate-500 shrink-0 cursor-pointer transition-colors"
+              className="text-slate-300 hover:text-slate-600 shrink-0 cursor-pointer transition-colors"
               onClick={handleClear}
             />
           )}
@@ -487,29 +621,30 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             ref={dropdownRef}
             className={`
-              absolute z-[100] bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row
-              ${type === 'time' ? 'w-40' : type === 'datetime-local' ? 'w-72 md:w-auto' : 'w-64'}
-              ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}
+              absolute z-[100] bg-white rounded-2xl shadow-2xl border border-slate-100 ring-1 ring-black/5 overflow-hidden flex flex-col
+              w-full min-w-[18rem]
+              ${dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}
               left-0 animate-in fade-in-0 zoom-in-95 duration-150
             `}
           >
             <div className="flex flex-col md:flex-row items-stretch">
               {/* 日期面板 */}
               {(type === 'date' || type === 'datetime-local') && (
-                <div className="shrink-0">
+                <div className="shrink-0 md:basis-[72%] md:max-w-[72%]">
                   <CalendarPanel
                     year={viewYear}
                     month={viewMonth}
                     selectedDate={currentDate}
                     onSelectDate={handleSelectDate}
                     onChangeMonth={(y, m) => { setViewYear(y); setViewMonth(m); }}
+                    onQuickDate={applyQuickDate}
                   />
                 </div>
               )}
 
               {/* 时间面板 */}
               {(type === 'time' || type === 'datetime-local') && (
-                <div className="shrink-0">
+                <div className="shrink-0 md:basis-[28%] md:max-w-[28%]">
                   <TimePanel
                     hour={tempHour}
                     minute={tempMinute}
@@ -521,17 +656,63 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
 
             {/* datetime-local 模式的确认按钮 */}
             {type === 'datetime-local' && (
-              <div className="p-2 border-t border-slate-100 bg-slate-50 flex justify-between items-center md:w-full">
-                <span className="text-xs text-slate-500 font-medium">
-                  {currentDate ? `${currentDate.year}/${pad(currentDate.month + 1)}/${pad(currentDate.day)} ${pad(tempHour)}:${pad(tempMinute)}` : '请选择日期'}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
-                  className="px-3 py-1.5 text-xs bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors font-medium shadow-sm shadow-pink-200"
-                >
-                  确定
-                </button>
+              <div className="p-2.5 border-t border-slate-100 bg-slate-50/80 w-full">
+                {/* 快捷时间按钮：恢复为文字按钮 */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => applyQuickDateTime('now')}
+                    className={quickTimeButtonClass}
+                  >
+                    此刻
+                  </button>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => applyQuickDateTime('round')}
+                    className={quickTimeButtonClass}
+                  >
+                    整点
+                  </button>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => applyQuickDateTime('add15')}
+                    className={quickTimeButtonClass}
+                  >
+                    +15min
+                  </button>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => applyQuickDateTime('add30')}
+                    className={quickTimeButtonClass}
+                  >
+                    +30min
+                  </button>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => applyQuickDateTime('add60')}
+                    className={quickTimeButtonClass}
+                  >
+                    +1h
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-slate-600 font-medium">
+                    {currentDate ? `${currentDate.year}/${pad(currentDate.month + 1)}/${pad(currentDate.day)} ${pad(tempHour)}:${pad(tempMinute)}` : '请选择日期'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
+                    className="px-3 py-1.5 text-xs bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors font-medium shadow-sm shadow-pink-200"
+                  >
+                    确定
+                  </button>
+                </div>
               </div>
             )}
           </div>
