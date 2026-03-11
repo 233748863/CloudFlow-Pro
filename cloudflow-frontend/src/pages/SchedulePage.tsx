@@ -9,7 +9,7 @@ import { getMyEvents, createEvent, deleteEvent, getMeetingRooms } from '../servi
 import { Calendar, Plus, MapPin, Clock, FileText, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString, toLocalDatetimeString, toQueryDateString } from '../utils/dateFormat';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, Button } from '@/components/ui';
 
 export const SchedulePage = () => {
   const { user } = useAuth();
