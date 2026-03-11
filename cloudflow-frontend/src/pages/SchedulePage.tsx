@@ -6,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useAuth } from '../context/AuthContext';
 import { SysScheduleEvent, MeetingRoom } from '../types';
 import { getMyEvents, createEvent, deleteEvent, getMeetingRooms } from '../services/api/schedule';
-import { Calendar, Plus, MapPin, Clock, FileText } from 'lucide-react';
+import { Calendar, Plus, MapPin, Clock, FileText, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString, toLocalDatetimeString, toQueryDateString } from '../utils/dateFormat';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
