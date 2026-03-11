@@ -137,7 +137,7 @@ export const SchedulePage = () => {
   if (!user) return null;
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="h-full flex flex-col space-y-4 relative overflow-hidden">
         <div className="flex justify-between items-center shrink-0">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                 <Calendar className="text-pink-500" />
@@ -331,107 +331,140 @@ export const SchedulePage = () => {
             />
         </div>
 
-        {/* Create Modal */}
+        {/* Create Drawer */}
         {isModalOpen && (
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col">
-                    <div className="p-6 border-b border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800">新建日程</h3>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">主题</label>
-                            <Input 
-                                type="text" 
-                                value={form.title}
-                                onChange={e => setForm({...form, title: e.target.value})}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">类型</label>
-                                <Select value={form.type} onValueChange={v => setForm({...form, type: v as 'MEETING' | 'WORK' | 'PERSONAL'})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PERSONAL">个人事务</SelectItem>
-                      <SelectItem value="WORK">工作安排</SelectItem>
-                      <SelectItem value="MEETING">会议预订</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div className="fixed inset-0 z-50 overflow-hidden">
+                <div 
+                    className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300" 
+                    onClick={() => setIsModalOpen(false)}
+                />
+                <div className="absolute inset-y-0 right-0 max-w-full flex">
+                    <div className="relative w-screen max-w-md">
+                        <div className="h-full flex flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-300">
+                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Plus className="text-pink-500" size={20} />
+                                    新建日程
+                                </h3>
+                                <button 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <div className="flex items-center mt-6">
-                                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                                    <input 
-                                        type="checkbox"
-                                        checked={form.isAllDay}
-                                        onChange={e => setForm({...form, isAllDay: e.target.checked})}
-                                        className="rounded text-pink-500 focus:ring-pink-400"
-                                    />
-                                    全天事件
-                                </label>
-                            </div>
-                        </div>
-                        
-                        {!form.isAllDay && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">开始时间</label>
-                                    <DatePicker
-                                        type="datetime-local"
-                                        className="text-xs"
-                                        value={form.startTime ? toLocalDatetimeString(form.startTime) : ''}
-                                        onChange={e => setForm({...form, startTime: toBackendDateString(e.target.value)})}
+                            
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700">日程主题</label>
+                                    <Input 
+                                        type="text" 
+                                        placeholder="请输入日程主题..."
+                                        className="h-11"
+                                        value={form.title}
+                                        onChange={e => setForm({...form, title: e.target.value})}
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">结束时间</label>
-                                    <DatePicker
-                                        type="datetime-local"
-                                        className="text-xs"
-                                        value={form.endTime ? toLocalDatetimeString(form.endTime) : ''}
-                                        onChange={e => setForm({...form, endTime: toBackendDateString(e.target.value)})}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700">日程类型</label>
+                                        <Select value={form.type} onValueChange={v => setForm({...form, type: v as 'MEETING' | 'WORK' | 'PERSONAL'})}>
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue placeholder="请选择" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="PERSONAL">个人事务</SelectItem>
+                                                <SelectItem value="WORK">工作安排</SelectItem>
+                                                <SelectItem value="MEETING">会议预订</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-end pb-3">
+                                        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
+                                            <input 
+                                                type="checkbox"
+                                                checked={form.isAllDay}
+                                                onChange={e => setForm({...form, isAllDay: e.target.checked})}
+                                                className="w-4 h-4 rounded text-pink-500 focus:ring-pink-400 border-slate-300"
+                                            />
+                                            全天事件
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                {!form.isAllDay && (
+                                    <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                <Clock size={14} className="text-pink-500" />
+                                                开始时间
+                                            </label>
+                                            <DatePicker
+                                                type="datetime-local"
+                                                value={form.startTime ? toLocalDatetimeString(form.startTime) : ''}
+                                                onChange={e => setForm({...form, startTime: toBackendDateString(e.target.value)})}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                <Clock size={14} className="text-pink-500" />
+                                                结束时间
+                                            </label>
+                                            <DatePicker
+                                                type="datetime-local"
+                                                value={form.endTime ? toLocalDatetimeString(form.endTime) : ''}
+                                                onChange={e => setForm({...form, endTime: toBackendDateString(e.target.value)})}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {form.type === 'MEETING' && (
+                                    <div className="space-y-2 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                                        <label className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                                            <MapPin size={14} />
+                                            会议室预订
+                                        </label>
+                                        <Input 
+                                            type="text" 
+                                            className="bg-white/50"
+                                            disabled
+                                            placeholder="请前往会议室管理页面预订"
+                                        />
+                                        <p className="text-xs text-amber-600 font-medium">提示：如需预订会议室，请使用侧边栏的“会议室管理”功能。</p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                        <FileText size={14} />
+                                        描述备注
+                                    </label>
+                                    <Textarea 
+                                        placeholder="添加更多详细信息..."
+                                        className="min-h-[120px] resize-none"
+                                        value={form.description || ''}
+                                        onChange={e => setForm({...form, description: e.target.value})}
                                     />
                                 </div>
                             </div>
-                        )}
 
-                        {form.type === 'MEETING' && (
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">会议室 (暂未关联列表)</label>
-                                <Input 
-                                    type="text" 
-                                    className="bg-slate-50"
-                                    disabled
-                                    placeholder="请前往会议室管理页面预订"
-                                />
-                                <p className="text-xs text-amber-500 mt-1">注：当前页面仅支持创建普通日程，预订会议室请使用专用入口。</p>
+                            <div className="p-6 border-t border-slate-100 flex gap-3">
+                                <button 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="flex-1 h-11 px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors border border-slate-200"
+                                >
+                                    取消
+                                </button>
+                                <button 
+                                    onClick={handleSubmit}
+                                    className="flex-[2] h-11 bg-pink-500 text-white font-bold rounded-xl hover:bg-pink-600 shadow-lg shadow-pink-200 transition-all active:scale-[0.98]"
+                                >
+                                    创建日程
+                                </button>
                             </div>
-                        )}
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">描述</label>
-                            <Textarea 
-                                className="h-20"
-                                value={form.description || ''}
-                                onChange={e => setForm({...form, description: e.target.value})}
-                            />
                         </div>
-                    </div>
-                    <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-3">
-                        <button 
-                            onClick={() => setIsModalOpen(false)}
-                            className="px-4 py-2 text-slate-600 hover:text-slate-800"
-                        >
-                            取消
-                        </button>
-                        <button 
-                            onClick={handleSubmit}
-                            className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600"
-                        >
-                            保存
-                        </button>
                     </div>
                 </div>
             </div>

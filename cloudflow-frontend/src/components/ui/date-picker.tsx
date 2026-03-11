@@ -277,13 +277,13 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
   }, [hour, minute]);
 
   return (
-    <div className="flex border-t border-slate-100">
+    <div className="flex border-t border-slate-100 md:border-t-0 md:border-l h-48 md:h-auto md:w-32 flex-col">
       {/* 小时列 */}
-      <div className="flex-1 border-r border-slate-100">
-        <div className="text-center text-xs font-medium text-slate-400 py-1.5 border-b border-slate-50 sticky top-0 bg-white">
+      <div className="flex-1 flex flex-col border-b border-slate-100">
+        <div className="text-center text-xs font-medium text-slate-400 py-1.5 bg-slate-50 shrink-0">
           时
         </div>
-        <div ref={hourRef} className="h-48 overflow-y-auto hide-scrollbar">
+        <div ref={hourRef} className="flex-1 overflow-y-auto hide-scrollbar">
           {Array.from({ length: 24 }, (_, i) => (
             <button
               key={i}
@@ -305,11 +305,11 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
       </div>
 
       {/* 分钟列 */}
-      <div className="flex-1">
-        <div className="text-center text-xs font-medium text-slate-400 py-1.5 border-b border-slate-50 sticky top-0 bg-white">
+      <div className="flex-1 flex flex-col">
+        <div className="text-center text-xs font-medium text-slate-400 py-1.5 bg-slate-50 shrink-0">
           分
         </div>
-        <div ref={minuteRef} className="h-48 overflow-y-auto hide-scrollbar">
+        <div ref={minuteRef} className="flex-1 overflow-y-auto hide-scrollbar">
           {Array.from({ length: 60 }, (_, i) => (
             <button
               key={i}
@@ -487,43 +487,48 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             ref={dropdownRef}
             className={`
-              absolute z-50 bg-white rounded-lg shadow-lg border border-slate-200
-              ${type === 'time' ? 'w-40' : type === 'datetime-local' ? 'w-72' : 'w-64'}
+              absolute z-[100] bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row
+              ${type === 'time' ? 'w-40' : type === 'datetime-local' ? 'w-72 md:w-auto' : 'w-64'}
               ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}
               left-0 animate-in fade-in-0 zoom-in-95 duration-150
             `}
-            style={{ maxHeight: '400px' }}
           >
-            {/* 日期面板 */}
-            {(type === 'date' || type === 'datetime-local') && (
-              <CalendarPanel
-                year={viewYear}
-                month={viewMonth}
-                selectedDate={currentDate}
-                onSelectDate={handleSelectDate}
-                onChangeMonth={(y, m) => { setViewYear(y); setViewMonth(m); }}
-              />
-            )}
+            <div className="flex flex-col md:flex-row">
+              {/* 日期面板 */}
+              {(type === 'date' || type === 'datetime-local') && (
+                <div className="shrink-0">
+                  <CalendarPanel
+                    year={viewYear}
+                    month={viewMonth}
+                    selectedDate={currentDate}
+                    onSelectDate={handleSelectDate}
+                    onChangeMonth={(y, m) => { setViewYear(y); setViewMonth(m); }}
+                  />
+                </div>
+              )}
 
-            {/* 时间面板 */}
-            {(type === 'time' || type === 'datetime-local') && (
-              <TimePanel
-                hour={tempHour}
-                minute={tempMinute}
-                onChangeTime={handleChangeTime}
-              />
-            )}
+              {/* 时间面板 */}
+              {(type === 'time' || type === 'datetime-local') && (
+                <div className="shrink-0">
+                  <TimePanel
+                    hour={tempHour}
+                    minute={tempMinute}
+                    onChangeTime={handleChangeTime}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* datetime-local 模式的确认按钮 */}
             {type === 'datetime-local' && (
-              <div className="p-2 border-t border-slate-100 flex justify-between items-center">
-                <span className="text-xs text-slate-400">
+              <div className="p-2 border-t border-slate-100 bg-slate-50 flex justify-between items-center md:w-full">
+                <span className="text-xs text-slate-500 font-medium">
                   {currentDate ? `${currentDate.year}/${pad(currentDate.month + 1)}/${pad(currentDate.day)} ${pad(tempHour)}:${pad(tempMinute)}` : '请选择日期'}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
-                  className="px-3 py-1 text-xs bg-pink-500 text-white rounded hover:bg-pink-600 transition-colors font-medium"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
+                  className="px-3 py-1.5 text-xs bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors font-medium shadow-sm shadow-pink-200"
                 >
                   确定
                 </button>
