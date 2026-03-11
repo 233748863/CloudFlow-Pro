@@ -1,5 +1,5 @@
 ALTER TABLE sys_file
-    ADD COLUMN storage_type VARCHAR(20) NOT NULL DEFAULT 'LOCAL' COMMENT '?????LOCAL/OSS?' AFTER url;
+    ADD COLUMN storage_type VARCHAR(20) NOT NULL DEFAULT 'LOCAL' COMMENT '存储类型（LOCAL/OSS）' AFTER url;
 
 UPDATE sys_file
 SET storage_type = 'LOCAL'

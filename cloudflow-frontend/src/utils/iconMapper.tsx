@@ -3,7 +3,7 @@ import {
   Users, PlayCircle, ShieldCheck, ChevronRight, ChevronDown, FormInput, Code, Megaphone,
   Calendar, Monitor, Rocket, Briefcase, Building2, Wrench, FolderOpen, Car,
   ClipboardCheck, Package, FileArchive, MailOpen, ScrollText, ClipboardList,
-  ClipboardEdit, Clock, Plane, BookUser, UserCheck, CalendarClock,
+  ClipboardEdit, Clock, Plane, BookUser, UserCheck, CalendarClock, LogIn,
   Landmark, SlidersHorizontal, DatabaseZap, BookOpen, FolderTree
 } from 'lucide-react';
 
@@ -45,6 +45,7 @@ export const iconMap: Record<string, React.ElementType> = {
   'BookUser': BookUser,
   'UserCheck': UserCheck,
   'CalendarClock': CalendarClock,
+  'LogIn': LogIn,
   // 系统管理扩展图标
   'Landmark': Landmark,
   'SlidersHorizontal': SlidersHorizontal,

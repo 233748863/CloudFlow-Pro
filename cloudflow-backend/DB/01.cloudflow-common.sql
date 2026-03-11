@@ -207,7 +207,7 @@ CREATE TABLE sys_file (
   file_name         VARCHAR(255)    DEFAULT '' COMMENT '原始文件名',
   file_path         VARCHAR(255)    DEFAULT '' COMMENT '存储路径',
   url               VARCHAR(500)    DEFAULT '' COMMENT '访问地址',
-  storage_type      VARCHAR(20)     DEFAULT 'LOCAL' COMMENT '?????LOCAL/OSS?',
+  storage_type      VARCHAR(20)     DEFAULT 'LOCAL' COMMENT '存储类型（LOCAL/OSS）',
   file_size         BIGINT(20)      DEFAULT 0  COMMENT '文件大小',
   file_type         VARCHAR(50)     DEFAULT '' COMMENT '文件类型',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '上传者',
@@ -328,6 +328,8 @@ INSERT INTO sys_menu VALUES(612, '流程分类',   4, 6, '/workflow/category',  
 INSERT INTO sys_menu VALUES(613, '模板库',     3, 5, '/templates',          'pages/TemplateLibrary',        NULL, 0, 0, 'C', '0', '0', 'workflow:template:list',  'Sparkles',        'admin', NOW(), '', null, '流程模板库');
 INSERT INTO sys_menu VALUES(614, '流程导入',   4, 7, '/workflow/import',    'pages/admin/WorkflowImport',   NULL, 0, 0, 'C', '0', '0', 'workflow:import:manage',  'Upload',          'admin', NOW(), '', null, '流程导入');
 INSERT INTO sys_menu VALUES(615, '归档管理',   4, 8, '/workflow/archived',  'pages/admin/ArchivedWorkflows', NULL, 0, 0, 'C', '0', '0', 'workflow:archive:manage', 'Archive',         'admin', NOW(), '', null, '归档流程管理');
+INSERT INTO sys_menu VALUES(616, '登录日志',   6, 13, '/system/login-log',   'pages/system/LoginLogPage',     NULL, 0, 0, 'C', '0', '0', 'system:login-log:list',    'LogIn',           'admin', NOW(), '', null, '登录日志');
+INSERT INTO sys_menu VALUES(617, '在线用户',   6, 14, '/system/online',      'pages/system/OnlineUserPage',   NULL, 0, 0, 'C', '0', '0', 'system:online:list',       'Monitor',         'admin', NOW(), '', null, '在线用户管理');
 
 -- 办公协同(parent_id=2)扩展菜单：补卡申请、加班申请、出差申请、通讯录
 INSERT INTO sys_menu VALUES(203, '补卡申请',   2, 4, '/office/attendance-appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'office:attendance:appeal',  'ClipboardEdit',   'admin', NOW(), '', null, '补卡/外勤申请');

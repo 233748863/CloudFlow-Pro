@@ -189,6 +189,11 @@ const LoginLogPage = React.lazy(() =>
     default: module.LoginLogPage,
   })),
 );
+const OnlineUserPage = React.lazy(() =>
+  import("./pages/system/OnlineUserPage").then((module) => ({
+    default: module.OnlineUserPage,
+  })),
+);
 
 // OA扩展模块页面 - 补卡申请、加班申请、出差申请、通讯录、访客管理、值班排班
 const AttendanceAppealPage = React.lazy(
@@ -553,6 +558,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <LoginLogPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/system/online",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <OnlineUserPage />
               </Suspense>
             ),
           },

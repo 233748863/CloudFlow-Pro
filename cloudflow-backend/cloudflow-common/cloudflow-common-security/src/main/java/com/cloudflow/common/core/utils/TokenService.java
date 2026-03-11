@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -151,6 +152,67 @@ public class TokenService {
     }
 
     /**
+     * 按 Token 获取登录用户信息。
+     * <p>
+     * 统一走当前封装，避免业务侧直接依赖 Sa-Token 细节。
+     * </p>
+     */
+    public Map<String, Object> getLoginUserByToken(String token) {
+        String rawToken = normalizeToken(token);
+        if (!StringUtils.hasText(rawToken)) {
+            return null;
+        }
+
+        try {
+            Object loginId = StpUtil.getLoginIdByToken(rawToken);
+            if (loginId == null) {
+                return null;
+            }
+            Map<String, Object> loginUser = getLoginUserByLoginId(loginId);
+            if (loginUser == null) {
+                return null;
+            }
+            loginUser.put("token", rawToken);
+            return loginUser;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * 查询 Token 剩余有效期，单位：秒。
+     */
+    public long getTokenTimeout(String token) {
+        String rawToken = normalizeToken(token);
+        if (!StringUtils.hasText(rawToken)) {
+            return -2L;
+        }
+        try {
+            return StpUtil.getTokenTimeout(rawToken);
+        } catch (Exception ignored) {
+            return -2L;
+        }
+    }
+
+    /**
+     * 搜索在线 Token 列表。
+     */
+    public List<String> searchTokenValue(String keyword, int start, int size, boolean sortType) {
+        return StpUtil.searchTokenValue(keyword, start, size, sortType);
+    }
+
+    /**
+     * 获取当前请求上下文中的 Token。
+     */
+    public String getCurrentTokenValue() {
+        try {
+            return normalizeToken(StpUtil.getTokenValue());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
      * 删除 Token，对应 Sa-Token 的登出动作。
      */
     public void deleteToken(String token) {
@@ -161,7 +223,7 @@ public class TokenService {
         StpUtil.logoutByTokenValue(rawToken);
     }
 
-    private String normalizeToken(String token) {
+    public String normalizeToken(String token) {
         if (!StringUtils.hasText(token)) {
             return token;
         }
