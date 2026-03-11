@@ -256,17 +256,16 @@ export const Dashboard = () => {
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {shortcuts.map(i => (
-              <Button
+              <button
                 key={i.label}
-                variant="ghost"
                 onClick={() => navigate(i.path)}
-                className="flex flex-col items-center justify-center gap-3 p-4 h-auto rounded-[1.5rem] bg-transparent hover:bg-white/60 border border-transparent hover:border-white/80 hover:shadow-[0_8px_20px_rgb(0,0,0,0.04)] active:scale-[0.96] transition-all duration-400 ease-out text-center group"
+                className="flex flex-col items-center justify-center gap-3 p-4 rounded-[1.5rem] bg-transparent hover:bg-white/60 border border-transparent hover:border-white/80 hover:shadow-[0_8px_20px_rgb(0,0,0,0.04)] active:scale-[0.96] transition-all duration-400 ease-out text-center group"
               >
                 <div className="p-4 rounded-[1.25rem] bg-white text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(0,0,0,0.04)] group-hover:text-pink-500 group-hover:scale-110 group-hover:shadow-[0_6px_20px_rgba(236,72,153,0.15)] transition-all duration-400 ease-out">
                   {i.icon}
                 </div>
                 <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-800 transition-colors">{i.label}</span>
-              </Button>
+              </button>
             ))}
           </div>
         </Card>
@@ -282,14 +281,12 @@ export const Dashboard = () => {
                   <div className="w-1.5 h-5 bg-gradient-to-b from-pink-400 to-pink-600 rounded-full shadow-sm" /> 待办审批
                   {pendingCount > 0 && <span className="ml-1 px-2 py-0.5 text-xs font-bold bg-pink-100/80 text-pink-600 rounded-full shadow-sm">{pendingCount}</span>}
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => navigate('/tasks')}
-                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group h-auto p-0 hover:bg-transparent"
+                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group"
                 >
                   查看全部 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </Button>
+                </button>
               </div>
               {lt ? <Skeleton /> : pendingTasks.length > 0 ? (
                 <div className="p-3 space-y-1">
@@ -319,14 +316,12 @@ export const Dashboard = () => {
                 <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2.5 tracking-tight">
                   <div className="w-1.5 h-5 bg-gradient-to-b from-slate-400 to-slate-600 rounded-full shadow-sm" /> 最近申请
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => navigate('/my-apps')}
-                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group h-auto p-0 hover:bg-transparent"
+                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group"
                 >
                   查看全部 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </Button>
+                </button>
               </div>
               {la ? <Skeleton /> : recentApps.length > 0 ? (
                 <div className="p-3 space-y-1">
@@ -347,9 +342,8 @@ export const Dashboard = () => {
                   <FileText size={44} className="text-slate-300 mb-3 drop-shadow-sm" />
                   <p className="text-sm font-medium">暂无申请记录</p>
                   <Button
-                    variant="ghost"
                     onClick={() => navigate('/workplace')}
-                    className="mt-3 text-sm font-semibold text-pink-500 hover:text-pink-600 flex items-center gap-1.5 transition-colors px-4 py-2 rounded-xl hover:bg-pink-50 active:scale-95 h-auto"
+                    className="mt-3 text-sm font-semibold text-pink-500 hover:text-pink-600 bg-transparent hover:bg-pink-50 flex items-center gap-1.5 transition-colors px-4 py-2 rounded-xl h-auto active:scale-95 shadow-none"
                   >
                     <PlayCircle size={14} /> 去发起流程
                   </Button>
@@ -371,14 +365,12 @@ export const Dashboard = () => {
                     </span>
                   )}
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => navigate('/announcement')}
-                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group h-auto p-0 hover:bg-transparent"
+                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group"
                 >
                   更多 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </Button>
+                </button>
               </div>
               {lan ? <Skeleton /> : announcements.length > 0 ? (
                 <div className="p-3 space-y-1">
@@ -433,14 +425,12 @@ export const Dashboard = () => {
                 <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2.5 tracking-tight">
                   <div className="w-1.5 h-5 bg-gradient-to-b from-blue-300 to-blue-500 rounded-full shadow-sm" /> 今日日程
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => navigate('/schedule')}
-                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group h-auto p-0 hover:bg-transparent"
+                  className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group"
                 >
                   更多 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </Button>
+                </button>
               </div>
               {ls ? <Skeleton /> : schedules.length > 0 ? (
                 <div className="p-3 space-y-1">
@@ -461,9 +451,8 @@ export const Dashboard = () => {
                   <CalendarDays size={40} className="text-slate-300 mb-3 drop-shadow-sm" />
                   <p className="text-sm font-medium">今日暂无日程</p>
                   <Button
-                    variant="ghost"
                     onClick={() => navigate('/schedule')}
-                    className="mt-3 text-sm font-semibold text-blue-500 hover:text-blue-600 flex items-center gap-1.5 px-4 py-2 rounded-xl hover:bg-blue-50 active:scale-95 transition-colors h-auto"
+                    className="mt-3 text-sm font-semibold text-blue-500 hover:text-blue-600 bg-transparent hover:bg-blue-50 flex items-center gap-1.5 px-4 py-2 rounded-xl active:scale-95 transition-colors h-auto shadow-none"
                   >
                     <CalendarDays size={14} /> 添加日程
                   </Button>
