@@ -277,9 +277,9 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
   }, [hour, minute]);
 
   return (
-    <div className="flex border-t border-slate-100 md:border-t-0 md:border-l h-48 md:h-auto md:w-32 flex-col">
+    <div className="flex border-t border-slate-100 md:border-t-0 md:border-l h-48 md:h-[280px] md:w-32 flex-col">
       {/* 小时列 */}
-      <div className="flex-1 flex flex-col border-b border-slate-100">
+      <div className="flex-1 flex flex-col border-b border-slate-100 min-h-0">
         <div className="text-center text-xs font-medium text-slate-400 py-1.5 bg-slate-50 shrink-0">
           时
         </div>
@@ -305,7 +305,7 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
       </div>
 
       {/* 分钟列 */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         <div className="text-center text-xs font-medium text-slate-400 py-1.5 bg-slate-50 shrink-0">
           分
         </div>
@@ -493,7 +493,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
               left-0 animate-in fade-in-0 zoom-in-95 duration-150
             `}
           >
-            <div className="flex flex-col md:flex-row">
+            <div className="flex flex-col md:flex-row items-stretch">
               {/* 日期面板 */}
               {(type === 'date' || type === 'datetime-local') && (
                 <div className="shrink-0">
