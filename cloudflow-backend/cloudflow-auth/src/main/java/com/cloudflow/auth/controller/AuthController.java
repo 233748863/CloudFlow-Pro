@@ -11,8 +11,10 @@ import com.cloudflow.auth.domain.dto.UserInfo;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.LoginLogService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantBroker;
+import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -57,60 +59,96 @@ public class AuthController {
     @Autowired
     private com.cloudflow.auth.mapper.SysRoleMapper sysRoleMapper;
 
+    @Autowired
+    private TenantConfigProperties tenantConfigProperties;
+
+    @Autowired
+    private LoginLogService loginLogService;
+
     @PostMapping("/login")
     public R<?> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
-        // 验证码校验
+        long startAt = System.currentTimeMillis();
+
+        // ?????????????????????????????
         if (!captchaService.validatePassToken(form.getCaptchaToken())) {
-            return R.fail("验证码失效或错误，请重新验证");
+            loginLogService.recordLoginFailure(
+                form.getUsername(),
+                tenantConfigProperties.getDefaultTenantId(),
+                request,
+                "??????????????",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("??????????????");
         }
 
-        // 查询用户（直接查库验证密码，不走缓存）
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getUserName, form.getUsername());
         SysUser user = sysUserMapper.selectOne(queryWrapper);
 
         if (user == null) {
-            return R.fail("用户不存在");
+            loginLogService.recordLoginFailure(
+                form.getUsername(),
+                tenantConfigProperties.getDefaultTenantId(),
+                request,
+                "?????",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("?????");
         }
 
         if (!BCrypt.checkpw(form.getPassword(), user.getPassword())) {
-            return R.fail("密码错误");
+            loginLogService.recordLoginFailure(
+                form.getUsername(),
+                user.getTenantId(),
+                request,
+                "????",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("????");
         }
 
-        // 记录登录IP和时间
         String loginIp = getClientIp(request);
         user.setLoginIp(loginIp);
         user.setLoginDate(LocalDateTime.now());
         sysUserMapper.updateById(user);
 
-        // 通过 Spring Cache 获取用户完整信息（含角色+权限，自动缓存）
         UserInfo userInfo = sysUserService.findUserInfo(form.getUsername());
         if (userInfo == null) {
-            return R.fail("获取用户信息失败");
+            loginLogService.recordLoginFailure(
+                form.getUsername(),
+                user.getTenantId(),
+                request,
+                "????????",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("????????");
         }
 
-        // 创建 Sa-Token 登录态并返回原始 Token
         Map<String, Object> loginUser = new HashMap<>();
         loginUser.put("userId", user.getUserId());
         loginUser.put("username", user.getUserName());
         loginUser.put("nickName", user.getNickName());
         loginUser.put("deptId", user.getDeptId());
-        // 查询部门名称，存入 token 以便网关传递给下游服务
         if (user.getDeptId() != null) {
             com.cloudflow.auth.domain.SysDept dept = sysDeptMapper.selectById(user.getDeptId());
             loginUser.put("deptName", dept != null ? dept.getDeptName() : null);
         }
-        loginUser.put("tenantId", user.getTenantId()); // 添加租户ID
+        loginUser.put("tenantId", user.getTenantId());
         loginUser.put("avatar", user.getAvatar());
         loginUser.put("roles", userInfo.getRoles());
         loginUser.put("permissions", userInfo.getPermissions());
 
-        // 计算数据权限信息并存入 Redis，下游服务直接从 UserContext 读取，无需查库
         Map<String, Object> dsInfo = calcDataScopeInfo(user.getUserId(), user.getDeptId());
         loginUser.put("dsType", dsInfo.get("dsType"));
         loginUser.put("dsDeptIds", dsInfo.get("dsDeptIds"));
 
         String token = tokenService.createToken(loginUser);
+        loginLogService.recordLoginSuccess(
+            user.getUserName(),
+            user.getTenantId(),
+            request,
+            System.currentTimeMillis() - startAt
+        );
 
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
@@ -140,11 +178,14 @@ public class AuthController {
         user.setEmail(registerBody.getEmail());
         user.setStatus("0");
         user.setDelFlag("0");
-        // 注册时设置默认租户ID为1（默认租户）
-        // 如果需要支持多租户注册，可以从注册表单获取 tenantId
-        user.setTenantId(1L);
+        // 注册时使用系统配置中的默认租户ID，避免写入不存在的租户主键
+        user.setTenantId(tenantConfigProperties.getDefaultTenantId());
 
-        sysUserService.insertUser(user);
+        try {
+            sysUserService.insertUser(user);
+        } catch (IllegalStateException ex) {
+            return R.fail(ex.getMessage());
+        }
 
         return R.ok("注册成功");
     }

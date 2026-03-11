@@ -201,7 +201,7 @@ public class OssClient {
     public void delete(String path) {
         try {
             String key = removeBaseUrl(path);
-            client.deleteObject(x -> x.bucket(properties.getBucketName()).key(key).build());
+            client.deleteObject(x -> x.bucket(properties.getBucketName()).key(key).build()).join();
         } catch (Exception e) {
             throw new OssException("删除文件失败: " + e.getMessage(), e);
         }

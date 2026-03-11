@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+  # 默认接入 Prometheus，Grafana 启动后即可直接使用。
+  - name: CloudFlow Prometheus
+    uid: cloudflow-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

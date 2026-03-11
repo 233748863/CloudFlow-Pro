@@ -15,6 +15,7 @@ import com.cloudflow.auth.mapper.SysUserPostMapper;
 import com.cloudflow.auth.mapper.SysUserRoleMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.SysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +59,9 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Autowired
     private ISysMenuService menuService;
+
+    @Autowired
+    private SysTenantService tenantService;
 
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
@@ -205,6 +209,12 @@ public class SysUserServiceImpl implements ISysUserService {
         Long tenantId = UserContext.getTenantId();
         if (tenantId != null) {
             user.setTenantId(tenantId);
+        }
+
+        // 新增用户前先检查租户配额，避免超额写入后再回滚造成脏数据
+        Long targetTenantId = user.getTenantId();
+        if (targetTenantId != null && tenantService.isUserLimitReached(targetTenantId)) {
+            throw new IllegalStateException("当前租户用户数已达上限，无法新增用户");
         }
 
         if (StringUtils.hasText(user.getPassword())) {

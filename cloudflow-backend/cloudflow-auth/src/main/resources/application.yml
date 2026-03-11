@@ -33,8 +33,26 @@ spring:
 
 # Sa-Token 安全配置（本地后备，Nacos 配置优先）
 cloudflow:
-  # 文件上传存储根路径
+  # ???????????????
   profile: /data/cloudflow/profile
+  file-storage:
+    # ??????????? OSS ??? oss ??
+    type: local
+    # ?????????????????
+    presigned-expire-minutes: 30
+  oss:
+    # ??? file-storage.type=oss ?????????????
+    enabled: false
+    config-key: default
+    endpoint: localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket-name: cloudflow
+    region: us-east-1
+    is-https: N
+    access-policy: 1
+    prefix: upload
+    domain:
   security:
     token:
       expiration: 1440
@@ -58,3 +76,28 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: CloudFlow Auth Service
+    version: 1.0.0

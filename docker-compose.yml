@@ -363,6 +363,78 @@ services:
           memory: 256M
 
   # ============================================================
+  # 监控层 (Monitoring Layer)
+  # ============================================================
+
+  # Prometheus：采集各微服务 Actuator 指标。
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: cloudflow-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - gateway
+      - auth
+      - workflow
+      - oa
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # Grafana：加载默认数据源和监控看板。
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: cloudflow-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-cloudflow_grafana_2026}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+  # ============================================================
   # 前端层 (Frontend Layer)
   # ============================================================
 
@@ -443,4 +515,8 @@ volumes:
     driver: local
   # 业务数据卷
   upload_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local

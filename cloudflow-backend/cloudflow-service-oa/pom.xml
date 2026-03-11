@@ -81,6 +81,12 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-audit</artifactId>
         </dependency>
+
+        <!-- Prometheus 指标导出 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

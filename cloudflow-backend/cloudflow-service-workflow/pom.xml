@@ -93,6 +93,12 @@
             <artifactId>httpclient5</artifactId>
         </dependency>
 
+        <!-- Prometheus 指标导出 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- 单元测试 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

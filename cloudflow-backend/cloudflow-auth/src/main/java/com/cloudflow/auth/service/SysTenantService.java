@@ -2,44 +2,36 @@ package com.cloudflow.auth.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.auth.domain.SysTenant;
+import com.cloudflow.auth.domain.dto.TenantStatisticsDTO;
+import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
- * 租户Service接口
- * 
+ * 租户 Service 接口。
+ *
  * @author CloudFlow
  */
 public interface SysTenantService extends IService<SysTenant> {
-    
-    /**
-     * 检查租户是否已过期
-     * 
-     * @param tenantId 租户ID
-     * @return true-已过期 false-未过期
-     */
+
     boolean isTenantExpired(Long tenantId);
-    
-    /**
-     * 检查租户是否已停用
-     * 
-     * @param tenantId 租户ID
-     * @return true-已停用 false-正常
-     */
+
     boolean isTenantDisabled(Long tenantId);
-    
-    /**
-     * 检查租户用户数量是否已达上限
-     * 
-     * @param tenantId 租户ID
-     * @return true-已达上限 false-未达上限
-     */
+
     boolean isUserLimitReached(Long tenantId);
-    
-    /**
-     * 更新租户存储使用量
-     * 
-     * @param tenantId 租户ID
-     * @param size 增加的存储大小(MB)
-     * @return 更新结果
-     */
+
+    long countActiveUsers(Long tenantId);
+
+    TenantStatisticsDTO getTenantStatistics(Long tenantId);
+
+    List<TenantStatisticsDTO> getTenantStatisticsBatch(Collection<Long> tenantIds);
+
+    TenantStorageSummaryDTO getTenantStorageSummary(Long tenantId);
+
+    TenantStorageSummaryDTO refreshTenantStorageSummary(Long tenantId);
+
+    boolean hasAvailableStorage(Long tenantId, long incomingBytes);
+
     boolean updateStorageUsed(Long tenantId, Long size);
 }

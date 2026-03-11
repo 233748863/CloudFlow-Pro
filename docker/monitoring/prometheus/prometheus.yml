@@ -1,0 +1,50 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: cloudflow-pro
+
+scrape_configs:
+  # 采集 Prometheus 自身运行指标，便于确认采集链路是否正常。
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+        labels:
+          component: monitoring
+
+  # 采集网关指标，用于观察整体入口流量和错误趋势。
+  - job_name: cloudflow-gateway
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - gateway:9000
+        labels:
+          service: gateway
+
+  # 采集认证服务指标，用于观察租户、登录、用户治理相关运行状态。
+  - job_name: cloudflow-auth
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - auth:9001
+        labels:
+          service: auth
+
+  # 采集工作流服务指标，用于观察流程引擎与异步执行压力。
+  - job_name: cloudflow-workflow
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - workflow:9002
+        labels:
+          service: workflow
+
+  # 采集 OA 服务指标，用于观察日常业务模块运行情况。
+  - job_name: cloudflow-oa
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - oa:9003
+        labels:
+          service: oa

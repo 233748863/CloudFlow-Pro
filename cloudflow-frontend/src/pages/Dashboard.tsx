@@ -149,32 +149,32 @@ export const Dashboard = () => {
   if (!user) return null;
 
   const stats = [
-    { label: '待办审批', value: pendingCount, icon: <ClipboardCheck size={22} />, grad: 'from-orange-500 to-amber-500', sh: 'shadow-orange-200/60', bg: 'bg-orange-50', tc: 'text-orange-600', path: '/tasks', desc: '需要您处理' },
-    { label: '我的申请', value: myAppsCount, icon: <FileText size={22} />, grad: 'from-blue-500 to-cyan-500', sh: 'shadow-blue-200/60', bg: 'bg-blue-50', tc: 'text-blue-600', path: '/my-apps', desc: '已发起的流程' },
-    { label: '抄送我的', value: copyCount, icon: <MailOpen size={22} />, grad: 'from-violet-500 to-purple-500', sh: 'shadow-violet-200/60', bg: 'bg-violet-50', tc: 'text-violet-600', path: '/my-copies', desc: '知会给您的' },
-    { label: '已完成', value: doneCount, icon: <CheckCheck size={22} />, grad: 'from-emerald-500 to-teal-500', sh: 'shadow-emerald-200/60', bg: 'bg-emerald-50', tc: 'text-emerald-600', path: '/tasks', desc: '已审批完成' },
+    { label: '待办审批', value: pendingCount, icon: <ClipboardCheck size={24} />, bg: 'bg-gradient-to-br from-pink-100 to-pink-50', tc: 'text-pink-600', path: '/tasks', desc: '需要您处理' },
+    { label: '我的申请', value: myAppsCount, icon: <FileText size={24} />, bg: 'bg-gradient-to-br from-slate-100 to-slate-50', tc: 'text-slate-600', path: '/my-apps', desc: '已发起的流程' },
+    { label: '抄送我的', value: copyCount, icon: <MailOpen size={24} />, bg: 'bg-gradient-to-br from-slate-100 to-slate-50', tc: 'text-slate-600', path: '/my-copies', desc: '知会给您的' },
+    { label: '已完成', value: doneCount, icon: <CheckCheck size={24} />, bg: 'bg-gradient-to-br from-slate-100 to-slate-50', tc: 'text-slate-600', path: '/tasks', desc: '已审批完成' },
   ];
 
   const shortcuts = [
-    { label: '发起流程', icon: <PlayCircle size={20} />, path: '/workplace', c: 'text-pink-600', bg: 'bg-pink-50', hb: 'hover:bg-pink-100' },
-    { label: '我的日程', icon: <CalendarDays size={20} />, path: '/schedule', c: 'text-blue-600', bg: 'bg-blue-50', hb: 'hover:bg-blue-100' },
-    { label: '会议预约', icon: <Users size={20} />, path: '/meeting-room', c: 'text-indigo-600', bg: 'bg-indigo-50', hb: 'hover:bg-indigo-100' },
-    { label: '公告中心', icon: <Megaphone size={20} />, path: '/announcement', c: 'text-rose-600', bg: 'bg-rose-50', hb: 'hover:bg-rose-100' },
-    { label: '报销申请', icon: <CreditCard size={20} />, path: '/expense/claim', c: 'text-amber-600', bg: 'bg-amber-50', hb: 'hover:bg-amber-100' },
-    { label: '出差申请', icon: <Briefcase size={20} />, path: '/office/business-trip', c: 'text-teal-600', bg: 'bg-teal-50', hb: 'hover:bg-teal-100' },
-    { label: '用车申请', icon: <Car size={20} />, path: '/admin/vehicle/booking', c: 'text-cyan-600', bg: 'bg-cyan-50', hb: 'hover:bg-cyan-100' },
-    { label: '考勤打卡', icon: <UserCheck size={20} />, path: '/admin/attendance/checkin', c: 'text-green-600', bg: 'bg-green-50', hb: 'hover:bg-green-100' },
-    { label: '加班申请', icon: <Timer size={20} />, path: '/office/overtime', c: 'text-orange-600', bg: 'bg-orange-50', hb: 'hover:bg-orange-100' },
-    { label: '通讯录', icon: <Building2 size={20} />, path: '/office/contact', c: 'text-slate-600', bg: 'bg-slate-50', hb: 'hover:bg-slate-100' },
+    { label: '发起流程', icon: <PlayCircle size={20} />, path: '/workplace' },
+    { label: '我的日程', icon: <CalendarDays size={20} />, path: '/schedule' },
+    { label: '会议预约', icon: <Users size={20} />, path: '/meeting-room' },
+    { label: '公告中心', icon: <Megaphone size={20} />, path: '/announcement' },
+    { label: '报销申请', icon: <CreditCard size={20} />, path: '/expense/claim' },
+    { label: '出差申请', icon: <Briefcase size={20} />, path: '/office/business-trip' },
+    { label: '用车申请', icon: <Car size={20} />, path: '/admin/vehicle/booking' },
+    { label: '考勤打卡', icon: <UserCheck size={20} />, path: '/admin/attendance/checkin' },
+    { label: '加班申请', icon: <Timer size={20} />, path: '/office/overtime' },
+    { label: '通讯录', icon: <Building2 size={20} />, path: '/office/contact' },
   ];
 
   const stMap: Record<string, { l: string; c: string; b: string }> = {
-    PENDING: { l: '待审批', c: 'text-orange-700', b: 'bg-orange-50 border-orange-200' },
-    RUNNING: { l: '进行中', c: 'text-blue-700', b: 'bg-blue-50 border-blue-200' },
-    APPROVED: { l: '已通过', c: 'text-emerald-700', b: 'bg-emerald-50 border-emerald-200' },
-    REJECTED: { l: '已驳回', c: 'text-red-700', b: 'bg-red-50 border-red-200' },
-    COMPLETED: { l: '已完成', c: 'text-emerald-700', b: 'bg-emerald-50 border-emerald-200' },
-    CANCELLED: { l: '已取消', c: 'text-slate-700', b: 'bg-slate-50 border-slate-200' },
+    PENDING: { l: '待审批', c: 'text-amber-600', b: 'bg-amber-50 border-amber-200' },
+    RUNNING: { l: '进行中', c: 'text-blue-600', b: 'bg-blue-50 border-blue-200' },
+    APPROVED: { l: '已通过', c: 'text-emerald-600', b: 'bg-emerald-50 border-emerald-200' },
+    REJECTED: { l: '已驳回', c: 'text-rose-600', b: 'bg-rose-50 border-rose-200' },
+    COMPLETED: { l: '已完成', c: 'text-emerald-600', b: 'bg-emerald-50 border-emerald-200' },
+    CANCELLED: { l: '已取消', c: 'text-slate-500', b: 'bg-slate-50 border-slate-200' },
   };
   const badge = (st: string) => {
     const cf = stMap[st] || { l: st || '未知', c: 'text-slate-600', b: 'bg-slate-50 border-slate-200' };
@@ -182,258 +182,282 @@ export const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-6">
-      {/* 欢迎横幅 */}
-      <Card className="relative overflow-hidden border-none shadow-lg shadow-pink-200/40">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-500 via-rose-500 to-orange-400" />
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full" />
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/5 rounded-full" />
-        <div className="absolute top-1/2 right-1/4 w-20 h-20 bg-white/5 rounded-full" />
-        <div className="relative p-6 sm:p-8">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-pink-100 text-sm">
-                <Calendar size={14} /><span>{dateStr}</span>
-                {timeStr && <><span className="opacity-50">·</span><span>{timeStr}</span></>}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white/80">{greeting.icon}</span>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white">{greeting.text}，{user.name}</h2>
-              </div>
-              <p className="text-pink-100 text-sm mt-1">
-                {pendingCount > 0
-                  ? <>您有 <span className="font-bold text-white text-base">{pendingCount}</span> 个审批任务待处理</>
-                  : <>暂无待办事项，一切运行正常 <Sparkles size={14} className="inline ml-1" /></>}
-                {user.deptName && <span className="opacity-70"> · {user.deptName}</span>}
-              </p>
-            </div>
-            <div className="hidden sm:flex flex-col gap-2">
-              {pendingCount > 0 && (
-                <Button className="bg-white/20 border border-white/30 text-white hover:bg-white/30 backdrop-blur-sm flex items-center gap-1.5" onClick={() => navigate('/tasks')}>
-                  去处理 <ArrowRight size={14} />
-                </Button>
-              )}
-              <Button className="bg-white/10 border border-white/20 text-white/90 hover:bg-white/20 backdrop-blur-sm flex items-center gap-1.5 text-sm" onClick={() => navigate('/workplace')}>
-                <PlayCircle size={14} /> 发起流程
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(c => (
-          <Card key={c.label} className={`relative overflow-hidden p-5 hover:shadow-lg ${c.sh} transition-all duration-300 cursor-pointer group border-none`} onClick={() => navigate(c.path)}>
-            <div className={`absolute -top-4 -right-4 w-16 h-16 rounded-full bg-gradient-to-br ${c.grad} opacity-10 group-hover:opacity-20 transition-opacity`} />
-            <div className="flex justify-between items-start relative">
-              <div>
-                <p className="text-sm text-slate-500 font-medium">{c.label}</p>
-                <h3 className="text-3xl font-bold text-slate-800 mt-1">{c.value}</h3>
-                <p className="text-xs text-slate-400 mt-1">{c.desc}</p>
-              </div>
-              <div className={`p-2.5 rounded-xl ${c.bg} ${c.tc} group-hover:scale-110 transition-transform duration-300`}>{c.icon}</div>
-            </div>
-          </Card>
-        ))}
+    <div className="relative min-h-screen">
+      {/* 氛围背景装饰，仅页面内不可交互 */}
+      <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-pink-300/20 rounded-full blur-[100px]" />
+        <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-blue-300/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-purple-300/10 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-slate-50/40 backdrop-blur-[1px]" />
       </div>
 
-      {/* 快捷入口 */}
-      <Card className="p-5 border-none shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-4">
-          <Activity size={16} className="text-pink-500" /> 快捷入口
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {shortcuts.map(i => (
-            <button key={i.label} onClick={() => navigate(i.path)} className={`flex flex-col items-center gap-2 p-3 rounded-xl ${i.hb} transition-all duration-200 text-center group`}>
-              <div className={`p-2.5 rounded-xl ${i.bg} ${i.c} group-hover:scale-110 transition-transform duration-200`}>{i.icon}</div>
-              <span className="text-xs font-medium text-slate-600">{i.label}</span>
-            </button>
+      <div className="space-y-6 animate-fade-in pb-6 px-1 relative z-10">
+        {/* 欢迎横幅 Widget 风格 */}
+        <Card className="relative overflow-hidden border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/60 backdrop-blur-2xl rounded-3xl group">
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-white/40 to-transparent pointer-events-none" />
+          <div className="absolute -top-32 -right-32 w-80 h-80 bg-pink-100/50 rounded-full blur-3xl pointer-events-none transition-transform duration-1000 group-hover:scale-110" />
+          <div className="absolute -bottom-24 left-[20%] w-60 h-60 bg-indigo-100/40 rounded-full blur-3xl pointer-events-none transition-transform duration-1000 delay-100 group-hover:scale-110" />
+          
+          <div className="relative p-6 sm:p-8">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-sm font-medium">
+                  <Calendar size={14} className="text-pink-500" /><span>{dateStr}</span>
+                  {timeStr && <><span className="opacity-50">·</span><span>{timeStr}</span></>}
+                </div>
+                <div className="flex items-center gap-2 py-1">
+                  <span className="text-pink-500 drop-shadow-sm">{greeting.icon}</span>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">{greeting.text}，{user.name}</h2>
+                </div>
+                <p className="text-slate-500 mt-1">
+                  {pendingCount > 0
+                    ? <>您有 <span className="font-bold text-pink-600 text-lg px-1">{pendingCount}</span> 个审批任务待处理</>
+                    : <>暂无待办事项，一切运行正常 <Sparkles size={16} className="inline ml-1 text-amber-400" /></>}
+                  {user.deptName && <span className="mx-3 text-slate-300 font-light">|</span>}
+                  {user.deptName && <span className="text-slate-600 font-medium">{user.deptName}</span>}
+                </p>
+              </div>
+              <div className="hidden sm:flex items-center gap-4">
+                {pendingCount > 0 && (
+                  <Button className="bg-pink-500 hover:bg-pink-600 text-white shadow-[0_4px_14px_rgba(236,72,153,0.3)] hover:shadow-[0_6px_20px_rgba(236,72,153,0.4)] rounded-2xl px-6 h-11 flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 active:scale-95" onClick={() => navigate('/tasks')}>
+                    去处理 <ArrowRight size={16} />
+                  </Button>
+                )}
+                <Button variant="outline" className="border-white/80 bg-white/50 backdrop-blur-md text-slate-700 hover:text-pink-600 hover:bg-white/90 shadow-sm rounded-2xl px-6 h-11 flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 active:scale-95" onClick={() => navigate('/workplace')}>
+                  <PlayCircle size={16} className="text-pink-500" /> 发起流程
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* 统计卡片 毛玻璃 */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map(c => (
+            <Card key={c.label} className="relative overflow-hidden p-5 bg-white/50 backdrop-blur-xl border border-white/80 shadow-[0_4px_24px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_32px_rgb(0,0,0,0.06)] hover:border-white/100 hover:bg-white/70 rounded-3xl transition-all duration-500 hover:-translate-y-1 cursor-pointer group">
+              <div className="flex justify-between items-start relative">
+                <div className="flex flex-col h-full justify-between">
+                  <p className="text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors">{c.label}</p>
+                  <h3 className="text-3xl font-extrabold text-slate-800 mt-3 mb-1 tracking-tight">{c.value}</h3>
+                  <p className="text-xs text-slate-400 font-medium">{c.desc}</p>
+                </div>
+                <div className={`relative p-3.5 rounded-[1.25rem] ${c.bg} ${c.tc} shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_10px_rgba(0,0,0,0.02)] group-hover:scale-110 group-hover:bg-white group-hover:shadow-[0_6px_20px_rgb(0,0,0,0.08)] transition-all duration-500 ease-out z-10`}>
+                  {c.icon}
+                </div>
+              </div>
+            </Card>
           ))}
         </div>
-      </Card>
 
-      {/* 主内容区域 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左栏 */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* 待办审批 */}
-          <Card className="border-none shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-5 pb-3">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <div className="w-1 h-4 bg-orange-500 rounded-full" /> 待办审批
-                {pendingCount > 0 && <span className="ml-1 px-1.5 py-0.5 text-xs font-bold bg-orange-100 text-orange-600 rounded-full">{pendingCount}</span>}
-              </h3>
-              <button onClick={() => navigate('/tasks')} className="text-xs text-slate-400 hover:text-pink-500 flex items-center gap-0.5 transition-colors">查看全部 <ChevronRight size={14} /></button>
-            </div>
-            {lt ? <Skeleton /> : pendingTasks.length > 0 ? (
-              <div className="divide-y divide-slate-50">
-                {pendingTasks.map((t, i) => (
-                  <div key={t.id || i} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50/80 cursor-pointer transition-colors group" onClick={() => navigate('/tasks')}>
-                    <div className="w-7 h-7 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 truncate group-hover:text-pink-600 transition-colors">{t.processName || t.title || t.instanceName || '审批任务'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 truncate">{t.startUserName || t.creatorName || '发起人未知'}{t.createTime && <span className="ml-2">{relTime(t.createTime)}</span>}</p>
+        {/* 快捷入口 - App Icon 风格 */}
+        <Card className="p-5 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/50 backdrop-blur-xl rounded-3xl">
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4 px-1 tracking-tight">
+            <Activity size={18} className="text-pink-500" /> 快捷入口
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {shortcuts.map(i => (
+              <button key={i.label} onClick={() => navigate(i.path)} className="flex flex-col items-center justify-center gap-3 p-4 rounded-[1.5rem] bg-transparent hover:bg-white/60 border border-transparent hover:border-white/80 hover:shadow-[0_8px_20px_rgb(0,0,0,0.04)] active:scale-[0.96] transition-all duration-400 ease-out text-center group">
+                <div className="p-4 rounded-[1.25rem] bg-white text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(0,0,0,0.04)] group-hover:text-pink-500 group-hover:scale-110 group-hover:shadow-[0_6px_20px_rgba(236,72,153,0.15)] transition-all duration-400 ease-out">
+                  {i.icon}
+                </div>
+                <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-800 transition-colors">{i.label}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* 主内容区域 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 左栏 */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* 待办审批 */}
+            <Card className="border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/60 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <div className="flex items-center justify-between p-6 pb-2">
+                <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2.5 tracking-tight">
+                  <div className="w-1.5 h-5 bg-gradient-to-b from-pink-400 to-pink-600 rounded-full shadow-sm" /> 待办审批
+                  {pendingCount > 0 && <span className="ml-1 px-2 py-0.5 text-xs font-bold bg-pink-100/80 text-pink-600 rounded-full shadow-sm">{pendingCount}</span>}
+                </h3>
+                <button onClick={() => navigate('/tasks')} className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group">
+                  查看全部 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+              {lt ? <Skeleton /> : pendingTasks.length > 0 ? (
+                <div className="p-3 space-y-1">
+                  {pendingTasks.map((t, i) => (
+                    <div key={t.id || i} className="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-white border border-transparent hover:border-white hover:shadow-[0_4px_20px_rgb(0,0,0,0.04)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer transition-all duration-300 ease-out group" onClick={() => navigate('/tasks')}>
+                      <div className="w-9 h-9 rounded-xl bg-slate-100/50 text-slate-500 group-hover:bg-pink-50 group-hover:text-pink-500 shadow-sm flex items-center justify-center text-xs font-bold shrink-0 transition-colors">{i + 1}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-slate-700 truncate group-hover:text-pink-600 transition-colors">{t.processName || t.title || t.instanceName || '审批任务'}</p>
+                        <p className="text-xs font-medium text-slate-400 mt-1 truncate">{t.startUserName || t.creatorName || '发起人未知'}{t.createTime && <span className="ml-2 font-normal opacity-80">{relTime(t.createTime)}</span>}</p>
+                      </div>
+                      {badge(t.status || 'PENDING')}
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-pink-400 shrink-0 ml-1" />
                     </div>
-                    {badge(t.status || 'PENDING')}
-                    <ChevronRight size={14} className="text-slate-300 group-hover:text-pink-400 shrink-0" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                <CheckCircle2 size={36} className="text-emerald-300 mb-2" />
-                <p className="text-sm">暂无待办审批，太棒了！</p>
-              </div>
-            )}
-          </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <CheckCircle2 size={44} className="text-emerald-300 mb-3 drop-shadow-sm" />
+                  <p className="text-sm font-medium">暂无待办审批，太棒了！</p>
+                </div>
+              )}
+            </Card>
 
-          {/* 最近申请 */}
-          <Card className="border-none shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-5 pb-3">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <div className="w-1 h-4 bg-blue-500 rounded-full" /> 最近申请
-              </h3>
-              <button onClick={() => navigate('/my-apps')} className="text-xs text-slate-400 hover:text-pink-500 flex items-center gap-0.5 transition-colors">查看全部 <ChevronRight size={14} /></button>
-            </div>
-            {la ? <Skeleton /> : recentApps.length > 0 ? (
-              <div className="divide-y divide-slate-50">
-                {recentApps.map((a, i) => (
-                  <div key={a.id || i} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50/80 cursor-pointer transition-colors group" onClick={() => navigate('/my-apps')}>
-                    <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"><FileSearch size={14} /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 truncate group-hover:text-pink-600 transition-colors">{a.processName || a.title || a.instanceName || '流程申请'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{a.createTime && relTime(a.createTime)}</p>
+            {/* 最近申请 */}
+            <Card className="border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/60 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <div className="flex items-center justify-between p-6 pb-2">
+                <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2.5 tracking-tight">
+                  <div className="w-1.5 h-5 bg-gradient-to-b from-slate-400 to-slate-600 rounded-full shadow-sm" /> 最近申请
+                </h3>
+                <button onClick={() => navigate('/my-apps')} className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group">
+                  查看全部 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+              {la ? <Skeleton /> : recentApps.length > 0 ? (
+                <div className="p-3 space-y-1">
+                  {recentApps.map((a, i) => (
+                    <div key={a.id || i} className="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-white border border-transparent hover:border-white hover:shadow-[0_4px_20px_rgb(0,0,0,0.04)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer transition-all duration-300 ease-out group" onClick={() => navigate('/my-apps')}>
+                      <div className="w-9 h-9 rounded-xl bg-slate-100/50 text-slate-500 group-hover:bg-pink-50 group-hover:text-pink-500 shadow-sm flex items-center justify-center shrink-0 transition-colors"><FileSearch size={16} /></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-slate-700 truncate group-hover:text-pink-600 transition-colors">{a.processName || a.title || a.instanceName || '流程申请'}</p>
+                        <p className="text-xs font-medium text-slate-400 mt-1">{a.createTime && relTime(a.createTime)}</p>
+                      </div>
+                      {badge(a.status || 'RUNNING')}
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-pink-400 shrink-0 ml-1" />
                     </div>
-                    {badge(a.status || 'RUNNING')}
-                    <ChevronRight size={14} className="text-slate-300 group-hover:text-pink-400 shrink-0" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                <FileText size={36} className="text-blue-200 mb-2" />
-                <p className="text-sm">暂无申请记录</p>
-                <button onClick={() => navigate('/workplace')} className="mt-2 text-xs text-pink-500 hover:text-pink-600 flex items-center gap-1"><PlayCircle size={12} /> 去发起流程</button>
-              </div>
-            )}
-          </Card>
-        </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <FileText size={44} className="text-slate-300 mb-3 drop-shadow-sm" />
+                  <p className="text-sm font-medium">暂无申请记录</p>
+                  <button onClick={() => navigate('/workplace')} className="mt-3 text-sm font-semibold text-pink-500 hover:text-pink-600 flex items-center gap-1.5 transition-colors px-4 py-2 rounded-xl hover:bg-pink-50 active:scale-95"><PlayCircle size={14} /> 去发起流程</button>
+                </div>
+              )}
+            </Card>
+          </div>
 
-        {/* 右栏 */}
-        <div className="space-y-6">
-          {/* 公告通知 - 常驻显示，带已读/未读标记 */}
-          <Card className="border-none shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-5 pb-3">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <div className="w-1 h-4 bg-rose-500 rounded-full" /> 公告通知
-                {announcements.filter(n => !readAnnouncementIds.has(String(n.announcementId || n.id))).length > 0 && (
-                  <span className="px-1.5 py-0.5 text-xs font-bold bg-rose-100 text-rose-600 rounded-full">
-                    {announcements.filter(n => !readAnnouncementIds.has(String(n.announcementId || n.id))).length}
-                  </span>
-                )}
-              </h3>
-              <button onClick={() => navigate('/announcement')} className="text-xs text-slate-400 hover:text-pink-500 flex items-center gap-0.5 transition-colors">更多 <ChevronRight size={14} /></button>
-            </div>
-            {lan ? <Skeleton /> : announcements.length > 0 ? (
-              <div className="divide-y divide-slate-50">
-                {announcements.map((n, i) => {
-                  // 兼容不同的ID字段名：announcementId 或 id
-                  const nId = String(n.announcementId || n.id);
-                  const isRead = readAnnouncementIds.has(nId);
-                  return (
-                    <div
-                      key={n.announcementId || n.id || i}
-                      className={`flex items-start gap-3 px-5 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors group ${isRead ? 'opacity-60' : ''}`}
-                      onClick={() => {
-                        // 标记为已读
-                        if (!isRead) {
-                          const newSet = new Set(readAnnouncementIds);
-                          newSet.add(nId);
-                          setReadAnnouncementIds(newSet);
-                          try { localStorage.setItem('read_announcements', JSON.stringify([...newSet])); } catch {}
-                        }
-                        navigate('/announcement');
-                      }}
-                    >
-                      <div className="mt-1 shrink-0 relative">
-                        <Bell size={14} className={isRead ? 'text-slate-300' : 'text-rose-400'} />
-                        {!isRead && <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full" />}
+          {/* 右栏 */}
+          <div className="space-y-6">
+            {/* 公告通知 - 常驻显示，带已读/未读标记 */}
+            <Card className="border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/60 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <div className="flex items-center justify-between p-6 pb-2">
+                <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2.5 tracking-tight">
+                  <div className="w-1.5 h-5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-full shadow-sm" /> 公告通知
+                  {announcements.filter(n => !readAnnouncementIds.has(String(n.announcementId || n.id))).length > 0 && (
+                    <span className="px-2 py-0.5 text-xs font-bold bg-rose-100/80 text-rose-600 rounded-full shadow-sm">
+                      {announcements.filter(n => !readAnnouncementIds.has(String(n.announcementId || n.id))).length}
+                    </span>
+                  )}
+                </h3>
+                <button onClick={() => navigate('/announcement')} className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group">
+                  更多 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+              {lan ? <Skeleton /> : announcements.length > 0 ? (
+                <div className="p-3 space-y-1">
+                  {announcements.map((n, i) => {
+                    // 兼容不同的ID字段名：announcementId 或 id
+                    const nId = String(n.announcementId || n.id);
+                    const isRead = readAnnouncementIds.has(nId);
+                    return (
+                      <div
+                        key={n.announcementId || n.id || i}
+                        className={`flex items-start gap-4 px-4 py-3 rounded-2xl hover:bg-white border border-transparent hover:border-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer transition-all duration-300 ease-out group ${isRead ? 'opacity-60 saturate-50' : ''}`}
+                        onClick={() => {
+                          // 标记为已读
+                          if (!isRead) {
+                            const newSet = new Set(readAnnouncementIds);
+                            newSet.add(nId);
+                            setReadAnnouncementIds(newSet);
+                            try { localStorage.setItem('read_announcements', JSON.stringify([...newSet])); } catch {}
+                          }
+                          navigate('/announcement');
+                        }}
+                      >
+                        <div className="mt-1 shrink-0 relative p-2 rounded-xl bg-slate-50 group-hover:bg-pink-50 transition-colors">
+                          <Bell size={16} className={isRead ? 'text-slate-400' : 'text-pink-500 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300'} />
+                          {!isRead && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full shadow-sm animate-pulse" />}
+                        </div>
+                        <div className="flex-1 min-w-0 py-0.5">
+                          <p className={`text-[14px] truncate transition-colors ${isRead ? 'font-medium text-slate-500' : 'font-bold text-slate-800 group-hover:text-pink-600'}`}>
+                            {n.title || '公告'}
+                          </p>
+                          <p className="text-xs font-medium text-slate-400 mt-1 flex items-center gap-2">
+                            {n.createTime ? relTime(n.createTime) : ''}
+                            {isRead && <span className="text-slate-300 font-normal">已读</span>}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+                  <Megaphone size={40} className="text-slate-300 mb-3 drop-shadow-sm" />
+                  <p className="text-sm font-medium">暂无公告通知</p>
+                  <p className="text-xs text-slate-300 mt-1">新公告发布后将在此显示</p>
+                </div>
+              )}
+            </Card>
+
+            {/* 今日日程 */}
+            <Card className="border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/60 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <div className="flex items-center justify-between p-6 pb-2">
+                <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2.5 tracking-tight">
+                  <div className="w-1.5 h-5 bg-gradient-to-b from-blue-300 to-blue-500 rounded-full shadow-sm" /> 今日日程
+                </h3>
+                <button onClick={() => navigate('/schedule')} className="text-xs font-medium text-slate-400 hover:text-pink-600 flex items-center gap-0.5 transition-colors group">
+                  更多 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+              {ls ? <Skeleton /> : schedules.length > 0 ? (
+                <div className="p-3 space-y-1">
+                  {schedules.map((sc, i) => (
+                    <div key={sc.id || i} className="flex items-start gap-4 px-4 py-3 rounded-2xl hover:bg-white border border-transparent hover:border-white hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer transition-all duration-300 ease-out group" onClick={() => navigate('/schedule')}>
+                      <div className="mt-1 shrink-0 p-1.5 rounded-lg bg-blue-50 text-blue-400 group-hover:bg-blue-100 group-hover:text-blue-500 transition-colors">
+                        <CircleDot size={12} className="group-hover:animate-pulse" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm truncate group-hover:text-pink-600 transition-colors ${isRead ? 'font-normal text-slate-500' : 'font-medium text-slate-700'}`}>
-                          {n.title || '公告'}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                          {n.createTime ? relTime(n.createTime) : ''}
-                          {isRead && <span className="text-slate-300">已读</span>}
-                        </p>
+                        <p className="text-[14px] font-bold text-slate-700 truncate group-hover:text-blue-600 transition-colors">{sc.title || sc.content || '日程'}</p>
+                        <p className="text-xs font-medium text-slate-400 mt-1 flex items-center gap-1.5"><Clock size={12} />{sc.startTime || ''}{sc.endTime ? ` - ${sc.endTime}` : ''}</p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                <Megaphone size={32} className="text-rose-200 mb-2" />
-                <p className="text-sm">暂无公告通知</p>
-                <p className="text-xs text-slate-300 mt-1">新公告发布后将在此显示</p>
-              </div>
-            )}
-          </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+                  <CalendarDays size={40} className="text-slate-300 mb-3 drop-shadow-sm" />
+                  <p className="text-sm font-medium">今日暂无日程</p>
+                  <button onClick={() => navigate('/schedule')} className="mt-3 text-sm font-semibold text-blue-500 hover:text-blue-600 flex items-center gap-1.5 px-4 py-2 rounded-xl hover:bg-blue-50 active:scale-95 transition-colors"><CalendarDays size={14} /> 添加日程</button>
+                </div>
+              )}
+            </Card>
 
-          {/* 今日日程 */}
-          <Card className="border-none shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-5 pb-3">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <div className="w-1 h-4 bg-blue-500 rounded-full" /> 今日日程
+            {/* 工作概览 */}
+            <Card className="border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/60 backdrop-blur-xl rounded-3xl p-6">
+              <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2.5 mb-5 tracking-tight">
+                <div className="w-1.5 h-5 bg-gradient-to-b from-slate-400 to-slate-600 rounded-full shadow-sm" /> 工作概览
               </h3>
-              <button onClick={() => navigate('/schedule')} className="text-xs text-slate-400 hover:text-pink-500 flex items-center gap-0.5 transition-colors">更多 <ChevronRight size={14} /></button>
-            </div>
-            {ls ? <Skeleton /> : schedules.length > 0 ? (
-              <div className="divide-y divide-slate-50">
-                {schedules.map((sc, i) => (
-                  <div key={sc.id || i} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50/80 cursor-pointer transition-colors group" onClick={() => navigate('/schedule')}>
-                    <div className="mt-0.5 shrink-0"><CircleDot size={14} className="text-blue-400" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 truncate group-hover:text-pink-600 transition-colors">{sc.title || sc.content || '日程'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1"><Clock size={10} />{sc.startTime || ''}{sc.endTime ? ` - ${sc.endTime}` : ''}</p>
+              <div className="space-y-4">
+                {[
+                  { label: '待办审批', val: pendingCount, total: Math.max(pendingCount + doneCount, 1), grad: 'bg-gradient-to-r from-pink-400 to-pink-500' },
+                  { label: '已完成', val: doneCount, total: Math.max(pendingCount + doneCount, 1), grad: 'bg-gradient-to-r from-slate-600 to-slate-800' },
+                  { label: '我的申请', val: myAppsCount, total: Math.max(myAppsCount, 1), grad: 'bg-gradient-to-r from-slate-400 to-slate-500' },
+                ].map(item => (
+                  <div key={item.label} className="group">
+                    <div className="flex justify-between text-[13px] mb-1.5 font-medium">
+                      <span className="text-slate-500 group-hover:text-slate-700 transition-colors">{item.label}</span>
+                      <span className="text-slate-800 font-bold">{item.val}</span>
+                    </div>
+                    <div className="h-2.5 bg-slate-100/80 rounded-full overflow-hidden shadow-inner">
+                      <div className={`h-full ${item.grad} rounded-full transition-all duration-1000 ease-out shadow-sm`} style={{ width: `${Math.min((item.val / item.total) * 100, 100)}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                <CalendarDays size={32} className="text-blue-200 mb-2" />
-                <p className="text-sm">今日暂无日程</p>
-                <button onClick={() => navigate('/schedule')} className="mt-2 text-xs text-pink-500 hover:text-pink-600 flex items-center gap-1"><CalendarDays size={12} /> 添加日程</button>
-              </div>
-            )}
-          </Card>
-
-          {/* 工作概览 */}
-          <Card className="border-none shadow-sm p-5">
-            <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-4">
-              <div className="w-1 h-4 bg-emerald-500 rounded-full" /> 工作概览
-            </h3>
-            <div className="space-y-3">
-              {[
-                { label: '待办审批', val: pendingCount, total: Math.max(pendingCount + doneCount, 1), color: 'bg-orange-500' },
-                { label: '已完成', val: doneCount, total: Math.max(pendingCount + doneCount, 1), color: 'bg-emerald-500' },
-                { label: '我的申请', val: myAppsCount, total: Math.max(myAppsCount, 1), color: 'bg-blue-500' },
-              ].map(item => (
-                <div key={item.label}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500">{item.label}</span>
-                    <span className="text-slate-700 font-medium">{item.val}</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width: `${Math.min((item.val / item.total) * 100, 100)}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

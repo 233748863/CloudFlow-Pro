@@ -58,6 +58,25 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-audit</artifactId>
         </dependency>
+
+        <!-- ????????????/MinIO/??? OSS ?????? -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-oss</artifactId>
+        </dependency>
+
+        <!-- Prometheus 指标导出 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- 单元测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

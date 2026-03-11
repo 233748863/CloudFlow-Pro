@@ -102,6 +102,15 @@ management:
       enabled: true
     db:
       enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: CloudFlow Workflow Service
+    version: 1.0.0
 
 # 日志配置
 logging:

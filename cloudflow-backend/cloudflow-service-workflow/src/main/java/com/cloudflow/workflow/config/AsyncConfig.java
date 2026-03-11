@@ -1,5 +1,6 @@
 package com.cloudflow.workflow.config;
 
+import com.cloudflow.common.config.ContextTaskDecorator;
 import com.cloudflow.common.core.utils.SysConfigHelper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -123,7 +124,10 @@ public class AsyncConfig implements AsyncConfigurer {
         
         // 等待时间（秒）
         executor.setAwaitTerminationSeconds(60);
-        
+
+        // 传递用户、租户和请求上下文，保证异步任务中的审计信息完整
+        executor.setTaskDecorator(new ContextTaskDecorator());
+
         executor.initialize();
         
         log.info("工作流异步执行器初始化完成: corePoolSize={}, maxPoolSize={}, queueCapacity={}", 
@@ -150,7 +154,10 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
-        
+
+        // 通知、发布等异步任务也需要保留上下文，便于后续扩展统一审计
+        executor.setTaskDecorator(new ContextTaskDecorator());
+
         executor.initialize();
         
         log.info("通知异步执行器初始化完成: corePoolSize={}, maxPoolSize={}, queueCapacity={}", 
@@ -177,7 +184,10 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
-        
+
+        // 审计线程池必须保留请求上下文，否则无法获取真实来源信息
+        executor.setTaskDecorator(new ContextTaskDecorator());
+
         executor.initialize();
         
         log.info("审计日志异步执行器初始化完成: corePoolSize={}, maxPoolSize={}, queueCapacity={}", 

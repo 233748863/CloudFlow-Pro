@@ -1,88 +1,168 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X, Building2, Users, HardDrive, Calendar, Loader2, Power, PowerOff } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  Building2,
+  Calendar,
+  Clock3,
+  Edit,
+  HardDrive,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Power,
+  PowerOff,
+  Search,
+  ShieldCheck,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { getTenantList, addTenant, updateTenant, deleteTenant, changeTenantStatus } from '../../services/api/tenant';
+import {
+  addTenant,
+  changeTenantStatus,
+  deleteTenant,
+  getTenantList,
+  getTenantStatisticsBatch,
+  refreshTenantStorageUsage,
+  updateTenant,
+  type SysTenant,
+  type TenantStatistics,
+  type TenantStatisticsItem,
+} from '../../services/api/tenant';
 import { useMount } from '../../hooks/useMount';
 import { DatePicker, Input, Textarea } from '@/components/ui';
 
-interface Tenant {
+interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
-  tenantName: string;
-  contactName?: string;
-  contactPhone?: string;
-  contactEmail?: string;
-  domain?: string;
   status: string;
-  expireTime?: string;
-  userLimit?: number;
-  storageLimit?: number;
-  storageUsed?: number;
-  createTime?: string;
-  remark?: string;
 }
 
-// 分页响应接口
-interface PageResponse<T> {
-  records: T[];
-  total: number;
-  size: number;
-  current: number;
-  pages: number;
+interface TenantFormData {
+  tenantName: string;
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string;
+  domain: string;
+  status: string;
+  expireTime: string;
+  userLimit: number;
+  storageLimit: number;
+  remark: string;
 }
 
-export const TenantList = () => {
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+const DEFAULT_TENANT_STATS: TenantStatistics = {
+  expired: false,
+  disabled: false,
+  userLimitReached: false,
+  userCount: 0,
+};
+
+const DEFAULT_FORM_DATA: TenantFormData = {
+  tenantName: '',
+  contactName: '',
+  contactPhone: '',
+  contactEmail: '',
+  domain: '',
+  status: '0',
+  expireTime: '',
+  userLimit: 100,
+  storageLimit: 10240,
+  remark: '',
+};
+
+const normalizeTenantListResponse = (response: any): SysTenant[] => {
+  if (response && Array.isArray(response.records)) {
+    return response.records;
+  }
+  if (Array.isArray(response)) {
+    return response;
+  }
+  return [];
+};
+
+const isTenantExpiredByDate = (expireTime?: string): boolean => {
+  if (!expireTime) {
+    return false;
+  }
+  const time = new Date(expireTime).getTime();
+  return !Number.isNaN(time) && time < Date.now();
+};
+
+const buildFallbackStatistics = (tenant: SysTenant): TenantStatistics => ({
+  expired: isTenantExpiredByDate(tenant.expireTime),
+  disabled: tenant.status === '1',
+  userLimitReached: false,
+  userCount: tenant.accountCount ?? 0,
+});
+
+export const TenantList: React.FC = () => {
+  const [tenants, setTenants] = useState<TenantView[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [formData, setFormData] = useState({
-    tenantName: '',
-    contactName: '',
-    contactPhone: '',
-    contactEmail: '',
-    domain: '',
-    status: '0',
-    expireTime: '',
-    userLimit: 100,
-    storageLimit: 10240,
-    remark: '',
-  });
+  const [editingTenant, setEditingTenant] = useState<TenantView | null>(null);
+  const [formData, setFormData] = useState<TenantFormData>(DEFAULT_FORM_DATA);
+  const [refreshingTenantId, setRefreshingTenantId] = useState<number | null>(null);
 
   useMount(() => {
-    fetchTenants();
+    void fetchTenants();
   });
 
   const fetchTenants = async () => {
     setLoading(true);
     try {
-      const res: any = await getTenantList({ tenantName: searchTerm });
-      // 响应拦截器已经解包了 data，所以 res 就是分页对象
-      // 分页对象结构：{ records: [...], total: 1, size: 10, current: 1, pages: 1 }
-      if (res && Array.isArray(res.records)) {
-        setTenants(res.records);
-      } else if (Array.isArray(res)) {
-        // 兼容直接返回数组的情况
-        setTenants(res);
-      } else {
-        setTenants([]);
+      const response = await getTenantList({ tenantName: searchTerm });
+      const baseTenants = normalizeTenantListResponse(response);
+      const tenantIds = baseTenants
+        .map((tenant) => tenant.tenantId)
+        .filter((tenantId): tenantId is number => typeof tenantId === 'number' && tenantId > 0);
+
+      let statisticsMap = new Map<number, TenantStatisticsItem>();
+      if (tenantIds.length > 0) {
+        try {
+          const statisticsList = await getTenantStatisticsBatch(tenantIds);
+          statisticsMap = new Map(statisticsList.map((item) => [item.tenantId, item]));
+        } catch (statisticsError) {
+          console.warn('??????????????????', statisticsError);
+        }
       }
+
+      const enrichedTenants = baseTenants.map((tenant) => {
+        if (!tenant.tenantId) {
+          return {
+            ...tenant,
+            ...DEFAULT_TENANT_STATS,
+            tenantId: 0,
+            status: tenant.status || '0',
+          } satisfies TenantView;
+        }
+
+        const statistics = statisticsMap.get(tenant.tenantId) ?? buildFallbackStatistics(tenant);
+        return {
+          ...tenant,
+          ...statistics,
+          tenantId: tenant.tenantId,
+          status: tenant.status || '0',
+        } satisfies TenantView;
+      });
+
+      setTenants(enrichedTenants);
     } catch (error) {
       console.error(error);
-      toast.error('加载租户列表失败');
+      toast.error('????????');
+      setTenants([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchTenants();
+  const handleSearch = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await fetchTenants();
   };
 
-  const handleOpenModal = (tenant?: Tenant) => {
+  const handleOpenModal = (tenant?: TenantView) => {
     if (tenant) {
       setEditingTenant(tenant);
       setFormData({
@@ -97,28 +177,25 @@ export const TenantList = () => {
         storageLimit: tenant.storageLimit || 10240,
         remark: tenant.remark || '',
       });
-    } else {
-      setEditingTenant(null);
-      setFormData({
-        tenantName: '',
-        contactName: '',
-        contactPhone: '',
-        contactEmail: '',
-        domain: '',
-        status: '0',
-        expireTime: '',
-        userLimit: 100,
-        storageLimit: 10240,
-        remark: '',
-      });
+      setIsModalOpen(true);
+      return;
     }
+
+    setEditingTenant(null);
+    setFormData(DEFAULT_FORM_DATA);
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.tenantName?.trim()) {
+  const openCreateModal = () => {
+    setEditingTenant(null);
+    setFormData(DEFAULT_FORM_DATA);
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!formData.tenantName.trim()) {
       toast.error('请输入租户名称');
       return;
     }
@@ -131,77 +208,151 @@ export const TenantList = () => {
         await addTenant(formData);
         toast.success('租户创建成功');
       }
+
       setIsModalOpen(false);
-      fetchTenants();
+      await fetchTenants();
     } catch (error: any) {
       toast.error(error?.message || '操作失败');
     }
   };
 
   const handleDelete = async (tenantId: number) => {
-    if (window.confirm('确认删除该租户吗？删除后无法恢复！')) {
-      try {
-        await deleteTenant([tenantId]);
-        toast.success('租户删除成功');
-        fetchTenants();
-      } catch (error: any) {
-        toast.error(error?.message || '删除失败');
-      }
+    if (!window.confirm('确认删除该租户吗？删除后无法恢复！')) {
+      return;
+    }
+
+    try {
+      await deleteTenant([tenantId]);
+      toast.success('租户删除成功');
+      await fetchTenants();
+    } catch (error: any) {
+      toast.error(error?.message || '删除失败');
     }
   };
 
-  const handleToggleStatus = async (tenant: Tenant) => {
+  const handleToggleStatus = async (tenant: TenantView) => {
     const newStatus = tenant.status === '0' ? '1' : '0';
     try {
       await changeTenantStatus({ tenantId: tenant.tenantId, status: newStatus });
       toast.success(newStatus === '0' ? '租户已启用' : '租户已停用');
-      fetchTenants();
+      await fetchTenants();
     } catch (error: any) {
       toast.error(error?.message || '状态更新失败');
     }
   };
 
+  // ??????????????????????????
+  const handleRefreshStorage = async (tenantId: number) => {
+    setRefreshingTenantId(tenantId);
+    try {
+      await refreshTenantStorageUsage(tenantId);
+      toast.success('?????????');
+      await fetchTenants();
+    } catch (error: any) {
+      toast.error(error?.message || '????????');
+    } finally {
+      setRefreshingTenantId(null);
+    }
+  };
+
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('zh-CN');
+    if (!dateStr) {
+      return '-';
+    }
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+      return '-';
+    }
+    return date.toLocaleDateString('zh-CN');
   };
 
   const formatStorage = (mb?: number) => {
-    if (!mb) return '0 MB';
-    if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
+    if (!mb) {
+      return '0 MB';
+    }
+    if (mb >= 1024) {
+      return `${(mb / 1024).toFixed(2)} GB`;
+    }
     return `${mb} MB`;
   };
 
-  const getStoragePercent = (used?: number, limit?: number) => {
-    if (!used || !limit) return 0;
-    return Math.min((used / limit) * 100, 100);
+  const calcPercent = (used?: number, limit?: number) => {
+    if (!limit || limit <= 0) {
+      return 0;
+    }
+    return Math.min(((used || 0) / limit) * 100, 100);
   };
+
+  const getExpireHint = (expireTime?: string) => {
+    if (!expireTime) {
+      return { text: '未设置', tone: 'text-slate-500' };
+    }
+
+    const time = new Date(expireTime).getTime();
+    if (Number.isNaN(time)) {
+      return { text: '日期异常', tone: 'text-red-600' };
+    }
+
+    const diffDays = Math.ceil((time - Date.now()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) {
+      return { text: '已过期', tone: 'text-red-600' };
+    }
+    if (diffDays <= 30) {
+      return { text: `${diffDays} 天后到期`, tone: 'text-amber-600' };
+    }
+    return { text: '有效', tone: 'text-emerald-600' };
+  };
+
+  const summary = useMemo(() => {
+    const warningTenants = tenants.filter((tenant) => {
+      const storagePercent = calcPercent(tenant.storageUsed, tenant.storageLimit);
+      return tenant.expired || tenant.userLimitReached || storagePercent >= 80;
+    }).length;
+
+    const expiringSoonTenants = tenants.filter((tenant) => {
+      if (!tenant.expireTime || tenant.expired) {
+        return false;
+      }
+      const time = new Date(tenant.expireTime).getTime();
+      if (Number.isNaN(time)) {
+        return false;
+      }
+      const diffDays = Math.ceil((time - Date.now()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays <= 30;
+    }).length;
+
+    return {
+      total: tenants.length,
+      active: tenants.filter((tenant) => tenant.status === '0' && !tenant.expired).length,
+      expiringSoon: expiringSoonTenants,
+      warning: warningTenants,
+    };
+  }, [tenants]);
 
   const isEdit = !!editingTenant;
 
   return (
-    <div className="p-6 h-full flex flex-col bg-slate-50">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 h-full flex flex-col bg-slate-50 gap-6">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-800">租户管理</h1>
-        <button 
-          onClick={() => handleOpenModal()}
+        <button
+          onClick={openCreateModal}
           className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
         >
           <Plus size={18} /> 新增租户
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+      <div className="bg-white p-4 rounded-lg shadow-sm">
         <form onSubmit={handleSearch} className="flex gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <Input 
-              type="text" 
-              placeholder="搜索租户名称..." 
+            <Input
+              type="text"
+              placeholder="搜索租户名称..."
               className="pl-10"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
             />
           </div>
           <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors">
@@ -210,7 +361,48 @@ export const TenantList = () => {
         </form>
       </div>
 
-      {/* Table */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[
+          {
+            label: '租户总数',
+            value: summary.total,
+            desc: '当前已接入租户',
+            icon: <Building2 size={18} className="text-pink-600" />,
+            bg: 'bg-pink-50',
+          },
+          {
+            label: '正常运行',
+            value: summary.active,
+            desc: '未停用且未过期',
+            icon: <ShieldCheck size={18} className="text-emerald-600" />,
+            bg: 'bg-emerald-50',
+          },
+          {
+            label: '30天内到期',
+            value: summary.expiringSoon,
+            desc: '需要提前续费或处理',
+            icon: <Clock3 size={18} className="text-amber-600" />,
+            bg: 'bg-amber-50',
+          },
+          {
+            label: '重点关注',
+            value: summary.warning,
+            desc: '配额或容量存在风险',
+            icon: <AlertTriangle size={18} className="text-red-600" />,
+            bg: 'bg-red-50',
+          },
+        ].map((card) => (
+          <div key={card.label} className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${card.bg}`}>{card.icon}</div>
+              <span className="text-2xl font-bold text-slate-800">{card.value}</span>
+            </div>
+            <div className="text-sm font-semibold text-slate-800">{card.label}</div>
+            <div className="text-xs text-slate-500 mt-1">{card.desc}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -218,9 +410,9 @@ export const TenantList = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">租户信息</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">联系方式</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">配额</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">用户配额</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">存储使用</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">到期时间</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">到期情况</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
               </tr>
@@ -238,9 +430,12 @@ export const TenantList = () => {
                 </tr>
               ) : (
                 tenants.map((tenant) => {
-                  const storagePercent = getStoragePercent(tenant.storageUsed, tenant.storageLimit);
+                  const userPercent = calcPercent(tenant.userCount, tenant.userLimit);
+                  const storagePercent = calcPercent(tenant.storageUsed, tenant.storageLimit);
+                  const expireHint = getExpireHint(tenant.expireTime);
+
                   return (
-                    <tr key={tenant.tenantId} className="hover:bg-slate-50">
+                    <tr key={tenant.tenantId} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-pink-50 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -249,73 +444,119 @@ export const TenantList = () => {
                           <div>
                             <div className="text-sm font-medium text-slate-900">{tenant.tenantName}</div>
                             <div className="text-xs text-slate-500">ID: {tenant.tenantId}</div>
+                            {tenant.domain ? <div className="text-xs text-slate-400 mt-0.5">域名：{tenant.domain}</div> : null}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+
+                      <td className="px-6 py-4 text-sm text-slate-500">
                         <div>{tenant.contactName || '-'}</div>
                         <div className="text-xs">{tenant.contactPhone || '-'}</div>
+                        <div className="text-xs text-slate-400">{tenant.contactEmail || '-'}</div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 text-slate-700">
                           <Users size={14} />
-                          <span>{tenant.userLimit || 0} 用户</span>
+                          <span>{tenant.userCount} / {tenant.userLimit || 0} 用户</span>
                         </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <HardDrive size={12} />
-                          <span>{formatStorage(tenant.storageLimit)}</span>
+                        <div className="w-36 mt-2">
+                          <div className="flex justify-between text-xs text-slate-600 mb-1">
+                            <span>占用率</span>
+                            <span>{userPercent.toFixed(0)}%</span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all ${
+                                userPercent >= 100 ? 'bg-red-500' : userPercent >= 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${userPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className={`text-xs mt-2 ${tenant.userLimitReached ? 'text-red-600' : 'text-slate-500'}`}>
+                          {tenant.userLimitReached ? '已达到用户上限' : '用户配额正常'}
                         </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="w-32">
+                        <div className="w-36">
+                          <div className="flex items-center gap-1 text-sm text-slate-700 mb-1">
+                            <HardDrive size={14} />
+                            <span>{formatStorage(tenant.storageUsed)} / {formatStorage(tenant.storageLimit)}</span>
+                          </div>
                           <div className="flex justify-between text-xs text-slate-600 mb-1">
-                            <span>{formatStorage(tenant.storageUsed)}</span>
+                            <span>占用率</span>
                             <span>{storagePercent.toFixed(0)}%</span>
                           </div>
                           <div className="w-full bg-slate-200 rounded-full h-2">
-                            <div 
+                            <div
                               className={`h-2 rounded-full transition-all ${
-                                storagePercent > 90 ? 'bg-red-500' : 
-                                storagePercent > 70 ? 'bg-yellow-500' : 
-                                'bg-green-500'
+                                storagePercent >= 90 ? 'bg-red-500' : storagePercent >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
                               }`}
                               style={{ width: `${storagePercent}%` }}
                             />
                           </div>
                         </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 text-slate-700">
                           <Calendar size={14} />
                           <span>{formatDate(tenant.expireTime)}</span>
                         </div>
+                        <div className={`text-xs mt-1 ${expireHint.tone}`}>{expireHint.text}</div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleStatus(tenant)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
-                            tenant.status === '0' 
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                              : 'bg-red-100 text-red-700 hover:bg-red-200'
-                          }`}
-                        >
-                          {tenant.status === '0' ? <Power size={12} /> : <PowerOff size={12} />}
-                          {tenant.status === '0' ? '正常' : '停用'}
-                        </button>
+                        <div className="flex flex-col gap-2 items-start">
+                          <button
+                            onClick={() => handleToggleStatus(tenant)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                              tenant.status === '0'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                            }`}
+                          >
+                            {tenant.status === '0' ? <Power size={12} /> : <PowerOff size={12} />}
+                            {tenant.status === '0' ? '正常' : '停用'}
+                          </button>
+
+                          {tenant.expired ? (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">已过期</span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">未过期</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                        <button 
-                          onClick={() => handleOpenModal(tenant)} 
-                          className="text-pink-500 hover:text-pink-700 flex items-center gap-1"
-                        >
-                          <Edit size={16} /> 编辑
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(tenant.tenantId)} 
-                          className="text-red-600 hover:text-red-900 flex items-center gap-1"
-                        >
-                          <Trash2 size={16} /> 删除
-                        </button>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            onClick={() => handleOpenModal(tenant)}
+                            className="text-pink-500 hover:text-pink-700 flex items-center gap-1"
+                          >
+                            <Edit size={16} /> ??
+                          </button>
+                          <button
+                            onClick={() => void handleRefreshStorage(tenant.tenantId)}
+                            disabled={refreshingTenantId === tenant.tenantId}
+                            className="text-slate-600 hover:text-slate-900 flex items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {refreshingTenantId === tenant.tenantId ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <RefreshCw size={16} />
+                            )}
+                            ????
+                          </button>
+                          <button
+                            onClick={() => handleDelete(tenant.tenantId)}
+                            className="text-red-600 hover:text-red-900 flex items-center gap-1"
+                          >
+                            <Trash2 size={16} /> ??
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -326,147 +567,138 @@ export const TenantList = () => {
         </div>
       </div>
 
-      {/* Modal */}
-      {isModalOpen && (
+      {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(event) => event.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-800">{isEdit ? '编辑租户' : '新增租户'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
-            
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-              {/* 租户名称 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  租户名称 <span className="text-red-500">*</span>
-                </label>
-                <Input 
-                  value={formData.tenantName}
-                  onChange={e => setFormData({...formData, tenantName: e.target.value})}
-                  placeholder="请输入租户名称"
-                />
-              </div>
 
-              {/* 联系人信息 */}
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">租户名称</label>
+                  <Input
+                    value={formData.tenantName}
+                    onChange={(event) => setFormData({ ...formData, tenantName: event.target.value })}
+                    placeholder="请输入租户名称"
+                  />
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系人</label>
-                  <Input 
+                  <Input
                     value={formData.contactName}
-                    onChange={e => setFormData({...formData, contactName: e.target.value})}
+                    onChange={(event) => setFormData({ ...formData, contactName: event.target.value })}
                     placeholder="联系人姓名"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系电话</label>
-                  <Input 
+                  <Input
                     value={formData.contactPhone}
-                    onChange={e => setFormData({...formData, contactPhone: e.target.value})}
+                    onChange={(event) => setFormData({ ...formData, contactPhone: event.target.value })}
                     placeholder="联系电话"
                   />
                 </div>
-              </div>
-
-              {/* 联系邮箱 + 域名 */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">联系邮箱</label>
-                  <Input 
+                  <Input
                     type="email"
                     value={formData.contactEmail}
-                    onChange={e => setFormData({...formData, contactEmail: e.target.value})}
+                    onChange={(event) => setFormData({ ...formData, contactEmail: event.target.value })}
                     placeholder="联系邮箱"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">域名</label>
-                  <Input 
-                    value={formData.domain}
-                    onChange={e => setFormData({...formData, domain: e.target.value})}
-                    placeholder="example.com"
-                  />
-                </div>
               </div>
 
-              {/* 配额设置 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">域名</label>
+                <Input
+                  value={formData.domain}
+                  onChange={(event) => setFormData({ ...formData, domain: event.target.value })}
+                  placeholder="example.com"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">用户数量限制</label>
-                  <Input 
+                  <Input
                     type="number"
                     value={formData.userLimit}
-                    onChange={e => setFormData({...formData, userLimit: parseInt(e.target.value) || 0})}
+                    onChange={(event) => setFormData({ ...formData, userLimit: parseInt(event.target.value, 10) || 0 })}
                     placeholder="100"
                     min="1"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">存储空间限制 (MB)</label>
-                  <Input 
+                  <Input
                     type="number"
                     value={formData.storageLimit}
-                    onChange={e => setFormData({...formData, storageLimit: parseInt(e.target.value) || 0})}
+                    onChange={(event) => setFormData({ ...formData, storageLimit: parseInt(event.target.value, 10) || 0 })}
                     placeholder="10240"
                     min="1"
                   />
                 </div>
               </div>
 
-              {/* 到期时间 + 状态 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">到期时间</label>
-                  <DatePicker 
+                  <DatePicker
                     type="date"
                     value={formData.expireTime}
-                    onChange={e => setFormData({...formData, expireTime: e.target.value})}
+                    onChange={(event) => setFormData({ ...formData, expireTime: event.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
                   <div className="flex gap-4 pt-2">
-                    {[['0', '正常'], ['1', '停用']].map(([v, l]) => (
-                      <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          checked={formData.status === v} 
-                          onChange={() => setFormData({...formData, status: v})} 
-                          className="accent-pink-500" 
+                    {[['0', '正常'], ['1', '停用']].map(([value, label]) => (
+                      <label key={value} className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={formData.status === value}
+                          onChange={() => setFormData({ ...formData, status: value })}
+                          className="accent-pink-500"
                         />
-                        <span className="text-sm">{l}</span>
+                        <span className="text-sm">{label}</span>
                       </label>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* 备注 */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
-                <Textarea 
+                <Textarea
                   className="resize-none"
                   rows={3}
                   value={formData.remark}
-                  onChange={e => setFormData({...formData, remark: e.target.value})}
+                  onChange={(event) => setFormData({ ...formData, remark: event.target.value })}
                   placeholder="备注信息"
                 />
               </div>
             </form>
 
             <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 取消
               </button>
-              <button 
+              <button
                 type="button"
-                onClick={(e) => handleSubmit(e as any)}
+                onClick={(event) => void handleSubmit(event as any)}
                 className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
               >
                 {isEdit ? '保存修改' : '立即创建'}
@@ -474,7 +706,9 @@ export const TenantList = () => {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
+
+export default TenantList;

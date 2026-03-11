@@ -22,7 +22,7 @@ jobs:
     - name: Build Backend with Maven
       run: |
         cd cloudflow-backend
-        mvn clean package -DskipTests
+        mvn clean verify
         
     - name: Set up Node.js
       uses: actions/setup-node@v3
@@ -34,7 +34,8 @@ jobs:
     - name: Build Frontend
       run: |
         cd cloudflow-frontend
-        npm install
+        npm ci
+        npm run type-check
         npm run build
         
     - name: Build Docker Image

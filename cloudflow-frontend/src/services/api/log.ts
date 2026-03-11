@@ -68,6 +68,17 @@ export interface AuditLogQuery {
   endTime?: string;
 }
 
+/** ???????? */
+export interface LoginLogQuery {
+  pageNum?: number;
+  pageSize?: number;
+  logType?: string;
+  createBy?: string;
+  remoteAddr?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
 // ==================== 操作日志 API ====================
 
 // 日志/审计接口统一走 auth 服务，网关路由: /auth/** → cloudflow-auth (StripPrefix=1)
@@ -108,4 +119,27 @@ export const getAuditLogDetail = (id: number): Promise<SysAuditLog> => {
 /** 删除审计日志（批量） */
 export const deleteAuditLogs = (ids: number[]): Promise<string> => {
   return request.delete<string>('/auth/system/audit-log', { data: ids });
+};
+
+
+// ==================== ???? API ====================
+
+/** ???????? */
+export const getLoginLogPage = (params: LoginLogQuery): Promise<PageResult<SysLog>> => {
+  return request.get<PageResult<SysLog>>('/auth/system/login-log/page', { params });
+};
+
+/** ???????? */
+export const getLoginLogDetail = (id: number): Promise<SysLog> => {
+  return request.get<SysLog>(`/auth/system/login-log/${id}`);
+};
+
+/** ?????????? */
+export const deleteLoginLogs = (ids: number[]): Promise<string> => {
+  return request.delete<string>('/auth/system/login-log', { data: ids });
+};
+
+/** ???????????30?? */
+export const getLoginLogTrend = (): Promise<LogTrendItem[]> => {
+  return request.get<LogTrendItem[]>('/auth/system/login-log/trend');
 };

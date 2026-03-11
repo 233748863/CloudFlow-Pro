@@ -1,23 +1,34 @@
 package com.cloudflow.auth.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Data
 @TableName("sys_file")
 public class SysFile {
+
     @TableId(type = IdType.AUTO)
     private Long fileId;
+
+    @TableField("tenant_id")
+    private Long tenantId;
 
     private String fileName;
 
     private String filePath;
 
     private String url;
+
+    /**
+     * ?????LOCAL/OSS??
+     */
+    private String storageType;
 
     private Long fileSize;
 
@@ -26,12 +37,9 @@ public class SysFile {
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-
-
     private LocalDateTime createTime;
 
-    /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
-    
+
     private String remark;
 }

@@ -184,6 +184,11 @@ const AuditLogPage = React.lazy(() =>
     default: module.AuditLogPage,
   })),
 );
+const LoginLogPage = React.lazy(() =>
+  import("./pages/system/LoginLogPage").then((module) => ({
+    default: module.LoginLogPage,
+  })),
+);
 
 // OA扩展模块页面 - 补卡申请、加班申请、出差申请、通讯录、访客管理、值班排班
 const AttendanceAppealPage = React.lazy(
@@ -540,6 +545,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <AuditLogPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/system/login-log",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <LoginLogPage />
               </Suspense>
             ),
           },

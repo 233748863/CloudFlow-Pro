@@ -67,3 +67,28 @@ logging:
   level:
     com.cloudflow.oa: INFO
     com.cloudflow.oa.mapper: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: CloudFlow OA Service
+    version: 1.0.0

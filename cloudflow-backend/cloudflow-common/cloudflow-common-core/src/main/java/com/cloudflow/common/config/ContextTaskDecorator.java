@@ -4,6 +4,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.lang.NonNull;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 
 import java.util.List;
 import java.util.Set;
@@ -35,6 +37,7 @@ public class ContextTaskDecorator implements TaskDecorator {
         Integer dsType = UserContext.getDsType();
         List<Long> dsDeptIds = UserContext.getDsDeptIds();
         Long tenantContextId = TenantContext.getTenantId();
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
 
         return () -> {
             try {
@@ -50,11 +53,16 @@ public class ContextTaskDecorator implements TaskDecorator {
                 if (dsType != null) UserContext.setDsType(dsType);
                 if (dsDeptIds != null && !dsDeptIds.isEmpty()) UserContext.setDsDeptIds(dsDeptIds);
                 if (tenantContextId != null) TenantContext.setTenantId(tenantContextId);
+                if (requestAttributes != null) {
+                    // 关键补齐：异步线程也保留请求上下文，审计日志才能拿到真实 IP / User-Agent
+                    RequestContextHolder.setRequestAttributes(requestAttributes, true);
+                }
 
                 // 3. 执行任务
                 runnable.run();
             } finally {
                 // 4. 清理子线程上下文
+                RequestContextHolder.resetRequestAttributes();
                 UserContext.clear();
                 TenantContext.clear();
             }

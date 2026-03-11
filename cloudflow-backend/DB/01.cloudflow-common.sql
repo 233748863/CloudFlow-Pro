@@ -207,6 +207,7 @@ CREATE TABLE sys_file (
   file_name         VARCHAR(255)    DEFAULT '' COMMENT '原始文件名',
   file_path         VARCHAR(255)    DEFAULT '' COMMENT '存储路径',
   url               VARCHAR(500)    DEFAULT '' COMMENT '访问地址',
+  storage_type      VARCHAR(20)     DEFAULT 'LOCAL' COMMENT '?????LOCAL/OSS?',
   file_size         BIGINT(20)      DEFAULT 0  COMMENT '文件大小',
   file_type         VARCHAR(50)     DEFAULT '' COMMENT '文件类型',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '上传者',

@@ -43,7 +43,11 @@ public class SysUserController {
     @PostMapping
     @HasPermission("system:user:add")
     public R<?> add(@RequestBody SysUser user) {
-        return R.ok(userService.insertUser(user));
+        try {
+            return R.ok(userService.insertUser(user));
+        } catch (IllegalStateException ex) {
+            return R.fail(ex.getMessage());
+        }
     }
 
     /**

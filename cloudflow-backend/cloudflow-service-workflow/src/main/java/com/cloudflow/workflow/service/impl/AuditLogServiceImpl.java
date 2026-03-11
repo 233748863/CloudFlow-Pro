@@ -9,11 +9,16 @@ import com.cloudflow.workflow.enums.OperationType;
 import com.cloudflow.workflow.enums.TargetType;
 import com.cloudflow.workflow.mapper.WfAuditLogMapper;
 import com.cloudflow.workflow.service.IAuditLogService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,7 +41,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
      * 记录审计日志（成功操作）
      * 使用异步方式记录，不影响主业务流程
      */
-    @Async
+    @Async("auditExecutor")
     @Override
     public void log(OperationType operationType, TargetType targetType, 
                     String targetId, String targetName, String reason) {
@@ -47,7 +52,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
      * 记录审计日志（成功操作，带详情）
      * 使用异步方式记录，不影响主业务流程
      */
-    @Async
+    @Async("auditExecutor")
     @Override
     public void log(OperationType operationType, TargetType targetType, 
                     String targetId, String targetName, String reason, String details) {
@@ -67,7 +72,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
      * 记录失败的审计日志
      * 使用异步方式记录，不影响主业务流程
      */
-    @Async
+    @Async("auditExecutor")
     @Override
     public void logFailure(OperationType operationType, TargetType targetType, 
                           String targetId, String targetName, String reason, String errorMessage) {
@@ -220,16 +225,27 @@ public class AuditLogServiceImpl implements IAuditLogService {
             .targetId(targetId)
             .targetName(targetName)
             .operatorId(userId != null ? userId.toString() : "SYSTEM")
-            .operatorName(userId != null ? userId.toString() : "SYSTEM") // TODO: 查询用户名称
+            .operatorName(resolveOperatorName(userId))
             .operationTime(LocalDateTime.now())
             .operationReason(reason)
             .operationDetails(details)
             .operationResult(result)
             .errorMessage(errorMessage)
-            .ipAddress(getClientIpAddress()) // TODO: 从请求中获取 IP
-            .userAgent(getUserAgent()) // TODO: 从请求中获取 User-Agent
+            .ipAddress(getClientIpAddress())
+            .userAgent(getUserAgent())
             .tenantId(tenantId)
             .build();
+    }
+
+    /**
+     * 优先使用上下文中的用户名，避免审计日志只落用户 ID，影响排查与追责。
+     */
+    private String resolveOperatorName(Long userId) {
+        String userName = UserContext.getUserName();
+        if (StringUtils.hasText(userName)) {
+            return userName;
+        }
+        return userId != null ? userId.toString() : "SYSTEM";
     }
 
     /**
@@ -254,17 +270,49 @@ public class AuditLogServiceImpl implements IAuditLogService {
 
     /**
      * 获取客户端 IP 地址
-     * TODO: 从 HttpServletRequest 中获取
      */
     private String getClientIpAddress() {
-        return "0.0.0.0";
+        HttpServletRequest request = getCurrentRequest();
+        if (request == null) {
+            return "UNKNOWN";
+        }
+
+        String ip = request.getHeader("X-Forwarded-For");
+        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (StringUtils.hasText(ip) && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return StringUtils.hasText(ip) ? ip : "UNKNOWN";
     }
 
     /**
      * 获取用户代理
-     * TODO: 从 HttpServletRequest 中获取
      */
     private String getUserAgent() {
-        return "Unknown";
+        HttpServletRequest request = getCurrentRequest();
+        if (request == null) {
+            return "UNKNOWN";
+        }
+        String userAgent = request.getHeader(HttpHeaders.USER_AGENT);
+        return StringUtils.hasText(userAgent) ? userAgent : "UNKNOWN";
+    }
+
+    private HttpServletRequest getCurrentRequest() {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (requestAttributes instanceof ServletRequestAttributes servletRequestAttributes) {
+            return servletRequestAttributes.getRequest();
+        }
+        return null;
     }
 }

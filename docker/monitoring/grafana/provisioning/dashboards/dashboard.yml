@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  # 自动加载 CloudFlow 默认看板，避免首次进入 Grafana 还要手动导入。
+  - name: CloudFlow Dashboards
+    orgId: 1
+    folder: CloudFlow
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
