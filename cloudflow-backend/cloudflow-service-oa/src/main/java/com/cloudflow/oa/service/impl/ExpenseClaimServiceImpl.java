@@ -220,7 +220,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             item.setExpenseType(mapVehicleExpenseType(ve.getExpenseType()));
             item.setAmount(ve.getAmount());
             if (ve.getExpenseDate() != null) {
-                item.setExpenseDate(ve.getExpenseDate().atStartOfDay());
+                item.setExpenseDate(ve.getExpenseDate());
             }
             item.setDescription(ve.getDescription());
             item.setReceiptUrl(ve.getReceiptUrl());

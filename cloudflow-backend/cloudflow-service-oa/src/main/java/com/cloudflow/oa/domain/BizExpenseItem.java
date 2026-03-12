@@ -8,7 +8,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * 报销明细实体类
@@ -31,10 +31,9 @@ public class BizExpenseItem implements Serializable {
     /** 金额 */
     private BigDecimal amount;
 
-    /** 费用发生日期 */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-
-    private LocalDateTime expenseDate;
+    /** 费用发生日期（格式：yyyy-MM-dd，例如 2026-03-11） */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate expenseDate;
 
     /** 费用说明 */
     private String description;

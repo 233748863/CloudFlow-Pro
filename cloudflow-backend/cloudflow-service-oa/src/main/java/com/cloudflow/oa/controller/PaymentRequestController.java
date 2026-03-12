@@ -13,6 +13,7 @@ import com.cloudflow.oa.service.IPaymentRequestService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -132,8 +133,9 @@ public class PaymentRequestController {
      */
     private LambdaQueryWrapper<BizPaymentRequest> buildQueryWrapper(String status, String paymentType, Long userId) {
         LambdaQueryWrapper<BizPaymentRequest> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(status != null, BizPaymentRequest::getStatus, status)
-                .eq(paymentType != null, BizPaymentRequest::getPaymentType, paymentType)
+        // 空字符串不作为过滤条件，例如 paymentType="" 表示不过滤类型
+        wrapper.eq(StringUtils.hasText(status), BizPaymentRequest::getStatus, status)
+                .eq(StringUtils.hasText(paymentType), BizPaymentRequest::getPaymentType, paymentType)
                 .eq(userId != null, BizPaymentRequest::getUserId, userId)
                 .eq(BizPaymentRequest::getDelFlag, "0");
 

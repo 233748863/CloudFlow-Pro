@@ -12,6 +12,7 @@ import com.cloudflow.oa.service.IExpenseClaimService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -141,8 +142,9 @@ public class ExpenseClaimController {
      */
     private LambdaQueryWrapper<BizExpenseClaim> buildQueryWrapper(String status, String category, Long userId) {
         LambdaQueryWrapper<BizExpenseClaim> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(status != null, BizExpenseClaim::getStatus, status)
-                .eq(category != null, BizExpenseClaim::getCategory, category)
+        // 空字符串不作为过滤条件，例如 status="" 表示不过滤状态
+        wrapper.eq(StringUtils.hasText(status), BizExpenseClaim::getStatus, status)
+                .eq(StringUtils.hasText(category), BizExpenseClaim::getCategory, category)
                 .eq(userId != null, BizExpenseClaim::getUserId, userId)
                 .eq(BizExpenseClaim::getDelFlag, "0");
 
