@@ -47,8 +47,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(AnomalyAlert::getTenantId, monitor.getTenantId())
                     .eq(AnomalyAlert::getAnomalyType, "EXECUTION_FAILED")
-                    .eq(AnomalyAlert::getInstanceId, instanceId)
-                    .eq(AnomalyAlert::getResolved, "N");
+                    .eq(AnomalyAlert::getInstanceId, instanceId);
+            applyUnresolvedFilter(wrapper);
 
             if (anomalyAlertMapper.selectCount(wrapper) > 0) {
                 return; // 已存在告警，跳过
@@ -65,8 +65,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setStackTrace(stackTrace);
             alert.setSeverity(determineSeverity(errorMessage));
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent(false);
-            alert.setResolved(false);
+            alert.setNotificationSent("N");
+            alert.setResolved("N");
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
@@ -135,8 +135,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(AnomalyAlert::getTenantId, task.getTenantId())
                     .eq(AnomalyAlert::getAnomalyType, "NO_ASSIGNEE")
-                    .eq(AnomalyAlert::getTaskId, taskId)
-                    .eq(AnomalyAlert::getResolved, "N");
+                    .eq(AnomalyAlert::getTaskId, taskId);
+            applyUnresolvedFilter(wrapper);
 
             if (anomalyAlertMapper.selectCount(wrapper) > 0) {
                 return; // 已存在告警，跳过
@@ -154,8 +154,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setErrorMessage("任务没有候选人，无法分配");
             alert.setSeverity("HIGH");
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent(false);
-            alert.setResolved(false);
+            alert.setNotificationSent("N");
+            alert.setResolved("N");
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
@@ -219,7 +219,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             // 4. 严重级别发送短信
 
             // 更新通知状态
-            alert.setNotificationSent(true);
+            alert.setNotificationSent("Y");
             alert.setUpdateTime(LocalDateTime.now());
             anomalyAlertMapper.updateById(alert);
 
@@ -239,7 +239,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
                 return;
             }
 
-            alert.setResolved(true);
+            alert.setResolved("Y");
             alert.setResolveTime(LocalDateTime.now());
             alert.setResolveNote(solution);
             alert.setUpdateTime(LocalDateTime.now());
@@ -261,8 +261,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(AnomalyAlert::getTenantId, process.getTenantId())
                     .eq(AnomalyAlert::getAnomalyType, "DEADLOCK")
-                    .eq(AnomalyAlert::getInstanceId, process.getInstanceId())
-                    .eq(AnomalyAlert::getResolved, "N");
+                    .eq(AnomalyAlert::getInstanceId, process.getInstanceId());
+            applyUnresolvedFilter(wrapper);
 
             if (anomalyAlertMapper.selectCount(wrapper) > 0) {
                 return;
@@ -277,8 +277,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setErrorMessage(reason);
             alert.setSeverity("CRITICAL");
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent(false);
-            alert.setResolved(false);
+            alert.setNotificationSent("N");
+            alert.setResolved("N");
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
@@ -298,8 +298,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(AnomalyAlert::getTenantId, process.getTenantId())
                     .eq(AnomalyAlert::getAnomalyType, "DATA_INCONSISTENCY")
-                    .eq(AnomalyAlert::getInstanceId, process.getInstanceId())
-                    .eq(AnomalyAlert::getResolved, "N");
+                    .eq(AnomalyAlert::getInstanceId, process.getInstanceId());
+            applyUnresolvedFilter(wrapper);
 
             if (anomalyAlertMapper.selectCount(wrapper) > 0) {
                 return;
@@ -314,8 +314,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setErrorMessage(reason);
             alert.setSeverity("MEDIUM");
             alert.setAlertTime(LocalDateTime.now());
-            alert.setNotificationSent(false);
-            alert.setResolved(false);
+            alert.setNotificationSent("N");
+            alert.setResolved("N");
             alert.setCreateTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
 
@@ -386,5 +386,13 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * 兼容历史数据中的 0/1 与当前标准 Y/N。
+     * 未解决告警统一视为 N、0 或 NULL。
+     */
+    private void applyUnresolvedFilter(LambdaQueryWrapper<AnomalyAlert> wrapper) {
+        wrapper.eq(AnomalyAlert::getResolved, "N");
     }
 }

@@ -201,19 +201,17 @@ const AttendanceRulePage: React.FC = () => {
             <h3 className="text-lg font-semibold border-b pb-2">工作日配置</h3>
             <div className="flex gap-2 flex-wrap">
               {WEEKDAYS.map(day => (
-                <button
+                <Button
                   key={day.value}
                   type="button"
                   onClick={() => editing && toggleWorkDay(day.value)}
                   disabled={!editing}
-                  className={`px-4 py-2 rounded-md border transition-colors ${
-                    workDays.includes(day.value)
-                      ? 'bg-pink-400 text-white border-pink-400'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  } ${!editing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  variant={workDays.includes(day.value) ? 'default' : 'outline'}
+                  className={workDays.includes(day.value) ? '' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}
+                  size="sm"
                 >
                   {day.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

@@ -53,6 +53,11 @@
             <artifactId>cloudflow-common-log</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-sensitive</artifactId>
+        </dependency>
+
         <!-- 审计日志模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>

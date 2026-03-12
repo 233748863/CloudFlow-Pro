@@ -2,9 +2,12 @@ package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.AttendanceAppeal;
+import com.cloudflow.oa.domain.export.AttendanceAppealExportVo;
 import com.cloudflow.oa.service.IAttendanceAppealService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +31,21 @@ public class AttendanceAppealController {
                   @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
         IPage<AttendanceAppeal> page = attendanceAppealService.queryPage(query, pageNum, pageSize);
         return R.ok(page);
+    }
+
+    /**
+     * 导出补卡/外勤申请列表
+     */
+    @SysLog("导出补卡/外勤申请")
+    @GetMapping("/export")
+    public void export(AttendanceAppeal query, HttpServletResponse response) {
+        // 复用现有筛选与数据权限逻辑，保证导出结果和列表一致。
+        List<AttendanceAppealExportVo> rows = attendanceAppealService.queryPage(query, 1, Integer.MAX_VALUE)
+                .getRecords()
+                .stream()
+                .map(AttendanceAppealExportVo::from)
+                .toList();
+        ExcelUtil.exportExcel(rows, "补卡外勤申请", AttendanceAppealExportVo.class, response);
     }
 
     /** 获取详情 */

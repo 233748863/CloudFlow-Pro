@@ -32,6 +32,15 @@ export const leaveApi = {
     userId?: number;
   }) => request.get('/oa/leave/list', { params }),
 
+  /** 导出请假申请 */
+  export: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    status?: string;
+    leaveType?: string;
+    userId?: number;
+  }) => request.get('/oa/leave/export', { params, responseType: 'blob' }) as Promise<Blob>,
+
   /** 查询请假申请详情 */
   getInfo: (id: number) => request.get(`/oa/leave/${id}`),
 

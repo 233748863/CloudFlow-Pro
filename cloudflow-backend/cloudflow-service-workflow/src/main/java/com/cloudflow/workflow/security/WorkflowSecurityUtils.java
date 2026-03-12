@@ -139,13 +139,13 @@ public class WorkflowSecurityUtils {
     }
 
     /**
-     * S.2/9.B: ????
+     * S.2/9.B: 统一脱敏入口。
      */
     public Map<String, Object> maskSensitiveData(Map<String, Object> data) {
         if (data == null || data.isEmpty()) {
             return data;
         }
-        // ?????????? common-sensitive ?????????????????
+        // 统一委托 common-sensitive 模块，避免工作流里重复维护脱敏规则。
         return SensitiveUtils.maskMap(data);
     }
 

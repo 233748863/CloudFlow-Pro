@@ -872,16 +872,18 @@ export const ProcessManagement = () => {
               filteredWorkflows.map(wf => (
                 <tr key={wf.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleSelectOne(wf.id)}
-                      className="text-slate-400 hover:text-pink-500 transition-colors"
+                      className="text-slate-400 hover:text-pink-500 hover:bg-transparent"
                     >
                       {selectedIds.includes(wf.id) ? (
                         <CheckSquare size={18} className="text-pink-500" />
                       ) : (
                         <Square size={18} />
                       )}
-                    </button>
+                    </Button>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-slate-800">{wf.name}</div>

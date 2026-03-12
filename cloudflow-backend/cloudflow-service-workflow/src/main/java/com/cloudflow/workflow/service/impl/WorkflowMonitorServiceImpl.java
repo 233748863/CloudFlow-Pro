@@ -183,7 +183,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
             wrapper.eq(AnomalyAlert::getSeverity, severity);
         }
         if (resolved != null) {
-            wrapper.eq(AnomalyAlert::getResolved, resolved);
+            applyAnomalyResolvedFilter(wrapper, resolved);
         }
         
         wrapper.orderByDesc(AnomalyAlert::getAlertTime);
@@ -203,9 +203,10 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
             throw new RuntimeException("告警不存在");
         }
         
-        alert.setResolved(true);
+        alert.setResolved("Y");
         alert.setResolveNote(resolveNote);
         alert.setResolveTime(LocalDateTime.now());
+        alert.setUpdateTime(LocalDateTime.now());
         anomalyAlertMapper.updateById(alert);
         
         log.info("异常告警已解决: alertId={}", alertId);
@@ -218,5 +219,18 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
                 startDate, endDate, processDefKey);
         
         return performanceStatsMapper.selectPerformanceStats(startDate, endDate, processDefKey);
+    }
+
+    /**
+     * 兼容异常告警历史数据。
+     * 旧数据里 resolved 可能是 0/1，新数据会统一写为 Y/N。
+     */
+    private void applyAnomalyResolvedFilter(LambdaQueryWrapper<AnomalyAlert> wrapper, boolean resolved) {
+        if (resolved) {
+            wrapper.eq(AnomalyAlert::getResolved, "Y");
+            return;
+        }
+
+        wrapper.eq(AnomalyAlert::getResolved, "N");
     }
 }

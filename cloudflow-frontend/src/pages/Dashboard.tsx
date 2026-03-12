@@ -341,12 +341,6 @@ export const Dashboard = () => {
                 <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                   <FileText size={44} className="text-slate-300 mb-3 drop-shadow-sm" />
                   <p className="text-sm font-medium">暂无申请记录</p>
-                  <Button
-                    onClick={() => navigate('/workplace')}
-                    className="mt-3 text-sm font-semibold text-pink-500 hover:text-pink-600 bg-transparent hover:bg-pink-50 flex items-center gap-1.5 transition-colors px-4 py-2 rounded-xl h-auto active:scale-95 shadow-none"
-                  >
-                    <PlayCircle size={14} /> 去发起流程
-                  </Button>
                 </div>
               )}
             </Card>
@@ -450,12 +444,6 @@ export const Dashboard = () => {
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                   <CalendarDays size={40} className="text-slate-300 mb-3 drop-shadow-sm" />
                   <p className="text-sm font-medium">今日暂无日程</p>
-                  <Button
-                    onClick={() => navigate('/schedule')}
-                    className="mt-3 text-sm font-semibold text-blue-500 hover:text-blue-600 bg-transparent hover:bg-blue-50 flex items-center gap-1.5 px-4 py-2 rounded-xl active:scale-95 transition-colors h-auto shadow-none"
-                  >
-                    <CalendarDays size={14} /> 添加日程
-                  </Button>
                 </div>
               )}
             </Card>

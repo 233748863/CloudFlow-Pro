@@ -115,31 +115,38 @@ DELETE FROM biz_attendance_appeal WHERE appeal_no IN ('BK202603110001','BK202603
 DELETE FROM biz_overtime_request WHERE overtime_no IN ('JB202603110001','JB202603110002');
 DELETE FROM biz_business_trip WHERE trip_no IN ('CC202603110001','CC202603110002');
 
-DELETE FROM sys_vehicle_expense WHERE expense_id IN (9101,9102,9103,9104);
-DELETE FROM sys_vehicle_usage WHERE usage_id IN (9001,9002,9003);
+DELETE FROM sys_vehicle_expense WHERE expense_id IN (9101,9102,9103,9104,9105,9106,9107,9108);
+DELETE FROM sys_vehicle_usage WHERE usage_id IN (9001,9002,9003,9004,9005);
 DELETE FROM sys_vehicle WHERE vehicle_id IN (9001,9002,9003);
 
-DELETE FROM sys_asset_log WHERE log_id IN (9201,9202,9203,9204,9205,9206,9207,9208);
+DELETE FROM sys_asset_log WHERE log_id IN (9201,9202,9203,9204,9205,9206,9207,9208,9209,9210,9211,9212,9213,9214);
 DELETE FROM sys_asset WHERE asset_id IN (9001,9002,9003,9004,9005);
 DELETE FROM sys_consumable WHERE consumable_id IN (9001,9002,9003,9004,9005);
 
 DELETE FROM sys_attendance_record WHERE record_id IN (
-  9301,9302,9303,9304,9305,9306,9307,9308,9309,9310,9311,9312,9313,9314,9315,9316
+  9301,9302,9303,9304,9305,9306,9307,9308,9309,9310,9311,9312,9313,9314,9315,9316,
+  9317,9318,9319,9320,9321,9322,9323,9324
 );
+DELETE FROM sys_attendance_record WHERE record_id BETWEEN 94000 AND 94300;
 
-DELETE FROM sys_attendance_rule WHERE rule_id IN (91001);
-DELETE FROM sys_file WHERE file_id IN (91001,91002);
-DELETE FROM sys_log WHERE log_id IN (91001,91002);
-DELETE FROM sys_audit_log WHERE audit_id IN (91001);
+DELETE FROM sys_attendance_rule WHERE rule_id IN (91001,91002);
+DELETE FROM sys_file WHERE file_id IN (91001,91002,91003,91004);
+DELETE FROM sys_log WHERE log_id IN (91001,91002,91003,91004);
+DELETE FROM sys_audit_log WHERE audit_id IN (91001,91002);
+DELETE FROM sys_file WHERE file_id BETWEEN 92000 AND 92300;
+DELETE FROM sys_log WHERE log_id BETWEEN 92000 AND 92300;
+DELETE FROM sys_audit_log WHERE audit_id BETWEEN 92000 AND 92300;
 
-DELETE FROM sys_work_task WHERE task_id IN (9401,9402,9403,9404,9405,9406,9407,9408);
-DELETE FROM sys_schedule_event WHERE event_id IN (9501,9502,9503,9504,9505,9506);
+DELETE FROM sys_work_task WHERE task_id IN (9401,9402,9403,9404,9405,9406,9407,9408,9409,9410,9411,9412,9413,9414);
+DELETE FROM sys_schedule_event WHERE event_id IN (9501,9502,9503,9504,9505,9506,9507,9508,9509,9510);
 DELETE FROM sys_meeting_room WHERE room_id IN (9001,9002,9003,9004);
 DELETE FROM sys_announcement_read WHERE announcement_id IN (9601,9602,9603,9604,9605);
 DELETE FROM sys_announcement WHERE announcement_id IN (9601,9602,9603,9604,9605);
-DELETE FROM sys_visitor WHERE visitor_id IN (9701,9702,9703,9704);
-DELETE FROM sys_duty_schedule WHERE schedule_id IN (9801,9802,9803,9804);
-DELETE FROM sys_frontend_error_log WHERE id IN (9901,9902,9903);
+DELETE FROM sys_visitor WHERE visitor_id IN (9701,9702,9703,9704,9705,9706,9707);
+DELETE FROM sys_duty_schedule WHERE schedule_id IN (9801,9802,9803,9804,9805,9806);
+DELETE FROM sys_frontend_error_log WHERE id IN (9901,9902,9903,9904,9905,9906);
+DELETE FROM sys_frontend_error_log WHERE id BETWEEN 99200 AND 99500;
+DELETE FROM sys_announcement_read WHERE announcement_id IN (9601,9602,9603,9604,9605) AND user_id IN (1,2,3,4,5,6,7,8,9) AND read_time >= DATE_SUB(NOW(), INTERVAL 40 DAY);
 
 -- =========================================================
 -- 二、OA 模块展示数据
@@ -182,7 +189,13 @@ INSERT INTO sys_announcement_read (tenant_id, announcement_id, user_id, read_tim
 (100000, 9605, 1, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
 (100000, 9605, 2, DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
 (100000, 9605, 3, DATE_SUB(NOW(), INTERVAL 18 MINUTE)),
-(100000, 9605, 4, DATE_SUB(NOW(), INTERVAL 15 MINUTE));
+(100000, 9605, 4, DATE_SUB(NOW(), INTERVAL 15 MINUTE)),
+(100000, 9601, 6, DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+(100000, 9602, 7, DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+(100000, 9603, 9, DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+(100000, 9604, 6, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(100000, 9605, 7, DATE_SUB(NOW(), INTERVAL 12 MINUTE)),
+(100000, 9605, 8, DATE_SUB(NOW(), INTERVAL 9 MINUTE));
 
 -- -----------------------------
 -- 2.2 会议室与日程
@@ -203,7 +216,11 @@ INSERT INTO sys_schedule_event (
 (9503, 100000, '研发迭代计划评审', '确认下个迭代的需求优先级、上线窗口和人力安排。', DATE_ADD(NOW(), INTERVAL 8 HOUR), DATE_ADD(DATE_ADD(NOW(), INTERVAL 8 HOUR), INTERVAL 90 MINUTE), 0, 'WORK', 9001, 2, '[2,5,8,9]', DATE_SUB(NOW(), INTERVAL 5 HOUR), DATE_SUB(NOW(), INTERVAL 2 HOUR), '0'),
 (9504, 100000, '供应商合同谈判', '与供应商讨论年度服务框架协议和 SLA 条款。', DATE_ADD(NOW(), INTERVAL 3 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 3 DAY), INTERVAL 2 HOUR), 0, 'MEETING', 9003, 6, '[3,6]', DATE_SUB(NOW(), INTERVAL 10 HOUR), DATE_SUB(NOW(), INTERVAL 1 HOUR), '0'),
 (9505, 100000, '年度团建筹备事项跟进', '行政、HR、部门经理共同确认团建预算、交通与场地。', DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 4 DAY), INTERVAL 1 HOUR), 0, 'MEETING', 9001, 4, '[1,2,4]', DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 1 HOUR), '0'),
-(9506, 100000, '张三客户现场拜访', '陪同销售团队进行流程平台上线前培训。', DATE_ADD(NOW(), INTERVAL 5 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 5 DAY), INTERVAL 8 HOUR), 1, 'WORK', NULL, 5, '[5]', DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR), '0');
+(9506, 100000, '张三客户现场拜访', '陪同销售团队进行流程平台上线前培训。', DATE_ADD(NOW(), INTERVAL 5 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 5 DAY), INTERVAL 8 HOUR), 1, 'WORK', NULL, 5, '[5]', DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR), '0'),
+(9507, 100000, '流程引擎性能评审会', '讨论流程引擎在峰值场景下的性能与优化方案。', DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 6 DAY), INTERVAL 2 HOUR), 0, 'MEETING', 9003, 1, '[1,2,7,9]', DATE_SUB(NOW(), INTERVAL 8 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR), '0'),
+(9508, 100000, '财务预算复核', '梳理各部门季度预算执行情况与调整建议。', DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 1 DAY), INTERVAL 90 MINUTE), 0, 'WORK', 9001, 3, '[3,4,6]', DATE_SUB(NOW(), INTERVAL 9 HOUR), DATE_SUB(NOW(), INTERVAL 7 HOUR), '0'),
+(9509, 100000, '新人入职培训', '新员工入职流程、制度与系统培训。', DATE_ADD(NOW(), INTERVAL 3 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 3 DAY), INTERVAL 3 HOUR), 0, 'MEETING', 9004, 4, '[4,5,8]', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9510, 100000, '客户远程支持', '远程协助客户完成流程配置与数据导入。', DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 2 DAY), INTERVAL 4 HOUR), 1, 'WORK', NULL, 7, '[7,9]', DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 3 HOUR), '0');
 
 -- -----------------------------
 -- 2.3 协作任务
@@ -219,7 +236,13 @@ INSERT INTO sys_work_task (
 (9405, 100000, '合同审批模板优化', '增加法务会签说明、风险提示和附件校验规则。', 6, 1, 104, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 3 DAY), '["法务","模板","流程"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 12 HOUR), 'liu', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0'),
 (9406, 100000, '清点备用笔记本库存', '核对设备编号、领用状态、维修与借用记录。', 7, 1, 105, 1, 'DONE', DATE_SUB(NOW(), INTERVAL 1 DAY), '["资产","盘点","IT"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 3 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 20 HOUR), '0'),
 (9407, 100000, '访客接待动线演练', '为大型客户到访准备接待流程与前台物料。', 4, 1, 103, 1, 'TODO', DATE_ADD(NOW(), INTERVAL 2 DAY), '["访客","接待","行政"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 4 HOUR), 'zhao', DATE_SUB(NOW(), INTERVAL 4 HOUR), '0'),
-(9408, 100000, '移动端打卡问题排查', '复现偶发定位失败与 Wi-Fi 校验异常，输出问题清单。', 9, 7, 107, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 36 HOUR), '["考勤","移动端","缺陷"]', NULL, 'chen', DATE_SUB(NOW(), INTERVAL 15 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0');
+(9408, 100000, '移动端打卡问题排查', '复现偶发定位失败与 Wi-Fi 校验异常，输出问题清单。', 9, 7, 107, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 36 HOUR), '["考勤","移动端","缺陷"]', NULL, 'chen', DATE_SUB(NOW(), INTERVAL 15 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0'),
+(9409, 100000, '更新客户演示讲解稿', '梳理本周演示流程亮点与常见问题回答。', 8, 1, 106, 2, 'TODO', DATE_ADD(NOW(), INTERVAL 2 DAY), '["演示","讲解","前端"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'test_fe', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0'),
+(9410, 100000, '完善预算执行报表', '补充财务看板数据并检查异常指标。', 3, 1, 102, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 1 DAY), '["财务","报表","看板"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0'),
+(9411, 100000, '整理发布回滚预案', '汇总常见回滚步骤与联系人列表。', 7, 1, 105, 1, 'TODO', DATE_ADD(NOW(), INTERVAL 3 DAY), '["运维","发布","回滚"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 9 HOUR), 'chen', DATE_SUB(NOW(), INTERVAL 4 HOUR), '0'),
+(9412, 100000, '修订访客接待SOP', '补充贵宾接待流程与安全检查清单。', 4, 1, 103, 1, 'TODO', DATE_ADD(NOW(), INTERVAL 5 DAY), '["行政","SOP","访客"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 7 HOUR), 'zhao', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0'),
+(9413, 100000, '合同附件合规复核', '检查合同附件完整性与签署规范。', 6, 1, 104, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 2 DAY), '["法务","合同","合规"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'liu', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0'),
+(9414, 100000, '移动端打卡体验优化', '收集试用反馈并输出优化建议。', 9, 7, 107, 2, 'TODO', DATE_ADD(NOW(), INTERVAL 4 DAY), '["考勤","移动端","体验"]', NULL, 'chen', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0');
 
 -- -----------------------------
 -- 2.4 考勤规则与打卡记录
@@ -244,7 +267,15 @@ INSERT INTO sys_attendance_record (
 (9313, 100000, 2, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 12 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15 Pro', 'CloudFlow-Office', '1', '部门晨会导致晚几分钟', '0', NOW(), NOW()),
 (9314, 100000, 2, '2', CURDATE() + INTERVAL 20 HOUR + INTERVAL 10 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15 Pro', 'CloudFlow-Office', '1', '加班评审结束后签退', '0', NOW(), NOW()),
 (9315, 100000, 6, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 0 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPad Pro', 'CloudFlow-Office', '1', '合同评审日', '0', NOW(), NOW()),
-(9316, 100000, 6, '2', CURDATE() + INTERVAL 18 HOUR + INTERVAL 45 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPad Pro', 'CloudFlow-Office', '1', '完成法务审查后签退', '0', NOW(), NOW());
+(9316, 100000, 6, '2', CURDATE() + INTERVAL 18 HOUR + INTERVAL 45 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPad Pro', 'CloudFlow-Office', '1', '完成法务审查后签退', '0', NOW(), NOW()),
+(9317, 100000, 1, '1', DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 8 HOUR + INTERVAL 55 MINUTE, '31.2304,121.4737', '总部园区A座', 'Windows PC', 'CloudFlow-Office', '1', '管理员提前签到', '0', NOW(), NOW()),
+(9318, 100000, 1, '2', DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 18 HOUR + INTERVAL 5 MINUTE, '31.2304,121.4737', '总部园区A座', 'Windows PC', 'CloudFlow-Office', '1', '管理员正常签退', '0', NOW(), NOW()),
+(9319, 100000, 7, '1', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 20 MINUTE, '31.2304,121.4737', '总部园区A座', 'Huawei Mate60', 'CloudFlow-Office', '2', '演示设备准备稍迟到', '0', NOW(), NOW()),
+(9320, 100000, 7, '2', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 19 HOUR + INTERVAL 5 MINUTE, '31.2304,121.4737', '总部园区A座', 'Huawei Mate60', 'CloudFlow-Office', '1', '演示结束后签退', '0', NOW(), NOW()),
+(9321, 100000, 8, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 8 MINUTE, '31.2304,121.4737', '总部园区A座', 'MacBook Pro', 'CloudFlow-Office', '1', '演示准备签到', '0', NOW(), NOW()),
+(9322, 100000, 8, '2', CURDATE() + INTERVAL 18 HOUR + INTERVAL 22 MINUTE, '31.2304,121.4737', '总部园区A座', 'MacBook Pro', 'CloudFlow-Office', '1', '演示复盘后签退', '0', NOW(), NOW()),
+(9323, 100000, 9, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 30 MINUTE, '31.2310,121.4700', '客户现场机房', 'ThinkPad X1', 'Guest-WiFi', '4', '外勤开始', '0', NOW(), NOW()),
+(9324, 100000, 9, '2', CURDATE() + INTERVAL 19 HOUR + INTERVAL 0 MINUTE, '31.2310,121.4700', '客户现场机房', 'ThinkPad X1', 'Guest-WiFi', '4', '外勤结束', '0', NOW(), NOW());
 
 INSERT INTO sys_attendance_rule (
   rule_id, rule_name, check_in_time, check_out_time, elastic_minutes, work_days, lunch_break_start, lunch_break_end,
@@ -254,7 +285,11 @@ INSERT INTO sys_attendance_rule (
 (91001, '研发弹性考勤组', '09:30:00', '18:30:00', 15, '[1,2,3,4,5]', '12:00:00', '13:00:00', 1, 30, 2, 45, 180, 0, 1,
  '[{"name":"总部园区A座","lat":31.2304,"lng":121.4737},{"name":"研发中心B区","lat":31.2312,"lng":121.4722}]',
  '[{"ssid":"CloudFlow-Office","bssid":"AA:BB:CC:DD:EE:01"},{"ssid":"CloudFlow-Lab","bssid":"AA:BB:CC:DD:EE:02"}]',
- 200, '用于演示弹性打卡与多打卡点配置', 100000, '0', 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
+ 200, '用于演示弹性打卡与多打卡点配置', 100000, '0', 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(91002, '客服轮班考勤组', '08:30:00', '17:30:00', 10, '[1,2,3,4,5,6]', '12:00:00', '12:30:00', 0, 30, 1, 30, 120, 1, 1,
+ '[{"name":"客服中心","lat":31.2299,"lng":121.4742}]',
+ '[{"ssid":"CloudFlow-CS","bssid":"AA:BB:CC:DD:EE:03"}]',
+ 150, '用于演示轮班考勤与拍照打卡', 100000, '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY));
 
 -- -----------------------------
 -- 2.5 资产、耗材与日志
@@ -288,7 +323,13 @@ INSERT INTO sys_asset_log (
 (9205, 100000, 9001, '2', '出库', -4, 1, NULL, '行政集中领用打印纸用于培训资料', DATE_SUB(NOW(), INTERVAL 6 DAY)),
 (9206, 100000, 9002, '2', '出库', -2, 7, NULL, '客户演示中心打印机更换硒鼓', DATE_SUB(NOW(), INTERVAL 2 DAY)),
 (9207, 100000, 9005, '2', '入库', 6, 7, NULL, '补充 HDMI 线缆', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9208, 100000, 9004, '2', '盘点', 0, 1, NULL, '工牌挂绳数量正常', DATE_SUB(NOW(), INTERVAL 4 HOUR));
+(9208, 100000, 9004, '2', '盘点', 0, 1, NULL, '工牌挂绳数量正常', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+(9209, 100000, 9003, '1', '领用', 1, 7, 5, '演示平板借用给产品经理', DATE_SUB(NOW(), INTERVAL 12 HOUR)),
+(9210, 100000, 9002, '1', '归还', -1, 7, 9, '现场支持设备归还入库', DATE_SUB(NOW(), INTERVAL 9 HOUR)),
+(9211, 100000, 9001, '1', '盘点', 0, 1, NULL, '月度资产盘点记录', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(9212, 100000, 9004, '1', '维修', 0, 7, NULL, '投影仪灯泡更换', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9213, 100000, 9001, '2', '入库', 10, 1, NULL, '补充办公用品入库', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(9214, 100000, 9003, '2', '出库', -3, 7, NULL, '外勤现场备品领用', DATE_SUB(NOW(), INTERVAL 10 HOUR));
 
 -- -----------------------------
 -- 2.6 车辆、用车与费用
@@ -314,7 +355,13 @@ INSERT INTO sys_vehicle_usage (
  'https://demo.cloudflow.local/files/vehicle/usage-9002-summary.pdf', '4', NULL, '0', 'zhao', DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
 (9003, 100000, 9003, 1, 7, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY) + INTERVAL 1 HOUR, '市区维修中心', '维修厂', 0,
  '送修车辆，处理异响与刹车保养', 1, '陈IT', 43080.00, 43120.00, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY) + INTERVAL 1 HOUR,
- 'https://demo.cloudflow.local/files/vehicle/maintenance/repair-order-9003.jpg', '4', NULL, '0', 'admin', DATE_SUB(NOW(), INTERVAL 8 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 7 DAY));
+ 'https://demo.cloudflow.local/files/vehicle/maintenance/repair-order-9003.jpg', '4', NULL, '0', 'admin', DATE_SUB(NOW(), INTERVAL 8 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 7 DAY)),
+(9004, 100000, 9001, 5, 7, DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 2 DAY), INTERVAL 5 HOUR), '浦东新区创新园区', '总部地库 A 区', 1,
+ '客户现场演示与方案沟通', 3, '张三,前端测试,后端测试', 28650.50, NULL, NULL, NULL,
+ 'https://demo.cloudflow.local/files/vehicle/usage-9004-approval.pdf', '0', NULL, '0', 'zhang', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'zhang', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+(9005, 100000, 9002, 3, 7, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 3 HOUR, '静安区客户培训点', '总部地库 B 区', 1,
+ '财务系统客户培训接送', 2, '王财务,客户代表', 15210.00, 15280.00, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 3 HOUR,
+ 'https://demo.cloudflow.local/files/vehicle/usage-9005-summary.pdf', '4', NULL, '0', 'wang', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT INTO sys_vehicle_expense (
   expense_id, tenant_id, vehicle_id, usage_id, expense_type, amount, expense_date, description, receipt_url, create_by, create_time
@@ -322,7 +369,11 @@ INSERT INTO sys_vehicle_expense (
 (9101, 100000, 9002, 9002, '1', 268.50, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '招聘活动往返油费', 'https://demo.cloudflow.local/files/vehicle/receipts/fuel-9101.jpg', 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
 (9102, 100000, 9002, 9002, '3', 48.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '人才中心停车费', 'https://demo.cloudflow.local/files/vehicle/receipts/park-9102.jpg', 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
 (9103, 100000, 9003, 9003, '4', 1860.00, DATE_SUB(CURDATE(), INTERVAL 6 DAY), '刹车片与轮胎检查维修', 'https://demo.cloudflow.local/files/vehicle/receipts/repair-9103.jpg', 'admin', DATE_SUB(NOW(), INTERVAL 6 DAY)),
-(9104, 100000, 9001, NULL, '5', 5200.00, DATE_SUB(CURDATE(), INTERVAL 25 DAY), '年度商业险续保', 'https://demo.cloudflow.local/files/vehicle/receipts/insurance-9104.pdf', 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY));
+(9104, 100000, 9001, NULL, '5', 5200.00, DATE_SUB(CURDATE(), INTERVAL 25 DAY), '年度商业险续保', 'https://demo.cloudflow.local/files/vehicle/receipts/insurance-9104.pdf', 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY)),
+(9105, 100000, 9001, 9004, '1', 320.00, DATE_SUB(CURDATE(), INTERVAL 1 DAY), '客户演示往返油费', 'https://demo.cloudflow.local/files/vehicle/receipts/fuel-9105.jpg', 'zhang', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9106, 100000, 9001, 9004, '3', 36.00, DATE_SUB(CURDATE(), INTERVAL 1 DAY), '园区停车费', 'https://demo.cloudflow.local/files/vehicle/receipts/park-9106.jpg', 'zhang', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9107, 100000, 9001, NULL, '2', 120.00, DATE_SUB(CURDATE(), INTERVAL 5 DAY), '洗车与基础保养', 'https://demo.cloudflow.local/files/vehicle/receipts/wash-9107.jpg', 'admin', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(9108, 100000, 9002, 9005, '4', 980.00, DATE_SUB(CURDATE(), INTERVAL 1 DAY), '培训期间临时维修', 'https://demo.cloudflow.local/files/vehicle/receipts/repair-9108.jpg', 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 -- -----------------------------
 -- 2.7 访客与值班
@@ -344,7 +395,17 @@ INSERT INTO sys_visitor (
  'COMPLETED', '已完成咨询会议', '0', 'wang', DATE_SUB(NOW(), INTERVAL 30 HOUR), 'wang', DATE_SUB(NOW(), INTERVAL 20 HOUR)),
 (9704, 100000, '王经理', '13900010004', '云启科技', 2, '3404********3456', '合同谈判及法务条款确认', 6, '刘法务', '法务部',
  CURDATE(), '15:00:00', '17:00:00', CURDATE() + INTERVAL 14 HOUR + INTERVAL 50 MINUTE, NULL, '6楼战略会议室', '苏A12345', '合同草案,公司章程复印件',
- 'https://demo.cloudflow.local/files/visitor/9704.jpg', 'VST2026031104', 'ARRIVED', '法务部已接待', '0', 'liu', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'liu', DATE_SUB(NOW(), INTERVAL 10 MINUTE));
+ 'https://demo.cloudflow.local/files/visitor/9704.jpg', 'VST2026031104', 'ARRIVED', '法务部已接待', '0', 'liu', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'liu', DATE_SUB(NOW(), INTERVAL 10 MINUTE)),
+(9705, 100000, '周总监', '13900010005', '星航科技', 2, '3105********4567', '流程平台战略合作沟通', 2, '李经理', '研发部',
+ DATE_ADD(CURDATE(), INTERVAL 3 DAY), '13:30:00', '15:30:00', NULL, NULL, '5楼创新协作厅', '沪C66666', '演示方案,合同意向书', 'https://demo.cloudflow.local/files/visitor/9705.jpg', 'VST2026031105',
+ 'CONFIRMED', '需安排会议资料', '0', 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(9706, 100000, '刘老师', '13900010006', '南方理工大学', 1, '3206********7890', '校企实习合作对接', 4, '赵HR', '人力资源部',
+ DATE_ADD(CURDATE(), INTERVAL 2 DAY), '09:00:00', '11:00:00', NULL, NULL, '2楼西区培训教室', NULL, '讲义资料', 'https://demo.cloudflow.local/files/visitor/9706.jpg', 'VST2026031106',
+ 'PENDING', '需准备实习岗位材料', '0', 'zhao', DATE_SUB(NOW(), INTERVAL 1 HOUR), 'zhao', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+(9707, 100000, '顾女士', '13900010007', '远航咨询', 1, '3307********2345', '流程优化诊断复盘', 3, '王财务', '财务部',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY), '14:00:00', '16:30:00', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 14 HOUR + INTERVAL 5 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 16 HOUR + INTERVAL 20 MINUTE,
+ '3楼财务会议区', NULL, '笔记本电脑', 'https://demo.cloudflow.local/files/visitor/9707.jpg', 'VST2026031007',
+ 'COMPLETED', '完成流程优化复盘', '0', 'wang', DATE_SUB(NOW(), INTERVAL 50 HOUR), 'wang', DATE_SUB(NOW(), INTERVAL 40 HOUR));
 
 INSERT INTO sys_duty_schedule (
   schedule_id, tenant_id, title, schedule_type, duty_date, shift_type, start_time, end_time, user_id, user_name,
@@ -358,7 +419,11 @@ INSERT INTO sys_duty_schedule (
 (9803, 100000, '行政前台接待值班', 'DAILY', CURDATE(), 'DAY', '09:00:00', '18:00:00', 4, '赵HR', 1, 'Admin', 103, '人力资源部',
  '前台', '负责访客登记、快递签收、会议支持', CURDATE() + INTERVAL 8 HOUR + INTERVAL 55 MINUTE, NULL, 'CHECKED_IN', NULL, '今日有两批客户来访', '0', 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
 (9804, 100000, '周末安全巡检值班', 'HOLIDAY', DATE_ADD(CURDATE(), INTERVAL 4 DAY), 'FULL', '09:00:00', '21:00:00', 1, 'Admin', 7, '陈IT', 100, 'CloudFlow 科技',
- '总部办公区', '检查机房、电源、空调与办公区门禁状态', NULL, NULL, 'SCHEDULED', NULL, '节前安全巡查', '0', 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR));
+ '总部办公区', '检查机房、电源、空调与办公区门禁状态', NULL, NULL, 'SCHEDULED', NULL, '节前安全巡查', '0', 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+(9805, 100000, '客户上线支持值班', 'EMERGENCY', DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'NIGHT', '20:00:00', '02:00:00', 7, '陈IT', 9, '后端测试', 105, 'IT部',
+ '客户机房', '保障客户上线期间接口与数据库稳定', NULL, NULL, 'SCHEDULED', NULL, '客户上线专项保障', '0', 'admin', DATE_SUB(NOW(), INTERVAL 4 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+(9806, 100000, '季度资产盘点值班', 'TEMP', DATE_ADD(CURDATE(), INTERVAL 6 DAY), 'DAY', '09:00:00', '17:00:00', 7, '陈IT', 8, '前端测试', 105, 'IT部',
+ '资产仓库', '完成季度资产盘点与出入库核对', NULL, NULL, 'SCHEDULED', NULL, '盘点专项任务', '0', 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR));
 
 -- -----------------------------
 -- 2.8 前端错误日志（用于演示监控与排错）
@@ -396,7 +461,37 @@ INSERT INTO sys_frontend_error_log (
  'info',
  JSON_OBJECT('module','oa','page','SchedulePage','env','demo'),
  JSON_OBJECT('queryDate',DATE_FORMAT(CURDATE(), '%Y-%m-%d'),'retry',1),
- '10.10.0.18', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 70 MINUTE), DATE_SUB(NOW(), INTERVAL 70 MINUTE));
+ '10.10.0.18', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 70 MINUTE), DATE_SUB(NOW(), INTERVAL 70 MINUTE)),
+(9904, 100000, '公告中心列表加载缓慢',
+ 'AxiosError: timeout of 5000ms exceeded',
+ 'at AnnouncementList (src/pages/AnnouncementPage.tsx:44)\nat App',
+ '公告中心首次加载',
+ '/announcement',
+ 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
+ 'warning',
+ JSON_OBJECT('module','oa','page','AnnouncementPage','env','demo'),
+ JSON_OBJECT('query','latest','retry',1),
+ '10.10.0.22', 4, '赵HR', DATE_SUB(NOW(), INTERVAL 50 MINUTE), DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
+(9905, 100000, '用车申请列表筛选异常',
+ 'TypeError: Cannot read properties of undefined (reading ''filter'')',
+ 'at VehicleUsageList (src/pages/admin/vehicle/VehicleUsageList.tsx:218)\nat Admin',
+ '用车申请列表按状态筛选',
+ '/admin/vehicle/usage',
+ 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
+ 'error',
+ JSON_OBJECT('module','vehicle','page','VehicleUsageList','env','demo'),
+ JSON_OBJECT('status','PENDING','userId',7),
+ '10.10.0.23', 7, '陈IT', DATE_SUB(NOW(), INTERVAL 35 MINUTE), DATE_SUB(NOW(), INTERVAL 35 MINUTE)),
+(9906, 100000, '考勤规则保存失败',
+ 'AxiosError: Request failed with status code 500',
+ 'at AttendanceRule (src/pages/admin/attendance/AttendanceRule.tsx:190)\nat Admin',
+ '考勤规则保存',
+ '/admin/attendance/rule',
+ 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
+ 'error',
+ JSON_OBJECT('module','attendance','page','AttendanceRule','env','demo'),
+ JSON_OBJECT('ruleId',91002,'action','save'),
+ '10.10.0.24', 7, '陈IT', DATE_SUB(NOW(), INTERVAL 20 MINUTE), DATE_SUB(NOW(), INTERVAL 20 MINUTE));
 
 INSERT INTO sys_file (
   file_id, tenant_id, file_name, file_path, url, storage_type, file_size, file_type, create_by, create_time, del_flag, remark
@@ -404,7 +499,11 @@ INSERT INTO sys_file (
 (91001, 100000, '年度运维合同.pdf', '/demo/workflow/payment/service-contract.pdf',
  'https://demo.cloudflow.local/files/payment/fk202603110001-contract.pdf', 'LOCAL', 1864022, 'application/pdf', 'wang', DATE_SUB(NOW(), INTERVAL 13 HOUR), '0', '付款合同存档'),
 (91002, 100000, '演示缺陷清单.xlsx', '/demo/workflow/overtime/issue-list.xlsx',
- 'https://demo.cloudflow.local/files/overtime/issue-list.xlsx', 'LOCAL', 102400, 'application/xlsx', 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '演示缺陷汇总表');
+ 'https://demo.cloudflow.local/files/overtime/issue-list.xlsx', 'LOCAL', 102400, 'application/xlsx', 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '演示缺陷汇总表'),
+(91003, 100000, '客户演示议程.pdf', '/demo/workflow/trip/training-agenda.pdf',
+ 'https://demo.cloudflow.local/files/trip/cc202603110001-plan.pdf', 'LOCAL', 280600, 'application/pdf', 'zhang', DATE_SUB(NOW(), INTERVAL 9 HOUR), '0', '客户培训资料归档'),
+(91004, 100000, '用车派车记录.docx', '/demo/workflow/vehicle/dispatch-note.docx',
+ 'https://demo.cloudflow.local/files/vehicle/dispatch-note.docx', 'LOCAL', 86530, 'application/docx', 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY), '0', '派车记录模板');
 
 INSERT INTO sys_log (
   log_id, tenant_id, log_type, title, service_id, remote_addr, user_agent, request_uri, method, params, time, exception, create_by, create_time
@@ -414,12 +513,19 @@ INSERT INTO sys_log (
  '/api/workflow/instance/list', 'GET', '{"status":"RUNNING","page":1}', 120, NULL, 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
 (91002, 100000, '9', '流程模板发布失败', 'cloudflow-workflow', '10.10.0.20',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
- '/api/workflow/template/deploy', 'POST', '{"templateId":"demo_tpl_vehicle_001"}', 560, '模板校验未通过', 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY));
+ '/api/workflow/template/deploy', 'POST', '{"templateId":"demo_tpl_vehicle_001"}', 560, '模板校验未通过', 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY)),
+(91003, 100000, '0', '用车申请列表查询', 'cloudflow-oa', '10.10.0.21',
+ 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
+ '/api/oa/vehicle/usage/list', 'GET', '{"status":"PENDING","page":1}', 95, NULL, 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+(91004, 100000, '9', '考勤规则保存失败', 'cloudflow-oa', '10.10.0.24',
+ 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
+ '/api/oa/attendance/rule', 'POST', '{"ruleId":91002}', 420, '数据库连接超时', 'chen', DATE_SUB(NOW(), INTERVAL 20 MINUTE));
 
 INSERT INTO sys_audit_log (
   audit_id, tenant_id, audit_name, audit_field, before_val, after_val, create_by, create_time
 ) VALUES
-(91001, 100000, '流程模板变更', 'status', 'draft', 'published', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY));
+(91001, 100000, '流程模板变更', 'status', 'draft', 'published', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY)),
+(91002, 100000, '考勤规则变更', 'check_in_time', '09:00:00', '09:30:00', 'admin', DATE_SUB(NOW(), INTERVAL 9 DAY));
 
 -- =========================================================
 -- 三、业务申请表 + 工作流实例联动数据
@@ -937,6 +1043,145 @@ INSERT INTO sys_notice (
 (100000, '报销审批提醒', '1', '张三提交的差旅报销已进入财务审批节点。', 5, 3, '0', 'zhang', DATE_SUB(NOW(), INTERVAL 50 MINUTE), 'zhang', DATE_SUB(NOW(), INTERVAL 50 MINUTE), '演示数据-报销审批'),
 (100000, '出差申请提醒', '1', '张三的杭州客户出差申请等待部门经理审批。', 5, 2, '0', 'zhang', DATE_SUB(NOW(), INTERVAL 40 MINUTE), 'zhang', DATE_SUB(NOW(), INTERVAL 40 MINUTE), '演示数据-出差审批'),
 (100000, '用车申请提醒', '1', '明日客户拜访派车申请已提交，请确认。', 2, 1, '0', 'li', DATE_SUB(NOW(), INTERVAL 20 MINUTE), 'li', DATE_SUB(NOW(), INTERVAL 20 MINUTE), '演示数据-用车审批');
+
+INSERT INTO sys_log (
+  log_id, tenant_id, log_type, title, service_id, remote_addr, user_agent, request_uri, method, params, time, exception, create_by, create_time
+)
+SELECT
+  92000 + n,
+  100000,
+  CASE WHEN n % 10 = 0 THEN '9' ELSE '0' END,
+  CONCAT('批量演示日志', n),
+  'cloudflow-oa',
+  CONCAT('10.10.1.', LPAD(n % 200, 2, '0')),
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
+  '/api/demo/batch',
+  'GET',
+  CONCAT('{"page":', n, ',"size":20}'),
+  50 + (n % 200),
+  CASE WHEN n % 10 = 0 THEN '批量异常示例' ELSE NULL END,
+  'admin',
+  DATE_SUB(NOW(), INTERVAL n MINUTE)
+FROM (
+  SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
+  FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
+  WHERE (a.n * 100 + b.n * 10 + c.n) < 300
+) seq;
+
+INSERT INTO sys_audit_log (
+  audit_id, tenant_id, audit_name, audit_field, before_val, after_val, create_by, create_time
+)
+SELECT
+  92000 + n,
+  100000,
+  '批量审计记录',
+  'status',
+  'draft',
+  CASE WHEN n % 2 = 0 THEN 'published' ELSE 'archived' END,
+  'admin',
+  DATE_SUB(NOW(), INTERVAL n MINUTE)
+FROM (
+  SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
+  FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
+  WHERE (a.n * 100 + b.n * 10 + c.n) < 300
+) seq;
+
+INSERT INTO sys_file (
+  file_id, tenant_id, file_name, file_path, url, storage_type, file_size, file_type, create_by, create_time, del_flag, remark
+)
+SELECT
+  92000 + n,
+  100000,
+  CONCAT('批量文件_', n, CASE WHEN n % 3 = 0 THEN '.jpg' WHEN n % 3 = 1 THEN '.pdf' ELSE '.xlsx' END),
+  CONCAT('/demo/batch/file-', n),
+  CONCAT('https://demo.cloudflow.local/files/batch/file-', n),
+  'LOCAL',
+  1024 + n,
+  CASE WHEN n % 3 = 0 THEN 'image/jpeg' WHEN n % 3 = 1 THEN 'application/pdf' ELSE 'application/xlsx' END,
+  'admin',
+  DATE_SUB(NOW(), INTERVAL n MINUTE),
+  '0',
+  '批量演示文件'
+FROM (
+  SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
+  FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
+  WHERE (a.n * 100 + b.n * 10 + c.n) < 300
+) seq;
+
+INSERT INTO sys_frontend_error_log (
+  id, tenant_id, message, stack, component_stack, context, url, user_agent, level, tags, extra, client_ip,
+  user_id, user_name, client_time, create_time
+)
+SELECT
+  99200 + n,
+  100000,
+  CONCAT('批量错误日志', n),
+  'AxiosError: timeout of 5000ms exceeded',
+  'at DemoPage (src/pages/DemoPage.tsx:88)\nat App',
+  '批量演示错误上报',
+  '/demo',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
+  CASE WHEN n % 3 = 0 THEN 'error' WHEN n % 3 = 1 THEN 'warning' ELSE 'info' END,
+  JSON_OBJECT('module','demo','page','DemoPage','env','demo'),
+  JSON_OBJECT('batch',1,'index',n),
+  CONCAT('10.10.2.', LPAD(n % 200, 2, '0')),
+  (n % 9) + 1,
+  CASE (n % 9) WHEN 0 THEN 'Admin' WHEN 1 THEN '李经理' WHEN 2 THEN '王财务' WHEN 3 THEN '赵HR' WHEN 4 THEN '张三' WHEN 5 THEN '刘法务' WHEN 6 THEN '陈IT' WHEN 7 THEN '前端测试' ELSE '后端测试' END,
+  DATE_SUB(NOW(), INTERVAL n MINUTE),
+  DATE_SUB(NOW(), INTERVAL n MINUTE)
+FROM (
+  SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
+  FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
+  WHERE (a.n * 100 + b.n * 10 + c.n) < 300
+) seq;
+
+INSERT INTO sys_attendance_record (
+  record_id, tenant_id, user_id, type, check_time, location, address, device_info, wifi_info, status, remark, del_flag, create_time, update_time
+)
+SELECT
+  94000 + n,
+  100000,
+  (n % 9) + 1,
+  CASE WHEN n % 2 = 0 THEN '2' ELSE '1' END,
+  DATE_SUB(CURDATE(), INTERVAL (n % 7) DAY) + INTERVAL (8 + (n % 2) * 9) HOUR + INTERVAL (n % 60) MINUTE,
+  '31.2304,121.4737',
+  '总部园区A座',
+  CASE WHEN n % 3 = 0 THEN 'iPhone 15' WHEN n % 3 = 1 THEN 'Huawei Mate60' ELSE 'ThinkPad X1' END,
+  'CloudFlow-Office',
+  CASE WHEN n % 5 = 0 THEN '2' ELSE '1' END,
+  CONCAT('批量打卡', n),
+  '0',
+  NOW(),
+  NOW()
+FROM (
+  SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
+  FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
+  WHERE (a.n * 100 + b.n * 10 + c.n) < 300
+) seq;
+
+INSERT IGNORE INTO sys_announcement_read (tenant_id, announcement_id, user_id, read_time)
+SELECT
+  100000,
+  9601 + (n % 5),
+  (n % 9) + 1,
+  DATE_SUB(NOW(), INTERVAL (n % 20) HOUR)
+FROM (
+  SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
+  FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
+  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
+  WHERE (a.n * 100 + b.n * 10 + c.n) < 300
+) seq;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

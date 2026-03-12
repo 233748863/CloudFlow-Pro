@@ -295,9 +295,10 @@ interface TimePanelProps {
   hour: number;
   minute: number;
   onChangeTime: (hour: number, minute: number) => void;
+  layout?: 'row' | 'col';
 }
 
-function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
+function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProps) {
   const hourRef = useRef<HTMLDivElement>(null);
   const minuteRef = useRef<HTMLDivElement>(null);
 
@@ -313,10 +314,12 @@ function TimePanel({ hour, minute, onChangeTime }: TimePanelProps) {
     }
   }, [hour, minute]);
 
+  const isRow = layout === 'row';
+
   return (
-    <div className="flex border-t border-slate-100 md:border-t-0 md:border-l h-52 md:h-[300px] w-full flex-col bg-white">
+    <div className={`flex ${isRow ? 'flex-row h-64' : 'flex-col h-52 md:h-[300px] border-t border-slate-100 md:border-t-0 md:border-l'} w-full bg-white`}>
       {/* 小时列 */}
-      <div className="flex-1 flex flex-col border-b border-slate-100 min-h-0">
+      <div className={`flex-1 flex flex-col ${isRow ? 'border-r border-slate-100' : 'border-b border-slate-100'} min-h-0`}>
         <div className="text-center text-[11px] font-semibold text-slate-500 py-2 bg-slate-50/80 shrink-0">
           时
         </div>
@@ -623,7 +626,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             ref={dropdownRef}
             className={`
               absolute z-[100] bg-white rounded-2xl shadow-2xl border border-slate-100 ring-1 ring-black/5 overflow-hidden flex flex-col
-              w-full min-w-[18rem]
+              w-full ${type === 'time' ? 'min-w-[12rem]' : 'min-w-[18rem]'}
               ${dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}
               left-0 animate-in fade-in-0 zoom-in-95 duration-150
             `}
@@ -631,7 +634,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             <div className="flex flex-col md:flex-row items-stretch">
               {/* 日期面板 */}
               {(type === 'date' || type === 'datetime-local') && (
-                <div className="shrink-0 md:basis-[82%] md:max-w-[82%]">
+                <div className={`shrink-0 ${type === 'date' ? 'w-full' : 'md:basis-[82%] md:max-w-[82%]'}`}>
                   <CalendarPanel
                     year={viewYear}
                     month={viewMonth}
@@ -645,11 +648,12 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
 
               {/* 时间面板 */}
               {(type === 'time' || type === 'datetime-local') && (
-                <div className="shrink-0 md:basis-[18%] md:max-w-[18%]">
+                <div className={`shrink-0 ${type === 'time' ? 'w-full' : 'md:basis-[18%] md:max-w-[18%]'}`}>
                   <TimePanel
                     hour={tempHour}
                     minute={tempMinute}
                     onChangeTime={handleChangeTime}
+                    layout={type === 'time' ? 'row' : 'col'}
                   />
                 </div>
               )}

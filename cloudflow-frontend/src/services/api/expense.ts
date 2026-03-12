@@ -52,7 +52,7 @@ export interface PaymentRequest {
   updateTime?: string;
 }
 
-// 报销申请相关API
+// 报销申请相关 API
 export const expenseClaimApi = {
   // 分页查询报销申请列表
   list: (params: {
@@ -62,6 +62,15 @@ export const expenseClaimApi = {
     category?: string;
     userId?: number;
   }) => request.get('/oa/expense/claim/list', { params }) as Promise<PageResult<ExpenseClaim>>,
+
+  // 导出报销申请
+  export: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    status?: string;
+    category?: string;
+    userId?: number;
+  }) => request.get('/oa/expense/claim/export', { params, responseType: 'blob' }) as Promise<Blob>,
 
   // 查询报销申请详情
   getInfo: (id: number) => request.get(`/oa/expense/claim/${id}`) as Promise<ExpenseClaim>,
@@ -91,7 +100,7 @@ export const expenseClaimApi = {
     request.get('/oa/expense/claim/stats/category', { params: { month } }),
 };
 
-// 付款申请相关API
+// 付款申请相关 API
 export const paymentRequestApi = {
   // 分页查询付款申请列表
   list: (params: {
@@ -101,6 +110,15 @@ export const paymentRequestApi = {
     paymentType?: string;
     userId?: number;
   }) => request.get('/oa/payment/request/list', { params }) as Promise<PageResult<PaymentRequest>>,
+
+  // 导出付款申请
+  export: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    status?: string;
+    paymentType?: string;
+    userId?: number;
+  }) => request.get('/oa/payment/request/export', { params, responseType: 'blob' }) as Promise<Blob>,
 
   // 查询付款申请详情
   getInfo: (id: number) => request.get(`/oa/payment/request/${id}`) as Promise<PaymentRequest>,

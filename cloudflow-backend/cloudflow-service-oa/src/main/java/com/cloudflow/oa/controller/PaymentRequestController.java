@@ -5,9 +5,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
+import com.cloudflow.oa.domain.export.PaymentRequestExportVo;
 import com.cloudflow.oa.service.IPaymentRequestService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 付款申请Controller
+ * 付款申请 Controller
  */
 @RestController
 @RequestMapping("/payment/request")
@@ -35,20 +38,25 @@ public class PaymentRequestController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String paymentType,
             @RequestParam(required = false) Long userId) {
-        
         Page<BizPaymentRequest> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<BizPaymentRequest> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(status != null, BizPaymentRequest::getStatus, status)
-               .eq(paymentType != null, BizPaymentRequest::getPaymentType, paymentType)
-               .eq(userId != null, BizPaymentRequest::getUserId, userId)
-               .eq(BizPaymentRequest::getDelFlag, "0");
+        return R.ok(paymentRequestService.page(page, buildQueryWrapper(status, paymentType, userId)));
+    }
 
-        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
-        DataScopeHelper.apply(wrapper, BizPaymentRequest::getUserId, BizPaymentRequest::getDeptId);
-
-        wrapper.orderByDesc(BizPaymentRequest::getCreateTime);
-        
-        return R.ok(paymentRequestService.page(page, wrapper));
+    /**
+     * 导出付款申请列表
+     */
+    @SysLog("导出付款申请")
+    @GetMapping("/export")
+    public void export(@RequestParam(required = false) String status,
+                       @RequestParam(required = false) String paymentType,
+                       @RequestParam(required = false) Long userId,
+                       HttpServletResponse response) {
+        // 统一复用列表筛选与数据权限逻辑，保证导出结果与页面一致。
+        List<PaymentRequestExportVo> rows = paymentRequestService.list(buildQueryWrapper(status, paymentType, userId))
+                .stream()
+                .map(PaymentRequestExportVo::from)
+                .toList();
+        ExcelUtil.exportExcel(rows, "付款申请", PaymentRequestExportVo.class, response);
     }
 
     /**
@@ -65,7 +73,6 @@ public class PaymentRequestController {
     @SysLog("新增付款申请")
     @PostMapping
     public R<Void> add(@RequestBody BizPaymentRequest payment) {
-        // 从当前登录用户上下文中填充用户信息
         payment.setUserId(UserContext.getUserId());
         payment.setUserName(UserContext.getUserName());
         payment.setDeptId(UserContext.getDeptId());
@@ -116,8 +123,22 @@ public class PaymentRequestController {
      * 按部门统计月度付款费用
      */
     @GetMapping("/stats/dept")
-    public R<List<Map<String, Object>>> getMonthlyPaymentByDept(
-            @RequestParam String month) {
+    public R<List<Map<String, Object>>> getMonthlyPaymentByDept(@RequestParam String month) {
         return R.ok(paymentRequestService.getMonthlyPaymentByDept(month));
+    }
+
+    /**
+     * 统一构建列表与导出的查询条件，确保两处结果保持一致。
+     */
+    private LambdaQueryWrapper<BizPaymentRequest> buildQueryWrapper(String status, String paymentType, Long userId) {
+        LambdaQueryWrapper<BizPaymentRequest> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(status != null, BizPaymentRequest::getStatus, status)
+                .eq(paymentType != null, BizPaymentRequest::getPaymentType, paymentType)
+                .eq(userId != null, BizPaymentRequest::getUserId, userId)
+                .eq(BizPaymentRequest::getDelFlag, "0");
+
+        DataScopeHelper.apply(wrapper, BizPaymentRequest::getUserId, BizPaymentRequest::getDeptId);
+        wrapper.orderByDesc(BizPaymentRequest::getCreateTime);
+        return wrapper;
     }
 }

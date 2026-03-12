@@ -73,12 +73,21 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, type }) => {
   const anomalyAlert = alert as AnomalyAlert;
   
   const levelColor = isTimeout
-    ? (timeoutAlert.alertLevel === 'CRITICAL' ? 'text-red-600' : 'text-yellow-600')
+    ? (timeoutAlert.timeoutLevel === 'CRITICAL'
+        ? 'text-red-600'
+        : timeoutAlert.timeoutLevel === 'WARNING'
+          ? 'text-yellow-600'
+          : 'text-blue-600')
     : (anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' ? 'text-red-600' : 'text-yellow-600');
   
   const levelIcon = isTimeout
-    ? (timeoutAlert.alertLevel === 'CRITICAL' ? '🔴' : '🟡')
-    : (anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' ? '🔴' : '🟡');
+    ? (timeoutAlert.timeoutLevel === 'CRITICAL' ? '\uD83D\uDD34' : timeoutAlert.timeoutLevel === 'WARNING' ? '\uD83D\uDFE1' : '\uD83D\uDD35')
+    : (anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' ? '\uD83D\uDD34' : '\uD83D\uDFE1');
+
+  const alertDescription = anomalyAlert.errorMessage || anomalyAlert.description || '\u6682\u65e0\u5f02\u5e38\u8bf4\u660e';
+  const alertDisplayTime = isTimeout
+    ? (timeoutAlert.alertTime || timeoutAlert.createTime)
+    : (anomalyAlert.alertTime || anomalyAlert.createTime);
 
   return (
     <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
@@ -88,17 +97,17 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, type }) => {
           {isTimeout ? '超时告警' : '异常告警'}
         </p>
         <p className="text-sm text-gray-900 truncate">
-          {isTimeout ? timeoutAlert.relatedTitle : anomalyAlert.processName}
+          {isTimeout ? timeoutAlert.targetName : anomalyAlert.processName}
         </p>
         <p className="text-xs text-gray-500">
           {isTimeout 
-            ? `已超时 ${timeoutAlert.timeoutHours} 小时`
-            : anomalyAlert.description
+            ? `已超时 ${Math.max(1, Math.ceil(timeoutAlert.timeoutDuration / (1000 * 60 * 60)))} 小时`
+            : alertDescription
           }
         </p>
       </div>
       <span className="text-xs text-gray-400">
-        {new Date(alert.createTime).toLocaleTimeString('zh-CN', { 
+        {new Date(alertDisplayTime).toLocaleTimeString('zh-CN', { 
           hour: '2-digit', 
           minute: '2-digit' 
         })}
@@ -130,7 +139,7 @@ const WorkflowMonitor: React.FC = () => {
       const [overviewData, trendData, timeoutData, anomalyData] = await Promise.all([
         getMonitorOverview(),
         getProcessTrend({ days: 7 }),
-        getTimeoutAlerts({ pageNum: 1, pageSize: 10 }),
+        getTimeoutAlerts({ pageNum: 1, pageSize: 10, resolved: false }),
         getAnomalyAlerts({ pageNum: 1, pageSize: 10, resolved: false })
       ]);
 

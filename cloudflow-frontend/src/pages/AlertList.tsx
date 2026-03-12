@@ -120,7 +120,11 @@ const AlertList: React.FC = () => {
   const getLevelColor = (alert: TimeoutAlert | AnomalyAlert, type: AlertType) => {
     if (type === 'timeout') {
       const timeoutAlert = alert as TimeoutAlert;
-      return timeoutAlert.alertLevel === 'CRITICAL' ? 'text-red-600' : 'text-yellow-600';
+      return timeoutAlert.timeoutLevel === 'CRITICAL'
+        ? 'text-red-600'
+        : timeoutAlert.timeoutLevel === 'WARNING'
+          ? 'text-yellow-600'
+          : 'text-blue-600';
     } else {
       const anomalyAlert = alert as AnomalyAlert;
       return anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' 
@@ -135,9 +139,13 @@ const AlertList: React.FC = () => {
   const getLevelBadge = (alert: TimeoutAlert | AnomalyAlert, type: AlertType) => {
     if (type === 'timeout') {
       const timeoutAlert = alert as TimeoutAlert;
-      return timeoutAlert.alertLevel === 'CRITICAL' 
-        ? <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">严重</span>
-        : <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">警告</span>;
+      if (timeoutAlert.timeoutLevel === 'CRITICAL') {
+        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">严重</span>;
+      }
+      if (timeoutAlert.timeoutLevel === 'WARNING') {
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">警告</span>;
+      }
+      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">提醒</span>;
     } else {
       const anomalyAlert = alert as AnomalyAlert;
       const severityMap: Record<string, { bg: string; text: string; label: string }> = {
@@ -213,6 +221,7 @@ const AlertList: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">所有级别</SelectItem>
+                      <SelectItem value="REMIND">提醒</SelectItem>
                       <SelectItem value="WARNING">警告</SelectItem>
                       <SelectItem value="CRITICAL">严重</SelectItem>
                     </SelectContent>
@@ -267,10 +276,10 @@ const AlertList: React.FC = () => {
                             </span>
                           </div>
                           <h3 className="text-lg font-medium text-gray-900 mb-1">
-                            {alert.relatedTitle}
+                            {alert.targetName}
                           </h3>
                           <p className="text-sm text-gray-600 mb-2">
-                            已超时 <span className="font-semibold text-red-600">{alert.timeoutHours}</span> 小时
+                            已超时 <span className="font-semibold text-red-600">{Math.max(1, Math.ceil(alert.timeoutDuration / (1000 * 60 * 60)))}</span> 小时
                           </p>
                           {alert.assigneeName && (
                             <p className="text-sm text-gray-500">
@@ -278,11 +287,11 @@ const AlertList: React.FC = () => {
                             </p>
                           )}
                           <p className="text-xs text-gray-400 mt-2">
-                            告警时间: {new Date(alert.createTime).toLocaleString('zh-CN')}
+                            告警时间: {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
                           </p>
                         </div>
                         <div className="flex flex-col space-y-2">
-                          {!alert.notificationSent && (
+                          {alert.notificationSent !== 'Y' && (
                             <button
                               onClick={() => handleTimeout(alert.id, 'notify')}
                               className="px-3 py-1 text-sm bg-pink-500 text-white rounded hover:bg-pink-600"
@@ -290,7 +299,7 @@ const AlertList: React.FC = () => {
                               发送通知
                             </button>
                           )}
-                          {!alert.escalated && alert.alertLevel === 'CRITICAL' && (
+                          {alert.escalated !== 'Y' && alert.timeoutLevel === 'CRITICAL' && (
                             <button
                               onClick={() => handleTimeout(alert.id, 'escalate')}
                               className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700"
@@ -317,7 +326,7 @@ const AlertList: React.FC = () => {
                           <div className="flex items-center space-x-3 mb-2">
                             {getLevelBadge(alert, 'anomaly')}
                             <span className="text-sm text-gray-500">{alert.anomalyType}</span>
-                            {alert.resolved && (
+                            {alert.resolved === 'Y' && (
                               <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
                                 已解决
                               </span>
@@ -346,7 +355,7 @@ const AlertList: React.FC = () => {
                             告警时间: {new Date(alert.createTime).toLocaleString('zh-CN')}
                           </p>
                         </div>
-                        {!alert.resolved && (
+                        {alert.resolved !== 'Y' && (
                           <button
                             onClick={() => {
                               setSelectedAlert(alert);

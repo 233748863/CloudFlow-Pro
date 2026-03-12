@@ -8,7 +8,7 @@ import { getWorkTasks, updateWorkTaskStatus } from '../services/api/workTask';
 import { useAuth } from '../context/AuthContext';
 import { mapBackendTaskToFrontend, mapBackendInstanceToTask, mapTaskToUnified, mapWorkTaskToUnified } from '../utils/mappers';
 import { LayoutList, Kanban, RefreshCw, Search, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
-import { DatePicker, EmptyError, EmptyTasks, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SkeletonCard } from '@/components/ui';
+import { Button, Input, DatePicker, EmptyError, EmptyTasks, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SkeletonCard } from '@/components/ui';
 import { toast } from 'sonner';
 import { usePolling } from '../hooks/usePolling';
 import { logTask } from '../lib/logger';
@@ -492,7 +492,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 {/* 任务中心的类型筛选 */}
                 {type === 'pending' && (
                     <Select value={filterType} onValueChange={v => setFilterType(v as 'all' | 'process' | 'work')}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-[120px]">
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
@@ -506,19 +506,19 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 {/* "我的申请"搜索框 */}
                 {type === 'applications' && (
                     <div className="relative">
-                        <input
+                        <Input
                             type="text"
                             placeholder="搜索标题/编号..."
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-2 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="pl-9 pr-12 w-56"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {searchInput && searchInput !== keyword && (
                             <button
                                 onClick={handleSearch}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600 font-medium"
                             >
                                 搜索
                             </button>
@@ -526,14 +526,15 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     </div>
                 )}
 
-                <button 
+                <Button 
+                    variant="outline"
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-1"
+                    className="gap-1"
                 >
                     <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
                     刷新
-                </button>
+                </Button>
             </div>
         </div>
         
@@ -544,19 +545,19 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* 关键字搜索 */}
                     <div className="relative">
-                        <input
+                        <Input
                             type="text"
                             placeholder="搜索流程标题/编号..."
                             value={todoSearchInput}
                             onChange={(e) => setTodoSearchInput(e.target.value)}
                             onKeyDown={handleTodoSearchKeyDown}
-                            className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg pl-9 pr-3 py-1.5 w-56 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                            className="pl-9 pr-12 w-56"
                         />
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         {todoSearchInput && todoSearchInput !== todoKeyword && (
                             <button
                                 onClick={handleTodoSearch}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600 font-medium"
                             >
                                 搜索
                             </button>
@@ -566,11 +567,11 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     {/* 流程类型筛选 */}
                     {todoProcessDefOptions.length > 0 && (
                         <Select value={todoProcessDefKey} onValueChange={v => setTodoProcessDefKey(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="全部流程类型" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部流程类型</SelectItem>
+                      <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
                       {todoProcessDefOptions.map(opt => (
                         <SelectItem key={opt.key} value={String(opt.key)}>{opt.name}</SelectItem>
                       ))}
@@ -579,12 +580,12 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     )}
 
                     {/* 申请人搜索 */}
-                    <input
+                    <Input
                         type="text"
                         placeholder="申请人姓名..."
                         value={todoStartUserName}
                         onChange={(e) => setTodoStartUserName(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 w-32 focus:ring-pink-400 focus:border-pink-400 focus:outline-none"
+                        className="w-32"
                     />
 
                     {/* 时间范围筛选 */}
@@ -594,24 +595,28 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             type="date"
                             value={todoStartTimeFrom}
                             onChange={(e) => setTodoStartTimeFrom(e.target.value)}
+                            className="w-32"
                         />
                         <span className="text-slate-400">至</span>
                         <DatePicker
                             type="date"
                             value={todoStartTimeTo}
                             onChange={(e) => setTodoStartTimeTo(e.target.value)}
+                            className="w-32"
                         />
                     </div>
 
                     {/* 清除筛选 */}
                     {hasTodoActiveFilters && (
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={handleClearTodoFilters}
-                            className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                            className="text-xs text-slate-400 hover:text-red-500 gap-1 px-2 h-8"
                         >
                             <X size={12} />
                             清除筛选
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -644,13 +649,15 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         ))}
                     </div>
                     {hasActiveFilters && (
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={handleClearFilters}
-                            className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                            className="text-xs text-slate-400 hover:text-red-500 gap-1 px-2 h-8"
                         >
                             <X size={12} />
                             清除筛选
-                        </button>
+                        </Button>
                     )}
                 </div>
 
@@ -659,11 +666,11 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     {/* 流程类型筛选 */}
                     {processDefOptions.length > 0 && (
                         <Select value={processDefKey} onValueChange={v => setProcessDefKey(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="全部流程类型" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部流程类型</SelectItem>
+                      <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
                       {processDefOptions.map(opt => (
                         <SelectItem key={opt.key} value={String(opt.key)}>{opt.name}</SelectItem>
                       ))}
@@ -673,11 +680,11 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
                     {/* 优先级筛选 */}
                     <Select value={priorityFilter} onValueChange={v => setPriorityFilter(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="全部优先级" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部优先级</SelectItem>
+                      <SelectItem value="ALL_PRIORITIES">全部优先级</SelectItem>
                       <SelectItem value="URGENT">紧急</SelectItem>
                       <SelectItem value="HIGH">高</SelectItem>
                       <SelectItem value="NORMAL">普通</SelectItem>
@@ -692,12 +699,14 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                             type="date"
                             value={startTimeFrom}
                             onChange={(e) => handleTimeRangeChange(e.target.value, startTimeTo)}
+                            className="w-32"
                         />
                         <span className="text-slate-400">至</span>
                         <DatePicker
                             type="date"
                             value={startTimeTo}
                             onChange={(e) => handleTimeRangeChange(startTimeFrom, e.target.value)}
+                            className="w-32"
                         />
                     </div>
                 </div>

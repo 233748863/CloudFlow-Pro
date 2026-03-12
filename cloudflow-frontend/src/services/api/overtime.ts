@@ -35,6 +35,8 @@ export interface OvertimeRequest {
 export const overtimeApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; overtimeType?: string }) =>
     request.get('/oa/overtime/list', { params }) as Promise<PageResult<OvertimeRequest>>,
+  export: (params: { pageNum?: number; pageSize?: number; status?: string; overtimeType?: string }) =>
+    request.get('/oa/overtime/export', { params, responseType: 'blob' }) as Promise<Blob>,
   getInfo: (id: number) => request.get(`/oa/overtime/${id}`) as Promise<OvertimeRequest>,
   add: (data: OvertimeRequest) => request.post('/oa/overtime', data),
   edit: (data: OvertimeRequest) => request.put('/oa/overtime', data),

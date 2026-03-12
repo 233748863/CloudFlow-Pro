@@ -105,11 +105,10 @@
     </select>
 
     <!-- 更新告警 -->
-    <update id="updateById">
-        UPDATE wf_timeout_alert
-        SET notification_sent = #{notificationSent},
-            escalated = #{escalated}
-        WHERE id = #{id}
-    </update>
+    <!--
+        updateById 使用 MyBatis-Plus 默认实现。
+        原因：BaseMapper.updateById(entity) 的实体参数名为 et，
+        手写同名 XML 会覆盖框架注入 SQL，并且容易漏掉 timeoutLevel、resolved、updateTime 等字段。
+    -->
 
 </mapper>

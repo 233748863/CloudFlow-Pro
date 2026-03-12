@@ -42,6 +42,8 @@ export interface BusinessTrip {
 export const businessTripApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; destination?: string }) =>
     request.get('/oa/business-trip/list', { params }) as Promise<PageResult<BusinessTrip>>,
+  export: (params: { pageNum?: number; pageSize?: number; status?: string; destination?: string }) =>
+    request.get('/oa/business-trip/export', { params, responseType: 'blob' }) as Promise<Blob>,
   getInfo: (id: number) => request.get(`/oa/business-trip/${id}`) as Promise<BusinessTrip>,
   add: (data: BusinessTrip) => request.post('/oa/business-trip', data),
   edit: (data: BusinessTrip) => request.put('/oa/business-trip', data),

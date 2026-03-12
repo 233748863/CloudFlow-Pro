@@ -21,49 +21,59 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * ??????????
+ * 统一脱敏工具类。
  * <p>
- * ?????
- * 1. ??????????????????Token ??????????
- * 2. ????????????????????????????
- * 3. ?? Map / List / ?? / Java Bean ??????????????????
+ * 设计目标：
+ * 1. 统一处理密码、Token、手机号等敏感字段；
+ * 2. 兼容日志记录、接口返回、导出场景的对象脱敏；
+ * 3. 支持 Map、List、数组、Java Bean 的递归脱敏。
  * </p>
  */
 public final class SensitiveUtils {
 
     private static final int MAX_RECURSION_DEPTH = 8;
+    private static final String SECRET_MASK = "******";
+    private static final String CIRCULAR_REFERENCE_PLACEHOLDER = "[Circular]";
 
     private static final Set<String> SECRET_FIELD_KEYWORDS = new LinkedHashSet<>(Arrays.asList(
-        "password", "pwd", "secret", "token", "accessToken", "refreshToken", "authorization"
+        "password", "pwd", "secret", "token", "accessToken", "refreshToken",
+        "authorization", "authToken", "clientSecret", "privateKey"
     ));
 
     private static final Set<String> PHONE_FIELD_KEYWORDS = new LinkedHashSet<>(Arrays.asList(
-        "phone", "mobile", "telephone", "phonenumber", "???", "??"
+        "phone", "mobile", "telephone", "phonenumber", "cellphone", "tel", "手机号", "手机"
     ));
 
     private static final Set<String> EMAIL_FIELD_KEYWORDS = new LinkedHashSet<>(Arrays.asList(
-        "email", "??"
+        "email", "mail", "邮箱"
     ));
 
     private static final Set<String> ID_CARD_FIELD_KEYWORDS = new LinkedHashSet<>(Arrays.asList(
-        "idCard", "idcard", "idNumber", "identityCard", "identity", "???"
+        "idCard", "idcard", "idNumber", "identityCard", "identity", "身份证"
     ));
 
     private static final Set<String> BANK_CARD_FIELD_KEYWORDS = new LinkedHashSet<>(Arrays.asList(
-        "bankCard", "bankAccount", "creditCard", "???", "bank"
+        "bankCard", "bankAccount", "creditCard", "银行卡", "bankNo"
     ));
 
     private static final Set<String> ADDRESS_FIELD_KEYWORDS = new LinkedHashSet<>(Arrays.asList(
-        "address", "??"
+        "address", "detailAddress", "homeAddress", "companyAddress", "地址"
     ));
 
     private SensitiveUtils() {
     }
 
     /**
-     * ??????????????
+     * 判断字段名是否属于敏感字段。
      */
     public static boolean isSensitiveField(String fieldName) {
+        return isSensitiveField(fieldName, Collections.emptySet());
+    }
+
+    /**
+     * 判断字段名是否属于敏感字段，并支持额外扩展关键字。
+     */
+    public static boolean isSensitiveField(String fieldName, Collection<String> extraSensitiveFields) {
         if (!hasText(fieldName)) {
             return false;
         }
@@ -72,20 +82,28 @@ public final class SensitiveUtils {
             || matchesAnyKeyword(fieldName, EMAIL_FIELD_KEYWORDS)
             || matchesAnyKeyword(fieldName, ID_CARD_FIELD_KEYWORDS)
             || matchesAnyKeyword(fieldName, BANK_CARD_FIELD_KEYWORDS)
-            || matchesAnyKeyword(fieldName, ADDRESS_FIELD_KEYWORDS);
+            || matchesAnyKeyword(fieldName, ADDRESS_FIELD_KEYWORDS)
+            || matchesAnyKeyword(fieldName, extraSensitiveFields);
     }
 
     /**
-     * ???????????
+     * 根据字段名自动选择脱敏策略。
      */
     public static String maskByFieldName(String fieldName, String value) {
+        return maskByFieldName(fieldName, value, Collections.emptySet());
+    }
+
+    /**
+     * 根据字段名和扩展关键字自动选择脱敏策略。
+     */
+    public static String maskByFieldName(String fieldName, String value, Collection<String> extraSensitiveFields) {
         if (!hasText(value)) {
             return value;
         }
         if (!hasText(fieldName)) {
             return maskDefault(value);
         }
-        if (matchesAnyKeyword(fieldName, SECRET_FIELD_KEYWORDS)) {
+        if (matchesAnyKeyword(fieldName, SECRET_FIELD_KEYWORDS) || matchesAnyKeyword(fieldName, extraSensitiveFields)) {
             return maskSecret(value);
         }
         if (matchesAnyKeyword(fieldName, PHONE_FIELD_KEYWORDS)) {
@@ -107,17 +125,21 @@ public final class SensitiveUtils {
     }
 
     /**
-     * ??????13812345678 -> 138****5678
+     * 手机号脱敏：13812345678 -> 138****5678
      */
     public static String maskPhone(String phone) {
-        if (!hasText(phone) || phone.length() < 7) {
+        if (!hasText(phone)) {
             return phone;
         }
-        return phone.replaceAll("(\d{3})\d{4}(\d+)", "$1****$2");
+        String compact = phone.trim();
+        if (compact.length() < 7) {
+            return maskDefault(compact);
+        }
+        return keepHeadTail(compact, 3, 4);
     }
 
     /**
-     * ?????user@example.com -> u***@example.com
+     * 邮箱脱敏：user@example.com -> u***@example.com
      */
     public static String maskEmail(String email) {
         if (!hasText(email) || !email.contains("@")) {
@@ -131,51 +153,58 @@ public final class SensitiveUtils {
     }
 
     /**
-     * ??????110101199001011234 -> 110101****1234
+     * 身份证脱敏：110101199001011234 -> 110101****1234
      */
     public static String maskIdCard(String idCard) {
-        if (!hasText(idCard) || idCard.length() < 8) {
+        if (!hasText(idCard)) {
             return idCard;
         }
-        return idCard.replaceAll("(.{6}).+(.{4})", "$1****$2");
+        String compact = idCard.trim();
+        if (compact.length() < 8) {
+            return maskDefault(compact);
+        }
+        return keepHeadTail(compact, 6, 4);
     }
 
     /**
-     * ??????6222021234567890 -> 6222 **** **** 7890
+     * 银行卡脱敏：6222021234567890 -> 6222 **** 7890
      */
     public static String maskBankCard(String bankCard) {
-        if (!hasText(bankCard) || bankCard.length() < 8) {
+        if (!hasText(bankCard)) {
             return bankCard;
         }
-        String compact = bankCard.replaceAll("\s+", "");
+        String compact = bankCard.replaceAll("\\s+", "");
         if (compact.length() < 8) {
-            return bankCard;
+            return maskDefault(compact);
         }
-        return compact.substring(0, 4) + " **** **** " + compact.substring(compact.length() - 4);
+        return keepHeadTail(compact, 4, 4, " **** ");
     }
 
     /**
-     * ???????? 6 ?????????
+     * 地址脱敏：默认保留前 6 位，其余隐藏。
      */
     public static String maskAddress(String address) {
-        if (!hasText(address) || address.length() <= 6) {
+        if (!hasText(address)) {
+            return address;
+        }
+        if (address.length() <= 6) {
             return maskDefault(address);
         }
         return address.substring(0, 6) + "****";
     }
 
     /**
-     * ?? / Token ????????????
+     * 密码、Token 等机密字段统一全部隐藏。
      */
     public static String maskSecret(String secret) {
         if (!hasText(secret)) {
             return secret;
         }
-        return "******";
+        return SECRET_MASK;
     }
 
     /**
-     * ???????????? 1/4?
+     * 通用脱敏：首尾各保留约 1/4。
      */
     public static String maskDefault(String value) {
         if (!hasText(value)) {
@@ -189,16 +218,17 @@ public final class SensitiveUtils {
     }
 
     /**
-     * ?????????????
+     * 对请求参数进行脱敏。
      * <p>
-     * extraSensitiveFields ?????????????????
+     * extraSensitiveFields 用于扩展系统默认敏感字段。
      * </p>
      */
-    public static Map<String, String[]> maskRequestParams(Map<String, String[]> paramsMap, Collection<String> extraSensitiveFields) {
+    public static Map<String, String[]> maskRequestParams(Map<String, String[]> paramsMap,
+                                                          Collection<String> extraSensitiveFields) {
         if (paramsMap == null || paramsMap.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<String, String[]> result = new LinkedHashMap<>();
+        Map<String, String[]> result = new LinkedHashMap<>(paramsMap.size());
         for (Map.Entry<String, String[]> entry : paramsMap.entrySet()) {
             String fieldName = entry.getKey();
             String[] values = entry.getValue();
@@ -206,14 +236,13 @@ public final class SensitiveUtils {
                 result.put(fieldName, null);
                 continue;
             }
-            boolean shouldMask = isSensitiveField(fieldName) || matchesAnyKeyword(fieldName, extraSensitiveFields);
-            if (!shouldMask) {
-                result.put(fieldName, values);
+            if (!isSensitiveField(fieldName, extraSensitiveFields)) {
+                result.put(fieldName, Arrays.copyOf(values, values.length));
                 continue;
             }
             String[] maskedValues = new String[values.length];
             for (int index = 0; index < values.length; index++) {
-                maskedValues[index] = maskByFieldName(fieldName, values[index]);
+                maskedValues[index] = maskByFieldName(fieldName, values[index], extraSensitiveFields);
             }
             result.put(fieldName, maskedValues);
         }
@@ -221,10 +250,17 @@ public final class SensitiveUtils {
     }
 
     /**
-     * ? Map ?????????
+     * 对 Map 对象做递归脱敏。
      */
     public static Map<String, Object> maskMap(Map<String, ?> data) {
-        Object masked = maskObject(data);
+        return maskMap(data, Collections.emptySet());
+    }
+
+    /**
+     * 对 Map 对象做递归脱敏，并支持额外敏感字段关键字。
+     */
+    public static Map<String, Object> maskMap(Map<String, ?> data, Collection<String> extraSensitiveFields) {
+        Object masked = maskObject(data, extraSensitiveFields);
         if (masked instanceof Map<?, ?> maskedMap) {
             Map<String, Object> result = new LinkedHashMap<>();
             maskedMap.forEach((key, value) -> result.put(String.valueOf(key), value));
@@ -234,21 +270,32 @@ public final class SensitiveUtils {
     }
 
     /**
-     * ?????????????????????????
+     * 对任意对象做递归脱敏，并保持原对象不被修改。
      */
     public static Object maskObject(Object source) {
-        return maskObjectInternal(source, null, new IdentityHashMap<>(), 0);
+        return maskObject(source, Collections.emptySet());
     }
 
+    /**
+     * 对任意对象做递归脱敏，并支持额外敏感字段关键字。
+     */
+    public static Object maskObject(Object source, Collection<String> extraSensitiveFields) {
+        return maskObjectInternal(source, null, extraSensitiveFields, new IdentityHashMap<>(), 0);
+    }
+
+    /**
+     * 递归遍历对象结构，遇到敏感字段时统一返回脱敏后的副本。
+     */
     private static Object maskObjectInternal(Object source,
                                              String fieldName,
+                                             Collection<String> extraSensitiveFields,
                                              IdentityHashMap<Object, Boolean> visited,
                                              int depth) {
         if (source == null) {
             return null;
         }
-        if (fieldName != null && isSensitiveField(fieldName)) {
-            return maskByFieldName(fieldName, String.valueOf(source));
+        if (fieldName != null && isSensitiveField(fieldName, extraSensitiveFields)) {
+            return maskByFieldName(fieldName, String.valueOf(source), extraSensitiveFields);
         }
         Class<?> sourceClass = source.getClass();
         if (isSimpleValueType(sourceClass)) {
@@ -258,23 +305,24 @@ public final class SensitiveUtils {
             return String.valueOf(source);
         }
         if (visited.containsKey(source)) {
-            return "[Circular]";
+            return CIRCULAR_REFERENCE_PLACEHOLDER;
         }
 
         visited.put(source, Boolean.TRUE);
         try {
             if (source instanceof Map<?, ?> sourceMap) {
-                Map<String, Object> result = new LinkedHashMap<>();
+                Map<String, Object> result = new LinkedHashMap<>(sourceMap.size());
                 for (Map.Entry<?, ?> entry : sourceMap.entrySet()) {
                     String childFieldName = entry.getKey() == null ? null : String.valueOf(entry.getKey());
-                    result.put(childFieldName, maskObjectInternal(entry.getValue(), childFieldName, visited, depth + 1));
+                    result.put(childFieldName,
+                        maskObjectInternal(entry.getValue(), childFieldName, extraSensitiveFields, visited, depth + 1));
                 }
                 return result;
             }
             if (source instanceof Collection<?> sourceCollection) {
                 List<Object> result = new ArrayList<>(sourceCollection.size());
                 for (Object item : sourceCollection) {
-                    result.add(maskObjectInternal(item, null, visited, depth + 1));
+                    result.add(maskObjectInternal(item, null, extraSensitiveFields, visited, depth + 1));
                 }
                 return result;
             }
@@ -282,7 +330,7 @@ public final class SensitiveUtils {
                 int length = Array.getLength(source);
                 List<Object> result = new ArrayList<>(length);
                 for (int index = 0; index < length; index++) {
-                    result.add(maskObjectInternal(Array.get(source, index), null, visited, depth + 1));
+                    result.add(maskObjectInternal(Array.get(source, index), null, extraSensitiveFields, visited, depth + 1));
                 }
                 return result;
             }
@@ -301,7 +349,8 @@ public final class SensitiveUtils {
                 }
                 field.setAccessible(true);
                 Object fieldValue = field.get(source);
-                beanMap.put(field.getName(), maskObjectInternal(fieldValue, field.getName(), visited, depth + 1));
+                beanMap.put(field.getName(),
+                    maskObjectInternal(fieldValue, field.getName(), extraSensitiveFields, visited, depth + 1));
             }
             return beanMap;
         } catch (IllegalAccessException exception) {
@@ -333,7 +382,9 @@ public final class SensitiveUtils {
             return false;
         }
         String packageName = sourcePackage.getName();
-        return packageName.startsWith("java.") || packageName.startsWith("javax.") || packageName.startsWith("jakarta.");
+        return packageName.startsWith("java.")
+            || packageName.startsWith("javax.")
+            || packageName.startsWith("jakarta.");
     }
 
     private static List<Field> getAllFields(Class<?> clazz) {
@@ -360,6 +411,22 @@ public final class SensitiveUtils {
             }
         }
         return false;
+    }
+
+    private static String keepHeadTail(String value, int headLength, int tailLength) {
+        return keepHeadTail(value, headLength, tailLength, "****");
+    }
+
+    private static String keepHeadTail(String value, int headLength, int tailLength, String connector) {
+        if (!hasText(value)) {
+            return value;
+        }
+        int safeHeadLength = Math.min(headLength, value.length());
+        int safeTailLength = Math.min(tailLength, Math.max(0, value.length() - safeHeadLength));
+        if (safeHeadLength + safeTailLength >= value.length()) {
+            return maskDefault(value);
+        }
+        return value.substring(0, safeHeadLength) + connector + value.substring(value.length() - safeTailLength);
     }
 
     private static boolean hasText(String value) {

@@ -2,9 +2,12 @@ package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OvertimeRequest;
+import com.cloudflow.oa.domain.export.OvertimeRequestExportVo;
 import com.cloudflow.oa.service.IOvertimeRequestService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +31,21 @@ public class OvertimeController {
                   @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
         IPage<OvertimeRequest> page = overtimeRequestService.queryPage(query, pageNum, pageSize);
         return R.ok(page);
+    }
+
+    /**
+     * 导出加班申请列表
+     */
+    @SysLog("导出加班申请")
+    @GetMapping("/export")
+    public void export(OvertimeRequest query, HttpServletResponse response) {
+        // 复用现有筛选与数据权限逻辑，保证导出结果和列表一致。
+        List<OvertimeRequestExportVo> rows = overtimeRequestService.queryPage(query, 1, Integer.MAX_VALUE)
+                .getRecords()
+                .stream()
+                .map(OvertimeRequestExportVo::from)
+                .toList();
+        ExcelUtil.exportExcel(rows, "加班申请", OvertimeRequestExportVo.class, response);
     }
 
     /** 获取详情 */

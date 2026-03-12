@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WorkflowVersion;
 import com.cloudflow.workflow.domain.dto.WorkflowExportFormat;
@@ -21,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -43,11 +44,11 @@ public class ExportServiceImpl implements IExportService {
     private ObjectMapper objectMapper;
 
     /**
-     * 敏感字段模式（用于过滤敏感配置）
+     * 导出场景追加的敏感字段关键字。
+     * 这里保留导出专用的 key/credential 语义，避免污染全局默认规则。
      */
-    private static final Pattern SENSITIVE_PATTERN = Pattern.compile(
-        "(password|secret|token|key|credential|apikey|accesskey|privatekey)",
-        Pattern.CASE_INSENSITIVE
+    private static final Set<String> EXPORT_EXTRA_SENSITIVE_FIELDS = Set.of(
+        "key", "credential", "apiKey", "accessKey", "privateKey"
     );
 
     /**
@@ -210,43 +211,15 @@ public class ExportServiceImpl implements IExportService {
             return definitionJson; // 返回原始字符串
         }
     }
-
     /**
-     * 移除敏感数据
-     * 递归遍历对象，移除包含敏感关键字的字段
+     * 移除导出对象中的敏感数据。
      */
-    @SuppressWarnings("unchecked")
     private Object removeSensitiveData(Object obj) {
         if (obj == null) {
             return null;
         }
-
-        if (obj instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) obj;
-            Map<String, Object> cleaned = new HashMap<>();
-            
-            for (Map.Entry<String, Object> entry : map.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                
-                // 检查字段名是否包含敏感关键字
-                if (SENSITIVE_PATTERN.matcher(key).find()) {
-                    cleaned.put(key, "***REDACTED***");
-                } else {
-                    cleaned.put(key, removeSensitiveData(value));
-                }
-            }
-            return cleaned;
-            
-        } else if (obj instanceof List) {
-            List<Object> list = (List<Object>) obj;
-            return list.stream()
-                .map(this::removeSensitiveData)
-                .collect(Collectors.toList());
-                
-        } else {
-            return obj;
-        }
+        // 统一复用 common-sensitive 的递归脱敏能力，只在导出场景追加 key/credential 等关键字。
+        return SensitiveUtils.maskObject(obj, EXPORT_EXTRA_SENSITIVE_FIELDS);
     }
 
     /**

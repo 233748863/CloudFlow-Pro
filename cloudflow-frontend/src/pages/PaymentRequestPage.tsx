@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye } from 'lucide-react';
+import { DollarSign, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, Download } from 'lucide-react';
 import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
 import { toast } from 'sonner';
+import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 export const PaymentRequestPage: React.FC = () => {
@@ -133,6 +134,7 @@ export const PaymentRequestPage: React.FC = () => {
     setSearchParams({ ...searchParams, pageNum: 1 });
   };
 
+  
   const handleReset = () => {
     setSearchParams({
       status: '',
@@ -140,6 +142,15 @@ export const PaymentRequestPage: React.FC = () => {
       pageNum: 1,
       pageSize: 10,
     });
+  };
+  const handleExport = async () => {
+    try {
+      const blob = await paymentRequestApi.export(searchParams);
+      downloadBlob(blob, buildExcelFileName('付款申请'));
+      toast.success('导出成功');
+    } catch {
+      toast.error('导出失败');
+    }
   };
 
   const statusMap: Record<string, string> = {
@@ -180,13 +191,22 @@ export const PaymentRequestPage: React.FC = () => {
           <DollarSign className="text-green-600" />
           付款申请
         </h2>
-        <button
-          onClick={handleAdd}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
-        >
-          <Plus size={18} />
-          新增付款申请
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="bg-white text-green-600 border border-green-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-50 transition-colors"
+          >
+            <Download size={18} />
+            导出 Excel
+          </button>
+          <button
+            onClick={handleAdd}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+          >
+            <Plus size={18} />
+            新增付款申请
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">

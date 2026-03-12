@@ -2,9 +2,12 @@ package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.LeaveRequest;
+import com.cloudflow.oa.domain.export.LeaveRequestExportVo;
 import com.cloudflow.oa.service.ILeaveRequestService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +33,21 @@ public class LeaveController {
                   @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
         IPage<LeaveRequest> page = leaveRequestService.queryPage(query, pageNum, pageSize);
         return R.ok(page);
+    }
+
+    /**
+     * 导出请假申请列表
+     */
+    @SysLog("导出请假申请")
+    @GetMapping("/export")
+    public void export(LeaveRequest query, HttpServletResponse response) {
+        // 复用现有筛选与数据权限逻辑，保证导出结果和列表一致。
+        List<LeaveRequestExportVo> rows = leaveRequestService.queryPage(query, 1, Integer.MAX_VALUE)
+                .getRecords()
+                .stream()
+                .map(LeaveRequestExportVo::from)
+                .toList();
+        ExcelUtil.exportExcel(rows, "请假申请", LeaveRequestExportVo.class, response);
     }
 
     /**

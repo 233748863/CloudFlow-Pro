@@ -34,6 +34,8 @@ export interface AttendanceAppeal {
 export const attendanceAppealApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; appealType?: string }) =>
     request.get('/oa/attendance/appeal/list', { params }) as Promise<PageResult<AttendanceAppeal>>,
+  export: (params: { pageNum?: number; pageSize?: number; status?: string; appealType?: string }) =>
+    request.get('/oa/attendance/appeal/export', { params, responseType: 'blob' }) as Promise<Blob>,
   getInfo: (id: number) => request.get(`/oa/attendance/appeal/${id}`) as Promise<AttendanceAppeal>,
   add: (data: AttendanceAppeal) => request.post('/oa/attendance/appeal', data),
   edit: (data: AttendanceAppeal) => request.put('/oa/attendance/appeal', data),

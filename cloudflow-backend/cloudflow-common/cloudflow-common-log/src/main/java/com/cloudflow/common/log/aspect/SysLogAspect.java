@@ -96,7 +96,7 @@ public class SysLogAspect {
                 }
             }
             if (!logArgs.isEmpty() && StrUtil.isBlank(logEntity.getParams())) {
-                // ????????????????????????????????
+                // 统一走公共脱敏工具，避免日志切面重复维护字段规则
                 Object maskedArgs = SensitiveUtils.maskObject(logArgs);
                 logEntity.setParams(objectMapper.writeValueAsString(maskedArgs));
             }

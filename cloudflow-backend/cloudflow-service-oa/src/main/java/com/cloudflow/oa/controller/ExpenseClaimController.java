@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizExpenseClaim;
+import com.cloudflow.oa.domain.export.ExpenseClaimExportVo;
 import com.cloudflow.oa.service.IExpenseClaimService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 报销申请Controller
+ * 报销申请 Controller
  */
 @RestController
 @RequestMapping("/expense/claim")
@@ -33,20 +36,25 @@ public class ExpenseClaimController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Long userId) {
-        
         Page<BizExpenseClaim> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<BizExpenseClaim> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(status != null, BizExpenseClaim::getStatus, status)
-               .eq(category != null, BizExpenseClaim::getCategory, category)
-               .eq(userId != null, BizExpenseClaim::getUserId, userId)
-               .eq(BizExpenseClaim::getDelFlag, "0");
+        return R.ok(expenseClaimService.page(page, buildQueryWrapper(status, category, userId)));
+    }
 
-        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
-        DataScopeHelper.apply(wrapper, BizExpenseClaim::getUserId, BizExpenseClaim::getDeptId);
-
-        wrapper.orderByDesc(BizExpenseClaim::getCreateTime);
-        
-        return R.ok(expenseClaimService.page(page, wrapper));
+    /**
+     * 导出报销申请列表
+     */
+    @SysLog("导出报销申请")
+    @GetMapping("/export")
+    public void export(@RequestParam(required = false) String status,
+                       @RequestParam(required = false) String category,
+                       @RequestParam(required = false) Long userId,
+                       HttpServletResponse response) {
+        // 统一复用列表筛选与数据权限逻辑，保证导出结果与页面一致。
+        List<ExpenseClaimExportVo> rows = expenseClaimService.list(buildQueryWrapper(status, category, userId))
+                .stream()
+                .map(ExpenseClaimExportVo::from)
+                .toList();
+        ExcelUtil.exportExcel(rows, "报销申请", ExpenseClaimExportVo.class, response);
     }
 
     /**
@@ -104,21 +112,19 @@ public class ExpenseClaimController {
      */
     @SysLog("车辆费用转报销单")
     @PostMapping("/convert")
-    public R<Void> convertVehicleExpense(
-            @RequestBody Map<String, Object> params) {
+    public R<Void> convertVehicleExpense(@RequestBody Map<String, Object> params) {
         @SuppressWarnings("unchecked")
         List<Long> vehicleExpenseIds = (List<Long>) params.get("vehicleExpenseIds");
         Long userId = Long.valueOf(params.get("userId").toString());
-        return expenseClaimService.convertVehicleExpenseToClaim(vehicleExpenseIds, userId) 
-            ? R.ok() : R.fail("转换失败");
+        return expenseClaimService.convertVehicleExpenseToClaim(vehicleExpenseIds, userId)
+                ? R.ok() : R.fail("转换失败");
     }
 
     /**
      * 按部门统计月度报销费用
      */
     @GetMapping("/stats/dept")
-    public R<List<Map<String, Object>>> getMonthlyExpenseByDept(
-            @RequestParam String month) {
+    public R<List<Map<String, Object>>> getMonthlyExpenseByDept(@RequestParam String month) {
         return R.ok(expenseClaimService.getMonthlyExpenseByDept(month));
     }
 
@@ -126,8 +132,22 @@ public class ExpenseClaimController {
      * 按类别统计月度报销费用
      */
     @GetMapping("/stats/category")
-    public R<List<Map<String, Object>>> getMonthlyExpenseByCategory(
-            @RequestParam String month) {
+    public R<List<Map<String, Object>>> getMonthlyExpenseByCategory(@RequestParam String month) {
         return R.ok(expenseClaimService.getMonthlyExpenseByCategory(month));
+    }
+
+    /**
+     * 统一构建列表与导出的查询条件，确保两处结果保持一致。
+     */
+    private LambdaQueryWrapper<BizExpenseClaim> buildQueryWrapper(String status, String category, Long userId) {
+        LambdaQueryWrapper<BizExpenseClaim> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(status != null, BizExpenseClaim::getStatus, status)
+                .eq(category != null, BizExpenseClaim::getCategory, category)
+                .eq(userId != null, BizExpenseClaim::getUserId, userId)
+                .eq(BizExpenseClaim::getDelFlag, "0");
+
+        DataScopeHelper.apply(wrapper, BizExpenseClaim::getUserId, BizExpenseClaim::getDeptId);
+        wrapper.orderByDesc(BizExpenseClaim::getCreateTime);
+        return wrapper;
     }
 }

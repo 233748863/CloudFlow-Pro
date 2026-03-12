@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardCheck, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip } from 'lucide-react';
+import { ClipboardCheck, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip, Download } from 'lucide-react';
 import { attendanceAppealApi, AttendanceAppeal } from '../services/api/attendanceAppeal';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
+import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 补卡/外勤申请页面 */
@@ -54,9 +55,25 @@ export const AttendanceAppealPage: React.FC = () => {
     try { await attendanceAppealApi.remove(ids); toast.success('删除成功'); fetchList(); } catch { toast.error('删除失败'); }
   };
 
+  
   const handleSubmit = async (id: number) => {
     if (!confirm('确定提交审批？')) return;
-    try { await attendanceAppealApi.submit(id); toast.success('提交成功'); fetchList(); } catch { toast.error('提交失败'); }
+    try {
+      await attendanceAppealApi.submit(id);
+      toast.success('提交成功');
+      fetchList();
+    } catch {
+      toast.error('提交失败');
+    }
+  };
+  const handleExport = async () => {
+    try {
+      const blob = await attendanceAppealApi.export(searchParams);
+      downloadBlob(blob, buildExcelFileName('补卡外勤申请'));
+      toast.success('导出成功');
+    } catch {
+      toast.error('导出失败');
+    }
   };
 
   // 状态映射
@@ -81,7 +98,10 @@ export const AttendanceAppealPage: React.FC = () => {
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
           <ClipboardCheck className="text-pink-500" /> 补卡/外勤申请
         </h2>
-        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增申请</button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="bg-white text-pink-500 border border-pink-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-50"><Download size={18} />导出 Excel</button>
+          <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增申请</button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">

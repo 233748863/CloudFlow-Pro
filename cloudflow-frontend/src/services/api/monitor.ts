@@ -32,16 +32,22 @@ export interface ProcessMonitor {
  */
 export interface TimeoutAlert {
   id: number;
+  tenantId: number;
   alertType: 'TASK' | 'PROCESS';
-  relatedId: string;
-  relatedTitle: string;
-  alertLevel: 'WARNING' | 'CRITICAL';
-  timeoutHours: number;
+  targetId: string;
+  targetName: string;
+  timeoutLevel: 'REMIND' | 'WARNING' | 'CRITICAL';
+  timeoutDuration: number;
+  threshold?: number;
   assigneeId?: number;
   assigneeName?: string;
-  notificationSent: boolean;
-  escalated: boolean;
+  notificationSent: 'Y' | 'N';
+  escalated: 'Y' | 'N';
+  resolved?: 'Y' | 'N';
+  alertTime: string;
+  resolveTime?: string;
   createTime: string;
+  updateTime?: string;
 }
 
 /**
@@ -54,11 +60,16 @@ export interface AnomalyAlert {
   processName: string;
   anomalyType: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  description: string;
+  errorMessage?: string;
+  stackTrace?: string;
+  description?: string;
   errorDetails?: string;
-  resolved: boolean;
+  resolved: 'Y' | 'N';
   resolveNote?: string;
+  alertTime?: string;
   createTime: string;
+  resolveTime?: string;
+  notificationSent?: 'Y' | 'N';
 }
 
 /**
@@ -146,7 +157,7 @@ export async function getTimeoutAlerts(params?: {
   pageNum?: number;
   pageSize?: number;
   alertType?: 'TASK' | 'PROCESS';
-  alertLevel?: 'WARNING' | 'CRITICAL';
+  alertLevel?: 'REMIND' | 'WARNING' | 'CRITICAL';
   resolved?: boolean;
 }): Promise<any> {
   return request.get('/workflow/monitor/timeout/list', { params });

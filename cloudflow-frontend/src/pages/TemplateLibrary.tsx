@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Eye,
@@ -444,73 +444,58 @@ export const TemplateLibrary: React.FC = () => {
     return (
       <Card
         key={template.id}
-        className="group overflow-hidden border-slate-200/80 bg-white/95 shadow-sm shadow-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-pink-100/60"
+        className="group overflow-hidden border border-slate-200/60 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-pink-100/40"
       >
-        <CardHeader className="pb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-3">
-              <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200/80">
+        <CardHeader className="pb-4 pt-6 px-6">
+          <div className="flex items-center justify-between gap-4 mb-4">
+             <div className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
                 <Layers3 className="mr-1.5 h-3.5 w-3.5" />
                 {template.categoryName || TEXT.uncategorized}
               </div>
-              <div>
-                <CardTitle className="text-xl text-slate-900">{template.name}</CardTitle>
-                <CardDescription className="mt-2 min-h-[2.75rem] leading-6">{template.description || TEXT.noDescription}</CardDescription>
-              </div>
-            </div>
-            {template.isSystem ? (
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+              {template.isSystem ? (
+              <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-100/50">
                 {TEXT.systemTemplate}
               </span>
             ) : null}
           </div>
+          <div>
+            <CardTitle className="text-xl text-slate-900 font-bold tracking-tight line-clamp-1">{template.name}</CardTitle>
+            <CardDescription className="mt-2 h-[2.5rem] leading-5 text-slate-500 line-clamp-2 text-sm">{template.description || TEXT.noDescription}</CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+        <CardContent className="space-y-6 px-6 pb-6">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-4">
             {metrics.map((metric) => (
-              <div key={metric.label} className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200/70">
-                <div className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400">{metric.label}</div>
-                <div className="mt-1 truncate text-sm font-semibold text-slate-700" title={metric.value}>{metric.value}</div>
+              <div key={metric.label} className="">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">{metric.label}</div>
+                <div className="truncate text-sm font-semibold text-slate-700" title={metric.value}>{metric.value}</div>
               </div>
             ))}
           </div>
-          <div className="flex min-h-[2rem] flex-wrap gap-2">
-            {tags.length > 0 ? (
-              tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-700 ring-1 ring-pink-100"
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-400 ring-1 ring-slate-200/80">-</span>
-            )}
-          </div>
-          <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-50 to-pink-50/60 px-4 py-3 ring-1 ring-slate-200/70">
-            <div>
-              <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.templateUsage}</div>
-              <div className="mt-1 text-base font-semibold text-slate-800">{template.usageCount || 0}</div>
-            </div>
-            <Workflow className="h-5 w-5 text-pink-400" />
+          
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+             <div className="flex flex-col">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">{TEXT.templateUsage}</span>
+                <span className="text-lg font-bold text-slate-800">{template.usageCount || 0}</span>
+             </div>
+             <div className="flex gap-3">
+                 <Button variant="outline" className="h-9 px-4 rounded-xl border-slate-200 text-slate-600 hover:text-pink-600 hover:border-pink-200 hover:bg-pink-50" onClick={() => handlePreview(template)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    {TEXT.preview}
+                 </Button>
+                 <Button 
+                    size="sm"
+                    className="h-9 px-4 rounded-xl bg-pink-500 hover:bg-pink-600 text-white shadow-md shadow-pink-200 font-medium transition-all active:scale-95"
+                    disabled={!user}
+                    onClick={() => handleCreateFromTemplate(template.id)}
+                    title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
+                 >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    {TEXT.useTemplate}
+                 </Button>
+             </div>
           </div>
         </CardContent>
-        <CardFooter className="gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => handlePreview(template)}>
-            <Eye className="mr-2 h-4 w-4" />
-            {TEXT.preview}
-          </Button>
-          <Button
-            className="flex-1"
-            disabled={!user}
-            onClick={() => handleCreateFromTemplate(template.id)}
-            title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {TEXT.useTemplate}
-          </Button>
-        </CardFooter>
       </Card>
     );
   };
@@ -520,15 +505,15 @@ export const TemplateLibrary: React.FC = () => {
     const tags = normalizeTags(template.tags);
 
     return (
-      <Card key={template.id} className="overflow-hidden border-slate-200/80 bg-white/95 shadow-sm shadow-slate-200/50">
+      <Card key={template.id} className="overflow-hidden border border-slate-200/60 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-pink-100/40">
         <CardContent className="flex flex-col gap-5 p-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1 space-y-4">
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="truncate text-xl font-semibold text-slate-900">{template.name}</h3>
+                  <h3 className="truncate text-xl font-bold tracking-tight text-slate-900">{template.name}</h3>
                   {template.isSystem ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                    <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-100/50">
                       {TEXT.systemTemplate}
                     </span>
                   ) : null}
@@ -540,42 +525,43 @@ export const TemplateLibrary: React.FC = () => {
               {tags.length > 0 ? tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-700 ring-1 ring-pink-100"
+                  className="inline-flex items-center rounded-full bg-pink-50/50 px-2.5 py-1 text-xs font-medium text-pink-700 ring-1 ring-pink-100 backdrop-blur-sm"
                 >
                   {tag}
                 </span>
               )) : <span className="text-sm text-slate-400">-</span>}
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200/70">
+              <div className="rounded-xl bg-slate-50/50 px-3 py-2 ring-1 ring-slate-200/50 backdrop-blur-sm">
                 <div className="text-xs uppercase tracking-[0.12em] text-slate-400">{TEXT.category}</div>
                 <div className="mt-1 truncate text-sm font-semibold text-slate-700">{template.categoryName || TEXT.uncategorized}</div>
               </div>
-              <div className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200/70">
+              <div className="rounded-xl bg-slate-50/50 px-3 py-2 ring-1 ring-slate-200/50 backdrop-blur-sm">
                 <div className="text-xs uppercase tracking-[0.12em] text-slate-400">{TEXT.templateUsage}</div>
                 <div className="mt-1 text-sm font-semibold text-slate-700">{template.usageCount || 0}</div>
               </div>
-              <div className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200/70">
+              <div className="rounded-xl bg-slate-50/50 px-3 py-2 ring-1 ring-slate-200/50 backdrop-blur-sm">
                 <div className="text-xs uppercase tracking-[0.12em] text-slate-400">{TEXT.nodeCount}</div>
                 <div className="mt-1 text-sm font-semibold text-slate-700">{graph.nodes.length}</div>
               </div>
-              <div className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200/70">
+              <div className="rounded-xl bg-slate-50/50 px-3 py-2 ring-1 ring-slate-200/50 backdrop-blur-sm">
                 <div className="text-xs uppercase tracking-[0.12em] text-slate-400">{TEXT.edgeCount}</div>
                 <div className="mt-1 text-sm font-semibold text-slate-700">{graph.edges.length}</div>
               </div>
             </div>
           </div>
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
-            <Button variant="outline" onClick={() => handlePreview(template)}>
+            <Button variant="outline" className="h-9 px-4 rounded-xl border-slate-200 text-slate-600 hover:text-pink-600 hover:border-pink-200 hover:bg-pink-50" onClick={() => handlePreview(template)}>
               <Eye className="mr-2 h-4 w-4" />
               {TEXT.preview}
             </Button>
             <Button
+              className="h-9 px-4 rounded-xl bg-pink-500 hover:bg-pink-600 text-white shadow-md shadow-pink-200 font-medium transition-all active:scale-95"
               disabled={!user}
               onClick={() => handleCreateFromTemplate(template.id)}
               title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-1.5 h-4 w-4" />
               {TEXT.useTemplate}
             </Button>
           </div>
@@ -595,42 +581,53 @@ export const TemplateLibrary: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,_rgba(236,72,153,0.14),_transparent_26%),linear-gradient(180deg,_#fff_0%,_#f8fafc_100%)]">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 p-6 xl:flex-row">
+    <div className="relative min-h-screen font-[Inter]">
+      {/* 氛围背景装饰 */}
+      <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-pink-300/20 rounded-full blur-[100px]" />
+        <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-blue-300/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-purple-300/10 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-slate-50/40 backdrop-blur-[1px]" />
+      </div>
+
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 p-6 xl:flex-row relative z-10">
         <aside className="w-full shrink-0 space-y-6 xl:sticky xl:top-6 xl:w-[320px] xl:self-start">
-          <Card className="overflow-hidden border-none shadow-xl shadow-pink-100/70">
-            <div className="bg-gradient-to-br from-pink-600 via-pink-500 to-rose-400 p-6 text-white">
-              <div className="flex items-center justify-between gap-4">
+          <Card className="overflow-hidden border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-gradient-to-br from-pink-500 to-rose-600">
+            <div className="p-6 text-white relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -left-4 -bottom-4 w-24 h-24 bg-rose-500/30 rounded-full blur-xl pointer-events-none" />
+              
+              <div className="flex items-center justify-between gap-4 relative z-10">
                 <div>
-                  <div className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/90">
+                  <div className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md shadow-sm border border-white/20">
                     <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                     {TEXT.pageTitle}
                   </div>
-                  <h1 className="mt-4 text-3xl font-semibold tracking-tight">{TEXT.pageTitle}</h1>
-                  <p className="mt-3 max-w-sm text-sm leading-6 text-white/85">{TEXT.pageDescription}</p>
+                  <h1 className="mt-4 text-3xl font-bold tracking-tight text-white drop-shadow-sm">{TEXT.pageTitle}</h1>
+                  <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/90 font-medium">{TEXT.pageDescription}</p>
                 </div>
-                <div className="hidden rounded-3xl bg-white/15 p-4 backdrop-blur xl:block">
-                  <Workflow className="h-10 w-10 text-white" />
+                <div className="hidden rounded-3xl bg-white/20 p-4 backdrop-blur-md border border-white/20 shadow-inner xl:block">
+                  <Workflow className="h-10 w-10 text-white drop-shadow" />
                 </div>
               </div>
-              <p className="mt-6 text-sm text-white/80">{TEXT.pageHighlight}</p>
+              <p className="mt-6 text-xs font-medium text-white/80 bg-black/5 inline-block px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10">{TEXT.pageHighlight}</p>
             </div>
-            <CardContent className="grid grid-cols-2 gap-3 bg-white/90 p-5">
+            <CardContent className="grid grid-cols-2 gap-3 bg-white/90 p-5 backdrop-blur-xl">
               <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.currentResults}</div>
-                <div className="mt-2 text-2xl font-semibold text-slate-900">{total}</div>
+                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{TEXT.currentResults}</div>
+                <div className="mt-2 text-2xl font-bold text-slate-800">{total}</div>
               </div>
               <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.categoryCount}</div>
-                <div className="mt-2 text-2xl font-semibold text-slate-900">{categoryCount}</div>
+                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{TEXT.categoryCount}</div>
+                <div className="mt-2 text-2xl font-bold text-slate-800">{categoryCount}</div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/50">
+          <Card className="border-white/60 bg-white/60 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl text-slate-900">{TEXT.categoryNavigation}</CardTitle>
-              <CardDescription>{TEXT.categoryNavigationDesc}</CardDescription>
+              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">{TEXT.categoryNavigation}</CardTitle>
+              <CardDescription className="font-medium text-slate-500">{TEXT.categoryNavigationDesc}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
@@ -641,8 +638,8 @@ export const TemplateLibrary: React.FC = () => {
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "h-auto w-full justify-start rounded-xl px-3 py-3 text-left text-sm font-medium",
-                  !selectedCategory ? "bg-pink-50 text-pink-700 shadow-sm shadow-pink-100" : "text-slate-700 hover:bg-slate-100/80",
+                  "h-auto w-full justify-start rounded-xl px-3 py-3 text-left text-sm font-medium transition-all duration-300",
+                  !selectedCategory ? "bg-pink-50 text-pink-700 shadow-sm shadow-pink-100 ring-1 ring-pink-200/50" : "text-slate-600 hover:bg-white/80 hover:text-slate-900",
                 )}
               >
                 <Layers3 className="mr-2 h-4 w-4 shrink-0" />
@@ -656,16 +653,16 @@ export const TemplateLibrary: React.FC = () => {
                   icon={<FolderOpen className="h-10 w-10" />}
                   title={TEXT.noCategory}
                   description={TEXT.noCategoryDesc}
-                  className="rounded-2xl bg-slate-50 py-10 ring-1 ring-slate-200/70"
+                  className="rounded-2xl bg-slate-50/50 py-10 ring-1 ring-slate-200/50"
                 />
               )}
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/50">
+          <Card className="border-white/60 bg-white/60 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl text-slate-900">{TEXT.commonTags}</CardTitle>
-              <CardDescription>{TEXT.commonTagsDesc}</CardDescription>
+              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">{TEXT.commonTags}</CardTitle>
+              <CardDescription className="font-medium text-slate-500">{TEXT.commonTagsDesc}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {COMMON_TAGS.map((tag) => {
@@ -677,7 +674,10 @@ export const TemplateLibrary: React.FC = () => {
                     size="sm"
                     variant={active ? "default" : "secondary"}
                     onClick={() => toggleTag(tag)}
-                    className={cn(active ? "shadow-sm shadow-pink-200/60" : "text-slate-700")}
+                    className={cn(
+                      "transition-all duration-300",
+                      active ? "bg-pink-500 text-white shadow-md shadow-pink-200 hover:bg-pink-600" : "bg-white/50 text-slate-600 hover:bg-white hover:text-pink-600 border border-transparent hover:border-pink-100"
+                    )}
                   >
                     {tag}
                   </Button>
@@ -688,11 +688,11 @@ export const TemplateLibrary: React.FC = () => {
         </aside>
 
         <section className="min-w-0 flex-1 space-y-6">
-          <Card className="overflow-hidden border-none bg-white/90 shadow-xl shadow-slate-200/60">
+          <Card className="overflow-hidden border-white/60 bg-white/60 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <CardContent className="space-y-5 p-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="relative w-full max-w-2xl">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <div className="relative w-full max-w-2xl group">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-hover:text-pink-500 transition-colors" />
                   <Input
                     value={searchTerm}
                     onChange={(event) => {
@@ -700,7 +700,7 @@ export const TemplateLibrary: React.FC = () => {
                       setCurrentPage(1);
                     }}
                     placeholder={TEXT.searchPlaceholder}
-                    className="h-12 rounded-2xl border-slate-200 bg-slate-50/80 pl-11 pr-4 text-sm shadow-inner shadow-slate-100/50"
+                    className="h-12 rounded-2xl border-slate-200/60 bg-white/50 pl-11 pr-4 text-sm shadow-inner shadow-slate-100/50 focus:bg-white focus:ring-2 focus:ring-pink-500/20 transition-all duration-300"
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-2 self-end xl:self-auto">
@@ -710,7 +710,7 @@ export const TemplateLibrary: React.FC = () => {
                     size="icon"
                     onClick={() => setViewMode("grid")}
                     title={TEXT.gridView}
-                    className={viewMode === "grid" ? "shadow-sm shadow-pink-100" : ""}
+                    className={cn("rounded-xl transition-all duration-300", viewMode === "grid" ? "bg-white text-pink-600 shadow-md shadow-slate-200/50 ring-1 ring-slate-200/50" : "hover:bg-white/60 text-slate-500")}
                   >
                     <Grid className="h-5 w-5" />
                   </Button>
@@ -720,12 +720,12 @@ export const TemplateLibrary: React.FC = () => {
                     size="icon"
                     onClick={() => setViewMode("list")}
                     title={TEXT.listView}
-                    className={viewMode === "list" ? "shadow-sm shadow-pink-100" : ""}
+                    className={cn("rounded-xl transition-all duration-300", viewMode === "list" ? "bg-white text-pink-600 shadow-md shadow-slate-200/50 ring-1 ring-slate-200/50" : "hover:bg-white/60 text-slate-500")}
                   >
                     <List className="h-5 w-5" />
                   </Button>
                   {hasActiveFilters ? (
-                    <Button type="button" variant="outline" onClick={clearFilters}>
+                    <Button type="button" variant="outline" onClick={clearFilters} className="rounded-xl border-slate-200/60 bg-white/50 hover:bg-white hover:text-rose-600 hover:border-rose-200 transition-all duration-300">
                       <X className="mr-2 h-4 w-4" />
                       {TEXT.clearFilters}
                     </Button>
@@ -734,27 +734,27 @@ export const TemplateLibrary: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.currentResults}</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-900">{total}</div>
+                <div className="rounded-2xl bg-slate-50/50 px-4 py-3 ring-1 ring-slate-200/50 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{TEXT.currentResults}</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-800">{total}</div>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.category}</div>
-                  <div className="mt-2 truncate text-base font-semibold text-slate-900">{selectedCategoryName}</div>
+                <div className="rounded-2xl bg-slate-50/50 px-4 py-3 ring-1 ring-slate-200/50 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{TEXT.category}</div>
+                  <div className="mt-2 truncate text-base font-bold text-slate-800">{selectedCategoryName}</div>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.activeFilters}</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-900">{(selectedCategory ? 1 : 0) + selectedTags.length + (searchTerm.trim() ? 1 : 0)}</div>
+                <div className="rounded-2xl bg-slate-50/50 px-4 py-3 ring-1 ring-slate-200/50 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{TEXT.activeFilters}</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-800">{(selectedCategory ? 1 : 0) + selectedTags.length + (searchTerm.trim() ? 1 : 0)}</div>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.currentView}</div>
-                  <div className="mt-2 text-base font-semibold text-slate-900">{viewMode === "grid" ? TEXT.gridView : TEXT.listView}</div>
+                <div className="rounded-2xl bg-slate-50/50 px-4 py-3 ring-1 ring-slate-200/50 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{TEXT.currentView}</div>
+                  <div className="mt-2 text-base font-bold text-slate-800">{viewMode === "grid" ? TEXT.gridView : TEXT.listView}</div>
                 </div>
               </div>
 
               {hasActiveFilters ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{TEXT.filterSummary}</div>
+                <div className="rounded-2xl border border-dashed border-slate-300/60 bg-slate-50/50 px-4 py-3 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{TEXT.filterSummary}</div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {selectedCategory ? (
                       <Button variant="outline" size="sm"
@@ -763,7 +763,7 @@ export const TemplateLibrary: React.FC = () => {
                           setSelectedCategory("");
                           setCurrentPage(1);
                         }}
-                        className="inline-flex items-center rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-pink-50 hover:text-pink-700"
+                        className="inline-flex items-center rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-pink-50 hover:text-pink-700 hover:ring-pink-200 shadow-sm"
                       >
                         {selectedCategoryName}
                         <X className="ml-2 h-3.5 w-3.5" />
@@ -776,7 +776,7 @@ export const TemplateLibrary: React.FC = () => {
                           setSearchTerm("");
                           setCurrentPage(1);
                         }}
-                        className="inline-flex items-center rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-pink-50 hover:text-pink-700"
+                        className="inline-flex items-center rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-pink-50 hover:text-pink-700 hover:ring-pink-200 shadow-sm"
                       >
                         {searchTerm.trim()}
                         <X className="ml-2 h-3.5 w-3.5" />
@@ -787,7 +787,7 @@ export const TemplateLibrary: React.FC = () => {
                         key={tag}
                         type="button"
                         onClick={() => toggleTag(tag)}
-                        className="inline-flex items-center rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-pink-50 hover:text-pink-700"
+                        className="inline-flex items-center rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-pink-50 hover:text-pink-700 hover:ring-pink-200 shadow-sm"
                       >
                         {tag}
                         <X className="ml-2 h-3.5 w-3.5" />
@@ -800,7 +800,7 @@ export const TemplateLibrary: React.FC = () => {
           </Card>
 
           {loading ? renderLoadingState() : loadError ? (
-            <Card className="border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/50">
+            <Card className="border-white/60 bg-white/60 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
               <CardContent className="p-8">
                 <EmptyState
                   icon={<Workflow className="h-12 w-12" />}
@@ -811,7 +811,7 @@ export const TemplateLibrary: React.FC = () => {
               </CardContent>
             </Card>
           ) : templates.length === 0 ? (
-            <Card className="border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/50">
+            <Card className="border-white/60 bg-white/60 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
               <CardContent className="p-8">
                 <EmptyState
                   icon={<Search className="h-12 w-12" />}
@@ -828,12 +828,12 @@ export const TemplateLibrary: React.FC = () => {
           )}
 
           {total > pageSize ? (
-            <Card className="border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/50">
+            <Card className="border-white/60 bg-white/60 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
               <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-slate-500">{TEXT.pageLabel} {currentPage} / {totalPages} {TEXT.pageSuffix}</div>
+                <div className="text-sm font-medium text-slate-500">{TEXT.pageLabel} {currentPage} / {totalPages} {TEXT.pageSuffix}</div>
                 <div className="flex items-center gap-3">
-                  <Button type="button" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}>{TEXT.previousPage}</Button>
-                  <Button type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((value) => Math.min(totalPages, value + 1))}>{TEXT.nextPage}</Button>
+                  <Button type="button" variant="outline" className="bg-white/50 border-slate-200/60 hover:bg-white transition-all" disabled={currentPage === 1} onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}>{TEXT.previousPage}</Button>
+                  <Button type="button" variant="outline" className="bg-white/50 border-slate-200/60 hover:bg-white transition-all" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((value) => Math.min(totalPages, value + 1))}>{TEXT.nextPage}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -842,98 +842,116 @@ export const TemplateLibrary: React.FC = () => {
       </div>
 
       <Dialog open={showPreview} onOpenChange={handlePreviewOpenChange}>
-        <DialogContent className="sm:max-w-5xl">
+        <DialogContent className="sm:max-w-5xl max-h-[85vh] flex flex-col p-0 overflow-hidden gap-0">
           {previewTemplate ? (
             <>
-              <DialogHeader>
-                <DialogTitle>{`${previewTemplate.name} ${TEXT.previewTitleSuffix}`}</DialogTitle>
-                <DialogDescription>{previewTemplate.description || TEXT.noDescription}</DialogDescription>
+              <DialogHeader className="p-6 pb-4 border-b border-slate-100 shrink-0">
+                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Workflow className="h-5 w-5 text-pink-500" />
+                  {`${previewTemplate.name}`}
+                  <span className="text-slate-400 font-normal text-sm ml-1">{TEXT.previewTitleSuffix}</span>
+                </DialogTitle>
+                <DialogDescription className="mt-1.5 text-slate-500">{previewTemplate.description || TEXT.noDescription}</DialogDescription>
               </DialogHeader>
 
-              {!!previewTemplate.previewImage ? (
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                  <img src={previewTemplate.previewImage} alt={`${previewTemplate.name} preview`} className="max-h-64 w-full object-contain" />
-                </div>
-              ) : null}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                {!!previewTemplate.previewImage ? (
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <img src={previewTemplate.previewImage} alt={`${previewTemplate.name} preview`} className="max-h-64 w-full object-contain" />
+                  </div>
+                ) : null}
 
-              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.nodeCount}</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-900">{previewGraph.nodes.length}</div>
+                <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                  <div className="rounded-xl bg-white px-4 py-3 border border-slate-200 shadow-sm">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{TEXT.nodeCount}</div>
+                    <div className="mt-1 text-xl font-bold text-slate-800">{previewGraph.nodes.length}</div>
+                  </div>
+                  <div className="rounded-xl bg-white px-4 py-3 border border-slate-200 shadow-sm">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{TEXT.edgeCount}</div>
+                    <div className="mt-1 text-xl font-bold text-slate-800">{previewGraph.edges.length}</div>
+                  </div>
+                  <div className="rounded-xl bg-white px-4 py-3 border border-slate-200 shadow-sm">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{TEXT.category}</div>
+                    <div className="mt-1 truncate text-sm font-semibold text-slate-800">{previewTemplate.categoryName || TEXT.uncategorized}</div>
+                  </div>
+                  <div className="rounded-xl bg-white px-4 py-3 border border-slate-200 shadow-sm">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{TEXT.tags}</div>
+                    <div className="mt-1 truncate text-sm font-semibold text-slate-800">{normalizeTags(previewTemplate.tags).join(" / ") || "-"}</div>
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.edgeCount}</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-900">{previewGraph.edges.length}</div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.category}</div>
-                  <div className="mt-2 truncate text-sm font-semibold text-slate-900">{previewTemplate.categoryName || TEXT.uncategorized}</div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/70">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">{TEXT.tags}</div>
-                  <div className="mt-2 truncate text-sm font-semibold text-slate-900">{normalizeTags(previewTemplate.tags).join(" / ") || "-"}</div>
-                </div>
+
+                {previewGraph.nodes.length > 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4">
+                      <div className="text-sm font-bold text-slate-900">{TEXT.previewStructure}</div>
+                      <div className="mt-0.5 text-xs text-slate-500">{TEXT.previewStructureDesc}</div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                      {previewGraph.nodes.slice(0, 8).map((node, index) => (
+                        <React.Fragment key={node.id}>
+                          <div className="min-w-[140px] rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 shadow-sm shrink-0">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">{formatNodeType(node.type)}</div>
+                            <div className="truncate text-sm font-semibold text-slate-700" title={node.name}>{node.name}</div>
+                          </div>
+                          {index < Math.min(previewGraph.nodes.length - 1, 7) ? <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" /> : null}
+                        </React.Fragment>
+                      ))}
+                      {previewGraph.nodes.length > 8 && (
+                        <div className="flex items-center justify-center min-w-[40px] h-[66px] rounded-xl border border-dashed border-slate-200 bg-slate-50/50 text-slate-400 text-xs font-medium">
+                          +{previewGraph.nodes.length - 8}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/30 overflow-hidden">
+                        <div className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                          {TEXT.nodeList}
+                        </div>
+                        <div className="max-h-40 overflow-y-auto p-2 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-200">
+                          {previewGraph.nodes.map((node) => (
+                            <div key={node.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 border border-slate-100 shadow-sm text-sm">
+                              <span className="font-medium text-slate-700 truncate mr-2">{node.name}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{formatNodeType(node.type)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/30 overflow-hidden">
+                        <div className="px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                          {TEXT.edgeList}
+                        </div>
+                        <div className="max-h-40 overflow-y-auto p-2 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-200">
+                          {previewGraph.edges.length === 0 ? (
+                            <div className="flex items-center justify-center h-full text-xs text-slate-400 py-8">{TEXT.edgeNotFound}</div>
+                          ) : previewGraph.edges.map((edge, index) => (
+                            <div key={`${edge.source}-${edge.target}-${index}`} className="rounded-lg bg-white px-3 py-2 border border-slate-100 shadow-sm text-sm">
+                              <div className="flex items-center gap-2 text-slate-600 mb-0.5">
+                                <span className="truncate max-w-[45%] font-medium">{edge.source}</span>
+                                <ArrowRight className="h-3 w-3 shrink-0 text-slate-300" />
+                                <span className="truncate max-w-[45%] font-medium">{edge.target}</span>
+                              </div>
+                              {edge.condition ? <div className="text-[10px] text-slate-400 bg-slate-50 inline-block px-1.5 rounded mt-1 border border-slate-100 max-w-full truncate">{edge.condition}</div> : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center">
+                     <Workflow className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                     <p className="text-sm text-slate-500">{TEXT.invalidDefinition}</p>
+                  </div>
+                )}
               </div>
 
-              {previewGraph.nodes.length > 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-pink-50/60 p-5">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">{TEXT.previewStructure}</div>
-                    <div className="mt-1 text-sm text-slate-500">{TEXT.previewStructureDesc}</div>
-                  </div>
-                  <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-2">
-                    {previewGraph.nodes.slice(0, 8).map((node, index) => (
-                      <React.Fragment key={node.id}>
-                        <div className="min-w-[152px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70">
-                          <div className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400">{formatNodeType(node.type)}</div>
-                          <div className="mt-2 truncate text-sm font-semibold text-slate-800" title={node.name}>{node.name}</div>
-                        </div>
-                        {index < Math.min(previewGraph.nodes.length - 1, 7) ? <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" /> : null}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                  <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    <Card className="border-slate-200/80 bg-white/90 shadow-sm shadow-slate-100/70">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">{TEXT.nodeList}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
-                          {previewGraph.nodes.map((node) => (
-                            <div key={node.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                              <div className="font-semibold text-slate-800">{node.name}</div>
-                              <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-400">{formatNodeType(node.type)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-slate-200/80 bg-white/90 shadow-sm shadow-slate-100/70">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">{TEXT.edgeList}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
-                          {previewGraph.edges.length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-sm text-slate-400">{TEXT.edgeNotFound}</div>
-                          ) : previewGraph.edges.map((edge, index) => (
-                            <div key={`${edge.source}-${edge.target}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                              <div className="font-semibold text-slate-800">{`${edge.source} -> ${edge.target}`}</div>
-                              {edge.condition ? <div className="mt-1 text-xs text-slate-400">{edge.condition}</div> : null}
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-500">{TEXT.invalidDefinition}</div>
-              )}
-
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => handlePreviewOpenChange(false)}>{TEXT.close}</Button>
+              <DialogFooter className="p-4 border-t border-slate-100 bg-white shrink-0 gap-3">
+                <Button variant="outline" onClick={() => handlePreviewOpenChange(false)} className="h-10 px-6 rounded-xl border-slate-200 hover:bg-slate-50 hover:text-slate-900">{TEXT.close}</Button>
                 <Button
+                  className="h-10 px-6 rounded-xl bg-pink-500 hover:bg-pink-600 text-white shadow-md shadow-pink-200 font-medium transition-all active:scale-95"
                   disabled={!user}
                   onClick={() => {
                     handlePreviewOpenChange(false);
@@ -941,6 +959,7 @@ export const TemplateLibrary: React.FC = () => {
                   }}
                   title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
                 >
+                  <Plus className="mr-2 h-4 w-4" />
                   {TEXT.useTemplate}
                 </Button>
               </DialogFooter>

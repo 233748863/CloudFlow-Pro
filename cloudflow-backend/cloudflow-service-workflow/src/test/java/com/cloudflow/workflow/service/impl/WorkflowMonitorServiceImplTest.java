@@ -1,5 +1,6 @@
 package com.cloudflow.workflow.service.impl;
 
+import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.mapper.AnomalyAlertMapper;
 import com.cloudflow.workflow.mapper.PerformanceStatsMapper;
@@ -10,8 +11,9 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class WorkflowMonitorServiceImplTest {
 
@@ -46,6 +48,41 @@ class WorkflowMonitorServiceImplTest {
         assertSame(expected, actual);
         assertEquals("selectByInstanceId", invokedMethod.get());
         assertEquals("instance-1", invokedInstanceId.get());
+    }
+
+    @Test
+    void resolveAnomalyAlertShouldPersistYnFlag() {
+        AnomalyAlert stored = new AnomalyAlert();
+        stored.setId(100L);
+        stored.setResolved("N");
+
+        AtomicReference<AnomalyAlert> updatedAlert = new AtomicReference<>();
+
+        AnomalyAlertMapper anomalyAlertMapper = proxy(AnomalyAlertMapper.class, (methodName, args) -> {
+            if ("selectById".equals(methodName)) {
+                return stored;
+            }
+            if ("updateById".equals(methodName)) {
+                updatedAlert.set((AnomalyAlert) args[0]);
+                return 1;
+            }
+            return null;
+        });
+
+        WorkflowMonitorServiceImpl service = new WorkflowMonitorServiceImpl(
+                proxy(ProcessMonitorMapper.class, (methodName, args) -> null),
+                proxy(TimeoutAlertMapper.class, (methodName, args) -> null),
+                anomalyAlertMapper,
+                proxy(PerformanceStatsMapper.class, (methodName, args) -> null)
+        );
+
+        service.resolveAnomalyAlert(100L, "人工处理完成");
+
+        AnomalyAlert updated = updatedAlert.get();
+        assertNotNull(updated);
+        assertEquals("Y", updated.getResolved());
+        assertEquals("人工处理完成", updated.getResolveNote());
+        assertNotNull(updated.getResolveTime());
     }
 
     @SuppressWarnings("unchecked")

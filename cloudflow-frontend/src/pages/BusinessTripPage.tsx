@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip } from 'lucide-react';
+import { Plane, Plus, Edit, Trash2, Send, Search, RotateCcw, X, Paperclip, Download } from 'lucide-react';
 import { businessTripApi, BusinessTrip } from '../services/api/businessTrip';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
+import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 出差申请页面 */
@@ -65,9 +66,25 @@ export const BusinessTripPage: React.FC = () => {
     try { await businessTripApi.remove(ids); toast.success('删除成功'); fetchList(); } catch { toast.error('删除失败'); }
   };
 
+  
   const handleSubmit = async (id: number) => {
     if (!confirm('确定提交审批？')) return;
-    try { await businessTripApi.submit(id); toast.success('提交成功'); fetchList(); } catch { toast.error('提交失败'); }
+    try {
+      await businessTripApi.submit(id);
+      toast.success('提交成功');
+      fetchList();
+    } catch {
+      toast.error('提交失败');
+    }
+  };
+  const handleExport = async () => {
+    try {
+      const blob = await businessTripApi.export(searchParams);
+      downloadBlob(blob, buildExcelFileName('出差申请'));
+      toast.success('导出成功');
+    } catch {
+      toast.error('导出失败');
+    }
   };
 
   const statusMap: Record<string, string> = { DRAFT: '草稿', PENDING: '审批中', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已取消' };
@@ -88,7 +105,10 @@ export const BusinessTripPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Plane className="text-pink-500" /> 出差申请</h2>
-        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增申请</button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="bg-white text-pink-500 border border-pink-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-50"><Download size={18} />导出 Excel</button>
+          <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增申请</button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
