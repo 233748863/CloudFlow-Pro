@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Search, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPostList, addPost, updatePost, deletePost, type SysPost } from '../../services/api/system';
 import { Input } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 export const PostList = () => {
   const [posts, setPosts] = useState<SysPost[]>([]);
@@ -108,7 +109,7 @@ export const PostList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">排序</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">创建时间</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-48">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -128,9 +129,24 @@ export const PostList = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{post.createTime || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                    <button onClick={() => handleOpenModal(post)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><Edit size={16} /> 编辑</button>
-                    <button onClick={() => handleDelete(post.postId!)} className="text-red-600 hover:text-red-900 flex items-center gap-1"><Trash2 size={16} /> 删除</button>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '编辑',
+                          icon: <Edit size={14} />,
+                          onClick: () => handleOpenModal(post),
+                          tone: 'primary',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 size={14} />,
+                          onClick: () => handleDelete(post.postId!),
+                          tone: 'danger',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

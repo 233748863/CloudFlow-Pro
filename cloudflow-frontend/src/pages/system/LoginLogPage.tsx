@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import { toast } from 'sonner';
 import { Eye, RefreshCw, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import {
@@ -262,7 +263,8 @@ export const LoginLogPage: React.FC = () => {
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          {/* 为登录日志的操作列预留宽度，避免统一动作按钮被压缩。 */}
+          <table className="min-w-[1040px] w-full text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="px-4 py-3">
@@ -274,7 +276,7 @@ export const LoginLogPage: React.FC = () => {
                 <th className="px-4 py-3">??</th>
                 <th className="px-4 py-3">???</th>
                 <th className="px-4 py-3">????</th>
-                <th className="px-4 py-3 text-right">??</th>
+                <th className="px-4 py-3 w-40 text-right">??</th>
               </tr>
             </thead>
             <tbody>
@@ -297,19 +299,31 @@ export const LoginLogPage: React.FC = () => {
                       {item.logType === '9' ? '??' : '??'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{item.remoteAddr || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{item.time ?? 0} ms</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-600">{item.remoteAddr || '-'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-600">{item.time ?? 0} ms</td>
                   <td className="max-w-[260px] truncate px-4 py-3 text-slate-500" title={item.userAgent || ''}>{item.userAgent || '-'}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.createTime || '-'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => void handleView(item.logId)} className="h-8 w-8 text-slate-500 hover:text-pink-500" title="查看详情">
-                        <Eye size={16} />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => void handleDelete([item.logId])} className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50" title="删除">
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-500">{item.createTime || '-'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      wrap={false}
+                      className="whitespace-nowrap"
+                      actions={[
+                        {
+                          label: '详情',
+                          icon: <Eye size={14} />,
+                          onClick: () => void handleView(item.logId),
+                          tone: 'info',
+                          title: '查看详情',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 size={14} />,
+                          onClick: () => void handleDelete([item.logId]),
+                          tone: 'danger',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

@@ -4,6 +4,7 @@ import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '../services/api/expe
 import { toast } from 'sonner';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 export const ExpenseClaimPage: React.FC = () => {
   const [claims, setClaims] = useState<ExpenseClaim[]>([]);
@@ -312,7 +313,7 @@ export const ExpenseClaimPage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">说明</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">创建时间</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-64">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -347,41 +348,39 @@ export const ExpenseClaimPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">{item.createTime}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleView(item.id!)}
-                          className="text-pink-500 hover:text-pink-700"
-                          title="查看"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        {item.status === 'DRAFT' && (
-                          <>
-                            <button
-                              onClick={() => handleEdit(item.id!)}
-                              className="text-green-600 hover:text-green-800"
-                              title="编辑"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleSubmit(item.id!)}
-                              className="text-pink-500 hover:text-pink-700"
-                              title="提交"
-                            >
-                              <Send size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete([item.id!])}
-                              className="text-red-600 hover:text-red-800"
-                              title="删除"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <TableRowActions
+                        align="end"
+                        actions={[
+                          {
+                            label: '查看',
+                            icon: <Eye size={14} />,
+                            onClick: () => handleView(item.id!),
+                            tone: 'info',
+                          },
+                          {
+                            label: '编辑',
+                            icon: <Edit size={14} />,
+                            onClick: () => handleEdit(item.id!),
+                            tone: 'primary',
+                            hidden: item.status !== 'DRAFT',
+                          },
+                          {
+                            label: '提交',
+                            icon: <Send size={14} />,
+                            onClick: () => handleSubmit(item.id!),
+                            tone: 'success',
+                            hidden: item.status !== 'DRAFT',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => handleDelete([item.id!]),
+                            tone: 'danger',
+                            hidden: item.status !== 'DRAFT',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))

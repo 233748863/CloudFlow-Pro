@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { getConfigList, addConfig, updateConfig, deleteConfig, type SysConfig } from '../../services/api/system';
 import { clearConfigCache } from '../../hooks/useSystemConfig';
 import { Input } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 export const ConfigList = () => {
   const [configs, setConfigs] = useState<SysConfig[]>([]);
@@ -162,7 +163,7 @@ export const ConfigList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">类型</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">作用域</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">创建时间</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-48">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -187,13 +188,32 @@ export const ConfigList = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{config.createTime || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                    <button onClick={() => handleOpenModal(config)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><Edit size={16} /> 编辑</button>
-                    {config.configType === 'Y' ? (
-                      <span className="text-slate-300 flex items-center gap-1 cursor-not-allowed"><Lock size={16} /> 内置</span>
-                    ) : (
-                      <button onClick={() => handleDelete(config)} className="text-red-600 hover:text-red-900 flex items-center gap-1"><Trash2 size={16} /> 删除</button>
-                    )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '编辑',
+                          icon: <Edit size={14} />,
+                          onClick: () => handleOpenModal(config),
+                          tone: 'primary',
+                        },
+                        {
+                          label: '内置',
+                          icon: <Lock size={14} />,
+                          disabled: true,
+                          tone: 'neutral',
+                          hidden: config.configType !== 'Y',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 size={14} />,
+                          onClick: () => handleDelete(config),
+                          tone: 'danger',
+                          hidden: config.configType === 'Y',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

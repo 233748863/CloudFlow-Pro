@@ -3,6 +3,7 @@ import { BookOpen, Plus, Pencil, Trash2, Search, Tag } from 'lucide-react';
 import { dictTypeApi, dictDataApi, SysDictType, SysDictData } from '../../services/api/dict';
 import { toast } from 'sonner';
 import { Button, Card, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /** 字典管理页面 */
 export const DictPage: React.FC = () => {
@@ -200,26 +201,24 @@ export const DictPage: React.FC = () => {
                       <div className="text-sm font-medium text-slate-800 truncate">{item.dictName}</div>
                       <div className="text-xs text-slate-500 mt-0.5 font-mono">{item.dictType}</div>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-7 h-7 text-slate-400 hover:text-pink-600"
-                        onClick={e => { e.stopPropagation(); handleEditType(item); }}
-                        title="编辑"
-                      >
-                        <Pencil size={13} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-7 h-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                        onClick={e => { e.stopPropagation(); handleDeleteType(item); }}
-                        title="删除"
-                      >
-                        <Trash2 size={13} />
-                      </Button>
-                    </div>
+                    <TableRowActions
+                      wrap={false}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2"
+                      actions={[
+                        {
+                          label: '编辑',
+                          icon: <Pencil size={13} />,
+                          onClick: e => { e.stopPropagation(); handleEditType(item); },
+                          tone: 'primary',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 size={13} />,
+                          onClick: e => { e.stopPropagation(); handleDeleteType(item); },
+                          tone: 'danger',
+                        },
+                      ]}
+                    />
                   </div>
                 </div>
               ))
@@ -269,7 +268,7 @@ export const DictPage: React.FC = () => {
                   <th className="px-4 py-3 text-xs font-semibold text-slate-600">样式</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-600">状态</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-600">备注</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 text-right">操作</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 text-right w-48">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -289,13 +288,24 @@ export const DictPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500 max-w-[120px] truncate">{item.remark || '-'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" className="text-pink-600 hover:text-pink-800 mr-1" onClick={() => handleEditData(item)}>
-                        编辑
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteData(item)}>
-                        删除
-                      </Button>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <TableRowActions
+                        align="end"
+                        actions={[
+                          {
+                            label: '编辑',
+                            icon: <Pencil size={14} />,
+                            onClick: () => handleEditData(item),
+                            tone: 'primary',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => handleDeleteData(item),
+                            tone: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

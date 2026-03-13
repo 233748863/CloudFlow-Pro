@@ -6,6 +6,7 @@ import {
   getSysLogPage, getSysLogTrend, getSysLogDetail, deleteSysLogs,
   SysLog, SysLogQuery, LogTrendItem
 } from '@/services/api/log';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /**
  * 操作日志页面
@@ -332,7 +333,8 @@ export const OperationLogPage: React.FC = () => {
 
         {/* 表格 */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          {/* 预留最小表格宽度，避免“详情/删除”在窄列里被挤成两行。 */}
+          <table className="min-w-[1220px] w-full text-sm">
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-left">
                 <th className="px-4 py-3 w-10">
@@ -345,8 +347,8 @@ export const OperationLogPage: React.FC = () => {
                 <th className="px-4 py-3">请求方式</th>
                 <th className="px-4 py-3">耗时</th>
                 <th className="px-4 py-3">请求时间</th>
-                <th className="px-4 py-3">操作人</th>
-                <th className="px-4 py-3 w-32">操作</th>
+                <th className="px-4 py-3 w-28">操作人</th>
+                <th className="px-4 py-3 w-44 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -382,26 +384,31 @@ export const OperationLogPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{log.title}</td>
-                    <td className="px-4 py-3 text-slate-500">{log.remoteAddr || '-'}</td>
-                    <td className="px-4 py-3 text-slate-500">{log.method || '-'}</td>
-                    <td className="px-4 py-3 text-slate-500">{log.time ? `${log.time}/ms` : '-'}</td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{log.remoteAddr || '-'}</td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{log.method || '-'}</td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{log.time ? `${log.time}/ms` : '-'}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{log.createTime || '-'}</td>
-                    <td className="px-4 py-3 text-slate-700">{log.createBy || '-'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleViewDetail(log.logId)}
-                          className="text-pink-400 hover:text-pink-600 text-xs flex items-center gap-0.5"
-                        >
-                          <Eye size={13} /> 详情
-                        </button>
-                        <button
-                          onClick={() => handleDelete(log.logId)}
-                          className="text-red-500 hover:text-red-700 text-xs flex items-center gap-0.5"
-                        >
-                          <Trash2 size={13} /> 删除
-                        </button>
-                      </div>
+                    <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{log.createBy || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <TableRowActions
+                        align="end"
+                        wrap={false}
+                        className="whitespace-nowrap"
+                        actions={[
+                          {
+                            label: '详情',
+                            icon: <Eye size={14} />,
+                            onClick: () => handleViewDetail(log.logId),
+                            tone: 'info',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => handleDelete(log.logId),
+                            tone: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))

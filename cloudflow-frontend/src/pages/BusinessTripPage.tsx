@@ -4,6 +4,7 @@ import { businessTripApi, BusinessTrip } from '../services/api/businessTrip';
 import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 
 /** 出差申请页面 */
@@ -145,7 +146,7 @@ export const BusinessTripPage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">费用</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">附件</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-52">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -164,14 +165,33 @@ export const BusinessTripPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm">¥{item.estimatedCost?.toFixed(2) || '0.00'}</td>
                   <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-pink-400" /> : <span className="text-slate-300">-</span>}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      {item.status === 'DRAFT' && (<>
-                        <button onClick={() => handleEdit(item.id!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><Edit size={16} /> 编辑</button>
-                        <button onClick={() => handleSubmit(item.id!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><Send size={16} /> 提交</button>
-                        <button onClick={() => handleDelete([item.id!])} className="text-red-600 hover:text-red-900 flex items-center gap-1"><Trash2 size={16} /> 删除</button>
-                      </>)}
-                    </div>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '编辑',
+                          icon: <Edit size={14} />,
+                          onClick: () => handleEdit(item.id!),
+                          tone: 'primary',
+                          hidden: item.status !== 'DRAFT',
+                        },
+                        {
+                          label: '提交',
+                          icon: <Send size={14} />,
+                          onClick: () => handleSubmit(item.id!),
+                          tone: 'success',
+                          hidden: item.status !== 'DRAFT',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 size={14} />,
+                          onClick: () => handleDelete([item.id!]),
+                          tone: 'danger',
+                          hidden: item.status !== 'DRAFT',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

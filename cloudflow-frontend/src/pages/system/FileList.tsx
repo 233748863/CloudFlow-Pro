@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import { deleteFile, getFileList, getFileStorageSummary, refreshFileStorageSummary, uploadFile } from '../../services/api/file';
@@ -305,15 +306,16 @@ export const FileList = () => {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          {/* 为操作列预留最小宽度，例如“下载 + 删除”始终保持同一行显示。 */}
+          <table className="min-w-[1120px] w-full table-auto text-left">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm">文件名</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-[38%]">文件名</th>
                 <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-32">大小</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-32">类型</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-48">上传者</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-40">类型</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-32">上传者</th>
                 <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-48">上传时间</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-32 text-right">操作</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-44 text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -332,43 +334,42 @@ export const FileList = () => {
               ) : (
                 data.map((file) => (
                   <tr key={file.fileId} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
+                    <td className="px-6 py-4 w-[38%]">
+                      <div className="flex min-w-0 items-center gap-3">
                         <div className="p-2 bg-slate-100 rounded-lg">{getFileIcon(file.fileType)}</div>
-                        <div className="max-w-md truncate font-medium text-slate-700" title={file.fileName}>
+                        <div className="min-w-0 max-w-md truncate font-medium text-slate-700" title={file.fileName}>
                           {file.fileName}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-500 text-sm font-mono">{formatSize(file.fileSize)}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-sm font-mono">{formatSize(file.fileSize)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md uppercase font-bold">
                         {file.fileType}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 text-sm">{file.createBy}</td>
-                    <td className="px-6 py-4 text-slate-500 text-sm">{file.createTime}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:text-pink-500 hover:bg-slate-100"
-                          title="下载"
-                          onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
-                        >
-                          <Download size={16} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => void handleDelete(file.fileId)}
-                          title="删除"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-slate-600 text-sm">{file.createBy}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-sm">{file.createTime}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <TableRowActions
+                        align="end"
+                        wrap={false}
+                        className="whitespace-nowrap"
+                        actions={[
+                          {
+                            label: '下载',
+                            icon: <Download size={14} />,
+                            onClick: () => window.open(file.url, '_blank', 'noopener,noreferrer'),
+                            tone: 'info',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => void handleDelete(file.fileId),
+                            tone: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))

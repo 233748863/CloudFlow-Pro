@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, ChevronRight, ChevronDown, Folder, File, Layout } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import { toast } from 'sonner';
 import { getMenuList, addMenu, updateMenu, deleteMenu } from '../../services/api/auth';
 
@@ -161,16 +162,30 @@ export const MenuList = () => {
                           {node.menuType === 'M' ? '目录' : node.menuType === 'C' ? '菜单' : '按钮'}
                       </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                      <button onClick={() => handleOpenModal(node)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1">
-                          <Edit size={16} /> 编辑
-                      </button>
-                      <button onClick={() => handleOpenModal(undefined, node.menuId)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1">
-                          <Plus size={16} /> 新增
-                      </button>
-                      <button onClick={() => handleDelete(node.menuId)} className="text-red-600 hover:text-red-900 flex items-center gap-1">
-                          <Trash2 size={16} /> 删除
-                      </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                      <TableRowActions
+                          align="end"
+                          actions={[
+                              {
+                                  label: '编辑',
+                                  icon: <Edit size={14} />,
+                                  onClick: () => handleOpenModal(node),
+                                  tone: 'primary',
+                              },
+                              {
+                                  label: '新增',
+                                  icon: <Plus size={14} />,
+                                  onClick: () => handleOpenModal(undefined, node.menuId),
+                                  tone: 'info',
+                              },
+                              {
+                                  label: '删除',
+                                  icon: <Trash2 size={14} />,
+                                  onClick: () => handleDelete(node.menuId),
+                                  tone: 'danger',
+                              },
+                          ]}
+                      />
                   </td>
               </tr>
               {expandedKeys.includes(node.menuId) && node.children && renderRows(node.children, level + 1)}
@@ -202,7 +217,7 @@ export const MenuList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">权限标识</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">组件路径</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">类型</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-60">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">

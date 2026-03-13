@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Laptop, LogOut, RefreshCw, RotateCcw, Search, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Input } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   forceLogoutOnlineUsers,
   getOnlineUserPage,
@@ -250,7 +251,7 @@ export const OnlineUserPage: React.FC = () => {
                 <th className="px-4 py-3">登录时间</th>
                 <th className="px-4 py-3">剩余有效期</th>
                 <th className="px-4 py-3">状态</th>
-                <th className="px-4 py-3 text-right">操作</th>
+                <th className="px-4 py-3 text-right w-48">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -301,17 +302,19 @@ export const OnlineUserPage: React.FC = () => {
                       {item.currentLogin ? '当前在线' : '在线'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleForceLogout([item.token])}
-                      disabled={!!item.currentLogin}
-                      className="gap-2 text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:border-slate-200 disabled:text-slate-300"
-                    >
-                      <LogOut size={14} />
-                      强制下线
-                    </Button>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '强制下线',
+                          icon: <LogOut size={14} />,
+                          onClick: () => void handleForceLogout([item.token]),
+                          tone: 'danger',
+                          disabled: !!item.currentLogin,
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

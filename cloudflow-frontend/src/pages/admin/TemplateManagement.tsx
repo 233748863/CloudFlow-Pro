@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import request from '../../services/api/request';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 import { PermissionGuard } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 interface TemplateItem {
   id: string;
@@ -446,7 +447,7 @@ export const TemplateManagement = () => {
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">描述</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">模板数</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">排序</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">操作</th>
+                <th className="px-6 py-3 text-right text-sm font-medium text-gray-700 w-48">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -458,23 +459,26 @@ export const TemplateManagement = () => {
                   <td className="px-6 py-3 text-sm text-gray-600">{category.description || '-'}</td>
                   <td className="px-6 py-3 text-sm">{category.templateCount ?? 0}</td>
                   <td className="px-6 py-3 text-sm">{category.orderNum ?? 0}</td>
-                  <td className="px-6 py-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditCategory(category)}
-                        className="p-2 hover:bg-gray-100 rounded"
-                        title="编辑分类"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCategory(category)}
-                        className="p-2 hover:bg-red-50 text-red-600 rounded"
-                        title="删除分类"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <td className="px-6 py-3 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '编辑',
+                          icon: <Edit className="w-4 h-4" />,
+                          onClick: () => handleEditCategory(category),
+                          tone: 'primary',
+                          title: '编辑分类',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 className="w-4 h-4" />,
+                          onClick: () => handleDeleteCategory(category),
+                          tone: 'danger',
+                          title: '删除分类',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
@@ -497,7 +501,7 @@ export const TemplateManagement = () => {
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">标签</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">使用次数</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">状态</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">操作</th>
+                <th className="px-6 py-3 text-right text-sm font-medium text-gray-700 w-52">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -536,23 +540,26 @@ export const TemplateManagement = () => {
                       {template.status === 'active' ? '启用' : '禁用'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditTemplate(template)}
-                        className="p-2 hover:bg-gray-100 rounded"
-                        title="编辑模板"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTemplate(template.id)}
-                        className="p-2 hover:bg-red-50 text-red-600 rounded"
-                        title="删除模板"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '编辑',
+                          icon: <Edit className="w-4 h-4" />,
+                          onClick: () => handleEditTemplate(template),
+                          tone: 'primary',
+                          title: '编辑模板',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 className="w-4 h-4" />,
+                          onClick: () => handleDeleteTemplate(template.id),
+                          tone: 'danger',
+                          title: '删除模板',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

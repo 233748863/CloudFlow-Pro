@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Package, Plus, Search, AlertTriangle, ArrowUpCircle, ArrowDownCircle, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { consumableApi, Consumable } from '@/services/api/consumable';
 import { toast } from 'sonner';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /** 耗材管理页面 */
 const ConsumablePage: React.FC = () => {
@@ -212,7 +213,7 @@ const ConsumablePage: React.FC = () => {
                 <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">库存</th>
                 <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">预警阈值</th>
                 <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">状态</th>
-                <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">操作</th>
+                <th className="text-center px-4 py-3 text-sm font-medium text-slate-600 w-72">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -239,37 +240,36 @@ const ConsumablePage: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => openStockModal(item, 'add')}
-                        className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="入库"
-                      >
-                        <ArrowUpCircle size={18} />
-                      </button>
-                      <button
-                        onClick={() => openStockModal(item, 'reduce')}
-                        className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                        title="出库"
-                      >
-                        <ArrowDownCircle size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-1.5 text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
-                        title="编辑"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <TableRowActions
+                      align="center"
+                      actions={[
+                        {
+                          label: '入库',
+                          icon: <ArrowUpCircle size={14} />,
+                          onClick: () => openStockModal(item, 'add'),
+                          tone: 'success',
+                        },
+                        {
+                          label: '出库',
+                          icon: <ArrowDownCircle size={14} />,
+                          onClick: () => openStockModal(item, 'reduce'),
+                          tone: 'warning',
+                        },
+                        {
+                          label: '编辑',
+                          icon: <Pencil size={14} />,
+                          onClick: () => handleEdit(item),
+                          tone: 'primary',
+                        },
+                        {
+                          label: '删除',
+                          icon: <Trash2 size={14} />,
+                          onClick: () => handleDelete(item),
+                          tone: 'danger',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

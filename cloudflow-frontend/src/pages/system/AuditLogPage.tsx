@@ -6,6 +6,7 @@ import {
   SysAuditLog, AuditLogQuery
 } from '@/services/api/log';
 import { DatePicker } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /**
  * 审计日志页面
@@ -266,7 +267,8 @@ export const AuditLogPage: React.FC = () => {
 
         {/* 表格 */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          {/* 预留最小表格宽度，避免操作列被其它字段继续压缩。 */}
+          <table className="min-w-[1120px] w-full text-sm">
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-left">
                 <th className="px-4 py-3 w-10">
@@ -277,9 +279,9 @@ export const AuditLogPage: React.FC = () => {
                 <th className="px-4 py-3">变更字段</th>
                 <th className="px-4 py-3">变更前</th>
                 <th className="px-4 py-3">变更后</th>
-                <th className="px-4 py-3">操作人</th>
-                <th className="px-4 py-3">操作时间</th>
-                <th className="px-4 py-3 w-32">操作</th>
+                <th className="px-4 py-3 w-28">操作人</th>
+                <th className="px-4 py-3 w-44">操作时间</th>
+                <th className="px-4 py-3 w-44 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -317,23 +319,28 @@ export const AuditLogPage: React.FC = () => {
                     <td className="px-4 py-3 text-emerald-600 max-w-[150px] truncate text-xs font-mono">
                       {log.afterVal || '-'}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{log.createBy || '-'}</td>
+                    <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{log.createBy || '-'}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{log.createTime || '-'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleViewDetail(log.auditId)}
-                          className="text-pink-400 hover:text-pink-600 text-xs flex items-center gap-0.5"
-                        >
-                          <Eye size={13} /> 详情
-                        </button>
-                        <button
-                          onClick={() => handleDelete(log.auditId)}
-                          className="text-red-500 hover:text-red-700 text-xs flex items-center gap-0.5"
-                        >
-                          <Trash2 size={13} /> 删除
-                        </button>
-                      </div>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <TableRowActions
+                        align="end"
+                        wrap={false}
+                        className="whitespace-nowrap"
+                        actions={[
+                          {
+                            label: '详情',
+                            icon: <Eye size={14} />,
+                            onClick: () => handleViewDetail(log.auditId),
+                            tone: 'info',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => handleDelete(log.auditId),
+                            tone: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))

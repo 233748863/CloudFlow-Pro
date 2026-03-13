@@ -3,6 +3,7 @@ import { Users, ChevronRight, ChevronDown, Building2, Loader2, Plus, Edit2, Tras
 import { getDeptTree, addDept, updateDept, deleteDept, getUserList, updateUser, deleteUser } from '../services/api/auth';
 import { toast } from 'sonner';
 import { Input } from './ui/input';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 interface DeptItem { deptId: number; parentId: number; deptName: string; orderNum: number; leader: string; phone: string; email: string; status: string; ancestors?: string; children?: DeptItem[]; }
 interface UserItem { userId: number; userName: string; nickName: string; email: string; phonenumber: string; sex: string; status: string; deptId: number; deptName?: string; role?: string; createTime?: string; remark?: string; }
@@ -348,7 +349,7 @@ export const OrgStructure = () => {
                   <th className="px-4 py-3 font-medium">手机</th>
                   <th className="px-4 py-3 font-medium">角色</th>
                   <th className="px-4 py-3 font-medium">状态</th>
-                  <th className="px-4 py-3 font-medium text-right">操作</th>
+                  <th className="px-4 py-3 font-medium text-right w-56">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -372,10 +373,30 @@ export const OrgStructure = () => {
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${u.status === '0' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>{u.status === '0' ? '正常' : '停用'}</span>
                     </td>
-                    <td className="px-4 py-3 text-right flex items-center justify-end gap-3">
-                      <button onClick={() => setDetailUser(u)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1" title="查看详情"><Eye size={16} /> 详情</button>
-                      <button onClick={() => setChangeDeptUser(u)} className="text-amber-600 hover:text-amber-800 flex items-center gap-1" title="调整部门"><ArrowRightLeft size={16} /> 调岗</button>
-                      <button onClick={() => { setDelUser(u); setDelUserVis(true); }} className="text-red-600 hover:text-red-900 flex items-center gap-1" title="删除"><Trash2 size={16} /> 删除</button>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <TableRowActions
+                        align="end"
+                        actions={[
+                          {
+                            label: '详情',
+                            icon: <Eye size={14} />,
+                            onClick: () => setDetailUser(u),
+                            tone: 'info',
+                          },
+                          {
+                            label: '调岗',
+                            icon: <ArrowRightLeft size={14} />,
+                            onClick: () => setChangeDeptUser(u),
+                            tone: 'warning',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => { setDelUser(u); setDelUserVis(true); },
+                            tone: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

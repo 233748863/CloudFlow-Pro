@@ -3,6 +3,7 @@ import { Calendar, Plus, Search, RotateCcw, X, LogIn, LogOut, RefreshCw } from '
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { toast } from 'sonner';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /** 值班排班页面 */
 export const DutySchedulePage: React.FC = () => {
@@ -125,7 +126,7 @@ export const DutySchedulePage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">地点</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">签到/签退</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-56">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -146,16 +147,33 @@ export const DutySchedulePage: React.FC = () => {
                     {item.checkOutTime ? `退: ${item.checkOutTime}` : '-'}
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'SCHEDULED')}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      {item.status === 'SCHEDULED' && (<>
-                        <button onClick={() => handleCheckIn(item.scheduleId!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><LogIn size={16} /> 签到</button>
-                        <button onClick={() => openSwapDialog(item.scheduleId!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><RefreshCw size={16} /> 换班</button>
-                      </>)}
-                      {item.status === 'CHECKED_IN' && (
-                        <button onClick={() => handleCheckOut(item.scheduleId!)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1"><LogOut size={16} /> 签退</button>
-                      )}
-                    </div>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '签到',
+                          icon: <LogIn size={14} />,
+                          onClick: () => handleCheckIn(item.scheduleId!),
+                          tone: 'success',
+                          hidden: item.status !== 'SCHEDULED',
+                        },
+                        {
+                          label: '换班',
+                          icon: <RefreshCw size={14} />,
+                          onClick: () => openSwapDialog(item.scheduleId!),
+                          tone: 'info',
+                          hidden: item.status !== 'SCHEDULED',
+                        },
+                        {
+                          label: '签退',
+                          icon: <LogOut size={14} />,
+                          onClick: () => handleCheckOut(item.scheduleId!),
+                          tone: 'warning',
+                          hidden: item.status !== 'CHECKED_IN',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

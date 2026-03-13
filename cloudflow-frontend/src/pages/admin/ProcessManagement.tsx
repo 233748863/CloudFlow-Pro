@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   Search, 
   FolderOpen, 
   Tag, 
@@ -17,6 +17,7 @@ import {
   Upload
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';
 import { 
   getProcessDefinitions, 
@@ -826,33 +827,35 @@ export const ProcessManagement = () => {
 
       {/* 流程列表 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-12">
-                选择
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                流程名称
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                流程Key
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                分类
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                标签
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                版本
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
+        <div className="overflow-x-auto">
+          {/* 统一操作按钮后，为“编辑/版本/导出”三项动作预留稳定列宽。 */}
+          <table className="min-w-[1120px] w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-12">
+                  选择
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[28%]">
+                  流程名称
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  流程Key
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  分类
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  标签
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-24">
+                  版本
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider w-72">
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
             {loading ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
@@ -885,13 +888,13 @@ export const ProcessManagement = () => {
                       )}
                     </Button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 w-[28%]">
                     <div className="text-sm font-medium text-slate-800">{wf.name}</div>
                     {wf.description && (
                       <div className="text-xs text-slate-500 mt-1 line-clamp-1">{wf.description}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{wf.key}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{wf.key}</td>
                   <td className="px-4 py-3">
                     {wf.category ? (
                       <span className="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-600 rounded-md flex items-center gap-1 w-fit">
@@ -920,48 +923,45 @@ export const ProcessManagement = () => {
                       <span className="text-xs text-slate-400">无标签</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">v{wf.version}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/workflow/design?id=${wf.id}`)}
-                        disabled={!isAdmin}
-                        className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 gap-1 disabled:text-slate-400"
-                        title={isAdmin ? '编辑流程' : '仅管理员可编辑流程'}
-                      >
-                        <Edit size={16} />
-                        编辑
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/workflow/versions/${wf.id}`)}
-                        className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 gap-1"
-                        title="查看版本历史"
-                      >
-                        <RefreshCw size={16} />
-                        版本
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openExportDialog(wf.id)}
-                        disabled={!canExportSingleWorkflow(wf)}
-                        className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 gap-1 disabled:text-slate-400"
-                        title={canExportSingleWorkflow(wf) ? '导出流程' : '仅流程创建者或管理员可导出'}
-                      >
-                        <FileDown size={16} />
-                        导出
-                      </Button>
-                    </div>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">v{wf.version}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      wrap={false}
+                      className="whitespace-nowrap"
+                      actions={[
+                        {
+                          label: '编辑',
+                          icon: <Edit size={16} />,
+                          onClick: () => navigate(`/workflow/design?id=${wf.id}`),
+                          disabled: !isAdmin,
+                          title: isAdmin ? '编辑流程' : '仅管理员可编辑流程',
+                          tone: 'info',
+                        },
+                        {
+                          label: '版本',
+                          icon: <RefreshCw size={16} />,
+                          onClick: () => navigate(`/workflow/versions/${wf.id}`),
+                          title: '查看版本历史',
+                          tone: 'neutral',
+                        },
+                        {
+                          label: '导出',
+                          icon: <FileDown size={16} />,
+                          onClick: () => openExportDialog(wf.id),
+                          disabled: !canExportSingleWorkflow(wf),
+                          title: canExportSingleWorkflow(wf) ? '导出流程' : '仅流程创建者或管理员可导出',
+                          tone: 'success',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))
             )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* 批量编辑模态框 */}

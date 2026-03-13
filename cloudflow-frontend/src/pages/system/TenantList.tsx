@@ -32,6 +32,7 @@ import {
 } from '../../services/api/tenant';
 import { useMount } from '../../hooks/useMount';
 import { DatePicker, Input, Textarea, Button } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
@@ -414,7 +415,7 @@ export const TenantList: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">存储使用</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">到期情况</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-72">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -532,39 +533,31 @@ export const TenantList: React.FC = () => {
                         </div>
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenModal(tenant)}
-                            className="h-8 px-2 text-pink-500 hover:text-pink-700 hover:bg-pink-50"
-                          >
-                            <Edit size={16} className="mr-1" /> 编辑
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => void handleRefreshStorage(tenant.tenantId)}
-                            disabled={refreshingTenantId === tenant.tenantId}
-                            className="h-8 px-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                          >
-                            {refreshingTenantId === tenant.tenantId ? (
-                              <Loader2 size={16} className="animate-spin mr-1" />
-                            ) : (
-                              <RefreshCw size={16} className="mr-1" />
-                            )}
-                            刷新
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(tenant.tenantId)}
-                            className="h-8 px-2 text-red-600 hover:text-red-900 hover:bg-red-50"
-                          >
-                            <Trash2 size={16} className="mr-1" /> 删除
-                          </Button>
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                        <TableRowActions
+                          align="end"
+                          actions={[
+                            {
+                              label: '编辑',
+                              icon: <Edit size={14} />,
+                              onClick: () => handleOpenModal(tenant),
+                              tone: 'primary',
+                            },
+                            {
+                              label: '刷新',
+                              icon: refreshingTenantId === tenant.tenantId ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />,
+                              onClick: () => void handleRefreshStorage(tenant.tenantId),
+                              tone: 'neutral',
+                              disabled: refreshingTenantId === tenant.tenantId,
+                            },
+                            {
+                              label: '删除',
+                              icon: <Trash2 size={14} />,
+                              onClick: () => handleDelete(tenant.tenantId),
+                              tone: 'danger',
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   );

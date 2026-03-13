@@ -3,6 +3,7 @@ import { UserCheck, Plus, Search, RotateCcw, X, LogIn, LogOut, CheckCircle, XCir
 import { visitorApi, Visitor } from '../services/api/visitor';
 import { toast } from 'sonner';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /** 访客管理页面 */
 export const VisitorPage: React.FC = () => {
@@ -100,7 +101,7 @@ export const VisitorPage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">来访事由</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">通行证</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-64">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -117,21 +118,40 @@ export const VisitorPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{item.visitReason}</td>
                   <td className="px-4 py-3 text-sm text-pink-500 font-mono">{item.passCode || '-'}</td>
                   <td className="px-4 py-3">{getStatusBadge(item.status || 'PENDING')}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      {item.status === 'PENDING' && (
-                        <button onClick={() => handleConfirm(item.visitorId!)} className="text-pink-500 hover:text-pink-700 p-1" title="确认"><CheckCircle size={16} /></button>
-                      )}
-                      {(item.status === 'PENDING' || item.status === 'CONFIRMED') && (
-                        <button onClick={() => handleCheckIn(item.visitorId!)} className="text-green-600 hover:text-green-800 p-1" title="签到"><LogIn size={16} /></button>
-                      )}
-                      {item.status === 'ARRIVED' && (
-                        <button onClick={() => handleCheckOut(item.visitorId!)} className="text-orange-600 hover:text-orange-800 p-1" title="签退"><LogOut size={16} /></button>
-                      )}
-                      {(item.status === 'PENDING' || item.status === 'CONFIRMED') && (
-                        <button onClick={() => handleCancel(item.visitorId!)} className="text-red-600 hover:text-red-800 p-1" title="取消"><XCircle size={16} /></button>
-                      )}
-                    </div>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        {
+                          label: '确认',
+                          icon: <CheckCircle size={14} />,
+                          onClick: () => handleConfirm(item.visitorId!),
+                          tone: 'primary',
+                          hidden: item.status !== 'PENDING',
+                        },
+                        {
+                          label: '签到',
+                          icon: <LogIn size={14} />,
+                          onClick: () => handleCheckIn(item.visitorId!),
+                          tone: 'success',
+                          hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                        },
+                        {
+                          label: '签退',
+                          icon: <LogOut size={14} />,
+                          onClick: () => handleCheckOut(item.visitorId!),
+                          tone: 'warning',
+                          hidden: item.status !== 'ARRIVED',
+                        },
+                        {
+                          label: '取消',
+                          icon: <XCircle size={14} />,
+                          onClick: () => handleCancel(item.visitorId!),
+                          tone: 'danger',
+                          hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Shield, ChevronRight, ChevronDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import { toast } from 'sonner';
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList, getDeptTree } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
@@ -302,7 +303,7 @@ export const RoleList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">租户</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">显示顺序</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-52">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -332,13 +333,24 @@ export const RoleList = () => {
                         {role.status === '0' ? '正常' : '停用'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-3">
-                      <button onClick={() => handleOpenModal(role)} className="text-pink-500 hover:text-pink-700 flex items-center gap-1">
-                        <Edit size={16} /> 编辑
-                      </button>
-                      <button onClick={() => handleDelete(role.roleId)} className="text-red-600 hover:text-red-900 flex items-center gap-1">
-                        <Trash2 size={16} /> 删除
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
+                      <TableRowActions
+                        align="end"
+                        actions={[
+                          {
+                            label: '编辑',
+                            icon: <Edit size={14} />,
+                            onClick: () => handleOpenModal(role),
+                            tone: 'primary',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => handleDelete(role.roleId),
+                            tone: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))
