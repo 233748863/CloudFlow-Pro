@@ -347,2916 +347,2925 @@ const TEMPLATE_CATEGORIES = [
 ];
 
 const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
-    {
-        id: "leave",
-        name: "请假审批",
-        description: "员工提交 → 部门经理审批 → 完成",
-        category: "office",
-        icon: Calendar,
-        color: "text-pink-400 bg-pink-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交请假"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->end",
-                    source: "n1",
-                    target: "end"
-                }
-            ]
-        }
+  {
+    id: "leave",
+    name: "请假审批",
+    description: "员工提交 → 部门经理审批 → 完成",
+    category: "office",
+    icon: Calendar,
+    color: "text-pink-400 bg-pink-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交请假",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->end",
+          source: "n1",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "contract",
-        name: "合同审批",
-        description: "起草 → 法务审核 → 总经理签发 → 盖章归档",
-        category: "office",
-        icon: FileCheck,
-        color: "text-violet-500 bg-violet-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "起草合同"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "法务审核",
-                    approverType: "ROLE",
-                    approverValue: "LEGAL"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "总经理签发",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "盖章归档",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "contract",
+    name: "合同审批",
+    description: "起草 → 法务审核 → 总经理签发 → 盖章归档",
+    category: "office",
+    icon: FileCheck,
+    color: "text-violet-500 bg-violet-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "起草合同",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "法务审核",
+          approverType: "ROLE",
+          approverValue: "LEGAL",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "总经理签发",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "盖章归档",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "seal",
-        name: "用印申请",
-        description: "申请用印 → 部门审批 → 行政盖章 → 完成",
-        category: "office",
-        icon: Stamp,
-        color: "text-rose-500 bg-rose-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "申请用印"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "行政盖章",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "seal",
+    name: "用印申请",
+    description: "申请用印 → 部门审批 → 行政盖章 → 完成",
+    category: "office",
+    icon: Stamp,
+    color: "text-rose-500 bg-rose-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "申请用印",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "行政盖章",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "travel",
-        name: "出差申请",
-        description: "提交出差 → 部门审批 → 总经理审批 → 完成",
-        category: "office",
-        icon: Plane,
-        color: "text-sky-500 bg-sky-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交出差申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "travel",
+    name: "出差申请",
+    description: "提交出差 → 部门审批 → 总经理审批 → 完成",
+    category: "office",
+    icon: Plane,
+    color: "text-sky-500 bg-sky-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交出差申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "vehicle",
-        name: "用车申请",
-        description: "申请用车 → 行政审批 → 车辆调度 → 完成",
-        category: "office",
-        icon: Car,
-        color: "text-teal-500 bg-teal-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "申请用车"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "行政审批",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "车辆调度确认",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "vehicle",
+    name: "用车申请",
+    description: "申请用车 → 行政审批 → 车辆调度 → 完成",
+    category: "office",
+    icon: Car,
+    color: "text-teal-500 bg-teal-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "申请用车",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "行政审批",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "车辆调度确认",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "reimbursement",
-        name: "报销审批",
-        description: "提交报销 → 部门经理 → 财务审核 → 完成",
-        category: "finance",
-        icon: DollarSign,
-        color: "text-emerald-500 bg-emerald-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交报销"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "财务审核",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "reimbursement",
+    name: "报销审批",
+    description: "提交报销 → 部门经理 → 财务审核 → 完成",
+    category: "finance",
+    icon: DollarSign,
+    color: "text-emerald-500 bg-emerald-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交报销",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "财务审核",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "purchase",
-        name: "采购审批",
-        description: "提交采购 → 金额判断 → 分级审批 → 完成",
-        category: "finance",
-        icon: ClipboardList,
-        color: "text-orange-500 bg-orange-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交采购申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER",
-                    branchStrategy: "EXCLUSIVE"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "b1",
-                    type: NodeType.CONDITION,
-                    title: "金额 ≤ 5000",
-                    condition: "amount <= 5000"
-                },
-                {
-                    id: "b2",
-                    type: NodeType.CONDITION,
-                    title: "金额 > 5000",
-                    condition: "amount > 5000"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->end",
-                    source: "n1",
-                    target: "end",
-                    isDefault: true
-                },
-                {
-                    id: "n1->b1",
-                    source: "n1",
-                    target: "b1",
-                    condition: "amount <= 5000"
-                },
-                {
-                    id: "n1->b2",
-                    source: "n1",
-                    target: "b2",
-                    condition: "amount > 5000"
-                },
-                {
-                    id: "b2->n2",
-                    source: "b2",
-                    target: "n2"
-                }
-            ]
-        }
+  },
+  {
+    id: "purchase",
+    name: "采购审批",
+    description: "提交采购 → 金额判断 → 分级审批 → 完成",
+    category: "finance",
+    icon: ClipboardList,
+    color: "text-orange-500 bg-orange-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交采购申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+          branchStrategy: "EXCLUSIVE",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "b1",
+          type: NodeType.CONDITION,
+          title: "金额 ≤ 5000",
+          condition: "amount <= 5000",
+        },
+        {
+          id: "b2",
+          type: NodeType.CONDITION,
+          title: "金额 > 5000",
+          condition: "amount > 5000",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->end",
+          source: "n1",
+          target: "end",
+          isDefault: true,
+        },
+        {
+          id: "n1->b1",
+          source: "n1",
+          target: "b1",
+          condition: "amount <= 5000",
+        },
+        {
+          id: "n1->b2",
+          source: "n1",
+          target: "b2",
+          condition: "amount > 5000",
+        },
+        {
+          id: "b2->n2",
+          source: "b2",
+          target: "n2",
+        },
+      ],
     },
-    {
-        id: "payment",
-        name: "付款申请",
-        description: "提交付款 → 财务审核 → 总经理审批 → 出纳付款",
-        category: "finance",
-        icon: CreditCard,
-        color: "text-pink-500 bg-pink-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交付款申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "财务审核",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "出纳付款",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "payment",
+    name: "付款申请",
+    description: "提交付款 → 财务审核 → 总经理审批 → 出纳付款",
+    category: "finance",
+    icon: CreditCard,
+    color: "text-pink-500 bg-pink-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交付款申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "财务审核",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "出纳付款",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "budget",
-        name: "预算审批",
-        description: "编制预算 → 部门审核 → 财务审核 → 总经理批准",
-        category: "finance",
-        icon: PiggyBank,
-        color: "text-amber-500 bg-amber-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "编制预算"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门负责人审核",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "财务部审核",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "总经理批准",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "budget",
+    name: "预算审批",
+    description: "编制预算 → 部门审核 → 财务审核 → 总经理批准",
+    category: "finance",
+    icon: PiggyBank,
+    color: "text-amber-500 bg-amber-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "编制预算",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门负责人审核",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "财务部审核",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "总经理批准",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "onboarding",
-        name: "入职审批",
-        description: "提交入职 → HR审核 → 部门确认 → IT开通账号",
-        category: "hr",
-        icon: UserPlus,
-        color: "text-green-500 bg-green-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交入职申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "HR审核",
-                    approverType: "ROLE",
-                    approverValue: "HR"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "部门负责人确认",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "IT开通账号",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "onboarding",
+    name: "入职审批",
+    description: "提交入职 → HR审核 → 部门确认 → IT开通账号",
+    category: "hr",
+    icon: UserPlus,
+    color: "text-green-500 bg-green-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交入职申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "HR审核",
+          approverType: "ROLE",
+          approverValue: "HR",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "部门负责人确认",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "IT开通账号",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "resignation",
-        name: "离职审批",
-        description: "提交离职 → 部门审批 → HR审核 → 资产交接",
-        category: "hr",
-        icon: UserMinus,
-        color: "text-red-500 bg-red-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交离职申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "HR审核",
-                    approverType: "ROLE",
-                    approverValue: "HR"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "资产交接确认",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "resignation",
+    name: "离职审批",
+    description: "提交离职 → 部门审批 → HR审核 → 资产交接",
+    category: "hr",
+    icon: UserMinus,
+    color: "text-red-500 bg-red-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交离职申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "HR审核",
+          approverType: "ROLE",
+          approverValue: "HR",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "资产交接确认",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "promotion",
-        name: "晋升审批",
-        description: "提名推荐 → 部门审核 → HR评估 → 总经理批准",
-        category: "hr",
-        icon: Award,
-        color: "text-yellow-500 bg-yellow-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提名推荐"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门负责人审核",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "HR评估",
-                    approverType: "ROLE",
-                    approverValue: "HR"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "总经理批准",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "promotion",
+    name: "晋升审批",
+    description: "提名推荐 → 部门审核 → HR评估 → 总经理批准",
+    category: "hr",
+    icon: Award,
+    color: "text-yellow-500 bg-yellow-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提名推荐",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门负责人审核",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "HR评估",
+          approverType: "ROLE",
+          approverValue: "HR",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "总经理批准",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "training",
-        name: "培训申请",
-        description: "提交培训 → 部门审批 → HR审核 → 完成",
-        category: "hr",
-        icon: GraduationCap,
-        color: "text-pink-400 bg-pink-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交培训申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "HR审核",
-                    approverType: "ROLE",
-                    approverValue: "HR"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "training",
+    name: "培训申请",
+    description: "提交培训 → 部门审批 → HR审核 → 完成",
+    category: "hr",
+    icon: GraduationCap,
+    color: "text-pink-400 bg-pink-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交培训申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "HR审核",
+          approverType: "ROLE",
+          approverValue: "HR",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "quote",
-        name: "报价审批",
-        description: "提交报价 → 销售主管 → 金额判断 → 分级审批",
-        category: "sales",
-        icon: Briefcase,
-        color: "text-cyan-500 bg-cyan-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交报价单"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "销售主管审核",
-                    approverType: "DIRECT_LEADER",
-                    branchStrategy: "EXCLUSIVE"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "b1",
-                    type: NodeType.CONDITION,
-                    title: "金额 ≤ 10万",
-                    condition: "amount <= 100000"
-                },
-                {
-                    id: "b2",
-                    type: NodeType.CONDITION,
-                    title: "金额 > 10万",
-                    condition: "amount > 100000"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->end",
-                    source: "n1",
-                    target: "end",
-                    isDefault: true
-                },
-                {
-                    id: "n1->b1",
-                    source: "n1",
-                    target: "b1",
-                    condition: "amount <= 100000"
-                },
-                {
-                    id: "n1->b2",
-                    source: "n1",
-                    target: "b2",
-                    condition: "amount > 100000"
-                },
-                {
-                    id: "b2->n2",
-                    source: "b2",
-                    target: "n2"
-                }
-            ]
-        }
+  },
+  {
+    id: "quote",
+    name: "报价审批",
+    description: "提交报价 → 销售主管 → 金额判断 → 分级审批",
+    category: "sales",
+    icon: Briefcase,
+    color: "text-cyan-500 bg-cyan-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交报价单",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "销售主管审核",
+          approverType: "DIRECT_LEADER",
+          branchStrategy: "EXCLUSIVE",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "b1",
+          type: NodeType.CONDITION,
+          title: "金额 ≤ 10万",
+          condition: "amount <= 100000",
+        },
+        {
+          id: "b2",
+          type: NodeType.CONDITION,
+          title: "金额 > 10万",
+          condition: "amount > 100000",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->end",
+          source: "n1",
+          target: "end",
+          isDefault: true,
+        },
+        {
+          id: "n1->b1",
+          source: "n1",
+          target: "b1",
+          condition: "amount <= 100000",
+        },
+        {
+          id: "n1->b2",
+          source: "n1",
+          target: "b2",
+          condition: "amount > 100000",
+        },
+        {
+          id: "b2->n2",
+          source: "b2",
+          target: "n2",
+        },
+      ],
     },
-    {
-        id: "discount",
-        name: "折扣审批",
-        description: "申请折扣 → 销售总监 → 财务确认 → 完成",
-        category: "sales",
-        icon: DollarSign,
-        color: "text-lime-600 bg-lime-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "申请折扣"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "销售总监审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "财务确认",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "discount",
+    name: "折扣审批",
+    description: "申请折扣 → 销售总监 → 财务确认 → 完成",
+    category: "sales",
+    icon: DollarSign,
+    color: "text-lime-600 bg-lime-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "申请折扣",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "销售总监审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "财务确认",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "server",
-        name: "服务器申请",
-        description: "提交申请 → IT审核 → 安全审查 → 运维部署",
-        category: "it",
-        icon: Server,
-        color: "text-slate-600 bg-slate-100",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交服务器申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "IT主管审核",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "安全审查",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "运维部署",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "server",
+    name: "服务器申请",
+    description: "提交申请 → IT审核 → 安全审查 → 运维部署",
+    category: "it",
+    icon: Server,
+    color: "text-slate-600 bg-slate-100",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交服务器申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "IT主管审核",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "安全审查",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "运维部署",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "permission",
-        name: "权限申请",
-        description: "提交权限 → 部门审批 → IT审核 → 安全确认",
-        category: "it",
-        icon: ShieldCheck,
-        color: "text-emerald-600 bg-emerald-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交权限申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "IT审核",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "安全确认",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "permission",
+    name: "权限申请",
+    description: "提交权限 → 部门审批 → IT审核 → 安全确认",
+    category: "it",
+    icon: ShieldCheck,
+    color: "text-emerald-600 bg-emerald-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交权限申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "IT审核",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "安全确认",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "change",
-        name: "变更发布",
-        description: "提交变更 → 技术评审 → 测试验证 → 上线审批",
-        category: "it",
-        icon: Rocket,
-        color: "text-purple-500 bg-purple-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交变更申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "技术评审",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "测试验证",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "上线审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "change",
+    name: "变更发布",
+    description: "提交变更 → 技术评审 → 测试验证 → 上线审批",
+    category: "it",
+    icon: Rocket,
+    color: "text-purple-500 bg-purple-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交变更申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "技术评审",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "测试验证",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "上线审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "medical",
-        name: "医疗器械采购",
-        description: "科室申请 → 设备科审核 → 院长审批 → 招标采购",
-        category: "industry",
-        icon: Stethoscope,
-        color: "text-red-500 bg-red-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "科室提交申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "设备科审核",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "院长审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "招标采购",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "medical",
+    name: "医疗器械采购",
+    description: "科室申请 → 设备科审核 → 院长审批 → 招标采购",
+    category: "industry",
+    icon: Stethoscope,
+    color: "text-red-500 bg-red-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "科室提交申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "设备科审核",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "院长审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "招标采购",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "construction",
-        name: "工程验收",
-        description: "提交验收 → 监理审核 → 质检验收 → 甲方确认",
-        category: "industry",
-        icon: Building2,
-        color: "text-orange-600 bg-orange-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交验收申请"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "监理审核",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "质检验收",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "甲方确认",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "construction",
+    name: "工程验收",
+    description: "提交验收 → 监理审核 → 质检验收 → 甲方确认",
+    category: "industry",
+    icon: Building2,
+    color: "text-orange-600 bg-orange-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交验收申请",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "监理审核",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "质检验收",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "甲方确认",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "education",
-        name: "课程审批",
-        description: "教师提交 → 教研组审核 → 教务处审批 → 完成",
-        category: "industry",
-        icon: BookOpen,
-        color: "text-pink-500 bg-pink-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交课程方案"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "教研组审核",
-                    approverType: "DIRECT_LEADER"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "教务处审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "education",
+    name: "课程审批",
+    description: "教师提交 → 教研组审核 → 教务处审批 → 完成",
+    category: "industry",
+    icon: BookOpen,
+    color: "text-pink-500 bg-pink-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交课程方案",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "教研组审核",
+          approverType: "DIRECT_LEADER",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "教务处审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "maintenance",
-        name: "设备维修",
-        description: "报修 → 维修主管派单 → 维修完成 → 验收确认",
-        category: "industry",
-        icon: Wrench,
-        color: "text-gray-600 bg-gray-100",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交报修"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "维修主管派单",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "维修完成确认",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n3",
-                    type: NodeType.APPROVAL,
-                    title: "报修人验收",
-                    approverType: "USER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->n3",
-                    source: "n2",
-                    target: "n3"
-                },
-                {
-                    id: "n3->end",
-                    source: "n3",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "maintenance",
+    name: "设备维修",
+    description: "报修 → 维修主管派单 → 维修完成 → 验收确认",
+    category: "industry",
+    icon: Wrench,
+    color: "text-gray-600 bg-gray-100",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交报修",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "维修主管派单",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "维修完成确认",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n3",
+          type: NodeType.APPROVAL,
+          title: "报修人验收",
+          approverType: "USER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->n3",
+          source: "n2",
+          target: "n3",
+        },
+        {
+          id: "n3->end",
+          source: "n3",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "logistics",
-        name: "发货审批",
-        description: "创建发货单 → 仓库确认 → 物流安排 → 完成",
-        category: "industry",
-        icon: Package,
-        color: "text-yellow-600 bg-yellow-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "创建发货单"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "仓库确认库存",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "物流安排",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "logistics",
+    name: "发货审批",
+    description: "创建发货单 → 仓库确认 → 物流安排 → 完成",
+    category: "industry",
+    icon: Package,
+    color: "text-yellow-600 bg-yellow-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "创建发货单",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "仓库确认库存",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "物流安排",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "checklist",
-        name: "审核清单",
-        description: "提交清单 → 逐项审核 → 最终确认 → 完成",
-        category: "other",
-        icon: CheckSquare,
-        color: "text-teal-600 bg-teal-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交审核清单"
-                },
-                {
-                    id: "n1",
-                    type: NodeType.APPROVAL,
-                    title: "逐项审核",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "n2",
-                    type: NodeType.APPROVAL,
-                    title: "最终确认",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->n1",
-                    source: "start",
-                    target: "n1"
-                },
-                {
-                    id: "n1->n2",
-                    source: "n1",
-                    target: "n2"
-                },
-                {
-                    id: "n2->end",
-                    source: "n2",
-                    target: "end"
-                }
-            ]
-        }
+  },
+  {
+    id: "checklist",
+    name: "审核清单",
+    description: "提交清单 → 逐项审核 → 最终确认 → 完成",
+    category: "other",
+    icon: CheckSquare,
+    color: "text-teal-600 bg-teal-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交审核清单",
+        },
+        {
+          id: "n1",
+          type: NodeType.APPROVAL,
+          title: "逐项审核",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "n2",
+          type: NodeType.APPROVAL,
+          title: "最终确认",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->n1",
+          source: "start",
+          target: "n1",
+        },
+        {
+          id: "n1->n2",
+          source: "n1",
+          target: "n2",
+        },
+        {
+          id: "n2->end",
+          source: "n2",
+          target: "end",
+        },
+      ],
     },
-    {
-        id: "purchase_advanced",
-        name: "大额采购全流程",
-        description: "部门审批 → 金额分级 → 多级审批 → 通知结果",
-        category: "finance",
-        icon: ClipboardList,
-        color: "text-orange-600 bg-orange-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交采购申请"
-                },
-                {
-                    id: "pa_n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER",
-                    branchStrategy: "EXCLUSIVE"
-                },
-                {
-                    id: "pa_n5",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知采购结果",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "采购审批结果通知",
-                        notificationContent: "您的采购申请（金额: ${amount}）已审批完成，请查看结果。"
-                    }
-                },
-                {
-                    id: "pa_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "pa_b1",
-                    type: NodeType.CONDITION,
-                    title: "金额 ≤ 5000",
-                    condition: "amount <= 5000"
-                },
-                {
-                    id: "pa_b2",
-                    type: NodeType.CONDITION,
-                    title: "5000 < 金额 ≤ 50000",
-                    condition: "amount > 5000 && amount <= 50000"
-                },
-                {
-                    id: "pa_n2",
-                    type: NodeType.APPROVAL,
-                    title: "财务总监审核",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "pa_b3",
-                    type: NodeType.CONDITION,
-                    title: "金额 > 50000",
-                    condition: "amount > 50000"
-                },
-                {
-                    id: "pa_n3",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "pa_n4",
-                    type: NodeType.APPROVAL,
-                    title: "财务总监审核",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->pa_n1",
-                    source: "start",
-                    target: "pa_n1"
-                },
-                {
-                    id: "pa_n1->pa_n5",
-                    source: "pa_n1",
-                    target: "pa_n5",
-                    isDefault: true
-                },
-                {
-                    id: "pa_n5->pa_end",
-                    source: "pa_n5",
-                    target: "pa_end"
-                },
-                {
-                    id: "pa_n1->pa_b1",
-                    source: "pa_n1",
-                    target: "pa_b1",
-                    condition: "amount <= 5000"
-                },
-                {
-                    id: "pa_n1->pa_b2",
-                    source: "pa_n1",
-                    target: "pa_b2",
-                    condition: "amount > 5000 && amount <= 50000"
-                },
-                {
-                    id: "pa_b2->pa_n2",
-                    source: "pa_b2",
-                    target: "pa_n2"
-                },
-                {
-                    id: "pa_n1->pa_b3",
-                    source: "pa_n1",
-                    target: "pa_b3",
-                    condition: "amount > 50000"
-                },
-                {
-                    id: "pa_b3->pa_n3",
-                    source: "pa_b3",
-                    target: "pa_n3"
-                },
-                {
-                    id: "pa_n3->pa_n4",
-                    source: "pa_n3",
-                    target: "pa_n4"
-                }
-            ]
-        }
+  },
+  {
+    id: "purchase_advanced",
+    name: "大额采购全流程",
+    description: "部门审批 → 金额分级 → 多级审批 → 通知结果",
+    category: "finance",
+    icon: ClipboardList,
+    color: "text-orange-600 bg-orange-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交采购申请",
+        },
+        {
+          id: "pa_n1",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+          branchStrategy: "EXCLUSIVE",
+        },
+        {
+          id: "pa_n5",
+          type: NodeType.NOTIFICATION,
+          title: "通知采购结果",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "采购审批结果通知",
+            notificationContent:
+              "您的采购申请（金额: ${amount}）已审批完成，请查看结果。",
+          },
+        },
+        {
+          id: "pa_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "pa_b1",
+          type: NodeType.CONDITION,
+          title: "金额 ≤ 5000",
+          condition: "amount <= 5000",
+        },
+        {
+          id: "pa_b2",
+          type: NodeType.CONDITION,
+          title: "5000 < 金额 ≤ 50000",
+          condition: "amount > 5000 && amount <= 50000",
+        },
+        {
+          id: "pa_n2",
+          type: NodeType.APPROVAL,
+          title: "财务总监审核",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "pa_b3",
+          type: NodeType.CONDITION,
+          title: "金额 > 50000",
+          condition: "amount > 50000",
+        },
+        {
+          id: "pa_n3",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "pa_n4",
+          type: NodeType.APPROVAL,
+          title: "财务总监审核",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+      ],
+      edges: [
+        {
+          id: "start->pa_n1",
+          source: "start",
+          target: "pa_n1",
+        },
+        {
+          id: "pa_n1->pa_n5",
+          source: "pa_n1",
+          target: "pa_n5",
+          isDefault: true,
+        },
+        {
+          id: "pa_n5->pa_end",
+          source: "pa_n5",
+          target: "pa_end",
+        },
+        {
+          id: "pa_n1->pa_b1",
+          source: "pa_n1",
+          target: "pa_b1",
+          condition: "amount <= 5000",
+        },
+        {
+          id: "pa_n1->pa_b2",
+          source: "pa_n1",
+          target: "pa_b2",
+          condition: "amount > 5000 && amount <= 50000",
+        },
+        {
+          id: "pa_b2->pa_n2",
+          source: "pa_b2",
+          target: "pa_n2",
+        },
+        {
+          id: "pa_n1->pa_b3",
+          source: "pa_n1",
+          target: "pa_b3",
+          condition: "amount > 50000",
+        },
+        {
+          id: "pa_b3->pa_n3",
+          source: "pa_b3",
+          target: "pa_n3",
+        },
+        {
+          id: "pa_n3->pa_n4",
+          source: "pa_n3",
+          target: "pa_n4",
+        },
+      ],
     },
-    {
-        id: "project_approval",
-        name: "项目立项审批",
-        description: "部门审核 → 技术+财务并行评审 → 总经理审批 → 通知",
-        category: "other",
-        icon: Rocket,
-        color: "text-purple-600 bg-purple-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交立项申请"
-                },
-                {
-                    id: "proj_n1",
-                    type: NodeType.APPROVAL,
-                    title: "部门负责人审核",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "proj_n2",
-                    type: NodeType.PARALLEL,
-                    title: "并行评审（技术+财务）",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN,FINANCE",
-                    branchStrategy: "PARALLEL"
-                },
-                {
-                    id: "proj_n5",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "proj_n6",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知立项结果",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "项目立项结果",
-                        notificationContent: "您的项目立项申请已完成审批，请登录系统查看详情。"
-                    }
-                },
-                {
-                    id: "proj_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "proj_b1",
-                    type: NodeType.CONDITION,
-                    title: "技术可行性评审"
-                },
-                {
-                    id: "proj_n3",
-                    type: NodeType.APPROVAL,
-                    title: "技术委员会评审",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "proj_b2",
-                    type: NodeType.CONDITION,
-                    title: "财务预算评估"
-                },
-                {
-                    id: "proj_n4",
-                    type: NodeType.APPROVAL,
-                    title: "财务部预算评估",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->proj_n1",
-                    source: "start",
-                    target: "proj_n1"
-                },
-                {
-                    id: "proj_n1->proj_n2",
-                    source: "proj_n1",
-                    target: "proj_n2"
-                },
-                {
-                    id: "proj_n2->proj_n5",
-                    source: "proj_n2",
-                    target: "proj_n5",
-                    isDefault: true
-                },
-                {
-                    id: "proj_n5->proj_n6",
-                    source: "proj_n5",
-                    target: "proj_n6"
-                },
-                {
-                    id: "proj_n6->proj_end",
-                    source: "proj_n6",
-                    target: "proj_end"
-                },
-                {
-                    id: "proj_n2->proj_b1",
-                    source: "proj_n2",
-                    target: "proj_b1"
-                },
-                {
-                    id: "proj_b1->proj_n3",
-                    source: "proj_b1",
-                    target: "proj_n3"
-                },
-                {
-                    id: "proj_n2->proj_b2",
-                    source: "proj_n2",
-                    target: "proj_b2"
-                },
-                {
-                    id: "proj_b2->proj_n4",
-                    source: "proj_b2",
-                    target: "proj_n4"
-                }
-            ]
-        }
+  },
+  {
+    id: "project_approval",
+    name: "项目立项审批",
+    description: "部门审核 → 技术+财务并行评审 → 总经理审批 → 通知",
+    category: "other",
+    icon: Rocket,
+    color: "text-purple-600 bg-purple-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交立项申请",
+        },
+        {
+          id: "proj_n1",
+          type: NodeType.APPROVAL,
+          title: "部门负责人审核",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "proj_n2",
+          type: NodeType.PARALLEL,
+          title: "并行评审（技术+财务）",
+          approverType: "ROLE",
+          approverValue: "ADMIN,FINANCE",
+          branchStrategy: "PARALLEL",
+        },
+        {
+          id: "proj_n5",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "proj_n6",
+          type: NodeType.NOTIFICATION,
+          title: "通知立项结果",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "项目立项结果",
+            notificationContent:
+              "您的项目立项申请已完成审批，请登录系统查看详情。",
+          },
+        },
+        {
+          id: "proj_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "proj_b1",
+          type: NodeType.CONDITION,
+          title: "技术可行性评审",
+        },
+        {
+          id: "proj_n3",
+          type: NodeType.APPROVAL,
+          title: "技术委员会评审",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "proj_b2",
+          type: NodeType.CONDITION,
+          title: "财务预算评估",
+        },
+        {
+          id: "proj_n4",
+          type: NodeType.APPROVAL,
+          title: "财务部预算评估",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+      ],
+      edges: [
+        {
+          id: "start->proj_n1",
+          source: "start",
+          target: "proj_n1",
+        },
+        {
+          id: "proj_n1->proj_n2",
+          source: "proj_n1",
+          target: "proj_n2",
+        },
+        {
+          id: "proj_n2->proj_n5",
+          source: "proj_n2",
+          target: "proj_n5",
+          isDefault: true,
+        },
+        {
+          id: "proj_n5->proj_n6",
+          source: "proj_n5",
+          target: "proj_n6",
+        },
+        {
+          id: "proj_n6->proj_end",
+          source: "proj_n6",
+          target: "proj_end",
+        },
+        {
+          id: "proj_n2->proj_b1",
+          source: "proj_n2",
+          target: "proj_b1",
+        },
+        {
+          id: "proj_b1->proj_n3",
+          source: "proj_b1",
+          target: "proj_n3",
+        },
+        {
+          id: "proj_n2->proj_b2",
+          source: "proj_n2",
+          target: "proj_b2",
+        },
+        {
+          id: "proj_b2->proj_n4",
+          source: "proj_b2",
+          target: "proj_n4",
+        },
+      ],
     },
-    {
-        id: "regularization",
-        name: "员工转正审批",
-        description: "定时提醒 → 部门评估 → HR审核 → 并行办理 → 通知",
-        category: "hr",
-        icon: UserCheck,
-        color: "text-green-600 bg-green-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "发起转正流程"
-                },
-                {
-                    id: "reg_n1",
-                    type: NodeType.TIMER,
-                    title: "试用期到期提醒",
-                    props: {
-                        timerType: "DELAY",
-                        delayMinutes: 60
-                    }
-                },
-                {
-                    id: "reg_n2",
-                    type: NodeType.APPROVAL,
-                    title: "部门负责人评估",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "reg_n3",
-                    type: NodeType.APPROVAL,
-                    title: "HR综合审核",
-                    approverType: "ROLE",
-                    approverValue: "HR"
-                },
-                {
-                    id: "reg_n4",
-                    type: NodeType.PARALLEL,
-                    title: "并行办理（IT+行政）",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    branchStrategy: "PARALLEL"
-                },
-                {
-                    id: "reg_n7",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知转正结果",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "转正审批结果",
-                        notificationContent: "恭喜！您的转正申请已通过，欢迎成为正式员工。"
-                    }
-                },
-                {
-                    id: "reg_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "reg_b1",
-                    type: NodeType.CONDITION,
-                    title: "IT权限开通"
-                },
-                {
-                    id: "reg_n5",
-                    type: NodeType.MANUAL,
-                    title: "IT开通正式权限",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "为转正员工开通正式员工系统权限、邮箱等",
-                        priority: "HIGH"
-                    }
-                },
-                {
-                    id: "reg_b2",
-                    type: NodeType.CONDITION,
-                    title: "行政手续办理"
-                },
-                {
-                    id: "reg_n6",
-                    type: NodeType.MANUAL,
-                    title: "行政办理工牌社保",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "办理正式工牌、更新社保信息、签订正式合同",
-                        priority: "MEDIUM"
-                    }
-                }
-            ],
-            edges: [
-                {
-                    id: "start->reg_n1",
-                    source: "start",
-                    target: "reg_n1"
-                },
-                {
-                    id: "reg_n1->reg_n2",
-                    source: "reg_n1",
-                    target: "reg_n2"
-                },
-                {
-                    id: "reg_n2->reg_n3",
-                    source: "reg_n2",
-                    target: "reg_n3"
-                },
-                {
-                    id: "reg_n3->reg_n4",
-                    source: "reg_n3",
-                    target: "reg_n4"
-                },
-                {
-                    id: "reg_n4->reg_n7",
-                    source: "reg_n4",
-                    target: "reg_n7",
-                    isDefault: true
-                },
-                {
-                    id: "reg_n7->reg_end",
-                    source: "reg_n7",
-                    target: "reg_end"
-                },
-                {
-                    id: "reg_n4->reg_b1",
-                    source: "reg_n4",
-                    target: "reg_b1"
-                },
-                {
-                    id: "reg_b1->reg_n5",
-                    source: "reg_b1",
-                    target: "reg_n5"
-                },
-                {
-                    id: "reg_n4->reg_b2",
-                    source: "reg_n4",
-                    target: "reg_b2"
-                },
-                {
-                    id: "reg_b2->reg_n6",
-                    source: "reg_b2",
-                    target: "reg_n6"
-                }
-            ]
-        }
+  },
+  {
+    id: "regularization",
+    name: "员工转正审批",
+    description: "定时提醒 → 部门评估 → HR审核 → 并行办理 → 通知",
+    category: "hr",
+    icon: UserCheck,
+    color: "text-green-600 bg-green-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "发起转正流程",
+        },
+        {
+          id: "reg_n1",
+          type: NodeType.TIMER,
+          title: "试用期到期提醒",
+          props: {
+            timerType: "DELAY",
+            delayMinutes: 60,
+          },
+        },
+        {
+          id: "reg_n2",
+          type: NodeType.APPROVAL,
+          title: "部门负责人评估",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "reg_n3",
+          type: NodeType.APPROVAL,
+          title: "HR综合审核",
+          approverType: "ROLE",
+          approverValue: "HR",
+        },
+        {
+          id: "reg_n4",
+          type: NodeType.PARALLEL,
+          title: "并行办理（IT+行政）",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          branchStrategy: "PARALLEL",
+        },
+        {
+          id: "reg_n7",
+          type: NodeType.NOTIFICATION,
+          title: "通知转正结果",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "转正审批结果",
+            notificationContent: "恭喜！您的转正申请已通过，欢迎成为正式员工。",
+          },
+        },
+        {
+          id: "reg_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "reg_b1",
+          type: NodeType.CONDITION,
+          title: "IT权限开通",
+        },
+        {
+          id: "reg_n5",
+          type: NodeType.MANUAL,
+          title: "IT开通正式权限",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "为转正员工开通正式员工系统权限、邮箱等",
+            priority: "HIGH",
+          },
+        },
+        {
+          id: "reg_b2",
+          type: NodeType.CONDITION,
+          title: "行政手续办理",
+        },
+        {
+          id: "reg_n6",
+          type: NodeType.MANUAL,
+          title: "行政办理工牌社保",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "办理正式工牌、更新社保信息、签订正式合同",
+            priority: "MEDIUM",
+          },
+        },
+      ],
+      edges: [
+        {
+          id: "start->reg_n1",
+          source: "start",
+          target: "reg_n1",
+        },
+        {
+          id: "reg_n1->reg_n2",
+          source: "reg_n1",
+          target: "reg_n2",
+        },
+        {
+          id: "reg_n2->reg_n3",
+          source: "reg_n2",
+          target: "reg_n3",
+        },
+        {
+          id: "reg_n3->reg_n4",
+          source: "reg_n3",
+          target: "reg_n4",
+        },
+        {
+          id: "reg_n4->reg_n7",
+          source: "reg_n4",
+          target: "reg_n7",
+          isDefault: true,
+        },
+        {
+          id: "reg_n7->reg_end",
+          source: "reg_n7",
+          target: "reg_end",
+        },
+        {
+          id: "reg_n4->reg_b1",
+          source: "reg_n4",
+          target: "reg_b1",
+        },
+        {
+          id: "reg_b1->reg_n5",
+          source: "reg_b1",
+          target: "reg_n5",
+        },
+        {
+          id: "reg_n4->reg_b2",
+          source: "reg_n4",
+          target: "reg_b2",
+        },
+        {
+          id: "reg_b2->reg_n6",
+          source: "reg_b2",
+          target: "reg_n6",
+        },
+      ],
     },
-    {
-        id: "incident",
-        name: "IT故障处理",
-        description: "自动分级 → 按级别分流 → 处理 → 验证确认",
-        category: "it",
-        icon: Wrench,
-        color: "text-red-600 bg-red-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交故障报告"
-                },
-                {
-                    id: "inc_n1",
-                    type: NodeType.SCRIPT,
-                    title: "自动故障分级",
-                    props: {
-                        scriptType: "JAVASCRIPT",
-                        scriptContent: "const level = severity >= 8 ? \"P1\" : severity >= 5 ? \"P2\" : \"P3\";\nreturn { incidentLevel: level };",
-                        continueOnError: false
-                    },
-                    branchStrategy: "EXCLUSIVE"
-                },
-                {
-                    id: "inc_n7",
-                    type: NodeType.MANUAL,
-                    title: "报修人验证确认",
-                    approverType: "USER",
-                    props: {
-                        taskDescription: "请确认故障是否已修复，如未修复请退回重新处理",
-                        priority: "MEDIUM"
-                    }
-                },
-                {
-                    id: "inc_n8",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知故障关闭",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "故障处理完成",
-                        notificationContent: "您提交的故障报告已处理完成并关闭。"
-                    }
-                },
-                {
-                    id: "inc_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "inc_b1",
-                    type: NodeType.CONDITION,
-                    title: "P1 紧急故障",
-                    condition: "incidentLevel == \"P1\""
-                },
-                {
-                    id: "inc_n2",
-                    type: NodeType.NOTIFICATION,
-                    title: "紧急通知管理层",
-                    props: {
-                        recipientType: "ROLE",
-                        recipientValue: "MANAGER",
-                        notificationTitle: "【紧急】P1级故障告警",
-                        notificationContent: "系统发生P1级紧急故障，请立即关注！故障描述: ${description}"
-                    }
-                },
-                {
-                    id: "inc_n3",
-                    type: NodeType.MANUAL,
-                    title: "紧急修复处理",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "P1级紧急故障，需立即响应并修复",
-                        priority: "HIGH"
-                    }
-                },
-                {
-                    id: "inc_b2",
-                    type: NodeType.CONDITION,
-                    title: "P2 重要故障",
-                    condition: "incidentLevel == \"P2\""
-                },
-                {
-                    id: "inc_n4",
-                    type: NodeType.APPROVAL,
-                    title: "运维主管派单",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "inc_n5",
-                    type: NodeType.MANUAL,
-                    title: "运维工程师处理",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "P2级故障，请在4小时内完成修复",
-                        priority: "MEDIUM"
-                    }
-                },
-                {
-                    id: "inc_b3",
-                    type: NodeType.CONDITION,
-                    title: "P3 一般故障",
-                    condition: "incidentLevel == \"P3\""
-                },
-                {
-                    id: "inc_n6",
-                    type: NodeType.MANUAL,
-                    title: "运维工程师处理",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "P3级一般故障，请在24小时内处理",
-                        priority: "LOW"
-                    }
-                }
-            ],
-            edges: [
-                {
-                    id: "start->inc_n1",
-                    source: "start",
-                    target: "inc_n1"
-                },
-                {
-                    id: "inc_n1->inc_n7",
-                    source: "inc_n1",
-                    target: "inc_n7",
-                    isDefault: true
-                },
-                {
-                    id: "inc_n7->inc_n8",
-                    source: "inc_n7",
-                    target: "inc_n8"
-                },
-                {
-                    id: "inc_n8->inc_end",
-                    source: "inc_n8",
-                    target: "inc_end"
-                },
-                {
-                    id: "inc_n1->inc_b1",
-                    source: "inc_n1",
-                    target: "inc_b1",
-                    condition: "incidentLevel == \"P1\""
-                },
-                {
-                    id: "inc_b1->inc_n2",
-                    source: "inc_b1",
-                    target: "inc_n2"
-                },
-                {
-                    id: "inc_n2->inc_n3",
-                    source: "inc_n2",
-                    target: "inc_n3"
-                },
-                {
-                    id: "inc_n1->inc_b2",
-                    source: "inc_n1",
-                    target: "inc_b2",
-                    condition: "incidentLevel == \"P2\""
-                },
-                {
-                    id: "inc_b2->inc_n4",
-                    source: "inc_b2",
-                    target: "inc_n4"
-                },
-                {
-                    id: "inc_n4->inc_n5",
-                    source: "inc_n4",
-                    target: "inc_n5"
-                },
-                {
-                    id: "inc_n1->inc_b3",
-                    source: "inc_n1",
-                    target: "inc_b3",
-                    condition: "incidentLevel == \"P3\""
-                },
-                {
-                    id: "inc_b3->inc_n6",
-                    source: "inc_b3",
-                    target: "inc_n6"
-                }
-            ]
-        }
+  },
+  {
+    id: "incident",
+    name: "IT故障处理",
+    description: "自动分级 → 按级别分流 → 处理 → 验证确认",
+    category: "it",
+    icon: Wrench,
+    color: "text-red-600 bg-red-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交故障报告",
+        },
+        {
+          id: "inc_n1",
+          type: NodeType.SCRIPT,
+          title: "自动故障分级",
+          props: {
+            scriptType: "JAVASCRIPT",
+            scriptContent:
+              'const level = severity >= 8 ? "P1" : severity >= 5 ? "P2" : "P3";\nreturn { incidentLevel: level };',
+            continueOnError: false,
+          },
+          branchStrategy: "EXCLUSIVE",
+        },
+        {
+          id: "inc_n7",
+          type: NodeType.MANUAL,
+          title: "报修人验证确认",
+          approverType: "USER",
+          props: {
+            taskDescription: "请确认故障是否已修复，如未修复请退回重新处理",
+            priority: "MEDIUM",
+          },
+        },
+        {
+          id: "inc_n8",
+          type: NodeType.NOTIFICATION,
+          title: "通知故障关闭",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "故障处理完成",
+            notificationContent: "您提交的故障报告已处理完成并关闭。",
+          },
+        },
+        {
+          id: "inc_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "inc_b1",
+          type: NodeType.CONDITION,
+          title: "P1 紧急故障",
+          condition: 'incidentLevel == "P1"',
+        },
+        {
+          id: "inc_n2",
+          type: NodeType.NOTIFICATION,
+          title: "紧急通知管理层",
+          props: {
+            recipientType: "ROLE",
+            recipientValue: "MANAGER",
+            notificationTitle: "【紧急】P1级故障告警",
+            notificationContent:
+              "系统发生P1级紧急故障，请立即关注！故障描述: ${description}",
+          },
+        },
+        {
+          id: "inc_n3",
+          type: NodeType.MANUAL,
+          title: "紧急修复处理",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "P1级紧急故障，需立即响应并修复",
+            priority: "HIGH",
+          },
+        },
+        {
+          id: "inc_b2",
+          type: NodeType.CONDITION,
+          title: "P2 重要故障",
+          condition: 'incidentLevel == "P2"',
+        },
+        {
+          id: "inc_n4",
+          type: NodeType.APPROVAL,
+          title: "运维主管派单",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "inc_n5",
+          type: NodeType.MANUAL,
+          title: "运维工程师处理",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "P2级故障，请在4小时内完成修复",
+            priority: "MEDIUM",
+          },
+        },
+        {
+          id: "inc_b3",
+          type: NodeType.CONDITION,
+          title: "P3 一般故障",
+          condition: 'incidentLevel == "P3"',
+        },
+        {
+          id: "inc_n6",
+          type: NodeType.MANUAL,
+          title: "运维工程师处理",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "P3级一般故障，请在24小时内处理",
+            priority: "LOW",
+          },
+        },
+      ],
+      edges: [
+        {
+          id: "start->inc_n1",
+          source: "start",
+          target: "inc_n1",
+        },
+        {
+          id: "inc_n1->inc_n7",
+          source: "inc_n1",
+          target: "inc_n7",
+          isDefault: true,
+        },
+        {
+          id: "inc_n7->inc_n8",
+          source: "inc_n7",
+          target: "inc_n8",
+        },
+        {
+          id: "inc_n8->inc_end",
+          source: "inc_n8",
+          target: "inc_end",
+        },
+        {
+          id: "inc_n1->inc_b1",
+          source: "inc_n1",
+          target: "inc_b1",
+          condition: 'incidentLevel == "P1"',
+        },
+        {
+          id: "inc_b1->inc_n2",
+          source: "inc_b1",
+          target: "inc_n2",
+        },
+        {
+          id: "inc_n2->inc_n3",
+          source: "inc_n2",
+          target: "inc_n3",
+        },
+        {
+          id: "inc_n1->inc_b2",
+          source: "inc_n1",
+          target: "inc_b2",
+          condition: 'incidentLevel == "P2"',
+        },
+        {
+          id: "inc_b2->inc_n4",
+          source: "inc_b2",
+          target: "inc_n4",
+        },
+        {
+          id: "inc_n4->inc_n5",
+          source: "inc_n4",
+          target: "inc_n5",
+        },
+        {
+          id: "inc_n1->inc_b3",
+          source: "inc_n1",
+          target: "inc_b3",
+          condition: 'incidentLevel == "P3"',
+        },
+        {
+          id: "inc_b3->inc_n6",
+          source: "inc_b3",
+          target: "inc_n6",
+        },
+      ],
     },
-    {
-        id: "sales_contract",
-        name: "销售合同全流程",
-        description: "销售审核 → 金额分级 → 法务审核 → 并行盖章 → 通知",
-        category: "sales",
-        icon: FileCheck,
-        color: "text-pink-500 bg-pink-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交合同审批"
-                },
-                {
-                    id: "sc_n1",
-                    type: NodeType.APPROVAL,
-                    title: "销售主管审核",
-                    approverType: "DIRECT_LEADER",
-                    branchStrategy: "EXCLUSIVE"
-                },
-                {
-                    id: "sc_n5",
-                    type: NodeType.APPROVAL,
-                    title: "法务合规审核",
-                    approverType: "ROLE",
-                    approverValue: "LEGAL"
-                },
-                {
-                    id: "sc_n6",
-                    type: NodeType.PARALLEL,
-                    title: "并行办理（财务+行政）",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE,ADMIN",
-                    branchStrategy: "PARALLEL"
-                },
-                {
-                    id: "sc_n9",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知合同签署完成",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "合同审批完成",
-                        notificationContent: "您提交的合同（金额: ${amount}）已完成全部审批流程，请及时跟进签署。"
-                    }
-                },
-                {
-                    id: "sc_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "sc_b3",
-                    type: NodeType.CONDITION,
-                    title: "财务确认"
-                },
-                {
-                    id: "sc_n7",
-                    type: NodeType.APPROVAL,
-                    title: "财务确认收款条款",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                },
-                {
-                    id: "sc_b4",
-                    type: NodeType.CONDITION,
-                    title: "行政盖章"
-                },
-                {
-                    id: "sc_n8",
-                    type: NodeType.MANUAL,
-                    title: "行政盖章归档",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "合同盖章并归档原件",
-                        priority: "HIGH"
-                    }
-                },
-                {
-                    id: "sc_b1",
-                    type: NodeType.CONDITION,
-                    title: "金额 ≤ 10万",
-                    condition: "amount <= 100000"
-                },
-                {
-                    id: "sc_n2",
-                    type: NodeType.APPROVAL,
-                    title: "销售总监审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "sc_b2",
-                    type: NodeType.CONDITION,
-                    title: "金额 > 10万",
-                    condition: "amount > 100000"
-                },
-                {
-                    id: "sc_n3",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "sc_n4",
-                    type: NodeType.APPROVAL,
-                    title: "董事会审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->sc_n1",
-                    source: "start",
-                    target: "sc_n1"
-                },
-                {
-                    id: "sc_n1->sc_n5",
-                    source: "sc_n1",
-                    target: "sc_n5",
-                    isDefault: true
-                },
-                {
-                    id: "sc_n5->sc_n6",
-                    source: "sc_n5",
-                    target: "sc_n6"
-                },
-                {
-                    id: "sc_n6->sc_n9",
-                    source: "sc_n6",
-                    target: "sc_n9",
-                    isDefault: true
-                },
-                {
-                    id: "sc_n9->sc_end",
-                    source: "sc_n9",
-                    target: "sc_end"
-                },
-                {
-                    id: "sc_n6->sc_b3",
-                    source: "sc_n6",
-                    target: "sc_b3"
-                },
-                {
-                    id: "sc_b3->sc_n7",
-                    source: "sc_b3",
-                    target: "sc_n7"
-                },
-                {
-                    id: "sc_n6->sc_b4",
-                    source: "sc_n6",
-                    target: "sc_b4"
-                },
-                {
-                    id: "sc_b4->sc_n8",
-                    source: "sc_b4",
-                    target: "sc_n8"
-                },
-                {
-                    id: "sc_n1->sc_b1",
-                    source: "sc_n1",
-                    target: "sc_b1",
-                    condition: "amount <= 100000"
-                },
-                {
-                    id: "sc_b1->sc_n2",
-                    source: "sc_b1",
-                    target: "sc_n2"
-                },
-                {
-                    id: "sc_n1->sc_b2",
-                    source: "sc_n1",
-                    target: "sc_b2",
-                    condition: "amount > 100000"
-                },
-                {
-                    id: "sc_b2->sc_n3",
-                    source: "sc_b2",
-                    target: "sc_n3"
-                },
-                {
-                    id: "sc_n3->sc_n4",
-                    source: "sc_n3",
-                    target: "sc_n4"
-                }
-            ]
-        }
+  },
+  {
+    id: "sales_contract",
+    name: "销售合同全流程",
+    description: "销售审核 → 金额分级 → 法务审核 → 并行盖章 → 通知",
+    category: "sales",
+    icon: FileCheck,
+    color: "text-pink-500 bg-pink-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交合同审批",
+        },
+        {
+          id: "sc_n1",
+          type: NodeType.APPROVAL,
+          title: "销售主管审核",
+          approverType: "DIRECT_LEADER",
+          branchStrategy: "EXCLUSIVE",
+        },
+        {
+          id: "sc_n5",
+          type: NodeType.APPROVAL,
+          title: "法务合规审核",
+          approverType: "ROLE",
+          approverValue: "LEGAL",
+        },
+        {
+          id: "sc_n6",
+          type: NodeType.PARALLEL,
+          title: "并行办理（财务+行政）",
+          approverType: "ROLE",
+          approverValue: "FINANCE,ADMIN",
+          branchStrategy: "PARALLEL",
+        },
+        {
+          id: "sc_n9",
+          type: NodeType.NOTIFICATION,
+          title: "通知合同签署完成",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "合同审批完成",
+            notificationContent:
+              "您提交的合同（金额: ${amount}）已完成全部审批流程，请及时跟进签署。",
+          },
+        },
+        {
+          id: "sc_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "sc_b3",
+          type: NodeType.CONDITION,
+          title: "财务确认",
+        },
+        {
+          id: "sc_n7",
+          type: NodeType.APPROVAL,
+          title: "财务确认收款条款",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+        {
+          id: "sc_b4",
+          type: NodeType.CONDITION,
+          title: "行政盖章",
+        },
+        {
+          id: "sc_n8",
+          type: NodeType.MANUAL,
+          title: "行政盖章归档",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "合同盖章并归档原件",
+            priority: "HIGH",
+          },
+        },
+        {
+          id: "sc_b1",
+          type: NodeType.CONDITION,
+          title: "金额 ≤ 10万",
+          condition: "amount <= 100000",
+        },
+        {
+          id: "sc_n2",
+          type: NodeType.APPROVAL,
+          title: "销售总监审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "sc_b2",
+          type: NodeType.CONDITION,
+          title: "金额 > 10万",
+          condition: "amount > 100000",
+        },
+        {
+          id: "sc_n3",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "sc_n4",
+          type: NodeType.APPROVAL,
+          title: "董事会审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+      ],
+      edges: [
+        {
+          id: "start->sc_n1",
+          source: "start",
+          target: "sc_n1",
+        },
+        {
+          id: "sc_n1->sc_n5",
+          source: "sc_n1",
+          target: "sc_n5",
+          isDefault: true,
+        },
+        {
+          id: "sc_n5->sc_n6",
+          source: "sc_n5",
+          target: "sc_n6",
+        },
+        {
+          id: "sc_n6->sc_n9",
+          source: "sc_n6",
+          target: "sc_n9",
+          isDefault: true,
+        },
+        {
+          id: "sc_n9->sc_end",
+          source: "sc_n9",
+          target: "sc_end",
+        },
+        {
+          id: "sc_n6->sc_b3",
+          source: "sc_n6",
+          target: "sc_b3",
+        },
+        {
+          id: "sc_b3->sc_n7",
+          source: "sc_b3",
+          target: "sc_n7",
+        },
+        {
+          id: "sc_n6->sc_b4",
+          source: "sc_n6",
+          target: "sc_b4",
+        },
+        {
+          id: "sc_b4->sc_n8",
+          source: "sc_b4",
+          target: "sc_n8",
+        },
+        {
+          id: "sc_n1->sc_b1",
+          source: "sc_n1",
+          target: "sc_b1",
+          condition: "amount <= 100000",
+        },
+        {
+          id: "sc_b1->sc_n2",
+          source: "sc_b1",
+          target: "sc_n2",
+        },
+        {
+          id: "sc_n1->sc_b2",
+          source: "sc_n1",
+          target: "sc_b2",
+          condition: "amount > 100000",
+        },
+        {
+          id: "sc_b2->sc_n3",
+          source: "sc_b2",
+          target: "sc_n3",
+        },
+        {
+          id: "sc_n3->sc_n4",
+          source: "sc_n3",
+          target: "sc_n4",
+        },
+      ],
     },
-    {
-        id: "bidding",
-        name: "招标采购流程",
-        description: "需求审核 → 生成标书 → 等待投标 → 并行评标 → 审批",
-        category: "industry",
-        icon: ClipboardList,
-        color: "text-pink-600 bg-pink-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交招标需求"
-                },
-                {
-                    id: "bid_n1",
-                    type: NodeType.APPROVAL,
-                    title: "采购部审核需求",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "bid_n2",
-                    type: NodeType.SCRIPT,
-                    title: "自动生成招标文件",
-                    props: {
-                        scriptType: "API",
-                        apiUrl: "/api/bidding/generate",
-                        apiMethod: "POST",
-                        apiBody: "{\"projectName\": \"${projectName}\", \"budget\": \"${budget}\"}",
-                        continueOnError: false
-                    }
-                },
-                {
-                    id: "bid_n3",
-                    type: NodeType.TIMER,
-                    title: "等待投标截止（7天）",
-                    props: {
-                        timerType: "DELAY",
-                        delayMinutes: 10080
-                    }
-                },
-                {
-                    id: "bid_n4",
-                    type: NodeType.PARALLEL,
-                    title: "并行评标",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    branchStrategy: "PARALLEL"
-                },
-                {
-                    id: "bid_n7",
-                    type: NodeType.APPROVAL,
-                    title: "评标委员会定标",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "bid_n8",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知中标结果",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "招标结果通知",
-                        notificationContent: "招标项目「${projectName}」已完成评标，请查看中标结果。"
-                    }
-                },
-                {
-                    id: "bid_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "bid_b1",
-                    type: NodeType.CONDITION,
-                    title: "技术评标"
-                },
-                {
-                    id: "bid_n5",
-                    type: NodeType.APPROVAL,
-                    title: "技术专家评标",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "bid_b2",
-                    type: NodeType.CONDITION,
-                    title: "商务评标"
-                },
-                {
-                    id: "bid_n6",
-                    type: NodeType.APPROVAL,
-                    title: "商务专家评标",
-                    approverType: "ROLE",
-                    approverValue: "FINANCE"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->bid_n1",
-                    source: "start",
-                    target: "bid_n1"
-                },
-                {
-                    id: "bid_n1->bid_n2",
-                    source: "bid_n1",
-                    target: "bid_n2"
-                },
-                {
-                    id: "bid_n2->bid_n3",
-                    source: "bid_n2",
-                    target: "bid_n3"
-                },
-                {
-                    id: "bid_n3->bid_n4",
-                    source: "bid_n3",
-                    target: "bid_n4"
-                },
-                {
-                    id: "bid_n4->bid_n7",
-                    source: "bid_n4",
-                    target: "bid_n7",
-                    isDefault: true
-                },
-                {
-                    id: "bid_n7->bid_n8",
-                    source: "bid_n7",
-                    target: "bid_n8"
-                },
-                {
-                    id: "bid_n8->bid_end",
-                    source: "bid_n8",
-                    target: "bid_end"
-                },
-                {
-                    id: "bid_n4->bid_b1",
-                    source: "bid_n4",
-                    target: "bid_b1"
-                },
-                {
-                    id: "bid_b1->bid_n5",
-                    source: "bid_b1",
-                    target: "bid_n5"
-                },
-                {
-                    id: "bid_n4->bid_b2",
-                    source: "bid_n4",
-                    target: "bid_b2"
-                },
-                {
-                    id: "bid_b2->bid_n6",
-                    source: "bid_b2",
-                    target: "bid_n6"
-                }
-            ]
-        }
+  },
+  {
+    id: "bidding",
+    name: "招标采购流程",
+    description: "需求审核 → 生成标书 → 等待投标 → 并行评标 → 审批",
+    category: "industry",
+    icon: ClipboardList,
+    color: "text-pink-600 bg-pink-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交招标需求",
+        },
+        {
+          id: "bid_n1",
+          type: NodeType.APPROVAL,
+          title: "采购部审核需求",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "bid_n2",
+          type: NodeType.SCRIPT,
+          title: "自动生成招标文件",
+          props: {
+            scriptType: "API",
+            apiUrl: "/api/bidding/generate",
+            apiMethod: "POST",
+            apiBody: '{"projectName": "${projectName}", "budget": "${budget}"}',
+            continueOnError: false,
+          },
+        },
+        {
+          id: "bid_n3",
+          type: NodeType.TIMER,
+          title: "等待投标截止（7天）",
+          props: {
+            timerType: "DELAY",
+            delayMinutes: 10080,
+          },
+        },
+        {
+          id: "bid_n4",
+          type: NodeType.PARALLEL,
+          title: "并行评标",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          branchStrategy: "PARALLEL",
+        },
+        {
+          id: "bid_n7",
+          type: NodeType.APPROVAL,
+          title: "评标委员会定标",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "bid_n8",
+          type: NodeType.NOTIFICATION,
+          title: "通知中标结果",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "招标结果通知",
+            notificationContent:
+              "招标项目「${projectName}」已完成评标，请查看中标结果。",
+          },
+        },
+        {
+          id: "bid_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "bid_b1",
+          type: NodeType.CONDITION,
+          title: "技术评标",
+        },
+        {
+          id: "bid_n5",
+          type: NodeType.APPROVAL,
+          title: "技术专家评标",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "bid_b2",
+          type: NodeType.CONDITION,
+          title: "商务评标",
+        },
+        {
+          id: "bid_n6",
+          type: NodeType.APPROVAL,
+          title: "商务专家评标",
+          approverType: "ROLE",
+          approverValue: "FINANCE",
+        },
+      ],
+      edges: [
+        {
+          id: "start->bid_n1",
+          source: "start",
+          target: "bid_n1",
+        },
+        {
+          id: "bid_n1->bid_n2",
+          source: "bid_n1",
+          target: "bid_n2",
+        },
+        {
+          id: "bid_n2->bid_n3",
+          source: "bid_n2",
+          target: "bid_n3",
+        },
+        {
+          id: "bid_n3->bid_n4",
+          source: "bid_n3",
+          target: "bid_n4",
+        },
+        {
+          id: "bid_n4->bid_n7",
+          source: "bid_n4",
+          target: "bid_n7",
+          isDefault: true,
+        },
+        {
+          id: "bid_n7->bid_n8",
+          source: "bid_n7",
+          target: "bid_n8",
+        },
+        {
+          id: "bid_n8->bid_end",
+          source: "bid_n8",
+          target: "bid_end",
+        },
+        {
+          id: "bid_n4->bid_b1",
+          source: "bid_n4",
+          target: "bid_b1",
+        },
+        {
+          id: "bid_b1->bid_n5",
+          source: "bid_b1",
+          target: "bid_n5",
+        },
+        {
+          id: "bid_n4->bid_b2",
+          source: "bid_n4",
+          target: "bid_b2",
+        },
+        {
+          id: "bid_b2->bid_n6",
+          source: "bid_b2",
+          target: "bid_n6",
+        },
+      ],
     },
-    {
-        id: "safety_incident",
-        name: "安全事故处理",
-        description: "自动记录 → 并行处置+通知 → 事故调查 → 整改审批",
-        category: "industry",
-        icon: ShieldCheck,
-        color: "text-red-700 bg-red-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "报告安全事故"
-                },
-                {
-                    id: "sf_n1",
-                    type: NodeType.SCRIPT,
-                    title: "自动记录事故信息",
-                    props: {
-                        scriptType: "API",
-                        apiUrl: "/api/safety/record",
-                        apiMethod: "POST",
-                        apiBody: "{\"type\": \"${accidentType}\", \"location\": \"${location}\"}",
-                        continueOnError: true
-                    }
-                },
-                {
-                    id: "sf_n2",
-                    type: NodeType.PARALLEL,
-                    title: "并行处置（现场+通知）",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    branchStrategy: "PARALLEL"
-                },
-                {
-                    id: "sf_n5",
-                    type: NodeType.APPROVAL,
-                    title: "事故调查报告审核",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "sf_n6",
-                    type: NodeType.APPROVAL,
-                    title: "整改方案审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "sf_n7",
-                    type: NodeType.MANUAL,
-                    title: "执行整改措施",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "按照整改方案执行安全整改措施",
-                        priority: "HIGH"
-                    }
-                },
-                {
-                    id: "sf_n8",
-                    type: NodeType.APPROVAL,
-                    title: "整改验收确认",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "sf_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "sf_b1",
-                    type: NodeType.CONDITION,
-                    title: "现场处置"
-                },
-                {
-                    id: "sf_n3",
-                    type: NodeType.MANUAL,
-                    title: "现场紧急处置",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "立即前往事故现场进行紧急处置，确保人员安全",
-                        priority: "HIGH"
-                    }
-                },
-                {
-                    id: "sf_b2",
-                    type: NodeType.CONDITION,
-                    title: "上报通知"
-                },
-                {
-                    id: "sf_n4",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知安全管理层",
-                    props: {
-                        recipientType: "ROLE",
-                        recipientValue: "MANAGER",
-                        notificationTitle: "【紧急】安全事故报告",
-                        notificationContent: "发生安全事故，地点: ${location}，请立即关注。"
-                    }
-                }
-            ],
-            edges: [
-                {
-                    id: "start->sf_n1",
-                    source: "start",
-                    target: "sf_n1"
-                },
-                {
-                    id: "sf_n1->sf_n2",
-                    source: "sf_n1",
-                    target: "sf_n2"
-                },
-                {
-                    id: "sf_n2->sf_n5",
-                    source: "sf_n2",
-                    target: "sf_n5",
-                    isDefault: true
-                },
-                {
-                    id: "sf_n5->sf_n6",
-                    source: "sf_n5",
-                    target: "sf_n6"
-                },
-                {
-                    id: "sf_n6->sf_n7",
-                    source: "sf_n6",
-                    target: "sf_n7"
-                },
-                {
-                    id: "sf_n7->sf_n8",
-                    source: "sf_n7",
-                    target: "sf_n8"
-                },
-                {
-                    id: "sf_n8->sf_end",
-                    source: "sf_n8",
-                    target: "sf_end"
-                },
-                {
-                    id: "sf_n2->sf_b1",
-                    source: "sf_n2",
-                    target: "sf_b1"
-                },
-                {
-                    id: "sf_b1->sf_n3",
-                    source: "sf_b1",
-                    target: "sf_n3"
-                },
-                {
-                    id: "sf_n2->sf_b2",
-                    source: "sf_n2",
-                    target: "sf_b2"
-                },
-                {
-                    id: "sf_b2->sf_n4",
-                    source: "sf_b2",
-                    target: "sf_n4"
-                }
-            ]
-        }
+  },
+  {
+    id: "safety_incident",
+    name: "安全事故处理",
+    description: "自动记录 → 并行处置+通知 → 事故调查 → 整改审批",
+    category: "industry",
+    icon: ShieldCheck,
+    color: "text-red-700 bg-red-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "报告安全事故",
+        },
+        {
+          id: "sf_n1",
+          type: NodeType.SCRIPT,
+          title: "自动记录事故信息",
+          props: {
+            scriptType: "API",
+            apiUrl: "/api/safety/record",
+            apiMethod: "POST",
+            apiBody: '{"type": "${accidentType}", "location": "${location}"}',
+            continueOnError: true,
+          },
+        },
+        {
+          id: "sf_n2",
+          type: NodeType.PARALLEL,
+          title: "并行处置（现场+通知）",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          branchStrategy: "PARALLEL",
+        },
+        {
+          id: "sf_n5",
+          type: NodeType.APPROVAL,
+          title: "事故调查报告审核",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "sf_n6",
+          type: NodeType.APPROVAL,
+          title: "整改方案审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "sf_n7",
+          type: NodeType.MANUAL,
+          title: "执行整改措施",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "按照整改方案执行安全整改措施",
+            priority: "HIGH",
+          },
+        },
+        {
+          id: "sf_n8",
+          type: NodeType.APPROVAL,
+          title: "整改验收确认",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "sf_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "sf_b1",
+          type: NodeType.CONDITION,
+          title: "现场处置",
+        },
+        {
+          id: "sf_n3",
+          type: NodeType.MANUAL,
+          title: "现场紧急处置",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "立即前往事故现场进行紧急处置，确保人员安全",
+            priority: "HIGH",
+          },
+        },
+        {
+          id: "sf_b2",
+          type: NodeType.CONDITION,
+          title: "上报通知",
+        },
+        {
+          id: "sf_n4",
+          type: NodeType.NOTIFICATION,
+          title: "通知安全管理层",
+          props: {
+            recipientType: "ROLE",
+            recipientValue: "MANAGER",
+            notificationTitle: "【紧急】安全事故报告",
+            notificationContent:
+              "发生安全事故，地点: ${location}，请立即关注。",
+          },
+        },
+      ],
+      edges: [
+        {
+          id: "start->sf_n1",
+          source: "start",
+          target: "sf_n1",
+        },
+        {
+          id: "sf_n1->sf_n2",
+          source: "sf_n1",
+          target: "sf_n2",
+        },
+        {
+          id: "sf_n2->sf_n5",
+          source: "sf_n2",
+          target: "sf_n5",
+          isDefault: true,
+        },
+        {
+          id: "sf_n5->sf_n6",
+          source: "sf_n5",
+          target: "sf_n6",
+        },
+        {
+          id: "sf_n6->sf_n7",
+          source: "sf_n6",
+          target: "sf_n7",
+        },
+        {
+          id: "sf_n7->sf_n8",
+          source: "sf_n7",
+          target: "sf_n8",
+        },
+        {
+          id: "sf_n8->sf_end",
+          source: "sf_n8",
+          target: "sf_end",
+        },
+        {
+          id: "sf_n2->sf_b1",
+          source: "sf_n2",
+          target: "sf_b1",
+        },
+        {
+          id: "sf_b1->sf_n3",
+          source: "sf_b1",
+          target: "sf_n3",
+        },
+        {
+          id: "sf_n2->sf_b2",
+          source: "sf_n2",
+          target: "sf_b2",
+        },
+        {
+          id: "sf_b2->sf_n4",
+          source: "sf_b2",
+          target: "sf_n4",
+        },
+      ],
     },
-    {
-        id: "leave_advanced",
-        name: "请假全流程",
-        description: "天数判断 → 分级审批 → 子流程交接 → 定时提醒 → 通知",
-        category: "office",
-        icon: Calendar,
-        color: "text-pink-500 bg-pink-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交请假申请"
-                },
-                {
-                    id: "la_n1",
-                    type: NodeType.APPROVAL,
-                    title: "直属上级审批",
-                    approverType: "DIRECT_LEADER",
-                    branchStrategy: "EXCLUSIVE"
-                },
-                {
-                    id: "la_n5",
-                    type: NodeType.SUBPROCESS,
-                    title: "工作交接子流程",
-                    props: {
-                        subprocessId: "handover_process",
-                        variableMapping: "{\"assignee\": \"${initiator}\", \"days\": \"${days}\"}",
-                        waitForCompletion: true
-                    }
-                },
-                {
-                    id: "la_n6",
-                    type: NodeType.TIMER,
-                    title: "假期结束前1天提醒",
-                    props: {
-                        timerType: "DELAY",
-                        delayMinutes: 1440
-                    }
-                },
-                {
-                    id: "la_n7",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知请假结果",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "请假审批结果",
-                        notificationContent: "您的请假申请（${days}天）已审批通过，请做好工作交接。"
-                    }
-                },
-                {
-                    id: "la_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "la_b1",
-                    type: NodeType.CONDITION,
-                    title: "请假 ≤ 3天",
-                    condition: "days <= 3"
-                },
-                {
-                    id: "la_b2",
-                    type: NodeType.CONDITION,
-                    title: "3天 < 请假 ≤ 7天",
-                    condition: "days > 3 && days <= 7"
-                },
-                {
-                    id: "la_n2",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "la_b3",
-                    type: NodeType.CONDITION,
-                    title: "请假 > 7天",
-                    condition: "days > 7"
-                },
-                {
-                    id: "la_n3",
-                    type: NodeType.APPROVAL,
-                    title: "部门经理审批",
-                    approverType: "DEPT_MANAGER"
-                },
-                {
-                    id: "la_n4",
-                    type: NodeType.APPROVAL,
-                    title: "总经理审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->la_n1",
-                    source: "start",
-                    target: "la_n1"
-                },
-                {
-                    id: "la_n1->la_n5",
-                    source: "la_n1",
-                    target: "la_n5",
-                    isDefault: true
-                },
-                {
-                    id: "la_n5->la_n6",
-                    source: "la_n5",
-                    target: "la_n6"
-                },
-                {
-                    id: "la_n6->la_n7",
-                    source: "la_n6",
-                    target: "la_n7"
-                },
-                {
-                    id: "la_n7->la_end",
-                    source: "la_n7",
-                    target: "la_end"
-                },
-                {
-                    id: "la_n1->la_b1",
-                    source: "la_n1",
-                    target: "la_b1",
-                    condition: "days <= 3"
-                },
-                {
-                    id: "la_n1->la_b2",
-                    source: "la_n1",
-                    target: "la_b2",
-                    condition: "days > 3 && days <= 7"
-                },
-                {
-                    id: "la_b2->la_n2",
-                    source: "la_b2",
-                    target: "la_n2"
-                },
-                {
-                    id: "la_n1->la_b3",
-                    source: "la_n1",
-                    target: "la_b3",
-                    condition: "days > 7"
-                },
-                {
-                    id: "la_b3->la_n3",
-                    source: "la_b3",
-                    target: "la_n3"
-                },
-                {
-                    id: "la_n3->la_n4",
-                    source: "la_n3",
-                    target: "la_n4"
-                }
-            ]
-        }
+  },
+  {
+    id: "leave_advanced",
+    name: "请假全流程",
+    description: "天数判断 → 分级审批 → 子流程交接 → 定时提醒 → 通知",
+    category: "office",
+    icon: Calendar,
+    color: "text-pink-500 bg-pink-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交请假申请",
+        },
+        {
+          id: "la_n1",
+          type: NodeType.APPROVAL,
+          title: "直属上级审批",
+          approverType: "DIRECT_LEADER",
+          branchStrategy: "EXCLUSIVE",
+        },
+        {
+          id: "la_n5",
+          type: NodeType.SUBPROCESS,
+          title: "工作交接子流程",
+          props: {
+            subprocessId: "handover_process",
+            variableMapping: '{"assignee": "${initiator}", "days": "${days}"}',
+            waitForCompletion: true,
+          },
+        },
+        {
+          id: "la_n6",
+          type: NodeType.TIMER,
+          title: "假期结束前1天提醒",
+          props: {
+            timerType: "DELAY",
+            delayMinutes: 1440,
+          },
+        },
+        {
+          id: "la_n7",
+          type: NodeType.NOTIFICATION,
+          title: "通知请假结果",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "请假审批结果",
+            notificationContent:
+              "您的请假申请（${days}天）已审批通过，请做好工作交接。",
+          },
+        },
+        {
+          id: "la_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "la_b1",
+          type: NodeType.CONDITION,
+          title: "请假 ≤ 3天",
+          condition: "days <= 3",
+        },
+        {
+          id: "la_b2",
+          type: NodeType.CONDITION,
+          title: "3天 < 请假 ≤ 7天",
+          condition: "days > 3 && days <= 7",
+        },
+        {
+          id: "la_n2",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "la_b3",
+          type: NodeType.CONDITION,
+          title: "请假 > 7天",
+          condition: "days > 7",
+        },
+        {
+          id: "la_n3",
+          type: NodeType.APPROVAL,
+          title: "部门经理审批",
+          approverType: "DEPT_MANAGER",
+        },
+        {
+          id: "la_n4",
+          type: NodeType.APPROVAL,
+          title: "总经理审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+      ],
+      edges: [
+        {
+          id: "start->la_n1",
+          source: "start",
+          target: "la_n1",
+        },
+        {
+          id: "la_n1->la_n5",
+          source: "la_n1",
+          target: "la_n5",
+          isDefault: true,
+        },
+        {
+          id: "la_n5->la_n6",
+          source: "la_n5",
+          target: "la_n6",
+        },
+        {
+          id: "la_n6->la_n7",
+          source: "la_n6",
+          target: "la_n7",
+        },
+        {
+          id: "la_n7->la_end",
+          source: "la_n7",
+          target: "la_end",
+        },
+        {
+          id: "la_n1->la_b1",
+          source: "la_n1",
+          target: "la_b1",
+          condition: "days <= 3",
+        },
+        {
+          id: "la_n1->la_b2",
+          source: "la_n1",
+          target: "la_b2",
+          condition: "days > 3 && days <= 7",
+        },
+        {
+          id: "la_b2->la_n2",
+          source: "la_b2",
+          target: "la_n2",
+        },
+        {
+          id: "la_n1->la_b3",
+          source: "la_n1",
+          target: "la_b3",
+          condition: "days > 7",
+        },
+        {
+          id: "la_b3->la_n3",
+          source: "la_b3",
+          target: "la_n3",
+        },
+        {
+          id: "la_n3->la_n4",
+          source: "la_n3",
+          target: "la_n4",
+        },
+      ],
     },
-    {
-        id: "deployment",
-        name: "生产环境发布",
-        description: "代码审查 → 自动构建 → 等待窗口 → 并行部署+监控 → 验证",
-        category: "it",
-        icon: Server,
-        color: "text-slate-700 bg-slate-100",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "提交发布申请"
-                },
-                {
-                    id: "dep_n1",
-                    type: NodeType.APPROVAL,
-                    title: "技术负责人代码审查",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN"
-                },
-                {
-                    id: "dep_n2",
-                    type: NodeType.SCRIPT,
-                    title: "自动构建与测试",
-                    props: {
-                        scriptType: "API",
-                        apiUrl: "/api/ci/build",
-                        apiMethod: "POST",
-                        apiBody: "{\"branch\": \"${branch}\", \"version\": \"${version}\"}",
-                        continueOnError: false
-                    }
-                },
-                {
-                    id: "dep_n3",
-                    type: NodeType.APPROVAL,
-                    title: "发布审批",
-                    approverType: "ROLE",
-                    approverValue: "MANAGER"
-                },
-                {
-                    id: "dep_n4",
-                    type: NodeType.TIMER,
-                    title: "等待发布窗口",
-                    props: {
-                        timerType: "DELAY",
-                        delayMinutes: 30
-                    }
-                },
-                {
-                    id: "dep_n5",
-                    type: NodeType.PARALLEL,
-                    title: "并行执行（部署+监控）",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    branchStrategy: "PARALLEL"
-                },
-                {
-                    id: "dep_n8",
-                    type: NodeType.MANUAL,
-                    title: "发布后验证确认",
-                    approverType: "ROLE",
-                    approverValue: "ADMIN",
-                    props: {
-                        taskDescription: "验证发布后系统功能正常，检查关键业务指标",
-                        priority: "HIGH"
-                    }
-                },
-                {
-                    id: "dep_n9",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知发布完成",
-                    props: {
-                        recipientType: "INITIATOR",
-                        notificationTitle: "发布完成通知",
-                        notificationContent: "版本 ${version} 已成功发布到生产环境。"
-                    }
-                },
-                {
-                    id: "dep_end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                },
-                {
-                    id: "dep_b1",
-                    type: NodeType.CONDITION,
-                    title: "执行部署"
-                },
-                {
-                    id: "dep_n6",
-                    type: NodeType.SCRIPT,
-                    title: "执行自动部署",
-                    props: {
-                        scriptType: "API",
-                        apiUrl: "/api/deploy/execute",
-                        apiMethod: "POST",
-                        apiBody: "{\"version\": \"${version}\"}",
-                        continueOnError: false
-                    }
-                },
-                {
-                    id: "dep_b2",
-                    type: NodeType.CONDITION,
-                    title: "监控告警"
-                },
-                {
-                    id: "dep_n7",
-                    type: NodeType.NOTIFICATION,
-                    title: "通知运维团队监控",
-                    props: {
-                        recipientType: "ROLE",
-                        recipientValue: "ADMIN",
-                        notificationTitle: "发布监控通知",
-                        notificationContent: "版本 ${version} 正在发布，请密切关注系统监控指标。"
-                    }
-                }
-            ],
-            edges: [
-                {
-                    id: "start->dep_n1",
-                    source: "start",
-                    target: "dep_n1"
-                },
-                {
-                    id: "dep_n1->dep_n2",
-                    source: "dep_n1",
-                    target: "dep_n2"
-                },
-                {
-                    id: "dep_n2->dep_n3",
-                    source: "dep_n2",
-                    target: "dep_n3"
-                },
-                {
-                    id: "dep_n3->dep_n4",
-                    source: "dep_n3",
-                    target: "dep_n4"
-                },
-                {
-                    id: "dep_n4->dep_n5",
-                    source: "dep_n4",
-                    target: "dep_n5"
-                },
-                {
-                    id: "dep_n5->dep_n8",
-                    source: "dep_n5",
-                    target: "dep_n8",
-                    isDefault: true
-                },
-                {
-                    id: "dep_n8->dep_n9",
-                    source: "dep_n8",
-                    target: "dep_n9"
-                },
-                {
-                    id: "dep_n9->dep_end",
-                    source: "dep_n9",
-                    target: "dep_end"
-                },
-                {
-                    id: "dep_n5->dep_b1",
-                    source: "dep_n5",
-                    target: "dep_b1"
-                },
-                {
-                    id: "dep_b1->dep_n6",
-                    source: "dep_b1",
-                    target: "dep_n6"
-                },
-                {
-                    id: "dep_n5->dep_b2",
-                    source: "dep_n5",
-                    target: "dep_b2"
-                },
-                {
-                    id: "dep_b2->dep_n7",
-                    source: "dep_b2",
-                    target: "dep_n7"
-                }
-            ]
-        }
+  },
+  {
+    id: "deployment",
+    name: "生产环境发布",
+    description: "代码审查 → 自动构建 → 等待窗口 → 并行部署+监控 → 验证",
+    category: "it",
+    icon: Server,
+    color: "text-slate-700 bg-slate-100",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "提交发布申请",
+        },
+        {
+          id: "dep_n1",
+          type: NodeType.APPROVAL,
+          title: "技术负责人代码审查",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+        },
+        {
+          id: "dep_n2",
+          type: NodeType.SCRIPT,
+          title: "自动构建与测试",
+          props: {
+            scriptType: "API",
+            apiUrl: "/api/ci/build",
+            apiMethod: "POST",
+            apiBody: '{"branch": "${branch}", "version": "${version}"}',
+            continueOnError: false,
+          },
+        },
+        {
+          id: "dep_n3",
+          type: NodeType.APPROVAL,
+          title: "发布审批",
+          approverType: "ROLE",
+          approverValue: "MANAGER",
+        },
+        {
+          id: "dep_n4",
+          type: NodeType.TIMER,
+          title: "等待发布窗口",
+          props: {
+            timerType: "DELAY",
+            delayMinutes: 30,
+          },
+        },
+        {
+          id: "dep_n5",
+          type: NodeType.PARALLEL,
+          title: "并行执行（部署+监控）",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          branchStrategy: "PARALLEL",
+        },
+        {
+          id: "dep_n8",
+          type: NodeType.MANUAL,
+          title: "发布后验证确认",
+          approverType: "ROLE",
+          approverValue: "ADMIN",
+          props: {
+            taskDescription: "验证发布后系统功能正常，检查关键业务指标",
+            priority: "HIGH",
+          },
+        },
+        {
+          id: "dep_n9",
+          type: NodeType.NOTIFICATION,
+          title: "通知发布完成",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "发布完成通知",
+            notificationContent: "版本 ${version} 已成功发布到生产环境。",
+          },
+        },
+        {
+          id: "dep_end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "dep_b1",
+          type: NodeType.CONDITION,
+          title: "执行部署",
+        },
+        {
+          id: "dep_n6",
+          type: NodeType.SCRIPT,
+          title: "执行自动部署",
+          props: {
+            scriptType: "API",
+            apiUrl: "/api/deploy/execute",
+            apiMethod: "POST",
+            apiBody: '{"version": "${version}"}',
+            continueOnError: false,
+          },
+        },
+        {
+          id: "dep_b2",
+          type: NodeType.CONDITION,
+          title: "监控告警",
+        },
+        {
+          id: "dep_n7",
+          type: NodeType.NOTIFICATION,
+          title: "通知运维团队监控",
+          props: {
+            recipientType: "ROLE",
+            recipientValue: "ADMIN",
+            notificationTitle: "发布监控通知",
+            notificationContent:
+              "版本 ${version} 正在发布，请密切关注系统监控指标。",
+          },
+        },
+      ],
+      edges: [
+        {
+          id: "start->dep_n1",
+          source: "start",
+          target: "dep_n1",
+        },
+        {
+          id: "dep_n1->dep_n2",
+          source: "dep_n1",
+          target: "dep_n2",
+        },
+        {
+          id: "dep_n2->dep_n3",
+          source: "dep_n2",
+          target: "dep_n3",
+        },
+        {
+          id: "dep_n3->dep_n4",
+          source: "dep_n3",
+          target: "dep_n4",
+        },
+        {
+          id: "dep_n4->dep_n5",
+          source: "dep_n4",
+          target: "dep_n5",
+        },
+        {
+          id: "dep_n5->dep_n8",
+          source: "dep_n5",
+          target: "dep_n8",
+          isDefault: true,
+        },
+        {
+          id: "dep_n8->dep_n9",
+          source: "dep_n8",
+          target: "dep_n9",
+        },
+        {
+          id: "dep_n9->dep_end",
+          source: "dep_n9",
+          target: "dep_end",
+        },
+        {
+          id: "dep_n5->dep_b1",
+          source: "dep_n5",
+          target: "dep_b1",
+        },
+        {
+          id: "dep_b1->dep_n6",
+          source: "dep_b1",
+          target: "dep_n6",
+        },
+        {
+          id: "dep_n5->dep_b2",
+          source: "dep_n5",
+          target: "dep_b2",
+        },
+        {
+          id: "dep_b2->dep_n7",
+          source: "dep_b2",
+          target: "dep_n7",
+        },
+      ],
     },
-    {
-        id: "empty",
-        name: "空白流程",
-        description: "从零开始设计你的流程",
-        category: "other",
-        icon: Sparkles,
-        color: "text-slate-500 bg-slate-50",
-        graph: {
-            nodes: [
-                {
-                    id: "start",
-                    type: NodeType.START,
-                    title: "开始"
-                },
-                {
-                    id: "end",
-                    type: NodeType.END,
-                    title: "流程结束"
-                }
-            ],
-            edges: [
-                {
-                    id: "start->end",
-                    source: "start",
-                    target: "end"
-                }
-            ]
-        }
-    }
+  },
+  {
+    id: "empty",
+    name: "空白流程",
+    description: "从零开始设计你的流程",
+    category: "other",
+    icon: Sparkles,
+    color: "text-slate-500 bg-slate-50",
+    graph: {
+      nodes: [
+        {
+          id: "start",
+          type: NodeType.START,
+          title: "开始",
+        },
+        {
+          id: "end",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+      ],
+      edges: [
+        {
+          id: "start->end",
+          source: "start",
+          target: "end",
+        },
+      ],
+    },
+  },
 ];
 
 // ==================== 模板选择器 ====================
@@ -3379,7 +3388,9 @@ const getApproverCacheKey = (type: ApproverCacheType): string => {
     if (!rawUser) return `${APPROVER_CACHE_PREFIX}anonymous_${type}`;
     const user = JSON.parse(rawUser) as Record<string, unknown>;
     const tenantId = String(user.tenantId ?? "default");
-    const userId = String(user.id ?? user.userId ?? user.username ?? "anonymous");
+    const userId = String(
+      user.id ?? user.userId ?? user.username ?? "anonymous",
+    );
     return `${APPROVER_CACHE_PREFIX}${tenantId}_${userId}_${type}`;
   } catch {
     return `${APPROVER_CACHE_PREFIX}anonymous_${type}`;
@@ -3475,9 +3486,15 @@ const ApproverValueSelector = ({
   onLabelChange?: (label: string) => void;
   multiple?: boolean;
 }) => {
-  const [roles, setRoles] = useState<any[]>(() => readApproverCache("ROLE") || []);
-  const [users, setUsers] = useState<any[]>(() => readApproverCache("USER") || []);
-  const [depts, setDepts] = useState<any[]>(() => readApproverCache("DEPT") || []);
+  const [roles, setRoles] = useState<any[]>(
+    () => readApproverCache("ROLE") || [],
+  );
+  const [users, setUsers] = useState<any[]>(
+    () => readApproverCache("USER") || [],
+  );
+  const [depts, setDepts] = useState<any[]>(
+    () => readApproverCache("DEPT") || [],
+  );
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -5342,21 +5359,21 @@ const FlowNode = ({
             {/* 审批人标签 - 非 PARALLEL 节点 */}
             {displayNode.type !== NodeType.PARALLEL &&
               displayNode.approverType && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}
-                >
-                  {APPROVER_TYPE_LABELS[displayNode.approverType] ||
-                    displayNode.approverType}
-                </span>
-                {displayNode.approverValue && (
-                  <span className="text-[10px] text-slate-500 truncate max-w-[140px]">
-                    {displayNode.props?.approverLabel ||
-                      displayNode.approverValue}
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${visual.iconBg} ${visual.iconColor}`}
+                  >
+                    {APPROVER_TYPE_LABELS[displayNode.approverType] ||
+                      displayNode.approverType}
                   </span>
-                )}
-              </div>
-            )}
+                  {displayNode.approverValue && (
+                    <span className="text-[10px] text-slate-500 truncate max-w-[140px]">
+                      {displayNode.props?.approverLabel ||
+                        displayNode.approverValue}
+                    </span>
+                  )}
+                </div>
+              )}
             {/* 条件标签 */}
             {displayNode.condition && (
               <div className="mt-1.5 text-[10px] bg-amber-50 text-amber-700 px-2 py-1 rounded-lg truncate font-mono border border-amber-100">
@@ -5384,7 +5401,9 @@ const FlowNode = ({
                   canShowHover && actions.setHoveredNodeId(nodeId)
                 }
                 onMouseLeave={() =>
-                  canShowHover && !showQuickAdd && actions.setHoveredNodeId(null)
+                  canShowHover &&
+                  !showQuickAdd &&
+                  actions.setHoveredNodeId(null)
                 }
                 className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                   showQuickAdd
@@ -5560,7 +5579,9 @@ const FlowNode = ({
                   canShowHover && actions.setHoveredNodeId(nodeId)
                 }
                 onMouseLeave={() =>
-                  canShowHover && !showQuickAdd && actions.setHoveredNodeId(null)
+                  canShowHover &&
+                  !showQuickAdd &&
+                  actions.setHoveredNodeId(null)
                 }
                 className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                   showQuickAdd
@@ -5950,7 +5971,7 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     const nodeTitle = getNodeTitle(node);
     if (!node.approverType) {
       pushError(
-        nodeLabel + '节点"' + nodeTitle + '"未配置' + subjectLabel + '方式',
+        nodeLabel + '节点"' + nodeTitle + '"未配置' + subjectLabel + "方式",
         [nodeId],
       );
       return;
@@ -5960,7 +5981,7 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
       !node.approverValue
     ) {
       pushError(
-        nodeLabel + '节点"' + nodeTitle + '"未配置具体的' + subjectLabel + '人',
+        nodeLabel + '节点"' + nodeTitle + '"未配置具体的' + subjectLabel + "人",
         [nodeId],
       );
     }
@@ -5982,11 +6003,11 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     const incomingEdges = incoming.get(nodeId) ?? [];
 
     if (!node.title || !String(node.title).trim()) {
-      pushError('有节点缺少名称', [nodeId]);
+      pushError("有节点缺少名称", [nodeId]);
     }
 
     if (nodeType === NodeType.APPROVAL) {
-      validateApprover(node, nodeId, '审批', '审批');
+      validateApprover(node, nodeId, "审批", "审批");
     }
 
     if (
@@ -6004,7 +6025,7 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     }
 
     if (nodeType === NodeType.PARALLEL) {
-      validateApprover(node, nodeId, '会签', '审批');
+      validateApprover(node, nodeId, "会签", "审批");
       const signType = String(node.signType || "ALL");
       if (
         ["ALL", "ANY", "PERCENT", "SEQUENTIAL"].includes(signType) &&
@@ -6012,20 +6033,20 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
       ) {
         const signLabel =
           signType === "ALL"
-            ? '全签'
+            ? "全签"
             : signType === "ANY"
-              ? '或签'
+              ? "或签"
               : signType === "PERCENT"
-                ? '比例签'
-                : '顺序签';
+                ? "比例签"
+                : "顺序签";
         pushError(
           '会签节点"' +
             nodeTitle +
             '"设置了' +
             signLabel +
-            '模式，但仍包含 ' +
+            "模式，但仍包含 " +
             branchCount +
-            ' 个条件分支，请先清除分支或改用并行分支策略',
+            " 个条件分支，请先清除分支或改用并行分支策略",
           [nodeId],
         );
       }
@@ -6045,10 +6066,7 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
 
     if (nodeType === NodeType.NOTIFICATION) {
       if (!props.notificationTitle && !props.notificationContent) {
-        pushError(
-          '通知节点"' + nodeTitle + '"未配置通知标题或内容',
-          [nodeId],
-        );
+        pushError('通知节点"' + nodeTitle + '"未配置通知标题或内容', [nodeId]);
       }
     }
 
@@ -6093,14 +6111,14 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     }
 
     if (nodeType === NodeType.MANUAL) {
-      validateApprover(node, nodeId, '人工任务', '处理');
+      validateApprover(node, nodeId, "人工任务", "处理");
       if (!props.taskDescription) {
         pushError('人工任务节点"' + nodeTitle + '"未配置任务描述', [nodeId]);
       }
     }
 
     if (nodeType === NodeType.COPY) {
-      validateApprover(node, nodeId, '抄送', '抄送');
+      validateApprover(node, nodeId, "抄送", "抄送");
     }
 
     if (
@@ -6113,19 +6131,25 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
 
     if (!isJsonObjectText(props.apiHeaders)) {
       pushError(
-        '节点"' + nodeTitle + '"配置的 API Headers JSON 格式可能不正确，必须完整包含 {}',
+        '节点"' +
+          nodeTitle +
+          '"配置的 API Headers JSON 格式可能不正确，必须完整包含 {}',
         [nodeId],
       );
     }
     if (!isJsonObjectText(props.apiBody)) {
       pushError(
-        '节点"' + nodeTitle + '"配置的 API Body JSON 格式可能不正确，必须完整包含 {}',
+        '节点"' +
+          nodeTitle +
+          '"配置的 API Body JSON 格式可能不正确，必须完整包含 {}',
         [nodeId],
       );
     }
     if (!isJsonObjectText(props.variableMapping)) {
       pushError(
-        '节点"' + nodeTitle + '"配置的 variableMapping JSON 格式可能不正确，必须完整包含 {}',
+        '节点"' +
+          nodeTitle +
+          '"配置的 variableMapping JSON 格式可能不正确，必须完整包含 {}',
         [nodeId],
       );
     }
@@ -6219,10 +6243,7 @@ const GlobalPropertyPanel = ({
               <Select
                 value={formData.category || CATEGORY_NONE_VALUE}
                 onValueChange={(v) =>
-                  handleChange(
-                    "category",
-                    v === CATEGORY_NONE_VALUE ? "" : v,
-                  )
+                  handleChange("category", v === CATEGORY_NONE_VALUE ? "" : v)
                 }
               >
                 <SelectTrigger>
@@ -6575,9 +6596,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     const resolveStartNodeId = (currentGraph: WorkflowGraphDefinition) =>
       currentGraph.nodes.find(
         (node) => String(node.type || "").toUpperCase() === NodeType.START,
-      )?.id || currentGraph.nodes[0]?.id || null;
+      )?.id ||
+      currentGraph.nodes[0]?.id ||
+      null;
 
-    return resolveStartNodeId(graphModel) ?? resolveStartNodeId(defaultGraphModel);
+    return (
+      resolveStartNodeId(graphModel) ?? resolveStartNodeId(defaultGraphModel)
+    );
   }, [defaultGraphModel, graphModel]);
 
   // ? ref ???? graphModel????????????????
@@ -6596,9 +6621,14 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         if (!options?.fallbackToDefault) {
           throw error;
         }
-        console.warn("[WorkflowBuilder] failed to apply graph state, fallback to default workflow", error);
+        console.warn(
+          "[WorkflowBuilder] failed to apply graph state, fallback to default workflow",
+          error,
+        );
         nextStateGraph = defaultGraphModel;
       }
+
+      graphModelRef.current = nextStateGraph;
 
       if (options?.resetHistory) {
         resetGraphModel(nextStateGraph);
@@ -6618,7 +6648,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     [graphModel, selectedNodeId],
   );
   const selectedEditorNode = useMemo(
-    () => (selectedGraphNode ? toEditableWorkflowNode(selectedGraphNode) : null),
+    () =>
+      selectedGraphNode ? toEditableWorkflowNode(selectedGraphNode) : null,
     [selectedGraphNode],
   );
   const selectedNodeBranchCount = useMemo(
@@ -6744,12 +6775,18 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     };
   }, [graphModel, workflowName, workflowKey, buildSettingsState]);
 
+  const initializedRef = useRef(false);
+
   // P1: 从 workflow 对象初始化流程设置状态，并在切换流程时重置画布状态
   useEffect(() => {
-    if (!workflow) return;
+    if (!workflow || initializedRef.current) return;
+    initializedRef.current = true;
 
     const nextGraph = resolveGraphModel(workflow.graph);
-    replaceGraphState(nextGraph, { resetHistory: true, fallbackToDefault: true });
+    replaceGraphState(nextGraph, {
+      resetHistory: true,
+      fallbackToDefault: true,
+    });
     const parsedTags = parseTagsToArray(workflow.tags);
     setSelectedNodeId(null);
 
@@ -6772,7 +6809,14 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       startPermissionType: workflow.startPermissionType || "ALL",
       startPermissionValue: workflow.startPermissionValue || undefined,
     });
-  }, [workflow?.id, parseTagsToArray, normalizeDeptId, user?.deptId, resolveGraphModel, replaceGraphState]);
+  }, [
+    workflow,
+    parseTagsToArray,
+    normalizeDeptId,
+    user?.deptId,
+    resolveGraphModel,
+    replaceGraphState,
+  ]);
 
   useEffect(() => {
     if (!onChange || !workflowRef.current) return;
@@ -6828,10 +6872,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         ) {
           return;
         }
-        if (
-          selectedGraphNode &&
-          selectedGraphNode.type !== NodeType.START
-        ) {
+        if (selectedGraphNode && selectedGraphNode.type !== NodeType.START) {
           e.preventDefault(); // 防止 Backspace 导致页面回退
           handleDeleteNode(selectedGraphNode.id);
         }
@@ -7012,7 +7053,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         nodeType === NodeType.END
           ? replaceWorkflowGraphNextNode(graph, anchorId, buildNewNode())
           : insertWorkflowGraphNodeAfter(graph, anchorId, buildNewNode());
-      applyGraphChange(nextGraph, successMessage ? { successMessage } : undefined);
+      applyGraphChange(
+        nextGraph,
+        successMessage ? { successMessage } : undefined,
+      );
     };
 
     const hasEndInGraph = currentGraph.nodes.some(
@@ -7081,7 +7125,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     applyGraphChange(nextGraph);
   };
   const handleUpdateNode = (id: string, data: Partial<WorkflowGraphNode>) => {
-    const nextGraph = patchWorkflowGraphNode(graphModel, id, data);
+    const nextGraph = patchWorkflowGraphNode(graphModelRef.current, id, data);
     applyGraphChange(nextGraph);
   };
 
@@ -7147,8 +7191,14 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     const dragNode = findWorkflowGraphNode(currentGraph, dragId);
     if (!dragNode) return;
-    const dragInsideBranch = isWorkflowGraphNodeInsideBranchScope(currentGraph, dragId);
-    const dropInsideBranch = isWorkflowGraphNodeInsideBranchScope(currentGraph, dropId);
+    const dragInsideBranch = isWorkflowGraphNodeInsideBranchScope(
+      currentGraph,
+      dragId,
+    );
+    const dropInsideBranch = isWorkflowGraphNodeInsideBranchScope(
+      currentGraph,
+      dropId,
+    );
     if (dragInsideBranch === null || dropInsideBranch === null) {
       toast.error("拖拽目标已失效，请重试");
       return;
@@ -7178,7 +7228,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       return;
     }
 
-    const nextGraph = moveWorkflowGraphNode(graphModelRef.current, dragId, dropId);
+    const nextGraph = moveWorkflowGraphNode(
+      graphModelRef.current,
+      dragId,
+      dropId,
+    );
     applyGraphChange(nextGraph, {
       successMessage: "节点已移动（仅移动当前节点，后续节点保留在原位）",
     });
@@ -7366,7 +7420,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       formId: settings.formId || undefined,
       description: settings.description || undefined,
       category: settings.category || undefined,
-      tags: settings.tags && settings.tags.length > 0 ? settings.tags.join(", ") : undefined,
+      tags:
+        settings.tags && settings.tags.length > 0
+          ? settings.tags.join(", ")
+          : undefined,
       startPermissionType: settings.startPermissionType || "ALL",
       startPermissionValue: settings.startPermissionValue || undefined,
     });
@@ -7395,8 +7452,32 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   );
 
   // 查看版本历史
-  const handleViewVersionHistory = () => {
+  const handleViewVersionHistory = async () => {
     if (currentWorkflowId && !currentWorkflowId.startsWith("new_")) {
+      // 在跳转前静默保存当前合法的更改，确保版本历史中包含最新状态
+      const { errors } = validateWorkflowGraph(graphModel);
+      const isNameValid = workflowName && workflowName.trim() !== "";
+      const isKeyValid = workflowKey && /^[a-zA-Z0-9_]+$/.test(workflowKey);
+
+      if (errors.length === 0 && isNameValid && isKeyValid) {
+        setSaving(true);
+        try {
+          if (onSave && workflow) {
+            const snapshot = buildWorkflowSnapshot();
+            if (snapshot) {
+              await onSave(snapshot);
+            }
+          } else {
+            const definition = buildDefinitionPayload();
+            await saveProcessDefinition(definition);
+          }
+        } catch (error) {
+          console.error("查看历史前保存失败:", error);
+        } finally {
+          setSaving(false);
+        }
+      }
+
       navigate(`/workflow/versions/${currentWorkflowId}`);
     }
   };
@@ -7406,6 +7487,30 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     if (!workflow?.id || workflow.id.startsWith("new_")) {
       toast.error("请先保存流程后再导出");
       return;
+    }
+
+    // 在导出前静默保存当前合法的更改，确保导出的是最新状态
+    const { errors } = validateWorkflowGraph(graphModel);
+    const isNameValid = workflowName && workflowName.trim() !== "";
+    const isKeyValid = workflowKey && /^[a-zA-Z0-9_]+$/.test(workflowKey);
+
+    if (errors.length === 0 && isNameValid && isKeyValid) {
+      setSaving(true);
+      try {
+        if (onSave && workflow) {
+          const snapshot = buildWorkflowSnapshot();
+          if (snapshot) {
+            await onSave(snapshot);
+          }
+        } else {
+          const definition = buildDefinitionPayload();
+          await saveProcessDefinition(definition);
+        }
+      } catch (error) {
+        console.error("导出前保存失败:", error);
+      } finally {
+        setSaving(false);
+      }
     }
 
     try {
@@ -7431,7 +7536,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     () => ({
       onAddNext: handleAddNext,
       onAddBranch: handleAddBranch,
-      onSelect: (nodeId) => setSelectedNodeId(nodeId),
+      onSelect: (nodeId) => {
+        setSelectedNodeId(nodeId);
+        setShowGlobalConfig(false);
+      },
       onDrop: handleDrop,
       onCopy: handleCopyNode,
       getNode: (nodeId) => {
@@ -7455,190 +7563,193 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   return (
     <FlowNodeActionsContext.Provider value={flowNodeActions}>
       <div className="h-full flex flex-col bg-slate-100 overflow-hidden relative">
-      <WorkflowToolbar
-        workflowName={workflowName}
-        workflowKey={workflowKey}
-        workflowId={currentWorkflowId}
-        onNameChange={setWorkflowName}
-        onKeyChange={setWorkflowKey}
-        onSave={handleSave}
-        onDeploy={handleDeploy}
-        onUndo={undo}
-        onRedo={redo}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onOpenTemplatePicker={() => setShowTemplates(true)}
-        onOpenSettings={() => setShowSettingsModal(true)}
-        onOpenGlobalConfig={() => setShowGlobalConfig(true)}
-        onViewVersionHistory={handleViewVersionHistory}
-        onExport={handleExport}
-        saving={saving}
-      />
-
-      {/* 画布 */}
-      <div
-        ref={canvasRef}
-        className={`flex-1 overflow-hidden p-10 flex justify-center relative transition-all duration-300 ease-out bg-slate-50 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-96" : ""}`}
-        onPointerDown={(e) => {
-          // 在空白处左键 或 中键 按下启动漫游 (pan)
-          if (
-            (e.button === 0 && e.target === canvasRef.current) ||
-            e.button === 1
-          ) {
-            e.preventDefault();
-            setIsPanning(true);
-            setPanStart({
-              x: e.clientX - panOrigin.x,
-              y: e.clientY - panOrigin.y,
-            });
-          }
-        }}
-        onPointerMove={(e) => {
-          if (isPanning) {
-            setPanOrigin({
-              x: e.clientX - panStart.x,
-              y: e.clientY - panStart.y,
-            });
-          }
-        }}
-        onPointerUp={() => setIsPanning(false)}
-        onPointerLeave={() => setIsPanning(false)}
-        onClick={() => {
-          setActiveQuickAddId(null);
-          setSelectedNodeId(null);
-        }}
-      >
-        {/* 动态网格背景，随漫游移动 */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: "radial-gradient(#e5e7eb 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-            backgroundPosition: `${panOrigin.x}px ${panOrigin.y}px`,
+        <WorkflowToolbar
+          workflowName={workflowName}
+          workflowKey={workflowKey}
+          workflowId={currentWorkflowId}
+          onNameChange={setWorkflowName}
+          onKeyChange={setWorkflowKey}
+          onSave={handleSave}
+          onDeploy={handleDeploy}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onOpenTemplatePicker={() => setShowTemplates(true)}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onOpenGlobalConfig={() => {
+            setShowGlobalConfig(true);
+            setSelectedNodeId(null);
           }}
+          onViewVersionHistory={handleViewVersionHistory}
+          onExport={handleExport}
+          saving={saving}
         />
 
-        {/* 缩放控件 */}
-        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
-          <button
-            onClick={handleZoomOut}
-            className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
-            title="缩小"
-          >
-            <ZoomOut size={16} />
-          </button>
-          <span className="text-xs text-slate-500 min-w-[40px] text-center font-mono">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={handleZoomIn}
-            className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
-            title="放大"
-          >
-            <ZoomIn size={16} />
-          </button>
-          <div className="w-px h-4 bg-slate-200 mx-0.5" />
-          <button
-            onClick={handleZoomReset}
-            className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
-            title="重置缩放"
-          >
-            <Maximize2 size={16} />
-          </button>
-        </div>
-
-        {/* 拖拽全局提示 */}
-        {isDraggingGlobal && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-pink-500 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-            <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
-          </div>
-        )}
-
+        {/* 画布 */}
         <div
-          className="min-w-[800px] flex justify-center pb-40 transition-transform origin-top z-10"
-          style={{
-            transform: `translate(${panOrigin.x}px, ${panOrigin.y}px) scale(${zoom})`,
+          ref={canvasRef}
+          className={`flex-1 overflow-hidden p-10 flex justify-center relative transition-all duration-300 ease-out bg-slate-50 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-96" : ""}`}
+          onPointerDown={(e) => {
+            // 在空白处左键 或 中键 按下启动漫游 (pan)
+            if (
+              (e.button === 0 && e.target === canvasRef.current) ||
+              e.button === 1
+            ) {
+              e.preventDefault();
+              setIsPanning(true);
+              setPanStart({
+                x: e.clientX - panOrigin.x,
+                y: e.clientY - panOrigin.y,
+              });
+            }
+          }}
+          onPointerMove={(e) => {
+            if (isPanning) {
+              setPanOrigin({
+                x: e.clientX - panStart.x,
+                y: e.clientY - panStart.y,
+              });
+            }
+          }}
+          onPointerUp={() => setIsPanning(false)}
+          onPointerLeave={() => setIsPanning(false)}
+          onClick={() => {
+            setActiveQuickAddId(null);
+            setSelectedNodeId(null);
           }}
         >
-          {rootNodeId && (
-            <FlowNode
-              nodeId={rootNodeId}
-              invalidNodes={invalidNodeIds}
-              selectedNodeId={selectedNodeId}
-              isDraggingGlobal={isDraggingGlobal}
-              draggingNodeId={draggingNodeId}
-              activeQuickAddId={activeQuickAddId}
-              hoveredNodeId={hoveredNodeId}
-              isInsideBranch={false}
-            />
-          )}
-        </div>
-      </div>
+          {/* 动态网格背景，随漫游移动 */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: "radial-gradient(#e5e7eb 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+              backgroundPosition: `${panOrigin.x}px ${panOrigin.y}px`,
+            }}
+          />
 
-      {/* 属性面板 */}
-      {selectedEditorNode && (
-        <PropertyPanel
-          node={selectedEditorNode}
-          branchCount={selectedNodeBranchCount}
-          onClose={() => setSelectedNodeId(null)}
-          onUpdate={handleUpdateNode}
-          onDelete={handleDeleteNode}
-          onConfirmAction={(message, onConfirm) =>
-            setConfirmDialog({ open: true, message, onConfirm })
+          {/* 缩放控件 */}
+          <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
+            <button
+              onClick={handleZoomOut}
+              className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
+              title="缩小"
+            >
+              <ZoomOut size={16} />
+            </button>
+            <span className="text-xs text-slate-500 min-w-[40px] text-center font-mono">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={handleZoomIn}
+              className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
+              title="放大"
+            >
+              <ZoomIn size={16} />
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-0.5" />
+            <button
+              onClick={handleZoomReset}
+              className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
+              title="重置缩放"
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
+
+          {/* 拖拽全局提示 */}
+          {isDraggingGlobal && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-pink-500 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+              <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
+            </div>
+          )}
+
+          <div
+            className="min-w-[800px] flex justify-center pb-40 transition-transform origin-top z-10"
+            style={{
+              transform: `translate(${panOrigin.x}px, ${panOrigin.y}px) scale(${zoom})`,
+            }}
+          >
+            {rootNodeId && (
+              <FlowNode
+                nodeId={rootNodeId}
+                invalidNodes={invalidNodeIds}
+                selectedNodeId={selectedNodeId}
+                isDraggingGlobal={isDraggingGlobal}
+                draggingNodeId={draggingNodeId}
+                activeQuickAddId={activeQuickAddId}
+                hoveredNodeId={hoveredNodeId}
+                isInsideBranch={false}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* 属性面板 */}
+        {selectedEditorNode && (
+          <PropertyPanel
+            node={selectedEditorNode}
+            branchCount={selectedNodeBranchCount}
+            onClose={() => setSelectedNodeId(null)}
+            onUpdate={handleUpdateNode}
+            onDelete={handleDeleteNode}
+            onConfirmAction={(message, onConfirm) =>
+              setConfirmDialog({ open: true, message, onConfirm })
+            }
+          />
+        )}
+
+        {/* 全局属性面板 */}
+        <GlobalPropertyPanel
+          open={showGlobalConfig}
+          onClose={() => setShowGlobalConfig(false)}
+          workflow={globalConfig}
+          onUpdate={handleGlobalConfigUpdate}
+        />
+
+        {/* 模板选择器 */}
+        <TemplatePickerModal
+          open={showTemplates}
+          onClose={() => setShowTemplates(false)}
+          onSelect={handleApplyTemplate}
+        />
+
+        {/* 流程设置模态框 */}
+        <WorkflowSettingsModal
+          open={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          workflowName={workflowName}
+          workflowKey={workflowKey}
+          description={workflowDescription}
+          category={workflowCategory}
+          tags={workflowTags}
+          formId={selectedFormId}
+          startPermissionType={startPermissionType}
+          startPermissionValue={startPermissionValue}
+          availableForms={availableForms}
+          availableRoles={availableRoles}
+          availableUsers={availableUsers?.map((user) => ({
+            userId: Number(user.id) || undefined,
+            userName: user.username || user.name,
+            nickName: user.name,
+          }))}
+          onSave={handleSettingsSave}
+        />
+
+        {/* 确认对话框 */}
+        <ConfirmDialog
+          open={confirmDialog.open}
+          title="确认操作"
+          message={confirmDialog.message}
+          confirmText="确定"
+          cancelText="取消"
+          variant="warning"
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() =>
+            setConfirmDialog({ open: false, message: "", onConfirm: () => {} })
           }
         />
-      )}
-
-      {/* 全局属性面板 */}
-      <GlobalPropertyPanel
-        open={showGlobalConfig}
-        onClose={() => setShowGlobalConfig(false)}
-        workflow={globalConfig}
-        onUpdate={handleGlobalConfigUpdate}
-      />
-
-      {/* 模板选择器 */}
-      <TemplatePickerModal
-        open={showTemplates}
-        onClose={() => setShowTemplates(false)}
-        onSelect={handleApplyTemplate}
-      />
-
-      {/* 流程设置模态框 */}
-      <WorkflowSettingsModal
-        open={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        workflowName={workflowName}
-        workflowKey={workflowKey}
-        description={workflowDescription}
-        category={workflowCategory}
-        tags={workflowTags}
-        formId={selectedFormId}
-        startPermissionType={startPermissionType}
-        startPermissionValue={startPermissionValue}
-        availableForms={availableForms}
-        availableRoles={availableRoles}
-        availableUsers={availableUsers?.map((user) => ({
-          userId: Number(user.id) || undefined,
-          userName: user.username || user.name,
-          nickName: user.name,
-        }))}
-        onSave={handleSettingsSave}
-      />
-
-      {/* 确认对话框 */}
-      <ConfirmDialog
-        open={confirmDialog.open}
-        title="确认操作"
-        message={confirmDialog.message}
-        confirmText="确定"
-        cancelText="取消"
-        variant="warning"
-        onConfirm={confirmDialog.onConfirm}
-        onCancel={() =>
-          setConfirmDialog({ open: false, message: "", onConfirm: () => {} })
-        }
-      />
       </div>
     </FlowNodeActionsContext.Provider>
   );

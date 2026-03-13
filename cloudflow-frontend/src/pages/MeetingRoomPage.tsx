@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -1122,22 +1123,26 @@ export const MeetingRoomPage = () => {
                 return (
                   <div key={room.roomId} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden relative">
                     {manageMode && (
-                      <div className="absolute top-3 left-3 z-10 flex gap-2">
-                        <button 
-                          onClick={() => handleEditRoom(room)} 
-                          className="bg-white/90 backdrop-blur-sm text-pink-500 p-2 rounded-lg shadow-sm hover:bg-pink-50 border border-slate-200" 
-                          title="编辑"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteRoom(room)} 
-                          className="bg-white/90 backdrop-blur-sm text-red-600 p-2 rounded-lg shadow-sm hover:bg-red-50 border border-slate-200" 
-                          title="删除"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      <TableRowActions
+                        wrap={false}
+                        className="absolute top-3 left-3 z-10"
+                        actions={[
+                          {
+                            label: '编辑',
+                            icon: <Pencil size={14} />,
+                            onClick: () => handleEditRoom(room),
+                            tone: 'primary',
+                            className: 'bg-white/90 backdrop-blur-sm shadow-sm',
+                          },
+                          {
+                            label: '删除',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => handleDeleteRoom(room),
+                            tone: 'danger',
+                            className: 'bg-white/90 backdrop-blur-sm shadow-sm',
+                          },
+                        ]}
+                      />
                     )}
                     <div className="h-32 bg-slate-100 flex items-center justify-center relative">
                       <Monitor size={48} className="text-slate-300" />
@@ -1191,20 +1196,26 @@ export const MeetingRoomPage = () => {
                         </div>
                       )}
                       {manageMode && (
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => handleEditRoom(room)} 
-                            className="flex-1 bg-pink-50 text-pink-500 py-2 rounded-lg font-medium hover:bg-pink-50 flex items-center justify-center gap-1"
-                          >
-                            <Pencil size={14} />编辑
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteRoom(room)} 
-                            className="flex-1 bg-red-50 text-red-600 py-2 rounded-lg font-medium hover:bg-red-100 flex items-center justify-center gap-1"
-                          >
-                            <Trash2 size={14} />删除
-                          </button>
-                        </div>
+                        <TableRowActions
+                          wrap={false}
+                          className="w-full"
+                          actions={[
+                            {
+                              label: '编辑',
+                              icon: <Pencil size={14} />,
+                              onClick: () => handleEditRoom(room),
+                              tone: 'primary',
+                              className: 'flex-1 justify-center',
+                            },
+                            {
+                              label: '删除',
+                              icon: <Trash2 size={14} />,
+                              onClick: () => handleDeleteRoom(room),
+                              tone: 'danger',
+                              className: 'flex-1 justify-center',
+                            },
+                          ]}
+                        />
                       )}
                     </div>
                   </div>

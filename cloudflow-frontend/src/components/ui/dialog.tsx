@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import { cn } from '@/utils/cn';
+
 const DialogContext = React.createContext<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -42,7 +44,15 @@ export const DialogTrigger = ({ children, asChild }: { children: React.ReactNode
   return <button onClick={handleClick}>{children}</button>;
 };
 
-export const DialogContent = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
+export const DialogContent = ({
+  children,
+  className = '',
+  disableDefaultMaxWidth = false,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  disableDefaultMaxWidth?: boolean;
+}) => {
   const { open, onOpenChange } = React.useContext(DialogContext);
 
   if (!open) return null;
@@ -50,7 +60,13 @@ export const DialogContent = ({ children, className = '' }: { children: React.Re
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
       <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in-0" onClick={() => onOpenChange(false)} />
-      <div className={`fixed z-50 grid w-full gap-4 border border-slate-200 bg-white p-6 shadow-2xl duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-xl md:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto ${className}`}>
+      <div
+        className={cn(
+          'fixed z-50 grid w-full gap-4 border border-slate-200 bg-white p-6 shadow-2xl duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-xl md:w-full max-h-[90vh] overflow-y-auto',
+          !disableDefaultMaxWidth && 'sm:max-w-lg',
+          className
+        )}
+      >
         {children}
         <button
           className="absolute right-4 top-4 rounded-full p-1.5 opacity-70 transition-all hover:bg-slate-100 hover:opacity-100 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 disabled:pointer-events-none"

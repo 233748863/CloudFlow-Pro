@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card, CardContent, CardHeader, CardTitle, DatePicker, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   getUsageList, getExpenseList, addExpense, getExpenseStats,
   approveUsage, returnVehicle, cancelUsage,
@@ -373,41 +374,45 @@ const VehicleUsageList: React.FC = () => {
                             <UsageStatusBadge status={u.status || '0'} />
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center justify-center gap-1 flex-wrap">
-                              {/* 查看详情 */}
-                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1"
-                                onClick={() => handleViewDetail(u)}>
-                                <Eye size={13} /> 详情
-                              </Button>
-                              {/* 审批操作（仅待审批状态） */}
-                              {u.status === '0' && (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-pink-500"
-                                  onClick={() => handleOpenApprove(u)}>
-                                  <CheckCircle size={13} /> 审批
-                                </Button>
-                              )}
-                              {/* 归还操作（已批准或进行中） */}
-                              {(u.status === '1' || u.status === '3') && (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-green-600"
-                                  onClick={() => handleOpenReturn(u)}>
-                                  <CornerDownLeft size={13} /> 归还
-                                </Button>
-                              )}
-                              {/* 录入费用（已完成或进行中） */}
-                              {(u.status === '3' || u.status === '4') && (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-purple-600"
-                                  onClick={() => handleOpenExpense(u)}>
-                                  <DollarSign size={13} /> 费用
-                                </Button>
-                              )}
-                              {/* 取消（仅待审批） */}
-                              {u.status === '0' && (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-red-500"
-                                  onClick={() => handleCancel(u)}>
-                                  <Ban size={13} /> 取消
-                                </Button>
-                              )}
-                            </div>
+                            <TableRowActions
+                              align="center"
+                              actions={[
+                                {
+                                  label: '详情',
+                                  icon: <Eye size={14} />,
+                                  onClick: () => handleViewDetail(u),
+                                  tone: 'info',
+                                },
+                                {
+                                  label: '审批',
+                                  icon: <CheckCircle size={14} />,
+                                  onClick: () => handleOpenApprove(u),
+                                  tone: 'primary',
+                                  hidden: u.status !== '0',
+                                },
+                                {
+                                  label: '归还',
+                                  icon: <CornerDownLeft size={14} />,
+                                  onClick: () => handleOpenReturn(u),
+                                  tone: 'success',
+                                  hidden: u.status !== '1' && u.status !== '3',
+                                },
+                                {
+                                  label: '费用',
+                                  icon: <DollarSign size={14} />,
+                                  onClick: () => handleOpenExpense(u),
+                                  tone: 'info',
+                                  hidden: u.status !== '3' && u.status !== '4',
+                                },
+                                {
+                                  label: '取消',
+                                  icon: <Ban size={14} />,
+                                  onClick: () => handleCancel(u),
+                                  tone: 'danger',
+                                  hidden: u.status !== '0',
+                                },
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       ))

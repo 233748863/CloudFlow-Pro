@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card, CardContent, DatePicker, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   getVehicleList, addVehicle, updateVehicle, deleteVehicle,
   getVehicleStats, SysVehicle, VehicleStats
@@ -462,32 +463,29 @@ const VehicleList: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost" size="sm"
-                            onClick={() => handleViewDetail(vehicle)}
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-pink-500"
-                            title="查看详情"
-                          >
-                            <Eye size={15} />
-                          </Button>
-                          <Button
-                            variant="ghost" size="sm"
-                            onClick={() => handleEdit(vehicle)}
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-green-600"
-                            title="编辑"
-                          >
-                            <Edit2 size={15} />
-                          </Button>
-                          <Button
-                            variant="ghost" size="sm"
-                            onClick={() => handleDelete(vehicle.vehicleId!)}
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
-                            title="删除"
-                          >
-                            <Trash2 size={15} />
-                          </Button>
-                        </div>
+                        <TableRowActions
+                          align="center"
+                          actions={[
+                            {
+                              label: '详情',
+                              icon: <Eye size={14} />,
+                              onClick: () => handleViewDetail(vehicle),
+                              tone: 'info',
+                            },
+                            {
+                              label: '编辑',
+                              icon: <Edit2 size={14} />,
+                              onClick: () => handleEdit(vehicle),
+                              tone: 'primary',
+                            },
+                            {
+                              label: '删除',
+                              icon: <Trash2 size={14} />,
+                              onClick: () => handleDelete(vehicle.vehicleId!),
+                              tone: 'danger',
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   ))

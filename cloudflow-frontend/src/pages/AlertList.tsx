@@ -159,6 +159,12 @@ const AlertList: React.FC = () => {
     }
   };
 
+  const getAnomalyMessage = (alert: AnomalyAlert) =>
+    alert.errorMessage || alert.description || '暂无异常说明';
+
+  const getAnomalyDetails = (alert: AnomalyAlert) =>
+    alert.stackTrace || alert.errorDetails;
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* 页面标题 */}
@@ -319,56 +325,61 @@ const AlertList: React.FC = () => {
                 )
               ) : (
                 anomalyAlerts.length > 0 ? (
-                  anomalyAlerts.map((alert) => (
-                    <div key={alert.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            {getLevelBadge(alert, 'anomaly')}
-                            <span className="text-sm text-gray-500">{alert.anomalyType}</span>
-                            {alert.resolved === 'Y' && (
-                              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                                已解决
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-lg font-medium text-gray-900 mb-1">
-                            {alert.processName}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {alert.description}
-                          </p>
-                          {alert.errorDetails && (
-                            <details className="text-xs text-gray-500 mb-2">
-                              <summary className="cursor-pointer hover:text-gray-700">错误详情</summary>
-                              <pre className="mt-2 p-2 bg-gray-50 rounded overflow-x-auto">
-                                {alert.errorDetails}
-                              </pre>
-                            </details>
-                          )}
-                          {alert.resolveNote && (
-                            <p className="text-sm text-green-600 mb-2">
-                              解决说明: {alert.resolveNote}
+                  anomalyAlerts.map((alert) => {
+                    const anomalyMessage = getAnomalyMessage(alert);
+                    const anomalyDetails = getAnomalyDetails(alert);
+
+                    return (
+                      <div key={alert.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              {getLevelBadge(alert, 'anomaly')}
+                              <span className="text-sm text-gray-500">{alert.anomalyType}</span>
+                              {alert.resolved === 'Y' && (
+                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                                  已解决
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-1">
+                              {alert.processName}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-2">
+                              {anomalyMessage}
                             </p>
+                            {anomalyDetails && (
+                              <details className="text-xs text-gray-500 mb-2">
+                                <summary className="cursor-pointer hover:text-gray-700">错误详情</summary>
+                                <pre className="mt-2 p-2 bg-gray-50 rounded overflow-x-auto">
+                                  {anomalyDetails}
+                                </pre>
+                              </details>
+                            )}
+                            {alert.resolveNote && (
+                              <p className="text-sm text-green-600 mb-2">
+                                解决说明: {alert.resolveNote}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-400">
+                              告警时间: {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
+                            </p>
+                          </div>
+                          {alert.resolved !== 'Y' && (
+                            <button
+                              onClick={() => {
+                                setSelectedAlert(alert);
+                                setShowResolveModal(true);
+                              }}
+                              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              标记已解决
+                            </button>
                           )}
-                          <p className="text-xs text-gray-400">
-                            告警时间: {new Date(alert.createTime).toLocaleString('zh-CN')}
-                          </p>
                         </div>
-                        {alert.resolved !== 'Y' && (
-                          <button
-                            onClick={() => {
-                              setSelectedAlert(alert);
-                              setShowResolveModal(true);
-                            }}
-                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                          >
-                            标记已解决
-                          </button>
-                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
