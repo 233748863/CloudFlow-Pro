@@ -5,7 +5,7 @@ import { FileUpload } from '../components/FileUpload';
 import { toast } from 'sonner';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 
 /** 出差申请页面 */
 export const BusinessTripPage: React.FC = () => {
@@ -135,20 +135,20 @@ export const BusinessTripPage: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+            <TableHeader className="sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">出差单号</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">出发地→目的地</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">日期</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">天数</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">交通</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">住宿</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">费用</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">附件</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-52">操作</th>
+                <TableHead className="px-4 py-3 text-left">出差单号</TableHead>
+                <TableHead className="px-4 py-3 text-left">出发地→目的地</TableHead>
+                <TableHead className="px-4 py-3 text-left">日期</TableHead>
+                <TableHead className="px-4 py-3 text-left">天数</TableHead>
+                <TableHead className="px-4 py-3 text-left">交通</TableHead>
+                <TableHead className="px-4 py-3 text-left">住宿</TableHead>
+                <TableHead className="px-4 py-3 text-left">费用</TableHead>
+                <TableHead className="px-4 py-3 text-left">附件</TableHead>
+                <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                <TableActionHead className="px-4 py-3 w-52">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>

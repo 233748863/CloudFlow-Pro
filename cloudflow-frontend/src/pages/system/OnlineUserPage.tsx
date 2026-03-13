@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Laptop, LogOut, RefreshCw, RotateCcw, Search, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   forceLogoutOnlineUsers,
@@ -235,25 +235,25 @@ export const OnlineUserPage: React.FC = () => {
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
+            <TableHeader className="text-left text-slate-600">
               <tr>
-                <th className="px-4 py-3">
+                <TableHead className="px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selectableRecords.length > 0 && selectableRecords.every((item) => selectedTokens.includes(item.token))}
                     onChange={toggleSelectAll}
                   />
-                </th>
-                <th className="px-4 py-3">用户</th>
-                <th className="px-4 py-3">部门</th>
-                <th className="px-4 py-3">租户</th>
-                <th className="px-4 py-3">角色</th>
-                <th className="px-4 py-3">登录时间</th>
-                <th className="px-4 py-3">剩余有效期</th>
-                <th className="px-4 py-3">状态</th>
-                <th className="px-4 py-3 text-right w-48">操作</th>
+                </TableHead>
+                <TableHead className="px-4 py-3">用户</TableHead>
+                <TableHead className="px-4 py-3">部门</TableHead>
+                <TableHead className="px-4 py-3">租户</TableHead>
+                <TableHead className="px-4 py-3">角色</TableHead>
+                <TableHead className="px-4 py-3">登录时间</TableHead>
+                <TableHead className="px-4 py-3">剩余有效期</TableHead>
+                <TableHead className="px-4 py-3">状态</TableHead>
+                <TableActionHead className="px-4 py-3 w-48">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody>
               {loading ? (
                 <tr>

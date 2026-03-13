@@ -3,6 +3,8 @@ import { Package, Plus, Search, AlertTriangle, ArrowUpCircle, ArrowDownCircle, P
 import { consumableApi, Consumable } from '@/services/api/consumable';
 import { toast } from 'sonner';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { TableHead, TableHeader, TableActionHead } from '@/components/ui';
+
 
 /** 耗材管理页面 */
 const ConsumablePage: React.FC = () => {
@@ -205,17 +207,17 @@ const ConsumablePage: React.FC = () => {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <TableHeader>
               <tr>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">名称</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">型号</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">单位</th>
-                <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">库存</th>
-                <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">预警阈值</th>
-                <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">状态</th>
-                <th className="text-center px-4 py-3 text-sm font-medium text-slate-600 w-72">操作</th>
+                <TableHead className="text-left px-4 py-3">名称</TableHead>
+                <TableHead className="text-left px-4 py-3">型号</TableHead>
+                <TableHead className="text-left px-4 py-3">单位</TableHead>
+                <TableHead className="text-center px-4 py-3">库存</TableHead>
+                <TableHead className="text-center px-4 py-3">预警阈值</TableHead>
+                <TableHead className="text-center px-4 py-3">状态</TableHead>
+                <TableActionHead className="px-4 py-3 w-72">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody>
               {list.map(item => (
                 <tr key={item.consumableId} className="border-b border-slate-100 hover:bg-slate-50">

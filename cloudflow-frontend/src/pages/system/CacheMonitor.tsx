@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Server, Database, Activity, Key, Loader2, ChevronRight, ChevronDown, Search, Trash2, Eye, FolderOpen, Folder, X, Copy, Clock, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCacheInfo, getCacheKeys, getCacheKeyValue, deleteCacheKey, deleteCacheByPrefix, CacheKeyDetail } from '../../services/api/system';
-import { Input } from '@/components/ui';
+import { Input, TableHead, TableHeader } from '@/components/ui';
 
 // ==================== 类型定义 ====================
 
@@ -454,13 +454,13 @@ export const CacheMonitor = () => {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-slate-50 border-b border-slate-200">
+                    <TableHeader>
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">前缀</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">数量</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">占比</th>
+                        <TableHead className="px-6 py-3 text-left">前缀</TableHead>
+                        <TableHead className="px-6 py-3 text-left">数量</TableHead>
+                        <TableHead className="px-6 py-3 text-left">占比</TableHead>
                       </tr>
-                    </thead>
+                    </TableHeader>
                     <tbody className="divide-y divide-slate-200">
                       {keyGroups.length === 0 ? (
                         <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400 text-sm">暂无 Key 数据</td></tr>

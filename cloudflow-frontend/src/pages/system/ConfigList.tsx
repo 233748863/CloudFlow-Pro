@@ -3,7 +3,7 @@ import { Plus, Edit, Trash2, Search, X, Loader2, Lock, ChevronLeft, ChevronRight
 import { toast } from 'sonner';
 import { getConfigList, addConfig, updateConfig, deleteConfig, type SysConfig } from '../../services/api/system';
 import { clearConfigCache } from '../../hooks/useSystemConfig';
-import { Input } from '@/components/ui';
+import { Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 export const ConfigList = () => {
@@ -154,18 +154,18 @@ export const ConfigList = () => {
       <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="overflow-x-auto flex-1">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <TableHeader>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数名称</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数键名</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">参数键值</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">类型</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">作用域</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">创建时间</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-48">操作</th>
+                <TableHead className="px-6 py-3 text-left">ID</TableHead>
+                <TableHead className="px-6 py-3 text-left">参数名称</TableHead>
+                <TableHead className="px-6 py-3 text-left">参数键名</TableHead>
+                <TableHead className="px-6 py-3 text-left">参数键值</TableHead>
+                <TableHead className="px-6 py-3 text-left">类型</TableHead>
+                <TableHead className="px-6 py-3 text-left">作用域</TableHead>
+                <TableHead className="px-6 py-3 text-left">创建时间</TableHead>
+                <TableActionHead className="px-6 py-3 w-48">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2" size={18} />加载中...</td></tr>

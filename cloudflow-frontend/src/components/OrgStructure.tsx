@@ -349,7 +349,7 @@ export const OrgStructure = () => {
                   <th className="px-4 py-3 font-medium">手机</th>
                   <th className="px-4 py-3 font-medium">角色</th>
                   <th className="px-4 py-3 font-medium">状态</th>
-                  <th className="px-4 py-3 font-medium text-right w-56">操作</th>
+                  <th className="px-4 py-3 font-medium text-center w-56">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

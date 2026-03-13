@@ -14,7 +14,7 @@ import {
   Download,
   Filter
 } from 'lucide-react';
-import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader } from '@/components/ui';
 import { 
   getPerformanceStats,
   PerformanceStats as PerformanceStatsType
@@ -246,40 +246,40 @@ const PerformanceStats: React.FC = () => {
             </div>
           ) : stats.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <TableHeader>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableHead className="px-6 py-3 text-left">
                     日期
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-left">
                     流程类型
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     总数
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     完成数
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     平均时长
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     最大时长
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     最小时长
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     成功率
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     超时率
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="px-6 py-3 text-right">
                     异常率
-                  </th>
+                  </TableHead>
                 </tr>
-              </thead>
+              </TableHeader>
               <tbody className="bg-white divide-y divide-gray-200">
                 {stats.map((stat, index) => (
                   <tr key={index} className="hover:bg-gray-50">

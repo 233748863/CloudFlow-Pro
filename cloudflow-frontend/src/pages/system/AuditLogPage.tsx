@@ -5,7 +5,7 @@ import {
   getAuditLogPage, getAuditLogDetail, deleteAuditLogs,
   SysAuditLog, AuditLogQuery
 } from '@/services/api/log';
-import { DatePicker } from '@/components/ui';
+import { DatePicker, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /**
@@ -269,21 +269,21 @@ export const AuditLogPage: React.FC = () => {
         <div className="overflow-x-auto">
           {/* 预留最小表格宽度，避免操作列被其它字段继续压缩。 */}
           <table className="min-w-[1120px] w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-left">
-                <th className="px-4 py-3 w-10">
+            <TableHeader>
+              <tr>
+                <TableHead className="px-4 py-3 w-10">
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
-                </th>
-                <th className="px-4 py-3 w-14">#</th>
-                <th className="px-4 py-3">业务名称</th>
-                <th className="px-4 py-3">变更字段</th>
-                <th className="px-4 py-3">变更前</th>
-                <th className="px-4 py-3">变更后</th>
-                <th className="px-4 py-3 w-28">操作人</th>
-                <th className="px-4 py-3 w-44">操作时间</th>
-                <th className="px-4 py-3 w-44 text-right">操作</th>
+                </TableHead>
+                <TableHead className="px-4 py-3 w-14">#</TableHead>
+                <TableHead className="px-4 py-3">业务名称</TableHead>
+                <TableHead className="px-4 py-3">变更字段</TableHead>
+                <TableHead className="px-4 py-3">变更前</TableHead>
+                <TableHead className="px-4 py-3">变更后</TableHead>
+                <TableHead className="px-4 py-3 w-28">操作人</TableHead>
+                <TableHead className="px-4 py-3 w-44">操作时间</TableHead>
+                <TableActionHead className="px-4 py-3 w-44">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody>
               {loading ? (
                 <tr>

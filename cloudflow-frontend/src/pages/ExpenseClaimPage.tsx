@@ -3,7 +3,7 @@ import { Receipt, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, FileText, Do
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '../services/api/expense';
 import { toast } from 'sonner';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
-import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 export const ExpenseClaimPage: React.FC = () => {
@@ -305,17 +305,17 @@ export const ExpenseClaimPage: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+            <TableHeader className="sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">报销单号</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">类别</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">总金额</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">说明</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">创建时间</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-64">操作</th>
+                <TableHead className="px-4 py-3 text-left">报销单号</TableHead>
+                <TableHead className="px-4 py-3 text-left">类别</TableHead>
+                <TableHead className="px-4 py-3 text-left">总金额</TableHead>
+                <TableHead className="px-4 py-3 text-left">说明</TableHead>
+                <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                <TableHead className="px-4 py-3 text-left">创建时间</TableHead>
+                <TableActionHead className="px-4 py-3 w-64">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>

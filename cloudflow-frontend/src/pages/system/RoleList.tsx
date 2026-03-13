@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Shield, ChevronRight, ChevronDown } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { toast } from 'sonner';
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList, getDeptTree } from '../../services/api/auth';
@@ -295,17 +295,17 @@ export const RoleList = () => {
       <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <TableHeader>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">角色名称</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">权限字符</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">租户</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">显示顺序</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-52">操作</th>
+                <TableHead className="px-6 py-3 text-left">ID</TableHead>
+                <TableHead className="px-6 py-3 text-left">角色名称</TableHead>
+                <TableHead className="px-6 py-3 text-left">权限字符</TableHead>
+                <TableHead className="px-6 py-3 text-left">租户</TableHead>
+                <TableHead className="px-6 py-3 text-left">显示顺序</TableHead>
+                <TableHead className="px-6 py-3 text-left">状态</TableHead>
+                <TableActionHead className="px-6 py-3 w-52">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>

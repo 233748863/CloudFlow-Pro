@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RotateCcw, Trash2, Eye, X, RefreshCw, Download } from 'lucide-react';
-import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { toast } from 'sonner';
 import {
   getSysLogPage, getSysLogTrend, getSysLogDetail, deleteSysLogs,
@@ -335,22 +335,22 @@ export const OperationLogPage: React.FC = () => {
         <div className="overflow-x-auto">
           {/* 预留最小表格宽度，避免“详情/删除”在窄列里被挤成两行。 */}
           <table className="min-w-[1220px] w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-left">
-                <th className="px-4 py-3 w-10">
+            <TableHeader>
+              <tr>
+                <TableHead className="px-4 py-3 w-10">
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
-                </th>
-                <th className="px-4 py-3 w-14">#</th>
-                <th className="px-4 py-3">类型</th>
-                <th className="px-4 py-3">标题</th>
-                <th className="px-4 py-3">IP地址</th>
-                <th className="px-4 py-3">请求方式</th>
-                <th className="px-4 py-3">耗时</th>
-                <th className="px-4 py-3">请求时间</th>
-                <th className="px-4 py-3 w-28">操作人</th>
-                <th className="px-4 py-3 w-44 text-right">操作</th>
+                </TableHead>
+                <TableHead className="px-4 py-3 w-14">#</TableHead>
+                <TableHead className="px-4 py-3">类型</TableHead>
+                <TableHead className="px-4 py-3">标题</TableHead>
+                <TableHead className="px-4 py-3">IP地址</TableHead>
+                <TableHead className="px-4 py-3">请求方式</TableHead>
+                <TableHead className="px-4 py-3">耗时</TableHead>
+                <TableHead className="px-4 py-3">请求时间</TableHead>
+                <TableHead className="px-4 py-3 w-28">操作人</TableHead>
+                <TableActionHead className="px-4 py-3 w-44">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody>
               {loading ? (
                 <tr>

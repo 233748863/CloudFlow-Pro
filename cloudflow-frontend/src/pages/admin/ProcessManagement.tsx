@@ -16,7 +16,7 @@ import {
   FileDown,
   Upload
 } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';
 import { 
@@ -830,31 +830,31 @@ export const ProcessManagement = () => {
         <div className="overflow-x-auto">
           {/* 统一操作按钮后，为“编辑/版本/导出”三项动作预留稳定列宽。 */}
           <table className="min-w-[1120px] w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <TableHeader>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-12">
+                <TableHead className="px-4 py-3 text-left w-12">
                   选择
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[28%]">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-left w-[28%]">
                   流程名称
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-left">
                   流程Key
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-left">
                   分类
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-left">
                   标签
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-24">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-left w-24">
                   版本
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider w-72">
+                </TableHead>
+                <TableActionHead className="px-4 py-3 w-72">
                   操作
-                </th>
+                </TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-200">
             {loading ? (
               <tr>

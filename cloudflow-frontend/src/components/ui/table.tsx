@@ -18,7 +18,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className = '', ...props }, ref) => (
-  <thead ref={ref} className={`[&_tr]:border-b bg-slate-50/80 ${className}`} {...props} />
+  <thead ref={ref} className={`bg-slate-50 border-b border-slate-200 [&_tr]:border-b ${className}`} {...props} />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -64,11 +64,24 @@ const TableHead = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <th
     ref={ref}
-    className={`h-12 px-4 text-left align-middle font-semibold text-slate-600 [&:has([role=checkbox])]:pr-0 ${className}`}
+    className={`px-4 py-3 text-left align-middle text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap [&:has([role=checkbox])]:pr-0 ${className}`}
     {...props}
   />
 ));
 TableHead.displayName = "TableHead";
+
+const TableActionHead = React.forwardRef<
+  HTMLTableCellElement,
+  React.ThHTMLAttributes<HTMLTableCellElement>
+>(({ className = '', ...props }, ref) => (
+  // 统一“操作”列表头：默认居中并禁止换行，页面只需要补充宽度等差异化样式。
+  <TableHead
+    ref={ref}
+    className={`text-center whitespace-nowrap ${className}`}
+    {...props}
+  />
+));
+TableActionHead.displayName = "TableActionHead";
 
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
@@ -100,6 +113,7 @@ export {
   TableBody,
   TableFooter,
   TableHead,
+  TableActionHead,
   TableRow,
   TableCell,
   TableCaption,

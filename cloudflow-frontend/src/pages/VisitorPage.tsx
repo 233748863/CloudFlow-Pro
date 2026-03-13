@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserCheck, Plus, Search, RotateCcw, X, LogIn, LogOut, CheckCircle, XCircle } from 'lucide-react';
 import { visitorApi, Visitor } from '../services/api/visitor';
 import { toast } from 'sonner';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /** 访客管理页面 */
@@ -92,18 +92,18 @@ export const VisitorPage: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+            <TableHeader className="sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">访客姓名</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">单位</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">来访日期</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">被访人</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">来访事由</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">通行证</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-64">操作</th>
+                <TableHead>访客姓名</TableHead>
+                <TableHead>单位</TableHead>
+                <TableHead>来访日期</TableHead>
+                <TableHead>被访人</TableHead>
+                <TableHead>来访事由</TableHead>
+                <TableHead>通行证</TableHead>
+                <TableHead>状态</TableHead>
+                <TableActionHead className="w-64">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>

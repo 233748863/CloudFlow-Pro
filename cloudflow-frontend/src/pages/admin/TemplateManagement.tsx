@@ -11,7 +11,7 @@ import {
 import { toast } from 'sonner';
 import request from '../../services/api/request';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
-import { PermissionGuard } from '@/components/ui';
+import { PermissionGuard, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 interface TemplateItem {
@@ -441,15 +441,15 @@ export const TemplateManagement = () => {
           <div className="text-center py-8 text-gray-500">暂无分类</div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <TableHeader>
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">分类名称</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">描述</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">模板数</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">排序</th>
-                <th className="px-6 py-3 text-right text-sm font-medium text-gray-700 w-48">操作</th>
+                <TableHead className="px-6 py-3 text-left">分类名称</TableHead>
+                <TableHead className="px-6 py-3 text-left">描述</TableHead>
+                <TableHead className="px-6 py-3 text-left">模板数</TableHead>
+                <TableHead className="px-6 py-3 text-left">排序</TableHead>
+                <TableActionHead className="px-6 py-3 w-48">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y">
               {flatCategories.map((category) => (
                 <tr key={category.id} className="hover:bg-gray-50">
@@ -494,16 +494,16 @@ export const TemplateManagement = () => {
       ) : (
         <div className="bg-white rounded-lg border">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <TableHeader>
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">模板名称</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">分类</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">标签</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">使用次数</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">状态</th>
-                <th className="px-6 py-3 text-right text-sm font-medium text-gray-700 w-52">操作</th>
+                <TableHead className="px-6 py-3 text-left">模板名称</TableHead>
+                <TableHead className="px-6 py-3 text-left">分类</TableHead>
+                <TableHead className="px-6 py-3 text-left">标签</TableHead>
+                <TableHead className="px-6 py-3 text-left">使用次数</TableHead>
+                <TableHead className="px-6 py-3 text-left">状态</TableHead>
+                <TableActionHead className="px-6 py-3 w-52">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y">
               {templates.map((template) => (
                 <tr key={template.id} className="hover:bg-gray-50">

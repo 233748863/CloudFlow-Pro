@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, RotateCcw, Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card, CardContent, DatePicker, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { Button, Card, CardContent, DatePicker, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableActionHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   getVehicleList, addVehicle, updateVehicle, deleteVehicle,
@@ -359,7 +359,7 @@ const VehicleList: React.FC = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50/80">
+                <TableRow>
                   <TableHead className="w-12">
                     <input
                       type="checkbox"
@@ -376,7 +376,7 @@ const VehicleList: React.FC = () => {
                   <TableHead className="text-right">里程 (km)</TableHead>
                   <TableHead>停放位置</TableHead>
                   <TableHead>保险到期</TableHead>
-                  <TableHead className="text-center">操作</TableHead>
+                  <TableActionHead>操作</TableActionHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -7,6 +7,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { TableHead, TableHeader } from '@/components/ui';
+
 import { 
   Activity, 
   CheckCircle2, 
@@ -332,15 +334,15 @@ const WorkflowMonitor: React.FC = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead>
+            <TableHeader>
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">日期</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">启动</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">完成</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">超时</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">异常</th>
+                <TableHead className="px-4 py-2 text-left">日期</TableHead>
+                <TableHead className="px-4 py-2 text-right">启动</TableHead>
+                <TableHead className="px-4 py-2 text-right">完成</TableHead>
+                <TableHead className="px-4 py-2 text-right">超时</TableHead>
+                <TableHead className="px-4 py-2 text-right">异常</TableHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-gray-200">
               {trend.map((item, index) => (
                 <tr key={index} className="hover:bg-gray-50">

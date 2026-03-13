@@ -18,6 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableActionHead,
 } from "@/components/ui";
 import {
   Plus,
@@ -487,34 +488,34 @@ const AssetList: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <TableHeader>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <TableHead className="px-6 py-3 text-left">
                   资产编码
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-6 py-3 text-left">
                   名称
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-6 py-3 text-left">
                   分类
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-6 py-3 text-left">
                   规格型号
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-6 py-3 text-left">
                   状态
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-6 py-3 text-left">
                   价格
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                </TableHead>
+                <TableHead className="px-6 py-3 text-left">
                   存放位置
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-72">
+                </TableHead>
+                <TableActionHead className="px-6 py-3 w-72">
                   操作
-                </th>
+                </TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {assets.length === 0 ? (
                 <tr>

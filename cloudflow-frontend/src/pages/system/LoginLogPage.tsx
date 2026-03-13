@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input } from '@/components/ui';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { toast } from 'sonner';
 import { Eye, RefreshCw, RotateCcw, Search, Trash2, X } from 'lucide-react';
@@ -265,20 +265,20 @@ export const LoginLogPage: React.FC = () => {
         <div className="overflow-x-auto">
           {/* 为登录日志的操作列预留宽度，避免统一动作按钮被压缩。 */}
           <table className="min-w-[1040px] w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
+            <TableHeader className="text-left text-slate-600">
               <tr>
-                <th className="px-4 py-3">
+                <TableHead className="px-4 py-3">
                   <input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length} onChange={toggleSelectAll} />
-                </th>
-                <th className="px-4 py-3">???</th>
-                <th className="px-4 py-3">??</th>
-                <th className="px-4 py-3">??? IP</th>
-                <th className="px-4 py-3">??</th>
-                <th className="px-4 py-3">???</th>
-                <th className="px-4 py-3">????</th>
-                <th className="px-4 py-3 w-40 text-right">??</th>
+                </TableHead>
+                <TableHead className="px-4 py-3">???</TableHead>
+                <TableActionHead className="px-4 py-3">??</TableActionHead>
+                <TableHead className="px-4 py-3">??? IP</TableHead>
+                <TableActionHead className="px-4 py-3">??</TableActionHead>
+                <TableHead className="px-4 py-3">???</TableHead>
+                <TableHead className="px-4 py-3">????</TableHead>
+                <TableActionHead className="px-4 py-3 w-40">??</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody>
               {loading ? (
                 <tr>

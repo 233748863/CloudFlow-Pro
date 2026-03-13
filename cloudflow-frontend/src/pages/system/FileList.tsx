@@ -11,7 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input } from '@/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt } from '../../hooks/useSystemConfig';
@@ -308,16 +308,16 @@ export const FileList = () => {
         <div className="overflow-x-auto">
           {/* 为操作列预留最小宽度，例如“下载 + 删除”始终保持同一行显示。 */}
           <table className="min-w-[1120px] w-full table-auto text-left">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-[38%]">文件名</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-32">大小</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-40">类型</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-32">上传者</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-48">上传时间</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-sm w-44 text-right">操作</th>
+            <TableHeader>
+              <tr>
+                <TableHead className="px-6 py-3 w-[38%]">文件名</TableHead>
+                <TableHead className="px-6 py-3 w-32">大小</TableHead>
+                <TableHead className="px-6 py-3 w-40">类型</TableHead>
+                <TableHead className="px-6 py-3 w-32">上传者</TableHead>
+                <TableHead className="px-6 py-3 w-48">上传时间</TableHead>
+                <TableActionHead className="px-6 py-3 w-44">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>

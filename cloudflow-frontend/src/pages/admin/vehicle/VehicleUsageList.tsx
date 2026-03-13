@@ -6,7 +6,7 @@ import {
   Fuel, ParkingCircle, Wrench, Shield, MoreHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card, CardContent, CardHeader, CardTitle, DatePicker, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, DatePicker, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableActionHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   getUsageList, getExpenseList, addExpense, getExpenseStats,
@@ -319,14 +319,14 @@ const VehicleUsageList: React.FC = () => {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50/80">
+                    <TableRow>
                       <TableHead>车辆</TableHead>
                       <TableHead>申请人</TableHead>
                       <TableHead>用车时间</TableHead>
                       <TableHead>目的地</TableHead>
                       <TableHead>事由</TableHead>
                       <TableHead>状态</TableHead>
-                      <TableHead className="text-center">操作</TableHead>
+                      <TableActionHead>操作</TableActionHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -470,7 +470,7 @@ const VehicleUsageList: React.FC = () => {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50/80">
+                    <TableRow>
                       <TableHead>车辆</TableHead>
                       <TableHead>费用类型</TableHead>
                       <TableHead className="text-right">金额</TableHead>

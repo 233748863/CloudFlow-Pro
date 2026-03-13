@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 // ==================== 类型定义 ====================
@@ -1315,15 +1315,15 @@ export const MeetingRoomPage = () => {
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+                  <TableHeader>
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">会议室</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">预订次数</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">使用时长</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">使用天数</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">利用率</th>
+                      <TableHead className="px-6 py-3 text-left">会议室</TableHead>
+                      <TableHead className="px-6 py-3 text-left">预订次数</TableHead>
+                      <TableHead className="px-6 py-3 text-left">使用时长</TableHead>
+                      <TableHead className="px-6 py-3 text-left">使用天数</TableHead>
+                      <TableHead className="px-6 py-3 text-left">利用率</TableHead>
                     </tr>
-                  </thead>
+                  </TableHeader>
                   <tbody className="divide-y divide-slate-200">
                     {stats.map((stat, index) => {
                       const hours = Math.floor(stat.totalMinutes / 60);

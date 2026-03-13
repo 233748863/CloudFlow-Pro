@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Pencil, Trash2, Search, Tag } from 'lucide-react';
 import { dictTypeApi, dictDataApi, SysDictType, SysDictData } from '../../services/api/dict';
 import { toast } from 'sonner';
-import { Button, Card, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Button, Card, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /** 字典管理页面 */
@@ -260,17 +260,17 @@ export const DictPage: React.FC = () => {
             </div>
           ) : (
             <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50/80 text-left">
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600">排序</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600">标签</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600">键值</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600">样式</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600">状态</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600">备注</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 text-right w-48">操作</th>
+              <TableHeader>
+                <tr>
+                  <TableHead className="px-4 py-3">排序</TableHead>
+                  <TableHead className="px-4 py-3">标签</TableHead>
+                  <TableHead className="px-4 py-3">键值</TableHead>
+                  <TableHead className="px-4 py-3">样式</TableHead>
+                  <TableHead className="px-4 py-3">状态</TableHead>
+                  <TableHead className="px-4 py-3">备注</TableHead>
+                  <TableActionHead className="px-4 py-3 w-48">操作</TableActionHead>
                 </tr>
-              </thead>
+              </TableHeader>
               <tbody>
                 {dictDataList.map(item => (
                   <tr key={item.dictCode} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">

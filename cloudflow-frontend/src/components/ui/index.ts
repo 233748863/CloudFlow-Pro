@@ -86,7 +86,7 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs'
  * Table - 表格组件
  * 包含：Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption
  */
-export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './table'
+export { Table, TableHeader, TableBody, TableFooter, TableHead, TableActionHead, TableRow, TableCell, TableCaption } from './table'
 
 // ============================================
 // 扩展组件

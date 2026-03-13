@@ -6,7 +6,7 @@ import { toBackendDateString, toLocalDatetimeString } from '../utils/dateFormat'
 import { toast } from 'sonner';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 
 /** 加班申请页面 */
 export const OvertimePage: React.FC = () => {
@@ -159,20 +159,20 @@ export const OvertimePage: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+            <TableHeader className="sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">加班单号</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">类型</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">开始时间</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">结束时间</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">时长(h)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">地点</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">补偿</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">附件</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-56">操作</th>
+                <TableHead>加班单号</TableHead>
+                <TableHead>类型</TableHead>
+                <TableHead>开始时间</TableHead>
+                <TableHead>结束时间</TableHead>
+                <TableHead>时长(h)</TableHead>
+                <TableHead>地点</TableHead>
+                <TableHead>补偿</TableHead>
+                <TableHead>附件</TableHead>
+                <TableHead>状态</TableHead>
+                <TableActionHead className="w-56">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>

@@ -3,7 +3,7 @@ import { DollarSign, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, Download 
 import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
 import { toast } from 'sonner';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
-import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 export const PaymentRequestPage: React.FC = () => {
@@ -259,18 +259,18 @@ export const PaymentRequestPage: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+            <TableHeader className="sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">付款单号</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">收款人</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">金额</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">付款方式</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">原因</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">创建时间</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-64">操作</th>
+                <TableHead>付款单号</TableHead>
+                <TableHead>收款人</TableHead>
+                <TableHead>金额</TableHead>
+                <TableHead>付款方式</TableHead>
+                <TableHead>原因</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>创建时间</TableHead>
+                <TableActionHead className="w-64">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>

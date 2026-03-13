@@ -45,6 +45,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  TableHead,
+  TableHeader,
+  TableActionHead,
 } from "@/components/ui";
 import { TableRowActions } from "@/components/ui/table-row-actions";
 import { getDeptTree, getRoleList } from "../services/api/auth";
@@ -724,31 +727,31 @@ export const AnnouncementPage = () => {
             <div className="flex-1 overflow-auto">
               {/* 公告管理动作较多，给操作列更宽的固定宽度，保持统一文字按钮风格。 */}
               <table className="min-w-[1360px] w-full">
-                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                <TableHeader className="sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase w-[30%]">
+                    <TableHead className="px-4 py-3 text-left w-[30%]">
                       标题
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left">
                       类型
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left">
                       状态
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left">
                       优先级
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left">
                       已读人数
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase w-44">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left w-44">
                       发布时间
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-[360px]">
+                    </TableHead>
+                    <TableActionHead className="px-4 py-3 w-[360px]">
                       操作
-                    </th>
+                    </TableActionHead>
                   </tr>
-                </thead>
+                </TableHeader>
                 <tbody className="divide-y divide-slate-100">
                   {manageList.map((item) => (
                     <tr key={item.announcementId} className="hover:bg-slate-50">

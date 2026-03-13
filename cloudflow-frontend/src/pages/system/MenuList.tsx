@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, ChevronRight, ChevronDown, Folder, File, Layout } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { toast } from 'sonner';
 import { getMenuList, addMenu, updateMenu, deleteMenu } from '../../services/api/auth';
@@ -209,17 +209,17 @@ export const MenuList = () => {
       <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <TableHeader>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[300px]">菜单名称</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">图标</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">排序</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">权限标识</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">组件路径</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">类型</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-60">操作</th>
+                <TableHead className="px-6 py-3 text-left w-[300px]">菜单名称</TableHead>
+                <TableHead className="px-6 py-3 text-left">图标</TableHead>
+                <TableHead className="px-6 py-3 text-left">排序</TableHead>
+                <TableHead className="px-6 py-3 text-left">权限标识</TableHead>
+                <TableHead className="px-6 py-3 text-left">组件路径</TableHead>
+                <TableHead className="px-6 py-3 text-left">类型</TableHead>
+                <TableActionHead className="px-6 py-3 w-60">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>

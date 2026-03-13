@@ -31,7 +31,7 @@ import {
   type TenantStatisticsItem,
 } from '../../services/api/tenant';
 import { useMount } from '../../hooks/useMount';
-import { DatePicker, Input, Textarea, Button } from '@/components/ui';
+import { DatePicker, Input, Textarea, Button, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 interface TenantView extends SysTenant, TenantStatistics {
@@ -407,17 +407,17 @@ export const TenantList: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <TableHeader>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">租户信息</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">联系方式</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">用户配额</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">存储使用</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">到期情况</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-72">操作</th>
+                <TableHead className="px-6 py-3 text-left">租户信息</TableHead>
+                <TableHead className="px-6 py-3 text-left">联系方式</TableHead>
+                <TableHead className="px-6 py-3 text-left">用户配额</TableHead>
+                <TableHead className="px-6 py-3 text-left">存储使用</TableHead>
+                <TableHead className="px-6 py-3 text-left">到期情况</TableHead>
+                <TableHead className="px-6 py-3 text-left">状态</TableHead>
+                <TableActionHead className="px-6 py-3 w-72">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>

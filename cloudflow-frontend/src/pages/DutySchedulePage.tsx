@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Search, RotateCcw, X, LogIn, LogOut, RefreshCw } from 'lucide-react';
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { toast } from 'sonner';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
 /** 值班排班页面 */
@@ -116,19 +116,19 @@ export const DutySchedulePage: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+            <TableHeader className="sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">标题</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">类型</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">值班日期</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">班次</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">值班人</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">地点</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">签到/签退</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase w-56">操作</th>
+                <TableHead>标题</TableHead>
+                <TableHead>类型</TableHead>
+                <TableHead>值班日期</TableHead>
+                <TableHead>班次</TableHead>
+                <TableHead>值班人</TableHead>
+                <TableHead>地点</TableHead>
+                <TableHead>签到/签退</TableHead>
+                <TableHead>状态</TableHead>
+                <TableActionHead className="w-56">操作</TableActionHead>
               </tr>
-            </thead>
+            </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>
