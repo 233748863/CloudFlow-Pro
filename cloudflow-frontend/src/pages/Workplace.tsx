@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
+import { WORKFLOW_CATEGORY_OPTIONS, getWorkflowCategoryLabel, normalizeWorkflowCategory } from '../utils/workflowCategory';
 
 /**
  * 将后端返回的 tags 统一转换为字符串数组，避免页面内反复强制类型断言。
@@ -104,18 +105,6 @@ export const Workplace = () => {
   const navigate = useNavigate();
 
   // P3: 分类选项
-  const CATEGORY_LABELS: Record<string, string> = {
-    '': '全部',
-    'office': '行政办公',
-    'finance': '财务管理',
-    'hr': '人事管理',
-    'sales': '销售业务',
-    'it': 'IT运维',
-    'production': '生产制造',
-    'quality': '质量管理',
-    'project': '项目管理',
-    'other': '其他',
-  };
 
   useEffect(() => {
     getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false }).then(res => {
@@ -151,7 +140,7 @@ export const Workplace = () => {
                   version: w.version,
                   formId: w.formId,
                   // P3: 映射分类和标签字段
-                  category: w.category || '',
+                  category: normalizeWorkflowCategory(w.category),
                   // 与 WorkflowDefinition.tags 类型保持一致，统一存为 JSON 字符串
                   tags: typeof w.tags === 'string' ? w.tags : JSON.stringify(normalizeTags(w.tags)),
                   description: w.description || '',
@@ -358,7 +347,7 @@ export const Workplace = () => {
       <div className="flex items-center gap-2 flex-wrap">
         <FolderOpen size={16} className="text-slate-400" />
         <span className="text-sm text-slate-600 font-medium">分类:</span>
-        {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+        {[{ value: '', label: '全部' }, ...WORKFLOW_CATEGORY_OPTIONS].map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setSelectedCategory(value)}
@@ -424,7 +413,7 @@ export const Workplace = () => {
               <div className="absolute top-3 left-3 z-20">
                 <span className="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-600 rounded-md flex items-center gap-1">
                   <FolderOpen size={10} />
-                  {CATEGORY_LABELS[wf.category] || wf.category}
+                  {getWorkflowCategoryLabel(wf.category) || wf.category}
                 </span>
               </div>
             )}

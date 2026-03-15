@@ -10,6 +10,7 @@ import {
 } from '../services/api/workflow';
 import { getRoleList, getUserList } from '../services/api/auth';
 import { mapBackendUserToFrontend } from '../utils/mappers';
+import { normalizeWorkflowCategory } from '../utils/workflowCategory';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { EmptyError, EmptyWorkflows, SkeletonForm } from '@/components/ui';
 import { toast } from 'sonner';
@@ -162,7 +163,7 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   formId: w?.formId,
   graph: parseWorkflowGraph(w?.modelJson, w?.processName || '未命名流程'),
   description: w?.description,
-  category: w?.category,
+  category: normalizeWorkflowCategory(w?.category),
   tags: typeof w?.tags === 'string' ? w.tags : w?.tags ? JSON.stringify(w.tags) : undefined,
   startPermissionType: w?.startPermissionType,
   startPermissionValue: w?.startPermissionValue,

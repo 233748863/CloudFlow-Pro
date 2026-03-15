@@ -92,6 +92,7 @@ import { Input } from "./ui/input";
 import { DatePicker } from "./ui/date-picker";
 import { Button } from "./ui/button";
 import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
+import { WORKFLOW_CATEGORY_OPTIONS, normalizeWorkflowCategory } from "../utils/workflowCategory";
 import { useAuth } from "../context/AuthContext";
 import {
   appendWorkflowGraphBranch,
@@ -6251,12 +6252,11 @@ const GlobalPropertyPanel = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={CATEGORY_NONE_VALUE}>未分类</SelectItem>
-                  <SelectItem value="office">行政办公</SelectItem>
-                  <SelectItem value="finance">财务审批</SelectItem>
-                  <SelectItem value="hr">人事管理</SelectItem>
-                  <SelectItem value="sales">业务销售</SelectItem>
-                  <SelectItem value="it">IT运维</SelectItem>
-                  <SelectItem value="other">其他</SelectItem>
+                  {WORKFLOW_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -6793,7 +6793,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setWorkflowName(workflow.name || "未命名流程");
     setWorkflowKey(workflow.key || "new_process");
     setWorkflowDescription(workflow.description || "");
-    setWorkflowCategory(workflow.category || "");
+    setWorkflowCategory(normalizeWorkflowCategory(workflow.category));
     setWorkflowTags(parsedTags);
     setSelectedFormId(workflow.formId || "");
     setStartPermissionType(workflow.startPermissionType || "ALL");
@@ -6804,7 +6804,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setGlobalConfig({
       formId: workflow.formId || undefined,
       description: workflow.description || undefined,
-      category: workflow.category || undefined,
+      category: normalizeWorkflowCategory(workflow.category) || undefined,
       tags: parsedTags.length > 0 ? parsedTags.join(", ") : undefined,
       startPermissionType: workflow.startPermissionType || "ALL",
       startPermissionValue: workflow.startPermissionValue || undefined,
@@ -7411,7 +7411,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     startPermissionValue: string;
   }) => {
     setWorkflowDescription(settings.description);
-    setWorkflowCategory(settings.category);
+    setWorkflowCategory(normalizeWorkflowCategory(settings.category));
     setWorkflowTags(settings.tags);
     setSelectedFormId(settings.formId);
     setStartPermissionType(settings.startPermissionType);
@@ -7419,7 +7419,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setGlobalConfig({
       formId: settings.formId || undefined,
       description: settings.description || undefined,
-      category: settings.category || undefined,
+      category: normalizeWorkflowCategory(settings.category) || undefined,
       tags:
         settings.tags && settings.tags.length > 0
           ? settings.tags.join(", ")
@@ -7440,9 +7440,14 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       startPermissionValue?: string;
     }) => {
       const next = data || {};
-      setGlobalConfig(next);
+      const normalizedCategory = normalizeWorkflowCategory(next.category);
+      const normalizedConfig = {
+        ...next,
+        category: normalizedCategory || undefined,
+      };
+      setGlobalConfig(normalizedConfig);
       setWorkflowDescription(next.description || "");
-      setWorkflowCategory(next.category || "");
+      setWorkflowCategory(normalizedCategory);
       setSelectedFormId(next.formId || "");
       setStartPermissionType(next.startPermissionType || "ALL");
       setStartPermissionValue(next.startPermissionValue || "");

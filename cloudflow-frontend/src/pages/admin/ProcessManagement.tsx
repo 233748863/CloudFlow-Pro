@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { parseWorkflowGraphDefinition } from '../../utils/workflowGraph';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
+import { WORKFLOW_CATEGORY_OPTIONS, getWorkflowCategoryLabel, normalizeWorkflowCategory } from '../../utils/workflowCategory';
 
 // 扩展 WorkflowDefinition 类型，tags 解析为数组
 interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
@@ -93,20 +94,6 @@ export const ProcessManagement = () => {
   const [showSafetyWarning, setShowSafetyWarning] = useState(false);
 
   // 分类选项
-  const CATEGORY_LABELS: Record<string, string> = {
-    '': '全部',
-    'office': '行政办公',
-    'finance': '财务管理',
-    'hr': '人事管理',
-    'sales': '销售业务',
-    'it': 'IT运维',
-    'production': '生产制造',
-    'quality': '质量管理',
-    'project': '项目管理',
-    'other': '其他',
-  };
-
-  // 常用标签
   const COMMON_TAGS = [
     '审批', '请假', '报销', '采购', '合同', '财务',
     '人事', '考勤', '加班', '出差', '资产', '车辆',
@@ -263,7 +250,7 @@ export const ProcessManagement = () => {
                     ? Number(w.deptId)
                     : undefined,
               status: w.status,
-              category: w.category || '',
+              category: normalizeWorkflowCategory(w.category),
               tags: parseTagsSafely(w.tags, workflowName, () => {
                 invalidTagsCount += 1;
               }),
@@ -707,7 +694,7 @@ export const ProcessManagement = () => {
         <div className="flex items-center gap-2 flex-wrap">
           <FolderOpen size={16} className="text-slate-400" />
           <span className="text-sm text-slate-600 font-medium">分类:</span>
-          {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+          {[{ value: '', label: '全部' }, ...WORKFLOW_CATEGORY_OPTIONS].map(({ value, label }) => (
             <Button
               key={value}
               variant={selectedCategory === value ? 'default' : 'ghost'}
@@ -899,7 +886,7 @@ export const ProcessManagement = () => {
                     {wf.category ? (
                       <span className="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-600 rounded-md flex items-center gap-1 w-fit">
                         <FolderOpen size={10} />
-                        {CATEGORY_LABELS[wf.category] || wf.category}
+                        {getWorkflowCategoryLabel(wf.category) || wf.category}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-400">未分类</span>
@@ -1001,11 +988,9 @@ export const ProcessManagement = () => {
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
                   >
                     <option value="">请选择分类</option>
-                    {Object.entries(CATEGORY_LABELS)
-                      .filter(([key]) => key !== '')
-                      .map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
+                    {WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
                   </select>
                 </div>
               ) : (
@@ -1148,7 +1133,7 @@ export const ProcessManagement = () => {
                           <div>名称: {workflow.name}</div>
                           <div>版本: v{workflow.version}</div>
                           {workflow.category && (
-                            <div>分类: {CATEGORY_LABELS[workflow.category] || workflow.category}</div>
+                            <div>分类: {getWorkflowCategoryLabel(workflow.category) || workflow.category}</div>
                           )}
                         </>
                       ) : '未找到流程信息';

@@ -6,24 +6,11 @@ import { getDeptTree } from '../services/api/auth';
 import { FormDefinition } from '../types';
 import { SysRole, SysUser, SysDept } from '../services/api/auth';
 import { toast } from 'sonner';
+import { WORKFLOW_CATEGORY_OPTIONS, normalizeWorkflowCategory } from '../utils/workflowCategory';
 
 const SELECT_NONE_VALUE = '__NONE__';
 
 // 流程分类选项
-const WORKFLOW_CATEGORIES = [
-  { value: SELECT_NONE_VALUE, label: '未分类' },
-  { value: 'office', label: '行政办公' },
-  { value: 'finance', label: '财务管理' },
-  { value: 'hr', label: '人事管理' },
-  { value: 'sales', label: '销售业务' },
-  { value: 'it', label: 'IT运维' },
-  { value: 'production', label: '生产制造' },
-  { value: 'quality', label: '质量管理' },
-  { value: 'project', label: '项目管理' },
-  { value: 'other', label: '其他' },
-];
-
-// 常用标签建议
 const COMMON_TAGS = [
   '审批', '请假', '报销', '采购', '合同',
   '入职', '离职', '培训', '考勤', '绩效',
@@ -71,7 +58,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   onSave,
 }) => {
   const [description, setDescription] = useState(initialDescription);
-  const [category, setCategory] = useState(initialCategory);
+  const [category, setCategory] = useState(normalizeWorkflowCategory(initialCategory));
   const [tags, setTags] = useState<string[]>(initialTags);
   const [formId, setFormId] = useState(initialFormId);
   const [tagInput, setTagInput] = useState('');
@@ -89,7 +76,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   // 同步外部状态变化
   useEffect(() => {
     setDescription(initialDescription);
-    setCategory(initialCategory);
+    setCategory(normalizeWorkflowCategory(initialCategory));
     setTags(initialTags);
     setFormId(initialFormId);
     setStartPermissionType(initialStartPermissionType || 'ALL');
@@ -254,7 +241,8 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
                 <SelectValue placeholder="请选择流程分类" />
               </SelectTrigger>
               <SelectContent>
-                {WORKFLOW_CATEGORIES.map((cat) => (
+                <SelectItem value={SELECT_NONE_VALUE}>未分类</SelectItem>
+                {WORKFLOW_CATEGORY_OPTIONS.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>
