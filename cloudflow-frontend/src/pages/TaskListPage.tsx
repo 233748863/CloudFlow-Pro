@@ -340,13 +340,17 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
   };
 
   const handleProcessDefKeyChange = (key: string) => {
-      setProcessDefKey(key);
+      setProcessDefKey(key === 'ALL_TYPES' ? '' : key);
       setPageNum(1);
   };
 
   const handlePriorityChange = (val: string) => {
-      setPriorityFilter(val);
+      setPriorityFilter(val === 'ALL_PRIORITIES' ? '' : val);
       setPageNum(1);
+  };
+
+  const handleTodoProcessDefKeyChange = (key: string) => {
+      setTodoProcessDefKey(key === 'ALL_TYPES' ? '' : key);
   };
 
   const handleTimeRangeChange = (from: string, to: string) => {
@@ -492,7 +496,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 {/* 任务中心的类型筛选 */}
                 {type === 'pending' && (
                     <Select value={filterType} onValueChange={v => setFilterType(v as 'all' | 'process' | 'work')}>
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger className="w-[140px]">
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
@@ -566,8 +570,8 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
                     {/* 流程类型筛选 */}
                     {todoProcessDefOptions.length > 0 && (
-                        <Select value={todoProcessDefKey} onValueChange={v => setTodoProcessDefKey(v)}>
-                    <SelectTrigger className="w-[160px]">
+                        <Select value={todoProcessDefKey || 'ALL_TYPES'} onValueChange={handleTodoProcessDefKeyChange}>
+                    <SelectTrigger className="w-[220px]">
                       <SelectValue placeholder="全部流程类型" />
                     </SelectTrigger>
                     <SelectContent>
@@ -665,8 +669,8 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* 流程类型筛选 */}
                     {processDefOptions.length > 0 && (
-                        <Select value={processDefKey} onValueChange={v => setProcessDefKey(v)}>
-                    <SelectTrigger className="w-[160px]">
+                        <Select value={processDefKey || 'ALL_TYPES'} onValueChange={handleProcessDefKeyChange}>
+                    <SelectTrigger className="w-[220px]">
                       <SelectValue placeholder="全部流程类型" />
                     </SelectTrigger>
                     <SelectContent>
@@ -679,7 +683,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     )}
 
                     {/* 优先级筛选 */}
-                    <Select value={priorityFilter} onValueChange={v => setPriorityFilter(v)}>
+                    <Select value={priorityFilter || 'ALL_PRIORITIES'} onValueChange={handlePriorityChange}>
                     <SelectTrigger className="w-[120px]">
                       <SelectValue placeholder="全部优先级" />
                     </SelectTrigger>

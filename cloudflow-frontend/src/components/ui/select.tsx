@@ -57,10 +57,15 @@ export const Select = ({ children, value, onValueChange }: { children: React.Rea
  */
 export const SelectTrigger = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   const { setOpen, open } = React.useContext(SelectContext);
+  // 允许页面通过 className 显式控制宽度，避免固定的 w-full 把触发器宽度挤塌。
+  const hasExplicitWidth = className
+    .split(/\s+/)
+    .some((token) => token.split(':').pop()?.startsWith('w-'));
+
   return (
     <button
       type="button"
-      className={`flex h-10 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors hover:border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 focus:border-slate-200 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`flex h-10 items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 focus:border-slate-200 disabled:cursor-not-allowed disabled:opacity-50 ${hasExplicitWidth ? '' : 'w-full'} ${className}`}
       onClick={() => setOpen(!open)}
     >
       {children}
@@ -75,9 +80,14 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
  */
 export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
   const { value, labels } = React.useContext(SelectContext);
-  const hasValue = value !== undefined;
+  const hasRegisteredEmptyValue = Object.prototype.hasOwnProperty.call(labels, '');
+  const hasValue = value !== undefined && (value !== '' || hasRegisteredEmptyValue);
   const displayValue = hasValue ? (labels[value as string] ?? value) : placeholder;
-  return <span className={hasValue ? 'text-slate-900' : 'text-slate-400'}>{displayValue}</span>;
+  return (
+    <span className={`min-w-0 flex-1 truncate ${hasValue ? 'text-slate-900' : 'text-slate-400'}`}>
+      {displayValue}
+    </span>
+  );
 };
 
 /**
