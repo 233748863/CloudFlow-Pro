@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.PositionMapper">
+
+    <!-- 检查职位是否有在职员工 -->
+    <select id="countEmployeesByPositionId" resultType="int">
+        SELECT COUNT(*)
+        FROM hr_employee
+        WHERE position_id = #{positionId}
+          AND employee_status IN ('PENDING', 'PROBATION', 'REGULAR')
+    </select>
+
+</mapper>

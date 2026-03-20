@@ -1,0 +1,2 @@
+# Feign Fallback 层
+# 用于存放 Feign 降级处理类

@@ -41,6 +41,13 @@ public class R<T> implements Serializable {
         return flag ? ok() : fail();
     }
 
+    /**
+     * 判断是否成功
+     */
+    public boolean isSuccess() {
+        return this.code == SUCCESS;
+    }
+
     private static <T> R<T> restResult(T data, int code, String msg) {
         R<T> apiResult = new R<>();
         apiResult.setCode(code);

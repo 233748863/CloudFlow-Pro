@@ -1,0 +1,2 @@
+# Feign Client 层
+# 用于存放 Feign 客户端接口（调用其他微服务）
