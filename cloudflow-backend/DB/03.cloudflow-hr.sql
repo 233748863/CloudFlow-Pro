@@ -151,3 +151,39 @@ INSERT INTO hr_job_level (tenant_id, level_code, level_name, level_series, level
 (100000, 'M6', '高级副总裁', 'M', 6, '管理序列六级', 1);
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+-- =========================================================
+-- 员工档案管理表
+-- =========================================================
+
+-- 员工档案表
+CREATE TABLE hr_employee (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    employee_no VARCHAR(50) NOT NULL COMMENT '工号',
+    name VARCHAR(100) NOT NULL COMMENT '姓名',
+    gender VARCHAR(20) NOT NULL COMMENT '性别：MALE-男 FEMALE-女',
+    birth_date DATE COMMENT '出生日期',
+    phone VARCHAR(20) COMMENT '手机号',
+    email VARCHAR(100) COMMENT '邮箱',
+    dept_id BIGINT COMMENT '部门ID（关联Auth服务）',
+    post_id BIGINT COMMENT '岗位ID（关联Auth服务）',
+    position_id BIGINT COMMENT '职位ID（HR服务）',
+    employee_type VARCHAR(20) NOT NULL COMMENT '员工类型：FULL_TIME-全职 PART_TIME-兼职 INTERN-实习生 CONTRACTOR-外包',
+    employee_status VARCHAR(20) NOT NULL COMMENT '员工状态：PENDING-待入职 PROBATION-试用期 REGULAR-正式 RESIGNED-已离职',
+    hire_date DATE COMMENT '入职日期',
+    regular_date DATE COMMENT '转正日期',
+    resign_date DATE COMMENT '离职日期',
+    user_id BIGINT COMMENT '用户ID（关联Auth服务）',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_employee_no (tenant_id, employee_no),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_dept_id (dept_id),
+    KEY idx_post_id (post_id),
+    KEY idx_position_id (position_id),
+    KEY idx_user_id (user_id),
+    KEY idx_employee_status (employee_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工档案表';

@@ -156,4 +156,37 @@ public class HrBusinessException extends RuntimeException {
                 String.format("%s ID [%d] 不存在或已失效", "DEPT".equals(type) ? "部门" : "岗位", invalidId), 
                 data);
     }
+    
+    /**
+     * 员工不存在
+     */
+    public static HrBusinessException employeeNotFound(Long employeeId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("employeeId", employeeId);
+        return new HrBusinessException("EMPLOYEE_NOT_FOUND", 
+                String.format("员工 ID [%d] 不存在", employeeId), 
+                data);
+    }
+    
+    /**
+     * 职位不存在
+     */
+    public static HrBusinessException positionNotFound(Long positionId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("positionId", positionId);
+        return new HrBusinessException("POSITION_NOT_FOUND", 
+                String.format("职位 ID [%d] 不存在", positionId), 
+                data);
+    }
+    
+    /**
+     * 无法删除在职员工
+     */
+    public static HrBusinessException cannotDeleteActiveEmployee(Long employeeId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("employeeId", employeeId);
+        return new HrBusinessException("CANNOT_DELETE_ACTIVE_EMPLOYEE", 
+                String.format("员工 ID [%d] 处于在职状态，无法删除", employeeId), 
+                data);
+    }
 }
