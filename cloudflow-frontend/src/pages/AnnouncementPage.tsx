@@ -22,6 +22,7 @@ import {
   Bell,
   Megaphone,
   AlertCircle,
+  Calendar,
   Eye,
   Plus,
   Edit,
@@ -39,7 +40,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  Button,
+  Card,
   DatePicker,
+  Input,
+  Textarea,
   Select,
   SelectContent,
   SelectItem,
@@ -59,6 +64,56 @@ interface DeptItem {
   orderNum: number;
   children?: DeptItem[];
 }
+
+function formatDateCN(date: Date): string {
+  const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+}
+
+const SectionHeader = ({
+  eyebrow,
+  title,
+  actionLabel,
+  onAction,
+}: {
+  eyebrow: string;
+  title: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) => (
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</div>
+      <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{title}</div>
+    </div>
+    {actionLabel && onAction ? (
+      <button
+        type="button"
+        onClick={onAction}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-pink-600"
+      >
+        {actionLabel}
+        <ChevronRight size={14} />
+      </button>
+    ) : null}
+  </div>
+);
+
+const EmptyPanel = ({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) => (
+  <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center">
+    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm">{icon}</div>
+    <div className="text-sm font-semibold text-slate-700">{title}</div>
+    <div className="mt-2 max-w-xs text-xs leading-6 text-slate-400">{description}</div>
+  </div>
+);
 
 // 部门树扁平化
 const flattenDepts = (
@@ -174,14 +229,15 @@ const DeptTreePicker: React.FC<{
   };
 
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
       {selectedDepts.length > 0 && (
-        <div className="p-2 border-b border-slate-100 bg-slate-50/50">
+        <div className="border-b border-slate-100 bg-pink-50/45 p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">已选部门</div>
           <div className="flex flex-wrap gap-1">
             {selectedDepts.map((d) => (
               <span
                 key={d.deptId}
-                className="inline-flex items-center gap-1 bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full text-xs"
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-pink-600 ring-1 ring-pink-100"
               >
                 {d.deptName}
                 <button
@@ -198,22 +254,19 @@ const DeptTreePicker: React.FC<{
           </div>
         </div>
       )}
-      <div className="p-2 border-b border-slate-100">
+      <div className="border-b border-slate-100 bg-slate-50/60 p-3">
         <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-2.5 top-2 text-slate-400"
-          />
-          <input
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input
             type="text"
-            className="w-full pl-8 py-1.5 text-sm border-none focus:ring-0 bg-transparent outline-none"
+            className="h-11 rounded-2xl pl-9 text-sm"
             placeholder="搜索部门..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
-      <div className="max-h-48 overflow-y-auto p-1">
+      <div className="max-h-48 overflow-y-auto p-2">
         {deptTree.length === 0 ? (
           <div className="p-4 text-sm text-slate-400 text-center">
             暂无部门数据
@@ -222,7 +275,7 @@ const DeptTreePicker: React.FC<{
           deptTree.map((node) => renderDeptNode(node, 0))
         )}
       </div>
-      <div className="px-3 py-1.5 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500">
         已选择{" "}
         <span className="font-medium text-pink-500">
           {selectedDepts.length}
@@ -273,16 +326,17 @@ const RoleListPicker: React.FC<{
   );
 
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
       {selectedRoles.length > 0 && (
-        <div className="p-2 border-b border-slate-100 bg-slate-50/50">
+        <div className="border-b border-slate-100 bg-pink-50/45 p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">已选角色</div>
           <div className="flex flex-wrap gap-1">
             {selectedRoles.map((r) => {
               const id = getRoleIdentifier(r);
               return (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-1 bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full text-xs"
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-pink-600 ring-1 ring-pink-100"
                 >
                   {r.roleName || r.name}
                   <button
@@ -300,22 +354,19 @@ const RoleListPicker: React.FC<{
           </div>
         </div>
       )}
-      <div className="p-2 border-b border-slate-100">
+      <div className="border-b border-slate-100 bg-slate-50/60 p-3">
         <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-2.5 top-2 text-slate-400"
-          />
-          <input
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input
             type="text"
-            className="w-full pl-8 py-1.5 text-sm border-none focus:ring-0 bg-transparent outline-none"
+            className="h-11 rounded-2xl pl-9 text-sm"
             placeholder="搜索角色..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
-      <div className="max-h-48 overflow-y-auto p-1">
+      <div className="max-h-48 overflow-y-auto p-2">
         {roles.length === 0 ? (
           <div className="p-4 text-sm text-slate-400 text-center">
             加载中或暂无角色数据
@@ -354,7 +405,7 @@ const RoleListPicker: React.FC<{
           })
         )}
       </div>
-      <div className="px-3 py-1.5 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500">
         已选择{" "}
         <span className="font-medium text-pink-500">
           {selectedRoles.length}
@@ -563,6 +614,32 @@ export const AnnouncementPage = () => {
   });
 
   const unreadCount = announcements.filter((a) => !a.isRead).length;
+  const readCount = announcements.filter((a) => a.isRead).length;
+  const topCount = announcements.filter((a) => a.isTop === 1).length;
+  const activeTabTitle =
+    activeTab === "unread" ? "未读消息" : activeTab === "read" ? "历史消息" : "公告管理";
+  const dateLabel = formatDateCN(new Date());
+  const timeLabel = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  const canManage = user?.role === Role.ADMIN || user?.role === Role.HR;
+  const announcementSummary =
+    activeTab === "unread"
+      ? unreadCount > 0
+        ? `当前还有 ${unreadCount} 条未读公告，建议优先处理置顶或紧急消息。`
+        : "当前没有未读公告，公告中心状态平稳。"
+      : activeTab === "read"
+        ? `这里集中归档你已经查看过的公告，方便后续追溯和再次确认。`
+        : `发布、编辑、撤销、置顶和阅读统计都在这里统一管理。`;
+  const focusItems = [
+    { label: "当前视图", value: activeTabTitle, hint: activeTab === "manage" ? "维护公告全生命周期" : "查看公告阅读动态", tone: "bg-pink-50 text-pink-600" },
+    { label: "未读公告", value: `${unreadCount} 条`, hint: "当前仍未阅读的公告数量", tone: "bg-rose-50 text-rose-600" },
+    { label: "置顶公告", value: `${topCount} 条`, hint: "当前对首页和公告中心更重要的消息", tone: "bg-amber-50 text-amber-600" },
+  ];
+  const metricCards = [
+    { label: "未读消息", value: unreadCount, desc: "需要优先查看", icon: <Bell size={20} />, iconClass: "bg-pink-50 text-pink-600", ringClass: "ring-pink-100" },
+    { label: "历史消息", value: readCount, desc: "已完成阅读", icon: <Eye size={20} />, iconClass: "bg-slate-100 text-slate-600", ringClass: "ring-slate-200" },
+    { label: "置顶公告", value: topCount, desc: "重点消息总数", icon: <Pin size={20} />, iconClass: "bg-amber-50 text-amber-600", ringClass: "ring-amber-100" },
+    { label: "管理总量", value: activeTab === "manage" ? total : announcements.length, desc: "当前统计口径下的公告数量", icon: <Megaphone size={20} />, iconClass: "bg-rose-50 text-rose-600", ringClass: "ring-rose-100" },
+  ];
 
   const getTypeIcon = (type: AnnouncementType) => {
     switch (type) {
@@ -618,299 +695,297 @@ export const AnnouncementPage = () => {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Megaphone className="text-pink-500" />
-          公告中心
-        </h2>
-
-        {(user.role === Role.ADMIN || user.role === Role.HR) && (
-          <button
-            onClick={() => {
-              resetForm();
-              setIsModalOpen(true);
-            }}
-            className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors"
-          >
-            <Plus size={18} />
-            发布公告
-          </button>
-        )}
+    <div className="relative min-h-screen pb-6">
+      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden">
+        <div className="absolute left-[-10%] top-[-8%] h-[32rem] w-[32rem] rounded-full bg-pink-300/18 blur-[120px]" />
+        <div className="absolute right-[-12%] top-[12%] h-[38rem] w-[38rem] rounded-full bg-rose-200/20 blur-[140px]" />
+        <div className="absolute bottom-[-12%] left-[18%] h-[26rem] w-[26rem] rounded-full bg-amber-100/45 blur-[110px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,252,0.55),rgba(255,255,255,0.8))]" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[500px] flex flex-col">
-        <div className="flex border-b border-slate-200 pt-2 overflow-visible relative z-10">
-          <button
-            onClick={() => setActiveTab("unread")}
-            className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 relative ${activeTab === "unread" ? "border-pink-500 text-pink-500" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-          >
-            未读消息
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("read")}
-            className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === "read" ? "border-pink-500 text-pink-500" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-          >
-            历史消息
-          </button>
-          {(user.role === Role.ADMIN || user.role === Role.HR) && (
-            <button
-              onClick={() => setActiveTab("manage")}
-              className={`px-6 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === "manage" ? "border-pink-500 text-pink-500" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-            >
-              公告管理
-            </button>
-          )}
+      <div className="relative z-10 space-y-6">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
+          <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+            <div className="relative p-7 sm:p-8">
+              <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_55%)]" />
+              <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
+              <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
+
+              <div className="relative">
+                <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
+                    <Calendar size={14} />
+                    {dateLabel}
+                  </span>
+                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
+                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{activeTabTitle}</span>
+                </div>
+
+                <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="max-w-2xl">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
+                      <Megaphone size={14} />
+                      Announcement Workspace
+                    </div>
+                    <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-950 sm:text-[2.85rem]">公告中心</h1>
+                    <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{announcementSummary}</p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    {canManage && (
+                      <Button
+                        className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600"
+                        onClick={() => {
+                          resetForm();
+                          setIsModalOpen(true);
+                        }}
+                      >
+                        <Plus size={16} className="mr-2" />
+                        发布公告
+                      </Button>
+                    )}
+                    {canManage && (
+                      <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={() => setActiveTab("manage")}>
+                        <Shield size={16} className="mr-2 text-pink-500" />
+                        公告管理
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">未读公告</div>
+                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{unreadCount}</div>
+                    <div className="mt-1 text-xs leading-5 text-slate-500">当前还没有阅读的公告数量</div>
+                  </div>
+                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">历史消息</div>
+                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{readCount}</div>
+                    <div className="mt-1 text-xs leading-5 text-slate-500">已经阅读过的公告消息</div>
+                  </div>
+                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">置顶公告</div>
+                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{topCount}</div>
+                    <div className="mt-1 text-xs leading-5 text-slate-500">当前优先展示的重要公告数量</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+            <SectionHeader eyebrow="今日焦点" title="今天先看这些" />
+            <div className="mt-5 space-y-3">
+              {focusItems.map(item => (
+                <div key={item.label} className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4">
+                  <div className={`rounded-2xl p-3 ${item.tone}`}>
+                    <Bell size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
+                      <div className="text-xs font-semibold text-slate-400">{item.value}</div>
+                    </div>
+                    <div className="mt-1 text-xs leading-5 text-slate-500">{item.hint}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
 
-        {activeTab === "manage" ? (
-          <div className="flex-1 flex flex-col">
-            <div className="p-4 border-b border-slate-200 bg-slate-50">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  placeholder="搜索标题..."
-                  value={searchTitle}
-                  onChange={(e) => setSearchTitle(e.target.value)}
-                  className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-400 focus:outline-none"
-                />
-                <Select
-                  value={filterType}
-                  onValueChange={(v) => setFilterType(v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">所有类型</SelectItem>
-                    <SelectItem value="1">通知</SelectItem>
-                    <SelectItem value="2">公告</SelectItem>
-                    <SelectItem value="3">紧急</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filterStatus}
-                  onValueChange={(v) => setFilterStatus(v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">所有状态</SelectItem>
-                    <SelectItem value="0">草稿</SelectItem>
-                    <SelectItem value="1">已发布</SelectItem>
-                    <SelectItem value="2">已撤销</SelectItem>
-                  </SelectContent>
-                </Select>
-                <button
-                  onClick={handleSearch}
-                  className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"
-                >
-                  <Search size={16} />
-                  搜索
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"
-                >
-                  <RotateCcw size={16} />
-                  重置
-                </button>
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          {metricCards.map(card => (
+            <div key={card.label}>
+              <Card className={`rounded-[28px] border-white/80 bg-white/78 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)] backdrop-blur-xl ring-1 ${card.ringClass}`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-slate-500">{card.label}</div>
+                    <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{card.value}</div>
+                    <div className="mt-2 text-xs leading-5 text-slate-400">{card.desc}</div>
+                  </div>
+                  <div className={`rounded-2xl p-3 ${card.iconClass}`}>{card.icon}</div>
+                </div>
+              </Card>
+            </div>
+          ))}
+        </div>
+
+        <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-5">
+            <div className="rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="min-w-0">
+                  <SectionHeader eyebrow="公告工作区" title={activeTabTitle} />
+                  <div className="mt-2 text-sm leading-6 text-slate-500">
+                    {activeTab === "manage"
+                      ? "集中处理公告发布、编辑、撤销、置顶和阅读统计。"
+                      : "按未读和历史消息查看公告内容，及时掌握团队通知与全员公告。"}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+                  <div className="inline-flex h-11 items-center rounded-2xl bg-slate-100 p-1">
+                    <button type="button" onClick={() => setActiveTab("unread")} className={`relative flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "unread" ? "bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-700"}`}>
+                      未读消息
+                      {unreadCount > 0 && <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{unreadCount}</span>}
+                    </button>
+                    <button type="button" onClick={() => setActiveTab("read")} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "read" ? "bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-700"}`}>
+                      历史消息
+                    </button>
+                    {canManage && (
+                      <button type="button" onClick={() => setActiveTab("manage")} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "manage" ? "bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-700"}`}>
+                        公告管理
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto">
-              {/* 公告管理动作较多，给操作列更宽的固定宽度，保持统一文字按钮风格。 */}
-              <table className="min-w-[1360px] w-full">
-                <TableHeader className="sticky top-0 z-10">
-                  <tr>
-                    <TableHead className="px-4 py-3 text-left w-[30%]">
-                      标题
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      类型
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      状态
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      优先级
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left">
-                      已读人数
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-left w-44">
-                      发布时间
-                    </TableHead>
-                    <TableActionHead className="px-4 py-3 w-[360px]">
-                      操作
-                    </TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100">
-                  {manageList.map((item) => (
-                    <tr key={item.announcementId} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 w-[30%]">
-                        <div className="flex min-w-0 items-center gap-2">
-                          {item.isTop === 1 && (
-                            <Pin size={14} className="text-red-500" />
-                          )}
-                          <span className="min-w-0 truncate text-sm text-slate-900">
-                            {item.title}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          {getTypeIcon(item.type)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {getStatusBadge(item.status)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {getPriorityBadge(item.priority)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleViewStats(item.announcementId)}
-                          className="text-pink-500 hover:text-pink-700 text-sm flex items-center gap-1"
-                        >
-                          <Users size={14} />
-                          查看
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-500">
-                        {item.publishTime
-                          ? new Date(item.publishTime).toLocaleString()
-                          : "-"}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <TableRowActions
-                          align="end"
-                          wrap={false}
-                          className="whitespace-nowrap"
-                          actions={[
-                            {
-                              label: "查看",
-                              icon: <Eye size={16} />,
-                              onClick: () => handleRead(item),
-                              tone: "info",
-                            },
-                            {
-                              label: "编辑",
-                              icon: <Edit size={16} />,
-                              onClick: () => handleEdit(item),
-                              tone: "success",
-                            },
-                            {
-                              label: item.isTop === 1 ? "取消置顶" : "置顶",
-                              icon: <Pin size={16} />,
-                              onClick: () => handleToggleTop(item.announcementId),
-                              tone: item.isTop === 1 ? "danger" : "neutral",
-                            },
-                            {
-                              label: "撤销",
-                              icon: <X size={16} />,
-                              onClick: () => handleRevoke(item.announcementId),
-                              tone: "warning",
-                              hidden: item.status !== "1",
-                            },
-                            {
-                              label: "删除",
-                              icon: <Trash2 size={16} />,
-                              onClick: () => handleDelete(item.announcementId),
-                              tone: "danger",
-                            },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {activeTab === "manage" ? (
+              <div className="flex flex-col gap-4">
+                <div className="rounded-[24px] border border-slate-100 bg-white/85 p-4 shadow-sm">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_180px_180px_auto_auto]">
+                    <Input type="text" placeholder="搜索标题..." value={searchTitle} onChange={(e) => setSearchTitle(e.target.value)} className="h-12 rounded-2xl" />
+                    <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
+                      <SelectTrigger className="h-12 rounded-2xl">
+                        <SelectValue placeholder="请选择" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">所有类型</SelectItem>
+                        <SelectItem value="1">通知</SelectItem>
+                        <SelectItem value="2">公告</SelectItem>
+                        <SelectItem value="3">紧急</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v)}>
+                      <SelectTrigger className="h-12 rounded-2xl">
+                        <SelectValue placeholder="请选择" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">所有状态</SelectItem>
+                        <SelectItem value="0">草稿</SelectItem>
+                        <SelectItem value="1">已发布</SelectItem>
+                        <SelectItem value="2">已撤销</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleSearch} className="h-12 rounded-2xl bg-pink-500 text-white hover:bg-pink-600">
+                      <Search size={16} className="mr-2" />
+                      搜索
+                    </Button>
+                    <Button variant="outline" onClick={handleReset} className="h-12 rounded-2xl">
+                      <RotateCcw size={16} className="mr-2" />
+                      重置
+                    </Button>
+                  </div>
+                </div>
 
-            <div className="p-4 border-t border-slate-200 flex justify-between items-center">
-              <span className="text-sm text-slate-600">共 {total} 条</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50"
-                >
-                  上一页
-                </button>
-                <span className="px-3 py-1 text-sm">第 {currentPage} 页</span>
-                <button
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  disabled={currentPage * pageSize >= total}
-                  className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50"
-                >
-                  下一页
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto">
-            {displayList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                <Bell size={48} className="mb-4 opacity-20" />
-                <p>暂无相关消息</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {displayList.map((item) => (
-                  <div
-                    key={item.announcementId}
-                    onClick={() => handleRead(item)}
-                    className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex gap-4 items-start group ${!item.isRead ? "bg-pink-50/30" : ""}`}
-                  >
-                    <div className="mt-1 flex-shrink-0">
-                      {getTypeIcon(item.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {item.isTop === 1 && (
-                          <Pin size={14} className="text-red-500" />
-                        )}
-                        {getPriorityBadge(item.priority)}
-                        <h3
-                          className={`text-sm font-medium truncate ${!item.isRead ? "text-slate-900 font-bold" : "text-slate-600"}`}
-                        >
-                          {item.title}
-                        </h3>
-                        <span className="text-xs text-slate-400 ml-auto flex-shrink-0">
-                          {new Date(item.createTime).toLocaleString()}
-                        </span>
-                      </div>
-                      <p
-                        className="text-xs text-slate-500 line-clamp-2"
-                        dangerouslySetInnerHTML={{
-                          __html: item.content
-                            .replace(/<[^>]+>/g, "")
-                            .substring(0, 100),
-                        }}
-                      />
+                <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[1360px] w-full">
+                      <TableHeader className="sticky top-0 z-10">
+                        <tr>
+                          <TableHead className="px-4 py-3 text-left w-[30%]">标题</TableHead>
+                          <TableHead className="px-4 py-3 text-left">类型</TableHead>
+                          <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                          <TableHead className="px-4 py-3 text-left">优先级</TableHead>
+                          <TableHead className="px-4 py-3 text-left">已读人数</TableHead>
+                          <TableHead className="px-4 py-3 text-left w-44">发布时间</TableHead>
+                          <TableActionHead className="px-4 py-3 w-[360px]">操作</TableActionHead>
+                        </tr>
+                      </TableHeader>
+                      <tbody className="divide-y divide-slate-100">
+                        {manageList.map((item) => (
+                          <tr key={item.announcementId} className="hover:bg-slate-50/80">
+                            <td className="px-4 py-3 w-[30%]">
+                              <div className="flex min-w-0 items-center gap-2">
+                                {item.isTop === 1 && <Pin size={14} className="text-red-500" />}
+                                <span className="min-w-0 truncate text-sm text-slate-900">{item.title}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3"><div className="flex items-center gap-1">{getTypeIcon(item.type)}</div></td>
+                            <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
+                            <td className="px-4 py-3">{getPriorityBadge(item.priority)}</td>
+                            <td className="px-4 py-3">
+                              <button onClick={() => handleViewStats(item.announcementId)} className="flex items-center gap-1 text-sm text-pink-500 hover:text-pink-700">
+                                <Users size={14} />
+                                查看
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-500">{item.publishTime ? new Date(item.publishTime).toLocaleString() : "-"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              <TableRowActions
+                                align="end"
+                                wrap={false}
+                                className="whitespace-nowrap"
+                                actions={[
+                                  { label: "查看", icon: <Eye size={16} />, onClick: () => handleRead(item), tone: "info" },
+                                  { label: "编辑", icon: <Edit size={16} />, onClick: () => handleEdit(item), tone: "success" },
+                                  { label: item.isTop === 1 ? "取消置顶" : "置顶", icon: <Pin size={16} />, onClick: () => handleToggleTop(item.announcementId), tone: item.isTop === 1 ? "danger" : "neutral" },
+                                  { label: "撤销", icon: <X size={16} />, onClick: () => handleRevoke(item.announcementId), tone: "warning", hidden: item.status !== "1" },
+                                  { label: "删除", icon: <Trash2 size={16} />, onClick: () => handleDelete(item.announcementId), tone: "danger" },
+                                ]}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4">
+                    <span className="text-sm text-slate-600">共 {total} 条</span>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="rounded-xl">上一页</Button>
+                      <span className="px-3 py-2 text-sm text-slate-600">第 {currentPage} 页</span>
+                      <Button variant="outline" onClick={() => setCurrentPage((p) => p + 1)} disabled={currentPage * pageSize >= total} className="rounded-xl">下一页</Button>
                     </div>
                   </div>
-                ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {displayList.length === 0 ? (
+                  <EmptyPanel icon={<Bell size={26} />} title="暂无相关消息" description="新公告发布后会在这里展示，未读消息会优先标识。" />
+                ) : (
+                  <div className="space-y-3">
+                    {displayList.map((item) => (
+                      <button
+                        key={item.announcementId}
+                        onClick={() => handleRead(item)}
+                        className={`flex w-full items-start gap-4 rounded-[24px] border px-4 py-4 text-left transition ${!item.isRead ? "border-pink-100 bg-pink-50/25 hover:bg-pink-50/40" : "border-slate-100 bg-white hover:bg-slate-50/70"}`}
+                      >
+                        <div className="mt-1 shrink-0">{getTypeIcon(item.type)}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-2">
+                            {item.isTop === 1 && <Pin size={14} className="text-red-500" />}
+                            {getPriorityBadge(item.priority)}
+                            <h3 className={`truncate text-sm ${!item.isRead ? "font-bold text-slate-900" : "font-medium text-slate-600"}`}>{item.title}</h3>
+                            <span className="ml-auto shrink-0 text-xs text-slate-400">{new Date(item.createTime).toLocaleString()}</span>
+                          </div>
+                          <p
+                            className="line-clamp-2 text-xs text-slate-500"
+                            dangerouslySetInnerHTML={{
+                              __html: item.content.replace(/<[^>]+>/g, "").substring(0, 100),
+                            }}
+                          />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </Card>
       </div>
 
       {selectedAnnouncement && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-start">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/95 shadow-[0_28px_72px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+            <div className="relative border-b border-slate-100 px-6 pb-5 pt-6">
+              <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+              <div className="relative flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   {selectedAnnouncement.isTop === 1 && (
@@ -945,12 +1020,10 @@ export const AnnouncementPage = () => {
                   )}
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedAnnouncement(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <span className="text-2xl">&times;</span>
-              </button>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedAnnouncement(null)} className="rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                <X size={18} />
+              </Button>
+            </div>
             </div>
             <div className="p-6 overflow-y-auto prose prose-sm max-w-none text-slate-600">
               <div
@@ -959,34 +1032,35 @@ export const AnnouncementPage = () => {
                 }}
               />
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
-              <button
-                onClick={() => setSelectedAnnouncement(null)}
-                className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
-              >
+            <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+              <Button onClick={() => setSelectedAnnouncement(null)} className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600">
                 关闭
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/95 shadow-[0_28px_72px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+            <div className="relative border-b border-slate-100 px-6 pb-5 pt-6">
+              <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+              <div className="relative">
+              <h3 className="text-2xl font-bold tracking-tight text-slate-900">
                 {modalMode === "create" ? "发布新公告" : "编辑公告"}
               </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">填写标题、类型、优先级、范围和正文内容，完成一次完整的公告发布或更新。</p>
+              </div>
             </div>
             <div className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   标题
                 </label>
-                <input
+                <Input
                   type="text"
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-pink-400 focus:outline-none"
+                  className="h-12 rounded-2xl"
                   value={formData.title || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
@@ -1005,7 +1079,7 @@ export const AnnouncementPage = () => {
                       setFormData({ ...formData, type: v as AnnouncementType })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-2xl">
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1034,7 +1108,7 @@ export const AnnouncementPage = () => {
                       })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-2xl">
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1058,7 +1132,7 @@ export const AnnouncementPage = () => {
                       })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-2xl">
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1129,7 +1203,7 @@ export const AnnouncementPage = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     置顶
                   </label>
-                  <div className="flex items-center h-10">
+                    <div className="flex items-center h-12 rounded-2xl border border-slate-200 bg-white px-4">
                     <input
                       type="checkbox"
                       checked={formData.isTop === 1}
@@ -1152,8 +1226,8 @@ export const AnnouncementPage = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   内容 (支持 HTML)
                 </label>
-                <textarea
-                  className="w-full border border-slate-300 rounded-lg p-2 h-32 font-mono text-sm"
+                <Textarea
+                  className="h-40 rounded-2xl font-mono text-sm"
                   value={formData.content || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, content: e.target.value })
@@ -1162,38 +1236,38 @@ export const AnnouncementPage = () => {
                 />
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button
+            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsModalOpen(false);
                   resetForm();
                 }}
-                className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300"
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handlePublish}
-                className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
+                className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600"
               >
                 {modalMode === "create" ? "发布" : "保存"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
       {isStatsModalOpen && statsData && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800">阅读统计</h3>
-              <button
-                onClick={() => setIsStatsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <span className="text-2xl">&times;</span>
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[32px] border border-white/80 bg-white/95 shadow-[0_28px_72px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+            <div className="relative border-b border-slate-100 px-6 pb-5 pt-6">
+              <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+              <div className="relative flex items-center justify-between">
+                <h3 className="text-2xl font-bold tracking-tight text-slate-900">阅读统计</h3>
+                <Button variant="ghost" size="icon" onClick={() => setIsStatsModalOpen(false)} className="rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                  <X size={18} />
+                </Button>
+              </div>
             </div>
             <div className="p-6">
               <div className="text-center mb-4">
@@ -1221,13 +1295,10 @@ export const AnnouncementPage = () => {
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
-              <button
-                onClick={() => setIsStatsModalOpen(false)}
-                className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600"
-              >
+            <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+              <Button onClick={() => setIsStatsModalOpen(false)} className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600">
                 关闭
-              </button>
+              </Button>
             </div>
           </div>
         </div>

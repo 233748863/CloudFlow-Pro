@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateSelectArg, DatesSetArg, EventClickArg, EventContentArg, EventInput } from '@fullcalendar/core';
-import { Calendar, ChevronLeft, ChevronRight, Clock3, FileText, MapPin, Plus, Sparkles, SunMedium, Trash2, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, CircleDot, Clock3, FileText, MapPin, Plus, Sparkles, SunMedium, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 import { useAuth } from '../context/AuthContext';
@@ -190,6 +190,35 @@ const sortEventsByStart = <T extends { extendedProps: { startTime: string } }>(l
     const rightTime = getSafeDate(right.extendedProps.startTime)?.getTime() ?? 0;
     return leftTime - rightTime;
   });
+
+const SectionHeader = ({
+  eyebrow,
+  title,
+  actionLabel,
+  onAction,
+}: {
+  eyebrow: string;
+  title: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) => (
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</div>
+      <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{title}</div>
+    </div>
+    {actionLabel && onAction ? (
+      <button
+        type="button"
+        onClick={onAction}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-pink-600"
+      >
+        {actionLabel}
+        <ChevronRight size={14} />
+      </button>
+    ) : null}
+  </div>
+);
 
 export const SchedulePage = () => {
   const { user } = useAuth();
@@ -439,58 +468,179 @@ export const SchedulePage = () => {
       )
     : '填写主题、时间与备注，快速完成你的新安排。';
 
+  const todayLabel = shortDateFormatter.format(now);
+  const timeLabel = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  const scheduleSummary = primaryTodayEvent
+    ? `今天共有 ${todayEvents.length} 项安排，最近一项是“${primaryTodayEvent.title}”。`
+    : '今天暂时没有新的日程安排，可以提前规划接下来的工作与个人事项。';
+  const focusItems = [
+    {
+      label: '当前视图',
+      value: calendarTitle || '日历',
+      hint: calendarWindowLabel || '同步当前时间窗口',
+      tone: 'bg-pink-50 text-pink-600',
+      onClick: () => {},
+    },
+    primaryTodayEvent
+      ? {
+          label: '今日日程',
+          value: primaryTodayEvent.allDay ? '全天' : timeFormatter.format(getSafeDate(primaryTodayEvent.extendedProps.startTime) ?? now),
+          hint: primaryTodayEvent.title,
+          tone: 'bg-amber-50 text-amber-600',
+          onClick: () =>
+            setSelectedEvent({
+              id: primaryTodayEvent.id,
+              title: primaryTodayEvent.extendedProps.originalTitle,
+              description: primaryTodayEvent.extendedProps.description,
+              type: primaryTodayEvent.extendedProps.type,
+              roomId: primaryTodayEvent.extendedProps.roomId,
+              roomName: primaryTodayEvent.extendedProps.roomName,
+              startTime: primaryTodayEvent.extendedProps.startTime,
+              endTime: primaryTodayEvent.extendedProps.endTime,
+              allDay: primaryTodayEvent.allDay,
+              originalTitle: primaryTodayEvent.extendedProps.originalTitle,
+            }),
+        }
+      : null,
+    upcomingEvents[0]
+      ? {
+          label: '即将开始',
+          value: upcomingEvents[0].allDay ? '全天' : timeFormatter.format(getSafeDate(upcomingEvents[0].extendedProps.startTime) ?? now),
+          hint: upcomingEvents[0].extendedProps.originalTitle,
+          tone: 'bg-rose-50 text-rose-600',
+          onClick: () =>
+            setSelectedEvent({
+              id: upcomingEvents[0].id,
+              title: upcomingEvents[0].extendedProps.originalTitle,
+              description: upcomingEvents[0].extendedProps.description,
+              type: upcomingEvents[0].extendedProps.type,
+              roomId: upcomingEvents[0].extendedProps.roomId,
+              roomName: upcomingEvents[0].extendedProps.roomName,
+              startTime: upcomingEvents[0].extendedProps.startTime,
+              endTime: upcomingEvents[0].extendedProps.endTime,
+              allDay: upcomingEvents[0].allDay,
+              originalTitle: upcomingEvents[0].extendedProps.originalTitle,
+            }),
+        }
+      : null,
+  ].filter(Boolean) as Array<{ label: string; value: string; hint: string; tone: string; onClick: () => void }>;
+
   return (
-    <div className="relative space-y-6 pb-4">
-      <Card className="overflow-hidden rounded-[32px] border-white/80 bg-white/75 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-        <div className="relative p-8">
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgba(244,114,182,0.18),_transparent_55%)]" />
-          <div className="absolute -right-10 top-4 h-36 w-36 rounded-full bg-pink-200/35 blur-3xl" />
-          <div className="absolute left-1/3 top-10 h-20 w-20 rounded-full bg-rose-100/60 blur-2xl" />
+    <div className="relative min-h-screen space-y-6 pb-6">
+      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden">
+        <div className="absolute left-[-10%] top-[-8%] h-[32rem] w-[32rem] rounded-full bg-pink-300/18 blur-[120px]" />
+        <div className="absolute right-[-12%] top-[12%] h-[38rem] w-[38rem] rounded-full bg-rose-200/20 blur-[140px]" />
+        <div className="absolute bottom-[-12%] left-[18%] h-[26rem] w-[26rem] rounded-full bg-amber-100/45 blur-[110px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,252,0.55),rgba(255,255,255,0.8))]" />
+      </div>
 
-          <div className="relative grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_520px] xl:items-center">
-            <div className="max-w-2xl min-w-0 xl:pr-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-4 py-1.5 text-xs font-semibold text-pink-600 ring-1 ring-pink-100">
-                <Sparkles size={14} />
-                Schedule Command Center
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
+        <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="relative p-7 sm:p-8">
+            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgba(244,114,182,0.16),_transparent_55%)]" />
+            <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
+            <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
+
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
+                <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
+                  <Calendar size={14} />
+                  {todayLabel}
+                </span>
+                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
+                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{calendarViewMode === 'dayGridMonth' ? '月视图' : calendarViewMode === 'timeGridWeek' ? '周视图' : '日视图'}</span>
               </div>
-              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-[2rem]">我的日程</h1>
-                  <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-                    保留当前粉白体系，把月历升级成真正可用的个人节奏面板。今天的安排、即将开始的事项和日历主视图会在同一屏里联动展示。
-                  </p>
+
+              <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-2xl">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
+                    <Sparkles size={14} />
+                    Workspace Calendar
+                  </div>
+                  <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-950 sm:text-[2.85rem]">我的日程</h1>
+                  <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{scheduleSummary}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button size="lg" className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => openCreateDrawer()}>
+                    <Plus size={18} className="mr-2" />
+                    新建日程
+                  </Button>
+                  <Button variant="outline" size="lg" className="h-12 rounded-2xl bg-white/85 px-6" onClick={goToToday}>
+                    <Calendar size={18} className="mr-2 text-pink-500" />
+                    回到今天
+                  </Button>
                 </div>
               </div>
-            </div>
 
-            <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] xl:justify-self-end">
-              <div className="flex min-h-[112px] flex-col justify-between rounded-3xl border border-white/70 bg-white/80 p-4 shadow-[0_12px_32px_rgba(236,72,153,0.08)] backdrop-blur">
-                <div className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">当前视图</div>
-                <div className="mt-2 min-h-[32px] truncate text-lg font-semibold leading-tight tracking-tight text-slate-900 xl:text-[1.15rem]">{calendarTitle || '加载中...'}</div>
-                <div className="mt-2 min-h-[20px] truncate text-sm leading-5 text-slate-500">{calendarWindowLabel || '同步你的工作节奏'}</div>
-              </div>
-              <div className="flex min-h-[112px] flex-col justify-between rounded-3xl border border-pink-100 bg-gradient-to-br from-pink-500 to-pink-400 p-4 text-white shadow-[0_20px_40px_rgba(236,72,153,0.24)]">
-                <div className="text-xs font-medium uppercase tracking-[0.2em] text-pink-100">今日状态</div>
-                <div className="mt-2 min-h-[32px] text-xl font-semibold leading-tight tracking-tight">{todayEvents.length > 0 ? `${todayEvents.length} 项待处理` : '节奏轻盈'}</div>
-                <div className="mt-2 min-h-[20px] truncate text-sm leading-5 text-pink-50/90">
-                  {primaryTodayEvent ? `${primaryTodayEvent.title} 最先开始` : '今天暂时没有新的安排'}
+              <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前视图</div>
+                  <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{calendarTitle || '日历'}</div>
+                  <div className="mt-1 text-xs leading-5 text-slate-500">{calendarWindowLabel || '同步当前时间窗口'}</div>
+                </div>
+                <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">今日日程</div>
+                  <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{todayEvents.length}</div>
+                  <div className="mt-1 text-xs leading-5 text-slate-500">今天在日历中的事项数量</div>
+                </div>
+                <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">即将开始</div>
+                  <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{upcomingEvents.length}</div>
+                  <div className="mt-1 text-xs leading-5 text-slate-500">当前视图内接下来需要关注的安排</div>
                 </div>
               </div>
             </div>
           </div>
+        </Card>
 
-          <div className="relative mt-8 flex flex-wrap gap-3">
-            <Button size="lg" className="rounded-2xl shadow-[0_16px_34px_rgba(236,72,153,0.22)]" onClick={() => openCreateDrawer()}>
-              <Plus size={18} className="mr-2" />
-              新建日程
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-2xl bg-white/85" onClick={goToToday}>
-              <Calendar size={18} className="mr-2" />
-              回到今天
-            </Button>
+        <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+          <SectionHeader eyebrow="Today Focus" title="今天先看这些" />
+          <div className="mt-5 space-y-3">
+            {focusItems.length > 0 ? (
+              focusItems.map(item => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                  className="flex w-full items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4 text-left transition hover:border-pink-100 hover:bg-pink-50/30"
+                >
+                  <div className={`rounded-2xl p-3 ${item.tone}`}>
+                    <CircleDot size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
+                      <div className="text-xs font-semibold text-slate-400">{item.value}</div>
+                    </div>
+                    <div className="mt-1 truncate text-xs leading-5 text-slate-500">{item.hint}</div>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
+                <div className="text-sm font-semibold text-slate-700">今天节奏平稳</div>
+                <div className="mt-2 text-xs leading-6 text-slate-400">当前没有高优先级日程提醒，你可以提前规划接下来的安排。</div>
+              </div>
+            )}
           </div>
-        </div>
-      </Card>
+
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">会议占比</div>
+              <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.filter(event => event.extendedProps.type === 'MEETING').length}</div>
+            </div>
+            <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">全天事项</div>
+              <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.filter(event => event.allDay).length}</div>
+            </div>
+            <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前窗口</div>
+              <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.length}</div>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map(metric => {
@@ -513,13 +663,13 @@ export const SchedulePage = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <Card className="rounded-[32px] border-white/80 bg-white/78 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
           <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-4 rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
+            <SectionHeader eyebrow="Calendar Workspace" title="日历画布" />
+            <div className="rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_372px] lg:items-center">
                 <div className="min-w-0 lg:pr-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Calendar View</div>
-                  <div className="mt-2 min-h-[40px] text-2xl font-bold tracking-tight text-slate-900">{calendarTitle || '我的日程'}</div>
+                  <div className="min-h-[40px] text-2xl font-bold tracking-tight text-slate-900">{calendarTitle || '我的日程'}</div>
                   <div className="mt-1 min-h-[20px] text-sm leading-5 text-slate-500">
                     {loadError ? loadError : calendarWindowLabel || '把时间安排放到同一块画布里统一查看'}
                   </div>
@@ -567,7 +717,7 @@ export const SchedulePage = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {(['MEETING', 'WORK', 'PERSONAL'] as ScheduleEventType[]).map(type => (
                     <span key={type} className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${EVENT_TYPE_META[type].badgeClass}`}>
@@ -665,10 +815,7 @@ export const SchedulePage = () => {
         <div className="space-y-6">
           <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">今日日程</div>
-                <div className="mt-1 text-sm text-slate-500">{shortDateFormatter.format(now)}</div>
-              </div>
+              <SectionHeader eyebrow="Today Schedule" title="今日日程" />
               <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">{todayEvents.length} 项</span>
             </div>
 
@@ -717,10 +864,7 @@ export const SchedulePage = () => {
 
           <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">即将到来</div>
-                <div className="mt-1 text-sm text-slate-500">当前视图内接下来最值得关注的 5 项</div>
-              </div>
+              <SectionHeader eyebrow="Upcoming Events" title="即将到来" />
               <Button variant="ghost" className="rounded-xl px-3" onClick={goToToday}>
                 今日
               </Button>
@@ -778,7 +922,7 @@ export const SchedulePage = () => {
           </Card>
 
           <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
-            <div className="text-sm font-semibold text-slate-900">日程类型</div>
+            <SectionHeader eyebrow="Type Breakdown" title="日程类型" />
             <div className="mt-4 space-y-3">
               {(['MEETING', 'WORK', 'PERSONAL'] as ScheduleEventType[]).map(type => (
                 <div key={type} className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
