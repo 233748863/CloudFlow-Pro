@@ -8,6 +8,7 @@ import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.ProbationConfirmationCreateDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.ProbationConfirmation;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.ProbationConfirmationMapper;
 import com.cloudflow.hr.service.impl.ProbationConfirmationServiceImpl;
@@ -26,6 +27,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -148,7 +150,7 @@ class ProbationConfirmationServiceTest {
      */
     @Test
     void testApproveProbationConfirmationSuccess() {
-        ProbationConfirmation confirmation = buildDraftConfirmation();
+        ProbationConfirmation confirmation = buildApprovingConfirmation();
         Employee employee = buildProbationEmployee();
 
         when(probationConfirmationMapper.selectById(10L)).thenReturn(confirmation);
@@ -173,7 +175,7 @@ class ProbationConfirmationServiceTest {
      */
     @Test
     void testRejectProbationConfirmationWithExtensionSuccess() {
-        ProbationConfirmation confirmation = buildDraftConfirmation();
+        ProbationConfirmation confirmation = buildApprovingConfirmation();
         Employee employee = buildProbationEmployee();
 
         when(probationConfirmationMapper.selectById(10L)).thenReturn(confirmation);
@@ -198,7 +200,7 @@ class ProbationConfirmationServiceTest {
      */
     @Test
     void testRejectProbationConfirmationWithoutExtensionMarksResigned() {
-        ProbationConfirmation confirmation = buildDraftConfirmation();
+        ProbationConfirmation confirmation = buildApprovingConfirmation();
         Employee employee = buildProbationEmployee();
 
         when(probationConfirmationMapper.selectById(10L)).thenReturn(confirmation);
@@ -220,6 +222,50 @@ class ProbationConfirmationServiceTest {
         ProbationConfirmation updated = confirmationCaptor.getValue();
         assertEquals("REJECTED", updated.getStatus());
         assertEquals("试用期考核未通过", updated.getRejectReason());
+    }
+
+    @Test
+    void testCreateProbationConfirmationRejectsCrossTenantEmployee() {
+        ProbationConfirmationCreateDTO dto = new ProbationConfirmationCreateDTO();
+        dto.setEmployeeId(1L);
+        dto.setProbationStartDate(LocalDate.of(2026, 1, 1));
+        dto.setProbationEndDate(LocalDate.of(2026, 3, 31));
+        dto.setExpectedRegularDate(LocalDate.of(2026, 4, 1));
+
+        Employee employee = buildProbationEmployee();
+        employee.setTenantId(9999L);
+        when(employeeMapper.selectById(1L)).thenReturn(employee);
+
+        assertThrows(HrBusinessException.class,
+                () -> probationConfirmationService.createProbationConfirmation(dto));
+
+        verify(probationConfirmationMapper, never()).insert(any(ProbationConfirmation.class));
+    }
+
+    @Test
+    void testApproveProbationConfirmationRequiresApprovingStatus() {
+        ProbationConfirmation confirmation = buildDraftConfirmation();
+        when(probationConfirmationMapper.selectById(10L)).thenReturn(confirmation);
+
+        HrBusinessException exception = assertThrows(HrBusinessException.class,
+                () -> probationConfirmationService.approveProbationConfirmation(10L));
+
+        assertEquals("INVALID_STATUS", exception.getCode());
+        verify(employeeMapper, never()).updateById(any(Employee.class));
+        verify(probationConfirmationMapper, never()).updateById(any(ProbationConfirmation.class));
+    }
+
+    @Test
+    void testRejectProbationConfirmationRejectsInvalidExtensionDays() {
+        ProbationConfirmation confirmation = buildApprovingConfirmation();
+        when(probationConfirmationMapper.selectById(10L)).thenReturn(confirmation);
+
+        HrBusinessException exception = assertThrows(HrBusinessException.class,
+                () -> probationConfirmationService.rejectProbationConfirmation(10L, "继续观察", 0));
+
+        assertEquals("INVALID_EXTENSION_DAYS", exception.getCode());
+        verify(employeeMapper, never()).updateById(any(Employee.class));
+        verify(probationConfirmationMapper, never()).updateById(any(ProbationConfirmation.class));
     }
 
     private Employee buildProbationEmployee() {
@@ -244,6 +290,12 @@ class ProbationConfirmationServiceTest {
         confirmation.setProbationStartDate(LocalDate.of(2026, 1, 1));
         confirmation.setProbationEndDate(LocalDate.of(2026, 3, 31));
         confirmation.setExpectedRegularDate(LocalDate.of(2026, 4, 1));
+        return confirmation;
+    }
+
+    private ProbationConfirmation buildApprovingConfirmation() {
+        ProbationConfirmation confirmation = buildDraftConfirmation();
+        confirmation.setStatus("APPROVING");
         return confirmation;
     }
 }

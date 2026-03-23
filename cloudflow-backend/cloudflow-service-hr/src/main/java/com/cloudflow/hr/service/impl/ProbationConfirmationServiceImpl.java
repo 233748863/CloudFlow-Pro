@@ -53,10 +53,7 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
         Long tenantId = SecurityUtils.getTenantId();
 
         // 2. 验证员工是否存在
-        Employee employee = employeeMapper.selectById(dto.getEmployeeId());
-        if (employee == null) {
-            throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "员工不存在");
-        }
+        Employee employee = getEmployeeOrThrow(dto.getEmployeeId(), tenantId);
 
         if (employee.getHireDate() != null && dto.getProbationStartDate().isBefore(employee.getHireDate())) {
             throw new HrBusinessException("INVALID_PROBATION_DATE", "试用期开始日期不能早于入职日期");
@@ -105,21 +102,16 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
     public void submitProbationConfirmation(Long id) {
         log.info("提交转正申请，申请ID：{}", id);
 
-        // 1. 查询转正申请
-        ProbationConfirmation confirmation = probationConfirmationMapper.selectById(id);
-        if (confirmation == null) {
-            throw new HrBusinessException("PROBATION_CONFIRMATION_NOT_FOUND", "转正申请不存在");
-        }
+        Long tenantId = SecurityUtils.getTenantId();
+        ProbationConfirmation confirmation = getConfirmationOrThrow(id, tenantId);
 
         // 2. 验证状态
-        if (!"DRAFT".equals(confirmation.getStatus())) {
-            throw new HrBusinessException("INVALID_STATUS", "只有草稿状态的申请才能提交");
-        }
+        validateStatus(confirmation, "DRAFT", "提交");
 
         // 3. 查询员工信息
-        Employee employee = employeeMapper.selectById(confirmation.getEmployeeId());
-        if (employee == null) {
-            throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "员工不存在");
+        Employee employee = getEmployeeOrThrow(confirmation.getEmployeeId(), tenantId);
+        if (!"PROBATION".equals(employee.getEmployeeStatus())) {
+            throw HrBusinessException.invalidEmployeeStatus(employee.getId(), employee.getEmployeeStatus(), "转正申请提交");
         }
 
         // 4. 调用工作流服务启动审批流程
@@ -168,17 +160,12 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
     public void approveProbationConfirmation(Long id) {
         log.info("转正申请审批通过，申请ID：{}", id);
 
-        // 1. 查询转正申请
-        ProbationConfirmation confirmation = probationConfirmationMapper.selectById(id);
-        if (confirmation == null) {
-            throw new HrBusinessException("PROBATION_CONFIRMATION_NOT_FOUND", "转正申请不存在");
-        }
+        Long tenantId = SecurityUtils.getTenantId();
+        ProbationConfirmation confirmation = getConfirmationOrThrow(id, tenantId);
+        validateStatus(confirmation, "APPROVING", "审批通过");
 
         // 2. 查询员工信息
-        Employee employee = employeeMapper.selectById(confirmation.getEmployeeId());
-        if (employee == null) {
-            throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "员工不存在");
-        }
+        Employee employee = getEmployeeOrThrow(confirmation.getEmployeeId(), tenantId);
 
         // 3. 更新员工状态为正式员工
         employee.setEmployeeStatus("REGULAR");
@@ -197,17 +184,13 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
     public void rejectProbationConfirmation(Long id, String reason, Integer extensionDays) {
         log.info("转正申请审批拒绝，申请ID：{}，拒绝原因：{}，延长天数：{}", id, reason, extensionDays);
 
-        // 1. 查询转正申请
-        ProbationConfirmation confirmation = probationConfirmationMapper.selectById(id);
-        if (confirmation == null) {
-            throw new HrBusinessException("PROBATION_CONFIRMATION_NOT_FOUND", "转正申请不存在");
-        }
+        Long tenantId = SecurityUtils.getTenantId();
+        ProbationConfirmation confirmation = getConfirmationOrThrow(id, tenantId);
+        validateStatus(confirmation, "APPROVING", "审批拒绝");
+        validateExtensionDays(extensionDays);
 
         // 2. 查询员工信息
-        Employee employee = employeeMapper.selectById(confirmation.getEmployeeId());
-        if (employee == null) {
-            throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "员工不存在");
-        }
+        Employee employee = getEmployeeOrThrow(confirmation.getEmployeeId(), tenantId);
 
         // 3. 更新申请状态
         confirmation.setRejectReason(reason);
@@ -241,11 +224,8 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
     public ProbationConfirmationVO getProbationConfirmation(Long id) {
         log.info("查询转正申请详情，申请ID：{}", id);
 
-        // 1. 查询转正申请
-        ProbationConfirmation confirmation = probationConfirmationMapper.selectById(id);
-        if (confirmation == null) {
-            throw new HrBusinessException("PROBATION_CONFIRMATION_NOT_FOUND", "转正申请不存在");
-        }
+        Long tenantId = SecurityUtils.getTenantId();
+        ProbationConfirmation confirmation = getConfirmationOrThrow(id, tenantId);
 
         // 2. 转换为VO
         ProbationConfirmationVO vo = new ProbationConfirmationVO();
@@ -268,16 +248,18 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
     public List<ProbationConfirmationVO> listByEmployeeId(Long employeeId) {
         log.info("查询员工的转正申请列表，员工ID：{}", employeeId);
 
+        Long tenantId = SecurityUtils.getTenantId();
+        Employee employee = getEmployeeOrThrow(employeeId, tenantId);
+
         // 1. 查询转正申请列表
         LambdaQueryWrapper<ProbationConfirmation> wrapper = Wrappers.lambdaQuery(ProbationConfirmation.class);
-        wrapper.eq(ProbationConfirmation::getEmployeeId, employeeId)
+        wrapper.eq(ProbationConfirmation::getTenantId, tenantId)
+               .eq(ProbationConfirmation::getEmployeeId, employeeId)
                .orderByDesc(ProbationConfirmation::getCreateTime);
 
         List<ProbationConfirmation> confirmations = probationConfirmationMapper.selectList(wrapper);
 
         // 2. 转换为VO
-        Employee employee = employeeMapper.selectById(employeeId);
-        
         return confirmations.stream().map(confirmation -> {
             ProbationConfirmationVO vo = new ProbationConfirmationVO();
             BeanUtils.copyProperties(confirmation, vo);
@@ -357,6 +339,35 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
                 return "延长试用期";
             default:
                 return status;
+        }
+    }
+
+    private Employee getEmployeeOrThrow(Long employeeId, Long tenantId) {
+        Employee employee = employeeMapper.selectById(employeeId);
+        if (employee == null || !Objects.equals(tenantId, employee.getTenantId())) {
+            throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "员工不存在");
+        }
+        return employee;
+    }
+
+    private ProbationConfirmation getConfirmationOrThrow(Long id, Long tenantId) {
+        ProbationConfirmation confirmation = probationConfirmationMapper.selectById(id);
+        if (confirmation == null || !Objects.equals(tenantId, confirmation.getTenantId())) {
+            throw new HrBusinessException("PROBATION_CONFIRMATION_NOT_FOUND", "转正申请不存在");
+        }
+        return confirmation;
+    }
+
+    private void validateStatus(ProbationConfirmation confirmation, String expectedStatus, String action) {
+        if (!expectedStatus.equals(confirmation.getStatus())) {
+            throw new HrBusinessException("INVALID_STATUS",
+                    "只有" + getStatusDesc(expectedStatus) + "状态的申请才能" + action);
+        }
+    }
+
+    private void validateExtensionDays(Integer extensionDays) {
+        if (extensionDays != null && extensionDays <= 0) {
+            throw new HrBusinessException("INVALID_EXTENSION_DAYS", "延长天数必须大于0");
         }
     }
 }

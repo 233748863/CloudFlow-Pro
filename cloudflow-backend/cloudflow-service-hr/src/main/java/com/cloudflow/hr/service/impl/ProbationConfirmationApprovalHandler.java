@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.cloudflow.hr.domain.dto.ApprovalResultDTO;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.service.ApprovalResultHandler;
 import com.cloudflow.hr.service.ProbationConfirmationService;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +54,7 @@ public class ProbationConfirmationApprovalHandler implements ApprovalResultHandl
             
             // 从流程变量中获取延长天数（如果有）
             if (dto.getVariables() != null && dto.getVariables().containsKey("extensionDays")) {
-                extensionDays = (Integer) dto.getVariables().get("extensionDays");
+                extensionDays = parseExtensionDays(dto.getVariables().get("extensionDays"));
             }
             
             probationConfirmationService.rejectProbationConfirmation(dto.getBusinessId(), reason, extensionDays);
@@ -62,5 +63,25 @@ public class ProbationConfirmationApprovalHandler implements ApprovalResultHandl
             log.error("转正审批拒绝处理失败，businessId: {}", dto.getBusinessId(), e);
             throw e;
         }
+    }
+
+    private Integer parseExtensionDays(Object rawValue) {
+        if (rawValue == null) {
+            return null;
+        }
+        if (rawValue instanceof Integer integerValue) {
+            return integerValue;
+        }
+        if (rawValue instanceof Number numberValue) {
+            return Math.toIntExact(numberValue.longValue());
+        }
+        if (rawValue instanceof String stringValue) {
+            try {
+                return Integer.parseInt(stringValue.trim());
+            } catch (NumberFormatException e) {
+                throw new HrBusinessException("INVALID_EXTENSION_DAYS", "延长天数格式不正确", e);
+            }
+        }
+        throw new HrBusinessException("INVALID_EXTENSION_DAYS", "延长天数格式不正确");
     }
 }
