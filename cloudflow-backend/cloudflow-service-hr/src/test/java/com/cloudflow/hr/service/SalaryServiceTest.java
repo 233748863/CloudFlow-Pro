@@ -95,9 +95,9 @@ class SalaryServiceTest {
         UserContext.setUserName("test-user");
         UserContext.setTenantId(1L);
 
-        salaryItemService = new SalaryItemServiceImpl(salaryItemMapper);
+        salaryItemService = new SalaryItemServiceImpl(salaryItemMapper, salaryStructureItemMapper);
         salaryStructureService = new SalaryStructureServiceImpl(
-                salaryStructureMapper, salaryStructureItemMapper, salaryItemMapper);
+                salaryStructureMapper, salaryStructureItemMapper, salaryItemMapper, employeeSalaryMapper);
         salaryGradeService = new SalaryGradeServiceImpl(salaryGradeMapper, jobLevelMapper);
         // 这里保留真实 ObjectMapper，顺带覆盖薪资 JSON 的序列化和反序列化路径。
         employeeSalaryService = new EmployeeSalaryServiceImpl(

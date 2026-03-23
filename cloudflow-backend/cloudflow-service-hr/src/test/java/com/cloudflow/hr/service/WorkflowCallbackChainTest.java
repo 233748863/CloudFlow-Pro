@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.AuthServiceClient;
@@ -90,6 +91,9 @@ class WorkflowCallbackChainTest {
     @Mock
     private HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
 
+    @Mock
+    private ObjectMapper objectMapper;
+
     private OnboardingService onboardingService;
     private TransferService transferService;
     private ResignationService resignationService;
@@ -125,7 +129,8 @@ class WorkflowCallbackChainTest {
                 employeeMapper,
                 authServiceClient,
                 workflowServiceClient,
-                workflowProcessKeyProperties
+                workflowProcessKeyProperties,
+                objectMapper
         );
 
         workflowCallbackService = new WorkflowCallbackServiceImpl();

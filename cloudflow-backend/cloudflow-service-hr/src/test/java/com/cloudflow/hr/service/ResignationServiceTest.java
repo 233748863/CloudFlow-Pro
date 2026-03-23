@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.AuthServiceClient;
@@ -59,6 +60,9 @@ class ResignationServiceTest {
 
     @Mock
     private HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private ResignationServiceImpl resignationService;
@@ -164,6 +168,19 @@ class ResignationServiceTest {
     /**
      * 验证确认离职时会更新员工状态、完成申请并注销账号。
      */
+    @Test
+    void testConductExitInterviewNormalizesJsonStringContent() throws Exception {
+        ResignationApplication application = buildApplication();
+        when(resignationApplicationMapper.selectById(41L)).thenReturn(application);
+        when(objectMapper.readValue("\"codex regression exit interview\"", String.class))
+                .thenReturn("codex regression exit interview");
+
+        resignationService.conductExitInterview(41L, "\"codex regression exit interview\"");
+
+        assertEquals("codex regression exit interview", application.getInterviewContent());
+        verify(resignationApplicationMapper, times(1)).updateById(application);
+    }
+
     @Test
     void testConfirmResignationSuccess() {
         ResignationApplication application = buildApplication();

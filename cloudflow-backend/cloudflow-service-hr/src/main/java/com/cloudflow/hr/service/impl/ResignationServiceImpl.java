@@ -2,6 +2,8 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.AuthServiceClient;
@@ -27,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,6 +54,7 @@ public class ResignationServiceImpl implements ResignationService {
     private final AuthServiceClient authServiceClient;
     private final WorkflowServiceClient workflowServiceClient;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -211,7 +215,7 @@ public class ResignationServiceImpl implements ResignationService {
         }
 
         // 2. 记录面谈内容
-        application.setInterviewContent(interviewContent);
+        application.setInterviewContent(normalizeInterviewContent(interviewContent));
         resignationApplicationMapper.updateById(application);
 
         log.info("离职面谈记录完成，申请ID：{}", id);
@@ -388,6 +392,22 @@ public class ResignationServiceImpl implements ResignationService {
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String random = String.format("%04d", new Random().nextInt(10000));
         return "RS" + date + random;
+    }
+
+    private String normalizeInterviewContent(String interviewContent) {
+        if (!StringUtils.hasText(interviewContent)) {
+            return interviewContent;
+        }
+
+        String normalized = interviewContent.trim();
+        if (normalized.length() >= 2 && normalized.startsWith("\"") && normalized.endsWith("\"")) {
+            try {
+                return objectMapper.readValue(normalized, String.class);
+            } catch (JsonProcessingException ex) {
+                log.debug("瑙ｆ瀽绂昏亴闈㈣皥 JSON 瀛楃涓插け璐ワ紝淇濈暀鍘熷鍐呭", ex);
+            }
+        }
+        return normalized;
     }
 
     /**
