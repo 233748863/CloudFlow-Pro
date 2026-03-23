@@ -11,10 +11,12 @@ import com.cloudflow.hr.domain.dto.InterviewScheduleDTO;
 import com.cloudflow.hr.domain.dto.InterviewUpdateDTO;
 import com.cloudflow.hr.domain.entity.Candidate;
 import com.cloudflow.hr.domain.entity.Interview;
+import com.cloudflow.hr.domain.entity.RecruitmentRequest;
 import com.cloudflow.hr.domain.vo.InterviewVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.InterviewMapper;
+import com.cloudflow.hr.mapper.RecruitmentRequestMapper;
 import com.cloudflow.hr.service.InterviewService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -46,6 +48,7 @@ public class InterviewServiceImpl implements InterviewService {
 
     private final InterviewMapper interviewMapper;
     private final CandidateMapper candidateMapper;
+    private final RecruitmentRequestMapper recruitmentRequestMapper;
     private final AuthServiceClient authServiceClient;
     private final ObjectMapper objectMapper;
 
@@ -57,6 +60,8 @@ public class InterviewServiceImpl implements InterviewService {
     private static final Map<String, String> INTERVIEW_RESULT_MAP = new HashMap<>();
     // 面试状态映射
     private static final Map<String, String> INTERVIEW_STATUS_MAP = new HashMap<>();
+    // 只有这些候选人状态允许继续安排面试
+    private static final List<String> INTERVIEWABLE_CANDIDATE_STATUSES = List.of("NEW", "SCREENING", "INTERVIEW");
 
     static {
         INTERVIEW_ROUND_MAP.put("FIRST", "初试");
@@ -84,6 +89,14 @@ public class InterviewServiceImpl implements InterviewService {
         // 验证候选人是否存在
         Long tenantId = SecurityUtils.getTenantId();
         Candidate candidate = getCandidateOrThrow(dto.getCandidateId(), tenantId);
+        RecruitmentRequest request = getRecruitmentRequestOrThrow(candidate.getRequestId(), tenantId);
+
+        if (!"RECRUITING".equals(request.getStatus())) {
+            throw new HrBusinessException("INVALID_REQUEST_STATUS", "只有招聘中的需求才能安排面试");
+        }
+        if (!INTERVIEWABLE_CANDIDATE_STATUSES.contains(candidate.getStatus())) {
+            throw new HrBusinessException("INVALID_CANDIDATE_STATUS", "当前候选人状态不能安排面试");
+        }
 
         // 创建面试记录
         Interview interview = new Interview();
@@ -243,6 +256,14 @@ public class InterviewServiceImpl implements InterviewService {
             throw new HrBusinessException("候选人不存在");
         }
         return candidate;
+    }
+
+    private RecruitmentRequest getRecruitmentRequestOrThrow(Long requestId, Long tenantId) {
+        RecruitmentRequest request = recruitmentRequestMapper.selectById(requestId);
+        if (request == null || !tenantId.equals(request.getTenantId())) {
+            throw new HrBusinessException("招聘需求不存在");
+        }
+        return request;
     }
 
     private Interview getInterviewOrThrow(Long interviewId, Long tenantId) {

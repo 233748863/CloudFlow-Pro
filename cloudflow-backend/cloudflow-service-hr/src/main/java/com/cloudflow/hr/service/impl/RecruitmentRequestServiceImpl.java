@@ -216,10 +216,11 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
             throw new HrBusinessException("INVALID_STATUS", "只有招聘中的需求才能完成");
         }
 
-        // 3. 验证已招聘人数
-        if (request.getHiredCount() < request.getHeadcount()) {
-            log.warn("招聘需求未完成，已招聘人数：{}，计划招聘人数：{}", 
-                    request.getHiredCount(), request.getHeadcount());
+        // 3. 招聘未招满时不允许标记为完成，避免与“取消需求”语义混淆
+        int hiredCount = request.getHiredCount() == null ? 0 : request.getHiredCount();
+        if (hiredCount < request.getHeadcount()) {
+            throw new HrBusinessException("HEADCOUNT_NOT_MET",
+                    String.format("招聘人数未达标，当前 %d/%d，不能完成需求", hiredCount, request.getHeadcount()));
         }
 
         // 4. 更新需求状态为"已完成"
@@ -227,7 +228,7 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
         recruitmentRequestMapper.updateById(request);
 
         log.info("招聘需求完成，需求ID：{}，已招聘人数：{}/{}", 
-                requestId, request.getHiredCount(), request.getHeadcount());
+                requestId, hiredCount, request.getHeadcount());
     }
 
     @Override

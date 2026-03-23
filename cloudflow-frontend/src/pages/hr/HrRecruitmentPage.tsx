@@ -123,10 +123,7 @@ export const HrRecruitmentPage: React.FC = () => {
     if (positionOptions.length && !requestForm.positionId) {
       setRequestForm(prev => ({ ...prev, positionId: positionOptions[0].id }));
     }
-    if (candidates.length && !interviewForm.candidateId) {
-      setInterviewForm(prev => ({ ...prev, candidateId: candidates[0].id }));
-    }
-  }, [positionOptions, candidates, requestForm.positionId, interviewForm.candidateId]);
+  }, [positionOptions, requestForm.positionId]);
 
   const filteredRequests = useMemo(
     () => requests.filter(item => [item.requestNo, item.positionName, item.deptName, item.jobRequirements].filter(Boolean).some(value => String(value).toLowerCase().includes(keyword.toLowerCase()))),
@@ -136,10 +133,18 @@ export const HrRecruitmentPage: React.FC = () => {
     () => requests.filter(item => item.status === 'RECRUITING'),
     [requests],
   );
+  const interviewableRequestIds = useMemo(
+    () => new Set(recruitingRequests.map(item => item.id)),
+    [recruitingRequests],
+  );
 
   const filteredCandidates = useMemo(
     () => candidates.filter(item => [item.name, item.phone, item.email, item.positionName, item.statusDesc].filter(Boolean).some(value => String(value).toLowerCase().includes(keyword.toLowerCase()))),
     [candidates, keyword],
+  );
+  const interviewableCandidates = useMemo(
+    () => candidates.filter(item => interviewableRequestIds.has(item.requestId) && ['NEW', 'SCREENING', 'INTERVIEW'].includes(item.status)),
+    [candidates, interviewableRequestIds],
   );
 
   useEffect(() => {
@@ -152,6 +157,17 @@ export const HrRecruitmentPage: React.FC = () => {
       setCandidateForm(prev => ({ ...prev, requestId: recruitingRequests[0]?.id || 0 }));
     }
   }, [candidateForm.requestId, recruitingRequests]);
+
+  useEffect(() => {
+    if (interviewableCandidates.length && !interviewForm.candidateId) {
+      setInterviewForm(prev => ({ ...prev, candidateId: interviewableCandidates[0].id }));
+      return;
+    }
+
+    if (interviewForm.candidateId && !interviewableCandidates.some(item => item.id === interviewForm.candidateId)) {
+      setInterviewForm(prev => ({ ...prev, candidateId: interviewableCandidates[0]?.id || 0 }));
+    }
+  }, [interviewForm.candidateId, interviewableCandidates]);
 
   const handleCreateRequest = async () => {
     try {
@@ -552,12 +568,17 @@ export const HrRecruitmentPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-slate-900">安排面试</h2>
               <Button variant="ghost" onClick={() => setInterviewDialog(false)}>关闭</Button>
             </div>
+            {!interviewableCandidates.length && (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                当前没有可安排面试的候选人。只有“招聘中”需求下且状态为新简历、筛选中、面试中的候选人才能继续安排面试。
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label>候选人</Label>
                 <Select value={interviewForm.candidateId ? String(interviewForm.candidateId) : undefined} onValueChange={value => setInterviewForm(prev => ({ ...prev, candidateId: Number(value) }))}>
                   <SelectTrigger><SelectValue placeholder="请选择候选人" /></SelectTrigger>
-                  <SelectContent>{candidates.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.name} / {item.positionName || '-'}</SelectItem>)}</SelectContent>
+                  <SelectContent>{interviewableCandidates.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.name} / {item.positionName || '-'}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
@@ -579,7 +600,7 @@ export const HrRecruitmentPage: React.FC = () => {
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setInterviewDialog(false)}>取消</Button>
-              <Button onClick={handleScheduleInterview}>安排面试</Button>
+              <Button disabled={!interviewableCandidates.length || !interviewForm.candidateId || !interviewForm.interviewTime} onClick={handleScheduleInterview}>安排面试</Button>
             </div>
           </div>
         </div>
