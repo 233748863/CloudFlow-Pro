@@ -194,6 +194,9 @@ public class TransferServiceImpl implements TransferService {
         if (application == null) {
             throw new HrBusinessException("TRANSFER_APPLICATION_NOT_FOUND", "调岗申请不存在");
         }
+        if (!"APPROVING".equals(application.getStatus())) {
+            throw new HrBusinessException("INVALID_STATUS", "只有审批中的调岗申请才能审批通过");
+        }
 
         // 2. 查询员工信息
         Employee employee = employeeMapper.selectById(application.getEmployeeId());

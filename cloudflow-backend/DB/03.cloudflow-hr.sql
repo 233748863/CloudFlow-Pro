@@ -158,6 +158,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =========================================================
 
 -- 员工档案表
+DROP TABLE IF EXISTS hr_employee;
 CREATE TABLE hr_employee (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     tenant_id BIGINT NOT NULL COMMENT '租户ID',
@@ -1186,6 +1187,187 @@ INSERT INTO hr_tax_config (
 );
 
 -- 员工专项扣除依赖员工档案，初始化脚本不预置员工级数据，避免产生孤儿记录
+
+-- =========================================================
+-- 七、HR桌面端联调示例数据
+-- 目的：为员工、招聘、入职、转正、调岗、离职页面提供一套可直接联调的基础样本
+-- =========================================================
+
+-- 1. 职位示例数据
+INSERT INTO hr_position (
+  id, tenant_id, position_code, position_name, family_id, level_id, post_id,
+  job_description, requirements, work_content, status, create_time, update_time
+) VALUES
+(101, 100000, 'FE_P3', '前端开发工程师', 100, 102, 4,
+ '负责桌面端与流程页面交付', '熟悉 React、TypeScript、接口联调', '负责 HR 与 OA 前端功能开发', 1, '2026-03-20 09:00:00', '2026-03-20 09:00:00'),
+(102, 100000, 'BE_P3', 'Java开发工程师', 100, 102, 4,
+ '负责微服务与业务接口开发', '熟悉 Spring Boot、MyBatis Plus、消息队列', '负责 HR、Workflow 后端开发', 1, '2026-03-20 09:05:00', '2026-03-20 09:05:00'),
+(103, 100000, 'FIN_P2', '财务专员', 104, 101, 4,
+ '负责报销、核算与财务归档', '熟悉财务制度与基础报表能力', '负责日常财务支持工作', 1, '2026-03-20 09:10:00', '2026-03-20 09:10:00'),
+(104, 100000, 'HRBP_M2', 'HRBP', 104, 109, 2,
+ '负责招聘、组织与员工关系', '熟悉招聘、员工生命周期与制度执行', '负责 HR 全流程业务推进', 1, '2026-03-20 09:15:00', '2026-03-20 09:15:00'),
+(105, 100000, 'HR_RECRUITER_P2', '招聘专员', 104, 101, 4,
+ '负责人才寻访与候选人推进', '熟悉招聘渠道与面试安排', '负责招聘需求执行与候选人跟进', 1, '2026-03-20 09:20:00', '2026-03-20 09:20:00'),
+(106, 100000, 'TECH_MANAGER_M2', '技术经理', 100, 109, 2,
+ '负责研发团队管理与项目交付', '具备研发管理与跨团队协同能力', '负责团队管理、资源调配与项目交付', 1, '2026-03-20 09:25:00', '2026-03-20 09:25:00');
+
+-- 2. 员工档案示例数据
+INSERT INTO hr_employee (
+  id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id,
+  employee_type, employee_status, hire_date, regular_date, resign_date, user_id,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(1001, 100000, 'CF20230001', '赵HR', 'FEMALE', '1990-06-12', '13800010001', 'zhao.hr@cloudflow.com', 103, 2, 104,
+ 'FULL_TIME', 'REGULAR', '2023-04-10', '2023-10-10', NULL, 4, '2026-03-20 10:00:00', '2026-03-20 10:00:00', 'admin', 'admin', 0),
+(1002, 100000, 'CF20260001', '前端测试', 'FEMALE', '1998-03-08', '13800010002', 'test.fe@cloudflow.com', 106, 4, 101,
+ 'FULL_TIME', 'PROBATION', '2026-02-10', NULL, NULL, 8, '2026-03-20 10:05:00', '2026-03-20 10:05:00', 'admin', 'admin', 0),
+(1003, 100000, 'CF20240008', '后端测试', 'MALE', '1996-11-21', '13800010003', 'test.be@cloudflow.com', 107, 4, 102,
+ 'FULL_TIME', 'REGULAR', '2024-08-15', '2025-02-15', NULL, 9, '2026-03-20 10:10:00', '2026-03-20 10:10:00', 'admin', 'admin', 0),
+(1004, 100000, 'CF20230015', '王财务', 'FEMALE', '1992-05-16', '13800010004', 'wang.finance@cloudflow.com', 102, 4, 103,
+ 'FULL_TIME', 'RESIGNED', '2023-03-01', '2023-09-01', '2026-03-21', 3, '2026-03-20 10:15:00', '2026-03-20 10:15:00', 'admin', 'admin', 0),
+(1005, 100000, 'CF20240002', '张三', 'MALE', '1995-01-19', '13800010005', 'zhang@cloudflow.com', 101, 4, 102,
+ 'FULL_TIME', 'REGULAR', '2024-04-18', '2024-10-18', NULL, 5, '2026-03-20 10:20:00', '2026-03-20 10:20:00', 'admin', 'admin', 0),
+(1006, 100000, 'CF20260002', '李若彤', 'FEMALE', '1999-09-09', '13800010006', 'li.ruotong@cloudflow.com', 101, 4, 101,
+ 'FULL_TIME', 'PROBATION', '2026-03-01', NULL, NULL, NULL, '2026-03-20 10:25:00', '2026-03-20 10:25:00', 'admin', 'admin', 0),
+(1007, 100000, 'CF20250009', '周宁', 'MALE', '1997-07-14', '13800010007', 'zhou.ning@cloudflow.com', 103, 4, 105,
+ 'FULL_TIME', 'PROBATION', '2025-11-01', NULL, NULL, NULL, '2026-03-20 10:30:00', '2026-03-20 10:30:00', 'admin', 'admin', 0),
+(1008, 100000, 'CF20240012', '陈凯', 'MALE', '1994-12-03', '13800010008', 'chen.kai@cloudflow.com', 101, 4, 101,
+ 'FULL_TIME', 'REGULAR', '2024-06-01', '2024-12-01', NULL, NULL, '2026-03-20 10:35:00', '2026-03-20 10:35:00', 'admin', 'admin', 0);
+
+-- 3. 招聘需求示例数据
+INSERT INTO hr_recruitment_request (
+  id, tenant_id, request_no, dept_id, position_id, headcount, job_requirements,
+  salary_min, salary_max, expected_date, process_instance_id, status, hired_count,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(2001, 100000, 'HRRQ202603230001', 101, 102, 2, '熟悉 Spring Boot、MySQL、消息驱动架构，能独立完成接口联调。',
+ 18000.00, 28000.00, '2026-04-15', 'wf_hr_recruit_2001', 'RECRUITING', 1, '2026-03-21 09:00:00', '2026-03-22 18:30:00', 'zhao', 'zhao', 0),
+(2002, 100000, 'HRRQ202603230002', 103, 105, 1, '有招聘渠道运营经验，熟悉校园招聘与社会招聘协同推进。',
+ 12000.00, 18000.00, '2026-04-08', 'wf_hr_recruit_2002', 'APPROVING', 0, '2026-03-22 09:30:00', '2026-03-22 11:30:00', 'zhao', 'zhao', 0),
+(2003, 100000, 'HRRQ202603150001', 106, 101, 1, '熟悉 React、组件化设计和企业应用前端开发。',
+ 15000.00, 22000.00, '2026-03-28', 'wf_hr_recruit_2003', 'COMPLETED', 1, '2026-03-15 10:00:00', '2026-03-20 17:00:00', 'zhao', 'zhao', 0);
+
+-- 4. 候选人示例数据
+INSERT INTO hr_candidate (
+  id, tenant_id, request_id, name, gender, phone, email, resume_url, source, status, reject_reason,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'https://example.com/resume/chenhaitao.pdf', 'HEADHUNTER', 'INTERVIEW', NULL,
+ '2026-03-21 10:00:00', '2026-03-22 15:00:00', 'zhao', 'zhao', 0),
+(3002, 100000, 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 'https://example.com/resume/sunxiaoyu.pdf', 'REFERRAL', 'OFFER', NULL,
+ '2026-03-21 10:30:00', '2026-03-23 09:10:00', 'zhao', 'zhao', 0),
+(3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', 'https://example.com/resume/linjiaqi.pdf', 'WEBSITE', 'SCREENING', NULL,
+ '2026-03-22 13:00:00', '2026-03-22 13:30:00', 'zhao', 'zhao', 0),
+(3004, 100000, 2003, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 'https://example.com/resume/liruotong.pdf', 'REFERRAL', 'HIRED', NULL,
+ '2026-03-15 14:00:00', '2026-03-20 18:10:00', 'zhao', 'zhao', 0);
+
+-- 5. 面试示例数据
+INSERT INTO hr_interview (
+  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, location, interviewers,
+  evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(4001, 100000, 3001, 'FIRST', 'VIDEO', '2026-03-24 15:00:00', 'Teams 会议链接', '[2,9]',
+ NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 15:05:00', '2026-03-22 15:05:00', 'zhao', 'zhao', 0),
+(4002, 100000, 3002, 'FINAL', 'ONSITE', '2026-03-22 10:00:00', '上海总部 5F 面试室A', '[2,4]',
+ '综合表现稳定，技术深度与协作意识符合岗位要求。', 88, 'PASS', 'COMPLETED', '2026-03-21 16:00:00', '2026-03-22 12:00:00', 'zhao', 'zhao', 0),
+(4003, 100000, 3003, 'FIRST', 'PHONE', '2026-03-24 11:00:00', '电话面试', '[4]',
+ NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 14:20:00', '2026-03-22 14:20:00', 'zhao', 'zhao', 0);
+
+-- 6. 入职申请与任务示例数据
+-- 5001：审批中，可直接测试“审批通过”
+-- 5002：已审批，已生成任务，可测试“完成任务 / 确认入职”
+-- 5003：已入职完成态，用于查看最终结果
+INSERT INTO hr_onboarding_application (
+  id, tenant_id, application_no, candidate_id, name, gender, phone, email, dept_id, post_id, position_id,
+  expected_date, process_instance_id, status, employee_id, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(5001, 100000, 'HRON202603230001', 3002, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 101, 4, 101,
+ '2026-03-25', 'wf_hr_onboarding_5001', 'APPROVING', NULL, '2026-03-23 09:20:00', '2026-03-23 09:20:00', 'zhao', 'zhao', 0),
+(5002, 100000, 'HRON202603220002', NULL, '王晨', 'MALE', '13900011005', 'wang.chen@example.com', 107, 4, 102,
+ '2026-03-24', 'wf_hr_onboarding_5002', 'APPROVED', NULL, '2026-03-22 14:00:00', '2026-03-23 16:20:00', 'zhao', 'zhao', 0),
+(5003, 100000, 'HRON202603010001', 3004, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 101, 4, 101,
+ '2026-03-01', 'wf_hr_onboarding_5003', 'ONBOARDED', 1006, '2026-03-01 09:00:00', '2026-03-01 18:00:00', 'zhao', 'zhao', 0);
+
+INSERT INTO hr_onboarding_task (
+  id, tenant_id, application_id, task_name, task_type, task_description, assignee_id, status,
+  completed_time, remark, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(5101, 100000, 5002, '收集身份证与学历资料', 'DOCUMENT', '核验身份证、学历证书和银行卡信息。', 1001, 'COMPLETED',
+ '2026-03-23 10:30:00', '身份证及学历材料已归档。', '2026-03-22 14:05:00', '2026-03-23 10:30:00', 'zhao', 'zhao', 0),
+(5102, 100000, 5002, '开通账号与权限', 'ACCOUNT', '为新员工开通系统账号和基础权限。', 1001, 'PENDING',
+ NULL, NULL, '2026-03-22 14:06:00', '2026-03-22 14:06:00', 'zhao', 'zhao', 0),
+(5103, 100000, 5002, '准备办公设备', 'EQUIPMENT', '准备笔记本电脑、门禁与办公用品。', 1008, 'IN_PROGRESS',
+ NULL, '电脑已分配，等待门禁卡。', '2026-03-22 14:07:00', '2026-03-23 11:00:00', 'zhao', 'zhao', 0),
+(5104, 100000, 5002, '新人培训', 'TRAINING', '完成入职培训、制度宣导与导师对接。', 1001, 'PENDING',
+ NULL, NULL, '2026-03-22 14:08:00', '2026-03-22 14:08:00', 'zhao', 'zhao', 0),
+(5105, 100000, 5003, '收集身份证与学历资料', 'DOCUMENT', '核验身份证、学历证书和银行卡信息。', 1001, 'COMPLETED',
+ '2026-03-01 10:00:00', '资料已归档。', '2026-03-01 09:10:00', '2026-03-01 10:00:00', 'zhao', 'zhao', 0),
+(5106, 100000, 5003, '开通账号与权限', 'ACCOUNT', '为新员工开通系统账号和基础权限。', 1001, 'COMPLETED',
+ '2026-03-01 11:00:00', '账号已开通并完成初始授权。', '2026-03-01 09:11:00', '2026-03-01 11:00:00', 'zhao', 'zhao', 0),
+(5107, 100000, 5003, '准备办公设备', 'EQUIPMENT', '准备笔记本电脑、门禁与办公用品。', 1008, 'COMPLETED',
+ '2026-03-01 13:30:00', '设备与门禁卡已发放。', '2026-03-01 09:12:00', '2026-03-01 13:30:00', 'zhao', 'zhao', 0),
+(5108, 100000, 5003, '新人培训', 'TRAINING', '完成入职培训、制度宣导与导师对接。', 1001, 'COMPLETED',
+ '2026-03-01 15:00:00', '培训已完成并签收资料。', '2026-03-01 09:13:00', '2026-03-01 15:00:00', 'zhao', 'zhao', 0);
+
+-- 7. 转正申请示例数据
+INSERT INTO hr_probation_confirmation (
+  id, tenant_id, application_no, employee_id, probation_start_date, probation_end_date, expected_regular_date,
+  self_evaluation, manager_evaluation, process_instance_id, status, reject_reason, extension_days,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(6001, 100000, 'HRPB202603230001', 1002, '2026-02-10', '2026-08-09', '2026-08-10',
+ '已完成 HR 桌面端核心页面开发与日常需求支持，能独立完成接口联调。', '业务推进稳定，建议按计划进入审批流。', 'wf_hr_probation_6001',
+ 'APPROVING', NULL, NULL, '2026-03-23 10:00:00', '2026-03-23 10:00:00', 'zhao', 'zhao', 0),
+(6002, 100000, 'HRPB202603010001', 1006, '2026-03-01', '2026-08-31', '2026-09-01',
+ '快速适应团队节奏，交付质量稳定。', '转正建议通过，已具备独立承担任务能力。', 'wf_hr_probation_6002',
+ 'APPROVED', NULL, NULL, '2026-03-18 09:00:00', '2026-03-22 18:00:00', 'zhao', 'zhao', 0),
+(6003, 100000, 'HRPB202602010001', 1007, '2025-11-01', '2026-04-30', '2026-05-01',
+ '招聘协同推进正常，但数据复盘能力还需加强。', '建议延长试用期一个月，重点提升渠道复盘能力。', 'wf_hr_probation_6003',
+ 'REJECTED', '阶段性目标完成度不足，需延长试用观察。', 30, '2026-02-15 14:00:00', '2026-03-20 16:00:00', 'zhao', 'zhao', 0);
+
+-- 8. 调岗申请示例数据
+INSERT INTO hr_transfer_application (
+  id, tenant_id, application_no, employee_id, from_dept_id, from_post_id, from_position_id,
+  to_dept_id, to_post_id, to_position_id, transfer_type, reason, effective_date, salary_change,
+  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(7001, 100000, 'HRTR202603200001', 1008, 101, 4, 101,
+ 101, 2, 106, 'PROMOTION', '项目推进稳定，拟提升为技术经理负责小组交付。', '2026-04-01', 1,
+ 'wf_hr_transfer_7001', 'APPROVING', '2026-03-20 11:00:00', '2026-03-22 09:00:00', 'zhao', 'zhao', 0),
+(7002, 100000, 'HRTR202603010001', 1005, 101, 4, 102,
+ 105, 4, 102, 'DEPT', '支援 IT 平台建设，承担内部工具服务端开发。', '2026-03-15', 0,
+ 'wf_hr_transfer_7002', 'EFFECTIVE', '2026-03-01 10:00:00', '2026-03-15 18:00:00', 'zhao', 'zhao', 0);
+
+-- 9. 离职申请与交接示例数据
+-- 8001：已完成，用于查看离职闭环结果
+-- 8002：已审批，带交接清单，可测试“完成交接 / 确认离职”
+-- 8003：审批中，可直接测试“审批通过”
+INSERT INTO hr_resignation_application (
+  id, tenant_id, application_no, employee_id, resignation_type, resignation_reason, expected_date, actual_date,
+  interview_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(8001, 100000, 'HRRE202603220001', 1004, 'VOLUNTARY', '家庭原因需要返回老家发展。', '2026-03-20', '2026-03-21',
+ '已完成离职面谈，确认薪资与社保结算计划。', 'wf_hr_resignation_8001', 'COMPLETED',
+ '2026-03-18 09:00:00', '2026-03-21 18:00:00', 'zhao', 'zhao', 0),
+(8002, 100000, 'HRRE202603230001', 1003, 'VOLUNTARY', '计划返回家乡发展，申请按流程办理交接。', '2026-04-10', NULL,
+ '已完成首次离职面谈，待资产与账号交接结束后确认离职。', 'wf_hr_resignation_8002', 'APPROVED',
+ '2026-03-23 11:30:00', '2026-03-23 11:30:00', 'zhao', 'zhao', 0),
+(8003, 100000, 'HRRE202603210001', 1008, 'VOLUNTARY', '计划接受外部新机会，先提交流程等待审批。', '2026-04-15', NULL,
+ NULL, 'wf_hr_resignation_8003', 'APPROVING',
+ '2026-03-21 16:00:00', '2026-03-22 09:30:00', 'zhao', 'zhao', 0);
+
+INSERT INTO hr_resignation_handover (
+  id, tenant_id, application_id, handover_item, handover_type, handover_to_id, status,
+  completed_time, remark, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(9001, 100000, 8002, '代码仓库与发布权限移交', 'ACCOUNT', 1001, 'PENDING',
+ NULL, NULL, '2026-03-23 11:40:00', '2026-03-23 11:40:00', 'zhao', 'zhao', 0),
+(9002, 100000, 8002, '在建项目文档交接', 'DOCUMENT', 1005, 'COMPLETED',
+ '2026-03-23 17:30:00', '接口文档与排期已转交张三。', '2026-03-23 11:41:00', '2026-03-23 17:30:00', 'zhao', 'zhao', 0),
+(9003, 100000, 8002, '办公电脑归还', 'ASSET', 1001, 'PENDING',
+ NULL, NULL, '2026-03-23 11:42:00', '2026-03-23 11:42:00', 'zhao', 'zhao', 0),
+(9004, 100000, 8001, '财务资料归档', 'WORK', 1001, 'COMPLETED',
+ '2026-03-21 15:00:00', '已完成票据、账号与预算资料归档。', '2026-03-18 10:00:00', '2026-03-21 15:00:00', 'zhao', 'zhao', 0);
 
 -- =========================================================
 -- 八、审计日志模块

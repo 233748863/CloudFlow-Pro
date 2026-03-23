@@ -330,6 +330,14 @@ INSERT INTO sys_menu VALUES(614, '流程导入',   4, 7, '/workflow/import',    
 INSERT INTO sys_menu VALUES(615, '归档管理',   4, 8, '/workflow/archived',  'pages/admin/ArchivedWorkflows', NULL, 0, 0, 'C', '0', '0', 'workflow:archive:manage', 'Archive',         'admin', NOW(), '', null, '归档流程管理');
 INSERT INTO sys_menu VALUES(616, '登录日志',   6, 13, '/system/login-log',   'pages/system/LoginLogPage',     NULL, 0, 0, 'C', '0', '0', 'system:login-log:list',    'LogIn',           'admin', NOW(), '', null, '登录日志');
 INSERT INTO sys_menu VALUES(617, '在线用户',   6, 14, '/system/online',      'pages/system/OnlineUserPage',   NULL, 0, 0, 'C', '0', '0', 'system:online:list',       'Monitor',         'admin', NOW(), '', null, '在线用户管理');
+INSERT INTO sys_menu VALUES(7,   '人力资源',   0, 7, 'hr',                   NULL,                             NULL, 0, 0, 'M', '0', '0', '',                     'Users',           'admin', NOW(), '', null, '人力资源目录');
+INSERT INTO sys_menu VALUES(720, 'HR工作台',   7, 1, '/hr/dashboard',       'pages/hr/HrDashboardPage',      NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view',    'LayoutDashboard', 'admin', NOW(), '', null, 'HR桌面端工作台');
+INSERT INTO sys_menu VALUES(721, '员工档案',   7, 2, '/hr/employees',       'pages/hr/HrEmployeePage',       NULL, 0, 0, 'C', '0', '0', 'hr:employee:list',     'Users',           'admin', NOW(), '', null, '员工档案管理');
+INSERT INTO sys_menu VALUES(722, '招聘中心',   7, 3, '/hr/recruitment',     'pages/hr/HrRecruitmentPage',    NULL, 0, 0, 'C', '0', '0', 'hr:recruitment:list',  'Briefcase',       'admin', NOW(), '', null, '招聘与候选人管理');
+INSERT INTO sys_menu VALUES(723, '入职办理',   7, 4, '/hr/onboarding',      'pages/hr/HrOnboardingPage',     NULL, 0, 0, 'C', '0', '0', 'hr:onboarding:list',   'ClipboardCheck',  'admin', NOW(), '', null, '入职申请与任务办理');
+INSERT INTO sys_menu VALUES(724, '转正申请',   7, 5, '/hr/probation',       'pages/hr/HrProbationPage',      NULL, 0, 0, 'C', '0', '0', 'hr:probation:list',    'ShieldCheck',     'admin', NOW(), '', null, '转正申请管理');
+INSERT INTO sys_menu VALUES(725, '调岗管理',   7, 6, '/hr/transfer',        'pages/hr/HrTransferPage',       NULL, 0, 0, 'C', '0', '0', 'hr:transfer:list',     'GitMerge',        'admin', NOW(), '', null, '调岗申请管理');
+INSERT INTO sys_menu VALUES(726, '离职办理',   7, 7, '/hr/resignation',     'pages/hr/HrResignationPage',    NULL, 0, 0, 'C', '0', '0', 'hr:resignation:list',  'LogOut',          'admin', NOW(), '', null, '离职申请与交接办理');
 
 -- 办公协同(parent_id=2)扩展菜单：补卡申请、加班申请、出差申请、通讯录
 INSERT INTO sys_menu VALUES(203, '补卡申请',   2, 4, '/office/attendance-appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'office:attendance:appeal',  'ClipboardEdit',   'admin', NOW(), '', null, '补卡/外勤申请');
@@ -477,6 +485,15 @@ INSERT INTO sys_role_menu VALUES(4, 507, 100000);
 -- Phase 2 监控告警菜单
 INSERT INTO sys_role_menu VALUES(4, 700, 100000);
 INSERT INTO sys_role_menu VALUES(4, 701, 100000);
+-- HR 菜单
+INSERT INTO sys_role_menu VALUES(4, 7, 100000);
+INSERT INTO sys_role_menu VALUES(4, 720, 100000);
+INSERT INTO sys_role_menu VALUES(4, 721, 100000);
+INSERT INTO sys_role_menu VALUES(4, 722, 100000);
+INSERT INTO sys_role_menu VALUES(4, 723, 100000);
+INSERT INTO sys_role_menu VALUES(4, 724, 100000);
+INSERT INTO sys_role_menu VALUES(4, 725, 100000);
+INSERT INTO sys_role_menu VALUES(4, 726, 100000);
 
 -- EMPLOYEE (role_id=5): 工作台 + 办公协同 + 流程中心（仅基础功能）
 INSERT INTO sys_role_menu VALUES(5, 1, 100000);

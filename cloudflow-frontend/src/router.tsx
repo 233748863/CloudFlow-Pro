@@ -263,6 +263,26 @@ const HrRecruitmentPage = React.lazy(() =>
     default: module.default,
   })),
 );
+const HrOnboardingPage = React.lazy(() =>
+  import("./pages/hr/HrOnboardingPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrProbationPage = React.lazy(() =>
+  import("./pages/hr/HrProbationPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTransferPage = React.lazy(() =>
+  import("./pages/hr/HrTransferPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrResignationPage = React.lazy(() =>
+  import("./pages/hr/HrResignationPage").then((module) => ({
+    default: module.default,
+  })),
+);
 
 const Loading = () => (
   <div className="flex items-center justify-center h-full w-full min-h-[400px]">
@@ -714,6 +734,38 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <HrRecruitmentPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/onboarding",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrOnboardingPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/probation",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrProbationPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/transfer",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrTransferPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/resignation",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrResignationPage />
               </Suspense>
             ),
           },

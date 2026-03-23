@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgePlus, BriefcaseBusiness, FileSearch, ShieldCheck, UserCog, Users } from 'lucide-react';
+import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, LogOut, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users } from 'lucide-react';
 import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { HrEmployee, RecruitmentRequest, Candidate, Interview, listEmployees, listRecruitmentRequests, listCandidates, listInterviews } from '@/services/api/hr';
@@ -92,6 +92,37 @@ export const HrDashboardPage: React.FC = () => {
     ];
   }, [employees, requests, candidates, interviews]);
 
+  const workflowCards = [
+    {
+      title: '入职办理',
+      description: '创建入职申请、按申请 ID 拉详情、完成任务并确认入职',
+      path: '/hr/onboarding',
+      icon: <UserRoundPlus size={18} />,
+      tone: 'bg-sky-50 text-sky-600',
+    },
+    {
+      title: '转正申请',
+      description: '按员工查看转正申请，提交流程并发送提醒',
+      path: '/hr/probation',
+      icon: <UserRoundCheck size={18} />,
+      tone: 'bg-amber-50 text-amber-600',
+    },
+    {
+      title: '调岗管理',
+      description: '围绕员工联调目标部门、岗位、生效日和调岗原因',
+      path: '/hr/transfer',
+      icon: <ArrowRightLeft size={18} />,
+      tone: 'bg-violet-50 text-violet-600',
+    },
+    {
+      title: '离职办理',
+      description: '处理离职申请、面谈、交接清单和确认离职',
+      path: '/hr/resignation',
+      icon: <LogOut size={18} />,
+      tone: 'bg-rose-50 text-rose-600',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
@@ -139,6 +170,23 @@ export const HrDashboardPage: React.FC = () => {
               }`}>
                 {metric.icon}
               </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+        {workflowCards.map(item => (
+          <Card key={item.title} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+            <div className="flex h-full flex-col">
+              <div className={`inline-flex w-fit rounded-2xl p-3 ${item.tone}`}>
+                {item.icon}
+              </div>
+              <h2 className="mt-5 text-lg font-semibold text-slate-900">{item.title}</h2>
+              <p className="mt-2 flex-1 text-sm leading-6 text-slate-500">{item.description}</p>
+              <Button className="mt-5 rounded-2xl" variant="outline" onClick={() => navigate(item.path)}>
+                进入流程
+              </Button>
             </div>
           </Card>
         ))}

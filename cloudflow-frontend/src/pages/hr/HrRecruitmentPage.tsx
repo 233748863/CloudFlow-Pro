@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BriefcaseBusiness, CalendarRange, Plus, Search, UserRoundSearch } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui';
-import { Candidate, CandidatePayload, DeptTreeNode, Interview, InterviewSchedulePayload, PositionOption, RecruitmentRequest, RecruitmentRequestPayload, listRecruitmentRequests, createRecruitmentRequest, listCandidates, createCandidate, updateCandidateStatus, listInterviews, scheduleInterview, getDeptTreeOptions, getPositionOptions } from '@/services/api/hr';
+import { Card, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { Candidate, CandidatePayload, DeptTreeNode, Interview, InterviewSchedulePayload, PositionOption, RecruitmentRequest, RecruitmentRequestPayload, listRecruitmentRequests, createRecruitmentRequest, listCandidates, createCandidate, updateCandidateStatus, listInterviews, scheduleInterview, getDeptTreeOptions, getPositionOptions, submitRecruitmentRequest, approveRecruitmentRequest, completeRecruitmentRequest, cancelRecruitmentRequest } from '@/services/api/hr';
 
 const normalizeRows = <T,>(data: any): T[] => {
   if (!data) return [];
@@ -86,6 +86,8 @@ export const HrRecruitmentPage: React.FC = () => {
   const [requestDialog, setRequestDialog] = useState(false);
   const [candidateDialog, setCandidateDialog] = useState(false);
   const [interviewDialog, setInterviewDialog] = useState(false);
+  const [rejectCandidateId, setRejectCandidateId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [requestForm, setRequestForm] = useState<RecruitmentRequestPayload>(requestFormDefault);
   const [candidateForm, setCandidateForm] = useState<CandidatePayload>(candidateFormDefault);
   const [interviewForm, setInterviewForm] = useState<InterviewSchedulePayload>(interviewFormDefault);
@@ -121,23 +123,35 @@ export const HrRecruitmentPage: React.FC = () => {
     if (positionOptions.length && !requestForm.positionId) {
       setRequestForm(prev => ({ ...prev, positionId: positionOptions[0].id }));
     }
-    if (requests.length && !candidateForm.requestId) {
-      setCandidateForm(prev => ({ ...prev, requestId: requests[0].id }));
-    }
     if (candidates.length && !interviewForm.candidateId) {
       setInterviewForm(prev => ({ ...prev, candidateId: candidates[0].id }));
     }
-  }, [positionOptions, requests, candidates, requestForm.positionId, candidateForm.requestId, interviewForm.candidateId]);
+  }, [positionOptions, candidates, requestForm.positionId, interviewForm.candidateId]);
 
   const filteredRequests = useMemo(
     () => requests.filter(item => [item.requestNo, item.positionName, item.deptName, item.jobRequirements].filter(Boolean).some(value => String(value).toLowerCase().includes(keyword.toLowerCase()))),
     [requests, keyword],
+  );
+  const recruitingRequests = useMemo(
+    () => requests.filter(item => item.status === 'RECRUITING'),
+    [requests],
   );
 
   const filteredCandidates = useMemo(
     () => candidates.filter(item => [item.name, item.phone, item.email, item.positionName, item.statusDesc].filter(Boolean).some(value => String(value).toLowerCase().includes(keyword.toLowerCase()))),
     [candidates, keyword],
   );
+
+  useEffect(() => {
+    if (recruitingRequests.length && !candidateForm.requestId) {
+      setCandidateForm(prev => ({ ...prev, requestId: recruitingRequests[0].id }));
+      return;
+    }
+
+    if (candidateForm.requestId && !recruitingRequests.some(item => item.id === candidateForm.requestId)) {
+      setCandidateForm(prev => ({ ...prev, requestId: recruitingRequests[0]?.id || 0 }));
+    }
+  }, [candidateForm.requestId, recruitingRequests]);
 
   const handleCreateRequest = async () => {
     try {
@@ -149,6 +163,50 @@ export const HrRecruitmentPage: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '招聘需求创建失败');
+    }
+  };
+
+  const handleSubmitRequest = async (id: number) => {
+    try {
+      await submitRecruitmentRequest(id);
+      toast.success('招聘需求已提交');
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '招聘需求提交失败');
+    }
+  };
+
+  const handleApproveRequest = async (id: number) => {
+    try {
+      await approveRecruitmentRequest(id);
+      toast.success('招聘需求已审批通过');
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '招聘需求审批失败');
+    }
+  };
+
+  const handleCompleteRequest = async (id: number) => {
+    try {
+      await completeRecruitmentRequest(id);
+      toast.success('招聘需求已完成');
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '招聘需求完成失败');
+    }
+  };
+
+  const handleCancelRequest = async (id: number) => {
+    try {
+      await cancelRecruitmentRequest(id);
+      toast.success('招聘需求已取消');
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '招聘需求取消失败');
     }
   };
 
@@ -179,9 +237,34 @@ export const HrRecruitmentPage: React.FC = () => {
   };
 
   const handleCandidateStatusChange = async (id: number, status: string) => {
+    if (status === 'REJECTED') {
+      setRejectCandidateId(id);
+      setRejectReason('');
+      return;
+    }
+
     try {
       await updateCandidateStatus(id, status);
       toast.success('候选人状态已更新');
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '候选人状态更新失败');
+    }
+  };
+
+  const handleRejectCandidate = async () => {
+    if (!rejectCandidateId) return;
+    if (!rejectReason.trim()) {
+      toast.error('请输入拒绝原因');
+      return;
+    }
+
+    try {
+      await updateCandidateStatus(rejectCandidateId, 'REJECTED', rejectReason.trim());
+      toast.success('候选人已标记为拒绝');
+      setRejectCandidateId(null);
+      setRejectReason('');
       await loadData();
     } catch (error: any) {
       console.error(error);
@@ -243,6 +326,7 @@ export const HrRecruitmentPage: React.FC = () => {
                   <TableHead>招聘人数</TableHead>
                   <TableHead>已录用</TableHead>
                   <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -254,11 +338,32 @@ export const HrRecruitmentPage: React.FC = () => {
                     <TableCell>{item.headcount}</TableCell>
                     <TableCell>{item.hiredCount}</TableCell>
                     <TableCell><span className={`rounded-full px-2 py-1 text-xs font-medium ${requestStatusTone[item.status] || requestStatusTone.DRAFT}`}>{item.statusDesc || item.status}</span></TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" disabled={item.status !== 'DRAFT'} onClick={() => void handleSubmitRequest(item.id)}>
+                          提交
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={item.status !== 'APPROVING'} onClick={() => void handleApproveRequest(item.id)}>
+                          审批通过
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={item.status !== 'RECRUITING'} onClick={() => void handleCompleteRequest(item.id)}>
+                          完成
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={item.status === 'COMPLETED' || item.status === 'CANCELLED'}
+                          onClick={() => void handleCancelRequest(item.id)}
+                        >
+                          取消
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {!filteredRequests.length && !loading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-slate-400">暂无招聘需求</TableCell>
+                    <TableCell colSpan={7} className="py-12 text-center text-slate-400">暂无招聘需求</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -395,12 +500,17 @@ export const HrRecruitmentPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-slate-900">录入候选人</h2>
               <Button variant="ghost" onClick={() => setCandidateDialog(false)}>关闭</Button>
             </div>
+            {!recruitingRequests.length && (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                当前没有“招聘中”的需求。请先在需求列表完成提交和审批通过，再录入候选人。
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label>关联招聘需求</Label>
                 <Select value={candidateForm.requestId ? String(candidateForm.requestId) : undefined} onValueChange={value => setCandidateForm(prev => ({ ...prev, requestId: Number(value) }))}>
                   <SelectTrigger><SelectValue placeholder="请选择需求" /></SelectTrigger>
-                  <SelectContent>{requests.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.requestNo} / {item.positionName || item.positionId}</SelectItem>)}</SelectContent>
+                  <SelectContent>{recruitingRequests.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.requestNo} / {item.positionName || item.positionId}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>姓名</Label><Input value={candidateForm.name} onChange={event => setCandidateForm(prev => ({ ...prev, name: event.target.value }))} /></div>
@@ -429,7 +539,7 @@ export const HrRecruitmentPage: React.FC = () => {
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setCandidateDialog(false)}>取消</Button>
-              <Button onClick={handleCreateCandidate}>录入候选人</Button>
+              <Button disabled={!recruitingRequests.length || !candidateForm.requestId} onClick={handleCreateCandidate}>录入候选人</Button>
             </div>
           </div>
         </div>
@@ -470,6 +580,50 @@ export const HrRecruitmentPage: React.FC = () => {
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setInterviewDialog(false)}>取消</Button>
               <Button onClick={handleScheduleInterview}>安排面试</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectCandidateId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">填写拒绝原因</h2>
+                <p className="mt-1 text-sm text-slate-500">候选人标记为“已拒绝”时，后端要求必须填写原因。</p>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setRejectCandidateId(null);
+                  setRejectReason('');
+                }}
+              >
+                关闭
+              </Button>
+            </div>
+            <div>
+              <Label>拒绝原因</Label>
+              <Textarea
+                className="mt-2"
+                rows={4}
+                value={rejectReason}
+                onChange={event => setRejectReason(event.target.value)}
+                placeholder="请输入候选人拒绝原因"
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRejectCandidateId(null);
+                  setRejectReason('');
+                }}
+              >
+                取消
+              </Button>
+              <Button onClick={() => void handleRejectCandidate()}>确认拒绝</Button>
             </div>
           </div>
         </div>

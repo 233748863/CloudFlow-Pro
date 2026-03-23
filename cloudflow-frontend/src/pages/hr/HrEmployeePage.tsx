@@ -3,6 +3,7 @@ import { Edit3, Plus, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/ui';
 import { DeptTreeNode, HrEmployee, HrEmployeePayload, PostOption, PositionOption, listEmployees, getEmployeeDetail, createEmployee, updateEmployee, getDeptTreeOptions, getPostOptions, getPositionOptions } from '@/services/api/hr';
+import { flattenDeptTree, normalizeRows } from './hrShared';
 
 const defaultForm: HrEmployeePayload = {
   employeeNo: '',
@@ -16,17 +17,6 @@ const defaultForm: HrEmployeePayload = {
   employeeType: 'FULL_TIME',
   employeeStatus: 'PENDING',
   hireDate: '',
-};
-
-const flattenDeptTree = (nodes: DeptTreeNode[] = [], prefix = ''): Array<{ label: string; value: number }> => {
-  const result: Array<{ label: string; value: number }> = [];
-  nodes.forEach(node => {
-    result.push({ label: prefix ? `${prefix} / ${node.deptName}` : node.deptName, value: node.deptId });
-    if (node.children?.length) {
-      result.push(...flattenDeptTree(node.children, prefix ? `${prefix} / ${node.deptName}` : node.deptName));
-    }
-  });
-  return result;
 };
 
 const statusLabel: Record<string, string> = {
@@ -59,7 +49,7 @@ export const HrEmployeePage: React.FC = () => {
       ]);
       setEmployees(Array.isArray(employeeRes) ? employeeRes : []);
       setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
-      setPostOptions(Array.isArray(postRes) ? postRes : []);
+      setPostOptions(normalizeRows<PostOption>(postRes));
       setPositionOptions(Array.isArray(positionRes) ? positionRes : []);
     } catch (error) {
       console.error(error);

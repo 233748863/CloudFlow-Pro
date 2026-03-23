@@ -151,6 +151,9 @@ public class OnboardingServiceImpl implements OnboardingService {
         if (application == null) {
             throw new HrBusinessException("ONBOARDING_APPLICATION_NOT_FOUND", "入职申请不存在");
         }
+        if (!"APPROVING".equals(application.getStatus())) {
+            throw new HrBusinessException("INVALID_STATUS", "只有审批中的入职申请才能审批通过");
+        }
 
         application.setStatus("APPROVED");
         onboardingApplicationMapper.updateById(application);
@@ -213,6 +216,14 @@ public class OnboardingServiceImpl implements OnboardingService {
         }
         if (!"APPROVED".equals(application.getStatus())) {
             throw new HrBusinessException("INVALID_STATUS", "只有审批通过的入职申请才能确认入职");
+        }
+        // 真实联调时需要先把入职任务办完，避免绕过任务闭环直接确认入职。
+        LambdaQueryWrapper<OnboardingTask> pendingTaskWrapper = Wrappers.lambdaQuery(OnboardingTask.class);
+        pendingTaskWrapper.eq(OnboardingTask::getApplicationId, dto.getApplicationId())
+                .ne(OnboardingTask::getStatus, "COMPLETED");
+        Long pendingTaskCount = onboardingTaskMapper.selectCount(pendingTaskWrapper);
+        if (pendingTaskCount != null && pendingTaskCount > 0) {
+            throw new HrBusinessException("ONBOARDING_TASKS_INCOMPLETE", "入职任务未全部完成，不能确认入职");
         }
 
         Employee employee = createEmployeeFromApplication(application, dto.getActualDate());

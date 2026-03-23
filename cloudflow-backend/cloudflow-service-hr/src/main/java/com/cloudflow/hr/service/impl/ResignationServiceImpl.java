@@ -173,6 +173,9 @@ public class ResignationServiceImpl implements ResignationService {
         if (application == null) {
             throw new HrBusinessException("RESIGNATION_APPLICATION_NOT_FOUND", "离职申请不存在");
         }
+        if (!"APPROVING".equals(application.getStatus())) {
+            throw new HrBusinessException("INVALID_STATUS", "只有审批中的离职申请才能审批通过");
+        }
 
         // 2. 更新申请状态
         application.setStatus("APPROVED");
@@ -212,6 +215,9 @@ public class ResignationServiceImpl implements ResignationService {
         ResignationApplication application = resignationApplicationMapper.selectById(id);
         if (application == null) {
             throw new HrBusinessException("RESIGNATION_APPLICATION_NOT_FOUND", "离职申请不存在");
+        }
+        if (!Arrays.asList("DRAFT", "APPROVING", "APPROVED").contains(application.getStatus())) {
+            throw new HrBusinessException("INVALID_STATUS", "只有草稿、审批中或已通过的申请才能记录离职面谈");
         }
 
         // 2. 记录面谈内容
@@ -404,7 +410,7 @@ public class ResignationServiceImpl implements ResignationService {
             try {
                 return objectMapper.readValue(normalized, String.class);
             } catch (JsonProcessingException ex) {
-                log.debug("瑙ｆ瀽绂昏亴闈㈣皥 JSON 瀛楃涓插け璐ワ紝淇濈暀鍘熷鍐呭", ex);
+                log.debug("解析离职面谈 JSON 字符串失败，保留原始内容", ex);
             }
         }
         return normalized;
