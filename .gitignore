@@ -35,6 +35,7 @@ target/
 
 # Codex temporary artifacts
 .codex-temp/
+.codex-run/
 
 # Environment variables
 .env
