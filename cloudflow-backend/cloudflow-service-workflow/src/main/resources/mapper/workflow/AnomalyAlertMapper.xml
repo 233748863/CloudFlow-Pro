@@ -8,7 +8,7 @@
         <result property="instanceId" column="instance_id"/>
         <result property="taskId" column="task_id"/>
         <result property="processDefKey" column="process_def_key"/>
-        <result property="processName" column="process_name"/>
+        <result property="processName" column="process_def_name"/>
         <result property="nodeKey" column="node_key"/>
         <result property="nodeName" column="node_name"/>
         <result property="anomalyType" column="anomaly_type"/>
@@ -31,7 +31,7 @@
         aa.instance_id,
         aa.task_id,
         aa.process_def_key,
-        aa.process_name,
+        aa.process_def_name,
         aa.node_key,
         aa.node_name,
         aa.anomaly_type,

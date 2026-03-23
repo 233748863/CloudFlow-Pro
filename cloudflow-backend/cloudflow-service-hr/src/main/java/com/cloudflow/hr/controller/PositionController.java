@@ -22,7 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/hr/position")
+@RequestMapping("/position")
 @RequiredArgsConstructor
 public class PositionController {
     

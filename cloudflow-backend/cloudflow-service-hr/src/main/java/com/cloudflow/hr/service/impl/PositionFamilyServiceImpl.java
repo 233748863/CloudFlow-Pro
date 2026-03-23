@@ -4,10 +4,12 @@ import com.cloudflow.common.core.utils.SecurityUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.hr.domain.dto.PositionFamilyCreateDTO;
 import com.cloudflow.hr.domain.dto.PositionFamilyUpdateDTO;
+import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.PositionFamily;
 import com.cloudflow.hr.domain.vo.PositionFamilyVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.PositionFamilyMapper;
+import com.cloudflow.hr.mapper.PositionMapper;
 import com.cloudflow.hr.service.PositionFamilyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class PositionFamilyServiceImpl implements PositionFamilyService {
     
     private final PositionFamilyMapper positionFamilyMapper;
+    private final PositionMapper positionMapper;
     
     /**
      * 创建职位族
@@ -167,7 +170,12 @@ public class PositionFamilyServiceImpl implements PositionFamilyService {
             throw new HrBusinessException("职位族不存在或无权限访问");
         }
         
-        // TODO: 检查是否有职位关联此职位族，如有则不允许删除
+        LambdaQueryWrapper<Position> positionWrapper = new LambdaQueryWrapper<>();
+        positionWrapper.eq(Position::getTenantId, tenantId)
+                .eq(Position::getFamilyId, id);
+        if (positionMapper.selectCount(positionWrapper) > 0) {
+            throw new HrBusinessException("POSITION_FAMILY_IN_USE", "该职位族已被职位引用，无法删除");
+        }
         
         // 删除职位族
         positionFamilyMapper.deleteById(id);

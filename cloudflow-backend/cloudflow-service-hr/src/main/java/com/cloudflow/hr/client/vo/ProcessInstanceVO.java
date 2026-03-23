@@ -1,9 +1,9 @@
 package com.cloudflow.hr.client.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 /**
  * 流程实例VO
@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ProcessInstanceVO implements Serializable {
     
     private static final long serialVersionUID = 1L;
@@ -81,10 +82,10 @@ public class ProcessInstanceVO implements Serializable {
     /**
      * 开始时间
      */
-    private LocalDateTime startTime;
+    private String startTime;
     
     /**
      * 结束时间
      */
-    private LocalDateTime endTime;
+    private String endTime;
 }

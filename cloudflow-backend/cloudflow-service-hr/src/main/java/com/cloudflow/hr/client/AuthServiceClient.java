@@ -9,6 +9,7 @@ import com.cloudflow.hr.client.fallback.AuthServiceFallback;
 import com.cloudflow.hr.client.vo.DeptTreeVO;
 import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.client.vo.PostVO;
+import com.cloudflow.hr.client.vo.UserVO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,8 +23,8 @@ import java.util.List;
  * @since 1.0.0
  */
 @FeignClient(
-    name = "cloudflow-service-auth",
-    path = "/api/auth",
+    name = "cloudflow-auth",
+    path = "/inner/auth",
     fallback = AuthServiceFallback.class
 )
 public interface AuthServiceClient {
@@ -96,6 +97,12 @@ public interface AuthServiceClient {
      */
     @PostMapping("/user")
     R<Long> createUser(@RequestBody UserCreateDTO dto);
+
+    @GetMapping("/user/{id}")
+    R<UserVO> getUserById(@PathVariable("id") Long id);
+
+    @PostMapping("/user/batch")
+    R<List<UserVO>> batchGetUsers(@RequestBody List<Long> userIds);
     
     /**
      * 更新用户信息

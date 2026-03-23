@@ -19,7 +19,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/hr/job-level")
+@RequestMapping("/job-level")
 @RequiredArgsConstructor
 public class JobLevelController {
     

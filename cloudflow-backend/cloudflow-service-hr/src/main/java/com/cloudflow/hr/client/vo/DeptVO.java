@@ -1,9 +1,10 @@
 package com.cloudflow.hr.client.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 部门信息VO
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DeptVO implements Serializable {
     
     private static final long serialVersionUID = 1L;
@@ -70,5 +72,10 @@ public class DeptVO implements Serializable {
     /**
      * 创建时间
      */
-    private LocalDateTime createTime;
+    private String createTime;
+
+    /**
+     * 子部门列表
+     */
+    private List<DeptVO> children;
 }

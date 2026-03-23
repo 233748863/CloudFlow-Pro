@@ -27,55 +27,82 @@ public class RedisStreamUtil {
     }
 
     /**
-     * 创建消费者组 (如果不存在)
+     * 跨服务事件流必须固定使用原始 key，避免生产者和消费者因为租户上下文不一致而落到不同 Stream。
+     */
+    private String getGlobalKey(String key) {
+        return key;
+    }
+
+    /**
+     * 创建消费组，默认沿用当前租户前缀。
      */
     public void createGroup(String key, String group) {
-        String tenantKey = getTenantKey(key);
+        createGroupInternal(getTenantKey(key), group);
+    }
+
+    /**
+     * 创建全局消费组，不拼租户前缀。
+     */
+    public void createGlobalGroup(String key, String group) {
+        createGroupInternal(getGlobalKey(key), group);
+    }
+
+    private void createGroupInternal(String streamKey, String group) {
         try {
-            // 尝试创建组，从最新的消息开始消费 ($)
-            // 注意：如果 Stream 不存在，mkStream=true 会自动创建
-            redisTemplate.opsForStream().createGroup(tenantKey, group);
+            redisTemplate.opsForStream().createGroup(streamKey, group);
         } catch (Exception e) {
-            // BUSYGROUP：消费者组名称已存在
-            // Spring Data Redis 可能会抛出异常，需捕获忽略
             if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
                 log.debug("Consumer Group already exists: {}", group);
             } else {
-                // 如果是因为 Stream 不存在导致无法创建 Group（Redis < 5.0 行为）
-                // Spring Data Redis 的 createGroup 默认行为可能不同，稳妥起见只记录警告
-                log.warn("Failed to create consumer group. Key: {}, Group: {}", tenantKey, group, e);
+                log.warn("Failed to create consumer group. Key: {}, Group: {}", streamKey, group, e);
             }
         }
     }
 
     /**
-     * 发布消息到 Stream
-     *
-     * @param key     Stream Key
-     * @param content 消息体 (Map)
-     * @return 消息ID
+     * 发布消息到租户隔离 Stream。
      */
     public String publish(String key, Map<String, Object> content) {
-        RecordId recordId = redisTemplate.opsForStream().add(MapRecord.create(getTenantKey(key), content));
+        return publishInternal(getTenantKey(key), content);
+    }
+
+    /**
+     * 发布消息到全局 Stream，不拼租户前缀。
+     */
+    public String publishGlobal(String key, Map<String, Object> content) {
+        return publishInternal(getGlobalKey(key), content);
+    }
+
+    private String publishInternal(String streamKey, Map<String, Object> content) {
+        RecordId recordId = redisTemplate.opsForStream().add(MapRecord.create(streamKey, content));
         return recordId != null ? recordId.getValue() : null;
     }
 
     /**
-     * 确认消息 (ACK)
-     *
-     * @param key       Stream Key
-     * @param group     Consumer Group
-     * @param recordIds 消息ID列表
-     * @return 成功确认的数量
+     * 确认租户隔离 Stream 消息。
      */
     public Long ack(String key, String group, String... recordIds) {
         return redisTemplate.opsForStream().acknowledge(getTenantKey(key), group, recordIds);
     }
 
     /**
-     * 删除消息 (物理删除)
+     * 确认全局 Stream 消息，不拼租户前缀。
+     */
+    public Long ackGlobal(String key, String group, String... recordIds) {
+        return redisTemplate.opsForStream().acknowledge(getGlobalKey(key), group, recordIds);
+    }
+
+    /**
+     * 删除租户隔离 Stream 消息。
      */
     public Long delete(String key, String... recordIds) {
         return redisTemplate.opsForStream().delete(getTenantKey(key), recordIds);
+    }
+
+    /**
+     * 删除全局 Stream 消息，不拼租户前缀。
+     */
+    public Long deleteGlobal(String key, String... recordIds) {
+        return redisTemplate.opsForStream().delete(getGlobalKey(key), recordIds);
     }
 }

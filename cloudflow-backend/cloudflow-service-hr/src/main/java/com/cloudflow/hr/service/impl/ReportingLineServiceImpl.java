@@ -3,12 +3,16 @@ import com.cloudflow.common.core.utils.SecurityUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.domain.dto.ReportingLineSetDTO;
+import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.ReportingLine;
 import com.cloudflow.hr.domain.vo.ReportingLineVO;
 import com.cloudflow.hr.domain.vo.ReportingMatrixVO;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.ReportingLineMapper;
+import com.cloudflow.hr.service.DeptPostSyncService;
 import com.cloudflow.hr.service.ReportingLineService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +41,8 @@ import java.util.stream.Collectors;
 public class ReportingLineServiceImpl implements ReportingLineService {
 
     private final ReportingLineMapper reportingLineMapper;
+    private final EmployeeMapper employeeMapper;
+    private final DeptPostSyncService deptPostSyncService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -50,45 +60,24 @@ public class ReportingLineServiceImpl implements ReportingLineService {
             throw new HrBusinessException("员工不能汇报给自己");
         }
 
+        Long tenantId = SecurityUtils.getTenantId();
+        LocalDate effectiveDate = dto.getEffectiveDate() != null ? dto.getEffectiveDate() : LocalDate.now();
+        validateDateRange(effectiveDate, dto.getExpiryDate());
+        getEmployeeOrThrow(dto.getEmployeeId(), tenantId);
+        getEmployeeOrThrow(dto.getReportToId(), tenantId);
+
+        ReportingLine duplicateLine = findActiveReportingLine(
+                tenantId, dto.getEmployeeId(), dto.getReportToId(), dto.getReportType());
+        if (duplicateLine != null) {
+            throw new HrBusinessException("该汇报关系已存在");
+        }
+
         // 验证循环汇报
         validateCircularReporting(dto.getEmployeeId(), dto.getReportToId());
 
-        Long tenantId = SecurityUtils.getTenantId();
-
         // 如果是直接汇报，先失效该员工的其他直接汇报关系
         if ("DIRECT".equals(dto.getReportType())) {
-            LambdaQueryWrapper<ReportingLine> queryWrapper = Wrappers.lambdaQuery();
-            queryWrapper.eq(ReportingLine::getTenantId, tenantId)
-                    .eq(ReportingLine::getEmployeeId, dto.getEmployeeId())
-                    .eq(ReportingLine::getReportType, "DIRECT")
-                    .and(wrapper -> wrapper
-                            .isNull(ReportingLine::getExpiryDate)
-                            .or()
-                            .ge(ReportingLine::getExpiryDate, LocalDate.now())
-                    );
-
-            List<ReportingLine> existingLines = reportingLineMapper.selectList(queryWrapper);
-            for (ReportingLine line : existingLines) {
-                line.setExpiryDate(LocalDate.now().minusDays(1));
-                reportingLineMapper.updateById(line);
-            }
-        }
-
-        // 检查是否已存在相同的汇报关系
-        LambdaQueryWrapper<ReportingLine> checkWrapper = Wrappers.lambdaQuery();
-        checkWrapper.eq(ReportingLine::getTenantId, tenantId)
-                .eq(ReportingLine::getEmployeeId, dto.getEmployeeId())
-                .eq(ReportingLine::getReportToId, dto.getReportToId())
-                .eq(ReportingLine::getReportType, dto.getReportType())
-                .and(wrapper -> wrapper
-                        .isNull(ReportingLine::getExpiryDate)
-                        .or()
-                        .ge(ReportingLine::getExpiryDate, LocalDate.now())
-                );
-
-        ReportingLine existingLine = reportingLineMapper.selectOne(checkWrapper);
-        if (existingLine != null) {
-            throw new HrBusinessException("该汇报关系已存在");
+            expireActiveDirectLines(tenantId, dto.getEmployeeId());
         }
 
         // 创建新的汇报关系
@@ -97,7 +86,7 @@ public class ReportingLineServiceImpl implements ReportingLineService {
         reportingLine.setEmployeeId(dto.getEmployeeId());
         reportingLine.setReportToId(dto.getReportToId());
         reportingLine.setReportType(dto.getReportType());
-        reportingLine.setEffectiveDate(dto.getEffectiveDate() != null ? dto.getEffectiveDate() : LocalDate.now());
+        reportingLine.setEffectiveDate(effectiveDate);
         reportingLine.setExpiryDate(dto.getExpiryDate());
 
         reportingLineMapper.insert(reportingLine);
@@ -109,6 +98,7 @@ public class ReportingLineServiceImpl implements ReportingLineService {
         log.info("获取员工汇报关系，员工ID：{}", employeeId);
 
         Long tenantId = SecurityUtils.getTenantId();
+        getEmployeeOrThrow(employeeId, tenantId);
 
         // 查询有效的汇报关系
         LambdaQueryWrapper<ReportingLine> queryWrapper = Wrappers.lambdaQuery();
@@ -123,43 +113,90 @@ public class ReportingLineServiceImpl implements ReportingLineService {
 
         List<ReportingLine> reportingLines = reportingLineMapper.selectList(queryWrapper);
 
-        // 转换为VO
-        return reportingLines.stream().map(line -> {
-            ReportingLineVO vo = new ReportingLineVO();
-            BeanUtils.copyProperties(line, vo);
-
-            // 设置汇报类型描述
-            vo.setReportTypeDesc("DIRECT".equals(line.getReportType()) ? "直接汇报" : "虚线汇报");
-
-            // TODO: 从员工表获取员工姓名和工号
-            // 这里暂时使用占位符，等员工模块实现后再补充
-            vo.setEmployeeName("员工" + line.getEmployeeId());
-            vo.setEmployeeNo("EMP" + line.getEmployeeId());
-            vo.setReportToName("员工" + line.getReportToId());
-            vo.setReportToNo("EMP" + line.getReportToId());
-
-            return vo;
-        }).collect(Collectors.toList());
+        return buildReportingLineVOs(reportingLines, tenantId);
     }
 
     @Override
     public ReportingMatrixVO getReportingMatrix(Long deptId) {
         log.info("获取部门汇报关系矩阵，部门ID：{}", deptId);
+        Long tenantId = SecurityUtils.getTenantId();
 
-        // TODO: 实现部门汇报关系矩阵查询
-        // 需要：
-        // 1. 查询部门下的所有员工
-        // 2. 查询这些员工的汇报关系
-        // 3. 构建汇报关系树
-        // 这里暂时返回空对象，等员工模块实现后再补充
+        DeptVO dept = deptPostSyncService.getCachedDept(deptId);
+        if (dept == null) {
+            throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
+        }
 
         ReportingMatrixVO matrixVO = new ReportingMatrixVO();
         matrixVO.setDeptId(deptId);
-        matrixVO.setDeptName("部门" + deptId);
-        matrixVO.setReportingLines(new ArrayList<>());
-        matrixVO.setReportingTree(new ArrayList<>());
+        matrixVO.setDeptName(dept.getDeptName());
 
-        log.warn("部门汇报关系矩阵功能待实现，需要员工模块支持");
+        LambdaQueryWrapper<Employee> employeeWrapper = Wrappers.lambdaQuery();
+        employeeWrapper.eq(Employee::getTenantId, tenantId)
+                .eq(Employee::getDeptId, deptId)
+                .orderByAsc(Employee::getId);
+        List<Employee> deptEmployees = employeeMapper.selectList(employeeWrapper);
+        if (deptEmployees.isEmpty()) {
+            matrixVO.setReportingLines(new ArrayList<>());
+            matrixVO.setReportingTree(new ArrayList<>());
+            return matrixVO;
+        }
+
+        Set<Long> deptEmployeeIds = deptEmployees.stream()
+                .map(Employee::getId)
+                .collect(Collectors.toSet());
+
+        LambdaQueryWrapper<ReportingLine> reportingWrapper = Wrappers.lambdaQuery();
+        reportingWrapper.eq(ReportingLine::getTenantId, tenantId)
+                .in(ReportingLine::getEmployeeId, deptEmployeeIds)
+                .and(wrapper -> wrapper
+                        .isNull(ReportingLine::getExpiryDate)
+                        .or()
+                        .ge(ReportingLine::getExpiryDate, LocalDate.now()))
+                .orderByAsc(ReportingLine::getEffectiveDate)
+                .orderByAsc(ReportingLine::getId);
+        List<ReportingLine> reportingLines = reportingLineMapper.selectList(reportingWrapper);
+
+        matrixVO.setReportingLines(buildReportingLineVOs(reportingLines, tenantId));
+
+        Set<Long> relatedEmployeeIds = new HashSet<>(deptEmployeeIds);
+        reportingLines.stream()
+                .map(ReportingLine::getReportToId)
+                .forEach(relatedEmployeeIds::add);
+        Map<Long, Employee> employeeMap = loadEmployeeMap(tenantId, relatedEmployeeIds);
+
+        Map<Long, ReportingMatrixVO.EmployeeNode> nodeMap = new HashMap<>();
+        for (Employee employee : deptEmployees) {
+            ReportingMatrixVO.EmployeeNode node = buildEmployeeNode(employee);
+            node.setDottedReportToList(new ArrayList<>());
+            node.setDirectReports(new ArrayList<>());
+            nodeMap.put(employee.getId(), node);
+        }
+
+        Set<Long> directChildrenInDept = new HashSet<>();
+        for (ReportingLine reportingLine : reportingLines) {
+            ReportingMatrixVO.EmployeeNode employeeNode = nodeMap.get(reportingLine.getEmployeeId());
+            if (employeeNode == null) {
+                continue;
+            }
+            Employee manager = employeeMap.get(reportingLine.getReportToId());
+            ReportingMatrixVO.EmployeeNode managerNode = buildEmployeeReference(manager, reportingLine.getReportToId());
+            if ("DIRECT".equals(reportingLine.getReportType())) {
+                employeeNode.setDirectReportTo(managerNode);
+                if (nodeMap.containsKey(reportingLine.getReportToId())) {
+                    nodeMap.get(reportingLine.getReportToId()).getDirectReports().add(employeeNode);
+                    directChildrenInDept.add(reportingLine.getEmployeeId());
+                }
+            } else {
+                employeeNode.getDottedReportToList().add(managerNode);
+            }
+        }
+
+        List<ReportingMatrixVO.EmployeeNode> roots = deptEmployees.stream()
+                .map(Employee::getId)
+                .filter(employeeId -> !directChildrenInDept.contains(employeeId))
+                .map(nodeMap::get)
+                .collect(Collectors.toList());
+        matrixVO.setReportingTree(roots);
         return matrixVO;
     }
 
@@ -227,5 +264,104 @@ public class ReportingLineServiceImpl implements ReportingLineService {
         if (depth >= maxDepth) {
             log.warn("汇报关系链过长，可能存在问题");
         }
+    }
+
+    private Employee getEmployeeOrThrow(Long employeeId, Long tenantId) {
+        Employee employee = employeeMapper.selectById(employeeId);
+        if (employee == null || !tenantId.equals(employee.getTenantId())) {
+            throw HrBusinessException.employeeNotFound(employeeId);
+        }
+        return employee;
+    }
+
+    private void validateDateRange(LocalDate effectiveDate, LocalDate expiryDate) {
+        if (expiryDate != null && expiryDate.isBefore(effectiveDate)) {
+            throw new HrBusinessException("INVALID_REPORTING_DATE", "失效日期不能早于生效日期");
+        }
+    }
+
+    private ReportingLine findActiveReportingLine(Long tenantId, Long employeeId, Long reportToId, String reportType) {
+        LambdaQueryWrapper<ReportingLine> wrapper = Wrappers.lambdaQuery();
+        wrapper.eq(ReportingLine::getTenantId, tenantId)
+                .eq(ReportingLine::getEmployeeId, employeeId)
+                .eq(ReportingLine::getReportToId, reportToId)
+                .eq(ReportingLine::getReportType, reportType)
+                .and(query -> query.isNull(ReportingLine::getExpiryDate)
+                        .or()
+                        .ge(ReportingLine::getExpiryDate, LocalDate.now()))
+                .last("LIMIT 1");
+        return reportingLineMapper.selectOne(wrapper);
+    }
+
+    private void expireActiveDirectLines(Long tenantId, Long employeeId) {
+        LambdaQueryWrapper<ReportingLine> wrapper = Wrappers.lambdaQuery();
+        wrapper.eq(ReportingLine::getTenantId, tenantId)
+                .eq(ReportingLine::getEmployeeId, employeeId)
+                .eq(ReportingLine::getReportType, "DIRECT")
+                .and(query -> query.isNull(ReportingLine::getExpiryDate)
+                        .or()
+                        .ge(ReportingLine::getExpiryDate, LocalDate.now()));
+        List<ReportingLine> existingLines = reportingLineMapper.selectList(wrapper);
+        for (ReportingLine line : existingLines) {
+            line.setExpiryDate(LocalDate.now().minusDays(1));
+            reportingLineMapper.updateById(line);
+        }
+    }
+
+    private List<ReportingLineVO> buildReportingLineVOs(List<ReportingLine> reportingLines, Long tenantId) {
+        if (reportingLines.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Set<Long> employeeIds = new HashSet<>();
+        for (ReportingLine reportingLine : reportingLines) {
+            employeeIds.add(reportingLine.getEmployeeId());
+            employeeIds.add(reportingLine.getReportToId());
+        }
+        Map<Long, Employee> employeeMap = loadEmployeeMap(tenantId, employeeIds);
+
+        return reportingLines.stream().map(line -> {
+            ReportingLineVO vo = new ReportingLineVO();
+            BeanUtils.copyProperties(line, vo);
+            vo.setReportTypeDesc("DIRECT".equals(line.getReportType()) ? "直接汇报" : "虚线汇报");
+
+            Employee employee = employeeMap.get(line.getEmployeeId());
+            Employee reportTo = employeeMap.get(line.getReportToId());
+            vo.setEmployeeName(employee != null ? employee.getName() : "员工" + line.getEmployeeId());
+            vo.setEmployeeNo(employee != null ? employee.getEmployeeNo() : null);
+            vo.setReportToName(reportTo != null ? reportTo.getName() : "员工" + line.getReportToId());
+            vo.setReportToNo(reportTo != null ? reportTo.getEmployeeNo() : null);
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    private Map<Long, Employee> loadEmployeeMap(Long tenantId, Set<Long> employeeIds) {
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        LambdaQueryWrapper<Employee> wrapper = Wrappers.lambdaQuery();
+        wrapper.eq(Employee::getTenantId, tenantId)
+                .in(Employee::getId, employeeIds);
+        List<Employee> employees = employeeMapper.selectList(wrapper);
+        return employees.stream().collect(Collectors.toMap(Employee::getId, employee -> employee));
+    }
+
+    private ReportingMatrixVO.EmployeeNode buildEmployeeNode(Employee employee) {
+        ReportingMatrixVO.EmployeeNode node = new ReportingMatrixVO.EmployeeNode();
+        node.setEmployeeId(employee.getId());
+        node.setEmployeeName(employee.getName());
+        node.setEmployeeNo(employee.getEmployeeNo());
+        return node;
+    }
+
+    private ReportingMatrixVO.EmployeeNode buildEmployeeReference(Employee employee, Long employeeId) {
+        ReportingMatrixVO.EmployeeNode node = new ReportingMatrixVO.EmployeeNode();
+        node.setEmployeeId(employeeId);
+        if (employee != null) {
+            node.setEmployeeName(employee.getName());
+            node.setEmployeeNo(employee.getEmployeeNo());
+        }
+        return node;
     }
 }

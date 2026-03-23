@@ -25,7 +25,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/hr/test/feign")
+@RequestMapping("/test/feign")
 @RequiredArgsConstructor
 @Tag(name = "Feign客户端测试", description = "测试Feign客户端调用Auth和Workflow服务")
 public class FeignTestController {

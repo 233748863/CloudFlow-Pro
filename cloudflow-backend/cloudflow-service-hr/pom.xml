@@ -32,6 +32,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
+        </dependency>
         
         <!-- OpenFeign 服务调用 -->
         <dependency>
@@ -109,11 +113,6 @@
 
         <!-- ==================== 消息队列 ==================== -->
         <!-- RabbitMQ（用于数据同步） -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-amqp</artifactId>
-        </dependency>
-
         <!-- ==================== 定时任务 ==================== -->
         <!-- Spring Boot Starter Quartz -->
         <dependency>

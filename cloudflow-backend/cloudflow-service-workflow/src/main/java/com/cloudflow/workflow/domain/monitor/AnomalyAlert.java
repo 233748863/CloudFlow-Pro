@@ -36,6 +36,7 @@ public class AnomalyAlert {
     private String processDefKey;
 
     /** 流程名称 */
+    @TableField("process_def_name")
     private String processName;
 
     /** 节点Key */

@@ -5,12 +5,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 
 /**
  * 全局异常处理器
@@ -35,11 +39,60 @@ public class GlobalExceptionHandler {
     /**
      * 参数校验异常
      */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
     public R<?> handleMethodArgumentNotValidException(org.springframework.web.bind.MethodArgumentNotValidException e) {
         log.error(e.getMessage());
         String message = e.getBindingResult().getFieldError().getDefaultMessage();
-        return R.fail(message);
+        return R.fail(HttpStatus.BAD_REQUEST.value(), message);
+    }
+
+    /**
+     * Query/Form 参数绑定异常。
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(BindException.class)
+    public R<?> handleBindException(BindException e) {
+        log.error(e.getMessage());
+        String message = e.getBindingResult().getFieldError() != null
+                ? e.getBindingResult().getFieldError().getDefaultMessage()
+                : "请求参数错误";
+        return R.fail(HttpStatus.BAD_REQUEST.value(), message);
+    }
+
+    /**
+     * 方法级约束校验异常，例如 @RequestParam、@PathVariable 上的校验失败。
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public R<?> handleConstraintViolationException(ConstraintViolationException e) {
+        log.error(e.getMessage());
+        String message = e.getConstraintViolations().stream()
+                .findFirst()
+                .map(violation -> violation.getMessage())
+                .orElse("请求参数错误");
+        return R.fail(HttpStatus.BAD_REQUEST.value(), message);
+    }
+
+    /**
+     * 参数类型不匹配，例如把字符串传给 Long。
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public R<?> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
+        log.error(e.getMessage());
+        String message = "参数 " + e.getName() + " 类型错误";
+        return R.fail(HttpStatus.BAD_REQUEST.value(), message);
+    }
+
+    /**
+     * 请求体无法反序列化，例如非法 JSON、日期格式错误等。
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public R<?> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        log.error(e.getMessage());
+        return R.fail(HttpStatus.BAD_REQUEST.value(), "请求体格式错误");
     }
 
     /**

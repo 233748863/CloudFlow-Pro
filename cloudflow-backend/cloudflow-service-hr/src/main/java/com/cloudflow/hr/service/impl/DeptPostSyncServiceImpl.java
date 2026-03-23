@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -69,12 +70,14 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
                 return;
             }
 
+            List<DeptVO> cachedDeptTree = convertDeptTree(deptTree);
+
             // 缓存部门树
-            redisCache.setCacheObject(DEPT_TREE_CACHE_KEY, deptTree, CACHE_EXPIRE_HOURS, TimeUnit.HOURS);
-            log.info("部门树缓存成功，共{}个顶级部门", deptTree.size());
+            redisCache.setCacheObject(DEPT_TREE_CACHE_KEY, cachedDeptTree, CACHE_EXPIRE_HOURS, TimeUnit.HOURS);
+            log.info("部门树缓存成功，共{}个顶级部门", cachedDeptTree.size());
 
             // 递归缓存每个部门
-            int count = cacheDeptTreeRecursive(deptTree);
+            int count = cacheDeptTreeRecursive(cachedDeptTree);
             log.info("同步部门数据完成，共缓存{}个部门", count);
             
         } catch (Exception e) {
@@ -283,6 +286,9 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         
         // 清除岗位列表缓存
         redisCache.deleteObject(POST_LIST_CACHE_KEY);
+
+        deleteByPattern(DEPT_CACHE_KEY + "*");
+        deleteByPattern(POST_CACHE_KEY + "*");
         
         log.info("清除所有部门岗位缓存完成");
     }
@@ -293,24 +299,15 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
      * @param deptList 部门列表
      * @return 缓存的部门数量
      */
-    private int cacheDeptTreeRecursive(List<DeptTreeVO> deptList) {
+    private int cacheDeptTreeRecursive(List<DeptVO> deptList) {
         if (deptList == null || deptList.isEmpty()) {
             return 0;
         }
 
         int count = 0;
-        for (DeptTreeVO dept : deptList) {
-            // 将DeptTreeVO转换为DeptVO并缓存
-            DeptVO deptVO = new DeptVO();
-            deptVO.setDeptId(dept.getDeptId());
-            deptVO.setParentId(dept.getParentId());
-            deptVO.setDeptName(dept.getDeptName());
-            deptVO.setOrderNum(dept.getOrderNum());
-            deptVO.setLeader(dept.getLeader());
-            deptVO.setStatus(dept.getStatus());
-            
+        for (DeptVO dept : deptList) {
             String cacheKey = DEPT_CACHE_KEY + dept.getDeptId();
-            redisCache.setCacheObject(cacheKey, deptVO, CACHE_EXPIRE_HOURS, TimeUnit.HOURS);
+            redisCache.setCacheObject(cacheKey, dept, CACHE_EXPIRE_HOURS, TimeUnit.HOURS);
             count++;
 
             // 递归缓存子部门
@@ -320,5 +317,37 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         }
 
         return count;
+    }
+
+    /**
+     * 将 Auth 返回的部门树转换为 HR 内部缓存结构，避免直接缓存远程 DTO。
+     */
+    private List<DeptVO> convertDeptTree(List<DeptTreeVO> deptTree) {
+        if (deptTree == null || deptTree.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<DeptVO> result = new ArrayList<>();
+        for (DeptTreeVO dept : deptTree) {
+            DeptVO deptVO = new DeptVO();
+            deptVO.setDeptId(dept.getDeptId());
+            deptVO.setParentId(dept.getParentId());
+            deptVO.setDeptName(dept.getDeptName());
+            deptVO.setOrderNum(dept.getOrderNum());
+            deptVO.setLeader(dept.getLeader());
+            deptVO.setStatus(dept.getStatus());
+            deptVO.setChildren(convertDeptTree(dept.getChildren()));
+            result.add(deptVO);
+        }
+        return result;
+    }
+
+    private void deleteByPattern(String pattern) {
+        Collection<String> keys = redisCache.keys(pattern);
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        for (String key : keys) {
+            redisCache.redisTemplate.delete(key);
+        }
     }
 }

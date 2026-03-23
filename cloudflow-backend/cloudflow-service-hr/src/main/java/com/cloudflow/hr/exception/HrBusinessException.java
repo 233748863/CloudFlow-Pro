@@ -189,4 +189,83 @@ public class HrBusinessException extends RuntimeException {
                 String.format("员工 ID [%d] 处于在职状态，无法删除", employeeId), 
                 data);
     }
+
+    /**
+     * 员工存在关联业务数据
+     */
+    public static HrBusinessException employeeHasRelatedRecords(Long employeeId, Object relatedRecords) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("employeeId", employeeId);
+        data.put("relatedRecords", relatedRecords);
+        return new HrBusinessException("EMPLOYEE_HAS_RELATED_RECORDS",
+                String.format("员工 ID [%d] 仍存在关联数据，请先处理后再删除：%s", employeeId, relatedRecords),
+                data);
+    }
+
+    /**
+     * 员工关联用户禁用失败
+     */
+    public static HrBusinessException employeeLinkedUserDisableFailed(Long employeeId, Long userId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("employeeId", employeeId);
+        data.put("userId", userId);
+        return new HrBusinessException("EMPLOYEE_LINKED_USER_DISABLE_FAILED",
+                String.format("员工 ID [%d] 关联的用户 ID [%d] 禁用失败，已终止删除操作", employeeId, userId),
+                data);
+    }
+    
+    /**
+     * 合同编号重复
+     */
+    public static HrBusinessException duplicateContractNo(String contractNo) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("contractNo", contractNo);
+        return new HrBusinessException("DUPLICATE_CONTRACT_NO", 
+                String.format("合同编号 [%s] 已存在，请使用其他编号", contractNo), 
+                data);
+    }
+    
+    /**
+     * 合同不存在
+     */
+    public static HrBusinessException contractNotFound(Long contractId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("contractId", contractId);
+        return new HrBusinessException("CONTRACT_NOT_FOUND", 
+                String.format("合同 ID [%d] 不存在", contractId), 
+                data);
+    }
+    
+    /**
+     * 无法删除生效中的合同
+     */
+    public static HrBusinessException cannotDeleteActiveContract(Long contractId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("contractId", contractId);
+        return new HrBusinessException("CANNOT_DELETE_ACTIVE_CONTRACT", 
+                String.format("合同 ID [%d] 已生效，无法删除", contractId), 
+                data);
+    }
+    
+    /**
+     * 证件不存在
+     */
+    public static HrBusinessException documentNotFound(Long documentId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("documentId", documentId);
+        return new HrBusinessException("DOCUMENT_NOT_FOUND", 
+                String.format("证件 ID [%d] 不存在", documentId), 
+                data);
+    }
+    
+    /**
+     * 紧急联系人不存在
+     */
+    public static HrBusinessException emergencyContactNotFound(Long contactId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("contactId", contactId);
+        return new HrBusinessException("EMERGENCY_CONTACT_NOT_FOUND", 
+                String.format("紧急联系人 ID [%d] 不存在", contactId), 
+                data);
+    }
 }

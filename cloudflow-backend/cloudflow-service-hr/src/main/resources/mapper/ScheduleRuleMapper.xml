@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.ScheduleRuleMapper">
+
+    <!-- 基础的CRUD操作由MyBatis-Plus的BaseMapper提供 -->
+    <!-- 如需自定义SQL查询，可在此添加 -->
+
+</mapper>

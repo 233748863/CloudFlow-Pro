@@ -20,7 +20,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/hr/reporting-line")
+@RequestMapping("/reporting-line")
 @RequiredArgsConstructor
 public class ReportingLineController {
 

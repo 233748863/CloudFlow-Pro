@@ -248,6 +248,21 @@ const TemplateLibrary = React.lazy(() =>
     default: module.TemplateLibrary,
   })),
 );
+const HrDashboardPage = React.lazy(() =>
+  import("./pages/hr/HrDashboardPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrEmployeePage = React.lazy(() =>
+  import("./pages/hr/HrEmployeePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrRecruitmentPage = React.lazy(() =>
+  import("./pages/hr/HrRecruitmentPage").then((module) => ({
+    default: module.default,
+  })),
+);
 
 const Loading = () => (
   <div className="flex items-center justify-center h-full w-full min-h-[400px]">
@@ -671,6 +686,34 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <TemplateLibrary />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr",
+            element: <Navigate to="/hr/dashboard" replace />,
+          },
+          {
+            path: "/hr/dashboard",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrDashboardPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/employees",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrEmployeePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/recruitment",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrRecruitmentPage />
               </Suspense>
             ),
           },

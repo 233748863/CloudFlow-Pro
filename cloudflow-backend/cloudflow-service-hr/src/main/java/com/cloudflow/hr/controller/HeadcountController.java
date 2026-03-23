@@ -21,7 +21,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/hr/headcount")
+@RequestMapping("/headcount")
 @RequiredArgsConstructor
 public class HeadcountController {
 

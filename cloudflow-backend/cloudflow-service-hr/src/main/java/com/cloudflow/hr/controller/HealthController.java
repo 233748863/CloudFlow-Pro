@@ -16,7 +16,7 @@ import java.util.Map;
  * @since 1.0.0
  */
 @RestController
-@RequestMapping("/api/hr")
+@RequestMapping
 public class HealthController {
 
     /**

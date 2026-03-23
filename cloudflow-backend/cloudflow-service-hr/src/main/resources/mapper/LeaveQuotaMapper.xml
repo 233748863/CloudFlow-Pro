@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.LeaveQuotaMapper">
+
+    <!-- 查询员工假期额度列表 -->
+    <select id="selectLeaveQuotaList" resultType="com.cloudflow.hr.domain.vo.LeaveQuotaVO">
+        SELECT
+            lq.id,
+            lq.employee_id,
+            e.name AS employee_name,
+            lq.leave_type_id,
+            lt.leave_name AS leave_type_name,
+            lq.year,
+            lq.total_quota,
+            lq.used_quota,
+            lq.frozen_quota,
+            lq.available_quota,
+            lq.expiry_date,
+            lq.create_time,
+            lq.update_time
+        FROM hr_leave_quota lq
+        LEFT JOIN hr_employee e ON lq.employee_id = e.id
+        LEFT JOIN hr_leave_type lt ON lq.leave_type_id = lt.id
+        WHERE lq.tenant_id = #{tenantId}
+        AND lq.deleted = 0
+        <if test="employeeId != null">
+            AND lq.employee_id = #{employeeId}
+        </if>
+        <if test="year != null">
+            AND lq.year = #{year}
+        </if>
+        ORDER BY lq.leave_type_id, lq.year DESC
+    </select>
+
+</mapper>

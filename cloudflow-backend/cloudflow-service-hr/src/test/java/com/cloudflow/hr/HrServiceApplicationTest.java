@@ -1,7 +1,13 @@
 package com.cloudflow.hr;
 
+import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.hr.client.AuthServiceClient;
+import com.cloudflow.hr.client.WorkflowServiceClient;
+import com.cloudflow.hr.service.DeptPostSyncService;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -13,6 +19,21 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @ActiveProfiles("test")
 class HrServiceApplicationTest {
+
+    @MockBean
+    private RedisCache redisCache;
+
+    @MockBean
+    private RedissonClient redissonClient;
+
+    @MockBean(name = "com.cloudflow.hr.client.AuthServiceClient")
+    private AuthServiceClient authServiceClient;
+
+    @MockBean(name = "com.cloudflow.hr.client.WorkflowServiceClient")
+    private WorkflowServiceClient workflowServiceClient;
+
+    @MockBean
+    private DeptPostSyncService deptPostSyncService;
 
     /**
      * 测试应用上下文加载

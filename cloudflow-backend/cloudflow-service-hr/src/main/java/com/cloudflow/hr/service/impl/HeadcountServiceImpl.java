@@ -48,9 +48,8 @@ public class HeadcountServiceImpl implements HeadcountService {
                 dto.getTargetType(), dto.getTargetId(), dto.getApprovedCount());
 
         // 验证目标类型
-        if (!"DEPT".equals(dto.getTargetType()) && !"POST".equals(dto.getTargetType())) {
-            throw new HrBusinessException("目标类型只能是DEPT或POST");
-        }
+        validateTargetType(dto.getTargetType());
+        validateDateRange(dto.getEffectiveDate(), dto.getExpiryDate());
 
         // 验证目标是否存在
         validateTarget(dto.getTargetType(), dto.getTargetId());
@@ -202,6 +201,9 @@ public class HeadcountServiceImpl implements HeadcountService {
                 targetType, targetId, actualCount);
 
         Long tenantId = SecurityUtils.getTenantId();
+        validateTargetType(targetType);
+        validateActualCount(actualCount);
+        validateTarget(targetType, targetId);
 
         // 查询有效的编制记录
         LambdaQueryWrapper<Headcount> queryWrapper = Wrappers.lambdaQuery();
@@ -222,7 +224,26 @@ public class HeadcountServiceImpl implements HeadcountService {
             headcountMapper.updateById(headcount);
             log.info("更新实际在职人数成功");
         } else {
-            log.warn("未找到有效的编制记录，无法更新实际在职人数");
+            throw new HrBusinessException("HEADCOUNT_NOT_FOUND", "未找到有效的编制记录");
+        }
+    }
+
+    private void validateTargetType(String targetType) {
+        if (!"DEPT".equals(targetType) && !"POST".equals(targetType)) {
+            throw new HrBusinessException("目标类型只能是DEPT或POST");
+        }
+    }
+
+    private void validateDateRange(LocalDate effectiveDate, LocalDate expiryDate) {
+        LocalDate baseDate = effectiveDate != null ? effectiveDate : LocalDate.now();
+        if (expiryDate != null && expiryDate.isBefore(baseDate)) {
+            throw new HrBusinessException("INVALID_HEADCOUNT_DATE", "失效日期不能早于生效日期");
+        }
+    }
+
+    private void validateActualCount(Integer actualCount) {
+        if (actualCount == null || actualCount < 0) {
+            throw new HrBusinessException("INVALID_ACTUAL_COUNT", "实际在职人数不能小于0");
         }
     }
 

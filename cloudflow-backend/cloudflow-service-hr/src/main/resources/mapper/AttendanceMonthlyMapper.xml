@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.AttendanceMonthlyMapper">
+
+    <!-- 查询异常考勤记录 -->
+    <select id="listAttendanceAnomalies" resultType="java.util.Map">
+        SELECT
+            e.id AS employeeId,
+            e.name AS employeeName,
+            e.employee_no AS employeeNo,
+            e.dept_id AS deptId,
+            ar.attendance_date AS attendanceDate,
+            ar.shift_id AS shiftId,
+            ar.check_type AS checkType,
+            ar.check_time AS checkTime,
+            ar.status AS anomalyType,
+            ar.remark AS remark,
+            CASE ar.status
+                WHEN 'LATE' THEN '迟到'
+                WHEN 'EARLY' THEN '早退'
+                WHEN 'MISSING' THEN '缺卡'
+                ELSE ar.status
+            END AS anomalyTypeName
+        FROM hr_attendance_record ar
+        INNER JOIN hr_employee e ON ar.employee_id = e.id
+        WHERE ar.tenant_id = #{tenantId}
+          AND ar.status IN ('LATE', 'EARLY', 'MISSING')
+          AND ar.deleted = 0
+          AND e.deleted = 0
+          <if test="employeeId != null">
+              AND ar.employee_id = #{employeeId}
+          </if>
+          <if test="deptId != null">
+              AND e.dept_id = #{deptId}
+          </if>
+          <if test="anomalyType != null and anomalyType != ''">
+              AND ar.status = #{anomalyType}
+          </if>
+          <if test="startDate != null and startDate != ''">
+              AND ar.attendance_date &gt;= #{startDate}
+          </if>
+          <if test="endDate != null and endDate != ''">
+              AND ar.attendance_date &lt;= #{endDate}
+          </if>
+        ORDER BY ar.attendance_date DESC, ar.check_time DESC
+    </select>
+
+    <!-- 统计部门出勤率 -->
+    <select id="getAttendanceRate" resultType="java.util.Map">
+        SELECT
+            #{deptId} AS deptId,
+            COUNT(DISTINCT am.employee_id) AS totalEmployees,
+            SUM(am.work_days) AS totalWorkDays,
+            SUM(am.actual_days) AS totalActualDays,
+            AVG(am.attendance_rate) AS averageAttendanceRate,
+            SUM(am.late_times) AS totalLateTimes,
+            SUM(am.early_times) AS totalEarlyTimes,
+            SUM(am.absent_days) AS totalAbsentDays,
+            SUM(am.missing_times) AS totalMissingTimes
+        FROM hr_attendance_monthly am
+        INNER JOIN hr_employee e ON am.employee_id = e.id
+        WHERE am.tenant_id = #{tenantId}
+          AND am.year = #{year}
+          AND am.month = #{month}
+          AND am.deleted = 0
+          AND e.deleted = 0
+          <if test="deptId != null">
+              AND e.dept_id = #{deptId}
+          </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.EmployeeContractMapper">
+
+    <!-- 查询即将到期的合同 -->
+    <select id="selectExpiringContracts" resultType="com.cloudflow.hr.domain.entity.EmployeeContract">
+        SELECT *
+        FROM hr_employee_contract
+        WHERE deleted = 0
+          AND status = 'ACTIVE'
+          AND end_date BETWEEN #{currentDate} AND DATE_ADD(#{currentDate}, INTERVAL #{days} DAY)
+        ORDER BY end_date ASC
+    </select>
+
+</mapper>

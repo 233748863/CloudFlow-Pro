@@ -157,6 +157,7 @@ export const Dashboard = () => {
 
   const shortcuts = [
     { label: '发起流程', icon: <PlayCircle size={20} />, path: '/workplace' },
+    { label: 'HR 工作台', icon: <Users size={20} />, path: '/hr/dashboard' },
     { label: '我的日程', icon: <CalendarDays size={20} />, path: '/schedule' },
     { label: '会议预约', icon: <Users size={20} />, path: '/meeting-room' },
     { label: '公告中心', icon: <Megaphone size={20} />, path: '/announcement' },

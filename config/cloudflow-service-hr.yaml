@@ -1,0 +1,177 @@
+# CloudFlow HR 人力资源服务配置文件
+# 此配置文件应上传到 Nacos 配置中心
+# Data ID: cloudflow-service-hr.yaml
+# Group: DEFAULT_GROUP
+
+spring:
+  # ==================== 多数据源配置（dynamic-datasource） ====================
+  # 使用 @DS("数据源名") 注解在 Mapper 层切换数据源
+  # 不加 @DS 注解的 Mapper 默认使用 primary 指定的数据源
+  datasource:
+    dynamic:
+      primary: master
+      strict: false
+      datasource:
+        # ---- 主数据源（HR 业务库） ----
+        master:
+          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+          username: root
+          password: Juwangkeji@2025
+          driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        pool-name: HRHikariCP
+        minimum-idle: 5
+        maximum-pool-size: 20
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+  
+  data:
+    redis:
+      host: 192.168.1.173
+      port: 6379
+      password: Juwangkeji@2025
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# HR模块业务配置
+cloudflow:
+  # 文件上传存储根路径
+  profile: /data/cloudflow/profile
+  
+  hr:
+    # 员工配置
+    employee:
+      # 员工编号前缀
+      id-prefix: "EMP"
+      # 员工编号长度
+      id-length: 8
+      # 试用期默认天数
+      probation-days: 90
+      # 合同到期提醒天数
+      contract-expire-remind-days: 30
+    
+    # 招聘配置
+    recruitment:
+      # 简历附件最大大小（MB）
+      max-resume-size: 10
+      # 面试邀请提前通知小时数
+      interview-remind-hours: 24
+      # 招聘流程默认阶段
+      default-stages:
+        - "简历筛选"
+        - "初试"
+        - "复试"
+        - "终面"
+        - "录用"
+    
+    # 培训配置
+    training:
+      # 培训签到提前分钟数
+      check-in-advance-minutes: 30
+      # 培训签到延迟分钟数
+      check-in-delay-minutes: 15
+      # 培训课程最大人数
+      max-participants: 100
+      # 培训证书有效期（月）
+      certificate-valid-months: 36
+    
+    # 绩效配置
+    performance:
+      # 绩效考核周期（月）
+      evaluation-cycle-months: 3
+      # 绩效等级
+      rating-levels:
+        - "优秀"
+        - "良好"
+        - "合格"
+        - "待改进"
+        - "不合格"
+      # 自评截止提醒天数
+      self-review-remind-days: 3
+      # 上级评审截止提醒天数
+      manager-review-remind-days: 5
+    
+    # 薪资配置
+    salary:
+      # 工资发放日
+      pay-day: 15
+      # 工资条发送提醒
+      payslip-remind-enabled: true
+      # 社保基数调整月份
+      social-security-adjust-months:
+        - 7
+      # 个税起征点
+      tax-threshold: 5000
+    
+    # 保险配置
+    insurance:
+      # 社保缴纳比例（企业）
+      social-security-company-rate:
+        pension: 0.16
+        medical: 0.08
+        unemployment: 0.005
+        injury: 0.002
+        maternity: 0.007
+      # 社保缴纳比例（个人）
+      social-security-personal-rate:
+        pension: 0.08
+        medical: 0.02
+        unemployment: 0.005
+      # 公积金缴纳比例
+      housing-fund-rate: 0.12
+
+    # 审批流程Key配置
+    workflow:
+      process-keys:
+        leave: leave_request
+        overtime: overtime_request
+        attendance-supplement: attendance_appeal
+        offer: offer_approval
+        onboarding: onboarding_approval
+        probation-confirmation: probation_confirmation_approval
+        recruitment-request: biz_recruit
+        resignation: resignation_approval
+        salary-adjustment: salary_adjustment_approval
+        transfer: transfer_approval
+
+# Feign配置
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 10000
+      # Auth服务客户端
+      cloudflow-auth:
+        connect-timeout: 3000
+        read-timeout: 5000
+      # Workflow服务客户端
+      cloudflow-workflow:
+        connect-timeout: 5000
+        read-timeout: 15000
+  hystrix:
+    enabled: true
+
+# Hystrix配置
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 10000
+
+# 日志配置
+logging:
+  level:
+    com.cloudflow.hr: DEBUG
+    com.cloudflow.hr.mapper: DEBUG
+    com.cloudflow.common.datascope: DEBUG
+

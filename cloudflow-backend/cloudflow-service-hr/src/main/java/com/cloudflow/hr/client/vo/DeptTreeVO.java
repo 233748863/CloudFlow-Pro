@@ -1,5 +1,6 @@
 package com.cloudflow.hr.client.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -13,6 +14,7 @@ import java.util.List;
  * @since 1.0.0
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DeptTreeVO implements Serializable {
     
     private static final long serialVersionUID = 1L;

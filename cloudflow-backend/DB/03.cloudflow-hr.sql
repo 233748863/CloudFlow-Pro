@@ -178,6 +178,9 @@ CREATE TABLE hr_employee (
     user_id BIGINT COMMENT '用户ID（关联Auth服务）',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
     PRIMARY KEY (id),
     UNIQUE KEY uk_tenant_employee_no (tenant_id, employee_no),
     KEY idx_tenant_id (tenant_id),
@@ -187,3 +190,1048 @@ CREATE TABLE hr_employee (
     KEY idx_user_id (user_id),
     KEY idx_employee_status (employee_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工档案表';
+
+-- 员工合同表
+DROP TABLE IF EXISTS hr_employee_contract;
+CREATE TABLE hr_employee_contract (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    employee_id BIGINT NOT NULL COMMENT '员工ID',
+    contract_type VARCHAR(20) NOT NULL COMMENT '合同类型：LABOR-劳动合同 SERVICE-劳务合同 INTERN-实习协议',
+    contract_no VARCHAR(100) NOT NULL COMMENT '合同编号',
+    sign_date DATE NOT NULL COMMENT '签订日期',
+    start_date DATE NOT NULL COMMENT '开始日期',
+    end_date DATE NOT NULL COMMENT '结束日期',
+    duration INT COMMENT '合同期限（月）',
+    file_url VARCHAR(500) COMMENT '合同文件URL',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 ACTIVE-生效中 EXPIRED-已过期 TERMINATED-已终止',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_contract_no (tenant_id, contract_no),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_employee_id (employee_id),
+    KEY idx_status (status),
+    KEY idx_end_date (end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工合同表';
+
+-- 员工证件表
+DROP TABLE IF EXISTS hr_employee_document;
+CREATE TABLE hr_employee_document (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    employee_id BIGINT NOT NULL COMMENT '员工ID',
+    document_type VARCHAR(20) NOT NULL COMMENT '证件类型：ID_CARD-身份证 PASSPORT-护照 DIPLOMA-学历证书 DEGREE-学位证书',
+    document_no VARCHAR(100) NOT NULL COMMENT '证件号码',
+    issue_date DATE COMMENT '签发日期',
+    expiry_date DATE COMMENT '有效期至',
+    file_url VARCHAR(500) COMMENT '证件扫描件URL',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_employee_id (employee_id),
+    KEY idx_document_type (document_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工证件表';
+
+-- 紧急联系人表
+DROP TABLE IF EXISTS hr_emergency_contact;
+CREATE TABLE hr_emergency_contact (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    employee_id BIGINT NOT NULL COMMENT '员工ID',
+    contact_name VARCHAR(100) NOT NULL COMMENT '联系人姓名',
+    relationship VARCHAR(20) NOT NULL COMMENT '关系：SPOUSE-配偶 PARENT-父母 SIBLING-兄弟姐妹 CHILD-子女 OTHER-其他',
+    phone VARCHAR(20) NOT NULL COMMENT '联系电话',
+    address VARCHAR(500) COMMENT '联系地址',
+    priority INT COMMENT '优先级：1-第一联系人 2-第二联系人',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_employee_id (employee_id),
+    KEY idx_priority (priority)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='紧急联系人表';
+
+-- =========================================================
+-- 员工生命周期管理表
+-- =========================================================
+
+-- 入职申请表
+DROP TABLE IF EXISTS hr_onboarding_application;
+CREATE TABLE hr_onboarding_application (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    application_no VARCHAR(50) NOT NULL COMMENT '申请编号',
+    candidate_id BIGINT COMMENT '候选人ID（如果来自招聘）',
+    name VARCHAR(100) NOT NULL COMMENT '姓名',
+    gender VARCHAR(20) DEFAULT NULL COMMENT '性别：MALE-男 FEMALE-女',
+    phone VARCHAR(20) NOT NULL COMMENT '手机号',
+    email VARCHAR(100) COMMENT '邮箱',
+    dept_id BIGINT NOT NULL COMMENT '部门ID',
+    post_id BIGINT NOT NULL COMMENT '岗位ID',
+    position_id BIGINT COMMENT '职位ID',
+    expected_date DATE NOT NULL COMMENT '预计入职日期',
+    process_instance_id VARCHAR(100) COMMENT '流程实例ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 ONBOARDED-已入职',
+    employee_id BIGINT COMMENT '员工ID（入职后生成）',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_application_no (tenant_id, application_no),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_candidate_id (candidate_id),
+    KEY idx_dept_id (dept_id),
+    KEY idx_status (status),
+    KEY idx_process_instance_id (process_instance_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='入职申请表';
+
+-- 入职任务表
+DROP TABLE IF EXISTS hr_onboarding_task;
+CREATE TABLE hr_onboarding_task (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    application_id BIGINT NOT NULL COMMENT '入职申请ID',
+    task_name VARCHAR(200) NOT NULL COMMENT '任务名称',
+    task_type VARCHAR(20) NOT NULL COMMENT '任务类型：DOCUMENT-资料收集 ACCOUNT-账号开通 EQUIPMENT-设备领用 TRAINING-培训',
+    task_description TEXT COMMENT '任务描述',
+    assignee_id BIGINT COMMENT '负责人ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING-待处理 IN_PROGRESS-处理中 COMPLETED-已完成',
+    completed_time DATETIME COMMENT '完成时间',
+    remark VARCHAR(500) COMMENT '备注',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_application_id (application_id),
+    KEY idx_task_type (task_type),
+    KEY idx_status (status),
+    KEY idx_assignee_id (assignee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='入职任务表';
+
+-- 转正申请表
+DROP TABLE IF EXISTS hr_probation_confirmation;
+CREATE TABLE hr_probation_confirmation (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    application_no VARCHAR(50) NOT NULL COMMENT '申请编号',
+    employee_id BIGINT NOT NULL COMMENT '员工ID',
+    probation_start_date DATE NOT NULL COMMENT '试用期开始日期',
+    probation_end_date DATE NOT NULL COMMENT '试用期结束日期',
+    expected_regular_date DATE NOT NULL COMMENT '预计转正日期',
+    self_evaluation TEXT COMMENT '自我评价',
+    manager_evaluation TEXT COMMENT '主管评价',
+    process_instance_id VARCHAR(100) COMMENT '流程实例ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 EXTENDED-延长试用期',
+    reject_reason VARCHAR(500) COMMENT '拒绝原因',
+    extension_days INT COMMENT '延长天数',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_application_no (tenant_id, application_no),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_employee_id (employee_id),
+    KEY idx_status (status),
+    KEY idx_process_instance_id (process_instance_id),
+    KEY idx_probation_end_date (probation_end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='转正申请表';
+
+-- 调岗申请表
+DROP TABLE IF EXISTS hr_transfer_application;
+CREATE TABLE hr_transfer_application (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    application_no VARCHAR(50) NOT NULL COMMENT '申请编号',
+    employee_id BIGINT NOT NULL COMMENT '员工ID',
+    from_dept_id BIGINT NOT NULL COMMENT '原部门ID',
+    from_post_id BIGINT NOT NULL COMMENT '原岗位ID',
+    from_position_id BIGINT COMMENT '原职位ID',
+    to_dept_id BIGINT NOT NULL COMMENT '目标部门ID',
+    to_post_id BIGINT NOT NULL COMMENT '目标岗位ID',
+    to_position_id BIGINT COMMENT '目标职位ID',
+    transfer_type VARCHAR(20) NOT NULL COMMENT '调岗类型：DEPT-部门调动 POST-岗位调整 PROMOTION-晋升 DEMOTION-降级',
+    reason TEXT COMMENT '调岗原因',
+    effective_date DATE NOT NULL COMMENT '生效日期',
+    salary_change TINYINT(1) DEFAULT 0 COMMENT '是否涉及薪资变更：0-否 1-是',
+    process_instance_id VARCHAR(100) COMMENT '流程实例ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 EFFECTIVE-已生效',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_application_no (tenant_id, application_no),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_employee_id (employee_id),
+    KEY idx_status (status),
+    KEY idx_process_instance_id (process_instance_id),
+    KEY idx_effective_date (effective_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='调岗申请表';
+
+-- 离职申请表
+DROP TABLE IF EXISTS hr_resignation_application;
+CREATE TABLE hr_resignation_application (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    application_no VARCHAR(50) NOT NULL COMMENT '申请编号',
+    employee_id BIGINT NOT NULL COMMENT '员工ID',
+    resignation_type VARCHAR(20) NOT NULL COMMENT '离职类型：VOLUNTARY-主动离职 INVOLUNTARY-被动离职 CONTRACT_EXPIRY-合同到期',
+    resignation_reason TEXT COMMENT '离职原因',
+    expected_date DATE NOT NULL COMMENT '预计离职日期',
+    actual_date DATE COMMENT '实际离职日期',
+    interview_content TEXT COMMENT '离职面谈内容',
+    process_instance_id VARCHAR(100) COMMENT '流程实例ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 COMPLETED-已完成',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_application_no (tenant_id, application_no),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_employee_id (employee_id),
+    KEY idx_status (status),
+    KEY idx_process_instance_id (process_instance_id),
+    KEY idx_expected_date (expected_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='离职申请表';
+
+-- 离职交接表
+DROP TABLE IF EXISTS hr_resignation_handover;
+CREATE TABLE hr_resignation_handover (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    application_id BIGINT NOT NULL COMMENT '离职申请ID',
+    handover_item VARCHAR(200) NOT NULL COMMENT '交接项目',
+    handover_type VARCHAR(20) NOT NULL COMMENT '交接类型：WORK-工作交接 ASSET-资产归还 DOCUMENT-文档交接 ACCOUNT-账号注销',
+    handover_to_id BIGINT COMMENT '交接对象ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING-待交接 COMPLETED-已完成',
+    completed_time DATETIME COMMENT '完成时间',
+    remark VARCHAR(500) COMMENT '备注',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_application_id (application_id),
+    KEY idx_handover_type (handover_type),
+    KEY idx_status (status),
+    KEY idx_handover_to_id (handover_to_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='离职交接表';
+
+
+-- =========================================================
+-- 五、考勤管理模块
+-- =========================================================
+
+-- 1. 班次表
+DROP TABLE IF EXISTS hr_shift;
+CREATE TABLE hr_shift (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  shift_code        VARCHAR(50)     NOT NULL COMMENT '班次编码',
+  shift_name        VARCHAR(100)    NOT NULL COMMENT '班次名称',
+  start_time        TIME            NOT NULL COMMENT '上班时间',
+  end_time          TIME            NOT NULL COMMENT '下班时间',
+  break_minutes     INT(11)         NOT NULL DEFAULT 0 COMMENT '休息时长（分钟）',
+  late_threshold    INT(11)         NOT NULL DEFAULT 15 COMMENT '迟到阈值（分钟）',
+  early_threshold   INT(11)         NOT NULL DEFAULT 15 COMMENT '早退阈值（分钟）',
+  work_minutes      INT(11)         NOT NULL DEFAULT 0 COMMENT '工作时长（分钟）',
+  color             VARCHAR(20)     DEFAULT '#1890ff' COMMENT '显示颜色',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_shift_code (tenant_id, shift_code),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='班次表';
+
+-- 2. 排班规则表
+DROP TABLE IF EXISTS hr_schedule_rule;
+CREATE TABLE hr_schedule_rule (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  rule_name         VARCHAR(100)    NOT NULL COMMENT '规则名称',
+  rule_type         VARCHAR(20)     NOT NULL COMMENT '规则类型：FIXED-固定班 ROTATION-轮班 FLEXIBLE-弹性工作制 COMPREHENSIVE-综合工时制',
+  rule_config       TEXT            DEFAULT NULL COMMENT '规则配置（JSON格式）',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '规则描述',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_rule_type (rule_type),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='排班规则表';
+
+-- 3. 排班计划表
+DROP TABLE IF EXISTS hr_schedule_plan;
+CREATE TABLE hr_schedule_plan (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  plan_name         VARCHAR(100)    NOT NULL COMMENT '计划名称',
+  target_type       VARCHAR(20)     NOT NULL COMMENT '目标类型：EMPLOYEE-员工 DEPT-部门',
+  target_id         BIGINT(20)      NOT NULL COMMENT '目标ID（员工ID或部门ID）',
+  shift_id          BIGINT(20)      NOT NULL COMMENT '班次ID',
+  schedule_date     DATE            NOT NULL COMMENT '排班日期',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 PUBLISHED-已发布 CANCELLED-已取消',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         BIGINT(20)      DEFAULT NULL COMMENT '创建人ID',
+  update_by         BIGINT(20)      DEFAULT NULL COMMENT '更新人ID',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_target (target_type, target_id),
+  KEY idx_shift_id (shift_id),
+  KEY idx_schedule_date (schedule_date),
+  KEY idx_status (status),
+  KEY idx_target_date (tenant_id, target_type, target_id, schedule_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='排班计划表';
+
+-- 4. 打卡记录表
+DROP TABLE IF EXISTS hr_attendance_record;
+CREATE TABLE hr_attendance_record (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  attendance_date   DATE            NOT NULL COMMENT '考勤日期',
+  shift_id          BIGINT(20)      DEFAULT NULL COMMENT '班次ID',
+  check_type        VARCHAR(20)     NOT NULL COMMENT '打卡类型：CHECK_IN-上班打卡 CHECK_OUT-下班打卡',
+  check_time        DATETIME        NOT NULL COMMENT '打卡时间',
+  check_method      VARCHAR(20)     NOT NULL COMMENT '打卡方式：GPS-定位打卡 WIFI-WiFi打卡 FACE-人脸识别 SUPPLEMENT-补卡',
+  location          VARCHAR(500)    DEFAULT NULL COMMENT '打卡位置（GPS坐标或WiFi SSID）',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'NORMAL' COMMENT '状态：NORMAL-正常 LATE-迟到 EARLY-早退 MISSING-缺卡 SUPPLEMENT-补卡',
+  process_instance_id VARCHAR(100)  DEFAULT NULL COMMENT '补卡流程实例ID',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         BIGINT(20)      DEFAULT NULL COMMENT '创建人ID',
+  update_by         BIGINT(20)      DEFAULT NULL COMMENT '更新人ID',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_attendance_date (attendance_date),
+  KEY idx_shift_id (shift_id),
+  KEY idx_check_type (check_type),
+  KEY idx_status (status),
+  KEY idx_employee_date (employee_id, attendance_date),
+  KEY idx_tenant_employee_date (tenant_id, employee_id, attendance_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='打卡记录表';
+
+-- 插入示例班次数据
+INSERT INTO hr_shift (tenant_id, shift_code, shift_name, start_time, end_time, break_minutes, late_threshold, early_threshold, work_minutes, color, status) VALUES
+(100000, 'MORNING', '早班', '08:00:00', '17:00:00', 60, 15, 15, 480, '#1890ff', 1),
+(100000, 'AFTERNOON', '中班', '13:00:00', '22:00:00', 60, 15, 15, 480, '#52c41a', 1),
+(100000, 'NIGHT', '晚班', '22:00:00', '07:00:00', 60, 15, 15, 480, '#722ed1', 1),
+(100000, 'STANDARD', '标准班', '09:00:00', '18:00:00', 60, 15, 15, 480, '#1890ff', 1);
+
+-- 插入示例排班规则数据
+INSERT INTO hr_schedule_rule (tenant_id, rule_name, rule_type, rule_config, description, status) VALUES
+(100000, '固定早班制', 'FIXED', '{"shiftId": 100}', '每天固定早班，适用于行政人员', 1),
+(100000, '三班轮换制', 'ROTATION', '{"cycle": 7, "shifts": [100, 101, 102]}', '早中晚三班轮换，适用于生产线', 1),
+(100000, '弹性工作制', 'FLEXIBLE', '{"coreTime": {"start": "10:00", "end": "16:00"}, "dailyHours": 8}', '核心时间段必须在岗，其他时间灵活安排', 1);
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+
+-- =========================================================
+-- 假期管理表
+-- =========================================================
+
+-- 5. 假期类型表
+DROP TABLE IF EXISTS hr_leave_type;
+CREATE TABLE hr_leave_type (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  leave_code        VARCHAR(50)     NOT NULL COMMENT '假期编码',
+  leave_name        VARCHAR(100)    NOT NULL COMMENT '假期名称',
+  need_quota        TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '是否需要额度：0-否 1-是',
+  is_paid           TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '是否带薪：0-否 1-是',
+  unit              VARCHAR(20)     NOT NULL DEFAULT 'DAY' COMMENT '计算单位：DAY-天 HOUR-小时',
+  quota_rule        TEXT            DEFAULT NULL COMMENT '额度规则（JSON格式）',
+  expiry_rule       TEXT            DEFAULT NULL COMMENT '过期规则（JSON格式）',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_leave_code (tenant_id, leave_code),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='假期类型表';
+
+-- 6. 假期额度表
+DROP TABLE IF EXISTS hr_leave_quota;
+CREATE TABLE hr_leave_quota (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  leave_type_id     BIGINT(20)      NOT NULL COMMENT '假期类型ID',
+  year              INT(11)         NOT NULL COMMENT '年度',
+  total_quota       DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '总额度',
+  used_quota        DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '已使用额度',
+  frozen_quota      DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '冻结额度（审批中）',
+  available_quota   DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '可用额度',
+  expiry_date       DATE            DEFAULT NULL COMMENT '过期日期',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_employee_leave_year (tenant_id, employee_id, leave_type_id, year),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_leave_type_id (leave_type_id),
+  KEY idx_year (year),
+  KEY idx_expiry_date (expiry_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='假期额度表';
+
+-- 7. 请假申请表
+DROP TABLE IF EXISTS hr_leave_application;
+CREATE TABLE hr_leave_application (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  application_no    VARCHAR(50)     NOT NULL COMMENT '申请编号',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  leave_type_id     BIGINT(20)      NOT NULL COMMENT '假期类型ID',
+  start_time        DATETIME        NOT NULL COMMENT '开始时间',
+  end_time          DATETIME        NOT NULL COMMENT '结束时间',
+  duration          DECIMAL(10,2)   NOT NULL COMMENT '请假时长',
+  unit              VARCHAR(20)     NOT NULL DEFAULT 'DAY' COMMENT '单位：DAY-天 HOUR-小时',
+  reason            TEXT            DEFAULT NULL COMMENT '请假原因',
+  process_instance_id VARCHAR(100)  DEFAULT NULL COMMENT '流程实例ID',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 CANCELLED-已撤销',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_application_no (tenant_id, application_no),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_leave_type_id (leave_type_id),
+  KEY idx_status (status),
+  KEY idx_process_instance_id (process_instance_id),
+  KEY idx_start_time (start_time),
+  KEY idx_end_time (end_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='请假申请表';
+
+-- 插入示例假期类型数据
+INSERT INTO hr_leave_type (tenant_id, leave_code, leave_name, need_quota, is_paid, unit, quota_rule, expiry_rule, status) VALUES
+(100000, 'ANNUAL', '年假', 1, 1, 'DAY', '{"baseQuota": 5, "incrementPerYear": 1, "maxQuota": 15}', '{"expiryType": "YEAR_END", "carryOver": false}', 1),
+(100000, 'SICK', '病假', 0, 1, 'DAY', NULL, NULL, 1),
+(100000, 'PERSONAL', '事假', 0, 0, 'DAY', NULL, NULL, 1),
+(100000, 'MARRIAGE', '婚假', 0, 1, 'DAY', '{"quota": 3}', NULL, 1),
+(100000, 'MATERNITY', '产假', 0, 1, 'DAY', '{"quota": 98}', NULL, 1),
+(100000, 'PATERNITY', '陪产假', 0, 1, 'DAY', '{"quota": 15}', NULL, 1),
+(100000, 'BEREAVEMENT', '丧假', 0, 1, 'DAY', '{"quota": 3}', NULL, 1),
+(100000, 'COMPENSATORY', '调休', 1, 1, 'HOUR', NULL, '{"expiryType": "FIXED_DAYS", "days": 90}', 1);
+
+-- =========================================================
+-- 加班管理表
+-- =========================================================
+
+-- 8. 加班申请表
+DROP TABLE IF EXISTS hr_overtime_application;
+CREATE TABLE hr_overtime_application (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  application_no    VARCHAR(50)     NOT NULL COMMENT '申请编号',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  start_time        DATETIME        NOT NULL COMMENT '开始时间',
+  end_time          DATETIME        NOT NULL COMMENT '结束时间',
+  duration          DECIMAL(10,2)   NOT NULL COMMENT '加班时长（小时）',
+  overtime_type     VARCHAR(20)     NOT NULL COMMENT '加班类型：WORKDAY-工作日 WEEKEND-周末 HOLIDAY-节假日',
+  reason            TEXT            DEFAULT NULL COMMENT '加班原因',
+  compensation_type VARCHAR(20)     NOT NULL DEFAULT 'TIME_OFF' COMMENT '补偿类型：TIME_OFF-调休 PAYMENT-加班费',
+  compensation_hours DECIMAL(10,2)  DEFAULT NULL COMMENT '补偿时长（调休小时数）',
+  process_instance_id VARCHAR(100)  DEFAULT NULL COMMENT '流程实例ID',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_application_no (tenant_id, application_no),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_overtime_type (overtime_type),
+  KEY idx_status (status),
+  KEY idx_process_instance_id (process_instance_id),
+  KEY idx_start_time (start_time),
+  KEY idx_end_time (end_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='加班申请表';
+
+-- =========================================================
+-- 考勤统计表
+-- =========================================================
+
+-- 9. 考勤月报表
+DROP TABLE IF EXISTS hr_attendance_monthly;
+CREATE TABLE hr_attendance_monthly (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  year              INT(11)         NOT NULL COMMENT '年份',
+  month             INT(11)         NOT NULL COMMENT '月份',
+  work_days         INT(11)         NOT NULL DEFAULT 0 COMMENT '应出勤天数',
+  actual_days       INT(11)         NOT NULL DEFAULT 0 COMMENT '实际出勤天数',
+  late_times        INT(11)         NOT NULL DEFAULT 0 COMMENT '迟到次数',
+  early_times       INT(11)         NOT NULL DEFAULT 0 COMMENT '早退次数',
+  absent_days       INT(11)         NOT NULL DEFAULT 0 COMMENT '旷工天数',
+  missing_times     INT(11)         NOT NULL DEFAULT 0 COMMENT '缺卡次数',
+  leave_days        DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '请假天数',
+  overtime_hours    DECIMAL(10,2)   NOT NULL DEFAULT 0.00 COMMENT '加班时长（小时）',
+  attendance_rate   DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '出勤率（百分比）',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 CONFIRMED-已确认',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_employee_year_month (tenant_id, employee_id, year, month),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_year_month (year, month),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='考勤月报表';
+
+-- =========================================================
+-- 四、薪酬管理模块
+-- =========================================================
+
+-- 1. 薪资项目表
+DROP TABLE IF EXISTS hr_salary_item;
+CREATE TABLE hr_salary_item (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  item_code         VARCHAR(50)     NOT NULL COMMENT '项目编码',
+  item_name         VARCHAR(100)    NOT NULL COMMENT '项目名称',
+  item_type         VARCHAR(20)     NOT NULL COMMENT '项目类型：FIXED-固定项 VARIABLE-浮动项',
+  category          VARCHAR(20)     NOT NULL COMMENT '分类：BASIC-基本工资 ALLOWANCE-津贴 BONUS-奖金 DEDUCTION-扣款 INSURANCE-社保 TAX-个税',
+  is_taxable        TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '是否计税：0-否 1-是',
+  formula           VARCHAR(500)    DEFAULT NULL COMMENT '计算公式（支持表达式）',
+  sort_order        INT(11)         DEFAULT 0 COMMENT '排序号',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_item_code (tenant_id, item_code),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_item_type (item_type),
+  KEY idx_category (category),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='薪资项目表';
+
+-- 2. 薪资结构表
+DROP TABLE IF EXISTS hr_salary_structure;
+CREATE TABLE hr_salary_structure (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  structure_code    VARCHAR(50)     NOT NULL COMMENT '结构编码',
+  structure_name    VARCHAR(100)    NOT NULL COMMENT '结构名称',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '描述',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_structure_code (tenant_id, structure_code),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='薪资结构表';
+
+-- 3. 薪资结构项目关联表
+DROP TABLE IF EXISTS hr_salary_structure_item;
+CREATE TABLE hr_salary_structure_item (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  structure_id      BIGINT(20)      NOT NULL COMMENT '薪资结构ID',
+  item_id           BIGINT(20)      NOT NULL COMMENT '薪资项目ID',
+  sort_order        INT(11)         DEFAULT 0 COMMENT '排序号',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_structure_item (tenant_id, structure_id, item_id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_structure_id (structure_id),
+  KEY idx_item_id (item_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='薪资结构项目关联表';
+
+-- 4. 薪资等级表
+DROP TABLE IF EXISTS hr_salary_grade;
+CREATE TABLE hr_salary_grade (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  level_id          BIGINT(20)      NOT NULL COMMENT '职级ID',
+  min_salary        DECIMAL(12,2)   NOT NULL COMMENT '最低薪资',
+  max_salary        DECIMAL(12,2)   NOT NULL COMMENT '最高薪资',
+  mid_salary        DECIMAL(12,2)   NOT NULL COMMENT '中位薪资',
+  currency          VARCHAR(10)     NOT NULL DEFAULT 'CNY' COMMENT '币种：CNY-人民币 USD-美元',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_level (tenant_id, level_id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_level_id (level_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='薪资等级表';
+
+-- 插入示例薪资项目数据
+INSERT INTO hr_salary_item (tenant_id, item_code, item_name, item_type, category, is_taxable, sort_order, status) VALUES
+(100000, 'BASIC_SALARY', '基本工资', 'FIXED', 'BASIC', 1, 1, 1),
+(100000, 'POSITION_ALLOWANCE', '岗位津贴', 'FIXED', 'ALLOWANCE', 1, 2, 1),
+(100000, 'MEAL_ALLOWANCE', '餐补', 'FIXED', 'ALLOWANCE', 0, 3, 1),
+(100000, 'TRANSPORT_ALLOWANCE', '交通补贴', 'FIXED', 'ALLOWANCE', 0, 4, 1),
+(100000, 'PERFORMANCE_BONUS', '绩效奖金', 'VARIABLE', 'BONUS', 1, 5, 1),
+(100000, 'YEAR_END_BONUS', '年终奖', 'VARIABLE', 'BONUS', 1, 6, 1),
+(100000, 'LATE_DEDUCTION', '迟到扣款', 'VARIABLE', 'DEDUCTION', 0, 7, 1),
+(100000, 'ABSENT_DEDUCTION', '旷工扣款', 'VARIABLE', 'DEDUCTION', 0, 8, 1);
+
+-- 插入示例薪资结构数据
+INSERT INTO hr_salary_structure (tenant_id, structure_code, structure_name, description, status) VALUES
+(100000, 'STANDARD', '标准薪资结构', '适用于大部分员工的标准薪资结构', 1),
+(100000, 'EXECUTIVE', '高管薪资结构', '适用于高级管理人员的薪资结构', 1),
+(100000, 'SALES', '销售薪资结构', '适用于销售人员的薪资结构', 1);
+
+-- 插入薪资结构项目关联数据（标准薪资结构）
+INSERT INTO hr_salary_structure_item (tenant_id, structure_id, item_id, sort_order) VALUES
+(100000, 100, 100, 1),  -- 基本工资
+(100000, 100, 101, 2),  -- 岗位津贴
+(100000, 100, 102, 3),  -- 餐补
+(100000, 100, 103, 4),  -- 交通补贴
+(100000, 100, 104, 5);  -- 绩效奖金
+
+-- 5. 员工薪资表
+DROP TABLE IF EXISTS hr_employee_salary;
+CREATE TABLE hr_employee_salary (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  structure_id      BIGINT(20)      NOT NULL COMMENT '薪资结构ID',
+  salary_data       TEXT            DEFAULT NULL COMMENT '薪资数据（JSON格式，存储各项目金额）',
+  total_salary      DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '总薪资',
+  effective_date    DATE            NOT NULL COMMENT '生效日期',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：DRAFT-草稿 ACTIVE-生效中 EXPIRED-已过期',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_structure_id (structure_id),
+  KEY idx_status (status),
+  KEY idx_effective_date (effective_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='员工薪资表';
+
+-- 6. 调薪申请表
+DROP TABLE IF EXISTS hr_salary_adjustment;
+CREATE TABLE hr_salary_adjustment (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  application_no    VARCHAR(50)     NOT NULL COMMENT '申请编号',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  adjustment_type   VARCHAR(20)     NOT NULL COMMENT '调薪类型：PROMOTION-晋升调薪 ANNUAL-年度调薪 PERFORMANCE-绩效调薪 MARKET-市场调薪',
+  adjustment_reason VARCHAR(500)    DEFAULT NULL COMMENT '调薪原因',
+  before_salary_data TEXT           DEFAULT NULL COMMENT '调薪前薪资数据（JSON）',
+  after_salary_data TEXT            DEFAULT NULL COMMENT '调薪后薪资数据（JSON）',
+  before_total      DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '调薪前总额',
+  after_total       DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '调薪后总额',
+  adjustment_amount DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '调薪金额',
+  adjustment_rate   DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '调薪比例（百分比）',
+  effective_date    DATE            NOT NULL COMMENT '生效日期',
+  process_instance_id VARCHAR(100)  DEFAULT NULL COMMENT '流程实例ID',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 EFFECTIVE-已生效',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_application_no (tenant_id, application_no),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_status (status),
+  KEY idx_effective_date (effective_date),
+  KEY idx_process_instance_id (process_instance_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='调薪申请表';
+
+-- 7. 五险一金方案表
+DROP TABLE IF EXISTS hr_insurance_scheme;
+CREATE TABLE hr_insurance_scheme (
+  id                        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id                 BIGINT(20)      NOT NULL COMMENT '租户ID',
+  scheme_name               VARCHAR(100)    NOT NULL COMMENT '方案名称',
+  city                      VARCHAR(50)     NOT NULL COMMENT '城市',
+  pension_company_rate      DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '养老保险-公司比例（%）',
+  pension_personal_rate     DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '养老保险-个人比例（%）',
+  medical_company_rate      DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '医疗保险-公司比例（%）',
+  medical_personal_rate     DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '医疗保险-个人比例（%）',
+  unemployment_company_rate DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '失业保险-公司比例（%）',
+  unemployment_personal_rate DECIMAL(5,2)   NOT NULL DEFAULT 0.00 COMMENT '失业保险-个人比例（%）',
+  injury_company_rate       DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '工伤保险-公司比例（%）',
+  maternity_company_rate    DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '生育保险-公司比例（%）',
+  housing_fund_company_rate DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '公积金-公司比例（%）',
+  housing_fund_personal_rate DECIMAL(5,2)   NOT NULL DEFAULT 0.00 COMMENT '公积金-个人比例（%）',
+  base_min                  DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '缴纳基数下限',
+  base_max                  DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '缴纳基数上限',
+  base_rule                 VARCHAR(500)    DEFAULT NULL COMMENT '基数计算规则',
+  effective_date            DATE            NOT NULL COMMENT '生效日期',
+  status                    TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by                 VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by                 VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted                   TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_city (city),
+  KEY idx_status (status),
+  KEY idx_effective_date (effective_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='五险一金方案表';
+
+-- 8. 员工五险一金表
+DROP TABLE IF EXISTS hr_employee_insurance;
+CREATE TABLE hr_employee_insurance (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  scheme_id         BIGINT(20)      NOT NULL COMMENT '方案ID',
+  base              DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '缴纳基数',
+  effective_date    DATE            NOT NULL COMMENT '生效日期',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE-生效中 EXPIRED-已过期',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_scheme_id (scheme_id),
+  KEY idx_status (status),
+  KEY idx_effective_date (effective_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='员工五险一金表';
+
+-- 插入示例五险一金方案数据（北京地区）
+INSERT INTO hr_insurance_scheme (
+  tenant_id, scheme_name, city,
+  pension_company_rate, pension_personal_rate,
+  medical_company_rate, medical_personal_rate,
+  unemployment_company_rate, unemployment_personal_rate,
+  injury_company_rate, maternity_company_rate,
+  housing_fund_company_rate, housing_fund_personal_rate,
+  base_min, base_max, base_rule, effective_date, status
+) VALUES (
+  100000, '北京标准方案', '北京',
+  16.00, 8.00,  -- 养老保险
+  9.80, 2.00,   -- 医疗保险
+  0.50, 0.50,   -- 失业保险
+  0.40, 0.80,   -- 工伤保险、生育保险
+  12.00, 12.00, -- 公积金
+  5869.00, 33891.00, '按上年度月平均工资计算', '2026-01-01', 1
+);
+
+-- 插入示例五险一金方案数据（上海地区）
+INSERT INTO hr_insurance_scheme (
+  tenant_id, scheme_name, city,
+  pension_company_rate, pension_personal_rate,
+  medical_company_rate, medical_personal_rate,
+  unemployment_company_rate, unemployment_personal_rate,
+  injury_company_rate, maternity_company_rate,
+  housing_fund_company_rate, housing_fund_personal_rate,
+  base_min, base_max, base_rule, effective_date, status
+) VALUES (
+  100000, '上海标准方案', '上海',
+  16.00, 8.00,  -- 养老保险
+  10.00, 2.00,  -- 医疗保险
+  0.50, 0.50,   -- 失业保险
+  0.26, 1.00,   -- 工伤保险、生育保险
+  7.00, 7.00,   -- 公积金
+  6520.00, 36549.00, '按上年度月平均工资计算', '2026-01-01', 1
+);
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- =========================================================
+-- 五、招聘管理模块
+-- =========================================================
+
+-- 1. 招聘需求表
+DROP TABLE IF EXISTS hr_recruitment_request;
+CREATE TABLE hr_recruitment_request (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  request_no        VARCHAR(50)     NOT NULL COMMENT '需求编号',
+  dept_id           BIGINT(20)      NOT NULL COMMENT '部门ID',
+  position_id       BIGINT(20)      NOT NULL COMMENT '职位ID',
+  headcount         INT(11)         NOT NULL DEFAULT 1 COMMENT '招聘人数',
+  job_requirements  TEXT            DEFAULT NULL COMMENT '任职要求',
+  salary_min        DECIMAL(12,2)   DEFAULT NULL COMMENT '薪资范围-最低',
+  salary_max        DECIMAL(12,2)   DEFAULT NULL COMMENT '薪资范围-最高',
+  expected_date     DATE            DEFAULT NULL COMMENT '期望到岗日期',
+  process_instance_id VARCHAR(100)  DEFAULT NULL COMMENT '流程实例ID',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 RECRUITING-招聘中 COMPLETED-已完成 CANCELLED-已取消',
+  hired_count       INT(11)         NOT NULL DEFAULT 0 COMMENT '已招聘人数',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_request_no (tenant_id, request_no),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_dept_id (dept_id),
+  KEY idx_position_id (position_id),
+  KEY idx_status (status),
+  KEY idx_process_instance_id (process_instance_id),
+  KEY idx_expected_date (expected_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='招聘需求表';
+
+-- 2. 候选人表
+DROP TABLE IF EXISTS hr_candidate;
+CREATE TABLE hr_candidate (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  request_id        BIGINT(20)      NOT NULL COMMENT '招聘需求ID',
+  name              VARCHAR(100)    NOT NULL COMMENT '姓名',
+  gender            VARCHAR(20)     DEFAULT NULL COMMENT '性别：MALE-男 FEMALE-女',
+  phone             VARCHAR(20)     NOT NULL COMMENT '手机号',
+  email             VARCHAR(100)    DEFAULT NULL COMMENT '邮箱',
+  resume_url        VARCHAR(500)    DEFAULT NULL COMMENT '简历URL',
+  source            VARCHAR(50)     DEFAULT NULL COMMENT '来源：WEBSITE-官网 REFERRAL-内推 HEADHUNTER-猎头 CAMPUS-校招',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'NEW' COMMENT '状态：NEW-新简历 SCREENING-筛选中 INTERVIEW-面试中 OFFER-已发Offer HIRED-已入职 REJECTED-已拒绝',
+  reject_reason     VARCHAR(500)    DEFAULT NULL COMMENT '拒绝原因',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_request_id (request_id),
+  KEY idx_phone (phone),
+  KEY idx_email (email),
+  KEY idx_status (status),
+  KEY idx_source (source),
+  KEY idx_create_time (create_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='候选人表';
+
+-- 3. 面试表
+DROP TABLE IF EXISTS hr_interview;
+CREATE TABLE hr_interview (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  candidate_id      BIGINT(20)      NOT NULL COMMENT '候选人ID',
+  interview_round   VARCHAR(20)     NOT NULL COMMENT '面试轮次：FIRST-初试 SECOND-复试 FINAL-终试',
+  interview_type    VARCHAR(20)     NOT NULL COMMENT '面试类型：PHONE-电话面试 VIDEO-视频面试 ONSITE-现场面试',
+  interview_time    DATETIME        NOT NULL COMMENT '面试时间',
+  location          VARCHAR(500)    DEFAULT NULL COMMENT '面试地点',
+  interviewers      TEXT            DEFAULT NULL COMMENT '面试官ID列表（JSON格式）',
+  evaluation        TEXT            DEFAULT NULL COMMENT '面试评价',
+  score             INT(11)         DEFAULT NULL COMMENT '面试评分（0-100）',
+  result            VARCHAR(20)     DEFAULT NULL COMMENT '面试结果：PASS-通过 FAIL-不通过 PENDING-待定',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'SCHEDULED' COMMENT '状态：SCHEDULED-已安排 COMPLETED-已完成 CANCELLED-已取消',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_candidate_id (candidate_id),
+  KEY idx_interview_round (interview_round),
+  KEY idx_interview_type (interview_type),
+  KEY idx_interview_time (interview_time),
+  KEY idx_status (status),
+  KEY idx_result (result),
+  KEY idx_create_time (create_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='面试表';
+
+-- 4. Offer表
+DROP TABLE IF EXISTS hr_offer;
+CREATE TABLE hr_offer (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  offer_no          VARCHAR(50)     NOT NULL COMMENT 'Offer编号',
+  candidate_id      BIGINT(20)      NOT NULL COMMENT '候选人ID',
+  dept_id           BIGINT(20)      NOT NULL COMMENT '部门ID',
+  position_id       BIGINT(20)      NOT NULL COMMENT '职位ID',
+  salary            DECIMAL(10,2)   NOT NULL COMMENT '薪资',
+  expected_date     DATE            NOT NULL COMMENT '期望入职日期',
+  expiry_date       DATE            NOT NULL COMMENT 'Offer有效期',
+  offer_content     TEXT            DEFAULT NULL COMMENT 'Offer内容',
+  process_instance_id VARCHAR(64)   DEFAULT NULL COMMENT '流程实例ID',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 SENT-已发送 ACCEPTED-已接受 REJECTED-已拒绝 EXPIRED-已过期',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_offer_no (offer_no),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_candidate_id (candidate_id),
+  KEY idx_dept_id (dept_id),
+  KEY idx_position_id (position_id),
+  KEY idx_status (status),
+  KEY idx_expected_date (expected_date),
+  KEY idx_expiry_date (expiry_date),
+  KEY idx_process_instance_id (process_instance_id),
+  KEY idx_create_time (create_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='Offer表';
+
+-- =========================================================
+-- 六、个税管理模块
+-- =========================================================
+
+-- 1. 个税配置表
+DROP TABLE IF EXISTS hr_tax_config;
+CREATE TABLE hr_tax_config (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  threshold         DECIMAL(10,2)   NOT NULL COMMENT '起征点（个税免征额）',
+  tax_brackets      TEXT            NOT NULL COMMENT '税率表（JSON格式）',
+  deduction_items   TEXT            DEFAULT NULL COMMENT '专项附加扣除项目（JSON格式）',
+  effective_date    DATE            NOT NULL COMMENT '生效日期',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_effective_date (effective_date),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='个税配置表';
+
+-- 2. 员工专项扣除表
+DROP TABLE IF EXISTS hr_employee_tax_deduction;
+CREATE TABLE hr_employee_tax_deduction (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
+  deduction_type    VARCHAR(50)     NOT NULL COMMENT '扣除类型：CHILD_EDU-子女教育 CONTINUING_EDU-继续教育 MEDICAL-大病医疗 HOUSING_LOAN-住房贷款利息 HOUSING_RENT-住房租金 ELDERLY_CARE-赡养老人',
+  amount            DECIMAL(10,2)   NOT NULL COMMENT '扣除金额（每月）',
+  start_date        DATE            NOT NULL COMMENT '开始日期',
+  end_date          DATE            DEFAULT NULL COMMENT '结束日期',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE-生效中 EXPIRED-已过期',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_employee_id (employee_id),
+  KEY idx_deduction_type (deduction_type),
+  KEY idx_status (status),
+  KEY idx_start_date (start_date),
+  KEY idx_end_date (end_date)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='员工专项扣除表';
+
+-- 插入示例个税配置数据（2026年标准）
+INSERT INTO hr_tax_config (
+  tenant_id, threshold, tax_brackets, deduction_items, effective_date, status
+) VALUES (
+  100000, 5000.00,
+  '[{"min":0,"max":36000,"rate":0.03,"deduction":0},{"min":36000,"max":144000,"rate":0.10,"deduction":2520},{"min":144000,"max":300000,"rate":0.20,"deduction":16920},{"min":300000,"max":420000,"rate":0.25,"deduction":31920},{"min":420000,"max":660000,"rate":0.30,"deduction":52920},{"min":660000,"max":960000,"rate":0.35,"deduction":85920},{"min":960000,"rate":0.45,"deduction":181920}]',
+  '{"CHILD_EDU":1000,"CONTINUING_EDU":400,"MEDICAL":0,"HOUSING_LOAN":1000,"HOUSING_RENT":0,"ELDERLY_CARE":2000}',
+  '2026-01-01', 1
+);
+
+-- 员工专项扣除依赖员工档案，初始化脚本不预置员工级数据，避免产生孤儿记录
+
+-- =========================================================
+-- 八、审计日志模块
+-- =========================================================
+
+-- 1. 审计日志表
+DROP TABLE IF EXISTS hr_audit_log;
+CREATE TABLE hr_audit_log (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  log_type          VARCHAR(20)     NOT NULL COMMENT '日志类型：OPERATION-操作日志 APPROVAL-审批日志',
+  operation_type    VARCHAR(20)     NOT NULL COMMENT '操作类型：CREATE-创建 UPDATE-修改 DELETE-删除 APPROVE-审批 REJECT-拒绝',
+  business_module   VARCHAR(50)     NOT NULL COMMENT '业务模块：EMPLOYEE-员工管理 ATTENDANCE-考勤管理 SALARY-薪酬管理 RECRUITMENT-招聘管理',
+  business_type     VARCHAR(50)     NOT NULL COMMENT '业务类型：具体的业务实体类型',
+  business_id       BIGINT(20)      DEFAULT NULL COMMENT '业务ID：关联的业务数据主键',
+  business_no       VARCHAR(100)    DEFAULT NULL COMMENT '业务编号：业务数据的编号',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
+  operator_name     VARCHAR(100)    DEFAULT NULL COMMENT '操作人姓名',
+  operation_desc    VARCHAR(500)    DEFAULT NULL COMMENT '操作描述',
+  before_data       TEXT            DEFAULT NULL COMMENT '变更前数据（JSON格式）',
+  after_data        TEXT            DEFAULT NULL COMMENT '变更后数据（JSON格式）',
+  change_content    VARCHAR(1000)   DEFAULT NULL COMMENT '变更内容描述',
+  approval_comment  VARCHAR(500)    DEFAULT NULL COMMENT '审批意见',
+  approval_result   VARCHAR(20)     DEFAULT NULL COMMENT '审批结果：APPROVED-通过 REJECTED-拒绝',
+  ip_address        VARCHAR(50)     DEFAULT NULL COMMENT 'IP地址',
+  user_agent        VARCHAR(500)    DEFAULT NULL COMMENT '用户代理（浏览器信息）',
+  request_uri       VARCHAR(200)    DEFAULT NULL COMMENT '请求URI',
+  request_method    VARCHAR(10)     DEFAULT NULL COMMENT '请求方法：GET POST PUT DELETE',
+  request_params    TEXT            DEFAULT NULL COMMENT '请求参数（JSON格式）',
+  execution_time    BIGINT(20)      DEFAULT NULL COMMENT '执行时长（毫秒）',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'SUCCESS' COMMENT '操作状态：SUCCESS-成功 FAILURE-失败',
+  error_message     TEXT            DEFAULT NULL COMMENT '错误信息',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  archived          TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '是否已归档：0-未归档 1-已归档',
+  archive_time      DATETIME        DEFAULT NULL COMMENT '归档时间',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_log_type (log_type),
+  KEY idx_operation_type (operation_type),
+  KEY idx_business_module (business_module),
+  KEY idx_business_type (business_type),
+  KEY idx_business_id (business_id),
+  KEY idx_business_no (business_no),
+  KEY idx_operator_id (operator_id),
+  KEY idx_create_time (create_time),
+  KEY idx_archived (archived),
+  KEY idx_tenant_business (tenant_id, business_module, business_type, business_id)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
+

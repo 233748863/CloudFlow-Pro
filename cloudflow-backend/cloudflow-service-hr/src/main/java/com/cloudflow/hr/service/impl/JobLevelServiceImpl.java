@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.hr.domain.dto.JobLevelCreateDTO;
 import com.cloudflow.hr.domain.dto.JobLevelUpdateDTO;
 import com.cloudflow.hr.domain.entity.JobLevel;
+import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.vo.JobLevelVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.JobLevelMapper;
+import com.cloudflow.hr.mapper.PositionMapper;
 import com.cloudflow.hr.service.JobLevelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 public class JobLevelServiceImpl implements JobLevelService {
     
     private final JobLevelMapper jobLevelMapper;
+    private final PositionMapper positionMapper;
     
     /**
      * 创建职级
@@ -175,7 +178,12 @@ public class JobLevelServiceImpl implements JobLevelService {
             throw new HrBusinessException("职级不存在或无权限访问");
         }
         
-        // TODO: 检查是否有职位关联此职级，如有则不允许删除
+        LambdaQueryWrapper<Position> positionWrapper = new LambdaQueryWrapper<>();
+        positionWrapper.eq(Position::getTenantId, tenantId)
+                .eq(Position::getLevelId, id);
+        if (positionMapper.selectCount(positionWrapper) > 0) {
+            throw new HrBusinessException("JOB_LEVEL_IN_USE", "该职级已被职位引用，无法删除");
+        }
         
         // 删除职级
         jobLevelMapper.deleteById(id);

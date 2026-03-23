@@ -31,7 +31,7 @@ public class DeptPostSyncJob {
      * 每5分钟同步一次部门岗位数据
      * 使用分布式锁防止多实例重复执行
      */
-    @Scheduled(fixedRate = 300000) // 5分钟 = 300000毫秒
+    @Scheduled(initialDelay = 300000, fixedRate = 300000) // 首次延迟5分钟，避免与启动初始化并发执行
     public void syncDeptPostData() {
         String lockKey = "lock:scheduled:syncDeptPostData";
         RLock lock = redissonClient.getLock(lockKey);

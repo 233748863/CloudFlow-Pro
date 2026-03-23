@@ -11,7 +11,6 @@
 
     <modules>
         <module>cloudflow-common</module>
-        <module>cloudflow-db-migration</module>
         <module>cloudflow-gateway</module>
         <module>cloudflow-auth</module>
         <module>cloudflow-service-workflow</module>

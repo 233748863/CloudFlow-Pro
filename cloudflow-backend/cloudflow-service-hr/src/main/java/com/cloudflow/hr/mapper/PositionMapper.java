@@ -17,8 +17,9 @@ public interface PositionMapper extends BaseMapper<Position> {
     /**
      * 检查职位是否有在职员工
      * 
+     * @param tenantId 租户ID
      * @param positionId 职位ID
      * @return 在职员工数量
      */
-    int countEmployeesByPositionId(@Param("positionId") Long positionId);
+    int countEmployeesByPositionId(@Param("tenantId") Long tenantId, @Param("positionId") Long positionId);
 }

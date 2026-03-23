@@ -21,7 +21,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/hr/sync")
+@RequestMapping("/sync")
 @RequiredArgsConstructor
 public class DeptPostSyncController {
 

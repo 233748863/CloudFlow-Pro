@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.AuthServiceClient;
-import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.client.vo.PostVO;
 import com.cloudflow.hr.domain.dto.PositionCreateDTO;
 import com.cloudflow.hr.domain.dto.PositionQueryDTO;
@@ -30,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,16 +47,17 @@ public class PositionServiceImpl implements PositionService {
     private final PositionFamilyMapper positionFamilyMapper;
     private final JobLevelMapper jobLevelMapper;
     private final AuthServiceClient authServiceClient;
-    private final com.cloudflow.hr.service.DeptPostSyncService deptPostSyncService;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createPosition(PositionCreateDTO dto) {
         log.info("创建职位，职位编码：{}", dto.getPositionCode());
+        Long tenantId = SecurityUtils.getTenantId();
         
         // 1. 检查职位编码是否重复
         LambdaQueryWrapper<Position> wrapper = Wrappers.lambdaQuery();
-        wrapper.eq(Position::getPositionCode, dto.getPositionCode());
+        wrapper.eq(Position::getTenantId, tenantId)
+                .eq(Position::getPositionCode, dto.getPositionCode());
         if (positionMapper.selectCount(wrapper) > 0) {
             throw new HrBusinessException("DUPLICATE_POSITION_CODE", 
                     String.format("职位编码 [%s] 已存在", dto.getPositionCode()));
@@ -66,39 +65,23 @@ public class PositionServiceImpl implements PositionService {
         
         // 2. 验证职位族是否存在
         if (dto.getFamilyId() != null) {
-            PositionFamily family = positionFamilyMapper.selectById(dto.getFamilyId());
-            if (family == null) {
-                throw new HrBusinessException("POSITION_FAMILY_NOT_FOUND", 
-                        String.format("职位族 ID [%d] 不存在", dto.getFamilyId()));
-            }
+            validatePositionFamily(dto.getFamilyId(), tenantId);
         }
         
         // 3. 验证职级是否存在
         if (dto.getLevelId() != null) {
-            JobLevel level = jobLevelMapper.selectById(dto.getLevelId());
-            if (level == null) {
-                throw new HrBusinessException("JOB_LEVEL_NOT_FOUND", 
-                        String.format("职级 ID [%d] 不存在", dto.getLevelId()));
-            }
+            validateJobLevel(dto.getLevelId(), tenantId);
         }
         
         // 4. 验证岗位是否存在（调用Auth服务）
         if (dto.getPostId() != null) {
-            try {
-                R<PostVO> postResult = authServiceClient.getPostById(dto.getPostId());
-                if (postResult == null || !postResult.isSuccess() || postResult.getData() == null) {
-                    throw HrBusinessException.invalidDeptOrPost("POST", dto.getPostId());
-                }
-            } catch (Exception e) {
-                log.error("调用Auth服务验证岗位失败，postId: {}", dto.getPostId(), e);
-                throw new HrSystemException("SERVICE_CALL_ERROR", 
-                        "调用Auth服务验证岗位失败", e);
-            }
+            validatePost(dto.getPostId());
         }
         
         // 5. 创建职位
         Position position = new Position();
         BeanUtils.copyProperties(dto, position);
+        position.setTenantId(tenantId);
         positionMapper.insert(position);
         
         log.info("职位创建成功，职位ID：{}", position.getId());
@@ -109,49 +92,30 @@ public class PositionServiceImpl implements PositionService {
     @Transactional(rollbackFor = Exception.class)
     public void updatePosition(Long id, PositionUpdateDTO dto) {
         log.info("更新职位，职位ID：{}", id);
+        Long tenantId = SecurityUtils.getTenantId();
         
         // 1. 检查职位是否存在
-        Position position = positionMapper.selectById(id);
-        if (position == null) {
-            throw new HrBusinessException("POSITION_NOT_FOUND", 
-                    String.format("职位 ID [%d] 不存在", id));
-        }
+        Position position = getPositionOrThrow(id, tenantId);
         
         // 2. 验证职位族是否存在
         if (dto.getFamilyId() != null) {
-            PositionFamily family = positionFamilyMapper.selectById(dto.getFamilyId());
-            if (family == null) {
-                throw new HrBusinessException("POSITION_FAMILY_NOT_FOUND", 
-                        String.format("职位族 ID [%d] 不存在", dto.getFamilyId()));
-            }
+            validatePositionFamily(dto.getFamilyId(), tenantId);
         }
         
         // 3. 验证职级是否存在
         if (dto.getLevelId() != null) {
-            JobLevel level = jobLevelMapper.selectById(dto.getLevelId());
-            if (level == null) {
-                throw new HrBusinessException("JOB_LEVEL_NOT_FOUND", 
-                        String.format("职级 ID [%d] 不存在", dto.getLevelId()));
-            }
+            validateJobLevel(dto.getLevelId(), tenantId);
         }
         
         // 4. 验证岗位是否存在（调用Auth服务）
         if (dto.getPostId() != null) {
-            try {
-                R<PostVO> postResult = authServiceClient.getPostById(dto.getPostId());
-                if (postResult == null || !postResult.isSuccess() || postResult.getData() == null) {
-                    throw HrBusinessException.invalidDeptOrPost("POST", dto.getPostId());
-                }
-            } catch (Exception e) {
-                log.error("调用Auth服务验证岗位失败，postId: {}", dto.getPostId(), e);
-                throw new HrSystemException("SERVICE_CALL_ERROR", 
-                        "调用Auth服务验证岗位失败", e);
-            }
+            validatePost(dto.getPostId());
         }
         
         // 5. 更新职位
         BeanUtils.copyProperties(dto, position);
         position.setId(id);
+        position.setTenantId(tenantId);
         positionMapper.updateById(position);
         
         log.info("职位更新成功，职位ID：{}", id);
@@ -160,13 +124,10 @@ public class PositionServiceImpl implements PositionService {
     @Override
     public PositionDetailVO getPosition(Long id) {
         log.info("查询职位详情，职位ID：{}", id);
+        Long tenantId = SecurityUtils.getTenantId();
         
         // 1. 查询职位基础信息
-        Position position = positionMapper.selectById(id);
-        if (position == null) {
-            throw new HrBusinessException("POSITION_NOT_FOUND", 
-                    String.format("职位 ID [%d] 不存在", id));
-        }
+        Position position = getPositionOrThrow(id, tenantId);
         
         // 2. 构建详情VO
         PositionDetailVO detailVO = new PositionDetailVO();
@@ -175,7 +136,7 @@ public class PositionServiceImpl implements PositionService {
         // 3. 查询职位族信息
         if (position.getFamilyId() != null) {
             PositionFamily family = positionFamilyMapper.selectById(position.getFamilyId());
-            if (family != null) {
+            if (family != null && tenantId.equals(family.getTenantId())) {
                 PositionFamilyVO familyVO = new PositionFamilyVO();
                 BeanUtils.copyProperties(family, familyVO);
                 detailVO.setFamily(familyVO);
@@ -185,7 +146,7 @@ public class PositionServiceImpl implements PositionService {
         // 4. 查询职级信息
         if (position.getLevelId() != null) {
             JobLevel level = jobLevelMapper.selectById(position.getLevelId());
-            if (level != null) {
+            if (level != null && tenantId.equals(level.getTenantId())) {
                 JobLevelVO levelVO = new JobLevelVO();
                 BeanUtils.copyProperties(level, levelVO);
                 detailVO.setLevel(levelVO);
@@ -212,9 +173,11 @@ public class PositionServiceImpl implements PositionService {
     @Override
     public List<PositionVO> listPositions(PositionQueryDTO query) {
         log.info("查询职位列表，查询条件：{}", query);
+        Long tenantId = SecurityUtils.getTenantId();
         
         // 1. 构建查询条件
         LambdaQueryWrapper<Position> wrapper = Wrappers.lambdaQuery();
+        wrapper.eq(Position::getTenantId, tenantId);
         
         if (StringUtils.hasText(query.getPositionCode())) {
             wrapper.like(Position::getPositionCode, query.getPositionCode());
@@ -253,7 +216,7 @@ public class PositionServiceImpl implements PositionService {
             // 查询职位族名称
             if (position.getFamilyId() != null) {
                 PositionFamily family = positionFamilyMapper.selectById(position.getFamilyId());
-                if (family != null) {
+                if (family != null && tenantId.equals(family.getTenantId())) {
                     vo.setFamilyName(family.getFamilyName());
                 }
             }
@@ -261,7 +224,7 @@ public class PositionServiceImpl implements PositionService {
             // 查询职级名称
             if (position.getLevelId() != null) {
                 JobLevel level = jobLevelMapper.selectById(position.getLevelId());
-                if (level != null) {
+                if (level != null && tenantId.equals(level.getTenantId())) {
                     vo.setLevelName(level.getLevelName());
                 }
             }
@@ -290,16 +253,13 @@ public class PositionServiceImpl implements PositionService {
     @Transactional(rollbackFor = Exception.class)
     public void deletePosition(Long id) {
         log.info("删除职位，职位ID：{}", id);
+        Long tenantId = SecurityUtils.getTenantId();
         
         // 1. 检查职位是否存在
-        Position position = positionMapper.selectById(id);
-        if (position == null) {
-            throw new HrBusinessException("POSITION_NOT_FOUND", 
-                    String.format("职位 ID [%d] 不存在", id));
-        }
+        Position position = getPositionOrThrow(id, tenantId);
         
         // 2. 检查职位是否有在职员工
-        int employeeCount = positionMapper.countEmployeesByPositionId(id);
+        int employeeCount = positionMapper.countEmployeesByPositionId(tenantId, id);
         if (employeeCount > 0) {
             throw HrBusinessException.positionHasEmployee(id, position.getPositionName(), employeeCount);
         }
@@ -308,5 +268,45 @@ public class PositionServiceImpl implements PositionService {
         positionMapper.deleteById(id);
         
         log.info("职位删除成功，职位ID：{}", id);
+    }
+
+    private Position getPositionOrThrow(Long id, Long tenantId) {
+        Position position = positionMapper.selectById(id);
+        if (position == null || !tenantId.equals(position.getTenantId())) {
+            throw new HrBusinessException("POSITION_NOT_FOUND",
+                    String.format("职位 ID [%d] 不存在", id));
+        }
+        return position;
+    }
+
+    private void validatePositionFamily(Long familyId, Long tenantId) {
+        PositionFamily family = positionFamilyMapper.selectById(familyId);
+        if (family == null || !tenantId.equals(family.getTenantId())) {
+            throw new HrBusinessException("POSITION_FAMILY_NOT_FOUND",
+                    String.format("职位族 ID [%d] 不存在", familyId));
+        }
+    }
+
+    private void validateJobLevel(Long levelId, Long tenantId) {
+        JobLevel level = jobLevelMapper.selectById(levelId);
+        if (level == null || !tenantId.equals(level.getTenantId())) {
+            throw new HrBusinessException("JOB_LEVEL_NOT_FOUND",
+                    String.format("职级 ID [%d] 不存在", levelId));
+        }
+    }
+
+    private void validatePost(Long postId) {
+        try {
+            R<PostVO> postResult = authServiceClient.getPostById(postId);
+            if (postResult == null || !postResult.isSuccess() || postResult.getData() == null) {
+                throw HrBusinessException.invalidDeptOrPost("POST", postId);
+            }
+        } catch (HrBusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("调用Auth服务验证岗位失败，postId: {}", postId, e);
+            throw new HrSystemException("SERVICE_CALL_ERROR",
+                    "调用Auth服务验证岗位失败", e);
+        }
     }
 }

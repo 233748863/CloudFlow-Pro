@@ -6,7 +6,8 @@
     <select id="countEmployeesByPositionId" resultType="int">
         SELECT COUNT(*)
         FROM hr_employee
-        WHERE position_id = #{positionId}
+        WHERE tenant_id = #{tenantId}
+          AND position_id = #{positionId}
           AND employee_status IN ('PENDING', 'PROBATION', 'REGULAR')
     </select>
 
