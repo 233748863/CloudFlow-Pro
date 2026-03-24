@@ -479,23 +479,33 @@ export const HrSalaryPage: React.FC = () => {
     [activeEmployees, salaryEnabledEmployeeIds],
   );
 
+  const resignedEmployeeSalaries = useMemo(
+    () => employeeSalaries.filter(record => employeeMap.get(record.employeeId)?.employeeStatus === 'RESIGNED'),
+    [employeeMap, employeeSalaries],
+  );
+
+  const workingEmployeeSalaries = useMemo(
+    () => employeeSalaries.filter(record => employeeMap.get(record.employeeId)?.employeeStatus !== 'RESIGNED'),
+    [employeeMap, employeeSalaries],
+  );
+
   const employeesWithSalary = useMemo(
-    () => employeeSalaries
+    () => workingEmployeeSalaries
       .map(record => employeeMap.get(record.employeeId))
       .filter((employee): employee is HrEmployee => Boolean(employee)),
-    [employeeMap, employeeSalaries],
+    [employeeMap, workingEmployeeSalaries],
   );
 
   const filteredEmployeeSalaries = useMemo(() => {
     const normalizedKeyword = salaryKeyword.trim().toLowerCase();
-    if (!normalizedKeyword) return employeeSalaries;
+    if (!normalizedKeyword) return workingEmployeeSalaries;
 
-    return employeeSalaries.filter(item =>
+    return workingEmployeeSalaries.filter(item =>
       [item.employeeNo, item.employeeName, item.structureName, item.structureCode]
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(normalizedKeyword)),
     );
-  }, [employeeSalaries, salaryKeyword]);
+  }, [salaryKeyword, workingEmployeeSalaries]);
 
   const filteredAdjustments = useMemo(() => {
     const normalizedKeyword = adjustmentKeyword.trim().toLowerCase();
@@ -530,8 +540,10 @@ export const HrSalaryPage: React.FC = () => {
       },
       {
         label: '在岗薪资档案',
-        value: employeeSalaries.length,
-        hint: `${assignableEmployees.length} 名员工待分配薪资`,
+        value: workingEmployeeSalaries.length,
+        hint: resignedEmployeeSalaries.length
+          ? `${assignableEmployees.length} 名待分配，${resignedEmployeeSalaries.length} 条离职档案已过滤`
+          : `${assignableEmployees.length} 名员工待分配薪资`,
         icon: <Users size={18} />,
         tone: 'bg-emerald-50 text-emerald-600',
       },
@@ -543,7 +555,14 @@ export const HrSalaryPage: React.FC = () => {
         tone: 'bg-amber-50 text-amber-600',
       },
     ];
-  }, [assignableEmployees.length, employeeSalaries.length, salaryAdjustments, salaryItems.length, salaryStructures.length]);
+  }, [
+    assignableEmployees.length,
+    resignedEmployeeSalaries.length,
+    salaryAdjustments,
+    salaryItems.length,
+    salaryStructures.length,
+    workingEmployeeSalaries.length,
+  ]);
 
   const currentEmployeeRecord = useMemo(
     () => filteredEmployeeSalaries.find(item => String(item.employeeId) === selectedEmployeeId) || null,
@@ -1278,7 +1297,7 @@ export const HrSalaryPage: React.FC = () => {
 
   const openAdjustDialog = () => {
     if (!employeesWithSalary.length) {
-      toast.error('当前没有可发起调薪的现薪员工');
+      toast.error('当前没有可发起调薪的在岗现薪员工');
       return;
     }
 
@@ -1654,6 +1673,13 @@ export const HrSalaryPage: React.FC = () => {
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-emerald-700">
                     当前还有 {assignableEmployees.length} 名在岗员工未分配薪资，可直接通过上方“分配薪资”真实写库联调。
                   </div>
+
+                  {resignedEmployeeSalaries.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
+                      真实联调发现 {resignedEmployeeSalaries.length} 条 ACTIVE 薪资档案对应的员工已离职。
+                      这些记录已从当前工作区和调薪候选中过滤，避免继续对离职员工发起调薪。
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {filteredEmployeeSalaries.map(item => {
