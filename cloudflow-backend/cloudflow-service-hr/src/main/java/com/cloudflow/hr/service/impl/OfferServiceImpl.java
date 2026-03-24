@@ -13,9 +13,11 @@ import com.cloudflow.hr.domain.dto.OfferQueryDTO;
 import com.cloudflow.hr.domain.dto.OnboardingApplicationCreateDTO;
 import com.cloudflow.hr.domain.entity.Candidate;
 import com.cloudflow.hr.domain.entity.Offer;
+import com.cloudflow.hr.domain.entity.OnboardingApplication;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.vo.OfferVO;
 import com.cloudflow.hr.mapper.CandidateMapper;
+import com.cloudflow.hr.mapper.OnboardingApplicationMapper;
 import com.cloudflow.hr.mapper.OfferMapper;
 import com.cloudflow.hr.mapper.PositionMapper;
 import com.cloudflow.hr.service.OfferService;
@@ -30,6 +32,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +61,7 @@ public class OfferServiceImpl implements OfferService {
     private final OfferMapper offerMapper;
     private final CandidateMapper candidateMapper;
     private final PositionMapper positionMapper;
+    private final OnboardingApplicationMapper onboardingApplicationMapper;
     private final AuthServiceClient authServiceClient;
     private final WorkflowServiceClient workflowServiceClient;
     private final OnboardingService onboardingService;
@@ -261,6 +265,17 @@ public class OfferServiceImpl implements OfferService {
             throw new RuntimeException("职位不存在");
         }
 
+        OnboardingApplication existingApplication = findExistingOnboardingApplication(candidate.getId());
+        if (existingApplication != null) {
+            if (!"HIRED".equals(candidate.getStatus())) {
+                candidate.setStatus("HIRED");
+                candidateMapper.updateById(candidate);
+            }
+            log.warn("Offer 已存在入职申请，直接复用，offerId：{}，candidateId：{}，onboardingId：{}，status：{}",
+                    id, candidate.getId(), existingApplication.getId(), existingApplication.getStatus());
+            return existingApplication.getId();
+        }
+
         OnboardingApplicationCreateDTO onboardingDTO = new OnboardingApplicationCreateDTO();
         onboardingDTO.setCandidateId(candidate.getId());
         onboardingDTO.setName(candidate.getName());
@@ -276,6 +291,35 @@ public class OfferServiceImpl implements OfferService {
         candidate.setStatus("HIRED");
         candidateMapper.updateById(candidate);
         return onboardingId;
+    }
+
+    private OnboardingApplication findExistingOnboardingApplication(Long candidateId) {
+        LambdaQueryWrapper<OnboardingApplication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OnboardingApplication::getCandidateId, candidateId)
+                .ne(OnboardingApplication::getStatus, "REJECTED")
+                .orderByDesc(OnboardingApplication::getId);
+
+        return onboardingApplicationMapper.selectList(wrapper).stream()
+                .max(Comparator
+                        .comparingInt((OnboardingApplication application) -> getOnboardingStatusPriority(application.getStatus()))
+                        .thenComparing(OnboardingApplication::getId, Comparator.nullsLast(Long::compareTo)))
+                .orElse(null);
+    }
+
+    private int getOnboardingStatusPriority(String status) {
+        if ("ONBOARDED".equals(status)) {
+            return 4;
+        }
+        if ("APPROVED".equals(status)) {
+            return 3;
+        }
+        if ("APPROVING".equals(status)) {
+            return 2;
+        }
+        if ("DRAFT".equals(status)) {
+            return 1;
+        }
+        return 0;
     }
 
     @Override

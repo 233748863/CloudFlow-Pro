@@ -16,6 +16,7 @@ import {
 import {
   Candidate,
   Offer,
+  OnboardingApplication,
   OfferPayload,
   PositionOption,
   acceptOffer,
@@ -26,6 +27,7 @@ import {
   getDeptTreeOptions,
   getOffer,
   getPositionOptions,
+  listOnboardingApplications,
   listCandidates,
   listOffers,
   rejectOffer,
@@ -82,6 +84,53 @@ const offerStatusClass = (status?: string) => {
   return 'bg-slate-100 text-slate-700';
 };
 
+const onboardingStatusPriority = (status?: string | null) => {
+  if (status === 'ONBOARDED') return 4;
+  if (status === 'APPROVED') return 3;
+  if (status === 'APPROVING') return 2;
+  if (status === 'DRAFT') return 1;
+  return 0;
+};
+
+const buildOnboardingMap = (applications: OnboardingApplication[]) => {
+  const result = new Map<number, OnboardingApplication>();
+
+  applications.forEach(application => {
+    if (!application.candidateId || hasWorkflowStatus(application.status, 'REJECTED')) return;
+
+    const current = result.get(application.candidateId);
+    if (!current) {
+      result.set(application.candidateId, application);
+      return;
+    }
+
+    const nextPriority = onboardingStatusPriority(application.status);
+    const currentPriority = onboardingStatusPriority(current.status);
+    if (nextPriority > currentPriority || (nextPriority === currentPriority && application.id > current.id)) {
+      result.set(application.candidateId, application);
+    }
+  });
+
+  return result;
+};
+
+const isOfferConverted = (offer?: Offer | null, onboarding?: OnboardingApplication | null) =>
+  Boolean(offer && onboarding && hasWorkflowStatus(offer.status, 'ACCEPTED'));
+
+const getOfferStatusMeta = (offer?: Offer | null, onboarding?: OnboardingApplication | null) => {
+  if (isOfferConverted(offer, onboarding)) {
+    return {
+      label: '已转入职',
+      className: 'bg-sky-50 text-sky-700',
+    };
+  }
+
+  return {
+    label: offer?.statusDesc || offer?.status || '-',
+    className: offerStatusClass(offer?.status),
+  };
+};
+
 const calcSuggestedSalary = (candidate?: Candidate | null) => {
   if (!candidate) return 0;
 
@@ -112,6 +161,7 @@ const buildOfferContent = (
 export const HrOfferPage: React.FC = () => {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [onboardingApplications, setOnboardingApplications] = useState<OnboardingApplication[]>([]);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [positionOptions, setPositionOptions] = useState<PositionOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,17 +185,28 @@ export const HrOfferPage: React.FC = () => {
     [positionOptions],
   );
 
+  const onboardingMap = useMemo(
+    () => buildOnboardingMap(onboardingApplications),
+    [onboardingApplications],
+  );
+
   const availableCandidates = useMemo(
     () => candidates.filter(candidate => hasWorkflowStatus(candidate.status, 'INTERVIEW')),
     [candidates],
   );
 
-  const loadOfferList = async (preservedId?: number) => {
+  const loadOfferWorkspace = async (preservedId?: number) => {
     setListLoading(true);
     try {
-      const offerRes = await listOffers();
+      const [offerRes, candidateRes, onboardingRes] = await Promise.all([
+        listOffers(),
+        listCandidates({ pageNum: 1, pageSize: 200 }),
+        listOnboardingApplications(),
+      ]);
       const offerList = normalizeRows<Offer>(offerRes);
       setOffers(offerList);
+      setCandidates(normalizeRows<Candidate>(candidateRes));
+      setOnboardingApplications(normalizeRows<OnboardingApplication>(onboardingRes));
 
       const nextId = preservedId && offerList.some(item => item.id === preservedId)
         ? preservedId
@@ -166,15 +227,17 @@ export const HrOfferPage: React.FC = () => {
   const loadBootstrapData = async () => {
     setLoading(true);
     try {
-      const [offerRes, candidateRes, deptRes, positionRes] = await Promise.all([
+      const [offerRes, candidateRes, onboardingRes, deptRes, positionRes] = await Promise.all([
         listOffers(),
         listCandidates({ pageNum: 1, pageSize: 200 }),
+        listOnboardingApplications(),
         getDeptTreeOptions(),
         getPositionOptions({ pageNum: 1, pageSize: 200 }),
       ]);
 
       setOffers(normalizeRows<Offer>(offerRes));
       setCandidates(normalizeRows<Candidate>(candidateRes));
+      setOnboardingApplications(normalizeRows<OnboardingApplication>(onboardingRes));
       setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
       setPositionOptions(Array.isArray(positionRes) ? positionRes : normalizeRows<PositionOption>(positionRes));
     } catch (error) {
@@ -315,23 +378,29 @@ export const HrOfferPage: React.FC = () => {
   const offerMetrics = useMemo(() => {
     const approvingCount = offers.filter(item => hasWorkflowStatus(item.status, 'APPROVING', 'APPROVED')).length;
     const sentCount = offers.filter(item => hasWorkflowStatus(item.status, 'SENT')).length;
-    const acceptedCount = offers.filter(item => hasWorkflowStatus(item.status, 'ACCEPTED')).length;
+    const convertedCount = offers.filter(item => isOfferConverted(item, onboardingMap.get(item.candidateId))).length;
+    const acceptedCount = offers.filter(item =>
+      hasWorkflowStatus(item.status, 'ACCEPTED') && !isOfferConverted(item, onboardingMap.get(item.candidateId)),
+    ).length;
 
     return [
       { label: 'Offer 总量', value: offers.length, hint: '当前已创建的录用通知', tone: 'pink' as const, icon: <BriefcaseBusiness size={18} /> },
       { label: '待推进审批', value: approvingCount, hint: '审批中与待发送的 Offer', tone: 'amber' as const, icon: <ShieldCheck size={18} /> },
       { label: '已发送', value: sentCount, hint: '候选人可确认的 Offer', tone: 'sky' as const, icon: <Send size={18} /> },
-      { label: '待转入职', value: acceptedCount, hint: '候选人已接受，可转入职', tone: 'emerald' as const, icon: <UserRoundPlus size={18} /> },
+      { label: '待转入职', value: acceptedCount, hint: `已转入职 ${convertedCount} 条`, tone: 'emerald' as const, icon: <UserRoundPlus size={18} /> },
     ];
-  }, [offers]);
+  }, [offers, onboardingMap]);
 
   const selectedCandidate = currentOffer ? candidateMap.get(currentOffer.candidateId) : null;
+  const selectedOnboarding = currentOffer ? onboardingMap.get(currentOffer.candidateId) || null : null;
+  const offerAlreadyConverted = isOfferConverted(currentOffer, selectedOnboarding);
+  const currentOfferStatusMeta = getOfferStatusMeta(currentOffer, selectedOnboarding);
   const canSubmit = hasWorkflowStatus(currentOffer?.status, 'DRAFT');
   const canApprove = hasWorkflowStatus(currentOffer?.status, 'APPROVING');
   const canSend = hasWorkflowStatus(currentOffer?.status, 'APPROVED');
   const canAccept = hasWorkflowStatus(currentOffer?.status, 'SENT');
   const canReject = hasWorkflowStatus(currentOffer?.status, 'APPROVING', 'SENT');
-  const canConvert = hasWorkflowStatus(currentOffer?.status, 'ACCEPTED');
+  const canConvert = hasWorkflowStatus(currentOffer?.status, 'ACCEPTED') && !offerAlreadyConverted;
 
   const resetCreateDialog = () => {
     const expectedDate = addDaysToDateValue(todayValue(), 7);
@@ -376,7 +445,7 @@ export const HrOfferPage: React.FC = () => {
 
       toast.success(`Offer 已创建，ID：${id}`);
       resetCreateDialog();
-      await loadOfferList(id);
+      await loadOfferWorkspace(id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '创建 Offer 失败');
@@ -395,7 +464,7 @@ export const HrOfferPage: React.FC = () => {
       const result = await action();
       afterAction?.(result);
       toast.success(successMessage);
-      await loadOfferList(currentOffer.id);
+      await loadOfferWorkspace(currentOffer.id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || 'Offer 操作失败');
@@ -428,7 +497,7 @@ export const HrOfferPage: React.FC = () => {
               className="rounded-2xl"
               onClick={() => {
                 if (currentOffer) {
-                  void loadOfferList(currentOffer.id);
+                  void loadOfferWorkspace(currentOffer.id);
                   return;
                 }
 
@@ -508,6 +577,8 @@ export const HrOfferPage: React.FC = () => {
               {filteredOffers.map(item => {
                 const isActive = String(item.id) === selectedOfferId;
                 const candidate = candidateMap.get(item.candidateId);
+                const onboarding = onboardingMap.get(item.candidateId);
+                const statusMeta = getOfferStatusMeta(item, onboarding);
 
                 return (
                   <button
@@ -528,8 +599,8 @@ export const HrOfferPage: React.FC = () => {
                           {(candidate?.phone || '-') + ' / ' + (item.positionName || '-')}
                         </div>
                       </div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${offerStatusClass(item.status)}`}>
-                        {item.statusDesc || item.status}
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusMeta.className}`}>
+                        {statusMeta.label}
                       </span>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
@@ -592,8 +663,14 @@ export const HrOfferPage: React.FC = () => {
                       },
                     )}
                   >
-                    转入职
+                    {offerAlreadyConverted ? '已转入职' : '转入职'}
                   </Button>
+                </div>
+              )}
+
+              {currentOffer && offerAlreadyConverted && selectedOnboarding && (
+                <div className="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
+                  该 Offer 已生成入职申请 #{selectedOnboarding.id}，页面已锁定重复转入职操作。
                 </div>
               )}
             </div>
@@ -612,8 +689,8 @@ export const HrOfferPage: React.FC = () => {
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                   <div className="text-xs text-slate-400">当前状态</div>
-                  <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${offerStatusClass(currentOffer.status)}`}>
-                    {currentOffer.statusDesc || currentOffer.status}
+                  <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${currentOfferStatusMeta.className}`}>
+                    {currentOfferStatusMeta.label}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
@@ -646,6 +723,15 @@ export const HrOfferPage: React.FC = () => {
                   <div className="text-xs text-slate-400">候选人状态</div>
                   <div className="mt-2 font-semibold text-slate-900">{selectedCandidate?.statusDesc || selectedCandidate?.status || '-'}</div>
                 </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">入职申请</div>
+                  <div className="mt-2 font-semibold text-slate-900">
+                    {selectedOnboarding ? `#${selectedOnboarding.id}` : '未生成'}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    {selectedOnboarding?.statusDesc || selectedOnboarding?.status || '可在候选人接受 Offer 后生成'}
+                  </div>
+                </div>
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
                   <div className="text-xs text-slate-400">Offer 内容</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
@@ -671,6 +757,9 @@ export const HrOfferPage: React.FC = () => {
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
                 如果发送或接受时报过期，优先检查 Offer 有效期是否早于当前日期。
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+                如果右侧已经出现入职申请编号，说明这条 Offer 已完成转入职，页面会自动禁止再次建单。
               </div>
             </div>
           </Card>

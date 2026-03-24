@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users } from 'lucide-react';
 import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { HrEmployee, RecruitmentRequest, Candidate, Interview, Offer, listEmployees, listRecruitmentRequests, listCandidates, listInterviews, listOffers } from '@/services/api/hr';
+import { HrEmployee, RecruitmentRequest, Candidate, Interview, Offer, OnboardingApplication, listEmployees, listRecruitmentRequests, listCandidates, listInterviews, listOffers, listOnboardingApplications } from '@/services/api/hr';
 
 const normalizeRows = <T,>(data: any): T[] => {
   if (!data) return [];
@@ -49,6 +49,36 @@ const requestStatusTone = (status?: string) => {
   }
 };
 
+const onboardingStatusPriority = (status?: string | null) => {
+  if (status === 'ONBOARDED') return 4;
+  if (status === 'APPROVED') return 3;
+  if (status === 'APPROVING') return 2;
+  if (status === 'DRAFT') return 1;
+  return 0;
+};
+
+const buildOnboardingMap = (applications: OnboardingApplication[]) => {
+  const result = new Map<number, OnboardingApplication>();
+
+  applications.forEach(application => {
+    if (!application.candidateId || application.status === 'REJECTED') return;
+
+    const current = result.get(application.candidateId);
+    if (!current) {
+      result.set(application.candidateId, application);
+      return;
+    }
+
+    const nextPriority = onboardingStatusPriority(application.status);
+    const currentPriority = onboardingStatusPriority(current.status);
+    if (nextPriority > currentPriority || (nextPriority === currentPriority && application.id > current.id)) {
+      result.set(application.candidateId, application);
+    }
+  });
+
+  return result;
+};
+
 export const HrDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -57,24 +87,27 @@ export const HrDashboardPage: React.FC = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [onboardingApplications, setOnboardingApplications] = useState<OnboardingApplication[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [employeeRes, requestRes, candidateRes, interviewRes, offerRes] = await Promise.all([
+        const [employeeRes, requestRes, candidateRes, interviewRes, offerRes, onboardingRes] = await Promise.all([
           listEmployees(),
           listRecruitmentRequests({ pageNum: 1, pageSize: 50 }),
           listCandidates({ pageNum: 1, pageSize: 50 }),
           listInterviews(),
           listOffers(),
+          listOnboardingApplications(),
         ]);
         setEmployees(normalizeRows<HrEmployee>(employeeRes));
         setRequests(normalizeRows<RecruitmentRequest>(requestRes));
         setCandidates(normalizeRows<Candidate>(candidateRes));
         setInterviews(normalizeRows<Interview>(interviewRes));
         setOffers(normalizeRows<Offer>(offerRes));
+        setOnboardingApplications(normalizeRows<OnboardingApplication>(onboardingRes));
       } finally {
         setLoading(false);
       }
@@ -82,20 +115,29 @@ export const HrDashboardPage: React.FC = () => {
     void load();
   }, []);
 
+  const onboardingMap = useMemo(
+    () => buildOnboardingMap(onboardingApplications),
+    [onboardingApplications],
+  );
+
   const metrics = useMemo(() => {
     const regularCount = employees.filter(item => item.employeeStatus === 'REGULAR').length;
     const probationCount = employees.filter(item => item.employeeStatus === 'PROBATION').length;
     const recruitingCount = requests.filter(item => ['DRAFT', 'APPROVING', 'RECRUITING'].includes(item.status)).length;
     const interviewingCount = candidates.filter(item => ['SCREENING', 'INTERVIEW', 'OFFER'].includes(item.status)).length;
-    const activeOfferCount = offers.filter(item => ['APPROVING', 'APPROVED', 'SENT', 'ACCEPTED'].includes(item.status)).length;
+    const activeOfferCount = offers.filter(item =>
+      ['APPROVING', 'APPROVED', 'SENT'].includes(item.status)
+      || (item.status === 'ACCEPTED' && !onboardingMap.has(item.candidateId)),
+    ).length;
+    const convertedOfferCount = offers.filter(item => item.status === 'ACCEPTED' && onboardingMap.has(item.candidateId)).length;
     return [
       { label: '员工总数', value: employees.length, icon: <Users size={20} />, hint: `${regularCount} 名正式员工`, tone: 'pink' as const },
       { label: '试用期员工', value: probationCount, icon: <UserCog size={20} />, hint: '重点关注转正与带教', tone: 'amber' as const },
       { label: '招聘需求', value: recruitingCount, icon: <BriefcaseBusiness size={20} />, hint: '正在推进中的招聘岗位', tone: 'emerald' as const },
       { label: '候选人 / 面试', value: interviewingCount, icon: <FileSearch size={20} />, hint: `${interviews.length} 场面试记录`, tone: 'slate' as const },
-      { label: '待推进 Offer', value: activeOfferCount, icon: <Send size={20} />, hint: '审批、发送与接收入口已打通', tone: 'amber' as const },
+      { label: '待推进 Offer', value: activeOfferCount, icon: <Send size={20} />, hint: `已转入职 ${convertedOfferCount} 条`, tone: 'amber' as const },
     ];
-  }, [employees, requests, candidates, interviews, offers]);
+  }, [employees, requests, candidates, interviews, offers, onboardingMap]);
 
   const workflowCards = [
     {

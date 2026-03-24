@@ -14,6 +14,7 @@ import com.cloudflow.hr.domain.entity.Offer;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.RecruitmentRequest;
 import com.cloudflow.hr.mapper.CandidateMapper;
+import com.cloudflow.hr.mapper.OnboardingApplicationMapper;
 import com.cloudflow.hr.mapper.OfferMapper;
 import com.cloudflow.hr.mapper.PositionMapper;
 import com.cloudflow.hr.mapper.RecruitmentRequestMapper;
@@ -66,6 +67,9 @@ class RecruitmentAndOfferServiceTest {
     private CandidateMapper candidateMapper;
 
     @Mock
+    private OnboardingApplicationMapper onboardingApplicationMapper;
+
+    @Mock
     private OnboardingService onboardingService;
 
     private RecruitmentRequestService recruitmentRequestService;
@@ -88,6 +92,8 @@ class RecruitmentAndOfferServiceTest {
                 offerMapper,
                 candidateMapper,
                 positionMapper,
+                onboardingApplicationMapper,
+                authServiceClient,
                 workflowServiceClient,
                 onboardingService,
                 workflowProcessKeyProperties
