@@ -46,6 +46,9 @@ const defaultForm: TransferApplicationPayload = {
   salaryChange: false,
 };
 
+const getDefaultPositionId = (postId: number, positions: PositionOption[]) =>
+  positions.find(option => !postId || option.postId === postId)?.id;
+
 const transferStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
   if (/(APPROV|EFFECT|COMPLETE|SUCCESS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
@@ -121,6 +124,18 @@ export const HrTransferPage: React.FC = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState<TransferApplicationPayload>(defaultForm);
 
+  const buildCreateForm = (
+    employeeId: number,
+    deptId = deptOptions[0]?.value || 0,
+    postId = postOptions[0]?.postId || 0,
+  ): TransferApplicationPayload => ({
+    ...defaultForm,
+    employeeId,
+    toDeptId: deptId,
+    toPostId: postId,
+    toPositionId: getDefaultPositionId(postId, positionOptions),
+  });
+
   const loadBootstrapData = async () => {
     setLoading(true);
     try {
@@ -146,7 +161,10 @@ export const HrTransferPage: React.FC = () => {
         employeeId: prev.employeeId || employeeList[0]?.id || 0,
         toDeptId: prev.toDeptId || deptList[0]?.value || 0,
         toPostId: prev.toPostId || postList[0]?.postId || 0,
-        toPositionId: prev.toPositionId || positionList[0]?.id,
+        toPositionId:
+          prev.toPositionId && positionList.some(option => option.id === prev.toPositionId && option.postId === (prev.toPostId || postList[0]?.postId || 0))
+            ? prev.toPositionId
+            : getDefaultPositionId(prev.toPostId || postList[0]?.postId || 0, positionList),
       }));
     } catch (error) {
       console.error(error);
@@ -290,15 +308,28 @@ export const HrTransferPage: React.FC = () => {
     ],
   );
   const defaultCreateEmployeeId = defaultCreateEmployee?.id || 0;
+  const filteredPositionOptions = useMemo(
+    () => positionOptions.filter(option => !createForm.toPostId || option.postId === createForm.toPostId),
+    [createForm.toPostId, positionOptions],
+  );
+
+  useEffect(() => {
+    // 目标岗位变化后，自动把职位收敛到该岗位下的真实可选项，避免前端拼出错误组合。
+    if (createForm.toPositionId && filteredPositionOptions.some(option => option.id === createForm.toPositionId)) {
+      return;
+    }
+
+    const nextPositionId = getDefaultPositionId(createForm.toPostId, filteredPositionOptions);
+    if (createForm.toPositionId !== nextPositionId) {
+      setCreateForm(prev => ({
+        ...prev,
+        toPositionId: nextPositionId,
+      }));
+    }
+  }, [createForm.toPositionId, createForm.toPostId, filteredPositionOptions]);
 
   const resetCreateDialog = () => {
-    setCreateForm({
-      ...defaultForm,
-      employeeId: defaultCreateEmployeeId,
-      toDeptId: deptOptions[0]?.value || 0,
-      toPostId: postOptions[0]?.postId || 0,
-      toPositionId: positionOptions[0]?.id,
-    });
+    setCreateForm(buildCreateForm(defaultCreateEmployeeId));
     setCreateDialogOpen(false);
   };
 
@@ -308,13 +339,7 @@ export const HrTransferPage: React.FC = () => {
       return;
     }
 
-    setCreateForm({
-      ...defaultForm,
-      employeeId: defaultCreateEmployeeId,
-      toDeptId: deptOptions[0]?.value || 0,
-      toPostId: postOptions[0]?.postId || 0,
-      toPositionId: positionOptions[0]?.id,
-    });
+    setCreateForm(buildCreateForm(defaultCreateEmployeeId));
     setCreateDialogOpen(true);
   };
 
@@ -370,7 +395,7 @@ export const HrTransferPage: React.FC = () => {
       toast.success('调岗申请已审批通过');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId), id);
+        await handleRefreshCurrentEmployee();
       }
     } catch (error: any) {
       console.error(error);
@@ -384,7 +409,7 @@ export const HrTransferPage: React.FC = () => {
       toast.success('调岗已生效');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId), id);
+        await handleRefreshCurrentEmployee();
       }
     } catch (error: any) {
       console.error(error);
@@ -761,13 +786,14 @@ export const HrTransferPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={EMPTY_VALUE}>暂不指定职位</SelectItem>
-                    {positionOptions.map(option => (
+                    {filteredPositionOptions.map(option => (
                       <SelectItem key={option.id} value={String(option.id)}>
                         {option.positionName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-2 text-xs text-slate-500">职位选项会随目标岗位联动，避免提交出不匹配的岗位与职位。</div>
               </div>
               <div>
                 <Label>调岗类型</Label>
