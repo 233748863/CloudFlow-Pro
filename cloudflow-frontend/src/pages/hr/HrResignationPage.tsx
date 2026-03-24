@@ -403,7 +403,8 @@ export const HrResignationPage: React.FC = () => {
       toast.success('已确认离职');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId), detail.id);
+        // 确认离职会回写员工主档状态，必须同步刷新员工列表，否则页面仍会显示旧的在职状态。
+        await handleRefreshCurrentEmployee();
       }
 
     } catch (error: any) {
