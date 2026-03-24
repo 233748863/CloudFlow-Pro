@@ -554,6 +554,18 @@ export const HrSalaryPage: React.FC = () => {
     () => filteredAdjustments.find(item => String(item.id) === selectedAdjustmentId) || null,
     [filteredAdjustments, selectedAdjustmentId],
   );
+  const defaultAssignableEmployeeId = (
+    (selectedEmployeeId && assignableEmployees.some(employee => String(employee.id) === selectedEmployeeId)
+      ? Number(selectedEmployeeId)
+      : undefined)
+    || assignableEmployees[0]?.id
+    || 0
+  );
+  const defaultAdjustEmployeeId = (
+    currentEmployeeRecord?.employeeId
+    || employeesWithSalary[0]?.id
+    || 0
+  );
 
   const structurePreviewFields = useMemo<SalaryEditorField[]>(
     () => (assignStructurePreview?.items || []).map(item => ({
@@ -1246,19 +1258,33 @@ export const HrSalaryPage: React.FC = () => {
   };
 
   const openAssignDialog = () => {
+    if (!assignableEmployees.length) {
+      toast.error('当前没有待分配薪资的在岗员工');
+      return;
+    }
+    if (!salaryStructures.length) {
+      toast.error('请先配置薪资结构');
+      return;
+    }
+
     setAssignForm({
       ...createDefaultAssignForm(),
-      employeeId: assignableEmployees[0]?.id || activeEmployees[0]?.id || 0,
-      structureId: salaryStructures[0]?.id || 0,
+      employeeId: defaultAssignableEmployeeId,
+      structureId: Number(selectedStructureId || salaryStructures[0]?.id || 0),
     });
     setAssignStructurePreview(null);
     setAssignDialogOpen(true);
   };
 
   const openAdjustDialog = () => {
+    if (!employeesWithSalary.length) {
+      toast.error('当前没有可发起调薪的现薪员工');
+      return;
+    }
+
     setAdjustForm({
       ...createDefaultAdjustmentForm(),
-      employeeId: employeesWithSalary[0]?.id || 0,
+      employeeId: defaultAdjustEmployeeId,
     });
     setAdjustmentBaseline(null);
     setAdjustDialogOpen(true);
@@ -1560,11 +1586,11 @@ export const HrSalaryPage: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button className="rounded-2xl" onClick={openAssignDialog}>
+              <Button className="rounded-2xl" onClick={openAssignDialog} disabled={!assignableEmployees.length || !salaryStructures.length}>
                 <BadgePlus size={16} className="mr-2" />
                 分配薪资
               </Button>
-              <Button variant="outline" className="rounded-2xl" onClick={openAdjustDialog}>
+              <Button variant="outline" className="rounded-2xl" onClick={openAdjustDialog} disabled={!employeesWithSalary.length}>
                 <FilePlus2 size={16} className="mr-2" />
                 发起调薪
               </Button>

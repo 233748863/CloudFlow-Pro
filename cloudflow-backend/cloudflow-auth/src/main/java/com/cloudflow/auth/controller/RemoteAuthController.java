@@ -107,6 +107,12 @@ public class RemoteAuthController {
         return R.ok(userService.selectUserById(userId));
     }
 
+    @Inner(allowedServices = {HR_SERVICE})
+    @GetMapping("/user/by-username")
+    public R<SysUser> getUserByUserName(@RequestParam String userName) {
+        return R.ok(userService.selectUserByUserName(userName));
+    }
+
     @Inner(allowedServices = {HR_SERVICE, WORKFLOW_SERVICE})
     @PostMapping("/user/batch")
     public R<List<SysUser>> batchGetUsers(@RequestBody List<Long> userIds) {

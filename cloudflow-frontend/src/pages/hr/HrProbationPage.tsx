@@ -45,6 +45,24 @@ const probationStatusClass = (status?: string) => {
   return 'bg-slate-100 text-slate-700';
 };
 
+const isProbationEmployee = (employee?: HrEmployee | null) =>
+  String(employee?.employeeStatus || '').toUpperCase() === 'PROBATION';
+
+const getEmployeeStatusLabel = (status?: string) => {
+  switch (String(status || '').toUpperCase()) {
+    case 'PROBATION':
+      return '试用期';
+    case 'REGULAR':
+      return '正式';
+    case 'RESIGNED':
+      return '已离职';
+    case 'PENDING':
+      return '待入职';
+    default:
+      return status || '-';
+  }
+};
+
 const getProbationActionHint = (status?: string) => {
   switch (String(status || '').toUpperCase()) {
     case 'DRAFT':
@@ -215,7 +233,8 @@ export const HrProbationPage: React.FC = () => {
 
     // 搜索结果变化后自动聚焦第一位员工，减少桌面端每次都要再点一次下拉框。
     if (!selectedEmployeeId || !filteredEmployees.some(item => String(item.id) === selectedEmployeeId)) {
-      setSelectedEmployeeId(String(filteredEmployees[0].id));
+      const preferredEmployee = filteredEmployees.find(item => isProbationEmployee(item)) || filteredEmployees[0];
+      setSelectedEmployeeId(String(preferredEmployee.id));
     }
   }, [filteredEmployees, selectedEmployeeId]);
 
@@ -234,6 +253,11 @@ export const HrProbationPage: React.FC = () => {
     [employees, selectedEmployeeId],
   );
 
+  const creatableEmployees = useMemo(
+    () => employees.filter(item => isProbationEmployee(item)),
+    [employees],
+  );
+
   const draftOrApprovingCount = useMemo(
     () => applications.filter(item => ['DRAFT', 'APPROVING'].includes(String(item.status || '').toUpperCase())).length,
     [applications],
@@ -247,19 +271,30 @@ export const HrProbationPage: React.FC = () => {
   const canSubmitDetail = hasWorkflowStatus(detail?.status, 'DRAFT');
   const canApproveDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
   const canRejectDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
+  const selectedEmployeeCanCreate = isProbationEmployee(selectedEmployee);
+  const canOpenCreate = creatableEmployees.length > 0;
 
   const resetCreateDialog = () => {
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployee ? selectedEmployee.id : 0,
+      employeeId: selectedEmployeeCanCreate
+        ? selectedEmployee!.id
+        : creatableEmployees[0]?.id || 0,
     });
     setCreateDialogOpen(false);
   };
 
   const handleOpenCreate = () => {
+    if (!canOpenCreate) {
+      toast.error('当前没有可发起转正的试用期员工');
+      return;
+    }
+
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployee ? selectedEmployee.id : filteredEmployees[0]?.id || employees[0]?.id || 0,
+      employeeId: selectedEmployeeCanCreate
+        ? selectedEmployee!.id
+        : creatableEmployees[0]?.id || 0,
     });
     setCreateDialogOpen(true);
   };
@@ -325,7 +360,7 @@ export const HrProbationPage: React.FC = () => {
             <p className="mt-2 text-sm text-slate-500">左侧锁定员工，右侧持续办理转正申请，减少桌面端来回切换与手动查找。</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button className="rounded-2xl" onClick={handleOpenCreate}>
+            <Button className="rounded-2xl" disabled={!canOpenCreate} onClick={handleOpenCreate}>
               <FilePlus2 size={16} className="mr-2" />
               新建转正申请
             </Button>
@@ -400,7 +435,7 @@ export const HrProbationPage: React.FC = () => {
                         <div className="mt-1 truncate text-xs text-slate-500">{buildEmployeeLabel(employee)}</div>
                       </div>
                       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                        {employee.employeeStatus || '-'}
+                        {getEmployeeStatusLabel(employee.employeeStatus)}
                       </span>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
@@ -449,6 +484,11 @@ export const HrProbationPage: React.FC = () => {
                 {[selectedEmployee.employeeNo, selectedEmployee.deptName, selectedEmployee.postName].filter(Boolean).join(' / ') || '-'}
               </div>
               <div className="mt-3 text-xs text-slate-500">{selectedEmployee.phone || '未维护手机号'}</div>
+              {!selectedEmployeeCanCreate && (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500">
+                  当前员工不是试用期，仅建议查看历史转正记录；新建申请时会自动切换到可发起的试用期员工。
+                </div>
+              )}
             </div>
           )}
 
@@ -667,7 +707,7 @@ export const HrProbationPage: React.FC = () => {
                     <SelectValue placeholder="请选择员工" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.map(item => (
+                    {creatableEmployees.map(item => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {buildEmployeeLabel(item)}
                       </SelectItem>

@@ -8,8 +8,10 @@ import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.client.dto.UserCreateDTO;
+import com.cloudflow.hr.client.dto.UserUpdateDTO;
 import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.client.vo.PostVO;
+import com.cloudflow.hr.client.vo.UserVO;
 import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.OnboardingApplicationCreateDTO;
 import com.cloudflow.hr.domain.dto.OnboardingConfirmDTO;
@@ -199,7 +201,7 @@ public class OnboardingServiceImpl implements OnboardingService {
         onboardingTaskMapper.updateById(task);
 
         if ("ACCOUNT".equals(task.getTaskType())) {
-            createUserAccount(task.getApplicationId());
+            ensureUserAccount(task.getApplicationId());
         }
 
         log.info("入职任务完成，任务ID：{}", dto.getTaskId());
@@ -370,12 +372,30 @@ public class OnboardingServiceImpl implements OnboardingService {
     }
 
     private void createUserAccount(Long applicationId) {
-        log.info("创建用户账号，申请ID：{}", applicationId);
-
         OnboardingApplication application = onboardingApplicationMapper.selectById(applicationId);
         if (application == null) {
-            log.error("入职申请不存在，申请ID：{}", applicationId);
-            return;
+            throw new HrBusinessException("ONBOARDING_APPLICATION_NOT_FOUND", "入职申请不存在");
+        }
+
+        ensureUserAccount(application);
+    }
+
+    private Long ensureUserAccount(Long applicationId) {
+        OnboardingApplication application = onboardingApplicationMapper.selectById(applicationId);
+        if (application == null) {
+            throw new HrBusinessException("ONBOARDING_APPLICATION_NOT_FOUND", "入职申请不存在");
+        }
+        return ensureUserAccount(application);
+    }
+
+    private Long ensureUserAccount(OnboardingApplication application) {
+        log.info("确保入职账号存在，申请ID：{}", application.getId());
+
+        UserVO existingUser = findUserByUserName(application.getPhone());
+        if (existingUser != null && existingUser.getUserId() != null) {
+            syncExistingUserAccount(existingUser.getUserId(), application);
+            log.info("复用已有用户账号，申请ID：{}，用户ID：{}", application.getId(), existingUser.getUserId());
+            return existingUser.getUserId();
         }
 
         UserCreateDTO userCreateDTO = new UserCreateDTO();
@@ -385,6 +405,7 @@ public class OnboardingServiceImpl implements OnboardingService {
         userCreateDTO.setNickName(application.getName());
         userCreateDTO.setEmail(application.getEmail());
         userCreateDTO.setPhonenumber(application.getPhone());
+        userCreateDTO.setSex(resolveUserSex(application.getGender()));
         userCreateDTO.setPassword("123456");
         userCreateDTO.setStatus(0);
         userCreateDTO.setPostIds(Collections.singletonList(application.getPostId()));
@@ -392,17 +413,26 @@ public class OnboardingServiceImpl implements OnboardingService {
         try {
             R<Long> result = authServiceClient.createUser(userCreateDTO);
             if (!result.isSuccess()) {
+                UserVO retriedUser = findUserByUserName(application.getPhone());
+                if (retriedUser != null && retriedUser.getUserId() != null) {
+                    syncExistingUserAccount(retriedUser.getUserId(), application);
+                    log.warn("创建用户账号返回失败，但检测到账号已存在，转为复用，申请ID：{}，用户ID：{}，原因：{}",
+                            application.getId(), retriedUser.getUserId(), result.getMsg());
+                    return retriedUser.getUserId();
+                }
                 throw new HrSystemException("CREATE_USER_FAILED", "创建用户账号失败：" + result.getMsg());
             }
-            log.info("用户账号创建成功，用户ID：{}", result.getData());
+            log.info("用户账号创建成功，申请ID：{}，用户ID：{}", application.getId(), result.getData());
+            return result.getData();
         } catch (Exception e) {
-            log.error("创建用户账号失败，申请ID：{}", applicationId, e);
+            log.error("创建用户账号失败，申请ID：{}", application.getId(), e);
             throw new HrSystemException("CREATE_USER_FAILED", "创建用户账号失败：" + e.getMessage(), e);
         }
     }
 
     private Employee createEmployeeFromApplication(OnboardingApplication application, LocalDate actualDate) {
         log.info("根据入职申请创建员工档案，申请ID：{}", application.getId());
+        Long userId = ensureUserAccount(application);
 
         Employee employee = new Employee();
         employee.setTenantId(application.getTenantId());
@@ -417,10 +447,67 @@ public class OnboardingServiceImpl implements OnboardingService {
         employee.setEmployeeType("FULL_TIME");
         employee.setEmployeeStatus("PROBATION");
         employee.setHireDate(actualDate);
+        employee.setUserId(userId);
 
         employeeMapper.insert(employee);
         log.info("员工档案创建成功，员工ID：{}，工号：{}", employee.getId(), employee.getEmployeeNo());
         return employee;
+    }
+
+    private UserVO findUserByUserName(String userName) {
+        if (!StringUtils.hasText(userName)) {
+            throw new HrBusinessException("PHONE_REQUIRED", "手机号为空，无法创建或匹配系统账号");
+        }
+
+        try {
+            R<UserVO> result = authServiceClient.getUserByUserName(userName);
+            if (!result.isSuccess()) {
+                throw new HrSystemException("QUERY_USER_FAILED", "查询用户账号失败：" + result.getMsg());
+            }
+            return result.getData();
+        } catch (HrBusinessException | HrSystemException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("按用户名查询用户失败，userName：{}", userName, e);
+            throw new HrSystemException("QUERY_USER_FAILED", "查询用户账号失败：" + e.getMessage(), e);
+        }
+    }
+
+    private void syncExistingUserAccount(Long userId, OnboardingApplication application) {
+        UserUpdateDTO userUpdateDTO = new UserUpdateDTO();
+        userUpdateDTO.setDeptId(application.getDeptId());
+        userUpdateDTO.setNickName(application.getName());
+        userUpdateDTO.setEmail(application.getEmail());
+        userUpdateDTO.setPhonenumber(application.getPhone());
+        userUpdateDTO.setSex(resolveUserSex(application.getGender()));
+        userUpdateDTO.setStatus(0);
+
+        try {
+            R<Void> result = authServiceClient.updateUser(userId, userUpdateDTO);
+            if (!result.isSuccess()) {
+                throw new HrSystemException("UPDATE_USER_FAILED", "同步已有用户账号失败：" + result.getMsg());
+            }
+        } catch (HrSystemException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("同步已有用户账号失败，用户ID：{}，申请ID：{}", userId, application.getId(), e);
+            throw new HrSystemException("UPDATE_USER_FAILED", "同步已有用户账号失败：" + e.getMessage(), e);
+        }
+    }
+
+    private String resolveUserSex(String gender) {
+        if (!StringUtils.hasText(gender)) {
+            return "2";
+        }
+
+        String normalized = normalizeGender(gender);
+        if ("MALE".equals(normalized)) {
+            return "0";
+        }
+        if ("FEMALE".equals(normalized)) {
+            return "1";
+        }
+        return "2";
     }
 
     private String generateEmployeeNo() {

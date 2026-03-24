@@ -56,6 +56,24 @@ const transferStatusClass = (status?: string) => {
 
 const isTransferCreatableEmployee = (employee?: HrEmployee | null) => String(employee?.employeeStatus || '').toUpperCase() !== 'RESIGNED';
 
+const getEmployeeStatusLabel = (status?: string) => {
+  switch (String(status || '').toUpperCase()) {
+    case 'PROBATION':
+      return '试用期';
+    case 'REGULAR':
+      return '正式';
+    case 'RESIGNED':
+      return '已离职';
+    case 'PENDING':
+      return '待入职';
+    default:
+      return status || '-';
+  }
+};
+
+const hasOpenTransferApplication = (application?: TransferApplication | null) =>
+  ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(application?.status || '').toUpperCase());
+
 const getTransferActionHint = (status?: string) => {
   switch (String(status || '').toUpperCase()) {
     case 'DRAFT':
@@ -198,6 +216,11 @@ export const HrTransferPage: React.FC = () => {
     [employees, employeeKeyword],
   );
 
+  const creatableFilteredEmployees = useMemo(
+    () => filteredEmployees.filter(employee => isTransferCreatableEmployee(employee)),
+    [filteredEmployees],
+  );
+
   useEffect(() => {
     if (!filteredEmployees.length) {
       setSelectedEmployeeId('');
@@ -208,9 +231,10 @@ export const HrTransferPage: React.FC = () => {
 
     // 搜索结果变化后自动聚焦第一位员工，减少桌面端重复选择动作。
     if (!selectedEmployeeId || !filteredEmployees.some(item => String(item.id) === selectedEmployeeId)) {
-      setSelectedEmployeeId(String(filteredEmployees[0].id));
+      const preferredEmployee = creatableFilteredEmployees[0] || filteredEmployees[0];
+      setSelectedEmployeeId(String(preferredEmployee.id));
     }
-  }, [filteredEmployees, selectedEmployeeId]);
+  }, [creatableFilteredEmployees, filteredEmployees, selectedEmployeeId]);
 
   useEffect(() => {
     if (!selectedEmployeeId) {
@@ -243,12 +267,29 @@ export const HrTransferPage: React.FC = () => {
   const canSubmitDetail = hasWorkflowStatus(detail?.status, 'DRAFT');
   const canApproveDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
   const canEffectiveDetail = hasWorkflowStatus(detail?.status, 'APPROVED');
-  const defaultCreateEmployeeId = (
-    (selectedEmployee && isTransferCreatableEmployee(selectedEmployee) ? selectedEmployee.id : undefined)
-    || filteredEmployees.find(employee => isTransferCreatableEmployee(employee))?.id
-    || creatableEmployees[0]?.id
-    || 0
+  const selectedEmployeeCanCreate = isTransferCreatableEmployee(selectedEmployee);
+  const selectedEmployeeHasOpenTransfer = useMemo(
+    () => applications.some(item => hasOpenTransferApplication(item)),
+    [applications],
   );
+  const defaultCreateEmployee = useMemo(
+    () =>
+      (selectedEmployeeCanCreate && !selectedEmployeeHasOpenTransfer ? selectedEmployee : null)
+      || creatableFilteredEmployees.find(employee => employee.id !== selectedEmployee?.id)
+      || creatableEmployees.find(employee => employee.id !== selectedEmployee?.id)
+      || (selectedEmployeeCanCreate ? selectedEmployee : null)
+      || creatableFilteredEmployees[0]
+      || creatableEmployees[0]
+      || null,
+    [
+      creatableEmployees,
+      creatableFilteredEmployees,
+      selectedEmployee,
+      selectedEmployeeCanCreate,
+      selectedEmployeeHasOpenTransfer,
+    ],
+  );
+  const defaultCreateEmployeeId = defaultCreateEmployee?.id || 0;
 
   const resetCreateDialog = () => {
     setCreateForm({
@@ -435,7 +476,7 @@ export const HrTransferPage: React.FC = () => {
                         <div className="mt-1 truncate text-xs text-slate-500">{buildEmployeeLabel(employee)}</div>
                       </div>
                       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                        {employee.employeeStatus || '-'}
+                        {getEmployeeStatusLabel(employee.employeeStatus)}
                       </span>
                     </div>
                     <div className="mt-3 text-xs text-slate-500">
@@ -478,6 +519,11 @@ export const HrTransferPage: React.FC = () => {
                 {[selectedEmployee.employeeNo, selectedEmployee.deptName, selectedEmployee.postName].filter(Boolean).join(' / ') || '-'}
               </div>
               <div className="mt-3 text-xs text-slate-500">当前职位：{selectedEmployee.positionName || '未维护'}</div>
+              {selectedEmployeeHasOpenTransfer && (
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  当前员工已有待处理调岗申请。新建时页面会优先切到其他可发起员工；若仍继续提交，后端会直接拒绝。
+                </div>
+              )}
             </div>
           )}
 
@@ -630,6 +676,12 @@ export const HrTransferPage: React.FC = () => {
                   当前申请已审批通过，但还未执行生效。点击右上角“调岗生效”后，员工组织信息才会真正更新。
                 </div>
               )}
+
+              {detail.salaryChange && (
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+                  当前版本里，`salaryChange` 只作为“需要后续调薪”的真实标记保存。调岗生效后不会自动创建调薪申请，仍需到薪酬模块继续处理。
+                </div>
+              )}
             </div>
           )}
 
@@ -739,7 +791,7 @@ export const HrTransferPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium text-slate-900">是否涉及薪资变更</div>
-                    <div className="mt-1 text-sm text-slate-500">打开后会把 `salaryChange` 按真实布尔字段提交。</div>
+                    <div className="mt-1 text-sm text-slate-500">打开后会把 `salaryChange` 按真实布尔字段提交，调岗生效后仍需去薪酬模块继续发起调薪。</div>
                   </div>
                   <Switch checked={Boolean(createForm.salaryChange)} onCheckedChange={checked => setCreateForm(prev => ({ ...prev, salaryChange: checked }))} />
                 </div>

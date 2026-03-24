@@ -61,6 +61,24 @@ const handoverStatusClass = (status?: string) => {
 const isHandoverCompleted = (status?: string) => /(COMPLETE|DONE|FINISH)/i.test(status || '');
 const isResignationCreatableEmployee = (employee?: HrEmployee | null) => String(employee?.employeeStatus || '').toUpperCase() !== 'RESIGNED';
 
+const getEmployeeStatusLabel = (status?: string) => {
+  switch (String(status || '').toUpperCase()) {
+    case 'PROBATION':
+      return '试用期';
+    case 'REGULAR':
+      return '正式';
+    case 'RESIGNED':
+      return '已离职';
+    case 'PENDING':
+      return '待入职';
+    default:
+      return status || '-';
+  }
+};
+
+const hasOpenResignationApplication = (application?: ResignationApplication | null) =>
+  ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(application?.status || '').toUpperCase());
+
 const getResignationActionHint = (status?: string) => {
   switch (String(status || '').toUpperCase()) {
     case 'DRAFT':
@@ -190,6 +208,11 @@ export const HrResignationPage: React.FC = () => {
     [employees, employeeKeyword],
   );
 
+  const creatableFilteredEmployees = useMemo(
+    () => filteredEmployees.filter(employee => isResignationCreatableEmployee(employee)),
+    [filteredEmployees],
+  );
+
   useEffect(() => {
     if (!filteredEmployees.length) {
       setSelectedEmployeeId('');
@@ -201,9 +224,10 @@ export const HrResignationPage: React.FC = () => {
 
     // 搜索结果变化后自动聚焦第一位员工，减少桌面端重复切换成本。
     if (!selectedEmployeeId || !filteredEmployees.some(item => String(item.id) === selectedEmployeeId)) {
-      setSelectedEmployeeId(String(filteredEmployees[0].id));
+      const preferredEmployee = creatableFilteredEmployees[0] || filteredEmployees[0];
+      setSelectedEmployeeId(String(preferredEmployee.id));
     }
-  }, [filteredEmployees, selectedEmployeeId]);
+  }, [creatableFilteredEmployees, filteredEmployees, selectedEmployeeId]);
 
   useEffect(() => {
     if (!selectedEmployeeId) {
@@ -238,12 +262,29 @@ export const HrResignationPage: React.FC = () => {
   const canApproveDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
   const canConfirmDetail = hasWorkflowStatus(detail?.status, 'APPROVED') && pendingHandoverCount === 0;
   const canSaveInterview = detail ? !hasWorkflowStatus(detail.status, 'COMPLETED') : false;
-  const defaultCreateEmployeeId = (
-    (selectedEmployee && isResignationCreatableEmployee(selectedEmployee) ? selectedEmployee.id : undefined)
-    || filteredEmployees.find(employee => isResignationCreatableEmployee(employee))?.id
-    || creatableEmployees[0]?.id
-    || 0
+  const selectedEmployeeCanCreate = isResignationCreatableEmployee(selectedEmployee);
+  const selectedEmployeeHasOpenResignation = useMemo(
+    () => applications.some(item => hasOpenResignationApplication(item)),
+    [applications],
   );
+  const defaultCreateEmployee = useMemo(
+    () =>
+      (selectedEmployeeCanCreate && !selectedEmployeeHasOpenResignation ? selectedEmployee : null)
+      || creatableFilteredEmployees.find(employee => employee.id !== selectedEmployee?.id)
+      || creatableEmployees.find(employee => employee.id !== selectedEmployee?.id)
+      || (selectedEmployeeCanCreate ? selectedEmployee : null)
+      || creatableFilteredEmployees[0]
+      || creatableEmployees[0]
+      || null,
+    [
+      creatableEmployees,
+      creatableFilteredEmployees,
+      selectedEmployee,
+      selectedEmployeeCanCreate,
+      selectedEmployeeHasOpenResignation,
+    ],
+  );
+  const defaultCreateEmployeeId = defaultCreateEmployee?.id || 0;
 
   const resetCreateDialog = () => {
     setCreateForm({
@@ -455,7 +496,7 @@ export const HrResignationPage: React.FC = () => {
                         <div className="mt-1 truncate text-xs text-slate-500">{buildEmployeeLabel(employee)}</div>
                       </div>
                       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                        {employee.employeeStatus || '-'}
+                        {getEmployeeStatusLabel(employee.employeeStatus)}
                       </span>
                     </div>
                     <div className="mt-3 text-xs text-slate-500">
@@ -497,7 +538,12 @@ export const HrResignationPage: React.FC = () => {
               <div className="mt-1 text-xs text-slate-500">
                 {[selectedEmployee.employeeNo, selectedEmployee.deptName, selectedEmployee.postName].filter(Boolean).join(' / ') || '-'}
               </div>
-              <div className="mt-3 text-xs text-slate-500">当前状态：{selectedEmployee.employeeStatus || '未维护'}</div>
+              <div className="mt-3 text-xs text-slate-500">当前状态：{getEmployeeStatusLabel(selectedEmployee.employeeStatus)}</div>
+              {selectedEmployeeHasOpenResignation && (
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  当前员工已有待处理离职申请。新建时页面会优先切到其他可发起员工；若仍继续提交，后端会直接拒绝。
+                </div>
+              )}
             </div>
           )}
 
@@ -648,6 +694,11 @@ export const HrResignationPage: React.FC = () => {
           {detail && hasWorkflowStatus(detail.status, 'APPROVED') && pendingHandoverCount > 0 && (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
               当前申请还有 {pendingHandoverCount} 项交接未完成，暂不能确认离职。
+            </div>
+          )}
+          {detail && hasWorkflowStatus(detail.status, 'APPROVED') && pendingHandoverCount === 0 && (
+            <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+              当前申请已满足确认离职条件。真实联调确认，点击“确认离职”后会同步写回员工离职状态、离职日期，并停用已绑定的系统账号。
             </div>
           )}
         </Card>

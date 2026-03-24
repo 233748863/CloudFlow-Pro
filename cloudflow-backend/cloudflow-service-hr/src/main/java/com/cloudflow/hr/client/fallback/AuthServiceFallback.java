@@ -77,14 +77,20 @@ public class AuthServiceFallback implements AuthServiceClient {
     
     @Override
     public R<UserVO> getUserById(Long id) {
-        log.error("Auth鏈嶅姟璋冪敤澶辫触锛氳幏鍙栫敤鎴蜂俊鎭け璐ワ紝鐢ㄦ埛ID={}", id);
-        return R.fail("Auth鏈嶅姟鏆傛椂涓嶅彲鐢紝鏃犳硶鑾峰彇鐢ㄦ埛淇℃伅");
+        log.error("Auth服务调用失败：获取用户信息失败，用户ID={}", id);
+        return R.fail("Auth服务暂时不可用，无法获取用户信息");
+    }
+
+    @Override
+    public R<UserVO> getUserByUserName(String userName) {
+        log.error("Auth服务调用失败：按用户名获取用户失败，用户名={}", userName);
+        return R.fail("Auth服务暂时不可用，无法按用户名获取用户信息");
     }
 
     @Override
     public R<List<UserVO>> batchGetUsers(List<Long> userIds) {
-        log.error("Auth鏈嶅姟璋冪敤澶辫触锛氭壒閲忚幏鍙栫敤鎴蜂俊鎭け璐ワ紝鐢ㄦ埛ID鍒楄〃={}", userIds);
-        return R.fail("Auth鏈嶅姟鏆傛椂涓嶅彲鐢紝鏃犳硶鎵归噺鑾峰彇鐢ㄦ埛淇℃伅");
+        log.error("Auth服务调用失败：批量获取用户信息失败，用户ID列表={}", userIds);
+        return R.fail("Auth服务暂时不可用，无法批量获取用户信息");
     }
 
     @Override

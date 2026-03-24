@@ -92,7 +92,6 @@ export const HrOnboardingPage: React.FC = () => {
   const [createForm, setCreateForm] = useState<OnboardingApplicationPayload>(defaultCreateForm);
   const [applicationKeyword, setApplicationKeyword] = useState('');
   const [applicationStatus, setApplicationStatus] = useState(ALL_STATUS_VALUE);
-  const [applicationIdInput, setApplicationIdInput] = useState('');
   const [currentApplication, setCurrentApplication] = useState<OnboardingApplication | null>(null);
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [taskRemarks, setTaskRemarks] = useState<Record<number, string>>({});
@@ -157,7 +156,6 @@ export const HrOnboardingPage: React.FC = () => {
       if (!nextId) {
         setCurrentApplication(null);
         setTasks([]);
-        setApplicationIdInput('');
         setConfirmDate('');
         return;
       }
@@ -180,7 +178,6 @@ export const HrOnboardingPage: React.FC = () => {
       ]);
       setCurrentApplication(applicationRes);
       setTasks(Array.isArray(taskRes) ? taskRes : []);
-      setApplicationIdInput(String(applicationId));
       setConfirmDate(toDateInputValue(applicationRes.expectedDate));
     } catch (error) {
       console.error(error);
@@ -252,19 +249,6 @@ export const HrOnboardingPage: React.FC = () => {
       positionId: positionOptions[0]?.id,
     });
     setCreateDialogOpen(false);
-  };
-
-  const handleLoadApplication = async () => {
-    const applicationId = Number(applicationIdInput);
-    if (!applicationId) {
-      toast.error('请输入有效的申请 ID');
-      return;
-    }
-
-    await loadApplicationDetail(applicationId);
-    if (!applications.some(item => item.id === applicationId)) {
-      await loadApplicationList(applicationId);
-    }
   };
 
   const handleCreateApplication = async () => {
@@ -442,23 +426,8 @@ export const HrOnboardingPage: React.FC = () => {
                 重置
               </Button>
             </div>
-            <div className="border-t border-slate-200 pt-4">
-              <Label>按申请 ID 直达</Label>
-              <div className="mt-2 flex gap-3">
-                <div className="relative flex-1">
-                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    className="pl-10"
-                    placeholder="输入申请 ID"
-                    value={applicationIdInput}
-                    onChange={event => setApplicationIdInput(event.target.value)}
-                  />
-                </div>
-                <Button onClick={() => void handleLoadApplication()}>查询</Button>
-              </div>
-            </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-              新建申请后会自动回到列表并选中当前单据，适合继续提交流程、完成任务和确认入职。
+              新建申请后会自动回到列表并选中当前单据，后续直接沿着左侧列表连续办理即可，不再依赖手工输入申请 ID。
             </div>
             <div className="space-y-3">
               {applications.map(item => {
@@ -526,7 +495,7 @@ export const HrOnboardingPage: React.FC = () => {
 
           {!currentApplication && (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
-              从左侧列表选择一条申请，或通过申请 ID 直接跳转后，这里会展示真实详情与办理动作。
+              从左侧列表选择一条申请后，这里会展示真实详情、任务办理动作和确认入职入口。
             </div>
           )}
 

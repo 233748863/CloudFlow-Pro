@@ -101,6 +101,9 @@ public interface AuthServiceClient {
     @GetMapping("/user/{id}")
     R<UserVO> getUserById(@PathVariable("id") Long id);
 
+    @GetMapping("/user/by-username")
+    R<UserVO> getUserByUserName(@RequestParam("userName") String userName);
+
     @PostMapping("/user/batch")
     R<List<UserVO>> batchGetUsers(@RequestBody List<Long> userIds);
     
