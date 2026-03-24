@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, Plus, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/ui';
-import { DeptTreeNode, HrEmployee, HrEmployeePayload, PostOption, PositionOption, listEmployees, getEmployeeDetail, createEmployee, updateEmployee, getDeptTreeOptions, getPostOptions, getPositionOptions } from '@/services/api/hr';
-import { flattenDeptTree, normalizeRows } from './hrShared';
+import { HrEmployee, HrEmployeePayload, PostOption, PositionOption, listEmployees, getEmployeeDetail, createEmployee, updateEmployee, getDeptTreeOptions, getPostOptions, getPositionOptions } from '@/services/api/hr';
+import { flattenDeptTree, normalizeRows, toDateInputValue } from './hrShared';
+import HrEmployeeWorkspace from './HrEmployeeWorkspace';
 
 const defaultForm: HrEmployeePayload = {
   employeeNo: '',
@@ -34,11 +35,12 @@ export const HrEmployeePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState('ALL');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<HrEmployeePayload>(defaultForm);
 
-  const loadData = async () => {
+  const loadData = async (preferredEmployeeId?: number) => {
     setLoading(true);
     try {
       const [employeeRes, deptRes, postRes, positionRes] = await Promise.all([
@@ -47,10 +49,18 @@ export const HrEmployeePage: React.FC = () => {
         getPostOptions(),
         getPositionOptions(),
       ]);
-      setEmployees(Array.isArray(employeeRes) ? employeeRes : []);
+      const nextEmployees = normalizeRows<HrEmployee>(employeeRes);
+      setEmployees(nextEmployees);
+      setSelectedEmployeeId(prev => {
+        const targetId = preferredEmployeeId ?? prev;
+        if (targetId && nextEmployees.some(item => item.id === targetId)) {
+          return targetId;
+        }
+        return nextEmployees[0]?.id ?? null;
+      });
       setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
       setPostOptions(normalizeRows<PostOption>(postRes));
-      setPositionOptions(Array.isArray(positionRes) ? positionRes : []);
+      setPositionOptions(normalizeRows<PositionOption>(positionRes));
     } catch (error) {
       console.error(error);
       toast.error('员工数据加载失败');
@@ -65,7 +75,7 @@ export const HrEmployeePage: React.FC = () => {
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(item => {
-      const matchedKeyword = !keyword || [item.name, item.employeeNo, item.deptName]
+      const matchedKeyword = !keyword || [item.name, item.employeeNo, item.deptName, item.postName, item.positionName, item.phone]
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(keyword.toLowerCase()));
       const matchedStatus = status === 'ALL' || item.employeeStatus === status;
@@ -88,12 +98,13 @@ export const HrEmployeePage: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       const detail = await getEmployeeDetail(id);
+      setSelectedEmployeeId(id);
       setEditingId(id);
       setForm({
         employeeNo: detail.employeeNo,
         name: detail.name,
         gender: detail.gender,
-        birthDate: detail.birthDate || undefined,
+        birthDate: toDateInputValue(detail.birthDate) || undefined,
         phone: detail.phone || undefined,
         email: detail.email || undefined,
         deptId: detail.deptId || undefined,
@@ -101,9 +112,9 @@ export const HrEmployeePage: React.FC = () => {
         positionId: detail.positionId || undefined,
         employeeType: detail.employeeType,
         employeeStatus: detail.employeeStatus,
-        hireDate: detail.hireDate || undefined,
-        regularDate: detail.regularDate || undefined,
-        resignDate: detail.resignDate || undefined,
+        hireDate: toDateInputValue(detail.hireDate) || undefined,
+        regularDate: toDateInputValue(detail.regularDate) || undefined,
+        resignDate: toDateInputValue(detail.resignDate) || undefined,
       });
       setDialogOpen(true);
     } catch (error) {
@@ -112,18 +123,54 @@ export const HrEmployeePage: React.FC = () => {
     }
   };
 
+  const validateForm = () => {
+    if (!editingId && !form.employeeNo.trim()) {
+      toast.error('请先填写工号');
+      return false;
+    }
+    if (!form.name.trim()) {
+      toast.error('请先填写姓名');
+      return false;
+    }
+    // 员工进入试用、正式或离职状态后，后续工龄、年假等规则都依赖入职日期。
+    if (form.employeeStatus !== 'PENDING' && !form.hireDate) {
+      toast.error('待入职之外的员工状态必须填写入职日期');
+      return false;
+    }
+    if (form.hireDate && form.regularDate && form.regularDate < form.hireDate) {
+      toast.error('转正日期不能早于入职日期');
+      return false;
+    }
+    if (form.hireDate && form.resignDate && form.resignDate < form.hireDate) {
+      toast.error('离职日期不能早于入职日期');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    const payload: HrEmployeePayload = {
+      ...form,
+      employeeNo: form.employeeNo.trim(),
+      name: form.name.trim(),
+      phone: form.phone?.trim() || undefined,
+      email: form.email?.trim() || undefined,
+    };
+
     try {
       if (editingId) {
-        const { employeeNo, ...payload } = form;
-        await updateEmployee(editingId, payload);
+        const { employeeNo, ...updatePayload } = payload;
+        await updateEmployee(editingId, updatePayload);
         toast.success('员工档案已更新');
+        await loadData(editingId);
       } else {
-        await createEmployee(form);
+        const createdId = await createEmployee(payload);
         toast.success('员工档案已创建');
+        await loadData(createdId);
       }
       resetForm();
-      await loadData();
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '保存失败');
@@ -186,7 +233,11 @@ export const HrEmployeePage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {filteredEmployees.map(item => (
-              <TableRow key={item.id}>
+              <TableRow
+                key={item.id}
+                className={`cursor-pointer ${selectedEmployeeId === item.id ? 'bg-pink-50/70' : ''}`}
+                onClick={() => setSelectedEmployeeId(item.id)}
+              >
                 <TableCell className="font-semibold text-slate-900">{item.employeeNo}</TableCell>
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.deptName || '-'}</TableCell>
@@ -196,10 +247,29 @@ export const HrEmployeePage: React.FC = () => {
                 <TableCell>{statusLabel[item.employeeStatus] || item.employeeStatus}</TableCell>
                 <TableCell>{item.hireDate || '-'}</TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(item.id)}>
-                    <Edit3 size={14} className="mr-1" />
-                    编辑
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant={selectedEmployeeId === item.id ? 'secondary' : 'ghost'}
+                      onClick={event => {
+                        event.stopPropagation();
+                        setSelectedEmployeeId(item.id);
+                      }}
+                    >
+                      工作区
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={event => {
+                        event.stopPropagation();
+                        void handleEdit(item.id);
+                      }}
+                    >
+                      <Edit3 size={14} className="mr-1" />
+                      编辑
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -216,6 +286,13 @@ export const HrEmployeePage: React.FC = () => {
           </TableBody>
         </Table>
       </Card>
+
+      <HrEmployeeWorkspace
+        employees={employees}
+        selectedEmployeeId={selectedEmployeeId}
+        loading={loading}
+        onEditEmployee={handleEdit}
+      />
 
       {dialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
