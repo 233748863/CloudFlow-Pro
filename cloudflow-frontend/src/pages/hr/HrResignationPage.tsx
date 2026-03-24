@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FilePlus2, LogOut, Search } from 'lucide-react';
+import { FilePlus2, LogOut, RefreshCcw, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -48,6 +48,7 @@ const resignationStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
   if (/(CONFIRM|COMPLETE|SUCCESS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
   if (/(DRAFT|PENDING|SUBMIT|HANDOVER)/i.test(status)) return 'bg-amber-50 text-amber-700';
+  if (/(REJECT|FAIL)/i.test(status)) return 'bg-rose-50 text-rose-700';
   return 'bg-slate-100 text-slate-700';
 };
 
@@ -58,6 +59,39 @@ const handoverStatusClass = (status?: string) => {
 };
 
 const isHandoverCompleted = (status?: string) => /(COMPLETE|DONE|FINISH)/i.test(status || '');
+const isResignationCreatableEmployee = (employee?: HrEmployee | null) => String(employee?.employeeStatus || '').toUpperCase() !== 'RESIGNED';
+
+const getResignationActionHint = (status?: string) => {
+  switch (String(status || '').toUpperCase()) {
+    case 'DRAFT':
+      return '下一步：提交离职申请';
+    case 'APPROVING':
+      return '下一步：审批当前申请';
+    case 'APPROVED':
+      return '下一步：完成交接后确认离职';
+    case 'COMPLETED':
+      return '流程完成，员工已离职';
+    default:
+      return '查看详情并核对离职办理进度';
+  }
+};
+
+const getPreferredApplicationId = (
+  rows: ResignationApplication[],
+  preferredId?: number,
+  currentDetailId?: number,
+) => {
+  if (preferredId && rows.some(item => item.id === preferredId)) {
+    return preferredId;
+  }
+
+  if (currentDetailId && rows.some(item => item.id === currentDetailId)) {
+    return currentDetailId;
+  }
+
+  return rows.find(item => ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase()))?.id
+    || rows[0]?.id;
+};
 
 export const HrResignationPage: React.FC = () => {
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
@@ -88,14 +122,32 @@ export const HrResignationPage: React.FC = () => {
     }
   };
 
-  const loadApplications = async (employeeId: number) => {
+  const loadApplications = async (employeeId: number, preferredId?: number) => {
     setListLoading(true);
     try {
       const applicationRes = await listResignationByEmployee(employeeId);
-      setApplications(Array.isArray(applicationRes) ? applicationRes : []);
+      const rows = Array.isArray(applicationRes) ? applicationRes : [];
+      const sortedRows = [...rows].sort((left, right) => Number(right.id) - Number(left.id));
+      setApplications(sortedRows);
+
+      const nextId = getPreferredApplicationId(
+        sortedRows,
+        preferredId,
+        detail?.employeeId === employeeId ? detail?.id : undefined,
+      );
+
+      if (!nextId) {
+        setDetail(null);
+        setHandovers([]);
+        return;
+      }
+
+      await loadDetail(nextId);
     } catch (error) {
       console.error(error);
       setApplications([]);
+      setDetail(null);
+      setHandovers([]);
       toast.error('离职申请列表加载失败');
     } finally {
       setListLoading(false);
@@ -125,6 +177,34 @@ export const HrResignationPage: React.FC = () => {
     void loadEmployees();
   }, []);
 
+  const handleRefreshCurrentEmployee = async () => {
+    await loadEmployees();
+
+    if (selectedEmployeeId) {
+      await loadApplications(Number(selectedEmployeeId), detail?.id);
+    }
+  };
+
+  const filteredEmployees = useMemo(
+    () => employees.filter(employee => matchEmployeeKeyword(employee, employeeKeyword)),
+    [employees, employeeKeyword],
+  );
+
+  useEffect(() => {
+    if (!filteredEmployees.length) {
+      setSelectedEmployeeId('');
+      setApplications([]);
+      setDetail(null);
+      setHandovers([]);
+      return;
+    }
+
+    // 搜索结果变化后自动聚焦第一位员工，减少桌面端重复切换成本。
+    if (!selectedEmployeeId || !filteredEmployees.some(item => String(item.id) === selectedEmployeeId)) {
+      setSelectedEmployeeId(String(filteredEmployees[0].id));
+    }
+  }, [filteredEmployees, selectedEmployeeId]);
+
   useEffect(() => {
     if (!selectedEmployeeId) {
       setApplications([]);
@@ -136,53 +216,79 @@ export const HrResignationPage: React.FC = () => {
     void loadApplications(Number(selectedEmployeeId));
   }, [selectedEmployeeId]);
 
-  const filteredEmployees = useMemo(
-    () => employees.filter(employee => matchEmployeeKeyword(employee, employeeKeyword)),
-    [employees, employeeKeyword],
-  );
-
   const selectedEmployee = useMemo(
     () => employees.find(item => String(item.id) === selectedEmployeeId) || null,
     [employees, selectedEmployeeId],
+  );
+  // 创建申请时过滤掉已离职员工，避免真实联调时直接命中后端业务校验。
+  const creatableEmployees = useMemo(
+    () => employees.filter(employee => isResignationCreatableEmployee(employee)),
+    [employees],
   );
 
   const pendingHandoverCount = useMemo(
     () => handovers.filter(item => !isHandoverCompleted(item.status)).length,
     [handovers],
   );
+  const actionableCount = useMemo(
+    () => applications.filter(item => ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase())).length,
+    [applications],
+  );
   const canSubmitDetail = hasWorkflowStatus(detail?.status, 'DRAFT');
   const canApproveDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
   const canConfirmDetail = hasWorkflowStatus(detail?.status, 'APPROVED') && pendingHandoverCount === 0;
   const canSaveInterview = detail ? !hasWorkflowStatus(detail.status, 'COMPLETED') : false;
+  const defaultCreateEmployeeId = (
+    (selectedEmployee && isResignationCreatableEmployee(selectedEmployee) ? selectedEmployee.id : undefined)
+    || filteredEmployees.find(employee => isResignationCreatableEmployee(employee))?.id
+    || creatableEmployees[0]?.id
+    || 0
+  );
 
   const resetCreateDialog = () => {
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployee?.id || employees[0]?.id || 0,
+      employeeId: defaultCreateEmployeeId,
     });
     setCreateDialogOpen(false);
   };
 
   const handleOpenCreate = () => {
+    if (!creatableEmployees.length) {
+      toast.error('暂无可发起离职申请的在职员工');
+      return;
+    }
+
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployee?.id || employees[0]?.id || 0,
+      employeeId: defaultCreateEmployeeId,
     });
     setCreateDialogOpen(true);
   };
 
   const handleCreate = async () => {
+    const targetEmployee = employees.find(item => item.id === createForm.employeeId);
+    if (!isResignationCreatableEmployee(targetEmployee)) {
+      toast.error('已离职员工不能新建离职申请');
+      return;
+    }
+
     try {
       const id = await createResignationApplication(createForm);
       toast.success(`离职申请已创建，申请 ID：${id}`);
+      const targetEmployeeId = createForm.employeeId;
       resetCreateDialog();
 
-      if (createForm.employeeId) {
-        setSelectedEmployeeId(String(createForm.employeeId));
-        await loadApplications(createForm.employeeId);
+      if (!targetEmployeeId) {
+        return;
       }
 
-      await loadDetail(id);
+      if (String(targetEmployeeId) !== selectedEmployeeId) {
+        setSelectedEmployeeId(String(targetEmployeeId));
+        return;
+      }
+
+      await loadApplications(targetEmployeeId, id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '创建离职申请失败');
@@ -195,11 +301,7 @@ export const HrResignationPage: React.FC = () => {
       toast.success('离职申请已提交');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId));
-      }
-
-      if (detail?.id === id) {
-        await loadDetail(id);
+        await loadApplications(Number(selectedEmployeeId), id);
       }
     } catch (error: any) {
       console.error(error);
@@ -226,11 +328,7 @@ export const HrResignationPage: React.FC = () => {
       toast.success('离职申请已审批通过');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId));
-      }
-
-      if (detail?.id === id) {
-        await loadDetail(id);
+        await loadApplications(Number(selectedEmployeeId), id);
       }
     } catch (error: any) {
       console.error(error);
@@ -264,10 +362,9 @@ export const HrResignationPage: React.FC = () => {
       toast.success('已确认离职');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId));
+        await loadApplications(Number(selectedEmployeeId), detail.id);
       }
 
-      await loadDetail(detail.id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '确认离职失败');
@@ -286,205 +383,275 @@ export const HrResignationPage: React.FC = () => {
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">离职办理中心</h1>
             <p className="mt-2 text-sm text-slate-500">支持离职申请、离职面谈、交接清单和最终确认离职的桌面端闭环。</p>
           </div>
-          <Button className="rounded-2xl" onClick={handleOpenCreate}>
-            <FilePlus2 size={16} className="mr-2" />
-            新建离职申请
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-5 backdrop-blur-xl">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.1fr_1fr_auto]">
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              className="pl-10"
-              placeholder="先搜索员工姓名、工号、部门"
-              value={employeeKeyword}
-              onChange={event => setEmployeeKeyword(event.target.value)}
-            />
+          <div className="flex flex-wrap gap-3">
+            <Button className="rounded-2xl" onClick={handleOpenCreate} disabled={!creatableEmployees.length}>
+              <FilePlus2 size={16} className="mr-2" />
+              新建离职申请
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => void handleRefreshCurrentEmployee()}>
+              <RefreshCcw size={16} className="mr-2" />
+              刷新当前数据
+            </Button>
           </div>
-          <Select value={selectedEmployeeId || undefined} onValueChange={setSelectedEmployeeId}>
-            <SelectTrigger>
-              <SelectValue placeholder="选择员工查看离职记录" />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredEmployees.map(item => (
-                <SelectItem key={item.id} value={String(item.id)}>
-                  {buildEmployeeLabel(item)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setEmployeeKeyword('');
-              setSelectedEmployeeId('');
-              setDetail(null);
-              setHandovers([]);
-            }}
-          >
-            重置
-          </Button>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">员工范围</div>
+          <div className="text-sm font-medium text-slate-500">命中员工</div>
           <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : filteredEmployees.length}</div>
-          <div className="mt-2 text-xs text-slate-400">当前搜索条件命中的员工数</div>
+          <div className="mt-2 text-xs text-slate-400">当前关键词筛出的员工数量</div>
         </Card>
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">离职申请</div>
+          <div className="text-sm font-medium text-slate-500">当前员工申请</div>
           <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{selectedEmployee ? applications.length : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">{selectedEmployee ? `${selectedEmployee.name} 的离职记录` : '先选择员工'}</div>
+          <div className="mt-2 text-xs text-slate-400">{selectedEmployee ? `${selectedEmployee.name} 的离职记录` : '先从左侧选择员工'}</div>
         </Card>
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">待完成交接</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{detail ? pendingHandoverCount : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">当前打开申请的交接事项数</div>
+          <div className="text-sm font-medium text-slate-500">待推进申请</div>
+          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{selectedEmployee ? actionableCount : '--'}</div>
+          <div className="mt-2 text-xs text-slate-400">{detail ? `当前单据还有 ${pendingHandoverCount} 项交接待完成` : '等待选择员工'}</div>
         </Card>
       </div>
 
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-2 backdrop-blur-xl">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>申请编号</TableHead>
-              <TableHead>员工</TableHead>
-              <TableHead>离职类型</TableHead>
-              <TableHead>预计离职</TableHead>
-              <TableHead>实际离职</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {applications.map(item => (
-              <TableRow key={item.id}>
-                <TableCell className="font-semibold text-slate-900">{item.applicationNo}</TableCell>
-                <TableCell>
-                  <div>{item.employeeName || '-'}</div>
-                  <div className="text-xs text-slate-400">{item.employeeNo || '-'}</div>
-                </TableCell>
-                <TableCell>{item.resignationTypeDesc || item.resignationType}</TableCell>
-                <TableCell>{toDateInputValue(item.expectedDate)}</TableCell>
-                <TableCell>{toDateInputValue(item.actualDate) || '-'}</TableCell>
-                <TableCell>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${resignationStatusClass(item.status)}`}>
-                    {item.statusDesc || item.status}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" variant="outline" onClick={() => void loadDetail(item.id)}>
-                      查看详情
-                    </Button>
-                    <Button size="sm" disabled={!hasWorkflowStatus(item.status, 'DRAFT')} onClick={() => void handleSubmit(item.id)}>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_360px_minmax(0,1fr)]">
+        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">员工列表</h2>
+            <p className="mt-1 text-sm text-slate-500">先定位员工，再连续处理该员工的离职申请、面谈和交接。</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                className="pl-10"
+                placeholder="搜索姓名、工号、部门"
+                value={employeeKeyword}
+                onChange={event => setEmployeeKeyword(event.target.value)}
+              />
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              搜索命中后会自动聚焦首位员工，便于快速切换不同人的离职办理进度。
+            </div>
+            <div className="space-y-3">
+              {filteredEmployees.map(employee => {
+                const active = String(employee.id) === selectedEmployeeId;
+
+                return (
+                  <button
+                    key={employee.id}
+                    type="button"
+                    className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                      active
+                        ? 'border-rose-200 bg-rose-50/80 shadow-sm'
+                        : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                    onClick={() => setSelectedEmployeeId(String(employee.id))}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900">{employee.name}</div>
+                        <div className="mt-1 truncate text-xs text-slate-500">{buildEmployeeLabel(employee)}</div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        {employee.employeeStatus || '-'}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-500">
+                      <div className="text-slate-400">当前组织</div>
+                      <div className="mt-1">{[employee.deptName, employee.postName, employee.positionName].filter(Boolean).join(' / ') || '-'}</div>
+                    </div>
+                  </button>
+                );
+              })}
+              {!loading && !filteredEmployees.length && (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                  当前搜索条件下没有匹配员工
+                </div>
+              )}
+              {loading && (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                  正在加载员工列表...
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">申请列表</h2>
+              <p className="mt-1 text-sm text-slate-500">优先定位还能推进的离职单据，减少在员工维度下的来回切换。</p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+              <Users size={14} />
+              {selectedEmployee ? `${applications.length} 条记录` : '等待选择员工'}
+            </div>
+          </div>
+
+          {selectedEmployee && (
+            <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-900">{selectedEmployee.name}</div>
+              <div className="mt-1 text-xs text-slate-500">
+                {[selectedEmployee.employeeNo, selectedEmployee.deptName, selectedEmployee.postName].filter(Boolean).join(' / ') || '-'}
+              </div>
+              <div className="mt-3 text-xs text-slate-500">当前状态：{selectedEmployee.employeeStatus || '未维护'}</div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {applications.map(item => {
+              const active = detail?.id === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                    active
+                      ? 'border-sky-200 bg-sky-50/80 shadow-sm'
+                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                  onClick={() => void loadDetail(item.id)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      void loadDetail(item.id);
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-900">{item.applicationNo}</div>
+                      <div className="mt-1 text-xs text-slate-500">{item.employeeName || '-'} / {item.employeeNo || '-'}</div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${resignationStatusClass(item.status)}`}>
+                      {item.statusDesc || item.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 text-xs text-slate-500">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>预计离职：{toDateInputValue(item.expectedDate) || '-'}</span>
+                      <span>实际离职：{toDateInputValue(item.actualDate) || '-'}</span>
+                    </div>
+                    <div>{item.resignationTypeDesc || item.resignationType || '-'}</div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="text-xs text-slate-400">{getResignationActionHint(item.status)}</div>
+                    <Button
+                      size="sm"
+                      type="button"
+                      disabled={!hasWorkflowStatus(item.status, 'DRAFT')}
+                      onClick={event => {
+                        event.stopPropagation();
+                        void handleSubmit(item.id);
+                      }}
+                    >
                       提交
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                </div>
+              );
+            })}
+
             {!applications.length && !listLoading && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-slate-400">
-                  {selectedEmployee ? '该员工暂无离职申请' : '请选择员工后查看离职记录'}
-                </TableCell>
-              </TableRow>
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                {selectedEmployee ? '该员工暂无离职申请' : '先从左侧选择员工'}
+              </div>
             )}
             {listLoading && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-slate-400">正在加载离职申请...</TableCell>
-              </TableRow>
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                正在加载离职申请...
+              </div>
             )}
-          </TableBody>
-        </Table>
-      </Card>
-
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-        <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">申请详情与面谈</h2>
-            <p className="mt-1 text-sm text-slate-500">在详情面板里完成提交、离职面谈和确认离职动作。</p>
           </div>
+        </Card>
+
+        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+          <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">申请详情与面谈</h2>
+              <p className="mt-1 text-sm text-slate-500">在详情面板里完成提交、离职面谈和确认离职动作。</p>
+            </div>
+            {detail && (
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" disabled={!canSubmitDetail} onClick={() => void handleSubmit(detail.id)}>提交当前申请</Button>
+                <Button variant="outline" disabled={!canApproveDetail} onClick={() => void handleApprove(detail.id)}>审批通过</Button>
+                <div className="flex gap-2">
+                  <Input type="date" value={confirmDate} onChange={event => setConfirmDate(event.target.value)} />
+                  <Button disabled={!canConfirmDetail} onClick={() => void handleConfirm()}>确认离职</Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {!detail && (
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+              先在中间列表选择一条离职申请，这里会展示完整详情与办理动作。
+            </div>
+          )}
+
           {detail && (
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" disabled={!canSubmitDetail} onClick={() => void handleSubmit(detail.id)}>提交当前申请</Button>
-              <Button variant="outline" disabled={!canApproveDetail} onClick={() => void handleApprove(detail.id)}>审批通过</Button>
-              <div className="flex gap-2">
-                <Input type="date" value={confirmDate} onChange={event => setConfirmDate(event.target.value)} />
-                <Button disabled={!canConfirmDetail} onClick={() => void handleConfirm()}>确认离职</Button>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">申请编号</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">状态</div>
+                  <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${resignationStatusClass(detail.status)}`}>
+                    {detail.statusDesc || detail.status}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">{getResignationActionHint(detail.status)}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">离职类型</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.resignationTypeDesc || detail.resignationType}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">预计离职日期</div>
+                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.expectedDate) || '-'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">实际离职日期</div>
+                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.actualDate) || '-'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">员工</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.employeeName || '-'}</div>
+                  <div className="mt-1 text-sm text-slate-500">{detail.employeeNo || '-'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
+                  <div className="text-xs text-slate-400">离职原因</div>
+                  <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.resignationReason || '-'}</div>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white/80 p-5">
+                <div className="mb-3">
+                  <h3 className="text-base font-semibold text-slate-900">离职面谈</h3>
+                  <p className="mt-1 text-sm text-slate-500">这里直接调用后端 `interview` 接口保存面谈内容。</p>
+                </div>
+                <Textarea value={interviewContent} onChange={event => setInterviewContent(event.target.value)} rows={5} disabled={!canSaveInterview} />
+                <div className="mt-4 flex justify-end">
+                  <Button disabled={!canSaveInterview} onClick={() => void handleSaveInterview()}>保存面谈记录</Button>
+                </div>
               </div>
             </div>
           )}
-        </div>
 
-        {!detail && (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
-            从上方列表选择一条离职申请查看详细信息。
-          </div>
-        )}
-
-        {detail && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs text-slate-400">申请编号</div>
-                <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs text-slate-400">状态</div>
-                <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${resignationStatusClass(detail.status)}`}>
-                  {detail.statusDesc || detail.status}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs text-slate-400">离职类型</div>
-                <div className="mt-2 font-semibold text-slate-900">{detail.resignationTypeDesc || detail.resignationType}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs text-slate-400">预计离职日期</div>
-                <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.expectedDate) || '-'}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs text-slate-400">实际离职日期</div>
-                <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.actualDate) || '-'}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs text-slate-400">员工</div>
-                <div className="mt-2 font-semibold text-slate-900">{detail.employeeName || '-'}</div>
-                <div className="mt-1 text-sm text-slate-500">{detail.employeeNo || '-'}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
-                <div className="text-xs text-slate-400">离职原因</div>
-                <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.resignationReason || '-'}</div>
-              </div>
+          {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载离职详情...</div>}
+          {detail && hasWorkflowStatus(detail.status, 'APPROVED') && pendingHandoverCount > 0 && (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              当前申请还有 {pendingHandoverCount} 项交接未完成，暂不能确认离职。
             </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white/80 p-5">
-              <div className="mb-3">
-                <h3 className="text-base font-semibold text-slate-900">离职面谈</h3>
-                <p className="mt-1 text-sm text-slate-500">这里直接调用后端 `interview` 接口保存面谈内容。</p>
-              </div>
-              <Textarea value={interviewContent} onChange={event => setInterviewContent(event.target.value)} rows={5} disabled={!canSaveInterview} />
-              <div className="mt-4 flex justify-end">
-                <Button disabled={!canSaveInterview} onClick={() => void handleSaveInterview()}>保存面谈记录</Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载离职详情...</div>}
-        {detail && hasWorkflowStatus(detail.status, 'APPROVED') && pendingHandoverCount > 0 && (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            当前申请还有 {pendingHandoverCount} 项交接未完成，暂不能确认离职。
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
+      </div>
 
       <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
         <div className="mb-4 flex items-center justify-between">
@@ -569,13 +736,14 @@ export const HrResignationPage: React.FC = () => {
                     <SelectValue placeholder="请选择员工" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.map(item => (
+                    {creatableEmployees.map(item => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {buildEmployeeLabel(item)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-2 text-xs text-slate-500">这里只展示当前仍可发起离职流程的在职员工。</div>
               </div>
               <div>
                 <Label>离职类型</Label>

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRightLeft, FilePlus2, Search } from 'lucide-react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowRightLeft, FilePlus2, RefreshCcw, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -12,12 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Textarea,
 } from '@/components/ui';
 import {
@@ -56,7 +50,42 @@ const transferStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
   if (/(APPROV|EFFECT|COMPLETE|SUCCESS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
   if (/(DRAFT|PENDING|SUBMIT)/i.test(status)) return 'bg-amber-50 text-amber-700';
+  if (/(REJECT|FAIL)/i.test(status)) return 'bg-rose-50 text-rose-700';
   return 'bg-slate-100 text-slate-700';
+};
+
+const isTransferCreatableEmployee = (employee?: HrEmployee | null) => String(employee?.employeeStatus || '').toUpperCase() !== 'RESIGNED';
+
+const getTransferActionHint = (status?: string) => {
+  switch (String(status || '').toUpperCase()) {
+    case 'DRAFT':
+      return '下一步：提交调岗申请';
+    case 'APPROVING':
+      return '下一步：审批当前申请';
+    case 'APPROVED':
+      return '下一步：执行调岗生效';
+    case 'EFFECTIVE':
+      return '流程完成，组织信息已更新';
+    default:
+      return '查看详情并核对调岗信息';
+  }
+};
+
+const getPreferredApplicationId = (
+  rows: TransferApplication[],
+  preferredId?: number,
+  currentDetailId?: number,
+) => {
+  if (preferredId && rows.some(item => item.id === preferredId)) {
+    return preferredId;
+  }
+
+  if (currentDetailId && rows.some(item => item.id === currentDetailId)) {
+    return currentDetailId;
+  }
+
+  return rows.find(item => ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase()))?.id
+    || rows[0]?.id;
 };
 
 export const HrTransferPage: React.FC = () => {
@@ -85,18 +114,19 @@ export const HrTransferPage: React.FC = () => {
       ]);
 
       const employeeList = normalizeRows<HrEmployee>(employeeRes);
+      const deptList = flattenDeptTree(Array.isArray(deptRes) ? deptRes : []);
       const postList = normalizeRows<PostOption>(postRes);
       const positionList = Array.isArray(positionRes) ? positionRes : [];
 
       setEmployees(employeeList);
-      setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
+      setDeptOptions(deptList);
       setPostOptions(postList);
       setPositionOptions(positionList);
 
       setCreateForm(prev => ({
         ...prev,
         employeeId: prev.employeeId || employeeList[0]?.id || 0,
-        toDeptId: prev.toDeptId || (Array.isArray(deptRes) ? flattenDeptTree(deptRes)[0]?.value : 0) || 0,
+        toDeptId: prev.toDeptId || deptList[0]?.value || 0,
         toPostId: prev.toPostId || postList[0]?.postId || 0,
         toPositionId: prev.toPositionId || positionList[0]?.id,
       }));
@@ -108,14 +138,30 @@ export const HrTransferPage: React.FC = () => {
     }
   };
 
-  const loadApplications = async (employeeId: number) => {
+  const loadApplications = async (employeeId: number, preferredId?: number) => {
     setListLoading(true);
     try {
       const applicationRes = await listTransferByEmployee(employeeId);
-      setApplications(Array.isArray(applicationRes) ? applicationRes : []);
+      const rows = Array.isArray(applicationRes) ? applicationRes : [];
+      const sortedRows = [...rows].sort((left, right) => Number(right.id) - Number(left.id));
+      setApplications(sortedRows);
+
+      const nextId = getPreferredApplicationId(
+        sortedRows,
+        preferredId,
+        detail?.employeeId === employeeId ? detail?.id : undefined,
+      );
+
+      if (!nextId) {
+        setDetail(null);
+        return;
+      }
+
+      await loadDetail(nextId);
     } catch (error) {
       console.error(error);
       setApplications([]);
+      setDetail(null);
       toast.error('调岗申请列表加载失败');
     } finally {
       setListLoading(false);
@@ -139,6 +185,33 @@ export const HrTransferPage: React.FC = () => {
     void loadBootstrapData();
   }, []);
 
+  const handleRefreshCurrentEmployee = async () => {
+    await loadBootstrapData();
+
+    if (selectedEmployeeId) {
+      await loadApplications(Number(selectedEmployeeId), detail?.id);
+    }
+  };
+
+  const filteredEmployees = useMemo(
+    () => employees.filter(employee => matchEmployeeKeyword(employee, employeeKeyword)),
+    [employees, employeeKeyword],
+  );
+
+  useEffect(() => {
+    if (!filteredEmployees.length) {
+      setSelectedEmployeeId('');
+      setApplications([]);
+      setDetail(null);
+      return;
+    }
+
+    // 搜索结果变化后自动聚焦第一位员工，减少桌面端重复选择动作。
+    if (!selectedEmployeeId || !filteredEmployees.some(item => String(item.id) === selectedEmployeeId)) {
+      setSelectedEmployeeId(String(filteredEmployees[0].id));
+    }
+  }, [filteredEmployees, selectedEmployeeId]);
+
   useEffect(() => {
     if (!selectedEmployeeId) {
       setApplications([]);
@@ -149,28 +222,38 @@ export const HrTransferPage: React.FC = () => {
     void loadApplications(Number(selectedEmployeeId));
   }, [selectedEmployeeId]);
 
-  const filteredEmployees = useMemo(
-    () => employees.filter(employee => matchEmployeeKeyword(employee, employeeKeyword)),
-    [employees, employeeKeyword],
-  );
-
   const selectedEmployee = useMemo(
     () => employees.find(item => String(item.id) === selectedEmployeeId) || null,
     [employees, selectedEmployeeId],
+  );
+  // 调岗创建时过滤掉已离职员工，避免前端可选但后端必拒的联调断点。
+  const creatableEmployees = useMemo(
+    () => employees.filter(employee => isTransferCreatableEmployee(employee)),
+    [employees],
   );
 
   const salaryChangeCount = useMemo(
     () => applications.filter(item => Boolean(item.salaryChange)).length,
     [applications],
   );
+  const actionableCount = useMemo(
+    () => applications.filter(item => ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase())).length,
+    [applications],
+  );
   const canSubmitDetail = hasWorkflowStatus(detail?.status, 'DRAFT');
   const canApproveDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
   const canEffectiveDetail = hasWorkflowStatus(detail?.status, 'APPROVED');
+  const defaultCreateEmployeeId = (
+    (selectedEmployee && isTransferCreatableEmployee(selectedEmployee) ? selectedEmployee.id : undefined)
+    || filteredEmployees.find(employee => isTransferCreatableEmployee(employee))?.id
+    || creatableEmployees[0]?.id
+    || 0
+  );
 
   const resetCreateDialog = () => {
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployee?.id || employees[0]?.id || 0,
+      employeeId: defaultCreateEmployeeId,
       toDeptId: deptOptions[0]?.value || 0,
       toPostId: postOptions[0]?.postId || 0,
       toPositionId: positionOptions[0]?.id,
@@ -179,9 +262,14 @@ export const HrTransferPage: React.FC = () => {
   };
 
   const handleOpenCreate = () => {
+    if (!creatableEmployees.length) {
+      toast.error('暂无可发起调岗申请的在职员工');
+      return;
+    }
+
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployee?.id || employees[0]?.id || 0,
+      employeeId: defaultCreateEmployeeId,
       toDeptId: deptOptions[0]?.value || 0,
       toPostId: postOptions[0]?.postId || 0,
       toPositionId: positionOptions[0]?.id,
@@ -190,20 +278,31 @@ export const HrTransferPage: React.FC = () => {
   };
 
   const handleCreate = async () => {
+    const targetEmployee = employees.find(item => item.id === createForm.employeeId);
+    if (!isTransferCreatableEmployee(targetEmployee)) {
+      toast.error('已离职员工不能新建调岗申请');
+      return;
+    }
+
     try {
       const id = await createTransferApplication({
         ...createForm,
         toPositionId: createForm.toPositionId || undefined,
       });
       toast.success(`调岗申请已创建，申请 ID：${id}`);
+      const targetEmployeeId = createForm.employeeId;
       resetCreateDialog();
 
-      if (createForm.employeeId) {
-        setSelectedEmployeeId(String(createForm.employeeId));
-        await loadApplications(createForm.employeeId);
+      if (!targetEmployeeId) {
+        return;
       }
 
-      await loadDetail(id);
+      if (String(targetEmployeeId) !== selectedEmployeeId) {
+        setSelectedEmployeeId(String(targetEmployeeId));
+        return;
+      }
+
+      await loadApplications(targetEmployeeId, id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '创建调岗申请失败');
@@ -216,11 +315,7 @@ export const HrTransferPage: React.FC = () => {
       toast.success('调岗申请已提交');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId));
-      }
-
-      if (detail?.id === id) {
-        await loadDetail(id);
+        await loadApplications(Number(selectedEmployeeId), id);
       }
     } catch (error: any) {
       console.error(error);
@@ -234,11 +329,7 @@ export const HrTransferPage: React.FC = () => {
       toast.success('调岗申请已审批通过');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId));
-      }
-
-      if (detail?.id === id) {
-        await loadDetail(id);
+        await loadApplications(Number(selectedEmployeeId), id);
       }
     } catch (error: any) {
       console.error(error);
@@ -252,11 +343,7 @@ export const HrTransferPage: React.FC = () => {
       toast.success('调岗已生效');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId));
-      }
-
-      if (detail?.id === id) {
-        await loadDetail(id);
+        await loadApplications(Number(selectedEmployeeId), id);
       }
     } catch (error: any) {
       console.error(error);
@@ -274,190 +361,281 @@ export const HrTransferPage: React.FC = () => {
               Transfer Flow
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">调岗申请中心</h1>
-            <p className="mt-2 text-sm text-slate-500">围绕员工查询调岗记录，直接联调目标部门、岗位和生效日期等真实字段。</p>
+            <p className="mt-2 text-sm text-slate-500">左侧锁定员工，中间切换申请，右侧持续推进审批与生效，减少桌面端操作折返。</p>
           </div>
-          <Button className="rounded-2xl" onClick={handleOpenCreate}>
-            <FilePlus2 size={16} className="mr-2" />
-            新建调岗申请
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-5 backdrop-blur-xl">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.1fr_1fr_auto]">
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              className="pl-10"
-              placeholder="先搜索员工姓名、工号、部门"
-              value={employeeKeyword}
-              onChange={event => setEmployeeKeyword(event.target.value)}
-            />
+          <div className="flex flex-wrap gap-3">
+            <Button className="rounded-2xl" onClick={handleOpenCreate} disabled={!creatableEmployees.length}>
+              <FilePlus2 size={16} className="mr-2" />
+              新建调岗申请
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => void handleRefreshCurrentEmployee()}>
+              <RefreshCcw size={16} className="mr-2" />
+              刷新当前数据
+            </Button>
           </div>
-          <Select value={selectedEmployeeId || undefined} onValueChange={setSelectedEmployeeId}>
-            <SelectTrigger>
-              <SelectValue placeholder="选择员工查看调岗记录" />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredEmployees.map(item => (
-                <SelectItem key={item.id} value={String(item.id)}>
-                  {buildEmployeeLabel(item)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setEmployeeKeyword('');
-              setSelectedEmployeeId('');
-              setDetail(null);
-            }}
-          >
-            重置
-          </Button>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">员工范围</div>
+          <div className="text-sm font-medium text-slate-500">命中员工</div>
           <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : filteredEmployees.length}</div>
-          <div className="mt-2 text-xs text-slate-400">当前搜索条件命中的员工数</div>
+          <div className="mt-2 text-xs text-slate-400">当前关键词筛出的员工数量</div>
         </Card>
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">调岗申请</div>
+          <div className="text-sm font-medium text-slate-500">当前员工申请</div>
           <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{selectedEmployee ? applications.length : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">{selectedEmployee ? `${selectedEmployee.name} 的调岗记录` : '先选择员工'}</div>
+          <div className="mt-2 text-xs text-slate-400">{selectedEmployee ? `${selectedEmployee.name} 的调岗记录` : '先从左侧选择员工'}</div>
         </Card>
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">涉及薪资变更</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{selectedEmployee ? salaryChangeCount : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">便于快速核对调岗影响范围</div>
+          <div className="text-sm font-medium text-slate-500">待推进申请</div>
+          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{selectedEmployee ? actionableCount : '--'}</div>
+          <div className="mt-2 text-xs text-slate-400">{selectedEmployee ? `其中 ${salaryChangeCount} 条涉及薪资变更` : '等待选择员工'}</div>
         </Card>
       </div>
 
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-2 backdrop-blur-xl">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>申请编号</TableHead>
-              <TableHead>员工</TableHead>
-              <TableHead>目标组织</TableHead>
-              <TableHead>调岗类型</TableHead>
-              <TableHead>生效日期</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {applications.map(item => (
-              <TableRow key={item.id}>
-                <TableCell className="font-semibold text-slate-900">{item.applicationNo}</TableCell>
-                <TableCell>
-                  <div>{item.employeeName || '-'}</div>
-                  <div className="text-xs text-slate-400">{item.employeeNo || '-'}</div>
-                </TableCell>
-                <TableCell>
-                  <div>{item.toDeptName || '-'}</div>
-                  <div className="text-xs text-slate-400">{item.toPostName || '-'} / {item.toPositionName || '-'}</div>
-                </TableCell>
-                <TableCell>{item.transferTypeDesc || item.transferType}</TableCell>
-                <TableCell>{toDateInputValue(item.effectiveDate)}</TableCell>
-                <TableCell>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${transferStatusClass(item.status)}`}>
-                    {item.statusDesc || item.status}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" variant="outline" onClick={() => void loadDetail(item.id)}>
-                      查看详情
-                    </Button>
-                    <Button size="sm" disabled={!hasWorkflowStatus(item.status, 'DRAFT')} onClick={() => void handleSubmit(item.id)}>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_360px_minmax(0,1fr)]">
+        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">员工列表</h2>
+            <p className="mt-1 text-sm text-slate-500">先定位员工，再处理该员工的调岗申请和生效动作。</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                className="pl-10"
+                placeholder="搜索姓名、工号、部门"
+                value={employeeKeyword}
+                onChange={event => setEmployeeKeyword(event.target.value)}
+              />
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              搜索命中后会自动聚焦首位员工，方便开发时快速轮询不同人的真实调岗数据。
+            </div>
+            <div className="space-y-3">
+              {filteredEmployees.map(employee => {
+                const active = String(employee.id) === selectedEmployeeId;
+
+                return (
+                  <button
+                    key={employee.id}
+                    type="button"
+                    className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                      active
+                        ? 'border-violet-200 bg-violet-50/80 shadow-sm'
+                        : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                    onClick={() => setSelectedEmployeeId(String(employee.id))}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900">{employee.name}</div>
+                        <div className="mt-1 truncate text-xs text-slate-500">{buildEmployeeLabel(employee)}</div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        {employee.employeeStatus || '-'}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-500">
+                      <div className="text-slate-400">当前组织</div>
+                      <div className="mt-1">{[employee.deptName, employee.postName, employee.positionName].filter(Boolean).join(' / ') || '-'}</div>
+                    </div>
+                  </button>
+                );
+              })}
+              {!loading && !filteredEmployees.length && (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                  当前搜索条件下没有匹配员工
+                </div>
+              )}
+              {loading && (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                  正在加载员工列表...
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">申请列表</h2>
+              <p className="mt-1 text-sm text-slate-500">优先聚焦最近申请，并默认定位到还能继续推进的单据。</p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+              <Users size={14} />
+              {selectedEmployee ? `${applications.length} 条记录` : '等待选择员工'}
+            </div>
+          </div>
+
+          {selectedEmployee && (
+            <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-900">{selectedEmployee.name}</div>
+              <div className="mt-1 text-xs text-slate-500">
+                {[selectedEmployee.employeeNo, selectedEmployee.deptName, selectedEmployee.postName].filter(Boolean).join(' / ') || '-'}
+              </div>
+              <div className="mt-3 text-xs text-slate-500">当前职位：{selectedEmployee.positionName || '未维护'}</div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {applications.map(item => {
+              const active = detail?.id === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                    active
+                      ? 'border-sky-200 bg-sky-50/80 shadow-sm'
+                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                  onClick={() => void loadDetail(item.id)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      void loadDetail(item.id);
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-900">{item.applicationNo}</div>
+                      <div className="mt-1 text-xs text-slate-500">{item.employeeName || '-'} / {item.employeeNo || '-'}</div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${transferStatusClass(item.status)}`}>
+                      {item.statusDesc || item.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 text-xs text-slate-500">
+                    <div>
+                      <div className="text-slate-400">目标组织</div>
+                      <div className="mt-1">{[item.toDeptName, item.toPostName, item.toPositionName].filter(Boolean).join(' / ') || '-'}</div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>生效日期：{toDateInputValue(item.effectiveDate) || '-'}</span>
+                      <span>{item.salaryChange ? '涉及薪资变更' : '不涉及薪资变更'}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="text-xs text-slate-400">{getTransferActionHint(item.status)}</div>
+                    <Button
+                      size="sm"
+                      type="button"
+                      disabled={!hasWorkflowStatus(item.status, 'DRAFT')}
+                      onClick={event => {
+                        event.stopPropagation();
+                        void handleSubmit(item.id);
+                      }}
+                    >
                       提交
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                </div>
+              );
+            })}
+
             {!applications.length && !listLoading && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-slate-400">
-                  {selectedEmployee ? '该员工暂无调岗申请' : '请选择员工后查看调岗记录'}
-                </TableCell>
-              </TableRow>
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                {selectedEmployee ? '该员工暂无调岗申请' : '先从左侧选择员工'}
+              </div>
             )}
             {listLoading && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-slate-400">正在加载调岗申请...</TableCell>
-              </TableRow>
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                正在加载调岗申请...
+              </div>
             )}
-          </TableBody>
-        </Table>
-      </Card>
-
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">申请详情</h2>
-            <p className="mt-1 text-sm text-slate-500">单条详情可以核对原部门、目标部门和调岗原因。</p>
           </div>
-          {detail && (
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" disabled={!canSubmitDetail} onClick={() => void handleSubmit(detail.id)}>提交当前申请</Button>
-              <Button variant="outline" disabled={!canApproveDetail} onClick={() => void handleApprove(detail.id)}>审批通过</Button>
-              <Button disabled={!canEffectiveDetail} onClick={() => void handleEffective(detail.id)}>调岗生效</Button>
+        </Card>
+
+        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">申请详情</h2>
+              <p className="mt-1 text-sm text-slate-500">直接核对原组织、目标组织和调岗原因，并推进审批或生效。</p>
+            </div>
+            {detail && (
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" disabled={!canSubmitDetail} onClick={() => void handleSubmit(detail.id)}>提交当前申请</Button>
+                <Button variant="outline" disabled={!canApproveDetail} onClick={() => void handleApprove(detail.id)}>审批通过</Button>
+                <Button disabled={!canEffectiveDetail} onClick={() => void handleEffective(detail.id)}>调岗生效</Button>
+              </div>
+            )}
+          </div>
+
+          {!detail && (
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+              先在中间列表选择一条调岗申请，这里会展示完整详情与办理动作。
             </div>
           )}
-        </div>
 
-        {!detail && (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
-            从上方列表选择一条调岗申请查看详细信息。
-          </div>
-        )}
-
-        {detail && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <div className="text-xs text-slate-400">申请编号</div>
-              <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <div className="text-xs text-slate-400">状态</div>
-              <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${transferStatusClass(detail.status)}`}>
-                {detail.statusDesc || detail.status}
+          {detail && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">申请编号</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">状态</div>
+                  <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${transferStatusClass(detail.status)}`}>
+                    {detail.statusDesc || detail.status}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">{getTransferActionHint(detail.status)}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">生效日期</div>
+                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.effectiveDate) || '-'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">员工</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.employeeName || '-'}</div>
+                  <div className="mt-1 text-sm text-slate-500">{detail.employeeNo || '-'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">原组织</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.fromDeptName || '-'}</div>
+                  <div className="mt-1 text-sm text-slate-500">{detail.fromPostName || '-'} / {detail.fromPositionName || '-'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">目标组织</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.toDeptName || '-'}</div>
+                  <div className="mt-1 text-sm text-slate-500">{detail.toPostName || '-'} / {detail.toPositionName || '-'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">调岗类型</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.transferTypeDesc || detail.transferType}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">薪资影响</div>
+                  <div className="mt-2 font-semibold text-slate-900">{detail.salaryChange ? '涉及薪资变更' : '不涉及薪资变更'}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">流程提示</div>
+                  <div className="mt-2 text-sm text-slate-700">{getTransferActionHint(detail.status)}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
+                  <div className="text-xs text-slate-400">调岗原因</div>
+                  <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.reason || '-'}</div>
+                </div>
               </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <div className="text-xs text-slate-400">生效日期</div>
-              <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.effectiveDate) || '-'}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <div className="text-xs text-slate-400">原组织</div>
-              <div className="mt-2 font-semibold text-slate-900">{detail.fromDeptName || '-'}</div>
-              <div className="mt-1 text-sm text-slate-500">{detail.fromPostName || '-'} / {detail.fromPositionName || '-'}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <div className="text-xs text-slate-400">目标组织</div>
-              <div className="mt-2 font-semibold text-slate-900">{detail.toDeptName || '-'}</div>
-              <div className="mt-1 text-sm text-slate-500">{detail.toPostName || '-'} / {detail.toPositionName || '-'}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <div className="text-xs text-slate-400">调岗类型 / 薪资变更</div>
-              <div className="mt-2 font-semibold text-slate-900">{detail.transferTypeDesc || detail.transferType}</div>
-              <div className="mt-1 text-sm text-slate-500">{detail.salaryChange ? '涉及薪资变更' : '不涉及薪资变更'}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
-              <div className="text-xs text-slate-400">调岗原因</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.reason || '-'}</div>
-            </div>
-          </div>
-        )}
 
-        {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载调岗详情...</div>}
-      </Card>
+              {hasWorkflowStatus(detail.status, 'APPROVED') && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  当前申请已审批通过，但还未执行生效。点击右上角“调岗生效”后，员工组织信息才会真正更新。
+                </div>
+              )}
+            </div>
+          )}
+
+          {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载调岗详情...</div>}
+        </Card>
+      </div>
 
       {createDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
@@ -478,13 +656,14 @@ export const HrTransferPage: React.FC = () => {
                     <SelectValue placeholder="请选择员工" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.map(item => (
+                    {creatableEmployees.map(item => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {buildEmployeeLabel(item)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-2 text-xs text-slate-500">这里只展示当前仍可发起调岗流程的在职员工。</div>
               </div>
               <div>
                 <Label>目标部门</Label>
