@@ -235,6 +235,31 @@ public class OnboardingServiceImpl implements OnboardingService {
     }
 
     @Override
+    public List<OnboardingApplicationVO> listOnboardingApplications(String keyword, String status) {
+        log.info("查询入职申请列表，keyword：{}，status：{}", keyword, status);
+
+        LambdaQueryWrapper<OnboardingApplication> wrapper = Wrappers.lambdaQuery(OnboardingApplication.class);
+        wrapper.orderByDesc(OnboardingApplication::getCreateTime);
+
+        if (StringUtils.hasText(status)) {
+            wrapper.eq(OnboardingApplication::getStatus, status.toUpperCase(Locale.ROOT));
+        }
+
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(query -> query
+                    .like(OnboardingApplication::getApplicationNo, keyword)
+                    .or()
+                    .like(OnboardingApplication::getName, keyword)
+                    .or()
+                    .like(OnboardingApplication::getPhone, keyword));
+        }
+
+        return onboardingApplicationMapper.selectList(wrapper).stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public OnboardingApplicationVO getOnboardingApplication(Long applicationId) {
         log.info("查询入职申请详情，申请ID：{}", applicationId);
 
@@ -243,19 +268,7 @@ public class OnboardingServiceImpl implements OnboardingService {
             throw new HrBusinessException("ONBOARDING_APPLICATION_NOT_FOUND", "入职申请不存在");
         }
 
-        OnboardingApplicationVO vo = new OnboardingApplicationVO();
-        BeanUtils.copyProperties(application, vo);
-        fillDeptAndPostName(vo);
-
-        if (application.getPositionId() != null) {
-            Position position = positionMapper.selectById(application.getPositionId());
-            if (position != null) {
-                vo.setPositionName(position.getPositionName());
-            }
-        }
-
-        vo.setStatusDesc(getStatusDesc(application.getStatus()));
-        return vo;
+        return convertToVO(application);
     }
 
     @Override
@@ -438,6 +451,22 @@ public class OnboardingServiceImpl implements OnboardingService {
                 log.warn("获取岗位名称失败，postId：{}", vo.getPostId(), e);
             }
         }
+    }
+
+    private OnboardingApplicationVO convertToVO(OnboardingApplication application) {
+        OnboardingApplicationVO vo = new OnboardingApplicationVO();
+        BeanUtils.copyProperties(application, vo);
+        fillDeptAndPostName(vo);
+
+        if (application.getPositionId() != null) {
+            Position position = positionMapper.selectById(application.getPositionId());
+            if (position != null) {
+                vo.setPositionName(position.getPositionName());
+            }
+        }
+
+        vo.setStatusDesc(getStatusDesc(application.getStatus()));
+        return vo;
     }
 
     private String resolveApplicationGender(OnboardingApplicationCreateDTO dto) {

@@ -844,6 +844,14 @@ INSERT INTO hr_salary_structure_item (tenant_id, structure_id, item_id, sort_ord
 (100000, 100, 103, 4),  -- 交通补贴
 (100000, 100, 104, 5);  -- 绩效奖金
 
+-- 插入示例薪资等级数据
+INSERT INTO hr_salary_grade (
+  id, tenant_id, level_id, min_salary, max_salary, mid_salary, currency,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(100, 100000, 101, 9000.00, 15000.00, 12000.00, 'CNY',
+ '2026-03-20 09:30:00', '2026-03-20 09:30:00', 'admin', 'admin', 0);
+
 -- 5. 员工薪资表
 DROP TABLE IF EXISTS hr_employee_salary;
 CREATE TABLE hr_employee_salary (
@@ -867,6 +875,16 @@ CREATE TABLE hr_employee_salary (
   KEY idx_status (status),
   KEY idx_effective_date (effective_date)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='员工薪资表';
+
+-- 插入示例员工薪资数据
+INSERT INTO hr_employee_salary (
+  id, tenant_id, employee_id, structure_id, salary_data, total_salary, effective_date, status,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(100, 100000, 1002, 100, '{"100":8000,"101":1200,"102":300,"103":300,"104":800}', 10600.00, '2026-03-24', 'EXPIRED',
+ '2026-03-24 09:00:00', '2026-03-24 12:20:00', 'admin', 'admin', 0),
+(101, 100000, 1002, 100, '{"100":8000,"101":1200,"102":300,"103":300,"104":1200}', 11000.00, '2026-03-24', 'ACTIVE',
+ '2026-03-24 12:21:00', '2026-03-24 12:21:00', 'admin', 'admin', 0);
 
 -- 6. 调薪申请表
 DROP TABLE IF EXISTS hr_salary_adjustment;
@@ -899,6 +917,17 @@ CREATE TABLE hr_salary_adjustment (
   KEY idx_effective_date (effective_date),
   KEY idx_process_instance_id (process_instance_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='调薪申请表';
+
+-- 插入示例调薪申请数据
+INSERT INTO hr_salary_adjustment (
+  id, tenant_id, application_no, employee_id, adjustment_type, adjustment_reason,
+  before_salary_data, after_salary_data, before_total, after_total, adjustment_amount, adjustment_rate,
+  effective_date, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(100, 100000, 'SA202603240001', 1002, 'PERFORMANCE', '桌面端薪酬页真实联调样本：提高绩效奖金',
+ '{"100":8000,"101":1200,"102":300,"103":300,"104":800}', '{"100":8000,"101":1200,"102":300,"103":300,"104":1200}',
+ 10600.00, 11000.00, 400.00, 3.77, '2026-03-24', '788a3482-22d2-4c2b-87f1-4d57b3175046', 'EFFECTIVE',
+ '2026-03-24 11:30:00', '2026-03-24 12:22:00', 'admin', 'admin', 0);
 
 -- 7. 五险一金方案表
 DROP TABLE IF EXISTS hr_insurance_scheme;
@@ -1178,12 +1207,12 @@ CREATE TABLE hr_employee_tax_deduction (
 
 -- 插入示例个税配置数据（2026年标准）
 INSERT INTO hr_tax_config (
-  tenant_id, threshold, tax_brackets, deduction_items, effective_date, status
+  tenant_id, threshold, tax_brackets, deduction_items, effective_date, status, create_by, update_by
 ) VALUES (
   100000, 5000.00,
   '[{"min":0,"max":36000,"rate":0.03,"deduction":0},{"min":36000,"max":144000,"rate":0.10,"deduction":2520},{"min":144000,"max":300000,"rate":0.20,"deduction":16920},{"min":300000,"max":420000,"rate":0.25,"deduction":31920},{"min":420000,"max":660000,"rate":0.30,"deduction":52920},{"min":660000,"max":960000,"rate":0.35,"deduction":85920},{"min":960000,"rate":0.45,"deduction":181920}]',
   '{"CHILD_EDU":1000,"CONTINUING_EDU":400,"MEDICAL":0,"HOUSING_LOAN":1000,"HOUSING_RENT":0,"ELDERLY_CARE":2000}',
-  '2026-01-01', 1
+  '2026-01-01', 1, NULL, NULL
 );
 
 -- 员工专项扣除依赖员工档案，初始化脚本不预置员工级数据，避免产生孤儿记录
@@ -1234,7 +1263,24 @@ INSERT INTO hr_employee (
 (1008, 100000, 'CF20240012', '陈凯', 'MALE', '1994-12-03', '13800010008', 'chen.kai@cloudflow.com', 101, 4, 101,
  'FULL_TIME', 'REGULAR', '2024-06-01', '2024-12-01', NULL, NULL, '2026-03-20 10:35:00', '2026-03-20 10:35:00', 'admin', 'admin', 0);
 
--- 3. 招聘需求示例数据
+-- 3. 员工社保与个税联调示例数据
+INSERT INTO hr_employee_insurance (
+  id, tenant_id, employee_id, scheme_id, base, effective_date, status,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(100, 100000, 1002, 100, 10600.00, '2026-03-24', 'ACTIVE',
+ '2026-03-24 10:40:00', '2026-03-24 10:40:00', 'admin', 'admin', 0);
+
+INSERT INTO hr_employee_tax_deduction (
+  id, tenant_id, employee_id, deduction_type, amount, start_date, end_date, status, remark,
+  create_time, update_time, create_by, update_by, deleted
+) VALUES
+(100, 100000, 1002, 'HOUSING_RENT', 1500.00, '2026-03-01', NULL, 'ACTIVE', '桌面端薪酬联调用住房租金扣除样本',
+ '2026-03-24 10:45:00', '2026-03-24 10:45:00', NULL, NULL, 0),
+(101, 100000, 1002, 'CONTINUING_EDU', 400.00, '2026-03-01', NULL, 'ACTIVE', '桌面端薪酬联调用继续教育扣除样本',
+ '2026-03-24 10:46:00', '2026-03-24 10:46:00', NULL, NULL, 0);
+
+-- 4. 招聘需求示例数据
 INSERT INTO hr_recruitment_request (
   id, tenant_id, request_no, dept_id, position_id, headcount, job_requirements,
   salary_min, salary_max, expected_date, process_instance_id, status, hired_count,
@@ -1252,14 +1298,16 @@ INSERT INTO hr_candidate (
   id, tenant_id, request_id, name, gender, phone, email, resume_url, source, status, reject_reason,
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'https://example.com/resume/chenhaitao.pdf', 'HEADHUNTER', 'INTERVIEW', NULL,
- '2026-03-21 10:00:00', '2026-03-22 15:00:00', 'zhao', 'zhao', 0),
+(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'https://example.com/resume/chenhaitao.pdf', 'HEADHUNTER', 'HIRED', NULL,
+ '2026-03-21 10:00:00', '2026-03-24 12:31:14', 'admin', 'admin', 0),
 (3002, 100000, 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 'https://example.com/resume/sunxiaoyu.pdf', 'REFERRAL', 'OFFER', NULL,
  '2026-03-21 10:30:00', '2026-03-23 09:10:00', 'zhao', 'zhao', 0),
 (3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', 'https://example.com/resume/linjiaqi.pdf', 'WEBSITE', 'SCREENING', NULL,
  '2026-03-22 13:00:00', '2026-03-22 13:30:00', 'zhao', 'zhao', 0),
 (3004, 100000, 2003, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 'https://example.com/resume/liruotong.pdf', 'REFERRAL', 'HIRED', NULL,
- '2026-03-15 14:00:00', '2026-03-20 18:10:00', 'zhao', 'zhao', 0);
+ '2026-03-15 14:00:00', '2026-03-20 18:10:00', 'zhao', 'zhao', 0),
+(3005, 100000, 2001, '吴嘉豪', 'MALE', '13900011006', 'wu.jiahao@example.com', 'https://example.com/resume/wujiahao.pdf', 'WEBSITE', 'INTERVIEW', NULL,
+ '2026-03-24 12:40:00', '2026-03-24 12:40:00', 'admin', 'admin', 0);
 
 -- 5. 面试示例数据
 INSERT INTO hr_interview (
@@ -1271,12 +1319,24 @@ INSERT INTO hr_interview (
 (4002, 100000, 3002, 'FINAL', 'ONSITE', '2026-03-22 10:00:00', '上海总部 5F 面试室A', '[2,4]',
  '综合表现稳定，技术深度与协作意识符合岗位要求。', 88, 'PASS', 'COMPLETED', '2026-03-21 16:00:00', '2026-03-22 12:00:00', 'zhao', 'zhao', 0),
 (4003, 100000, 3003, 'FIRST', 'PHONE', '2026-03-24 11:00:00', '电话面试', '[4]',
- NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 14:20:00', '2026-03-22 14:20:00', 'zhao', 'zhao', 0);
+ NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 14:20:00', '2026-03-22 14:20:00', 'zhao', 'zhao', 0),
+(4004, 100000, 3005, 'FIRST', 'VIDEO', '2026-03-25 14:30:00', '腾讯会议 研发一组频道', '[2,5]',
+ NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-24 12:45:00', '2026-03-24 12:45:00', 'admin', 'admin', 0);
 
--- 6. 入职申请与任务示例数据
+-- 6. Offer 示例数据
+INSERT INTO hr_offer (
+  id, tenant_id, offer_no, candidate_id, dept_id, position_id, salary, expected_date, expiry_date,
+  offer_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(100, 100000, 'OFFER20260324000001', 3001, 101, 102, 22000.00, '2026-04-15', '2026-04-22',
+ '候选人：陈海涛\n拟录用部门：研发部\n拟录用岗位：后端开发工程师\n建议薪资：¥22,000\n预计入职日期：2026-04-15\nOffer 有效期至：2026-04-22\n\n该 Offer 已完成真实联调，后续可继续转入入职办理。',
+ 'a5cf659a-ab61-44a2-9a8d-5da799a304db', 'ACCEPTED', '2026-03-24 12:31:14', '2026-03-24 12:31:14', 'admin', 'admin', 0);
+
+-- 7. 入职申请与任务示例数据
 -- 5001：审批中，可直接测试“审批通过”
 -- 5002：已审批，已生成任务，可测试“完成任务 / 确认入职”
 -- 5003：已入职完成态，用于查看最终结果
+-- 5004：由已接受 Offer 转入的入职草稿，可继续提交入职流程
 INSERT INTO hr_onboarding_application (
   id, tenant_id, application_no, candidate_id, name, gender, phone, email, dept_id, post_id, position_id,
   expected_date, process_instance_id, status, employee_id, create_time, update_time, create_by, update_by, deleted
@@ -1286,7 +1346,9 @@ INSERT INTO hr_onboarding_application (
 (5002, 100000, 'HRON202603220002', NULL, '王晨', 'MALE', '13900011005', 'wang.chen@example.com', 107, 4, 102,
  '2026-03-24', 'wf_hr_onboarding_5002', 'APPROVED', NULL, '2026-03-22 14:00:00', '2026-03-23 16:20:00', 'zhao', 'zhao', 0),
 (5003, 100000, 'HRON202603010001', 3004, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 101, 4, 101,
- '2026-03-01', 'wf_hr_onboarding_5003', 'ONBOARDED', 1006, '2026-03-01 09:00:00', '2026-03-01 18:00:00', 'zhao', 'zhao', 0);
+ '2026-03-01', 'wf_hr_onboarding_5003', 'ONBOARDED', 1006, '2026-03-01 09:00:00', '2026-03-01 18:00:00', 'zhao', 'zhao', 0),
+(5004, 100000, 'OB202603246303', 3001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 101, 4, 102,
+ '2026-04-15', NULL, 'DRAFT', NULL, '2026-03-24 12:31:14', '2026-03-24 12:31:14', 'admin', 'admin', 0);
 
 INSERT INTO hr_onboarding_task (
   id, tenant_id, application_id, task_name, task_type, task_description, assignee_id, status,
@@ -1310,6 +1372,7 @@ INSERT INTO hr_onboarding_task (
  '2026-03-01 15:00:00', '培训已完成并签收资料。', '2026-03-01 09:13:00', '2026-03-01 15:00:00', 'zhao', 'zhao', 0);
 
 -- 7. 转正申请示例数据
+-- 说明：编号顺延，前一节已扩展到 Offer 与入职草稿联调样本。
 INSERT INTO hr_probation_confirmation (
   id, tenant_id, application_no, employee_id, probation_start_date, probation_end_date, expected_regular_date,
   self_evaluation, manager_evaluation, process_instance_id, status, reject_reason, extension_days,

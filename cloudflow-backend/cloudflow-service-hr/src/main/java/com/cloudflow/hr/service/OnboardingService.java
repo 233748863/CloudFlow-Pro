@@ -57,6 +57,15 @@ public interface OnboardingService {
     void confirmOnboarding(OnboardingConfirmDTO dto);
 
     /**
+     * 查询入职申请列表。
+     *
+     * @param keyword 关键词，可匹配申请编号/姓名/手机号
+     * @param status 状态筛选
+     * @return 入职申请列表
+     */
+    List<OnboardingApplicationVO> listOnboardingApplications(String keyword, String status);
+
+    /**
      * 获取入职申请详情
      *
      * @param applicationId 入职申请ID

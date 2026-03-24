@@ -94,6 +94,22 @@ public class OnboardingController {
     }
 
     /**
+     * 获取入职申请列表
+     *
+     * @param keyword 关键词
+     * @param status 状态
+     * @return 入职申请列表
+     */
+    @GetMapping("/application/list")
+    public R<List<OnboardingApplicationVO>> listOnboardingApplications(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status) {
+        log.info("查询入职申请列表，keyword：{}，status：{}", keyword, status);
+        List<OnboardingApplicationVO> applications = onboardingService.listOnboardingApplications(keyword, status);
+        return R.ok(applications);
+    }
+
+    /**
      * 获取入职申请详情
      *
      * @param applicationId 入职申请ID

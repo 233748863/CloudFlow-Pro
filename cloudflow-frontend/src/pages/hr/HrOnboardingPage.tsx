@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, FilePlus2, Search, UserRoundPlus } from 'lucide-react';
+import { ClipboardList, FilePlus2, RefreshCcw, Search, UserRoundPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -35,11 +35,22 @@ import {
   getPostOptions,
   getPositionOptions,
   listCandidates,
+  listOnboardingApplications,
   submitOnboardingApplication,
 } from '@/services/api/hr';
 import { flattenDeptTree, hasWorkflowStatus, normalizeRows, toDateInputValue } from './hrShared';
 
 const EMPTY_VALUE = '__empty__';
+const ALL_STATUS_VALUE = '__all__';
+
+const onboardingStatusOptions = [
+  { value: ALL_STATUS_VALUE, label: '全部状态' },
+  { value: 'DRAFT', label: '草稿' },
+  { value: 'APPROVING', label: '审批中' },
+  { value: 'APPROVED', label: '已通过' },
+  { value: 'ONBOARDED', label: '已入职' },
+  { value: 'REJECTED', label: '已拒绝' },
+];
 
 const defaultCreateForm: OnboardingApplicationPayload = {
   name: '',
@@ -70,13 +81,17 @@ const isTaskCompleted = (status?: string) => /(COMPLETE|DONE|FINISH)/i.test(stat
 
 export const HrOnboardingPage: React.FC = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [applications, setApplications] = useState<OnboardingApplication[]>([]);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [postOptions, setPostOptions] = useState<PostOption[]>([]);
   const [positionOptions, setPositionOptions] = useState<PositionOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState<OnboardingApplicationPayload>(defaultCreateForm);
+  const [applicationKeyword, setApplicationKeyword] = useState('');
+  const [applicationStatus, setApplicationStatus] = useState(ALL_STATUS_VALUE);
   const [applicationIdInput, setApplicationIdInput] = useState('');
   const [currentApplication, setCurrentApplication] = useState<OnboardingApplication | null>(null);
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
@@ -116,6 +131,46 @@ export const HrOnboardingPage: React.FC = () => {
     }
   };
 
+  const loadApplicationList = async (
+    preservedId?: number,
+    nextKeyword = applicationKeyword,
+    nextStatus = applicationStatus,
+  ) => {
+    setListLoading(true);
+    try {
+      const applicationRes = await listOnboardingApplications({
+        keyword: nextKeyword.trim() || undefined,
+        status: nextStatus === ALL_STATUS_VALUE ? undefined : nextStatus,
+      });
+      const rows = Array.isArray(applicationRes) ? applicationRes : [];
+      setApplications(rows);
+      const firstActionableId = rows.find(item =>
+        ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase()),
+      )?.id;
+
+      const nextId = preservedId && rows.some(item => item.id === preservedId)
+        ? preservedId
+        : currentApplication && rows.some(item => item.id === currentApplication.id)
+          ? currentApplication.id
+          : firstActionableId || rows[0]?.id;
+
+      if (!nextId) {
+        setCurrentApplication(null);
+        setTasks([]);
+        setApplicationIdInput('');
+        setConfirmDate('');
+        return;
+      }
+
+      await loadApplicationDetail(nextId);
+    } catch (error) {
+      console.error(error);
+      toast.error('入职申请列表加载失败');
+    } finally {
+      setListLoading(false);
+    }
+  };
+
   const loadApplicationDetail = async (applicationId: number) => {
     setDetailLoading(true);
     try {
@@ -126,7 +181,7 @@ export const HrOnboardingPage: React.FC = () => {
       setCurrentApplication(applicationRes);
       setTasks(Array.isArray(taskRes) ? taskRes : []);
       setApplicationIdInput(String(applicationId));
-      setConfirmDate(prev => prev || toDateInputValue(applicationRes.expectedDate));
+      setConfirmDate(toDateInputValue(applicationRes.expectedDate));
     } catch (error) {
       console.error(error);
       setCurrentApplication(null);
@@ -139,6 +194,7 @@ export const HrOnboardingPage: React.FC = () => {
 
   useEffect(() => {
     void loadBootstrapData();
+    void loadApplicationList();
   }, []);
 
   useEffect(() => {
@@ -169,11 +225,20 @@ export const HrOnboardingPage: React.FC = () => {
     }));
   }, [candidates, createForm.candidateId]);
 
+  const availableCandidates = useMemo(
+    () => candidates.filter(item => ['INTERVIEW', 'OFFER', 'HIRED'].includes(String(item.status || '').toUpperCase())),
+    [candidates],
+  );
+
   const completedTaskCount = useMemo(
     () => tasks.filter(item => isTaskCompleted(item.status)).length,
     [tasks],
   );
 
+  const actionableApplicationCount = useMemo(
+    () => applications.filter(item => ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase())).length,
+    [applications],
+  );
   const pendingTaskCount = Math.max(tasks.length - completedTaskCount, 0);
   const canSubmitApplication = hasWorkflowStatus(currentApplication?.status, 'DRAFT');
   const canApproveApplication = hasWorkflowStatus(currentApplication?.status, 'APPROVING');
@@ -197,6 +262,9 @@ export const HrOnboardingPage: React.FC = () => {
     }
 
     await loadApplicationDetail(applicationId);
+    if (!applications.some(item => item.id === applicationId)) {
+      await loadApplicationList(applicationId);
+    }
   };
 
   const handleCreateApplication = async () => {
@@ -210,7 +278,7 @@ export const HrOnboardingPage: React.FC = () => {
       toast.success(`入职申请已创建，申请 ID：${applicationId}`);
       setConfirmDate(createForm.expectedDate);
       resetCreateForm();
-      await loadApplicationDetail(applicationId);
+      await loadApplicationList(applicationId);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '创建入职申请失败');
@@ -223,7 +291,7 @@ export const HrOnboardingPage: React.FC = () => {
     try {
       await submitOnboardingApplication(currentApplication.id);
       toast.success('入职申请已提交');
-      await loadApplicationDetail(currentApplication.id);
+      await loadApplicationList(currentApplication.id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '提交入职申请失败');
@@ -236,7 +304,7 @@ export const HrOnboardingPage: React.FC = () => {
     try {
       await approveOnboarding(currentApplication.id);
       toast.success('入职申请已审批通过');
-      await loadApplicationDetail(currentApplication.id);
+      await loadApplicationList(currentApplication.id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '审批入职申请失败');
@@ -250,7 +318,7 @@ export const HrOnboardingPage: React.FC = () => {
       await completeOnboardingTask(taskId, taskRemarks[taskId]);
       toast.success('任务已完成');
       setTaskRemarks(prev => ({ ...prev, [taskId]: '' }));
-      await loadApplicationDetail(currentApplication.id);
+      await loadApplicationList(currentApplication.id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '入职任务完成失败');
@@ -267,7 +335,7 @@ export const HrOnboardingPage: React.FC = () => {
     try {
       await confirmOnboarding(currentApplication.id, confirmDate);
       toast.success('已确认入职');
-      await loadApplicationDetail(currentApplication.id);
+      await loadApplicationList(currentApplication.id);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '确认入职失败');
@@ -295,13 +363,11 @@ export const HrOnboardingPage: React.FC = () => {
               variant="outline"
               className="rounded-2xl"
               onClick={() => {
-                if (currentApplication) {
-                  void loadApplicationDetail(currentApplication.id);
-                  return;
-                }
                 void loadBootstrapData();
+                void loadApplicationList(currentApplication?.id);
               }}
             >
+              <RefreshCcw size={16} className="mr-2" />
               刷新当前数据
             </Button>
           </div>
@@ -311,30 +377,73 @@ export const HrOnboardingPage: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
           <div className="text-sm font-medium text-slate-500">候选人来源</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : candidates.length}</div>
-          <div className="mt-2 text-xs text-slate-400">可直接从招聘候选人带入基础信息</div>
+          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : availableCandidates.length}</div>
+          <div className="mt-2 text-xs text-slate-400">可直接带入入职申请的候选人数</div>
         </Card>
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">当前申请任务数</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{currentApplication ? tasks.length : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">当前打开的申请对应办理任务</div>
+          <div className="text-sm font-medium text-slate-500">申请列表</div>
+          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{listLoading ? '--' : applications.length}</div>
+          <div className="mt-2 text-xs text-slate-400">当前筛选条件下的入职申请数</div>
         </Card>
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">待完成任务</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{currentApplication ? pendingTaskCount : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">{currentApplication ? `${completedTaskCount} 项已完成` : '先加载一个申请查看任务进度'}</div>
+          <div className="text-sm font-medium text-slate-500">待推进申请</div>
+          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{listLoading ? '--' : actionableApplicationCount}</div>
+          <div className="mt-2 text-xs text-slate-400">{currentApplication ? `当前申请剩余 ${pendingTaskCount} 项任务` : '先从左侧列表选择一条申请'}</div>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">申请检索</h2>
-            <p className="mt-1 text-sm text-slate-500">当前后端按申请 ID 查询详情和任务，这里直接按真实接口联调。</p>
+            <h2 className="text-lg font-semibold text-slate-900">申请列表</h2>
+            <p className="mt-1 text-sm text-slate-500">左侧按真实接口筛选与切换申请，右侧持续办理当前单据。</p>
           </div>
           <div className="space-y-4">
             <div>
-              <Label>申请 ID</Label>
+              <Label>关键词</Label>
+              <div className="mt-2 relative">
+                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="pl-10"
+                  placeholder="搜索申请编号、姓名或手机号"
+                  value={applicationKeyword}
+                  onChange={event => setApplicationKeyword(event.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>状态筛选</Label>
+              <Select value={applicationStatus} onValueChange={setApplicationStatus}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {onboardingStatusOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-3">
+              <Button className="flex-1" onClick={() => void loadApplicationList(currentApplication?.id)}>
+                <Search size={16} className="mr-2" />
+                查询申请
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setApplicationKeyword('');
+                  setApplicationStatus(ALL_STATUS_VALUE);
+                  void loadApplicationList(undefined, '', ALL_STATUS_VALUE);
+                }}
+              >
+                重置
+              </Button>
+            </div>
+            <div className="border-t border-slate-200 pt-4">
+              <Label>按申请 ID 直达</Label>
               <div className="mt-2 flex gap-3">
                 <div className="relative flex-1">
                   <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -349,18 +458,51 @@ export const HrOnboardingPage: React.FC = () => {
               </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-              新建申请后会自动回填当前申请 ID，便于继续提交流程、完成任务和确认入职。
+              新建申请后会自动回到列表并选中当前单据，适合继续提交流程、完成任务和确认入职。
             </div>
-            {currentApplication && (
-              <div className="rounded-2xl border border-sky-100 bg-sky-50/80 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">当前申请</div>
-                <div className="mt-3 text-base font-semibold text-slate-900">{currentApplication.applicationNo}</div>
-                <div className="mt-1 text-sm text-slate-500">{currentApplication.name} / {currentApplication.phone}</div>
-                <div className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${onboardingStatusClass(currentApplication.status)}`}>
-                  {currentApplication.statusDesc || currentApplication.status}
+            <div className="space-y-3">
+              {applications.map(item => {
+                const active = currentApplication?.id === item.id;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`w-full rounded-2xl border px-4 py-4 text-left transition ${active
+                      ? 'border-sky-200 bg-sky-50/80 shadow-sm'
+                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'}`}
+                    onClick={() => void loadApplicationDetail(item.id)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900">{item.applicationNo}</div>
+                        <div className="mt-1 text-sm text-slate-500">{item.name} / {item.phone}</div>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${onboardingStatusClass(item.status)}`}>
+                        {item.statusDesc || item.status}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
+                      <span>{item.deptName || '-'} / {item.postName || '-'}</span>
+                      <span>{toDateInputValue(item.expectedDate) || '-'}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {item.employeeId ? `已生成员工 ${item.employeeId}` : '尚未生成员工档案'}
+                    </div>
+                  </button>
+                );
+              })}
+              {listLoading && (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                  正在加载入职申请列表...
                 </div>
-              </div>
-            )}
+              )}
+              {!listLoading && !applications.length && (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
+                  当前筛选条件下暂无入职申请
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -384,7 +526,7 @@ export const HrOnboardingPage: React.FC = () => {
 
           {!currentApplication && (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
-              输入申请 ID 或先创建一条入职申请后，这里会展示真实详情与办理动作。
+              从左侧列表选择一条申请，或通过申请 ID 直接跳转后，这里会展示真实详情与办理动作。
             </div>
           )}
 
@@ -525,9 +667,9 @@ export const HrOnboardingPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={EMPTY_VALUE}>手工创建</SelectItem>
-                    {candidates.map(item => (
+                    {availableCandidates.map(item => (
                       <SelectItem key={item.id} value={String(item.id)}>
-                        {item.name} / {item.phone} / {item.positionName || '-'}
+                        {item.name} / {item.phone} / {item.statusDesc || item.status || '-'}
                       </SelectItem>
                     ))}
                   </SelectContent>

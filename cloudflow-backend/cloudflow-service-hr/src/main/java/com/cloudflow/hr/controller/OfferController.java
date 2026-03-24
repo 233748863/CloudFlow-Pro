@@ -53,6 +53,19 @@ public class OfferController {
     }
 
     /**
+     * 审批通过Offer
+     *
+     * @param id Offer ID
+     * @return 操作结果
+     */
+    @PostMapping("/{id}/approve")
+    public R<Void> approveOffer(@PathVariable Long id) {
+        log.info("审批通过Offer，ID: {}", id);
+        offerService.approveOffer(id);
+        return R.ok();
+    }
+
+    /**
      * 发送Offer
      * 
      * @param id Offer ID

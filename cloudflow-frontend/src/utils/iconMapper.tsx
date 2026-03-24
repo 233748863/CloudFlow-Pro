@@ -4,7 +4,7 @@ import {
   Calendar, Monitor, Rocket, Briefcase, Building2, Wrench, FolderOpen, Car,
   ClipboardCheck, Package, FileArchive, MailOpen, ScrollText, ClipboardList,
   ClipboardEdit, Clock, Plane, BookUser, UserCheck, CalendarClock, LogIn,
-  Landmark, SlidersHorizontal, DatabaseZap, BookOpen, FolderTree
+  Landmark, SlidersHorizontal, DatabaseZap, BookOpen, FolderTree, Layers3, Send
 } from 'lucide-react';
 
 // 图标名称到组件的映射
@@ -52,6 +52,8 @@ export const iconMap: Record<string, React.ElementType> = {
   'DatabaseZap': DatabaseZap,
   'BookOpen': BookOpen,
   'FolderTree': FolderTree,
+  'Layers3': Layers3,
+  'Send': Send,
 };
 
 // 获取图标组件，如果找不到则返回默认图标

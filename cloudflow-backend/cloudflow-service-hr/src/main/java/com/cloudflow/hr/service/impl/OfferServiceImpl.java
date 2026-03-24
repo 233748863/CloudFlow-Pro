@@ -3,8 +3,10 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.OfferCreateDTO;
 import com.cloudflow.hr.domain.dto.OfferQueryDTO;
@@ -56,6 +58,7 @@ public class OfferServiceImpl implements OfferService {
     private final OfferMapper offerMapper;
     private final CandidateMapper candidateMapper;
     private final PositionMapper positionMapper;
+    private final AuthServiceClient authServiceClient;
     private final WorkflowServiceClient workflowServiceClient;
     private final OnboardingService onboardingService;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
@@ -335,6 +338,17 @@ public class OfferServiceImpl implements OfferService {
         Candidate candidate = candidateMapper.selectById(offer.getCandidateId());
         if (candidate != null) {
             vo.setCandidateName(candidate.getName());
+        }
+
+        if (offer.getDeptId() != null) {
+            try {
+                R<DeptVO> deptResult = authServiceClient.getDeptById(offer.getDeptId());
+                if (deptResult.isSuccess() && deptResult.getData() != null) {
+                    vo.setDeptName(deptResult.getData().getDeptName());
+                }
+            } catch (Exception e) {
+                log.warn("获取 Offer 部门名称失败，deptId：{}", offer.getDeptId(), e);
+            }
         }
 
         Position position = positionMapper.selectById(offer.getPositionId());

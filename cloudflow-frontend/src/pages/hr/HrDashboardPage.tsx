@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, LogOut, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users } from 'lucide-react';
+import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users } from 'lucide-react';
 import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { HrEmployee, RecruitmentRequest, Candidate, Interview, listEmployees, listRecruitmentRequests, listCandidates, listInterviews } from '@/services/api/hr';
+import { HrEmployee, RecruitmentRequest, Candidate, Interview, Offer, listEmployees, listRecruitmentRequests, listCandidates, listInterviews, listOffers } from '@/services/api/hr';
 
 const normalizeRows = <T,>(data: any): T[] => {
   if (!data) return [];
@@ -56,22 +56,25 @@ export const HrDashboardPage: React.FC = () => {
   const [requests, setRequests] = useState<RecruitmentRequest[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [employeeRes, requestRes, candidateRes, interviewRes] = await Promise.all([
+        const [employeeRes, requestRes, candidateRes, interviewRes, offerRes] = await Promise.all([
           listEmployees(),
           listRecruitmentRequests({ pageNum: 1, pageSize: 50 }),
           listCandidates({ pageNum: 1, pageSize: 50 }),
           listInterviews(),
+          listOffers(),
         ]);
         setEmployees(normalizeRows<HrEmployee>(employeeRes));
         setRequests(normalizeRows<RecruitmentRequest>(requestRes));
         setCandidates(normalizeRows<Candidate>(candidateRes));
         setInterviews(normalizeRows<Interview>(interviewRes));
+        setOffers(normalizeRows<Offer>(offerRes));
       } finally {
         setLoading(false);
       }
@@ -84,15 +87,38 @@ export const HrDashboardPage: React.FC = () => {
     const probationCount = employees.filter(item => item.employeeStatus === 'PROBATION').length;
     const recruitingCount = requests.filter(item => ['DRAFT', 'APPROVING', 'RECRUITING'].includes(item.status)).length;
     const interviewingCount = candidates.filter(item => ['SCREENING', 'INTERVIEW', 'OFFER'].includes(item.status)).length;
+    const activeOfferCount = offers.filter(item => ['APPROVING', 'APPROVED', 'SENT', 'ACCEPTED'].includes(item.status)).length;
     return [
       { label: '员工总数', value: employees.length, icon: <Users size={20} />, hint: `${regularCount} 名正式员工`, tone: 'pink' as const },
       { label: '试用期员工', value: probationCount, icon: <UserCog size={20} />, hint: '重点关注转正与带教', tone: 'amber' as const },
       { label: '招聘需求', value: recruitingCount, icon: <BriefcaseBusiness size={20} />, hint: '正在推进中的招聘岗位', tone: 'emerald' as const },
       { label: '候选人 / 面试', value: interviewingCount, icon: <FileSearch size={20} />, hint: `${interviews.length} 场面试记录`, tone: 'slate' as const },
+      { label: '待推进 Offer', value: activeOfferCount, icon: <Send size={20} />, hint: '审批、发送与接收入口已打通', tone: 'amber' as const },
     ];
-  }, [employees, requests, candidates, interviews]);
+  }, [employees, requests, candidates, interviews, offers]);
 
   const workflowCards = [
+    {
+      title: '编制管理',
+      description: '维护部门和岗位的核定编制、空缺人数与超编风险',
+      path: '/hr/headcount',
+      icon: <Layers3 size={18} />,
+      tone: 'bg-sky-50 text-sky-600',
+    },
+    {
+      title: '薪酬管理',
+      description: '联调薪资项目、薪资结构、员工现薪和调薪申请的桌面端入口',
+      path: '/hr/salary',
+      icon: <Landmark size={18} />,
+      tone: 'bg-amber-50 text-amber-600',
+    },
+    {
+      title: 'Offer 管理',
+      description: '创建 Offer、推进审批和发送，并在候选人接受后转入入职流程',
+      path: '/hr/offer',
+      icon: <Send size={18} />,
+      tone: 'bg-emerald-50 text-emerald-600',
+    },
     {
       title: '入职办理',
       description: '创建入职申请、按申请 ID 拉详情、完成任务并确认入职',
@@ -142,15 +168,27 @@ export const HrDashboardPage: React.FC = () => {
               <BadgePlus size={18} className="mr-2" />
               员工档案
             </Button>
+            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/offer')}>
+              <Send size={18} className="mr-2" />
+              Offer 管理
+            </Button>
             <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/recruitment')}>
               <BriefcaseBusiness size={18} className="mr-2" />
               招聘中心
+            </Button>
+            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/headcount')}>
+              <Layers3 size={18} className="mr-2" />
+              编制管理
+            </Button>
+            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/salary')}>
+              <Landmark size={18} className="mr-2" />
+              薪酬管理
             </Button>
           </div>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metrics.map(metric => (
           <Card key={metric.label} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
             <div className="flex items-start justify-between">
@@ -175,7 +213,7 @@ export const HrDashboardPage: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {workflowCards.map(item => (
           <Card key={item.title} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
             <div className="flex h-full flex-col">

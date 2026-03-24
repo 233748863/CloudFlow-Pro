@@ -85,13 +85,13 @@ public class EmployeeTaxDeduction {
      * 创建人
      */
     @TableField(fill = FieldFill.INSERT)
-    private Long createBy;
+    private String createBy;
     
     /**
      * 更新人
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updateBy;
+    private String updateBy;
     
     /**
      * 删除标志：0-未删除 1-已删除

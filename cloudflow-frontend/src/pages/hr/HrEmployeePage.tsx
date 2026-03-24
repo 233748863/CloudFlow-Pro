@@ -288,7 +288,14 @@ export const HrEmployeePage: React.FC = () => {
               <div><Label>入职日期</Label><Input type="date" value={form.hireDate || ''} onChange={event => setForm(prev => ({ ...prev, hireDate: event.target.value }))} /></div>
               <div><Label>转正日期</Label><Input type="date" value={form.regularDate || ''} onChange={event => setForm(prev => ({ ...prev, regularDate: event.target.value }))} /></div>
               <div><Label>离职日期</Label><Input type="date" value={form.resignDate || ''} onChange={event => setForm(prev => ({ ...prev, resignDate: event.target.value }))} /></div>
-              <div className="md:col-span-2"><Label>备注</Label><Textarea value={form.name} disabled className="text-slate-400" /></div>
+              <div className="md:col-span-2">
+                <Label>补充说明</Label>
+                <Textarea
+                  value="当前员工档案接口暂未提供备注字段，这里只展示说明，不会提交到后端。"
+                  readOnly
+                  className="text-slate-400"
+                />
+              </div>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={resetForm}>取消</Button>
