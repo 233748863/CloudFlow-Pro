@@ -39,6 +39,7 @@ const defaultForm: ProbationConfirmationPayload = {
 
 const probationStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
+  if (/(EXTENDED|EXTEND)/i.test(status)) return 'bg-amber-50 text-amber-700';
   if (/(APPROV|REGULAR|COMPLETE|PASS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
   if (/(DRAFT|PENDING|SUBMIT)/i.test(status)) return 'bg-amber-50 text-amber-700';
   if (/(REJECT|FAIL)/i.test(status)) return 'bg-rose-50 text-rose-700';
@@ -71,6 +72,8 @@ const getProbationActionHint = (status?: string) => {
       return '下一步：审批当前申请';
     case 'APPROVED':
       return '流程完成，员工已转正';
+    case 'EXTENDED':
+      return '试用期已延长，观察结束后可重新发起';
     case 'REJECTED':
       return '流程已驳回，可重新发起';
     default:
@@ -267,6 +270,10 @@ export const HrProbationPage: React.FC = () => {
     () => applications.filter(item => hasWorkflowStatus(item.status, 'APPROVED')).length,
     [applications],
   );
+
+  const detailHistoryTone = hasWorkflowStatus(detail?.status, 'EXTENDED')
+    ? 'border-amber-100 bg-amber-50 text-amber-700'
+    : 'border-rose-100 bg-rose-50 text-rose-700';
 
   const canSubmitDetail = hasWorkflowStatus(detail?.status, 'DRAFT');
   const canApproveDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
@@ -672,8 +679,9 @@ export const HrProbationPage: React.FC = () => {
                 </div>
 
                 {(detail.rejectReason || detail.extensionDays) && (
-                  <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    历史驳回信息：{detail.rejectReason || '未填写原因'}
+                  <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${detailHistoryTone}`}>
+                    {hasWorkflowStatus(detail.status, 'EXTENDED') ? '历史延长信息：' : '历史驳回信息：'}
+                    {detail.rejectReason || '未填写原因'}
                     {detail.extensionDays ? `，延长 ${detail.extensionDays} 天` : ''}
                   </div>
                 )}
