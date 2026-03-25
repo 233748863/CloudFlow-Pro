@@ -1107,6 +1107,11 @@ export const HrSalaryPage: React.FC = () => {
     workingEmployeeSalaries.length,
   ]);
 
+  const futureEffectiveEmployeeSalaries = useMemo(
+    () => workingEmployeeSalaries.filter(item => isFutureDate(item.effectiveDate)),
+    [workingEmployeeSalaries],
+  );
+
   const currentEmployeeRecord = useMemo(
     () => filteredEmployeeSalaries.find(item => String(item.employeeId) === selectedEmployeeId) || null,
     [filteredEmployeeSalaries, selectedEmployeeId],
@@ -1404,6 +1409,51 @@ export const HrSalaryPage: React.FC = () => {
     expired: employeeSalaryHistory.filter(item => String(item.status || '').toUpperCase() === 'EXPIRED').length,
   }), [employeeSalaryHistory]);
 
+  const currentEmployeeEffectiveDate = useMemo(
+    () => toDateInputValue(employeeSalaryDetail?.effectiveDate || currentEmployeeRecord?.effectiveDate) || '',
+    [currentEmployeeRecord?.effectiveDate, employeeSalaryDetail?.effectiveDate],
+  );
+
+  const currentEmployeeFutureEffective = useMemo(
+    () => Boolean(currentEmployeeEffectiveDate) && currentEmployeeEffectiveDate > getTodayValue(),
+    [currentEmployeeEffectiveDate],
+  );
+
+  const currentEmployeeEffectiveOffsetDays = useMemo(
+    () => getDateOffsetFromToday(employeeSalaryDetail?.effectiveDate || currentEmployeeRecord?.effectiveDate),
+    [currentEmployeeRecord?.effectiveDate, employeeSalaryDetail?.effectiveDate],
+  );
+
+  const employeeSalaryDuplicateEffectiveDates = useMemo(
+    () => Array.from(
+      employeeSalaryHistory.reduce((result, item) => {
+        const effectiveDate = toDateInputValue(item.effectiveDate);
+        if (!effectiveDate) return result;
+        result.set(effectiveDate, (result.get(effectiveDate) || 0) + 1);
+        return result;
+      }, new Map<string, number>()),
+    )
+      .filter(([, count]) => count > 1)
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])),
+    [employeeSalaryHistory],
+  );
+
+  const latestEmployeeAdjustmentMatchedArchive = useMemo(() => {
+    if (!latestEmployeeAdjustment) return null;
+
+    return employeeSalaryHistory.find(item =>
+      (toDateInputValue(item.effectiveDate) || '') === (toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '')
+      && normalizeAmount(item.totalSalary) === normalizeAmount(latestEmployeeAdjustment.afterTotal),
+    ) || null;
+  }, [employeeSalaryHistory, latestEmployeeAdjustment]);
+
+  const latestEmployeeAdjustmentMatchedCurrentSalary = useMemo(() => {
+    if (!latestEmployeeAdjustment) return false;
+
+    return (toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '') === currentEmployeeEffectiveDate
+      && normalizeAmount(latestEmployeeAdjustment.afterTotal) === normalizeAmount(employeeSalaryDetail?.totalSalary ?? currentEmployeeRecord?.totalSalary);
+  }, [currentEmployeeEffectiveDate, currentEmployeeRecord?.totalSalary, employeeSalaryDetail?.totalSalary, latestEmployeeAdjustment]);
+
   const currentGrossSalary = useMemo(
     () => Number(employeeSalaryDetail?.totalSalary ?? currentEmployeeRecord?.totalSalary ?? 0),
     [currentEmployeeRecord?.totalSalary, employeeSalaryDetail?.totalSalary],
@@ -1520,6 +1570,113 @@ export const HrSalaryPage: React.FC = () => {
 
     return `${year}年${month}月`;
   }, [currentEmployeeRecord?.effectiveDate, employeeSalaryDetail?.effectiveDate]);
+
+  const insuranceReferenceEffectiveDate = useMemo(
+    () => toDateInputValue(employeeInsuranceDetail?.effectiveDate || latestEmployeeInsuranceLedger?.effectiveDate) || '',
+    [employeeInsuranceDetail?.effectiveDate, latestEmployeeInsuranceLedger?.effectiveDate],
+  );
+
+  const insuranceReferenceMismatch = useMemo(
+    () => Boolean(currentEmployeeEffectiveDate && insuranceReferenceEffectiveDate)
+      && currentEmployeeEffectiveDate !== insuranceReferenceEffectiveDate,
+    [currentEmployeeEffectiveDate, insuranceReferenceEffectiveDate],
+  );
+
+  const currentEmployeeEffectiveHint = useMemo(() => {
+    if (!currentEmployeeEffectiveDate) return '当前没有可用的生效日期';
+    if (currentEmployeeEffectiveOffsetDays == null) return `生效 ${currentEmployeeEffectiveDate}`;
+    if (currentEmployeeEffectiveOffsetDays > 0) {
+      return `生效 ${currentEmployeeEffectiveDate}，距今天还有 ${currentEmployeeEffectiveOffsetDays} 天`;
+    }
+    if (currentEmployeeEffectiveOffsetDays < 0) {
+      return `生效 ${currentEmployeeEffectiveDate}，已生效 ${Math.abs(currentEmployeeEffectiveOffsetDays)} 天`;
+    }
+    return `生效 ${currentEmployeeEffectiveDate}，今天开始生效`;
+  }, [currentEmployeeEffectiveDate, currentEmployeeEffectiveOffsetDays]);
+
+  // 将真实联调时最容易偏差的口径提炼成提示，避免只看结果数值误判。
+  const compensationRiskItems = useMemo(() => {
+    const items: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+
+    if (currentEmployeeFutureEffective) {
+      items.push({
+        key: 'future-effective',
+        title: '当前测算基于未来生效薪资',
+        detail: `参考档案生效日是 ${currentEmployeeEffectiveDate || '-'}，当前页面展示的是未来薪资口径，不代表今天已经实际发放。`,
+        severity: 'warning',
+      });
+    }
+
+    if (!hasInsuranceProfile) {
+      items.push({
+        key: 'insurance-missing',
+        title: '社保公积金仍按 0 估算',
+        detail: '当前没有命中员工社保方案，个人社保、公司承担和用工总成本都会偏低或偏高，需要先补分配再核对。',
+        severity: 'danger',
+      });
+    } else if (insuranceReferenceMismatch) {
+      items.push({
+        key: 'insurance-date-mismatch',
+        title: '社保口径和薪资生效日期不一致',
+        detail: `当前薪资生效日是 ${currentEmployeeEffectiveDate || '-'}，社保方案口径生效日是 ${insuranceReferenceEffectiveDate || '-'}，核对时要注意不是同一批次。`,
+        severity: 'warning',
+      });
+    }
+
+    if (!sortedEmployeeTaxDeductions.length) {
+      items.push({
+        key: 'deduction-empty',
+        title: '当前月份没有命中专项扣除',
+        detail: `按 ${taxReferencePeriod} 口径没有命中 ACTIVE 专项扣除，本月个税会按 0 扣除项估算。`,
+        severity: hasInsuranceProfile ? 'warning' : 'danger',
+      });
+    }
+
+    if (!currentTaxConfig) {
+      items.push({
+        key: 'tax-config-missing',
+        title: '页面没有加载到个税配置',
+        detail: '当前缺少前端可见的个税配置摘要，虽然接口可能返回测算值，但页面无法直接核对配置来源。',
+        severity: 'danger',
+      });
+    }
+
+    return items;
+  }, [
+    currentEmployeeEffectiveDate,
+    currentEmployeeFutureEffective,
+    currentTaxConfig,
+    hasInsuranceProfile,
+    insuranceReferenceEffectiveDate,
+    insuranceReferenceMismatch,
+    sortedEmployeeTaxDeductions.length,
+    taxReferencePeriod,
+  ]);
+
+  const compensationRiskSummary = useMemo(() => {
+    const score = compensationRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    if (!score) {
+      return {
+        label: '可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前薪资、社保和专项扣除口径基本对齐，可以直接核对测算结果。',
+      };
+    }
+
+    if (score <= 2) {
+      return {
+        label: '需注意',
+        className: 'border-amber-200 bg-amber-50 text-amber-700',
+        hint: `发现 ${compensationRiskItems.length} 条需要人工确认的口径差异。`,
+      };
+    }
+
+    return {
+      label: '信息不足',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+      hint: `当前有 ${compensationRiskItems.length} 条高风险提示，建议先补齐口径再继续联调。`,
+    };
+  }, [compensationRiskItems]);
 
   const insuranceBreakdownRows = useMemo(
     () => [
@@ -3198,6 +3355,13 @@ export const HrSalaryPage: React.FC = () => {
                     </Button>
                   </div>
 
+                  {futureEffectiveEmployeeSalaries.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
+                      真实联调发现 {workingEmployeeSalaries.length} 条 ACTIVE 现薪里有 {futureEffectiveEmployeeSalaries.length} 条生效日晚于今天。
+                      当前页面会按接口原样展示这些未来档案，联调时需要区分“接口当前返回”和“实际已到生效日”。
+                    </div>
+                  )}
+
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-emerald-700">
                     当前还有 {assignableEmployees.length} 名在岗员工未分配薪资，可直接通过上方“分配薪资”真实写库联调。
                   </div>
@@ -3232,9 +3396,16 @@ export const HrSalaryPage: React.FC = () => {
                                 {[item.employeeNo, item.structureName].filter(Boolean).join(' / ')}
                               </div>
                             </div>
-                            <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                              {item.statusDesc || item.status}
-                            </span>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              {isFutureDate(item.effectiveDate) && (
+                                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                                  未来生效
+                                </span>
+                              )}
+                              <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                {item.statusDesc || item.status}
+                              </span>
+                            </div>
                           </div>
                           <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                             <span>{formatCurrency(item.totalSalary)}</span>
@@ -3267,15 +3438,23 @@ export const HrSalaryPage: React.FC = () => {
                       <p className="mt-1 text-sm text-slate-500">详情接口会展开薪资项目明细，适合验证结构绑定和金额写库是否正确。</p>
                     </div>
                     {currentEmployeeRecord && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          void refreshCurrentEmployeeWorkspace(currentEmployeeRecord);
-                        }}
-                      >
-                        <RefreshCcw size={14} className="mr-2" />
-                        刷新当前员工
-                      </Button>
+                      <div className="flex flex-wrap gap-3">
+                        {latestEmployeeAdjustment && (
+                          <Button variant="outline" onClick={() => openAdjustmentFromHistory(latestEmployeeAdjustment.id)}>
+                            <FileText size={14} className="mr-2" />
+                            查看最近调薪
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            void refreshCurrentEmployeeWorkspace(currentEmployeeRecord);
+                          }}
+                        >
+                          <RefreshCcw size={14} className="mr-2" />
+                          刷新当前员工
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -3304,10 +3483,91 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                           <div className="text-xs text-slate-400">生效日期</div>
-                          <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(employeeSalaryDetail?.effectiveDate || currentEmployeeRecord.effectiveDate) || '-'}</div>
-                          <div className="mt-1 text-sm text-slate-500">{employeeSalaryDetail?.statusDesc || currentEmployeeRecord.statusDesc || currentEmployeeRecord.status}</div>
+                          <div className="mt-2 font-semibold text-slate-900">{currentEmployeeEffectiveDate || '-'}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                            <span>{employeeSalaryDetail?.statusDesc || currentEmployeeRecord.statusDesc || currentEmployeeRecord.status}</span>
+                            {currentEmployeeFutureEffective && (
+                              <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                未来生效
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className={`rounded-2xl border p-4 ${
+                          currentEmployeeFutureEffective
+                            ? 'border-amber-200 bg-amber-50/80'
+                            : 'border-emerald-200 bg-emerald-50/80'
+                        }`}>
+                          <div className={`text-xs ${currentEmployeeFutureEffective ? 'text-amber-600' : 'text-emerald-600'}`}>当前档案阶段</div>
+                          <div className={`mt-2 text-2xl font-semibold ${currentEmployeeFutureEffective ? 'text-amber-700' : 'text-emerald-700'}`}>
+                            {currentEmployeeFutureEffective ? '未来生效' : '已到生效日'}
+                          </div>
+                          <div className={`mt-2 text-sm ${currentEmployeeFutureEffective ? 'text-amber-700' : 'text-emerald-700'}`}>
+                            {currentEmployeeFutureEffective
+                              ? `${currentEmployeeEffectiveOffsetDays ?? '-'} 天后生效`
+                              : '当前档案已经进入生效区间'}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">ACTIVE 档案数</div>
+                          <div className={`mt-2 text-2xl font-semibold ${salaryHistoryMetrics.active === 1 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {salaryHistoryMetrics.active}
+                          </div>
+                          <div className="mt-2 text-sm text-slate-500">正常情况下应只保留 1 条 ACTIVE</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">同日档案峰值</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900">
+                            {employeeSalaryDuplicateEffectiveDates[0]?.[1] || 1}
+                          </div>
+                          <div className="mt-2 text-sm text-slate-500">
+                            {employeeSalaryDuplicateEffectiveDates[0]
+                              ? `${employeeSalaryDuplicateEffectiveDates[0][0]} 有 ${employeeSalaryDuplicateEffectiveDates[0][1]} 条档案`
+                              : '当前没有同一生效日重复档案'}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">最近调薪</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900">
+                            {latestEmployeeAdjustment ? adjustmentStatusLabel(latestEmployeeAdjustment.status) : '暂无'}
+                          </div>
+                          <div className="mt-2 text-sm text-slate-500">
+                            {latestEmployeeAdjustment
+                              ? `${latestEmployeeAdjustment.applicationNo} / ${toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '-'}`
+                              : '还没有调薪链路'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {currentEmployeeFutureEffective && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm text-amber-700">
+                          当前 ACTIVE 现薪的生效日是 {currentEmployeeEffectiveDate}，晚于今天。
+                          到手收入测算、社保台账联动和调薪候选都会基于这条未来档案继续联调，核对结果时要注意它并不代表“今天已经实际发放”的薪资。
+                        </div>
+                      )}
+
+                      {!currentEmployeeFutureEffective && latestEmployeeAdjustment && latestEmployeeAdjustmentMatchedCurrentSalary && (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4 text-sm text-emerald-700">
+                          最近一次调薪已经对齐到当前 ACTIVE 现薪，当前档案与最近调薪单据的生效日和调薪后总额一致。
+                        </div>
+                      )}
+
+                      {!currentEmployeeFutureEffective && latestEmployeeAdjustment && !latestEmployeeAdjustmentMatchedCurrentSalary && latestEmployeeAdjustmentMatchedArchive && (
+                        <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4 text-sm text-sky-700">
+                          最近一次调薪已经写入薪资档案 #{latestEmployeeAdjustmentMatchedArchive.id}，但当前 ACTIVE 现薪不是这一条。
+                          这通常表示后面还有新的调薪或重新分配链路覆盖了它。
+                        </div>
+                      )}
+
+                      {!currentEmployeeFutureEffective && latestEmployeeAdjustment && !latestEmployeeAdjustmentMatchedCurrentSalary && !latestEmployeeAdjustmentMatchedArchive && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm text-amber-700">
+                          最近一次调薪还没有在当前现薪或历史档案中命中。
+                          如果这条调薪的生效日还没到，属于正常待落档；如果已经过了生效日，建议切到“调薪申请”页继续核对真实状态流转。
+                        </div>
+                      )}
 
                       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
                         <Table>
@@ -3386,7 +3646,7 @@ export const HrSalaryPage: React.FC = () => {
 
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                           <div className="text-xs text-slate-400">档案总数</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{salaryHistoryMetrics.total}</div>
@@ -3402,7 +3662,23 @@ export const HrSalaryPage: React.FC = () => {
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{salaryHistoryMetrics.expired}</div>
                           <div className="mt-1 text-sm text-slate-500">调薪或重新分配后自动沉淀</div>
                         </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">重复生效日</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900">{employeeSalaryDuplicateEffectiveDates.length}</div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {employeeSalaryDuplicateEffectiveDates[0]
+                              ? `最高 ${employeeSalaryDuplicateEffectiveDates[0][1]} 条落在 ${employeeSalaryDuplicateEffectiveDates[0][0]}`
+                              : '当前没有重复生效日'}
+                          </div>
+                        </div>
                       </div>
+
+                      {employeeSalaryDuplicateEffectiveDates.length > 0 && (
+                        <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4 text-sm text-sky-700">
+                          当前员工存在 {employeeSalaryDuplicateEffectiveDates.length} 个重复生效日。
+                          最明显的是 {employeeSalaryDuplicateEffectiveDates[0][0]}，同一天沉淀了 {employeeSalaryDuplicateEffectiveDates[0][1]} 条档案，说明这名员工在同日发生过多次调薪或重新分配。
+                        </div>
+                      )}
 
                       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
                         <Table>
@@ -3424,7 +3700,23 @@ export const HrSalaryPage: React.FC = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>{formatCurrency(item.totalSalary)}</TableCell>
-                                <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
+                                <TableCell>
+                                  <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    {isFutureDate(item.effectiveDate) && (
+                                      <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                        未来生效
+                                      </span>
+                                    )}
+                                    {latestEmployeeAdjustment
+                                      && (toDateInputValue(item.effectiveDate) || '') === (toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '')
+                                      && normalizeAmount(item.totalSalary) === normalizeAmount(latestEmployeeAdjustment.afterTotal) && (
+                                        <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+                                          对应最近调薪
+                                        </span>
+                                      )}
+                                  </div>
+                                </TableCell>
                                 <TableCell>
                                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
                                     {salaryArchiveStatusLabel(item.status, item.statusDesc)}
@@ -3494,6 +3786,84 @@ export const HrSalaryPage: React.FC = () => {
                       {!hasInsuranceProfile && !employeeCompensationLoading && (
                         <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
                           当前员工还没有可用的社保公积金方案。可以直接点击右上角“分配社保方案”补齐后，再刷新测算结果。
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">测算基准薪资</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(currentGrossSalary)}</div>
+                          <div className="mt-1 text-sm text-slate-500">{currentEmployeeEffectiveHint}</div>
+                          <div className={`mt-2 text-xs ${currentEmployeeFutureEffective ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {currentEmployeeFutureEffective ? '当前测算引用未来生效档案' : '当前测算引用已生效档案'}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">社保方案口径</div>
+                          <div className="mt-2 text-lg font-semibold text-slate-900">
+                            {employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '未分配'}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {employeeInsuranceDetail?.city || latestEmployeeInsuranceLedger?.city || '按 0 估算'}
+                          </div>
+                          <div className="mt-2 text-xs text-slate-400">
+                            {hasInsuranceProfile
+                              ? `基数 ${formatCurrency(employeeInsuranceCalculation?.base ?? employeeInsuranceDetail?.base ?? latestEmployeeInsuranceLedger?.base)} / 生效 ${insuranceReferenceEffectiveDate || '-'}`
+                              : '当前没有员工社保档案，个人社保和公司承担暂按 0 计算'}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">专项扣除命中</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900">{sortedEmployeeTaxDeductions.length} 项</div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {taxReferencePeriod} 合计 {formatCurrency(currentTaxDeductionTotal)}
+                          </div>
+                          <div className="mt-2 text-xs text-slate-400">
+                            {sortedEmployeeTaxDeductions.length
+                              ? `已命中 ${sortedEmployeeTaxDeductions.map(item => item.deductionTypeName || item.deductionType).join(' / ')}`
+                              : '当前月份没有命中 ACTIVE 专项扣除'}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">联调风险等级</div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${compensationRiskSummary.className}`}>
+                              {compensationRiskSummary.label}
+                            </span>
+                            <span className="text-xs text-slate-400">{compensationRiskItems.length} 条提示</span>
+                          </div>
+                          <div className="mt-3 text-sm text-slate-500">{compensationRiskSummary.hint}</div>
+                          <div className="mt-2 text-xs text-slate-400">
+                            个税参考月份 {taxReferencePeriod}
+                            {currentTaxConfig ? ` / 当前配置生效 ${toDateInputValue(currentTaxConfig.effectiveDate) || '-'}` : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      {!employeeCompensationLoading && (
+                        <div className={`rounded-2xl border p-4 ${
+                          compensationRiskItems.length
+                            ? compensationRiskSummary.className
+                            : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+                        }`}>
+                          <div className="font-medium">
+                            {compensationRiskItems.length ? '测算风险提示' : '当前测算口径已对齐'}
+                          </div>
+                          <div className="mt-2 space-y-2 text-sm">
+                            {compensationRiskItems.length ? compensationRiskItems.map(item => (
+                              <div key={item.key} className="rounded-xl bg-white/50 p-3">
+                                <div className="font-medium">{item.title}</div>
+                                <div className="mt-1 opacity-90">{item.detail}</div>
+                              </div>
+                            )) : (
+                              <div className="rounded-xl bg-white/50 p-3">
+                                当前薪资档案、社保方案和专项扣除都能落到同一轮测算里，适合直接拿接口结果做人工核对。
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
