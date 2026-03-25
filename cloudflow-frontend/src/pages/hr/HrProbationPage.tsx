@@ -186,7 +186,7 @@ export const HrProbationPage: React.FC = () => {
       toast.success('转正申请已审批通过');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId), id);
+        await handleRefreshCurrentEmployee();
       }
     } catch (error: any) {
       console.error(error);
@@ -209,7 +209,7 @@ export const HrProbationPage: React.FC = () => {
       toast.success('转正申请已驳回');
 
       if (selectedEmployeeId) {
-        await loadApplications(Number(selectedEmployeeId), id);
+        await handleRefreshCurrentEmployee();
       }
     } catch (error: any) {
       console.error(error);
