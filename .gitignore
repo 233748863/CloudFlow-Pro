@@ -37,6 +37,10 @@ target/
 .codex-temp/
 .codex-run/
 
+# 本地联调产物
+captcha_*.png
+*-smoke.png
+
 # Environment variables
 .env
 .env.local

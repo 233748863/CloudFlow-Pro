@@ -76,6 +76,8 @@ public class OnboardingServiceImpl implements OnboardingService {
         log.info("创建入职申请，姓名：{}，部门ID：{}，岗位ID：{}", dto.getName(), dto.getDeptId(), dto.getPostId());
 
         Long tenantId = SecurityUtils.getTenantId();
+        Candidate candidate = loadCandidateIfPresent(dto.getCandidateId());
+        validateCandidateForOnboarding(candidate);
         validateDeptId(dto.getDeptId());
         validatePostId(dto.getPostId());
 
@@ -229,6 +231,8 @@ public class OnboardingServiceImpl implements OnboardingService {
         }
 
         Employee employee = createEmployeeFromApplication(application, dto.getActualDate());
+        // 确认入职后要同步回写候选人状态，否则招聘链路仍会把人显示成未入职。
+        syncCandidateStatusAfterOnboarding(application.getCandidateId());
         application.setStatus("ONBOARDED");
         application.setEmployeeId(employee.getId());
         onboardingApplicationMapper.updateById(application);
@@ -592,6 +596,54 @@ public class OnboardingServiceImpl implements OnboardingService {
             throw new HrBusinessException("CANDIDATE_NOT_FOUND", "候选人不存在");
         }
         return candidate;
+    }
+
+    private void validateCandidateForOnboarding(Candidate candidate) {
+        if (candidate == null) {
+            return;
+        }
+
+        String candidateStatus = StringUtils.hasText(candidate.getStatus())
+                ? candidate.getStatus().trim().toUpperCase(Locale.ROOT)
+                : "";
+        if (!List.of("INTERVIEW", "OFFER", "HIRED").contains(candidateStatus)) {
+            throw new HrBusinessException("INVALID_CANDIDATE_STATUS", "只有面试中、已发Offer或已录用的候选人才能发起入职申请");
+        }
+
+        // 候选人链路下同一个人只保留一条未拒绝的入职单，避免重复建单污染真实联调数据。
+        OnboardingApplication existingApplication = findExistingOnboardingApplication(candidate.getId());
+        if (existingApplication == null) {
+            return;
+        }
+
+        if ("ONBOARDED".equals(existingApplication.getStatus())) {
+            throw new HrBusinessException("CANDIDATE_ALREADY_ONBOARDED", "该候选人已完成入职，不能重复创建入职申请");
+        }
+
+        throw new HrBusinessException("ONBOARDING_APPLICATION_EXISTS", "该候选人已有待处理的入职申请");
+    }
+
+    private OnboardingApplication findExistingOnboardingApplication(Long candidateId) {
+        if (candidateId == null) {
+            return null;
+        }
+
+        LambdaQueryWrapper<OnboardingApplication> wrapper = Wrappers.lambdaQuery(OnboardingApplication.class);
+        wrapper.eq(OnboardingApplication::getCandidateId, candidateId)
+                .ne(OnboardingApplication::getStatus, "REJECTED")
+                .orderByDesc(OnboardingApplication::getId);
+
+        return onboardingApplicationMapper.selectList(wrapper).stream().findFirst().orElse(null);
+    }
+
+    private void syncCandidateStatusAfterOnboarding(Long candidateId) {
+        Candidate candidate = loadCandidateIfPresent(candidateId);
+        if (candidate == null || "HIRED".equals(candidate.getStatus())) {
+            return;
+        }
+
+        candidate.setStatus("HIRED");
+        candidateMapper.updateById(candidate);
     }
 
     private String normalizeGender(String gender) {

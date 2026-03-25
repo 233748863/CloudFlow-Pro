@@ -63,6 +63,9 @@ const defaultCreateForm: OnboardingApplicationPayload = {
   expectedDate: '',
 };
 
+const getDefaultPositionId = (postId: number, positions: PositionOption[]) =>
+  positions.find(option => !postId || option.postId === postId)?.id;
+
 const onboardingStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
   if (/(CONFIRM|COMPLETE|SUCCESS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
@@ -82,6 +85,7 @@ const isTaskCompleted = (status?: string) => /(COMPLETE|DONE|FINISH)/i.test(stat
 export const HrOnboardingPage: React.FC = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [applications, setApplications] = useState<OnboardingApplication[]>([]);
+  const [candidateIdsWithOnboarding, setCandidateIdsWithOnboarding] = useState<number[]>([]);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [postOptions, setPostOptions] = useState<PostOption[]>([]);
   const [positionOptions, setPositionOptions] = useState<PositionOption[]>([]);
@@ -108,25 +112,42 @@ export const HrOnboardingPage: React.FC = () => {
       ]);
 
       const candidateList = normalizeRows<Candidate>(candidateRes);
+      const deptList = flattenDeptTree(Array.isArray(deptRes) ? deptRes : []);
       const postList = normalizeRows<PostOption>(postRes);
       const positionList = Array.isArray(positionRes) ? positionRes : [];
 
       setCandidates(candidateList);
-      setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
+      setDeptOptions(deptList);
       setPostOptions(postList);
       setPositionOptions(positionList);
 
       setCreateForm(prev => ({
         ...prev,
-        deptId: prev.deptId || 0,
+        deptId: prev.deptId || deptList[0]?.value || 0,
         postId: prev.postId || postList[0]?.postId || 0,
-        positionId: prev.positionId || positionList[0]?.id,
+        positionId:
+          prev.positionId && positionList.some(option => option.id === prev.positionId && option.postId === (prev.postId || postList[0]?.postId || 0))
+            ? prev.positionId
+            : getDefaultPositionId(prev.postId || postList[0]?.postId || 0, positionList),
       }));
     } catch (error) {
       console.error(error);
       toast.error('入职基础数据加载失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCandidateAvailability = async () => {
+    try {
+      const applicationRes = await listOnboardingApplications();
+      const rows = Array.isArray(applicationRes) ? applicationRes : [];
+      const blockedIds = rows
+        .filter(item => item.candidateId && String(item.status || '').toUpperCase() !== 'REJECTED')
+        .map(item => Number(item.candidateId));
+      setCandidateIdsWithOnboarding(Array.from(new Set(blockedIds)));
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -191,6 +212,7 @@ export const HrOnboardingPage: React.FC = () => {
 
   useEffect(() => {
     void loadBootstrapData();
+    void loadCandidateAvailability();
     void loadApplicationList();
   }, []);
 
@@ -201,7 +223,10 @@ export const HrOnboardingPage: React.FC = () => {
       ...prev,
       deptId: prev.deptId || deptOptions[0]?.value || 0,
       postId: prev.postId || postOptions[0]?.postId || 0,
-      positionId: prev.positionId || positionOptions[0]?.id,
+      positionId:
+        prev.positionId && positionOptions.some(option => option.id === prev.positionId && option.postId === (prev.postId || postOptions[0]?.postId || 0))
+          ? prev.positionId
+          : getDefaultPositionId(prev.postId || postOptions[0]?.postId || 0, positionOptions),
     }));
   }, [deptOptions, postOptions, positionOptions]);
 
@@ -210,6 +235,7 @@ export const HrOnboardingPage: React.FC = () => {
 
     const matchedCandidate = candidates.find(item => item.id === createForm.candidateId);
     if (!matchedCandidate) return;
+    const matchedPosition = positionOptions.find(item => item.id === matchedCandidate.positionId);
 
     // 从招聘链路带入候选人时，自动回填基础信息，方便直接验证招聘到入职的真实链路。
     setCreateForm(prev => ({
@@ -218,13 +244,41 @@ export const HrOnboardingPage: React.FC = () => {
       gender: matchedCandidate.gender || prev.gender || 'MALE',
       phone: matchedCandidate.phone,
       email: matchedCandidate.email || '',
+      deptId: matchedCandidate.deptId || prev.deptId,
+      postId: matchedPosition?.postId || prev.postId,
       positionId: matchedCandidate.positionId || prev.positionId,
     }));
-  }, [candidates, createForm.candidateId]);
+  }, [candidates, createForm.candidateId, positionOptions]);
+
+  const filteredPositionOptions = useMemo(
+    () => positionOptions.filter(option => !createForm.postId || option.postId === createForm.postId),
+    [createForm.postId, positionOptions],
+  );
+
+  useEffect(() => {
+    // 岗位变化后自动收敛职位选项，避免前端拼出岗位和职位不匹配的请求。
+    if (createForm.positionId && filteredPositionOptions.some(option => option.id === createForm.positionId)) {
+      return;
+    }
+
+    const nextPositionId = getDefaultPositionId(createForm.postId, filteredPositionOptions);
+    if (createForm.positionId !== nextPositionId) {
+      setCreateForm(prev => ({
+        ...prev,
+        positionId: nextPositionId,
+      }));
+    }
+  }, [createForm.positionId, createForm.postId, filteredPositionOptions]);
 
   const availableCandidates = useMemo(
-    () => candidates.filter(item => ['INTERVIEW', 'OFFER', 'HIRED'].includes(String(item.status || '').toUpperCase())),
-    [candidates],
+    () => {
+      const blockedCandidateIds = new Set(candidateIdsWithOnboarding);
+      return candidates.filter(item =>
+        ['INTERVIEW', 'OFFER', 'HIRED'].includes(String(item.status || '').toUpperCase())
+        && !blockedCandidateIds.has(item.id),
+      );
+    },
+    [candidateIdsWithOnboarding, candidates],
   );
 
   const completedTaskCount = useMemo(
@@ -246,9 +300,19 @@ export const HrOnboardingPage: React.FC = () => {
       ...defaultCreateForm,
       deptId: deptOptions[0]?.value || 0,
       postId: postOptions[0]?.postId || 0,
-      positionId: positionOptions[0]?.id,
+      positionId: getDefaultPositionId(postOptions[0]?.postId || 0, positionOptions),
     });
     setCreateDialogOpen(false);
+  };
+
+  const handleOpenCreateDialog = () => {
+    setCreateForm({
+      ...defaultCreateForm,
+      deptId: deptOptions[0]?.value || 0,
+      postId: postOptions[0]?.postId || 0,
+      positionId: getDefaultPositionId(postOptions[0]?.postId || 0, positionOptions),
+    });
+    setCreateDialogOpen(true);
   };
 
   const handleCreateApplication = async () => {
@@ -262,6 +326,8 @@ export const HrOnboardingPage: React.FC = () => {
       toast.success(`入职申请已创建，申请 ID：${applicationId}`);
       setConfirmDate(createForm.expectedDate);
       resetCreateForm();
+      await loadBootstrapData();
+      await loadCandidateAvailability();
       await loadApplicationList(applicationId);
     } catch (error: any) {
       console.error(error);
@@ -319,6 +385,8 @@ export const HrOnboardingPage: React.FC = () => {
     try {
       await confirmOnboarding(currentApplication.id, confirmDate);
       toast.success('已确认入职');
+      await loadBootstrapData();
+      await loadCandidateAvailability();
       await loadApplicationList(currentApplication.id);
     } catch (error: any) {
       console.error(error);
@@ -339,7 +407,7 @@ export const HrOnboardingPage: React.FC = () => {
             <p className="mt-2 text-sm text-slate-500">按后端真实能力完成入职申请、任务办理和确认入职，不依赖移动端入口。</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button className="rounded-2xl" onClick={() => setCreateDialogOpen(true)}>
+            <Button className="rounded-2xl" onClick={handleOpenCreateDialog}>
               <FilePlus2 size={16} className="mr-2" />
               新建入职申请
             </Button>
@@ -348,6 +416,7 @@ export const HrOnboardingPage: React.FC = () => {
               className="rounded-2xl"
               onClick={() => {
                 void loadBootstrapData();
+                void loadCandidateAvailability();
                 void loadApplicationList(currentApplication?.id);
               }}
             >
@@ -643,6 +712,7 @@ export const HrOnboardingPage: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-2 text-xs text-slate-500">已存在未拒绝入职单的候选人会自动从这里剔除，避免重复建单。</div>
               </div>
 
               <div>
@@ -713,13 +783,14 @@ export const HrOnboardingPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={EMPTY_VALUE}>暂不指定职位</SelectItem>
-                    {positionOptions.map(option => (
+                    {filteredPositionOptions.map(option => (
                       <SelectItem key={option.id} value={String(option.id)}>
                         {option.positionName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-2 text-xs text-slate-500">职位选项会随岗位联动，避免提交出无效的岗位与职位组合。</div>
               </div>
               <div>
                 <Label>预计入职日期</Label>
