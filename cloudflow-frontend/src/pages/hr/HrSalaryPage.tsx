@@ -176,6 +176,9 @@ const createDefaultAdjustmentForm = (): {
   afterSalaryData: {},
 });
 
+const isFutureDate = (value?: string | null) =>
+  Boolean(value) && String(value) > getTodayValue();
+
 const currencyFormatter = new Intl.NumberFormat('zh-CN', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
@@ -1507,6 +1510,10 @@ export const HrSalaryPage: React.FC = () => {
       toast.error('请填写员工、薪资结构和生效日期');
       return;
     }
+    if (isFutureDate(assignForm.effectiveDate)) {
+      toast.error('首次分配薪资的生效日期不能晚于今天');
+      return;
+    }
 
     let salaryData: EmployeeSalaryAssignPayload['salaryData'];
     try {
@@ -1619,7 +1626,9 @@ export const HrSalaryPage: React.FC = () => {
 
   const canSubmitAdjustment = String(adjustmentDetail?.status || '').toUpperCase() === 'DRAFT';
   const canApproveAdjustment = String(adjustmentDetail?.status || '').toUpperCase() === 'APPROVING';
-  const canEffectiveAdjustment = String(adjustmentDetail?.status || '').toUpperCase() === 'APPROVED';
+  const canEffectiveAdjustment =
+    String(adjustmentDetail?.status || '').toUpperCase() === 'APPROVED'
+    && !isFutureDate(adjustmentDetail?.effectiveDate);
 
   return (
     <>
@@ -2476,6 +2485,9 @@ export const HrSalaryPage: React.FC = () => {
                           <div className="text-xs text-slate-400">生效日期</div>
                           <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(adjustmentDetail.effectiveDate) || '-'}</div>
                           <div className="mt-1 text-sm text-slate-500">流程实例：{adjustmentDetail.processInstanceId || '-'}</div>
+                          {String(adjustmentDetail.status || '').toUpperCase() === 'APPROVED' && isFutureDate(adjustmentDetail.effectiveDate) && (
+                            <div className="mt-2 text-xs text-amber-600">未到生效日期前，前端不会开放“执行生效”。</div>
+                          )}
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                           <div className="text-xs text-slate-400">调薪前总额</div>
@@ -2980,7 +2992,7 @@ export const HrSalaryPage: React.FC = () => {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">分配员工薪资</h2>
-                <p className="mt-1 text-sm text-slate-500">分配成功后会直接生成生效中的员工薪资档案。</p>
+                <p className="mt-1 text-sm text-slate-500">首次分配只支持今天及以前生效，保存后会直接生成当前生效的薪资档案。</p>
               </div>
               <Button variant="ghost" onClick={() => setAssignDialogOpen(false)}>关闭</Button>
             </div>
@@ -3025,8 +3037,10 @@ export const HrSalaryPage: React.FC = () => {
                 <Input
                   type="date"
                   value={assignForm.effectiveDate}
+                  max={getTodayValue()}
                   onChange={event => setAssignForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
                 />
+                <div className="mt-1 text-xs text-slate-400">未来生效请走调薪流程，避免当前薪资档案被提前切换。</div>
               </div>
             </div>
 

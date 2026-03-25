@@ -71,6 +71,9 @@ public class EmployeeSalaryServiceImpl implements EmployeeSalaryService {
         if (structure == null || !structure.getTenantId().equals(tenantId)) {
             throw new HrBusinessException("薪资结构不存在");
         }
+
+        // 当前分配接口没有“待生效薪资”的后续激活流程，因此首次分配只允许今天及以前生效。
+        validateAssignEffectiveDate(dto.getEffectiveDate());
         
         // 验证薪资数据中的项目是否都属于该薪资结构
         validateSalaryData(dto.getStructureId(), dto.getSalaryData());
@@ -104,6 +107,12 @@ public class EmployeeSalaryServiceImpl implements EmployeeSalaryService {
         employeeSalaryMapper.insert(employeeSalary);
         
         log.info("薪资结构分配成功，employeeId: {}, totalSalary: {}", dto.getEmployeeId(), totalSalary);
+    }
+
+    private void validateAssignEffectiveDate(LocalDate effectiveDate) {
+        if (effectiveDate != null && effectiveDate.isAfter(LocalDate.now())) {
+            throw new HrBusinessException("首次分配薪资的生效日期不能晚于今天");
+        }
     }
     
     /**

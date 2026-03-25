@@ -216,6 +216,9 @@ public class SalaryAdjustmentServiceImpl implements SalaryAdjustmentService {
         if (!"APPROVED".equals(salaryAdjustment.getStatus())) {
             throw new HrBusinessException("只有已通过的申请才能生效");
         }
+        if (salaryAdjustment.getEffectiveDate() != null && salaryAdjustment.getEffectiveDate().isAfter(LocalDate.now())) {
+            throw new HrBusinessException("未到调薪生效日期，不能提前执行生效");
+        }
 
         EmployeeSalary currentSalary = getActiveSalary(tenantId, salaryAdjustment.getEmployeeId());
         if (currentSalary == null) {
