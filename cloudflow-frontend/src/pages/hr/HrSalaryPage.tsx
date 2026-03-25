@@ -1347,11 +1347,12 @@ export const HrSalaryPage: React.FC = () => {
 
     setActionLoading(true);
     try {
+      // 显式传空字符串，确保编辑时可以把可选公式真正清空。
       const payload = {
         ...itemForm,
         itemCode: itemForm.itemCode.trim(),
         itemName: itemForm.itemName.trim(),
-        formula: itemForm.formula?.trim() || undefined,
+        formula: (itemForm.formula ?? '').trim(),
       };
 
       if (editingItemId) {
@@ -1405,11 +1406,12 @@ export const HrSalaryPage: React.FC = () => {
 
     setActionLoading(true);
     try {
+      // 显式传空字符串，确保编辑时可以把结构描述真正清空。
       const payload = {
         ...structureForm,
         structureCode: structureForm.structureCode.trim(),
         structureName: structureForm.structureName.trim(),
-        description: structureForm.description?.trim() || undefined,
+        description: (structureForm.description ?? '').trim(),
       };
 
       if (editingStructureId) {
