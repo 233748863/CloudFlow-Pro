@@ -28,7 +28,12 @@ public class EmployeeTaxDeductionUpdateDTO {
      * 结束日期
      */
     private LocalDate endDate;
-    
+
+    /**
+     * 是否清空结束日期
+     */
+    private Boolean clearEndDate;
+
     /**
      * 状态：ACTIVE-生效中 EXPIRED-已过期
      */

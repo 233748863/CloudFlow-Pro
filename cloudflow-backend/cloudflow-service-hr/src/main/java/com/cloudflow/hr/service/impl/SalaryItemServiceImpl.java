@@ -83,7 +83,9 @@ public class SalaryItemServiceImpl implements SalaryItemService {
         if (salaryItem.getSortOrder() == null) {
             salaryItem.setSortOrder(0);
         }
-        salaryItem.setStatus(1); // 默认启用
+        if (salaryItem.getStatus() == null) {
+            salaryItem.setStatus(1);
+        }
         
         // 保存到数据库
         salaryItemMapper.insert(salaryItem);

@@ -71,6 +71,10 @@ public class EmployeeSalaryServiceImpl implements EmployeeSalaryService {
         if (structure == null || !structure.getTenantId().equals(tenantId)) {
             throw new HrBusinessException("薪资结构不存在");
         }
+        // 禁用结构只允许保留历史，不允许继续分配到员工现薪。
+        if (!Integer.valueOf(1).equals(structure.getStatus())) {
+            throw new HrBusinessException("薪资结构已禁用，不能继续分配");
+        }
 
         // 当前分配接口没有“待生效薪资”的后续激活流程，因此首次分配只允许今天及以前生效。
         validateAssignEffectiveDate(dto.getEffectiveDate());

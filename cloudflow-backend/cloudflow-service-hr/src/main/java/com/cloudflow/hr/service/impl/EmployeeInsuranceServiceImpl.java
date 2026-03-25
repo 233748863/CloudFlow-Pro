@@ -76,6 +76,11 @@ public class EmployeeInsuranceServiceImpl implements EmployeeInsuranceService {
         if (!scheme.getTenantId().equals(SecurityUtils.getTenantId())) {
             throw new HrBusinessException("无权限使用该方案");
         }
+        if (!Integer.valueOf(1).equals(scheme.getStatus())) {
+            throw new HrBusinessException("五险一金方案已禁用，不能继续分配");
+        }
+        // 当前分配接口没有“待生效方案”的后续激活流程，因此只允许今天及以前生效。
+        validateAssignEffectiveDate(dto.getEffectiveDate());
         
         // 验证缴纳基数是否在范围内
         if (dto.getBase().compareTo(scheme.getBaseMin()) < 0) {
@@ -111,6 +116,12 @@ public class EmployeeInsuranceServiceImpl implements EmployeeInsuranceService {
         employeeInsuranceMapper.insert(insurance);
         
         log.info("员工五险一金方案分配成功，记录ID：{}", insurance.getId());
+    }
+
+    private void validateAssignEffectiveDate(LocalDate effectiveDate) {
+        if (effectiveDate != null && effectiveDate.isAfter(LocalDate.now())) {
+            throw new HrBusinessException("五险一金生效日期不能晚于今天");
+        }
     }
     
     /**

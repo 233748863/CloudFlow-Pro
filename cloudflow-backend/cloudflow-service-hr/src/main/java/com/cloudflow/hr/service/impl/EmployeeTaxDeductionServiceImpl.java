@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.domain.dto.EmployeeTaxDeductionCreateDTO;
 import com.cloudflow.hr.domain.dto.EmployeeTaxDeductionUpdateDTO;
@@ -95,7 +96,9 @@ public class EmployeeTaxDeductionServiceImpl implements EmployeeTaxDeductionServ
 
         BigDecimal amount = dto.getAmount() != null ? dto.getAmount() : deduction.getAmount();
         LocalDate startDate = dto.getStartDate() != null ? dto.getStartDate() : deduction.getStartDate();
-        LocalDate endDate = dto.getEndDate() != null ? dto.getEndDate() : deduction.getEndDate();
+        LocalDate endDate = Boolean.TRUE.equals(dto.getClearEndDate())
+                ? null
+                : (dto.getEndDate() != null ? dto.getEndDate() : deduction.getEndDate());
         String status = dto.getStatus() != null ? dto.getStatus() : deduction.getStatus();
 
         validateDeductionAmount(amount);
@@ -109,7 +112,9 @@ public class EmployeeTaxDeductionServiceImpl implements EmployeeTaxDeductionServ
         if (dto.getStartDate() != null) {
             deduction.setStartDate(dto.getStartDate());
         }
-        if (dto.getEndDate() != null) {
+        if (Boolean.TRUE.equals(dto.getClearEndDate())) {
+            deduction.setEndDate(null);
+        } else if (dto.getEndDate() != null) {
             deduction.setEndDate(dto.getEndDate());
         }
         if (dto.getStatus() != null) {
@@ -120,6 +125,13 @@ public class EmployeeTaxDeductionServiceImpl implements EmployeeTaxDeductionServ
         }
         
         taxDeductionMapper.updateById(deduction);
+        if (Boolean.TRUE.equals(dto.getClearEndDate())) {
+            LambdaUpdateWrapper<EmployeeTaxDeduction> updateWrapper = new LambdaUpdateWrapper<>();
+            updateWrapper.eq(EmployeeTaxDeduction::getId, id)
+                    .eq(EmployeeTaxDeduction::getTenantId, tenantId)
+                    .set(EmployeeTaxDeduction::getEndDate, null);
+            taxDeductionMapper.update(null, updateWrapper);
+        }
         
         log.info("员工专项扣除更新成功");
     }

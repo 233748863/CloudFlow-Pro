@@ -87,7 +87,9 @@ public class SalaryStructureServiceImpl implements SalaryStructureService {
         SalaryStructure salaryStructure = new SalaryStructure();
         BeanUtils.copyProperties(dto, salaryStructure);
         salaryStructure.setTenantId(tenantId);
-        salaryStructure.setStatus(1); // 默认启用
+        if (salaryStructure.getStatus() == null) {
+            salaryStructure.setStatus(1);
+        }
         
         // 保存到数据库
         salaryStructureMapper.insert(salaryStructure);
@@ -239,8 +241,20 @@ public class SalaryStructureServiceImpl implements SalaryStructureService {
      * 关联薪资项目
      */
     private void associateItems(Long tenantId, Long structureId, List<Long> itemIds) {
+        Map<Long, SalaryItem> salaryItemMap = salaryItemMapper.selectBatchIds(itemIds).stream()
+                .collect(Collectors.toMap(SalaryItem::getId, item -> item, (left, right) -> left));
+
         int sortOrder = 1;
         for (Long itemId : itemIds) {
+            SalaryItem salaryItem = salaryItemMap.get(itemId);
+            if (salaryItem == null || !tenantId.equals(salaryItem.getTenantId())) {
+                throw new HrBusinessException("薪资项目不存在");
+            }
+            // 禁用项目不再允许被新结构继续引用，避免下游继续使用失效配置。
+            if (!Integer.valueOf(1).equals(salaryItem.getStatus())) {
+                throw new HrBusinessException("薪资项目已禁用，不能继续关联");
+            }
+
             SalaryStructureItem structureItem = new SalaryStructureItem();
             structureItem.setTenantId(tenantId);
             structureItem.setStructureId(structureId);

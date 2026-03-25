@@ -34,4 +34,9 @@ public class SalaryStructureCreateDTO {
      */
     @NotNull(message = "薪资项目列表不能为空")
     private List<Long> itemIds;
+
+    /**
+     * 状态：0-禁用 1-启用
+     */
+    private Integer status;
 }

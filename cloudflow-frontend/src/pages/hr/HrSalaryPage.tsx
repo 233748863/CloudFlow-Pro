@@ -28,9 +28,13 @@ import {
   EmployeeSalaryAssignPayload,
   EmployeeSalaryDetail,
   EmployeeInsuranceDetail,
+  EmployeeInsuranceAssignPayload,
   EmployeeTaxDeduction,
+  EmployeeTaxDeductionPayload,
+  EmployeeTaxDeductionUpdatePayload,
   HrEmployee,
   HrPagedResult,
+  InsuranceScheme,
   InsuranceCalculation,
   JobLevelOption,
   SalaryAdjustment,
@@ -44,32 +48,43 @@ import {
   SalaryStructureDetail,
   SalaryStructurePayload,
   TaxCalculation,
+  TaxConfig,
+  TaxConfigPayload,
+  addTaxDeduction,
   approveSalaryAdjustment,
   assignSalaryStructure,
+  assignInsuranceScheme,
   calculateEmployeeInsurance,
   calculateTax,
+  createTaxConfig,
   createSalaryAdjustment,
   createSalaryItem,
   createSalaryStructure,
+  deleteTaxDeduction,
   deleteSalaryGrade,
   deleteSalaryItem,
   deleteSalaryStructure,
   effectiveSalaryAdjustment,
   getEmployeeInsurance,
   getEmployeeSalary,
+  getCurrentTaxConfig,
   getSalaryAdjustment,
   getSalaryAdjustmentHistory,
   getSalaryStructure,
   listEmployees,
   listActiveTaxDeductions,
   listEmployeeSalaries,
+  listInsuranceSchemes,
   listJobLevels,
   listSalaryAdjustments,
   listSalaryGrades,
   listSalaryItems,
   listSalaryStructures,
+  listTaxDeductions,
   setSalaryGrade,
   submitSalaryAdjustment,
+  updateTaxDeduction,
+  updateTaxConfig,
   updateSalaryItem,
   updateSalaryStructure,
 } from '@/services/api/hr';
@@ -99,6 +114,66 @@ const itemCategoryOptions = [
   { value: 'TAX', label: '个税' },
 ];
 
+const statusOptions = [
+  { value: '1', label: '启用' },
+  { value: '0', label: '禁用' },
+];
+
+const deductionTypeOptions = [
+  { value: 'CHILD_EDU', label: '子女教育' },
+  { value: 'CONTINUING_EDU', label: '继续教育' },
+  { value: 'MEDICAL', label: '大病医疗' },
+  { value: 'HOUSING_LOAN', label: '住房贷款利息' },
+  { value: 'HOUSING_RENT', label: '住房租金' },
+  { value: 'ELDERLY_CARE', label: '赡养老人' },
+];
+
+const taxDeductionStatusOptions = [
+  { value: 'ACTIVE', label: '生效中' },
+  { value: 'EXPIRED', label: '已失效' },
+];
+
+type TaxDeductionFormState = {
+  employeeId: number;
+  deductionType: string;
+  amount: number;
+  startDate: string;
+  endDate: string;
+  status: string;
+  remark: string;
+};
+
+type TaxConfigFormState = {
+  id: number | null;
+  threshold: string;
+  effectiveDate: string;
+  deductionItems: Record<string, string>;
+  taxBracketsJson: string;
+};
+
+const defaultTaxBracketRows = [
+  { min: 0, max: 36000, rate: 0.03, deduction: 0 },
+  { min: 36000, max: 144000, rate: 0.10, deduction: 2520 },
+  { min: 144000, max: 300000, rate: 0.20, deduction: 16920 },
+  { min: 300000, max: 420000, rate: 0.25, deduction: 31920 },
+  { min: 420000, max: 660000, rate: 0.30, deduction: 52920 },
+  { min: 660000, max: 960000, rate: 0.35, deduction: 85920 },
+  { min: 960000, rate: 0.45, deduction: 181920 },
+];
+
+const defaultTaxBracketJson = JSON.stringify(defaultTaxBracketRows, null, 2);
+
+const defaultTaxDeductionItemPreset: Record<string, string> = {
+  CHILD_EDU: '1000',
+  CONTINUING_EDU: '400',
+  MEDICAL: '0',
+  HOUSING_LOAN: '1000',
+  HOUSING_RENT: '0',
+  ELDERLY_CARE: '2000',
+};
+
+const createDefaultTaxDeductionItemValues = () => ({ ...defaultTaxDeductionItemPreset });
+
 const createDefaultItemForm = (): SalaryItemPayload => ({
   itemCode: '',
   itemName: '',
@@ -107,6 +182,7 @@ const createDefaultItemForm = (): SalaryItemPayload => ({
   isTaxable: true,
   formula: '',
   sortOrder: 10,
+  status: 1,
 });
 
 const createDefaultStructureForm = (): SalaryStructurePayload => ({
@@ -114,6 +190,7 @@ const createDefaultStructureForm = (): SalaryStructurePayload => ({
   structureName: '',
   description: '',
   itemIds: [],
+  status: 1,
 });
 
 const createDefaultGradeForm = (): SalaryGradePayload => ({
@@ -133,6 +210,12 @@ function formatLocalDate(date: Date) {
 
 function getTodayValue() {
   return formatLocalDate(new Date());
+}
+
+// 专项扣除接口按“月份”判断是否生效，默认回填到当月 1 号可以直接参与本月测算。
+function getMonthStartValue(value?: string | null) {
+  const { year, month } = getYearMonthFromDate(value);
+  return `${year}-${String(month).padStart(2, '0')}-01`;
 }
 
 function getYearMonthFromDate(value?: string | null) {
@@ -174,6 +257,31 @@ const createDefaultAdjustmentForm = (): {
   adjustmentReason: '',
   effectiveDate: getTodayValue(),
   afterSalaryData: {},
+});
+
+const createDefaultInsuranceForm = (): EmployeeInsuranceAssignPayload => ({
+  employeeId: 0,
+  schemeId: 0,
+  base: 0,
+  effectiveDate: getTodayValue(),
+});
+
+const createDefaultTaxDeductionForm = (): TaxDeductionFormState => ({
+  employeeId: 0,
+  deductionType: deductionTypeOptions[0].value,
+  amount: 0,
+  startDate: getMonthStartValue(),
+  endDate: '',
+  status: 'ACTIVE',
+  remark: '',
+});
+
+const createDefaultTaxConfigForm = (): TaxConfigFormState => ({
+  id: null,
+  threshold: '5000',
+  effectiveDate: getTodayValue(),
+  deductionItems: createDefaultTaxDeductionItemValues(),
+  taxBracketsJson: defaultTaxBracketJson,
 });
 
 const isFutureDate = (value?: string | null) =>
@@ -252,6 +360,127 @@ const structureStatusClass = (status?: number | null) =>
   status === 1
     ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
     : 'bg-slate-100 text-slate-700 border-slate-200';
+
+const deductionTypeLabel = (value?: string | null) =>
+  deductionTypeOptions.find(option => option.value === value)?.label || value || '-';
+
+const taxDeductionStatusLabel = (status?: string | null) => {
+  switch ((status || '').toUpperCase()) {
+    case 'ACTIVE':
+      return '生效中';
+    case 'EXPIRED':
+      return '已失效';
+    default:
+      return status || '-';
+  }
+};
+
+const taxDeductionStatusClass = (status?: string | null) => {
+  switch ((status || '').toUpperCase()) {
+    case 'ACTIVE':
+      return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+    case 'EXPIRED':
+      return 'border-slate-200 bg-slate-100 text-slate-600';
+    default:
+      return 'border-slate-200 bg-slate-100 text-slate-600';
+  }
+};
+
+const parseTaxDeductionItemValues = (value?: string | null) => {
+  const result = createDefaultTaxDeductionItemValues();
+  if (!value) {
+    return result;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    deductionTypeOptions.forEach(item => {
+      const rawValue = parsed?.[item.value];
+      if (rawValue != null && rawValue !== '') {
+        result[item.value] = String(rawValue);
+      }
+    });
+  } catch (error) {
+    console.error(error);
+  }
+
+  return result;
+};
+
+const formatTaxBracketsJson = (value?: string | null) => {
+  if (!value) {
+    return defaultTaxBracketJson;
+  }
+
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch (error) {
+    console.error(error);
+    return value;
+  }
+};
+
+const buildTaxConfigForm = (config?: TaxConfig | null): TaxConfigFormState => {
+  if (!config) {
+    return createDefaultTaxConfigForm();
+  }
+
+  return {
+    id: config.id,
+    threshold: String(config.threshold ?? ''),
+    effectiveDate: toDateInputValue(config.effectiveDate) || getTodayValue(),
+    deductionItems: parseTaxDeductionItemValues(config.deductionItems),
+    taxBracketsJson: formatTaxBracketsJson(config.taxBrackets),
+  };
+};
+
+const normalizeTaxBracketJson = (value: string) => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch (error) {
+    console.error(error);
+    throw new Error('税率档 JSON 格式不正确');
+  }
+
+  if (!Array.isArray(parsed) || !parsed.length) {
+    throw new Error('至少保留一条税率档');
+  }
+
+  let previousMax: number | null = null;
+  const normalized = parsed.map((item, index) => {
+    const row = item as Record<string, unknown>;
+    const min = Number(row.min);
+    const max = row.max == null || row.max === '' ? null : Number(row.max);
+    const rate = Number(row.rate);
+    const deduction = Number(row.deduction);
+
+    if (!Number.isFinite(min) || min < 0) {
+      throw new Error(`第 ${index + 1} 档的起点必须是大于等于 0 的数字`);
+    }
+    if (max != null && (!Number.isFinite(max) || max <= min)) {
+      throw new Error(`第 ${index + 1} 档的终点必须大于起点`);
+    }
+    if (!Number.isFinite(rate) || rate < 0 || rate > 1) {
+      throw new Error(`第 ${index + 1} 档的税率必须在 0 到 1 之间`);
+    }
+    if (!Number.isFinite(deduction) || deduction < 0) {
+      throw new Error(`第 ${index + 1} 档的速算扣除数必须是大于等于 0 的数字`);
+    }
+    if (previousMax != null && min < previousMax) {
+      throw new Error(`第 ${index + 1} 档的起点必须大于等于上一档终点`);
+    }
+
+    previousMax = max;
+    if (max == null) {
+      return { min, rate, deduction };
+    }
+
+    return { min, max, rate, deduction };
+  });
+
+  return JSON.stringify(normalized);
+};
 
 const itemTypeLabel = (value?: string | null) =>
   itemTypeOptions.find(option => option.value === value)?.label || value || '-';
@@ -408,6 +637,7 @@ export const HrSalaryPage: React.FC = () => {
   const [salaryItems, setSalaryItems] = useState<SalaryItem[]>([]);
   const [salaryStructures, setSalaryStructures] = useState<SalaryStructure[]>([]);
   const [salaryGrades, setSalaryGrades] = useState<SalaryGrade[]>([]);
+  const [insuranceSchemes, setInsuranceSchemes] = useState<InsuranceScheme[]>([]);
   const [jobLevels, setJobLevels] = useState<JobLevelOption[]>([]);
   const [employeeSalaries, setEmployeeSalaries] = useState<EmployeeSalary[]>([]);
   const [salaryAdjustments, setSalaryAdjustments] = useState<SalaryAdjustment[]>([]);
@@ -416,7 +646,9 @@ export const HrSalaryPage: React.FC = () => {
   const [employeeInsuranceDetail, setEmployeeInsuranceDetail] = useState<EmployeeInsuranceDetail | null>(null);
   const [employeeInsuranceCalculation, setEmployeeInsuranceCalculation] = useState<InsuranceCalculation | null>(null);
   const [employeeTaxDeductions, setEmployeeTaxDeductions] = useState<EmployeeTaxDeduction[]>([]);
+  const [employeeAllTaxDeductions, setEmployeeAllTaxDeductions] = useState<EmployeeTaxDeduction[]>([]);
   const [employeeTaxCalculation, setEmployeeTaxCalculation] = useState<TaxCalculation | null>(null);
+  const [currentTaxConfig, setCurrentTaxConfig] = useState<TaxConfig | null>(null);
   const [adjustmentPage, setAdjustmentPage] = useState<HrPagedResult<SalaryAdjustment> | null>(null);
   const [loading, setLoading] = useState(true);
   const [bootstrapped, setBootstrapped] = useState(false);
@@ -426,6 +658,8 @@ export const HrSalaryPage: React.FC = () => {
   const [employeeAdjustmentHistoryLoading, setEmployeeAdjustmentHistoryLoading] = useState(false);
   const [employeeSalaryHistoryLoading, setEmployeeSalaryHistoryLoading] = useState(false);
   const [employeeCompensationLoading, setEmployeeCompensationLoading] = useState(false);
+  const [taxDeductionListLoading, setTaxDeductionListLoading] = useState(false);
+  const [taxConfigDialogLoading, setTaxConfigDialogLoading] = useState(false);
   const [structureDetailLoading, setStructureDetailLoading] = useState(false);
   const [adjustmentListLoading, setAdjustmentListLoading] = useState(false);
   const [adjustmentDetailLoading, setAdjustmentDetailLoading] = useState(false);
@@ -444,14 +678,21 @@ export const HrSalaryPage: React.FC = () => {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [structureDialogOpen, setStructureDialogOpen] = useState(false);
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
+  const [insuranceDialogOpen, setInsuranceDialogOpen] = useState(false);
+  const [taxDeductionDialogOpen, setTaxDeductionDialogOpen] = useState(false);
+  const [taxConfigDialogOpen, setTaxConfigDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editingStructureId, setEditingStructureId] = useState<number | null>(null);
   const [editingGradeLevelId, setEditingGradeLevelId] = useState<number | null>(null);
+  const [editingTaxDeductionId, setEditingTaxDeductionId] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState<SalaryItemPayload>(createDefaultItemForm);
   const [structureForm, setStructureForm] = useState<SalaryStructurePayload>(createDefaultStructureForm);
   const [gradeForm, setGradeForm] = useState<SalaryGradePayload>(createDefaultGradeForm);
+  const [insuranceForm, setInsuranceForm] = useState<EmployeeInsuranceAssignPayload>(createDefaultInsuranceForm);
+  const [taxDeductionForm, setTaxDeductionForm] = useState<TaxDeductionFormState>(createDefaultTaxDeductionForm);
+  const [taxConfigForm, setTaxConfigForm] = useState<TaxConfigFormState>(createDefaultTaxConfigForm);
   const [assignForm, setAssignForm] = useState(createDefaultAssignForm);
   const [adjustForm, setAdjustForm] = useState(createDefaultAdjustmentForm);
   const [assignStructurePreview, setAssignStructurePreview] = useState<SalaryStructureDetail | null>(null);
@@ -460,6 +701,21 @@ export const HrSalaryPage: React.FC = () => {
   const salaryItemMap = useMemo(
     () => new Map(salaryItems.map(item => [String(item.id), item])),
     [salaryItems],
+  );
+
+  const enabledSalaryItems = useMemo(
+    () => salaryItems.filter(item => item.status !== 0),
+    [salaryItems],
+  );
+
+  const enabledSalaryStructures = useMemo(
+    () => salaryStructures.filter(item => item.status !== 0),
+    [salaryStructures],
+  );
+
+  const enabledInsuranceSchemes = useMemo(
+    () => insuranceSchemes.filter(item => item.status !== 0),
+    [insuranceSchemes],
   );
 
   const employeeMap = useMemo(
@@ -718,6 +974,11 @@ export const HrSalaryPage: React.FC = () => {
     [employeeInsuranceCalculation, employeeInsuranceDetail],
   );
 
+  const selectedInsuranceScheme = useMemo(
+    () => enabledInsuranceSchemes.find(item => item.id === insuranceForm.schemeId) || null,
+    [enabledInsuranceSchemes, insuranceForm.schemeId],
+  );
+
   const taxReferencePeriod = useMemo(() => {
     const { year, month } = getYearMonthFromDate(
       employeeSalaryDetail?.effectiveDate || currentEmployeeRecord?.effectiveDate,
@@ -798,6 +1059,24 @@ export const HrSalaryPage: React.FC = () => {
     [employeeTaxDeductions],
   );
 
+  const sortedEmployeeAllTaxDeductions = useMemo(
+    () => [...employeeAllTaxDeductions].sort((left, right) => {
+      if (left.status !== right.status) {
+        return left.status === 'ACTIVE' ? -1 : 1;
+      }
+
+      const rightTime = new Date(right.startDate || right.createTime || 0).getTime();
+      const leftTime = new Date(left.startDate || left.createTime || 0).getTime();
+      return rightTime - leftTime || right.id - left.id;
+    }),
+    [employeeAllTaxDeductions],
+  );
+
+  const activeTaxDeductionIds = useMemo(
+    () => new Set(employeeTaxDeductions.map(item => item.id)),
+    [employeeTaxDeductions],
+  );
+
   const assignTotal = useMemo(
     () => sumInputMap(assignForm.salaryData),
     [assignForm.salaryData],
@@ -811,19 +1090,26 @@ export const HrSalaryPage: React.FC = () => {
   const loadFoundationData = async () => {
     setFoundationLoading(true);
     try {
-      const [employeeRes, itemRes, structureRes, gradeRes, levelRes] = await Promise.all([
+      const [employeeRes, itemRes, structureRes, gradeRes, schemeRes, levelRes, taxConfigRes] = await Promise.all([
         listEmployees(),
         listSalaryItems(),
         listSalaryStructures(),
         listSalaryGrades(),
+        listInsuranceSchemes(),
         listJobLevels(),
+        getCurrentTaxConfig().catch(error => {
+          console.error(error);
+          return null;
+        }),
       ]);
 
       setEmployees(Array.isArray(employeeRes) ? employeeRes : []);
       setSalaryItems(Array.isArray(itemRes) ? itemRes : []);
       setSalaryStructures(Array.isArray(structureRes) ? structureRes : []);
       setSalaryGrades(Array.isArray(gradeRes) ? gradeRes : []);
+      setInsuranceSchemes(Array.isArray(schemeRes) ? schemeRes : []);
       setJobLevels(Array.isArray(levelRes) ? levelRes : []);
+      setCurrentTaxConfig(taxConfigRes);
     } catch (error) {
       console.error(error);
       toast.error('薪酬基础数据加载失败');
@@ -1015,6 +1301,36 @@ export const HrSalaryPage: React.FC = () => {
     }
   };
 
+  const loadEmployeeTaxDeductionRecords = async (employeeId: number) => {
+    setTaxDeductionListLoading(true);
+    try {
+      const rows = await listTaxDeductions(employeeId);
+      setEmployeeAllTaxDeductions(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      console.error(error);
+      setEmployeeAllTaxDeductions([]);
+      toast.error('专项扣除记录加载失败');
+    } finally {
+      setTaxDeductionListLoading(false);
+    }
+  };
+
+  const refreshCurrentTaxDeductionWorkspace = async (employeeId: number) => {
+    const effectiveDate = employeeSalaryDetail?.employeeId === employeeId
+      ? employeeSalaryDetail?.effectiveDate || currentEmployeeRecord?.effectiveDate
+      : currentEmployeeRecord?.employeeId === employeeId
+        ? currentEmployeeRecord?.effectiveDate
+        : undefined;
+    const grossSalary = currentEmployeeRecord?.employeeId === employeeId
+      ? currentGrossSalary
+      : 0;
+
+    await Promise.all([
+      loadEmployeeTaxDeductionRecords(employeeId),
+      loadEmployeeCompensationProfile(employeeId, grossSalary, effectiveDate),
+    ]);
+  };
+
   const refreshCurrentEmployeeWorkspace = async (record: EmployeeSalary) => {
     const latestGrossSalary =
       employeeSalaryDetail?.employeeId === record.employeeId
@@ -1110,6 +1426,7 @@ export const HrSalaryPage: React.FC = () => {
       setEmployeeInsuranceDetail(null);
       setEmployeeInsuranceCalculation(null);
       setEmployeeTaxDeductions([]);
+      setEmployeeAllTaxDeductions([]);
       setEmployeeTaxCalculation(null);
       return;
     }
@@ -1121,6 +1438,24 @@ export const HrSalaryPage: React.FC = () => {
     if (!currentAdjustmentRecord) return;
     void loadAdjustmentDetail(currentAdjustmentRecord.id);
   }, [currentAdjustmentRecord]);
+
+  useEffect(() => {
+    if (!assignDialogOpen) return;
+
+    if (!enabledSalaryStructures.length) {
+      setAssignForm(prev => ({ ...prev, structureId: 0, salaryData: {} }));
+      setAssignStructurePreview(null);
+      return;
+    }
+
+    if (!assignForm.structureId || !enabledSalaryStructures.some(item => item.id === assignForm.structureId)) {
+      setAssignForm(prev => ({
+        ...prev,
+        structureId: enabledSalaryStructures[0].id,
+        salaryData: {},
+      }));
+    }
+  }, [assignDialogOpen, assignForm.structureId, enabledSalaryStructures]);
 
   useEffect(() => {
     if (!assignDialogOpen || !assignForm.structureId) {
@@ -1214,6 +1549,7 @@ export const HrSalaryPage: React.FC = () => {
       isTaxable: Boolean(item.isTaxable),
       formula: item.formula || '',
       sortOrder: item.sortOrder ?? 10,
+      status: item.status ?? 1,
     });
     setItemDialogOpen(true);
   };
@@ -1228,7 +1564,7 @@ export const HrSalaryPage: React.FC = () => {
     setEditingStructureId(null);
     setStructureForm({
       ...createDefaultStructureForm(),
-      itemIds: salaryItems.slice(0, 3).map(item => item.id),
+      itemIds: enabledSalaryItems.slice(0, 3).map(item => item.id),
     });
     setStructureDialogOpen(true);
   };
@@ -1243,6 +1579,7 @@ export const HrSalaryPage: React.FC = () => {
         structureName: detail.structureName,
         description: detail.description || '',
         itemIds: (detail.items || []).map(item => item.id),
+        status: detail.status ?? 1,
       });
       setStructureDialogOpen(true);
     } catch (error) {
@@ -1283,20 +1620,122 @@ export const HrSalaryPage: React.FC = () => {
     setGradeForm(createDefaultGradeForm());
   };
 
+  const resetTaxDeductionForm = (employeeId?: number) => {
+    const referenceDate = employeeSalaryDetail?.employeeId === employeeId
+      ? employeeSalaryDetail?.effectiveDate
+      : currentEmployeeRecord?.employeeId === employeeId
+        ? currentEmployeeRecord?.effectiveDate
+        : currentEmployeeRecord?.effectiveDate;
+
+    setEditingTaxDeductionId(null);
+    setTaxDeductionForm({
+      ...createDefaultTaxDeductionForm(),
+      employeeId: employeeId || 0,
+      startDate: getMonthStartValue(referenceDate),
+    });
+  };
+
+  const openInsuranceDialog = () => {
+    if (!currentEmployeeRecord) {
+      toast.error('请先选择员工');
+      return;
+    }
+    if (!enabledInsuranceSchemes.length) {
+      toast.error('当前没有可分配的启用社保方案');
+      return;
+    }
+
+    const defaultSchemeId = enabledInsuranceSchemes.some(item => item.id === employeeInsuranceDetail?.schemeId)
+      ? Number(employeeInsuranceDetail?.schemeId)
+      : enabledInsuranceSchemes[0]?.id || 0;
+    const defaultBase = Number(employeeInsuranceDetail?.base ?? currentGrossSalary ?? 0);
+
+    setInsuranceForm({
+      ...createDefaultInsuranceForm(),
+      employeeId: currentEmployeeRecord.employeeId,
+      schemeId: defaultSchemeId,
+      base: Number.isFinite(defaultBase) ? defaultBase : 0,
+      effectiveDate: getTodayValue(),
+    });
+    setInsuranceDialogOpen(true);
+  };
+
+  const closeInsuranceDialog = () => {
+    setInsuranceDialogOpen(false);
+    setInsuranceForm(createDefaultInsuranceForm());
+  };
+
+  const openTaxDeductionDialog = async () => {
+    if (!currentEmployeeRecord) {
+      toast.error('请先选择员工');
+      return;
+    }
+
+    resetTaxDeductionForm(currentEmployeeRecord.employeeId);
+    setTaxDeductionDialogOpen(true);
+    await loadEmployeeTaxDeductionRecords(currentEmployeeRecord.employeeId);
+  };
+
+  const openTaxDeductionEditDialog = (item: EmployeeTaxDeduction) => {
+    setEditingTaxDeductionId(item.id);
+    setTaxDeductionForm({
+      employeeId: item.employeeId,
+      deductionType: item.deductionType,
+      amount: Number(item.amount || 0),
+      startDate: toDateInputValue(item.startDate) || getMonthStartValue(),
+      endDate: toDateInputValue(item.endDate) || '',
+      status: item.status || 'ACTIVE',
+      remark: item.remark || '',
+    });
+  };
+
+  const closeTaxDeductionDialog = () => {
+    setTaxDeductionDialogOpen(false);
+    setEmployeeAllTaxDeductions([]);
+    resetTaxDeductionForm();
+  };
+
+  const openTaxConfigDialog = async () => {
+    setTaxConfigDialogOpen(true);
+    setTaxConfigDialogLoading(true);
+    try {
+      const config = await getCurrentTaxConfig();
+      setCurrentTaxConfig(config);
+      setTaxConfigForm(buildTaxConfigForm(config));
+    } catch (error: any) {
+      console.error(error);
+      setCurrentTaxConfig(null);
+      setTaxConfigForm(createDefaultTaxConfigForm());
+      toast.error(error?.message || '当前没有可用的个税配置，将按默认模板新建');
+    } finally {
+      setTaxConfigDialogLoading(false);
+    }
+  };
+
+  const closeTaxConfigDialog = () => {
+    setTaxConfigDialogOpen(false);
+    setTaxConfigDialogLoading(false);
+    setTaxConfigForm(buildTaxConfigForm(currentTaxConfig));
+  };
+
   const openAssignDialog = () => {
     if (!assignableEmployees.length) {
       toast.error('当前没有待分配薪资的在岗员工');
       return;
     }
-    if (!salaryStructures.length) {
-      toast.error('请先配置薪资结构');
+    if (!enabledSalaryStructures.length) {
+      toast.error('请先配置启用中的薪资结构');
       return;
     }
 
     setAssignForm({
       ...createDefaultAssignForm(),
       employeeId: defaultAssignableEmployeeId,
-      structureId: Number(selectedStructureId || salaryStructures[0]?.id || 0),
+      structureId: Number(
+        enabledSalaryStructures.some(item => String(item.id) === selectedStructureId)
+          ? selectedStructureId
+          : enabledSalaryStructures[0]?.id || 0,
+      ),
     });
     setAssignStructurePreview(null);
     setAssignDialogOpen(true);
@@ -1551,6 +1990,199 @@ export const HrSalaryPage: React.FC = () => {
     }
   };
 
+  const handleAssignInsurance = async () => {
+    if (!currentEmployeeRecord) {
+      toast.error('请先选择员工');
+      return;
+    }
+    if (!insuranceForm.employeeId || !insuranceForm.schemeId || !insuranceForm.effectiveDate) {
+      toast.error('请填写方案、基数和生效日期');
+      return;
+    }
+    if (insuranceForm.base <= 0) {
+      toast.error('缴纳基数必须大于 0');
+      return;
+    }
+    if (isFutureDate(insuranceForm.effectiveDate)) {
+      toast.error('五险一金生效日期不能晚于今天');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await assignInsuranceScheme(insuranceForm);
+      toast.success('社保公积金方案已分配');
+      closeInsuranceDialog();
+      await refreshCurrentEmployeeWorkspace(currentEmployeeRecord);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '分配社保公积金方案失败');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSaveTaxDeduction = async () => {
+    if (!currentEmployeeRecord) {
+      toast.error('请先选择员工');
+      return;
+    }
+    if (!taxDeductionForm.deductionType) {
+      toast.error('请选择扣除类型');
+      return;
+    }
+    if (!taxDeductionForm.startDate) {
+      toast.error('请选择开始日期');
+      return;
+    }
+    if (taxDeductionForm.amount <= 0) {
+      toast.error('扣除金额必须大于 0');
+      return;
+    }
+    if (taxDeductionForm.endDate && taxDeductionForm.endDate < taxDeductionForm.startDate) {
+      toast.error('结束日期不能早于开始日期');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const trimmedRemark = taxDeductionForm.remark.trim();
+
+      if (editingTaxDeductionId) {
+        const payload: EmployeeTaxDeductionUpdatePayload = {
+          amount: Number(taxDeductionForm.amount),
+          startDate: taxDeductionForm.startDate,
+          endDate: taxDeductionForm.endDate || null,
+          clearEndDate: !taxDeductionForm.endDate,
+          status: taxDeductionForm.status,
+          // 显式传空字符串，确保编辑时可以把备注真正清空。
+          remark: trimmedRemark,
+        };
+        await updateTaxDeduction(editingTaxDeductionId, payload);
+        toast.success('专项扣除已更新');
+      } else {
+        const payload: EmployeeTaxDeductionPayload = {
+          employeeId: currentEmployeeRecord.employeeId,
+          deductionType: taxDeductionForm.deductionType,
+          amount: Number(taxDeductionForm.amount),
+          startDate: taxDeductionForm.startDate,
+          endDate: taxDeductionForm.endDate || null,
+          remark: trimmedRemark || null,
+        };
+        await addTaxDeduction(payload);
+        toast.success('专项扣除已新增');
+      }
+
+      await refreshCurrentTaxDeductionWorkspace(currentEmployeeRecord.employeeId);
+      resetTaxDeductionForm(currentEmployeeRecord.employeeId);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || (editingTaxDeductionId ? '更新专项扣除失败' : '新增专项扣除失败'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteTaxDeduction = async (item: EmployeeTaxDeduction) => {
+    const deductionLabel = item.deductionTypeName || deductionTypeLabel(item.deductionType);
+    if (!window.confirm(`确认删除专项扣除“${deductionLabel}”吗？`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await deleteTaxDeduction(item.id);
+      toast.success('专项扣除已删除');
+      await refreshCurrentTaxDeductionWorkspace(item.employeeId);
+      if (editingTaxDeductionId === item.id) {
+        resetTaxDeductionForm(item.employeeId);
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '删除专项扣除失败');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSaveTaxConfig = async () => {
+    const threshold = Number(taxConfigForm.threshold || 0);
+    if (!Number.isFinite(threshold) || threshold < 0) {
+      toast.error('起征点必须是大于等于 0 的数字');
+      return;
+    }
+    if (!taxConfigForm.effectiveDate) {
+      toast.error('请选择生效日期');
+      return;
+    }
+    if (isFutureDate(taxConfigForm.effectiveDate)) {
+      toast.error('当前页面只维护今天及以前生效的个税配置');
+      return;
+    }
+
+    let taxBrackets: string;
+    try {
+      taxBrackets = normalizeTaxBracketJson(taxConfigForm.taxBracketsJson);
+    } catch (error: any) {
+      toast.error(error?.message || '税率档配置不正确');
+      return;
+    }
+
+    let deductionItems: string;
+    try {
+      const payload = deductionTypeOptions.reduce<Record<string, number>>((result, item) => {
+        const amount = Number(taxConfigForm.deductionItems[item.value] || 0);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error(`${item.label}标准必须是大于等于 0 的数字`);
+        }
+        result[item.value] = Number(amount.toFixed(2));
+        return result;
+      }, {});
+      deductionItems = JSON.stringify(payload);
+    } catch (error: any) {
+      toast.error(error?.message || '专项附加扣除标准配置不正确');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const payload: TaxConfigPayload = {
+        threshold: Number(threshold.toFixed(2)),
+        effectiveDate: taxConfigForm.effectiveDate,
+        deductionItems,
+        taxBrackets,
+      };
+
+      if (taxConfigForm.id) {
+        await updateTaxConfig(taxConfigForm.id, payload);
+        toast.success('个税配置已更新');
+      } else {
+        const createdId = await createTaxConfig(payload);
+        toast.success('个税配置已创建');
+        setTaxConfigForm(prev => ({ ...prev, id: createdId }));
+      }
+
+      const latestConfig = await getCurrentTaxConfig();
+      setCurrentTaxConfig(latestConfig);
+      setTaxConfigForm(buildTaxConfigForm(latestConfig));
+      setTaxConfigDialogOpen(false);
+      setTaxConfigDialogLoading(false);
+
+      if (currentEmployeeRecord) {
+        await loadEmployeeCompensationProfile(
+          currentEmployeeRecord.employeeId,
+          currentGrossSalary,
+          employeeSalaryDetail?.effectiveDate || currentEmployeeRecord.effectiveDate,
+        );
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || (taxConfigForm.id ? '更新个税配置失败' : '创建个税配置失败'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleCreateAdjustment = async () => {
     if (!adjustForm.employeeId || !adjustForm.effectiveDate) {
       toast.error('请先选择员工并填写生效日期');
@@ -1648,7 +2280,7 @@ export const HrSalaryPage: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button className="rounded-2xl" onClick={openAssignDialog} disabled={!assignableEmployees.length || !salaryStructures.length}>
+              <Button className="rounded-2xl" onClick={openAssignDialog} disabled={!assignableEmployees.length || !enabledSalaryStructures.length}>
                 <BadgePlus size={16} className="mr-2" />
                 分配薪资
               </Button>
@@ -1972,19 +2604,29 @@ export const HrSalaryPage: React.FC = () => {
                       <p className="mt-1 text-sm text-slate-500">联动五险一金和专项扣除接口，估算员工到手收入与公司用工成本。</p>
                     </div>
                     {currentEmployeeRecord && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          void loadEmployeeCompensationProfile(
-                            currentEmployeeRecord.employeeId,
-                            currentGrossSalary,
-                            employeeSalaryDetail?.effectiveDate || currentEmployeeRecord.effectiveDate,
-                          );
-                        }}
-                      >
-                        <RefreshCcw size={14} className="mr-2" />
-                        刷新测算
-                      </Button>
+                      <div className="flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={openInsuranceDialog}>
+                          <ShieldCheck size={14} className="mr-2" />
+                          分配社保方案
+                        </Button>
+                        <Button variant="outline" onClick={() => void openTaxDeductionDialog()}>
+                          <BadgePlus size={14} className="mr-2" />
+                          管理专项扣除
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            void loadEmployeeCompensationProfile(
+                              currentEmployeeRecord.employeeId,
+                              currentGrossSalary,
+                              employeeSalaryDetail?.effectiveDate || currentEmployeeRecord.effectiveDate,
+                            );
+                          }}
+                        >
+                          <RefreshCcw size={14} className="mr-2" />
+                          刷新测算
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -1998,7 +2640,7 @@ export const HrSalaryPage: React.FC = () => {
                     <div className="space-y-4">
                       {!hasInsuranceProfile && !employeeCompensationLoading && (
                         <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
-                          当前员工还没有可用的社保公积金方案。页面不会报错或反复提示，但个人社保、公司成本会缺失。
+                          当前员工还没有可用的社保公积金方案。可以直接点击右上角“分配社保方案”补齐后，再刷新测算结果。
                         </div>
                       )}
 
@@ -2110,8 +2752,21 @@ export const HrSalaryPage: React.FC = () => {
 
                         <div className="space-y-4">
                           <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                            <div className="font-semibold text-slate-900">个税测算摘要</div>
-                            <div className="mt-1 text-sm text-slate-500">按 {taxReferencePeriod} 的专项扣除配置进行估算。</div>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="font-semibold text-slate-900">个税测算摘要</div>
+                                <div className="mt-1 text-sm text-slate-500">按 {taxReferencePeriod} 的专项扣除配置进行估算。</div>
+                                <div className="mt-1 text-xs text-slate-400">
+                                  {currentTaxConfig
+                                    ? `当前配置 #${currentTaxConfig.id}，生效于 ${toDateInputValue(currentTaxConfig.effectiveDate) || '-'}`
+                                    : '当前没有加载到可维护的个税配置'}
+                                </div>
+                              </div>
+                              <Button variant="outline" onClick={() => void openTaxConfigDialog()}>
+                                <FileText size={14} className="mr-2" />
+                                维护个税配置
+                              </Button>
+                            </div>
                             <div className="mt-4 grid grid-cols-1 gap-3">
                               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
                                 <div className="text-xs text-slate-400">起征点</div>
@@ -2829,6 +3484,17 @@ export const HrSalaryPage: React.FC = () => {
                 </Select>
               </div>
               <div>
+                <Label>状态</Label>
+                <Select value={String(itemForm.status ?? 1)} onValueChange={value => setItemForm(prev => ({ ...prev, status: Number(value) }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>排序号</Label>
                 <Input
                   type="number"
@@ -2885,19 +3551,34 @@ export const HrSalaryPage: React.FC = () => {
                   onChange={event => setStructureForm(prev => ({ ...prev, description: event.target.value }))}
                 />
               </div>
+              <div>
+                <Label>状态</Label>
+                <Select value={String(structureForm.status ?? 1)} onValueChange={value => setStructureForm(prev => ({ ...prev, status: Number(value) }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="md:col-span-2">
                 <Label>关联项目</Label>
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {salaryItems.map(item => {
                     const selected = structureForm.itemIds.includes(item.id);
+                    const disabled = item.status === 0 && !selected;
                     return (
                       <button
                         key={item.id}
                         type="button"
+                        disabled={disabled}
                         className={`rounded-2xl border px-4 py-4 text-left transition ${
                           selected
                             ? 'border-sky-200 bg-sky-50 text-sky-700'
-                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+                            : disabled
+                              ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                              : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
                         }`}
                         onClick={() => setStructureForm(prev => ({
                           ...prev,
@@ -2908,10 +3589,12 @@ export const HrSalaryPage: React.FC = () => {
                       >
                         <div className="font-medium">{item.itemName}</div>
                         <div className="mt-1 text-xs opacity-80">{item.itemCode}</div>
+                        <div className="mt-2 text-xs opacity-80">{item.statusDesc || (item.status === 1 ? '启用' : '禁用')}</div>
                       </button>
                     );
                   })}
                 </div>
+                <div className="mt-2 text-xs text-slate-400">禁用项目不会再允许新结构继续关联；若历史结构仍在使用，请先取消勾选再保存。</div>
               </div>
             </div>
 
@@ -2988,6 +3671,407 @@ export const HrSalaryPage: React.FC = () => {
         </div>
       )}
 
+      {taxConfigDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">{taxConfigForm.id ? '维护当前个税配置' : '新建个税配置'}</h2>
+                <p className="mt-1 text-sm text-slate-500">当前页面只维护今天及以前生效的个税配置，保存后会立即刷新个税测算摘要。</p>
+              </div>
+              <Button variant="ghost" onClick={closeTaxConfigDialog}>关闭</Button>
+            </div>
+
+            {taxConfigDialogLoading ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                正在加载当前个税配置...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="mb-4">
+                    <div className="font-semibold text-slate-900">基础参数</div>
+                    <div className="mt-1 text-sm text-slate-500">维护起征点、生效日期和专项附加扣除参考标准。</div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>起征点</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={taxConfigForm.threshold}
+                        onChange={event => setTaxConfigForm(prev => ({ ...prev, threshold: event.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label>生效日期</Label>
+                      <Input
+                        type="date"
+                        value={taxConfigForm.effectiveDate}
+                        max={getTodayValue()}
+                        onChange={event => setTaxConfigForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <div className="font-semibold text-slate-900">专项附加扣除参考标准</div>
+                    <div className="mt-1 text-sm text-slate-500">这里维护的是标准配置值，员工实际测算仍以员工专项扣除记录为准。</div>
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      {deductionTypeOptions.map(item => (
+                        <div key={item.value}>
+                          <Label>{item.label}</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={taxConfigForm.deductionItems[item.value] ?? ''}
+                            onChange={event => setTaxConfigForm(prev => ({
+                              ...prev,
+                              deductionItems: {
+                                ...prev.deductionItems,
+                                [item.value]: event.target.value,
+                              },
+                            }))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-slate-900">税率档配置</div>
+                      <div className="mt-1 text-sm text-slate-500">使用 JSON 维护年累计税率档，字段为 min / max / rate / deduction。</div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setTaxConfigForm(prev => ({ ...prev, taxBracketsJson: defaultTaxBracketJson }))}
+                    >
+                      恢复默认档
+                    </Button>
+                  </div>
+
+                  <Textarea
+                    className="min-h-[360px] font-mono text-sm"
+                    value={taxConfigForm.taxBracketsJson}
+                    onChange={event => setTaxConfigForm(prev => ({ ...prev, taxBracketsJson: event.target.value }))}
+                    placeholder='[{"min":0,"max":36000,"rate":0.03,"deduction":0}]'
+                  />
+
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-xs text-slate-500">
+                    <div>规则说明：</div>
+                    <div className="mt-1">1. `rate` 使用 0.03 这种小数格式，不是 3。</div>
+                    <div className="mt-1">2. 最后一档可以不写 `max`，表示无上限。</div>
+                    <div className="mt-1">3. 每一档的 `min` 需要按从小到大的顺序填写。</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={closeTaxConfigDialog}>取消</Button>
+              <Button disabled={actionLoading || taxConfigDialogLoading} onClick={() => void handleSaveTaxConfig()}>
+                {taxConfigForm.id ? '保存配置' : '创建配置'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {taxDeductionDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">管理员工专项扣除</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  当前个税测算按 {taxReferencePeriod} 读取 ACTIVE 记录。新增时默认回填到当月 1 号，保存后会立即刷新右侧测算结果。
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {editingTaxDeductionId && (
+                  <Button variant="outline" onClick={() => resetTaxDeductionForm(currentEmployeeRecord?.employeeId)}>
+                    新建一条
+                  </Button>
+                )}
+                <Button variant="ghost" onClick={closeTaxDeductionDialog}>关闭</Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="mb-4">
+                  <div className="font-semibold text-slate-900">{editingTaxDeductionId ? '编辑专项扣除' : '新增专项扣除'}</div>
+                  <div className="mt-1 text-sm text-slate-500">支持直接维护当前员工的专项附加扣除，并同步刷新个税测算。</div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <Label>员工</Label>
+                    <Input value={currentEmployeeRecord ? [currentEmployeeRecord.employeeName, currentEmployeeRecord.employeeNo].filter(Boolean).join(' / ') : ''} disabled />
+                  </div>
+                  <div>
+                    <Label>扣除类型</Label>
+                    {editingTaxDeductionId ? (
+                      <Input value={deductionTypeLabel(taxDeductionForm.deductionType)} disabled />
+                    ) : (
+                      <Select
+                        value={taxDeductionForm.deductionType || EMPTY_VALUE}
+                        onValueChange={value => setTaxDeductionForm(prev => ({ ...prev, deductionType: value === EMPTY_VALUE ? '' : value }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="请选择扣除类型" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
+                          {deductionTypeOptions.map(item => (
+                            <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div>
+                    <Label>{editingTaxDeductionId ? '状态' : '当前状态'}</Label>
+                    {editingTaxDeductionId ? (
+                      <Select
+                        value={taxDeductionForm.status || 'ACTIVE'}
+                        onValueChange={value => setTaxDeductionForm(prev => ({ ...prev, status: value }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="请选择状态" /></SelectTrigger>
+                        <SelectContent>
+                          {taxDeductionStatusOptions.map(item => (
+                            <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value="生效中" disabled />
+                    )}
+                  </div>
+                  <div>
+                    <Label>月扣除金额</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={taxDeductionForm.amount || ''}
+                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, amount: Number(event.target.value || 0) }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>开始日期</Label>
+                    <Input
+                      type="date"
+                      value={taxDeductionForm.startDate}
+                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, startDate: event.target.value }))}
+                    />
+                    <div className="mt-1 text-xs text-slate-400">建议按月份生效时填写当月 1 号。</div>
+                  </div>
+                  <div>
+                    <Label>结束日期</Label>
+                    <Input
+                      type="date"
+                      value={taxDeductionForm.endDate}
+                      min={taxDeductionForm.startDate || undefined}
+                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, endDate: event.target.value }))}
+                    />
+                    <div className="mt-1 text-xs text-slate-400">留空表示长期有效。</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>备注</Label>
+                    <Textarea
+                      rows={4}
+                      value={taxDeductionForm.remark}
+                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, remark: event.target.value }))}
+                      placeholder="例如：独生子女 2000 元标准，2026 年起执行"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  {editingTaxDeductionId && (
+                    <Button variant="outline" onClick={() => resetTaxDeductionForm(currentEmployeeRecord?.employeeId)}>
+                      取消编辑
+                    </Button>
+                  )}
+                  <Button disabled={actionLoading} onClick={() => void handleSaveTaxDeduction()}>
+                    {editingTaxDeductionId ? '保存修改' : '确认新增'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-slate-900">专项扣除记录</div>
+                    <div className="mt-1 text-sm text-slate-500">全部记录都会展示在这里，命中 {taxReferencePeriod} 的 ACTIVE 记录会参与当前个税测算。</div>
+                  </div>
+                  <div className="text-xs text-slate-400">{sortedEmployeeAllTaxDeductions.length} 条</div>
+                </div>
+
+                <div className="overflow-hidden rounded-2xl border border-slate-200">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>扣除项</TableHead>
+                        <TableHead>月金额</TableHead>
+                        <TableHead>生效区间</TableHead>
+                        <TableHead>状态</TableHead>
+                        <TableHead className="text-right">操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedEmployeeAllTaxDeductions.map(item => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
+                            <div className="mt-1 text-xs text-slate-400">{item.remark || '无备注'}</div>
+                          </TableCell>
+                          <TableCell>{formatCurrency(item.amount)}</TableCell>
+                          <TableCell>
+                            <div>{toDateInputValue(item.startDate) || '-'}</div>
+                            <div className="mt-1 text-xs text-slate-400">截止 {toDateInputValue(item.endDate) || '长期有效'}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2">
+                              <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionStatusClass(item.status)}`}>
+                                {taxDeductionStatusLabel(item.status)}
+                              </span>
+                              {activeTaxDeductionIds.has(item.id) && (
+                                <span className="inline-flex w-fit rounded-full border border-sky-100 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                                  参与{taxReferencePeriod}测算
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" className="rounded-xl" onClick={() => openTaxDeductionEditDialog(item)}>
+                                编辑
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                                onClick={() => void handleDeleteTaxDeduction(item)}
+                              >
+                                删除
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!sortedEmployeeAllTaxDeductions.length && !taxDeductionListLoading && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                            当前员工还没有专项扣除记录。
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {taxDeductionListLoading && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                            正在加载专项扣除记录...
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {insuranceDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">分配社保公积金方案</h2>
+                <p className="mt-1 text-sm text-slate-500">当前页面只支持今天及以前生效，保存后会直接切换到当前生效中的社保方案。</p>
+              </div>
+              <Button variant="ghost" onClick={closeInsuranceDialog}>关闭</Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <Label>员工</Label>
+                <Input value={currentEmployeeRecord ? [currentEmployeeRecord.employeeName, currentEmployeeRecord.employeeNo].filter(Boolean).join(' / ') : ''} disabled />
+              </div>
+              <div>
+                <Label>社保方案</Label>
+                <Select
+                  value={insuranceForm.schemeId ? String(insuranceForm.schemeId) : EMPTY_VALUE}
+                  onValueChange={value => setInsuranceForm(prev => ({ ...prev, schemeId: value === EMPTY_VALUE ? 0 : Number(value) }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="请选择方案" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
+                    {enabledInsuranceSchemes.map(item => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {[item.schemeName, item.city].filter(Boolean).join(' / ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>缴纳基数</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={insuranceForm.base || ''}
+                  onChange={event => setInsuranceForm(prev => ({ ...prev, base: Number(event.target.value || 0) }))}
+                />
+                <div className="mt-1 text-xs text-slate-400">默认回填当前税前总薪资，可按方案上下限调整。</div>
+              </div>
+              <div>
+                <Label>生效日期</Label>
+                <Input
+                  type="date"
+                  value={insuranceForm.effectiveDate}
+                  max={getTodayValue()}
+                  onChange={event => setInsuranceForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="font-semibold text-slate-900">{selectedInsuranceScheme?.schemeName || '请选择社保方案'}</div>
+              <div className="mt-2 grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-3">
+                <div>
+                  <div className="text-xs text-slate-400">适用城市</div>
+                  <div className="mt-1">{selectedInsuranceScheme?.city || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">基数范围</div>
+                  <div className="mt-1">
+                    {selectedInsuranceScheme
+                      ? `${formatCurrency(selectedInsuranceScheme.baseMin)} - ${formatCurrency(selectedInsuranceScheme.baseMax)}`
+                      : '-'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">方案生效</div>
+                  <div className="mt-1">{toDateInputValue(selectedInsuranceScheme?.effectiveDate) || '-'}</div>
+                </div>
+              </div>
+              <div className="mt-3 text-xs text-slate-500">{selectedInsuranceScheme?.baseRule || '选择方案后可查看基数规则。'}</div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={closeInsuranceDialog}>取消</Button>
+              <Button disabled={actionLoading} onClick={() => void handleAssignInsurance()}>确认分配</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {assignDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
           <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
@@ -3026,7 +4110,7 @@ export const HrSalaryPage: React.FC = () => {
                   <SelectTrigger><SelectValue placeholder="请选择结构" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {salaryStructures.map(item => (
+                    {enabledSalaryStructures.map(item => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {[item.structureName, item.structureCode].filter(Boolean).join(' / ')}
                       </SelectItem>
