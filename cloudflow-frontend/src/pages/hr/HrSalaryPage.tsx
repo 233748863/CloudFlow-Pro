@@ -24,6 +24,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import {
+  EmployeeInsurance,
   EmployeeSalary,
   EmployeeSalaryAssignPayload,
   EmployeeSalaryDetail,
@@ -35,6 +36,7 @@ import {
   HrEmployee,
   HrPagedResult,
   InsuranceScheme,
+  InsuranceSchemePayload,
   InsuranceCalculation,
   JobLevelOption,
   SalaryAdjustment,
@@ -56,6 +58,7 @@ import {
   assignInsuranceScheme,
   calculateEmployeeInsurance,
   calculateTax,
+  createInsuranceScheme,
   createTaxConfig,
   createSalaryAdjustment,
   createSalaryItem,
@@ -73,6 +76,7 @@ import {
   getSalaryStructure,
   listEmployees,
   listActiveTaxDeductions,
+  listEmployeeInsurances,
   listEmployeeSalaries,
   listInsuranceSchemes,
   listJobLevels,
@@ -83,6 +87,7 @@ import {
   listTaxDeductions,
   setSalaryGrade,
   submitSalaryAdjustment,
+  updateInsuranceScheme,
   updateTaxDeduction,
   updateTaxConfig,
   updateSalaryItem,
@@ -133,6 +138,19 @@ const taxDeductionStatusOptions = [
   { value: 'EXPIRED', label: '已失效' },
 ];
 
+const taxDeductionScopeOptions = [
+  { value: 'IN_SCOPE', label: '参与当月测算' },
+  { value: 'OUT_OF_SCOPE', label: '未参与当月测算' },
+];
+
+const insuranceLedgerStatusOptions = [
+  { value: ALL_VALUE, label: '全部台账' },
+  { value: 'ACTIVE', label: '生效中' },
+  { value: 'EXPIRED', label: '已失效' },
+];
+
+const INSURANCE_LEDGER_PAGE_SIZE = 5;
+
 type TaxDeductionFormState = {
   employeeId: number;
   deductionType: string;
@@ -150,6 +168,8 @@ type TaxConfigFormState = {
   deductionItems: Record<string, string>;
   taxBracketsJson: string;
 };
+
+type InsuranceSchemeFormState = InsuranceSchemePayload;
 
 const defaultTaxBracketRows = [
   { min: 0, max: 36000, rate: 0.03, deduction: 0 },
@@ -284,6 +304,26 @@ const createDefaultTaxConfigForm = (): TaxConfigFormState => ({
   taxBracketsJson: defaultTaxBracketJson,
 });
 
+const createDefaultInsuranceSchemeForm = (): InsuranceSchemeFormState => ({
+  schemeName: '',
+  city: '',
+  pensionCompanyRate: 16,
+  pensionPersonalRate: 8,
+  medicalCompanyRate: 9.8,
+  medicalPersonalRate: 2,
+  unemploymentCompanyRate: 0.5,
+  unemploymentPersonalRate: 0.5,
+  injuryCompanyRate: 0.4,
+  maternityCompanyRate: 0.8,
+  housingFundCompanyRate: 12,
+  housingFundPersonalRate: 12,
+  baseMin: 0,
+  baseMax: 0,
+  baseRule: '按上年度月平均工资计算',
+  effectiveDate: getTodayValue(),
+  status: 1,
+});
+
 const isFutureDate = (value?: string | null) =>
   Boolean(value) && String(value) > getTodayValue();
 
@@ -296,6 +336,12 @@ const formatCurrency = (value?: number | string | null) => {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return '-';
   return `¥${currencyFormatter.format(amount)}`;
+};
+
+const formatPercent = (value?: number | string | null) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '-';
+  return `${currencyFormatter.format(amount)}%`;
 };
 
 const adjustmentStatusLabel = (status?: string | null) => {
@@ -434,6 +480,32 @@ const buildTaxConfigForm = (config?: TaxConfig | null): TaxConfigFormState => {
   };
 };
 
+const buildInsuranceSchemeForm = (scheme?: InsuranceScheme | null): InsuranceSchemeFormState => {
+  if (!scheme) {
+    return createDefaultInsuranceSchemeForm();
+  }
+
+  return {
+    schemeName: scheme.schemeName || '',
+    city: scheme.city || '',
+    pensionCompanyRate: Number(scheme.pensionCompanyRate ?? 0),
+    pensionPersonalRate: Number(scheme.pensionPersonalRate ?? 0),
+    medicalCompanyRate: Number(scheme.medicalCompanyRate ?? 0),
+    medicalPersonalRate: Number(scheme.medicalPersonalRate ?? 0),
+    unemploymentCompanyRate: Number(scheme.unemploymentCompanyRate ?? 0),
+    unemploymentPersonalRate: Number(scheme.unemploymentPersonalRate ?? 0),
+    injuryCompanyRate: Number(scheme.injuryCompanyRate ?? 0),
+    maternityCompanyRate: Number(scheme.maternityCompanyRate ?? 0),
+    housingFundCompanyRate: Number(scheme.housingFundCompanyRate ?? 0),
+    housingFundPersonalRate: Number(scheme.housingFundPersonalRate ?? 0),
+    baseMin: Number(scheme.baseMin ?? 0),
+    baseMax: Number(scheme.baseMax ?? 0),
+    baseRule: scheme.baseRule || '',
+    effectiveDate: toDateInputValue(scheme.effectiveDate) || getTodayValue(),
+    status: scheme.status ?? 1,
+  };
+};
+
 const normalizeTaxBracketJson = (value: string) => {
   let parsed: unknown;
   try {
@@ -516,6 +588,38 @@ const parseJsonSalaryData = (value?: string | null) => {
     console.error(error);
     return {} as Record<string, number>;
   }
+};
+
+const normalizeAmount = (value?: number | string | null) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? Number(amount.toFixed(2)) : 0;
+};
+
+const buildSalaryItemAmountMap = (items?: EmployeeSalaryDetail['items'] | null) => {
+  const result: Record<string, number> = {};
+
+  (items || []).forEach(item => {
+    result[String(item.itemId)] = normalizeAmount(item.amount);
+  });
+
+  return result;
+};
+
+const salaryDataEquals = (left: Record<string, number>, right: Record<string, number>) => {
+  const keys = Array.from(new Set([...Object.keys(left), ...Object.keys(right)]));
+  return keys.every(key => normalizeAmount(left[key]) === normalizeAmount(right[key]));
+};
+
+const getDateOffsetFromToday = (value?: string | null) => {
+  if (!value) return null;
+
+  const target = new Date(`${value}T00:00:00`);
+  const today = new Date(`${getTodayValue()}T00:00:00`);
+  if (Number.isNaN(target.getTime()) || Number.isNaN(today.getTime())) {
+    return null;
+  }
+
+  return Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
 };
 
 const buildAmountPayload = (valueMap: Record<string, string>) => {
@@ -644,6 +748,7 @@ export const HrSalaryPage: React.FC = () => {
   const [employeeAdjustmentHistory, setEmployeeAdjustmentHistory] = useState<SalaryAdjustmentHistory[]>([]);
   const [employeeSalaryHistory, setEmployeeSalaryHistory] = useState<EmployeeSalary[]>([]);
   const [employeeInsuranceDetail, setEmployeeInsuranceDetail] = useState<EmployeeInsuranceDetail | null>(null);
+  const [employeeInsuranceLedgerPage, setEmployeeInsuranceLedgerPage] = useState<HrPagedResult<EmployeeInsurance> | null>(null);
   const [employeeInsuranceCalculation, setEmployeeInsuranceCalculation] = useState<InsuranceCalculation | null>(null);
   const [employeeTaxDeductions, setEmployeeTaxDeductions] = useState<EmployeeTaxDeduction[]>([]);
   const [employeeAllTaxDeductions, setEmployeeAllTaxDeductions] = useState<EmployeeTaxDeduction[]>([]);
@@ -658,27 +763,39 @@ export const HrSalaryPage: React.FC = () => {
   const [employeeAdjustmentHistoryLoading, setEmployeeAdjustmentHistoryLoading] = useState(false);
   const [employeeSalaryHistoryLoading, setEmployeeSalaryHistoryLoading] = useState(false);
   const [employeeCompensationLoading, setEmployeeCompensationLoading] = useState(false);
+  const [employeeInsuranceListLoading, setEmployeeInsuranceListLoading] = useState(false);
   const [taxDeductionListLoading, setTaxDeductionListLoading] = useState(false);
   const [taxConfigDialogLoading, setTaxConfigDialogLoading] = useState(false);
   const [structureDetailLoading, setStructureDetailLoading] = useState(false);
   const [adjustmentListLoading, setAdjustmentListLoading] = useState(false);
   const [adjustmentDetailLoading, setAdjustmentDetailLoading] = useState(false);
+  const [adjustmentEmployeeSalaryLoading, setAdjustmentEmployeeSalaryLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedStructureId, setSelectedStructureId] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [selectedAdjustmentId, setSelectedAdjustmentId] = useState('');
   const [salaryKeyword, setSalaryKeyword] = useState('');
+  const [salaryDeptFilter, setSalaryDeptFilter] = useState(ALL_VALUE);
+  const [salaryStructureFilter, setSalaryStructureFilter] = useState(ALL_VALUE);
   const [salaryHistoryStatusFilter, setSalaryHistoryStatusFilter] = useState(ALL_VALUE);
+  const [insuranceLedgerStatusFilter, setInsuranceLedgerStatusFilter] = useState(ALL_VALUE);
+  const [insuranceLedgerPageNum, setInsuranceLedgerPageNum] = useState(1);
   const [adjustmentKeyword, setAdjustmentKeyword] = useState('');
   const [adjustmentStatusFilter, setAdjustmentStatusFilter] = useState(ALL_VALUE);
   const [adjustmentTypeFilter, setAdjustmentTypeFilter] = useState(ALL_VALUE);
+  const [adjustmentEmployeeFilter, setAdjustmentEmployeeFilter] = useState(ALL_VALUE);
+  const [adjustmentEffectiveStart, setAdjustmentEffectiveStart] = useState('');
+  const [adjustmentEffectiveEnd, setAdjustmentEffectiveEnd] = useState('');
   const [structureDetail, setStructureDetail] = useState<SalaryStructureDetail | null>(null);
   const [employeeSalaryDetail, setEmployeeSalaryDetail] = useState<EmployeeSalaryDetail | null>(null);
   const [adjustmentDetail, setAdjustmentDetail] = useState<SalaryAdjustment | null>(null);
+  const [adjustmentEmployeeSalaryDetail, setAdjustmentEmployeeSalaryDetail] = useState<EmployeeSalaryDetail | null>(null);
+  const [adjustmentEmployeeSalaryHistory, setAdjustmentEmployeeSalaryHistory] = useState<EmployeeSalary[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [structureDialogOpen, setStructureDialogOpen] = useState(false);
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
   const [insuranceDialogOpen, setInsuranceDialogOpen] = useState(false);
+  const [insuranceSchemeDialogOpen, setInsuranceSchemeDialogOpen] = useState(false);
   const [taxDeductionDialogOpen, setTaxDeductionDialogOpen] = useState(false);
   const [taxConfigDialogOpen, setTaxConfigDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -686,11 +803,18 @@ export const HrSalaryPage: React.FC = () => {
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editingStructureId, setEditingStructureId] = useState<number | null>(null);
   const [editingGradeLevelId, setEditingGradeLevelId] = useState<number | null>(null);
+  const [editingInsuranceSchemeId, setEditingInsuranceSchemeId] = useState<number | null>(null);
   const [editingTaxDeductionId, setEditingTaxDeductionId] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState<SalaryItemPayload>(createDefaultItemForm);
   const [structureForm, setStructureForm] = useState<SalaryStructurePayload>(createDefaultStructureForm);
   const [gradeForm, setGradeForm] = useState<SalaryGradePayload>(createDefaultGradeForm);
   const [insuranceForm, setInsuranceForm] = useState<EmployeeInsuranceAssignPayload>(createDefaultInsuranceForm);
+  const [insuranceSchemeCityFilter, setInsuranceSchemeCityFilter] = useState(ALL_VALUE);
+  const [insuranceSchemeStatusFilter, setInsuranceSchemeStatusFilter] = useState(ALL_VALUE);
+  const [taxDeductionTypeFilter, setTaxDeductionTypeFilter] = useState(ALL_VALUE);
+  const [taxDeductionStatusFilter, setTaxDeductionStatusFilter] = useState(ALL_VALUE);
+  const [taxDeductionScopeFilter, setTaxDeductionScopeFilter] = useState(ALL_VALUE);
+  const [insuranceSchemeForm, setInsuranceSchemeForm] = useState<InsuranceSchemeFormState>(createDefaultInsuranceSchemeForm);
   const [taxDeductionForm, setTaxDeductionForm] = useState<TaxDeductionFormState>(createDefaultTaxDeductionForm);
   const [taxConfigForm, setTaxConfigForm] = useState<TaxConfigFormState>(createDefaultTaxConfigForm);
   const [assignForm, setAssignForm] = useState(createDefaultAssignForm);
@@ -718,8 +842,102 @@ export const HrSalaryPage: React.FC = () => {
     [insuranceSchemes],
   );
 
+  const sortedInsuranceSchemes = useMemo(
+    () => [...insuranceSchemes].sort((left, right) => {
+      if (left.status !== right.status) {
+        return Number(right.status ?? 0) - Number(left.status ?? 0);
+      }
+
+      const rightTime = new Date(right.effectiveDate || right.createTime || 0).getTime();
+      const leftTime = new Date(left.effectiveDate || left.createTime || 0).getTime();
+      return rightTime - leftTime || Number(right.id) - Number(left.id);
+    }),
+    [insuranceSchemes],
+  );
+
+  const insuranceSchemeCityOptions = useMemo(
+    () => Array.from(new Set(
+      insuranceSchemes
+        .map(item => item.city)
+        .filter((value): value is string => Boolean(value && String(value).trim())),
+    ))
+      .sort((left, right) => left.localeCompare(right, 'zh-CN'))
+      .map(city => ({ value: city, label: city })),
+    [insuranceSchemes],
+  );
+
+  const filteredInsuranceSchemes = useMemo(
+    () => sortedInsuranceSchemes.filter(item => {
+      const cityMatched = insuranceSchemeCityFilter === ALL_VALUE || item.city === insuranceSchemeCityFilter;
+      const statusMatched = insuranceSchemeStatusFilter === ALL_VALUE || String(item.status ?? 1) === insuranceSchemeStatusFilter;
+      return cityMatched && statusMatched;
+    }),
+    [insuranceSchemeCityFilter, insuranceSchemeStatusFilter, sortedInsuranceSchemes],
+  );
+
+  const insuranceSchemeStats = useMemo(() => ({
+    total: insuranceSchemes.length,
+    enabled: insuranceSchemes.filter(item => item.status !== 0).length,
+    disabled: insuranceSchemes.filter(item => item.status === 0).length,
+    matched: filteredInsuranceSchemes.length,
+  }), [filteredInsuranceSchemes.length, insuranceSchemes]);
+
   const employeeMap = useMemo(
     () => new Map(employees.map(employee => [employee.id, employee])),
+    [employees],
+  );
+
+  const jobLevelMap = useMemo(
+    () => new Map(jobLevels.map(level => [level.id, level])),
+    [jobLevels],
+  );
+
+  const sortedJobLevels = useMemo(
+    () => [...jobLevels].sort((left, right) => {
+      const seriesCompare = String(left.levelSeries || '').localeCompare(String(right.levelSeries || ''), 'zh-CN');
+      if (seriesCompare !== 0) return seriesCompare;
+      const rankCompare = Number(left.levelRank || 0) - Number(right.levelRank || 0);
+      if (rankCompare !== 0) return rankCompare;
+      return String(left.levelCode || '').localeCompare(String(right.levelCode || ''), 'zh-CN');
+    }),
+    [jobLevels],
+  );
+
+  const salaryDeptOptions = useMemo(
+    () => Array.from(
+      employees.reduce((result, employee) => {
+        if (employee.deptId && employee.deptName) {
+          result.set(employee.deptId, employee.deptName);
+        }
+        return result;
+      }, new Map<number, string>()),
+    )
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label, 'zh-CN')),
+    [employees],
+  );
+
+  const salaryStructureOptions = useMemo(
+    () => [...salaryStructures]
+      .sort((left, right) => left.structureName.localeCompare(right.structureName, 'zh-CN'))
+      .map(item => ({
+        value: item.id,
+        label: [item.structureName, item.structureCode].filter(Boolean).join(' / '),
+      })),
+    [salaryStructures],
+  );
+
+  const adjustmentEmployeeOptions = useMemo(
+    () => [...employees]
+      .sort((left, right) => {
+        const nameCompare = String(left.name || '').localeCompare(String(right.name || ''), 'zh-CN');
+        if (nameCompare !== 0) return nameCompare;
+        return String(left.employeeNo || '').localeCompare(String(right.employeeNo || ''), 'zh-CN');
+      })
+      .map(employee => ({
+        value: employee.id,
+        label: buildEmployeeLabel(employee) || `员工 #${employee.id}`,
+      })),
     [employees],
   );
 
@@ -777,6 +995,72 @@ export const HrSalaryPage: React.FC = () => {
     );
   }, [adjustmentKeyword, salaryAdjustments]);
 
+  const sortedSalaryGrades = useMemo(
+    () => [...salaryGrades].sort((left, right) => {
+      const leftLevel = jobLevelMap.get(left.levelId);
+      const rightLevel = jobLevelMap.get(right.levelId);
+
+      const seriesCompare = String(leftLevel?.levelSeries || left.levelCode || '').localeCompare(
+        String(rightLevel?.levelSeries || right.levelCode || ''),
+        'zh-CN',
+      );
+      if (seriesCompare !== 0) return seriesCompare;
+
+      const rankCompare = Number(leftLevel?.levelRank || 0) - Number(rightLevel?.levelRank || 0);
+      if (rankCompare !== 0) return rankCompare;
+
+      return String(left.levelCode || '').localeCompare(String(right.levelCode || ''), 'zh-CN');
+    }),
+    [jobLevelMap, salaryGrades],
+  );
+
+  const configuredGradeLevelIds = useMemo(
+    () => new Set(salaryGrades.map(item => item.levelId)),
+    [salaryGrades],
+  );
+
+  const activeJobLevels = useMemo(
+    () => sortedJobLevels.filter(level => level.status !== 0),
+    [sortedJobLevels],
+  );
+
+  const pendingGradeLevels = useMemo(
+    () => activeJobLevels.filter(level => !configuredGradeLevelIds.has(level.id)),
+    [activeJobLevels, configuredGradeLevelIds],
+  );
+
+  const gradeSeriesSummary = useMemo(
+    () => Array.from(
+      activeJobLevels.reduce((result, level) => {
+        const seriesKey = level.levelSeries || '未分组';
+        const current = result.get(seriesKey) || { total: 0, configured: 0 };
+        current.total += 1;
+        if (configuredGradeLevelIds.has(level.id)) {
+          current.configured += 1;
+        }
+        result.set(seriesKey, current);
+        return result;
+      }, new Map<string, { total: number; configured: number }>()),
+    ).map(([series, stats]) => ({
+      series,
+      total: stats.total,
+      configured: stats.configured,
+    })),
+    [activeJobLevels, configuredGradeLevelIds],
+  );
+
+  const highestSalaryGrade = useMemo(
+    () => sortedSalaryGrades.reduce<SalaryGrade | null>((result, item) => {
+      if (!result) return item;
+      return Number(item.maxSalary || 0) > Number(result.maxSalary || 0) ? item : result;
+    }, null),
+    [sortedSalaryGrades],
+  );
+
+  const gradeCoverageRate = activeJobLevels.length
+    ? Number(((sortedSalaryGrades.length / activeJobLevels.length) * 100).toFixed(1))
+    : 0;
+
   const metrics = useMemo(() => {
     const pendingAdjustmentCount = salaryAdjustments.filter(item =>
       ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase()),
@@ -832,6 +1116,48 @@ export const HrSalaryPage: React.FC = () => {
     () => filteredAdjustments.find(item => String(item.id) === selectedAdjustmentId) || null,
     [filteredAdjustments, selectedAdjustmentId],
   );
+  const currentAdjustmentFilterEmployee = useMemo(
+    () => adjustmentEmployeeFilter === ALL_VALUE ? null : employeeMap.get(Number(adjustmentEmployeeFilter)) || null,
+    [adjustmentEmployeeFilter, employeeMap],
+  );
+  const currentSelectedEmployeeLabel = useMemo(() => {
+    if (!currentEmployeeRecord) return '';
+
+    const currentEmployee = employeeMap.get(currentEmployeeRecord.employeeId);
+    if (currentEmployee) {
+      return buildEmployeeLabel(currentEmployee);
+    }
+
+    return [currentEmployeeRecord.employeeNo, currentEmployeeRecord.employeeName].filter(Boolean).join(' / ');
+  }, [currentEmployeeRecord, employeeMap]);
+  const structureLinkedEmployeeRecords = useMemo(
+    () => !structureDetail ? [] : workingEmployeeSalaries.filter(item => item.structureId === structureDetail.id),
+    [structureDetail, workingEmployeeSalaries],
+  );
+  const structureLinkedDeptNames = useMemo(
+    () => Array.from(new Set(
+      structureLinkedEmployeeRecords
+        .map(item => employeeMap.get(item.employeeId)?.deptName)
+        .filter((value): value is string => Boolean(value)),
+    )),
+    [employeeMap, structureLinkedEmployeeRecords],
+  );
+  const structureLinkedEmployeeNames = useMemo(
+    () => Array.from(new Set(
+      structureLinkedEmployeeRecords
+        .map(item => item.employeeName || employeeMap.get(item.employeeId)?.name)
+        .filter((value): value is string => Boolean(value)),
+    )),
+    [employeeMap, structureLinkedEmployeeRecords],
+  );
+  const structureItemStats = useMemo(() => {
+    const items = structureDetail?.items || [];
+    return {
+      total: items.length,
+      fixed: items.filter(item => item.itemType === 'FIXED').length,
+      variable: items.filter(item => item.itemType === 'VARIABLE').length,
+    };
+  }, [structureDetail]);
   const defaultAssignableEmployeeId = (
     (selectedEmployeeId && assignableEmployees.some(employee => String(employee.id) === selectedEmployeeId)
       ? Number(selectedEmployeeId)
@@ -883,6 +1209,166 @@ export const HrSalaryPage: React.FC = () => {
       };
     });
   }, [adjustmentDetail, salaryItemMap]);
+
+  const sortedAdjustmentEmployeeSalaryHistory = useMemo(
+    () => [...adjustmentEmployeeSalaryHistory].sort((left, right) => {
+      const rightTime = new Date(right.effectiveDate || right.updateTime || right.createTime || 0).getTime();
+      const leftTime = new Date(left.effectiveDate || left.updateTime || left.createTime || 0).getTime();
+      return rightTime - leftTime || right.id - left.id;
+    }),
+    [adjustmentEmployeeSalaryHistory],
+  );
+
+  const adjustmentTargetSalaryMap = useMemo(
+    () => parseJsonSalaryData(adjustmentDetail?.afterSalaryData),
+    [adjustmentDetail?.afterSalaryData],
+  );
+
+  const adjustmentCurrentSalaryMap = useMemo(
+    () => buildSalaryItemAmountMap(adjustmentEmployeeSalaryDetail?.items),
+    [adjustmentEmployeeSalaryDetail?.items],
+  );
+
+  const adjustmentMatchedArchive = useMemo(() => {
+    if (!adjustmentDetail) return null;
+
+    const targetEffectiveDate = toDateInputValue(adjustmentDetail.effectiveDate) || '';
+    const targetTotal = normalizeAmount(adjustmentDetail.afterTotal);
+
+    return sortedAdjustmentEmployeeSalaryHistory.find(item =>
+      (toDateInputValue(item.effectiveDate) || '') === targetEffectiveDate
+      && normalizeAmount(item.totalSalary) === targetTotal,
+    ) || null;
+  }, [adjustmentDetail, sortedAdjustmentEmployeeSalaryHistory]);
+
+  const adjustmentCurrentSalaryMatched = useMemo(() => {
+    if (!adjustmentDetail || !adjustmentEmployeeSalaryDetail) return false;
+
+    return (toDateInputValue(adjustmentEmployeeSalaryDetail.effectiveDate) || '') === (toDateInputValue(adjustmentDetail.effectiveDate) || '')
+      && normalizeAmount(adjustmentEmployeeSalaryDetail.totalSalary) === normalizeAmount(adjustmentDetail.afterTotal)
+      && salaryDataEquals(adjustmentTargetSalaryMap, adjustmentCurrentSalaryMap);
+  }, [adjustmentCurrentSalaryMap, adjustmentDetail, adjustmentEmployeeSalaryDetail, adjustmentTargetSalaryMap]);
+
+  const adjustmentChangedItemCount = useMemo(
+    () => adjustmentDiffRows.filter(item => Math.abs(Number(item.delta || 0)) > 0.005).length,
+    [adjustmentDiffRows],
+  );
+
+  const adjustmentCurrentTotalDelta = useMemo(() => {
+    if (!adjustmentDetail || !adjustmentEmployeeSalaryDetail) return null;
+    return Number((Number(adjustmentEmployeeSalaryDetail.totalSalary || 0) - Number(adjustmentDetail.afterTotal || 0)).toFixed(2));
+  }, [adjustmentDetail, adjustmentEmployeeSalaryDetail]);
+
+  const adjustmentEffectiveOffsetDays = useMemo(
+    () => getDateOffsetFromToday(adjustmentDetail?.effectiveDate),
+    [adjustmentDetail?.effectiveDate],
+  );
+
+  const adjustmentClosureInsight = useMemo(() => {
+    if (!adjustmentDetail) return null;
+
+    const status = String(adjustmentDetail.status || '').toUpperCase();
+    const effectiveDateLabel = toDateInputValue(adjustmentDetail.effectiveDate) || '-';
+    const effectiveHint = adjustmentEffectiveOffsetDays == null
+      ? ''
+      : adjustmentEffectiveOffsetDays > 0
+        ? `距离今天还有 ${adjustmentEffectiveOffsetDays} 天`
+        : adjustmentEffectiveOffsetDays === 0
+          ? '今天生效'
+          : `已在 ${Math.abs(adjustmentEffectiveOffsetDays)} 天前进入生效日`;
+
+    switch (status) {
+      case 'DRAFT':
+        return {
+          stageLabel: '草稿待提交',
+          stageHint: '仍可继续调整调薪后明细和原因。',
+          landingLabel: '尚未进入档案',
+          landingHint: '草稿状态不会生成新的薪资档案。',
+          landingTone: 'slate',
+          nextAction: '下一步建议：确认无误后提交审批。',
+        };
+      case 'APPROVING':
+        return {
+          stageLabel: '审批中',
+          stageHint: '流程已发起，等待审批通过。',
+          landingLabel: '等待审批结果',
+          landingHint: '审批完成前不会写入薪资档案。',
+          landingTone: 'amber',
+          nextAction: '下一步建议：审批通过后再推进生效。',
+        };
+      case 'APPROVED':
+        if (adjustmentMatchedArchive) {
+          return {
+            stageLabel: '已审批通过',
+            stageHint: '流程状态已通过审批。',
+            landingLabel: '已定位到目标档案',
+            landingHint: `已匹配薪资档案 #${adjustmentMatchedArchive.id}，请确认是否为提前生效或已被后台写入。`,
+            landingTone: 'sky',
+            nextAction: '下一步建议：核对状态流转是否已经同步到 EFFECTIVE。',
+          };
+        }
+
+        if (isFutureDate(adjustmentDetail.effectiveDate)) {
+          return {
+            stageLabel: '已审批通过',
+            stageHint: '流程已通过，但尚未到生效日。',
+            landingLabel: '等待生效日',
+            landingHint: `${effectiveDateLabel} 生效，${effectiveHint || '暂未到生效时间'}。`,
+            landingTone: 'amber',
+            nextAction: '下一步建议：到达生效日后再执行生效。',
+          };
+        }
+
+        return {
+          stageLabel: '已审批通过',
+          stageHint: '已满足流程审批条件。',
+          landingLabel: '待执行生效',
+          landingHint: '当前还没有在薪资档案中找到目标记录。',
+          landingTone: 'amber',
+          nextAction: '下一步建议：可以直接执行生效，观察是否生成新档案。',
+        };
+      case 'EFFECTIVE':
+        if (adjustmentCurrentSalaryMatched) {
+          return {
+            stageLabel: '已生效',
+            stageHint: '状态流转已完成。',
+            landingLabel: '已落当前现薪',
+            landingHint: '当前 ACTIVE 现薪与调薪后明细完全一致。',
+            landingTone: 'emerald',
+            nextAction: '下一步建议：可切到员工现薪继续核对五险一金和个税测算。',
+          };
+        }
+
+        if (adjustmentMatchedArchive) {
+          return {
+            stageLabel: '已生效',
+            stageHint: '状态流转已完成。',
+            landingLabel: '已写入历史档案',
+            landingHint: `已匹配薪资档案 #${adjustmentMatchedArchive.id}，当前现薪可能已被后续档案覆盖。`,
+            landingTone: 'sky',
+            nextAction: '下一步建议：结合员工薪资历史确认后续调薪链路。',
+          };
+        }
+
+        return {
+          stageLabel: '已生效',
+          stageHint: '流程状态显示已完成。',
+          landingLabel: '未定位到目标档案',
+          landingHint: `暂未找到 ${effectiveDateLabel} / ${formatCurrency(adjustmentDetail.afterTotal)} 的薪资档案记录。`,
+          landingTone: 'rose',
+          nextAction: '下一步建议：优先核对后端生效逻辑和薪资档案落库结果。',
+        };
+      default:
+        return {
+          stageLabel: adjustmentStatusLabel(adjustmentDetail.status),
+          stageHint: '当前状态未纳入专门提示。',
+          landingLabel: '待核对',
+          landingHint: '请结合薪资档案结果手工确认。',
+          landingTone: 'slate',
+          nextAction: '下一步建议：刷新调薪详情和员工现薪后继续核对。',
+        };
+    }
+  }, [adjustmentCurrentSalaryMatched, adjustmentDetail, adjustmentEffectiveOffsetDays, adjustmentMatchedArchive]);
 
   const sortedEmployeeAdjustmentHistory = useMemo(
     () => [...employeeAdjustmentHistory].sort((left, right) => {
@@ -956,6 +1442,33 @@ export const HrSalaryPage: React.FC = () => {
     [employeeTaxCalculation?.taxableAmount],
   );
 
+  const taxConfigBracketPreview = useMemo(() => {
+    try {
+      const rows = JSON.parse(normalizeTaxBracketJson(taxConfigForm.taxBracketsJson)) as Array<{
+        min: number;
+        max?: number;
+        rate: number;
+        deduction: number;
+      }>;
+      return {
+        rows,
+        error: '',
+        maxRate: rows.reduce((result, item) => Math.max(result, Number(item.rate || 0)), 0),
+      };
+    } catch (error: any) {
+      return {
+        rows: [] as Array<{ min: number; max?: number; rate: number; deduction: number }>,
+        error: error?.message || '税率档 JSON 格式不正确',
+        maxRate: 0,
+      };
+    }
+  }, [taxConfigForm.taxBracketsJson]);
+
+  const taxConfigStandardDeductionTotal = useMemo(
+    () => deductionTypeOptions.reduce((sum, item) => sum + Number(taxConfigForm.deductionItems[item.value] || 0), 0),
+    [taxConfigForm.deductionItems],
+  );
+
   const currentNetIncome = useMemo(
     () => Number(
       employeeTaxCalculation?.afterTaxIncome
@@ -973,6 +1486,27 @@ export const HrSalaryPage: React.FC = () => {
     () => Boolean(employeeInsuranceDetail || employeeInsuranceCalculation),
     [employeeInsuranceCalculation, employeeInsuranceDetail],
   );
+
+  const employeeInsuranceLedgerRecords = useMemo(
+    () => [...(employeeInsuranceLedgerPage?.records ?? [])].sort((left, right) => {
+      const rightEffectiveTime = new Date(right.effectiveDate || right.updateTime || right.createTime || 0).getTime();
+      const leftEffectiveTime = new Date(left.effectiveDate || left.updateTime || left.createTime || 0).getTime();
+      if (rightEffectiveTime !== leftEffectiveTime) {
+        return rightEffectiveTime - leftEffectiveTime;
+      }
+
+      if (left.status !== right.status) {
+        return left.status === 'ACTIVE' ? -1 : 1;
+      }
+
+      const rightUpdateTime = new Date(right.updateTime || right.createTime || 0).getTime();
+      const leftUpdateTime = new Date(left.updateTime || left.createTime || 0).getTime();
+      return rightUpdateTime - leftUpdateTime || right.id - left.id;
+    }),
+    [employeeInsuranceLedgerPage?.records],
+  );
+
+  const latestEmployeeInsuranceLedger = employeeInsuranceLedgerRecords[0] || null;
 
   const selectedInsuranceScheme = useMemo(
     () => enabledInsuranceSchemes.find(item => item.id === insuranceForm.schemeId) || null,
@@ -1077,6 +1611,40 @@ export const HrSalaryPage: React.FC = () => {
     [employeeTaxDeductions],
   );
 
+  const taxDeductionFilterTypeOptions = useMemo(
+    () => Array.from(new Set(
+      employeeAllTaxDeductions
+        .map(item => item.deductionType)
+        .filter((value): value is string => Boolean(value && String(value).trim())),
+    ))
+      .map(value => ({
+        value,
+        label: deductionTypeOptions.find(option => option.value === value)?.label || value,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label, 'zh-CN')),
+    [employeeAllTaxDeductions],
+  );
+
+  const filteredEmployeeAllTaxDeductions = useMemo(
+    () => sortedEmployeeAllTaxDeductions.filter(item => {
+      const typeMatched = taxDeductionTypeFilter === ALL_VALUE || item.deductionType === taxDeductionTypeFilter;
+      const statusMatched = taxDeductionStatusFilter === ALL_VALUE || item.status === taxDeductionStatusFilter;
+      const inCurrentScope = activeTaxDeductionIds.has(item.id);
+      const scopeMatched = taxDeductionScopeFilter === ALL_VALUE
+        || (taxDeductionScopeFilter === 'IN_SCOPE' ? inCurrentScope : !inCurrentScope);
+      return typeMatched && statusMatched && scopeMatched;
+    }),
+    [activeTaxDeductionIds, sortedEmployeeAllTaxDeductions, taxDeductionScopeFilter, taxDeductionStatusFilter, taxDeductionTypeFilter],
+  );
+
+  const employeeTaxDeductionStats = useMemo(() => ({
+    total: employeeAllTaxDeductions.length,
+    active: employeeAllTaxDeductions.filter(item => item.status === 'ACTIVE').length,
+    inScope: employeeTaxDeductions.length,
+    currentAmount: currentTaxDeductionTotal,
+    matched: filteredEmployeeAllTaxDeductions.length,
+  }), [currentTaxDeductionTotal, employeeAllTaxDeductions, employeeTaxDeductions.length, filteredEmployeeAllTaxDeductions.length]);
+
   const assignTotal = useMemo(
     () => sumInputMap(assignForm.salaryData),
     [assignForm.salaryData],
@@ -1118,10 +1686,18 @@ export const HrSalaryPage: React.FC = () => {
     }
   };
 
-  const loadEmployeeSalaryList = async (preservedEmployeeId?: number) => {
+  const loadEmployeeSalaryList = async (
+    preservedEmployeeId?: number,
+    nextDeptFilter = salaryDeptFilter,
+    nextStructureFilter = salaryStructureFilter,
+  ) => {
     setEmployeeSalaryListLoading(true);
     try {
-      const data = await listEmployeeSalaries({ status: 'ACTIVE' });
+      const data = await listEmployeeSalaries({
+        status: 'ACTIVE',
+        deptId: nextDeptFilter === ALL_VALUE ? undefined : Number(nextDeptFilter),
+        structureId: nextStructureFilter === ALL_VALUE ? undefined : Number(nextStructureFilter),
+      });
       const rows = Array.isArray(data) ? data : [];
       setEmployeeSalaries(rows);
 
@@ -1150,6 +1726,9 @@ export const HrSalaryPage: React.FC = () => {
     preservedId?: number,
     nextStatusFilter = adjustmentStatusFilter,
     nextTypeFilter = adjustmentTypeFilter,
+    nextEmployeeFilter = adjustmentEmployeeFilter,
+    nextEffectiveStart = adjustmentEffectiveStart,
+    nextEffectiveEnd = adjustmentEffectiveEnd,
   ) => {
     setAdjustmentListLoading(true);
     try {
@@ -1158,6 +1737,9 @@ export const HrSalaryPage: React.FC = () => {
         pageSize: 50,
         status: nextStatusFilter === ALL_VALUE ? undefined : nextStatusFilter,
         adjustmentType: nextTypeFilter === ALL_VALUE ? undefined : nextTypeFilter,
+        employeeId: nextEmployeeFilter === ALL_VALUE ? undefined : Number(nextEmployeeFilter),
+        effectiveDateStart: nextEffectiveStart || undefined,
+        effectiveDateEnd: nextEffectiveEnd || undefined,
       });
 
       const rows = Array.isArray(data?.records) ? data.records : [];
@@ -1301,6 +1883,43 @@ export const HrSalaryPage: React.FC = () => {
     }
   };
 
+  const loadEmployeeInsuranceLedger = async (
+    employeeId: number,
+    nextStatusFilter = insuranceLedgerStatusFilter,
+    nextPageNum = insuranceLedgerPageNum,
+  ) => {
+    setEmployeeInsuranceListLoading(true);
+    try {
+      const data = await listEmployeeInsurances({
+        employeeId,
+        status: nextStatusFilter === ALL_VALUE ? undefined : nextStatusFilter,
+        pageNum: nextPageNum,
+        pageSize: INSURANCE_LEDGER_PAGE_SIZE,
+      });
+
+      const normalizedPage: HrPagedResult<EmployeeInsurance> = {
+        records: Array.isArray(data?.records) ? data.records : [],
+        total: Number(data?.total ?? 0),
+        size: Number(data?.size ?? INSURANCE_LEDGER_PAGE_SIZE),
+        current: Number(data?.current ?? nextPageNum),
+        pages: Number(data?.pages ?? 0),
+      };
+
+      if (normalizedPage.pages > 0 && nextPageNum > normalizedPage.pages) {
+        setInsuranceLedgerPageNum(normalizedPage.pages);
+        return;
+      }
+
+      setEmployeeInsuranceLedgerPage(normalizedPage);
+    } catch (error) {
+      console.error(error);
+      setEmployeeInsuranceLedgerPage(null);
+      toast.error('员工社保台账加载失败');
+    } finally {
+      setEmployeeInsuranceListLoading(false);
+    }
+  };
+
   const loadEmployeeTaxDeductionRecords = async (employeeId: number) => {
     setTaxDeductionListLoading(true);
     try {
@@ -1362,6 +1981,27 @@ export const HrSalaryPage: React.FC = () => {
     }
   };
 
+  const loadAdjustmentEmployeeSalaryContext = async (employeeId: number) => {
+    setAdjustmentEmployeeSalaryLoading(true);
+    try {
+      const [currentSalary, salaryHistory] = await Promise.all([
+        getEmployeeSalary(employeeId).catch(error => {
+          console.error(error);
+          return null;
+        }),
+        listEmployeeSalaries({ employeeId }).catch(error => {
+          console.error(error);
+          return [] as EmployeeSalary[];
+        }),
+      ]);
+
+      setAdjustmentEmployeeSalaryDetail(currentSalary);
+      setAdjustmentEmployeeSalaryHistory(Array.isArray(salaryHistory) ? salaryHistory : []);
+    } finally {
+      setAdjustmentEmployeeSalaryLoading(false);
+    }
+  };
+
   useEffect(() => {
     const bootstrap = async () => {
       setLoading(true);
@@ -1376,7 +2016,7 @@ export const HrSalaryPage: React.FC = () => {
   useEffect(() => {
     if (!bootstrapped) return;
     void loadAdjustmentList();
-  }, [adjustmentStatusFilter, adjustmentTypeFilter, bootstrapped]);
+  }, [adjustmentStatusFilter, adjustmentTypeFilter, adjustmentEmployeeFilter, adjustmentEffectiveStart, adjustmentEffectiveEnd, bootstrapped]);
 
   useEffect(() => {
     if (!salaryStructures.length) {
@@ -1424,6 +2064,7 @@ export const HrSalaryPage: React.FC = () => {
       setEmployeeSalaryHistory([]);
       setEmployeeAdjustmentHistory([]);
       setEmployeeInsuranceDetail(null);
+      setEmployeeInsuranceLedgerPage(null);
       setEmployeeInsuranceCalculation(null);
       setEmployeeTaxDeductions([]);
       setEmployeeAllTaxDeductions([]);
@@ -1435,9 +2076,24 @@ export const HrSalaryPage: React.FC = () => {
   }, [currentEmployeeRecord]);
 
   useEffect(() => {
+    if (!currentEmployeeRecord) return;
+    void loadEmployeeInsuranceLedger(currentEmployeeRecord.employeeId);
+  }, [currentEmployeeRecord?.employeeId, insuranceLedgerStatusFilter, insuranceLedgerPageNum]);
+
+  useEffect(() => {
     if (!currentAdjustmentRecord) return;
     void loadAdjustmentDetail(currentAdjustmentRecord.id);
   }, [currentAdjustmentRecord]);
+
+  useEffect(() => {
+    if (!adjustmentDetail) {
+      setAdjustmentEmployeeSalaryDetail(null);
+      setAdjustmentEmployeeSalaryHistory([]);
+      return;
+    }
+
+    void loadAdjustmentEmployeeSalaryContext(adjustmentDetail.employeeId);
+  }, [adjustmentDetail]);
 
   useEffect(() => {
     if (!assignDialogOpen) return;
@@ -1596,9 +2252,9 @@ export const HrSalaryPage: React.FC = () => {
     setStructureForm(createDefaultStructureForm());
   };
 
-  const openGradeDialog = () => {
+  const openGradeDialog = (levelId?: number) => {
     setEditingGradeLevelId(null);
-    setGradeForm({ ...createDefaultGradeForm(), levelId: jobLevels[0]?.id || 0 });
+    setGradeForm({ ...createDefaultGradeForm(), levelId: levelId || sortedJobLevels[0]?.id || 0 });
     setGradeDialogOpen(true);
   };
 
@@ -1618,6 +2274,24 @@ export const HrSalaryPage: React.FC = () => {
     setGradeDialogOpen(false);
     setEditingGradeLevelId(null);
     setGradeForm(createDefaultGradeForm());
+  };
+
+  const openInsuranceSchemeDialog = () => {
+    setEditingInsuranceSchemeId(null);
+    setInsuranceSchemeForm(createDefaultInsuranceSchemeForm());
+    setInsuranceSchemeDialogOpen(true);
+  };
+
+  const openInsuranceSchemeEditDialog = (scheme: InsuranceScheme) => {
+    setEditingInsuranceSchemeId(scheme.id);
+    setInsuranceSchemeForm(buildInsuranceSchemeForm(scheme));
+    setInsuranceSchemeDialogOpen(true);
+  };
+
+  const closeInsuranceSchemeDialog = () => {
+    setInsuranceSchemeDialogOpen(false);
+    setEditingInsuranceSchemeId(null);
+    setInsuranceSchemeForm(createDefaultInsuranceSchemeForm());
   };
 
   const resetTaxDeductionForm = (employeeId?: number) => {
@@ -1671,6 +2345,9 @@ export const HrSalaryPage: React.FC = () => {
       return;
     }
 
+    setTaxDeductionTypeFilter(ALL_VALUE);
+    setTaxDeductionStatusFilter(ALL_VALUE);
+    setTaxDeductionScopeFilter(ALL_VALUE);
     resetTaxDeductionForm(currentEmployeeRecord.employeeId);
     setTaxDeductionDialogOpen(true);
     await loadEmployeeTaxDeductionRecords(currentEmployeeRecord.employeeId);
@@ -1692,6 +2369,9 @@ export const HrSalaryPage: React.FC = () => {
   const closeTaxDeductionDialog = () => {
     setTaxDeductionDialogOpen(false);
     setEmployeeAllTaxDeductions([]);
+    setTaxDeductionTypeFilter(ALL_VALUE);
+    setTaxDeductionStatusFilter(ALL_VALUE);
+    setTaxDeductionScopeFilter(ALL_VALUE);
     resetTaxDeductionForm();
   };
 
@@ -1762,6 +2442,26 @@ export const HrSalaryPage: React.FC = () => {
       setSelectedEmployeeId(String(employeeId));
     }
     setTab('employees');
+  };
+
+  const focusAdjustmentEmployeeWorkspace = async (employeeId?: number) => {
+    if (!employeeId) return;
+
+    setSalaryKeyword('');
+    setSalaryDeptFilter(ALL_VALUE);
+    setSalaryStructureFilter(ALL_VALUE);
+    setSalaryHistoryStatusFilter(ALL_VALUE);
+    setSelectedEmployeeId(String(employeeId));
+    setTab('employees');
+    await loadEmployeeSalaryList(employeeId, ALL_VALUE, ALL_VALUE);
+  };
+
+  const focusStructureEmployees = async (structureId: number) => {
+    setSalaryKeyword('');
+    setSalaryDeptFilter(ALL_VALUE);
+    setSalaryStructureFilter(String(structureId));
+    setTab('employees');
+    await loadEmployeeSalaryList(undefined, ALL_VALUE, String(structureId));
   };
 
   const focusAdjustmentWorkspace = (adjustmentId?: number, employeeId?: number) => {
@@ -1946,6 +2646,96 @@ export const HrSalaryPage: React.FC = () => {
     }
   };
 
+  const handleSaveInsuranceScheme = async () => {
+    if (!insuranceSchemeForm.schemeName.trim() || !insuranceSchemeForm.city.trim()) {
+      toast.error('请填写方案名称和适用城市');
+      return;
+    }
+    if (!insuranceSchemeForm.effectiveDate) {
+      toast.error('请选择方案生效日期');
+      return;
+    }
+    if (insuranceSchemeForm.baseMin < 0 || insuranceSchemeForm.baseMax < 0) {
+      toast.error('基数上下限不能小于 0');
+      return;
+    }
+    if (insuranceSchemeForm.baseMax < insuranceSchemeForm.baseMin) {
+      toast.error('缴纳基数上限不能小于下限');
+      return;
+    }
+
+    const rateFields: Array<keyof InsuranceSchemeFormState> = [
+      'pensionCompanyRate',
+      'pensionPersonalRate',
+      'medicalCompanyRate',
+      'medicalPersonalRate',
+      'unemploymentCompanyRate',
+      'unemploymentPersonalRate',
+      'injuryCompanyRate',
+      'maternityCompanyRate',
+      'housingFundCompanyRate',
+      'housingFundPersonalRate',
+    ];
+
+    for (const field of rateFields) {
+      const value = Number(insuranceSchemeForm[field]);
+      if (!Number.isFinite(value) || value < 0) {
+        toast.error('方案比例必须是大于等于 0 的数字');
+        return;
+      }
+    }
+
+    const payload: InsuranceSchemePayload = {
+      ...insuranceSchemeForm,
+      schemeName: insuranceSchemeForm.schemeName.trim(),
+      city: insuranceSchemeForm.city.trim(),
+      baseRule: (insuranceSchemeForm.baseRule ?? '').trim(),
+      baseMin: Number(Number(insuranceSchemeForm.baseMin).toFixed(2)),
+      baseMax: Number(Number(insuranceSchemeForm.baseMax).toFixed(2)),
+    };
+
+    setActionLoading(true);
+    try {
+      let affectedSchemeId = editingInsuranceSchemeId;
+
+      if (editingInsuranceSchemeId) {
+        await updateInsuranceScheme(editingInsuranceSchemeId, payload);
+        toast.success('社保方案已更新');
+      } else {
+        const createdId = await createInsuranceScheme(payload);
+        affectedSchemeId = createdId;
+        if (payload.status === 0) {
+          await updateInsuranceScheme(createdId, payload);
+        }
+        toast.success('社保方案已创建');
+      }
+
+      closeInsuranceSchemeDialog();
+      await loadFoundationData();
+
+      if (currentEmployeeRecord) {
+        await loadEmployeeInsuranceLedger(
+          currentEmployeeRecord.employeeId,
+          insuranceLedgerStatusFilter,
+          insuranceLedgerPageNum,
+        );
+
+        if (!affectedSchemeId || Number(employeeInsuranceDetail?.schemeId) === affectedSchemeId) {
+          await loadEmployeeCompensationProfile(
+            currentEmployeeRecord.employeeId,
+            currentGrossSalary,
+            employeeSalaryDetail?.effectiveDate || currentEmployeeRecord.effectiveDate,
+          );
+        }
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || (editingInsuranceSchemeId ? '更新社保方案失败' : '创建社保方案失败'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleAssignSalary = async () => {
     if (!assignForm.employeeId || !assignForm.structureId || !assignForm.effectiveDate) {
       toast.error('请填写员工、薪资结构和生效日期');
@@ -2014,6 +2804,8 @@ export const HrSalaryPage: React.FC = () => {
       toast.success('社保公积金方案已分配');
       closeInsuranceDialog();
       await refreshCurrentEmployeeWorkspace(currentEmployeeRecord);
+      setInsuranceLedgerPageNum(1);
+      await loadEmployeeInsuranceLedger(currentEmployeeRecord.employeeId, insuranceLedgerStatusFilter, 1);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '分配社保公积金方案失败');
@@ -2345,6 +3137,67 @@ export const HrSalaryPage: React.FC = () => {
                     />
                   </div>
 
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <Select
+                      value={salaryDeptFilter}
+                      onValueChange={value => {
+                        setSalaryDeptFilter(value);
+                        void loadEmployeeSalaryList(currentEmployeeRecord?.employeeId, value, salaryStructureFilter);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="筛选部门" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_VALUE}>全部部门</SelectItem>
+                        {salaryDeptOptions.map(option => (
+                          <SelectItem key={option.value} value={String(option.value)}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={salaryStructureFilter}
+                      onValueChange={value => {
+                        setSalaryStructureFilter(value);
+                        void loadEmployeeSalaryList(currentEmployeeRecord?.employeeId, salaryDeptFilter, value);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="筛选薪资结构" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_VALUE}>全部结构</SelectItem>
+                        {salaryStructureOptions.map(option => (
+                          <SelectItem key={option.value} value={String(option.value)}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                    <div>
+                      当前命中 {workingEmployeeSalaries.length} 条在岗现薪档案
+                      {salaryKeyword.trim() ? `，关键词筛后 ${filteredEmployeeSalaries.length} 条` : ''}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSalaryKeyword('');
+                        setSalaryDeptFilter(ALL_VALUE);
+                        setSalaryStructureFilter(ALL_VALUE);
+                        void loadEmployeeSalaryList(currentEmployeeRecord?.employeeId, ALL_VALUE, ALL_VALUE);
+                      }}
+                    >
+                      清空筛选
+                    </Button>
+                  </div>
+
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-emerald-700">
                     当前还有 {assignableEmployees.length} 名在岗员工未分配薪资，可直接通过上方“分配薪资”真实写库联调。
                   </div>
@@ -2393,7 +3246,7 @@ export const HrSalaryPage: React.FC = () => {
 
                     {!filteredEmployeeSalaries.length && !employeeSalaryListLoading && (
                       <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
-                        还没有生效中的员工薪资记录。
+                        当前筛选条件下没有命中在岗薪资记录。
                       </div>
                     )}
 
@@ -2849,6 +3702,154 @@ export const HrSalaryPage: React.FC = () => {
                 </Card>
 
                 <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-900">社保台账</h2>
+                      <p className="mt-1 text-sm text-slate-500">按员工维度查看当前与历史社保分配记录，便于核对生效链路和历史基数。</p>
+                    </div>
+                    {currentEmployeeRecord && (
+                      <div className="flex flex-wrap gap-3">
+                        <Select
+                          value={insuranceLedgerStatusFilter}
+                          onValueChange={value => {
+                            setInsuranceLedgerStatusFilter(value);
+                            setInsuranceLedgerPageNum(1);
+                          }}
+                        >
+                          <SelectTrigger className="w-[168px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {insuranceLedgerStatusOptions.map(option => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          onClick={() => void loadEmployeeInsuranceLedger(
+                            currentEmployeeRecord.employeeId,
+                            insuranceLedgerStatusFilter,
+                            insuranceLedgerPageNum,
+                          )}
+                        >
+                          <RefreshCcw size={14} className="mr-2" />
+                          刷新台账
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {!currentEmployeeRecord && !employeeInsuranceListLoading && (
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                      先从左侧选择一名员工，再查看社保台账。
+                    </div>
+                  )}
+
+                  {currentEmployeeRecord && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">台账总数</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900">
+                            {employeeInsuranceLedgerPage?.total ?? 0}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">当前筛选：{insuranceLedgerStatusOptions.find(option => option.value === insuranceLedgerStatusFilter)?.label}</div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">当前生效方案</div>
+                          <div className="mt-2 font-semibold text-slate-900">
+                            {employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '-'}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {employeeInsuranceDetail?.city || latestEmployeeInsuranceLedger?.city || '暂无城市信息'}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">最近生效日期</div>
+                          <div className="mt-2 font-semibold text-slate-900">
+                            {toDateInputValue(latestEmployeeInsuranceLedger?.effectiveDate || employeeInsuranceDetail?.effectiveDate) || '-'}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            当前基数 {formatCurrency(latestEmployeeInsuranceLedger?.base ?? employeeInsuranceDetail?.base)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>方案</TableHead>
+                              <TableHead>缴费基数</TableHead>
+                              <TableHead>生效日期</TableHead>
+                              <TableHead>状态</TableHead>
+                              <TableHead>更新时间</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {employeeInsuranceLedgerRecords.map(item => (
+                              <TableRow key={item.id}>
+                                <TableCell>
+                                  <div className="font-medium text-slate-900">{item.schemeName || '-'}</div>
+                                  <div className="mt-1 text-xs text-slate-400">{item.city || '未填写城市'}</div>
+                                </TableCell>
+                                <TableCell>{formatCurrency(item.base)}</TableCell>
+                                <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
+                                <TableCell>
+                                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
+                                    {salaryArchiveStatusLabel(item.status)}
+                                  </span>
+                                </TableCell>
+                                <TableCell>{toDateInputValue(item.updateTime || item.createTime) || '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                            {!employeeInsuranceLedgerRecords.length && !employeeInsuranceListLoading && (
+                              <TableRow>
+                                <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                                  当前筛选条件下没有社保台账记录。
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      <div className="flex flex-col gap-3 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          共 {employeeInsuranceLedgerPage?.total ?? 0} 条，第 {employeeInsuranceLedgerPage?.current ?? 1} / {Math.max(Number(employeeInsuranceLedgerPage?.pages ?? 1), 1)} 页
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setInsuranceLedgerPageNum(prev => Math.max(1, prev - 1))}
+                            disabled={employeeInsuranceListLoading || Number(employeeInsuranceLedgerPage?.current ?? 1) <= 1}
+                          >
+                            上一页
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setInsuranceLedgerPageNum(prev => prev + 1)}
+                            disabled={
+                              employeeInsuranceListLoading
+                              || Number(employeeInsuranceLedgerPage?.current ?? 1) >= Math.max(Number(employeeInsuranceLedgerPage?.pages ?? 1), 1)
+                            }
+                          >
+                            下一页
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {employeeInsuranceListLoading && (
+                    <div className="mt-4 text-sm text-slate-400">正在加载员工社保台账...</div>
+                  )}
+                </Card>
+
+                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
                   <div className="mb-4">
                     <h2 className="text-lg font-semibold text-slate-900">联调提示</h2>
                     <p className="mt-1 text-sm text-slate-500">建议先给一名正式员工分配标准薪资结构，再发起调薪，可以最快看清整条链路。</p>
@@ -2985,7 +3986,7 @@ export const HrSalaryPage: React.FC = () => {
               <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
                 <div className="mb-4">
                   <h2 className="text-lg font-semibold text-slate-900">调薪申请列表</h2>
-                  <p className="mt-1 text-sm text-slate-500">状态和类型先走服务端过滤，关键词再做前端补筛，适合开发联调场景。</p>
+                  <p className="mt-1 text-sm text-slate-500">状态、类型、员工和生效日期区间先走服务端过滤，关键词再做前端补筛，适合开发联调场景。</p>
                 </div>
 
                 <div className="space-y-4">
@@ -2999,7 +4000,7 @@ export const HrSalaryPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                     <Select value={adjustmentStatusFilter} onValueChange={setAdjustmentStatusFilter}>
                       <SelectTrigger>
                         <SelectValue />
@@ -3025,6 +4026,72 @@ export const HrSalaryPage: React.FC = () => {
                         ))}
                       </SelectContent>
                     </Select>
+
+                    <Select value={adjustmentEmployeeFilter} onValueChange={setAdjustmentEmployeeFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_VALUE}>全部员工</SelectItem>
+                        {adjustmentEmployeeOptions.map(option => (
+                          <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <Input
+                      type="date"
+                      value={adjustmentEffectiveStart}
+                      onChange={event => setAdjustmentEffectiveStart(event.target.value)}
+                    />
+                    <Input
+                      type="date"
+                      value={adjustmentEffectiveEnd}
+                      onChange={event => setAdjustmentEffectiveEnd(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                    <div className="text-xs text-slate-500">
+                      {currentEmployeeRecord
+                        ? `当前员工：${currentSelectedEmployeeLabel}`
+                        : '先在左侧现薪区域选中员工，再一键收敛调薪记录。'}
+                    </div>
+                    <Button
+                      variant={selectedEmployeeId && adjustmentEmployeeFilter === selectedEmployeeId ? 'secondary' : 'outline'}
+                      size="sm"
+                      disabled={!selectedEmployeeId}
+                      onClick={() => {
+                        if (!selectedEmployeeId) return;
+                        setAdjustmentEmployeeFilter(selectedEmployeeId);
+                      }}
+                    >
+                      只看当前员工
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                    <div>
+                      当前命中 {salaryAdjustments.length} 条服务端结果
+                      {currentAdjustmentFilterEmployee ? `，员工：${buildEmployeeLabel(currentAdjustmentFilterEmployee)}` : ''}
+                      {adjustmentKeyword.trim() ? `，关键词筛后 ${filteredAdjustments.length} 条` : ''}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAdjustmentKeyword('');
+                        setAdjustmentStatusFilter(ALL_VALUE);
+                        setAdjustmentTypeFilter(ALL_VALUE);
+                        setAdjustmentEmployeeFilter(ALL_VALUE);
+                        setAdjustmentEffectiveStart('');
+                        setAdjustmentEffectiveEnd('');
+                      }}
+                    >
+                      清空筛选
+                    </Button>
                   </div>
 
                   <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4 text-sm text-amber-700">
@@ -3168,6 +4235,147 @@ export const HrSalaryPage: React.FC = () => {
                               : '-'}
                           </div>
                         </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <div className="font-semibold text-slate-900">调薪闭环校验</div>
+                            <div className="mt-1 text-sm text-slate-500">把流程状态、薪资档案落地和当前现薪放到一处核对，减少来回切页。</div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={adjustmentEmployeeSalaryLoading}
+                              onClick={() => void loadAdjustmentEmployeeSalaryContext(adjustmentDetail.employeeId)}
+                            >
+                              <RefreshCcw size={14} className="mr-2" />
+                              刷新闭环
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void focusAdjustmentEmployeeWorkspace(adjustmentDetail.employeeId)}
+                            >
+                              查看员工现薪
+                            </Button>
+                          </div>
+                        </div>
+
+                        {adjustmentEmployeeSalaryLoading ? (
+                          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
+                            正在读取调薪对应员工的现薪与档案历史...
+                          </div>
+                        ) : (
+                          <>
+                            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                                <div className="text-xs text-slate-400">流程阶段</div>
+                                <div className="mt-2 text-2xl font-semibold text-slate-900">{adjustmentClosureInsight?.stageLabel || '-'}</div>
+                                <div className="mt-2 text-sm text-slate-500">{adjustmentClosureInsight?.stageHint || '等待读取调薪状态。'}</div>
+                              </div>
+                              <div className={`rounded-2xl border p-4 ${
+                                adjustmentClosureInsight?.landingTone === 'emerald'
+                                  ? 'border-emerald-200 bg-emerald-50/80'
+                                  : adjustmentClosureInsight?.landingTone === 'sky'
+                                    ? 'border-sky-200 bg-sky-50/80'
+                                    : adjustmentClosureInsight?.landingTone === 'amber'
+                                      ? 'border-amber-200 bg-amber-50/80'
+                                      : adjustmentClosureInsight?.landingTone === 'rose'
+                                        ? 'border-rose-200 bg-rose-50/80'
+                                        : 'border-slate-200 bg-slate-50/80'
+                              }`}>
+                                <div className={`text-xs ${
+                                  adjustmentClosureInsight?.landingTone === 'emerald'
+                                    ? 'text-emerald-600'
+                                    : adjustmentClosureInsight?.landingTone === 'sky'
+                                      ? 'text-sky-600'
+                                      : adjustmentClosureInsight?.landingTone === 'amber'
+                                        ? 'text-amber-600'
+                                        : adjustmentClosureInsight?.landingTone === 'rose'
+                                          ? 'text-rose-600'
+                                          : 'text-slate-400'
+                                }`}>档案落地</div>
+                                <div className={`mt-2 text-2xl font-semibold ${
+                                  adjustmentClosureInsight?.landingTone === 'emerald'
+                                    ? 'text-emerald-700'
+                                    : adjustmentClosureInsight?.landingTone === 'sky'
+                                      ? 'text-sky-700'
+                                      : adjustmentClosureInsight?.landingTone === 'amber'
+                                        ? 'text-amber-700'
+                                        : adjustmentClosureInsight?.landingTone === 'rose'
+                                          ? 'text-rose-700'
+                                          : 'text-slate-900'
+                                }`}>
+                                  {adjustmentClosureInsight?.landingLabel || '-'}
+                                </div>
+                                <div className={`mt-2 text-sm ${
+                                  adjustmentClosureInsight?.landingTone === 'emerald'
+                                    ? 'text-emerald-700'
+                                    : adjustmentClosureInsight?.landingTone === 'sky'
+                                      ? 'text-sky-700'
+                                      : adjustmentClosureInsight?.landingTone === 'amber'
+                                        ? 'text-amber-700'
+                                        : adjustmentClosureInsight?.landingTone === 'rose'
+                                          ? 'text-rose-700'
+                                          : 'text-slate-500'
+                                }`}>
+                                  {adjustmentClosureInsight?.landingHint || '等待校验结果。'}
+                                </div>
+                              </div>
+                              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                                <div className="text-xs text-slate-400">目标档案</div>
+                                <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentDetail.afterTotal)}</div>
+                                <div className="mt-2 text-sm text-slate-500">生效 {toDateInputValue(adjustmentDetail.effectiveDate) || '-'} / 调整 {adjustmentChangedItemCount} 项</div>
+                                <div className="mt-2 text-xs text-slate-400">流程实例：{adjustmentDetail.processInstanceId || '-'}</div>
+                              </div>
+                              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                                <div className="text-xs text-slate-400">当前现薪</div>
+                                {adjustmentEmployeeSalaryDetail ? (
+                                  <>
+                                    <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentEmployeeSalaryDetail.totalSalary)}</div>
+                                    <div className="mt-2 text-sm text-slate-500">
+                                      生效 {toDateInputValue(adjustmentEmployeeSalaryDetail.effectiveDate) || '-'} / {adjustmentEmployeeSalaryDetail.structureName || '-'}
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(adjustmentEmployeeSalaryDetail.status)}`}>
+                                        {salaryArchiveStatusLabel(adjustmentEmployeeSalaryDetail.status, adjustmentEmployeeSalaryDetail.statusDesc)}
+                                      </span>
+                                      {adjustmentCurrentSalaryMatched && (
+                                        <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                          明细完全一致
+                                        </span>
+                                      )}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="mt-2 text-sm text-slate-500">当前没有读取到 ACTIVE 现薪档案。</div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_minmax(0,1fr)]">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 text-sm text-slate-600">
+                                <div className="font-medium text-slate-900">下一步动作建议</div>
+                                <div className="mt-2">{adjustmentClosureInsight?.nextAction || '等待更多闭环信息。'}</div>
+                              </div>
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 text-sm text-slate-600">
+                                <div className="font-medium text-slate-900">档案匹配结果</div>
+                                <div className="mt-2">
+                                  {adjustmentMatchedArchive
+                                    ? `已命中薪资档案 #${adjustmentMatchedArchive.id}，状态 ${salaryArchiveStatusLabel(adjustmentMatchedArchive.status, adjustmentMatchedArchive.statusDesc)}。`
+                                    : '当前还没有命中与调薪后总额和生效日一致的薪资档案。'}
+                                </div>
+                                {adjustmentEmployeeSalaryDetail && adjustmentCurrentTotalDelta != null && (
+                                  <div className="mt-2 text-xs text-slate-400">
+                                    当前现薪与目标总额差额：{formatCurrency(adjustmentCurrentTotalDelta)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
@@ -3337,6 +4545,49 @@ export const HrSalaryPage: React.FC = () => {
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                           {structureDetail.description || '当前结构未填写描述。'}
                         </div>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div className="text-xs text-slate-400">结构状态</div>
+                            <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(structureDetail.status)}`}>
+                              {structureDetail.statusDesc || (structureDetail.status === 1 ? '启用' : '禁用')}
+                            </div>
+                            <div className="mt-3 text-sm text-slate-500">
+                              {structureDetail.status === 1
+                                ? '当前可直接用于新员工分配和现薪维护。'
+                                : '当前已禁用，旧档案保留，但新的薪资分配入口会自动隐藏。'}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div className="text-xs text-slate-400">在岗关联员工</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureLinkedEmployeeRecords.length}</div>
+                            <div className="mt-2 text-sm text-slate-500">
+                              {structureLinkedDeptNames.length
+                                ? `覆盖 ${structureLinkedDeptNames.slice(0, 3).join(' / ')}${structureLinkedDeptNames.length > 3 ? ' 等部门' : ''}`
+                                : '当前还没有在岗员工使用这套结构。'}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div className="text-xs text-slate-400">项目组成</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureItemStats.total}</div>
+                            <div className="mt-2 text-sm text-slate-500">
+                              {structureItemStats.total
+                                ? `${structureItemStats.fixed} 个固定项 / ${structureItemStats.variable} 个浮动项`
+                                : '当前结构还没有配置薪资项目。'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-sm text-sky-700 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            {structureLinkedEmployeeNames.length
+                              ? `当前在岗样本：${structureLinkedEmployeeNames.slice(0, 4).join('、')}${structureLinkedEmployeeNames.length > 4 ? ' 等员工' : ''}。`
+                              : '当前结构还没有在岗员工样本，可以先完成一次薪资分配再回来看联动结果。'}
+                          </div>
+                          {structureLinkedEmployeeRecords.length > 0 && (
+                            <Button variant="outline" onClick={() => void focusStructureEmployees(structureDetail.id)}>
+                              查看关联员工
+                            </Button>
+                          )}
+                        </div>
                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                           {structureDetail.items?.map(item => (
                             <div key={item.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -3368,7 +4619,7 @@ export const HrSalaryPage: React.FC = () => {
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">薪资等级</h2>
-                  <p className="mt-1 text-sm text-slate-500">薪级区间基于职级维护，目前后端已经支持按职级直接设置或覆盖。</p>
+                  <p className="mt-1 text-sm text-slate-500">薪级区间基于职级维护，现在把覆盖率、待配置职级和已配置清单放到同一区域，方便真实联调。</p>
                 </div>
                 <Button variant="outline" onClick={openGradeDialog}>
                   <Landmark size={14} className="mr-2" />
@@ -3376,7 +4627,80 @@ export const HrSalaryPage: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
+                  <div className="text-xs text-slate-400">启用职级</div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-900">{activeJobLevels.length}</div>
+                  <div className="mt-2 text-sm text-slate-500">来自职级配置中心</div>
+                </div>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                  <div className="text-xs text-emerald-600">已配置薪级</div>
+                  <div className="mt-2 text-2xl font-semibold text-emerald-700">{sortedSalaryGrades.length}</div>
+                  <div className="mt-2 text-sm text-emerald-700">覆盖率 {gradeCoverageRate}%</div>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                  <div className="text-xs text-amber-600">待配置职级</div>
+                  <div className="mt-2 text-2xl font-semibold text-amber-700">{pendingGradeLevels.length}</div>
+                  <div className="mt-2 text-sm text-amber-700">可以从下方直接补齐</div>
+                </div>
+                <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
+                  <div className="text-xs text-sky-600">当前最高上限</div>
+                  <div className="mt-2 text-2xl font-semibold text-sky-700">{formatCurrency(highestSalaryGrade?.maxSalary || 0)}</div>
+                  <div className="mt-2 text-sm text-sky-700">
+                    {highestSalaryGrade ? `${highestSalaryGrade.levelCode || '-'} / ${highestSalaryGrade.levelName || '-'}` : '暂无薪级样本'}
+                  </div>
+                </div>
+              </div>
+
+              {gradeSeriesSummary.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {gradeSeriesSummary.map(item => (
+                    <div key={item.series} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+                      {item.series} 序列 {item.configured}/{item.total}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-amber-800">待配置职级</div>
+                    <div className="mt-1 text-sm text-amber-700">
+                      {pendingGradeLevels.length
+                        ? '从这里直接点选一个职级补薪级，保存后覆盖率和下方清单会一起刷新。'
+                        : '当前启用职级都已经配置了薪级。'}
+                    </div>
+                  </div>
+                  {pendingGradeLevels.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={() => openGradeDialog(pendingGradeLevels[0].id)}>
+                      优先补一条
+                    </Button>
+                  )}
+                </div>
+
+                {pendingGradeLevels.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {pendingGradeLevels.slice(0, 10).map(level => (
+                      <button
+                        key={level.id}
+                        type="button"
+                        className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs text-amber-700 transition hover:border-amber-300 hover:bg-amber-100"
+                        onClick={() => openGradeDialog(level.id)}
+                      >
+                        {[level.levelCode, level.levelName].filter(Boolean).join(' / ')}
+                      </button>
+                    ))}
+                    {pendingGradeLevels.length > 10 && (
+                      <div className="rounded-full border border-transparent px-1 py-1.5 text-xs text-amber-700">
+                        其余 {pendingGradeLevels.length - 10} 个职级可在弹窗中继续补齐
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -3389,11 +4713,13 @@ export const HrSalaryPage: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {salaryGrades.map(item => (
+                    {sortedSalaryGrades.map(item => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <div className="font-medium text-slate-900">{item.levelName || '-'}</div>
-                          <div className="text-xs text-slate-400">{item.levelCode || '-'}</div>
+                          <div className="text-xs text-slate-400">
+                            {[item.levelCode, jobLevelMap.get(item.levelId)?.levelSeries ? `${jobLevelMap.get(item.levelId)?.levelSeries} 序列` : ''].filter(Boolean).join(' / ') || '-'}
+                          </div>
                         </TableCell>
                         <TableCell>{formatCurrency(item.minSalary)}</TableCell>
                         <TableCell>{formatCurrency(item.midSalary)}</TableCell>
@@ -3420,6 +4746,156 @@ export const HrSalaryPage: React.FC = () => {
                       <TableRow>
                         <TableCell colSpan={6} className="py-10 text-center text-slate-400">
                           当前还没有薪资等级数据，可以直接设置一条用于联调。
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+
+            <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">社保方案</h2>
+                  <p className="mt-1 text-sm text-slate-500">方案配置会直接影响员工社保测算与分配可选项，这里统一维护启用和禁用状态，并补齐联调筛选。</p>
+                </div>
+                <Button variant="outline" onClick={openInsuranceSchemeDialog}>
+                  <ShieldCheck size={14} className="mr-2" />
+                  新建方案
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
+                  <div className="text-xs text-slate-400">全量方案</div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-900">{insuranceSchemeStats.total}</div>
+                  <div className="mt-2 text-sm text-slate-500">来自真实接口返回</div>
+                </div>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                  <div className="text-xs text-emerald-600">启用中</div>
+                  <div className="mt-2 text-2xl font-semibold text-emerald-700">{insuranceSchemeStats.enabled}</div>
+                  <div className="mt-2 text-sm text-emerald-700">员工分配入口可见</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+                  <div className="text-xs text-slate-500">禁用中</div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-700">{insuranceSchemeStats.disabled}</div>
+                  <div className="mt-2 text-sm text-slate-600">仍保留在维护列表</div>
+                </div>
+                <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
+                  <div className="text-xs text-sky-600">当前命中</div>
+                  <div className="mt-2 text-2xl font-semibold text-sky-700">{insuranceSchemeStats.matched}</div>
+                  <div className="mt-2 text-sm text-sky-700">
+                    {insuranceSchemeCityFilter === ALL_VALUE ? '全部城市' : `${insuranceSchemeCityFilter} 城市`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
+                  <Select value={insuranceSchemeCityFilter} onValueChange={setInsuranceSchemeCityFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_VALUE}>全部城市</SelectItem>
+                      {insuranceSchemeCityOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={insuranceSchemeStatusFilter} onValueChange={setInsuranceSchemeStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
+                      <SelectItem value="1">仅看启用</SelectItem>
+                      <SelectItem value="0">仅看禁用</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setInsuranceSchemeCityFilter(ALL_VALUE);
+                    setInsuranceSchemeStatusFilter(ALL_VALUE);
+                  }}
+                >
+                  清空筛选
+                </Button>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
+                当前先读取服务端全量方案，再在前端按城市和状态补筛，便于把禁用方案一起保留在维护视图里继续联调。
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>方案</TableHead>
+                      <TableHead>基数范围</TableHead>
+                      <TableHead>公司比例</TableHead>
+                      <TableHead>个人比例</TableHead>
+                      <TableHead>生效 / 状态</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInsuranceSchemes.map(item => {
+                      const companyRate = Number(item.pensionCompanyRate || 0)
+                        + Number(item.medicalCompanyRate || 0)
+                        + Number(item.unemploymentCompanyRate || 0)
+                        + Number(item.injuryCompanyRate || 0)
+                        + Number(item.maternityCompanyRate || 0)
+                        + Number(item.housingFundCompanyRate || 0);
+                      const personalRate = Number(item.pensionPersonalRate || 0)
+                        + Number(item.medicalPersonalRate || 0)
+                        + Number(item.unemploymentPersonalRate || 0)
+                        + Number(item.housingFundPersonalRate || 0);
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{item.schemeName}</div>
+                            <div className="text-xs text-slate-400">{item.city || '-'}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div>{formatCurrency(item.baseMin)} - {formatCurrency(item.baseMax)}</div>
+                            <div className="mt-1 text-xs text-slate-400">{item.baseRule || '未填写规则'}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{formatPercent(companyRate)}</div>
+                            <div className="mt-1 text-xs text-slate-400">含养老/医疗/失业/工伤/生育/公积金</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{formatPercent(personalRate)}</div>
+                            <div className="mt-1 text-xs text-slate-400">含养老/医疗/失业/公积金</div>
+                          </TableCell>
+                          <TableCell>
+                            <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
+                            <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
+                              {item.status === 1 ? '启用' : '禁用'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" onClick={() => openInsuranceSchemeEditDialog(item)}>
+                                编辑
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {!filteredInsuranceSchemes.length && !foundationLoading && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="py-10 text-center text-slate-400">
+                          当前筛选条件下没有社保方案数据。
                         </TableCell>
                       </TableRow>
                     )}
@@ -3629,9 +5105,9 @@ export const HrSalaryPage: React.FC = () => {
                   <SelectTrigger><SelectValue placeholder="请选择职级" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {jobLevels.map(level => (
+                    {sortedJobLevels.map(level => (
                       <SelectItem key={level.id} value={String(level.id)}>
-                        {[level.levelCode, level.levelName].filter(Boolean).join(' / ')}
+                        {[level.levelCode, level.levelName, level.levelSeries ? `${level.levelSeries} 序列` : ''].filter(Boolean).join(' / ')}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -3665,6 +5141,149 @@ export const HrSalaryPage: React.FC = () => {
               <Button variant="outline" onClick={closeGradeDialog}>取消</Button>
               <Button disabled={actionLoading} onClick={() => void handleSetGrade()}>
                 {editingGradeLevelId ? '保存修改' : '保存薪级'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {insuranceSchemeDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">{editingInsuranceSchemeId ? '编辑社保方案' : '新建社保方案'}</h2>
+                <p className="mt-1 text-sm text-slate-500">维护方案比例、基数范围和启停状态，员工分配时只会展示启用方案。</p>
+              </div>
+              <Button variant="ghost" onClick={closeInsuranceSchemeDialog}>关闭</Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <Label>方案名称</Label>
+                <Input
+                  value={insuranceSchemeForm.schemeName}
+                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, schemeName: event.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>适用城市</Label>
+                <Input
+                  value={insuranceSchemeForm.city}
+                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, city: event.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>生效日期</Label>
+                <Input
+                  type="date"
+                  value={insuranceSchemeForm.effectiveDate}
+                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>状态</Label>
+                <Select
+                  value={String(insuranceSchemeForm.status ?? 1)}
+                  onValueChange={value => setInsuranceSchemeForm(prev => ({ ...prev, status: Number(value) }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>基数下限</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={insuranceSchemeForm.baseMin}
+                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, baseMin: Number(event.target.value || 0) }))}
+                />
+              </div>
+              <div>
+                <Label>基数上限</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={insuranceSchemeForm.baseMax}
+                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, baseMax: Number(event.target.value || 0) }))}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>基数规则</Label>
+                <Textarea
+                  rows={3}
+                  value={insuranceSchemeForm.baseRule || ''}
+                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, baseRule: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {[
+                ['pensionCompanyRate', '养老公司比例'],
+                ['pensionPersonalRate', '养老个人比例'],
+                ['medicalCompanyRate', '医疗公司比例'],
+                ['medicalPersonalRate', '医疗个人比例'],
+                ['unemploymentCompanyRate', '失业公司比例'],
+                ['unemploymentPersonalRate', '失业个人比例'],
+                ['injuryCompanyRate', '工伤公司比例'],
+                ['maternityCompanyRate', '生育公司比例'],
+                ['housingFundCompanyRate', '公积金公司比例'],
+                ['housingFundPersonalRate', '公积金个人比例'],
+              ].map(([field, label]) => (
+                <div key={field}>
+                  <Label>{label}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={insuranceSchemeForm[field as keyof InsuranceSchemeFormState] as number}
+                    onChange={event => setInsuranceSchemeForm(prev => ({
+                      ...prev,
+                      [field]: Number(event.target.value || 0),
+                    }))}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
+              <div className="font-medium text-slate-900">当前比例汇总</div>
+              <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  公司承担合计：
+                  {formatPercent(
+                    Number(insuranceSchemeForm.pensionCompanyRate || 0)
+                    + Number(insuranceSchemeForm.medicalCompanyRate || 0)
+                    + Number(insuranceSchemeForm.unemploymentCompanyRate || 0)
+                    + Number(insuranceSchemeForm.injuryCompanyRate || 0)
+                    + Number(insuranceSchemeForm.maternityCompanyRate || 0)
+                    + Number(insuranceSchemeForm.housingFundCompanyRate || 0),
+                  )}
+                </div>
+                <div>
+                  个人承担合计：
+                  {formatPercent(
+                    Number(insuranceSchemeForm.pensionPersonalRate || 0)
+                    + Number(insuranceSchemeForm.medicalPersonalRate || 0)
+                    + Number(insuranceSchemeForm.unemploymentPersonalRate || 0)
+                    + Number(insuranceSchemeForm.housingFundPersonalRate || 0),
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={closeInsuranceSchemeDialog}>取消</Button>
+              <Button disabled={actionLoading} onClick={() => void handleSaveInsuranceScheme()}>
+                {editingInsuranceSchemeId ? '保存方案' : '创建方案'}
               </Button>
             </div>
           </div>
@@ -3739,6 +5358,11 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
                       ))}
                     </div>
+                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+                      <div className="text-xs text-amber-600">标准月度合计</div>
+                      <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(taxConfigStandardDeductionTotal)}</div>
+                      <div className="mt-2 text-sm text-amber-700">用于核对各专项附加扣除参考标准是否录齐。</div>
+                    </div>
                   </div>
                 </div>
 
@@ -3756,12 +5380,68 @@ export const HrSalaryPage: React.FC = () => {
                     </Button>
                   </div>
 
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+                      <div className="text-xs text-slate-400">起征点</div>
+                      <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(taxConfigForm.threshold)}</div>
+                      <div className="mt-2 text-sm text-slate-500">当前编辑值</div>
+                    </div>
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
+                      <div className="text-xs text-sky-600">生效日期</div>
+                      <div className="mt-2 text-2xl font-semibold text-sky-700">{taxConfigForm.effectiveDate || '-'}</div>
+                      <div className="mt-2 text-sm text-sky-700">保存后将按此日期生效</div>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                      <div className="text-xs text-emerald-600">税率档数</div>
+                      <div className="mt-2 text-2xl font-semibold text-emerald-700">{taxConfigBracketPreview.rows.length}</div>
+                      <div className="mt-2 text-sm text-emerald-700">即时从 JSON 解析</div>
+                    </div>
+                    <div className="rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-4">
+                      <div className="text-xs text-cyan-600">最高税率</div>
+                      <div className="mt-2 text-2xl font-semibold text-cyan-700">
+                        {taxConfigBracketPreview.rows.length ? formatPercent(Number(taxConfigBracketPreview.maxRate) * 100) : '-'}
+                      </div>
+                      <div className="mt-2 text-sm text-cyan-700">便于核对累计区间上限</div>
+                    </div>
+                  </div>
+
                   <Textarea
-                    className="min-h-[360px] font-mono text-sm"
+                    className="mt-4 min-h-[260px] font-mono text-sm"
                     value={taxConfigForm.taxBracketsJson}
                     onChange={event => setTaxConfigForm(prev => ({ ...prev, taxBracketsJson: event.target.value }))}
                     placeholder='[{"min":0,"max":36000,"rate":0.03,"deduction":0}]'
                   />
+
+                  {taxConfigBracketPreview.error ? (
+                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700">
+                      {taxConfigBracketPreview.error}
+                    </div>
+                  ) : (
+                    <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>档位</TableHead>
+                            <TableHead>起点</TableHead>
+                            <TableHead>终点</TableHead>
+                            <TableHead>税率</TableHead>
+                            <TableHead>速算扣除数</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {taxConfigBracketPreview.rows.map((item, index) => (
+                            <TableRow key={`${item.min}-${item.max ?? 'none'}-${item.rate}-${index}`}>
+                              <TableCell>第 {index + 1} 档</TableCell>
+                              <TableCell>{formatCurrency(item.min)}</TableCell>
+                              <TableCell>{item.max == null ? '无上限' : formatCurrency(item.max)}</TableCell>
+                              <TableCell>{formatPercent(Number(item.rate || 0) * 100)}</TableCell>
+                              <TableCell>{formatCurrency(item.deduction)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
 
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-xs text-slate-500">
                     <div>规则说明：</div>
@@ -3910,10 +5590,89 @@ export const HrSalaryPage: React.FC = () => {
                     <div className="font-semibold text-slate-900">专项扣除记录</div>
                     <div className="mt-1 text-sm text-slate-500">全部记录都会展示在这里，命中 {taxReferencePeriod} 的 ACTIVE 记录会参与当前个税测算。</div>
                   </div>
-                  <div className="text-xs text-slate-400">{sortedEmployeeAllTaxDeductions.length} 条</div>
+                  <div className="text-xs text-slate-400">{employeeTaxDeductionStats.matched} / {employeeTaxDeductionStats.total} 条</div>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <div className="text-xs text-slate-400">全部记录</div>
+                    <div className="mt-2 text-2xl font-semibold text-slate-900">{employeeTaxDeductionStats.total}</div>
+                    <div className="mt-2 text-sm text-slate-500">当前员工历史专项扣除</div>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                    <div className="text-xs text-emerald-600">ACTIVE 状态</div>
+                    <div className="mt-2 text-2xl font-semibold text-emerald-700">{employeeTaxDeductionStats.active}</div>
+                    <div className="mt-2 text-sm text-emerald-700">记录状态仍处于生效</div>
+                  </div>
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
+                    <div className="text-xs text-sky-600">命中 {taxReferencePeriod}</div>
+                    <div className="mt-2 text-2xl font-semibold text-sky-700">{employeeTaxDeductionStats.inScope}</div>
+                    <div className="mt-2 text-sm text-sky-700">参与当前个税测算</div>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                    <div className="text-xs text-amber-600">当月扣除合计</div>
+                    <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(employeeTaxDeductionStats.currentAmount)}</div>
+                    <div className="mt-2 text-sm text-amber-700">与右侧测算摘要保持同月</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
+                    <Select value={taxDeductionTypeFilter} onValueChange={setTaxDeductionTypeFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_VALUE}>全部扣除项</SelectItem>
+                        {taxDeductionFilterTypeOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={taxDeductionStatusFilter} onValueChange={setTaxDeductionStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
+                        {taxDeductionStatusOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={taxDeductionScopeFilter} onValueChange={setTaxDeductionScopeFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_VALUE}>全部测算范围</SelectItem>
+                        {taxDeductionScopeOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTaxDeductionTypeFilter(ALL_VALUE);
+                      setTaxDeductionStatusFilter(ALL_VALUE);
+                      setTaxDeductionScopeFilter(ALL_VALUE);
+                    }}
+                  >
+                    清空筛选
+                  </Button>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
+                  列表保留全部历史记录，同时用 {taxReferencePeriod} 的 active 结果标识“参与测算”，方便直接核对当前个税命中链路。
+                </div>
+
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -3925,7 +5684,7 @@ export const HrSalaryPage: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedEmployeeAllTaxDeductions.map(item => (
+                      {filteredEmployeeAllTaxDeductions.map(item => (
                         <TableRow key={item.id}>
                           <TableCell>
                             <div className="font-medium text-slate-900">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
@@ -3964,10 +5723,10 @@ export const HrSalaryPage: React.FC = () => {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {!sortedEmployeeAllTaxDeductions.length && !taxDeductionListLoading && (
+                      {!filteredEmployeeAllTaxDeductions.length && !taxDeductionListLoading && (
                         <TableRow>
                           <TableCell colSpan={5} className="py-10 text-center text-slate-400">
-                            当前员工还没有专项扣除记录。
+                            当前筛选条件下没有专项扣除记录。
                           </TableCell>
                         </TableRow>
                       )}

@@ -137,7 +137,6 @@ public class InsuranceSchemeServiceImpl implements InsuranceSchemeService {
         // 构建查询条件
         LambdaQueryWrapper<InsuranceScheme> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(InsuranceScheme::getTenantId, SecurityUtils.getTenantId())
-                   .eq(InsuranceScheme::getStatus, 1) // 只查询启用的方案
                    .orderByDesc(InsuranceScheme::getEffectiveDate);
         
         // 查询列表
