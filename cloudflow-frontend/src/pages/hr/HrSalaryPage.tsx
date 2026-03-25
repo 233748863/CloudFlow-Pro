@@ -857,14 +857,18 @@ export const HrSalaryPage: React.FC = () => {
     }
   };
 
-  const loadAdjustmentList = async (preservedId?: number) => {
+  const loadAdjustmentList = async (
+    preservedId?: number,
+    nextStatusFilter = adjustmentStatusFilter,
+    nextTypeFilter = adjustmentTypeFilter,
+  ) => {
     setAdjustmentListLoading(true);
     try {
       const data = await listSalaryAdjustments({
         pageNum: 1,
         pageSize: 50,
-        status: adjustmentStatusFilter === ALL_VALUE ? undefined : adjustmentStatusFilter,
-        adjustmentType: adjustmentTypeFilter === ALL_VALUE ? undefined : adjustmentTypeFilter,
+        status: nextStatusFilter === ALL_VALUE ? undefined : nextStatusFilter,
+        adjustmentType: nextTypeFilter === ALL_VALUE ? undefined : nextTypeFilter,
       });
 
       const rows = Array.isArray(data?.records) ? data.records : [];
@@ -1309,6 +1313,29 @@ export const HrSalaryPage: React.FC = () => {
     setAdjustDialogOpen(true);
   };
 
+  const focusEmployeeWorkspace = (employeeId?: number) => {
+    setSalaryKeyword('');
+    setSalaryHistoryStatusFilter(ALL_VALUE);
+    if (employeeId) {
+      setSelectedEmployeeId(String(employeeId));
+    }
+    setTab('employees');
+  };
+
+  const focusAdjustmentWorkspace = (adjustmentId?: number, employeeId?: number) => {
+    // 真实联调时要保证刚创建或刚流转的记录不会被旧筛选条件“藏起来”。
+    setAdjustmentKeyword('');
+    setAdjustmentStatusFilter(ALL_VALUE);
+    setAdjustmentTypeFilter(ALL_VALUE);
+    if (adjustmentId) {
+      setSelectedAdjustmentId(String(adjustmentId));
+    }
+    if (employeeId) {
+      setSelectedEmployeeId(String(employeeId));
+    }
+    setTab('adjustments');
+  };
+
   const handleSaveItem = async () => {
     if (!itemForm.itemCode.trim() || !itemForm.itemName.trim()) {
       toast.error('请填写项目编码和项目名称');
@@ -1504,6 +1531,7 @@ export const HrSalaryPage: React.FC = () => {
       });
       toast.success('员工薪资已分配');
       setAssignDialogOpen(false);
+      focusEmployeeWorkspace(assignForm.employeeId);
       await loadEmployeeSalaryList(assignForm.employeeId);
       await loadFoundationData();
     } catch (error: any) {
@@ -1551,7 +1579,8 @@ export const HrSalaryPage: React.FC = () => {
       } as SalaryAdjustmentPayload);
       toast.success('调薪申请已创建');
       setAdjustDialogOpen(false);
-      await loadAdjustmentList(adjustmentId);
+      focusAdjustmentWorkspace(adjustmentId, adjustForm.employeeId);
+      await loadAdjustmentList(adjustmentId, ALL_VALUE, ALL_VALUE);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '创建调薪申请失败');
@@ -1565,10 +1594,13 @@ export const HrSalaryPage: React.FC = () => {
 
     setActionLoading(true);
     try {
+      const nextAdjustmentId = adjustmentDetail.id;
+      const nextEmployeeId = adjustmentDetail.employeeId;
       await action();
       toast.success(successMessage);
-      await loadAdjustmentList(adjustmentDetail.id);
-      await loadEmployeeSalaryList(adjustmentDetail.employeeId);
+      focusAdjustmentWorkspace(nextAdjustmentId, nextEmployeeId);
+      await loadAdjustmentList(nextAdjustmentId, ALL_VALUE, ALL_VALUE);
+      await loadEmployeeSalaryList(nextEmployeeId);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '调薪操作失败');
