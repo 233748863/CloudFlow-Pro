@@ -190,9 +190,22 @@ export const HrOfferPage: React.FC = () => {
     [onboardingApplications],
   );
 
+  const activeOfferCandidateIds = useMemo(
+    () => new Set(
+      offers
+        .filter(offer => hasWorkflowStatus(offer.status, 'DRAFT', 'APPROVING', 'APPROVED', 'SENT', 'ACCEPTED'))
+        .map(offer => offer.candidateId),
+    ),
+    [offers],
+  );
+
   const availableCandidates = useMemo(
-    () => candidates.filter(candidate => hasWorkflowStatus(candidate.status, 'INTERVIEW')),
-    [candidates],
+    () => candidates.filter(candidate =>
+      hasWorkflowStatus(candidate.status, 'INTERVIEW')
+      && !onboardingMap.has(candidate.id)
+      && !activeOfferCandidateIds.has(candidate.id),
+    ),
+    [activeOfferCandidateIds, candidates, onboardingMap],
   );
 
   const loadOfferWorkspace = async (preservedId?: number) => {
@@ -570,7 +583,7 @@ export const HrOfferPage: React.FC = () => {
             </Select>
 
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-emerald-700">
-              当前可直接创建 Offer 的候选人 {availableCandidates.length} 名，建议优先使用招聘链路里的面试通过候选人进行联调。
+              当前可直接创建 Offer 的候选人 {availableCandidates.length} 名，仅展示面试中且尚未生成 Offer / 入职申请的候选人。
             </div>
 
             <div className="space-y-3">
@@ -772,7 +785,7 @@ export const HrOfferPage: React.FC = () => {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">新建 Offer</h2>
-                <p className="mt-1 text-sm text-slate-500">优先从面试通过候选人自动回填，减少联调时手工补数据的成本。</p>
+                <p className="mt-1 text-sm text-slate-500">优先从可用候选人自动回填，页面会自动排除已有 Offer 或入职申请的候选人。</p>
               </div>
               <Button variant="ghost" onClick={resetCreateDialog}>关闭</Button>
             </div>

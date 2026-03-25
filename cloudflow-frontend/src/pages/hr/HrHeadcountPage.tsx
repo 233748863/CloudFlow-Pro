@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart3, BriefcaseBusiness, Building2, FilePlus2, Layers3, RefreshCcw, Search, Users } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, Building2, FilePlus2, Layers3, RefreshCcw, Search, SquarePen, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -36,6 +36,7 @@ import { flattenDeptTree, normalizeRows, toDateInputValue } from './hrShared';
 const ALL_TARGETS = '__all__';
 const LIST_SCOPE_ACTIVE = 'ACTIVE';
 const LIST_SCOPE_ALL = 'ALL';
+type HeadcountDialogMode = 'create' | 'edit';
 
 const createDefaultForm = (): HeadcountPayload => ({
   targetType: 'DEPT',
@@ -43,6 +44,14 @@ const createDefaultForm = (): HeadcountPayload => ({
   approvedCount: 1,
   effectiveDate: '',
   expiryDate: '',
+});
+
+const createFormFromHeadcount = (headcount: Headcount): HeadcountPayload => ({
+  targetType: headcount.targetType,
+  targetId: headcount.targetId,
+  approvedCount: headcount.approvedCount,
+  effectiveDate: toDateInputValue(headcount.effectiveDate) || '',
+  expiryDate: toDateInputValue(headcount.expiryDate) || '',
 });
 
 const targetTypeLabel = (targetType?: HeadcountTargetType | string | null) =>
@@ -74,6 +83,7 @@ export const HrHeadcountPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<HeadcountDialogMode>('create');
   const [keyword, setKeyword] = useState('');
   const [targetFilter, setTargetFilter] = useState<string>(ALL_TARGETS);
   const [scopeFilter, setScopeFilter] = useState(LIST_SCOPE_ACTIVE);
@@ -237,21 +247,29 @@ export const HrHeadcountPage: React.FC = () => {
     ];
   }, [headcounts]);
 
+  const isEditMode = dialogMode === 'edit';
+  const buildCreateForm = (): HeadcountPayload => ({
+    ...createDefaultForm(),
+    targetType: 'DEPT',
+    targetId: deptOptions[0]?.value || postOptions[0]?.postId || 0,
+  });
+
   const resetCreateDialog = () => {
-    setCreateForm({
-      ...createDefaultForm(),
-      targetType: 'DEPT',
-      targetId: deptOptions[0]?.value || postOptions[0]?.postId || 0,
-    });
+    setDialogMode('create');
+    setCreateForm(buildCreateForm());
     setCreateDialogOpen(false);
   };
 
   const handleOpenCreate = () => {
-    setCreateForm({
-      ...createDefaultForm(),
-      targetType: 'DEPT',
-      targetId: deptOptions[0]?.value || postOptions[0]?.postId || 0,
-    });
+    setDialogMode('create');
+    setCreateForm(buildCreateForm());
+    setCreateDialogOpen(true);
+  };
+
+  const handleOpenEdit = () => {
+    if (!selectedHeadcount) return;
+    setDialogMode('edit');
+    setCreateForm(createFormFromHeadcount(selectedHeadcount));
     setCreateDialogOpen(true);
   };
 
@@ -276,7 +294,7 @@ export const HrHeadcountPage: React.FC = () => {
         effectiveDate: createForm.effectiveDate || undefined,
         expiryDate: createForm.expiryDate || undefined,
       });
-      toast.success('编制已保存');
+      toast.success(isEditMode ? '编制已更新' : '编制已保存');
       resetCreateDialog();
       await loadHeadcountList({
         targetType: createForm.targetType,
@@ -333,8 +351,14 @@ export const HrHeadcountPage: React.FC = () => {
           <div className="flex flex-wrap gap-3">
             <Button className="rounded-2xl" onClick={handleOpenCreate}>
               <FilePlus2 size={16} className="mr-2" />
-              设置编制
+              新增编制
             </Button>
+            {selectedHeadcount && (
+              <Button variant="outline" className="rounded-2xl" onClick={handleOpenEdit}>
+                <SquarePen size={16} className="mr-2" />
+                编辑当前编制
+              </Button>
+            )}
             <Button variant="outline" className="rounded-2xl" onClick={() => void loadHeadcountList()}>
               <RefreshCcw size={16} className="mr-2" />
               刷新列表
@@ -580,8 +604,12 @@ export const HrHeadcountPage: React.FC = () => {
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">设置编制</h2>
-                <p className="mt-1 text-sm text-slate-500">若当前目标已有有效编制，后端会直接更新该记录。</p>
+                <h2 className="text-xl font-semibold text-slate-900">{isEditMode ? '编辑编制' : '新增编制'}</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {isEditMode
+                    ? '编辑模式会预填当前编制，目标类型和目标不可修改，到期日留空表示长期有效。'
+                    : '若当前目标已有有效编制，后端会直接更新该记录。'}
+                </p>
               </div>
               <Button variant="ghost" onClick={resetCreateDialog}>关闭</Button>
             </div>
@@ -591,6 +619,7 @@ export const HrHeadcountPage: React.FC = () => {
                 <Label>目标类型</Label>
                 <Select
                   value={createForm.targetType}
+                  disabled={isEditMode}
                   onValueChange={value => setCreateForm(prev => ({
                     ...prev,
                     targetType: value as HeadcountTargetType,
@@ -610,6 +639,7 @@ export const HrHeadcountPage: React.FC = () => {
               <div>
                 <Label>编制目标</Label>
                 <Select
+                  disabled={isEditMode}
                   value={createForm.targetId ? String(createForm.targetId) : undefined}
                   onValueChange={value => setCreateForm(prev => ({ ...prev, targetId: Number(value) }))}
                 >
@@ -660,7 +690,9 @@ export const HrHeadcountPage: React.FC = () => {
 
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={resetCreateDialog}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleCreate()}>保存编制</Button>
+              <Button disabled={actionLoading} onClick={() => void handleCreate()}>
+                {isEditMode ? '保存修改' : '保存编制'}
+              </Button>
             </div>
           </div>
         </div>

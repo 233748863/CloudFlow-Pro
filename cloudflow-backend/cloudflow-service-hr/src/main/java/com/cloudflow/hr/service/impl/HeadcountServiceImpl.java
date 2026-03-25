@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 import com.cloudflow.common.core.utils.SecurityUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.vo.DeptVO;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,15 +73,15 @@ public class HeadcountServiceImpl implements HeadcountService {
 
         if (existingHeadcount != null) {
             // 更新现有编制
-            existingHeadcount.setApprovedCount(dto.getApprovedCount());
-            existingHeadcount.setVacancyCount(dto.getApprovedCount() - existingHeadcount.getActualCount());
-            if (dto.getEffectiveDate() != null) {
-                existingHeadcount.setEffectiveDate(dto.getEffectiveDate());
-            }
-            if (dto.getExpiryDate() != null) {
-                existingHeadcount.setExpiryDate(dto.getExpiryDate());
-            }
-            headcountMapper.updateById(existingHeadcount);
+            LambdaUpdateWrapper<Headcount> updateWrapper = Wrappers.lambdaUpdate();
+            updateWrapper.eq(Headcount::getId, existingHeadcount.getId())
+                    .set(Headcount::getApprovedCount, dto.getApprovedCount())
+                    .set(Headcount::getVacancyCount, dto.getApprovedCount() - existingHeadcount.getActualCount())
+                    .set(dto.getEffectiveDate() != null, Headcount::getEffectiveDate, dto.getEffectiveDate())
+                    // 显式允许写入 NULL，支持清空到期日
+                    .set(Headcount::getExpiryDate, dto.getExpiryDate())
+                    .set(Headcount::getUpdateTime, LocalDateTime.now());
+            headcountMapper.update(null, updateWrapper);
             log.info("更新编制成功，编制ID：{}", existingHeadcount.getId());
         } else {
             // 创建新编制
@@ -221,6 +223,7 @@ public class HeadcountServiceImpl implements HeadcountService {
         if (headcount != null) {
             headcount.setActualCount(actualCount);
             headcount.setVacancyCount(headcount.getApprovedCount() - actualCount);
+            headcount.setUpdateTime(LocalDateTime.now());
             headcountMapper.updateById(headcount);
             log.info("更新实际在职人数成功");
         } else {

@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
@@ -37,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -152,9 +154,24 @@ public class EmployeeServiceImpl implements EmployeeService {
         LocalDate targetHireDate = dto.getHireDate() != null ? dto.getHireDate() : employee.getHireDate();
         validateHireDate(targetEmployeeStatus, targetHireDate);
         
-        // 4. 更新员工信息
-        BeanUtils.copyProperties(dto, employee);
-        employeeMapper.updateById(employee);
+        // 4. 使用显式 set 更新，确保前端把字段清空为 null 时能真实落库，同时刷新更新时间。
+        LambdaUpdateWrapper<Employee> updateWrapper = Wrappers.lambdaUpdate(Employee.class);
+        updateWrapper.eq(Employee::getId, id)
+                .set(Employee::getName, dto.getName())
+                .set(Employee::getGender, dto.getGender())
+                .set(Employee::getBirthDate, dto.getBirthDate())
+                .set(Employee::getPhone, dto.getPhone())
+                .set(Employee::getEmail, dto.getEmail())
+                .set(Employee::getDeptId, dto.getDeptId())
+                .set(Employee::getPostId, dto.getPostId())
+                .set(Employee::getPositionId, dto.getPositionId())
+                .set(Employee::getEmployeeType, dto.getEmployeeType())
+                .set(Employee::getEmployeeStatus, dto.getEmployeeStatus())
+                .set(Employee::getHireDate, dto.getHireDate())
+                .set(Employee::getRegularDate, dto.getRegularDate())
+                .set(Employee::getResignDate, dto.getResignDate())
+                .set(Employee::getUpdateTime, LocalDateTime.now());
+        employeeMapper.update(null, updateWrapper);
         
         log.info("员工档案更新成功，员工ID：{}", id);
     }
@@ -526,9 +543,19 @@ public class EmployeeServiceImpl implements EmployeeService {
             }
         }
         
-        // 3. 更新合同信息
-        BeanUtils.copyProperties(dto, contract);
-        employeeContractMapper.updateById(contract);
+        // 3. 显式写入可空字段，保证附件地址、期限等字段可以被清空。
+        LambdaUpdateWrapper<EmployeeContract> updateWrapper = Wrappers.lambdaUpdate(EmployeeContract.class);
+        updateWrapper.eq(EmployeeContract::getId, id)
+                .set(EmployeeContract::getContractType, dto.getContractType())
+                .set(EmployeeContract::getContractNo, dto.getContractNo())
+                .set(EmployeeContract::getSignDate, dto.getSignDate())
+                .set(EmployeeContract::getStartDate, dto.getStartDate())
+                .set(EmployeeContract::getEndDate, dto.getEndDate())
+                .set(EmployeeContract::getDuration, dto.getDuration())
+                .set(EmployeeContract::getFileUrl, dto.getFileUrl())
+                .set(EmployeeContract::getStatus, dto.getStatus())
+                .set(EmployeeContract::getUpdateTime, LocalDateTime.now());
+        employeeContractMapper.update(null, updateWrapper);
         
         log.info("员工合同更新成功，合同ID：{}", id);
     }
@@ -744,9 +771,16 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw HrBusinessException.documentNotFound(id);
         }
         
-        // 2. 更新证件信息
-        BeanUtils.copyProperties(dto, document);
-        employeeDocumentMapper.updateById(document);
+        // 2. 显式写入可空字段，保证扫描件地址等信息可被清空。
+        LambdaUpdateWrapper<EmployeeDocument> updateWrapper = Wrappers.lambdaUpdate(EmployeeDocument.class);
+        updateWrapper.eq(EmployeeDocument::getId, id)
+                .set(EmployeeDocument::getDocumentType, dto.getDocumentType())
+                .set(EmployeeDocument::getDocumentNo, dto.getDocumentNo())
+                .set(EmployeeDocument::getIssueDate, dto.getIssueDate())
+                .set(EmployeeDocument::getExpiryDate, dto.getExpiryDate())
+                .set(EmployeeDocument::getFileUrl, dto.getFileUrl())
+                .set(EmployeeDocument::getUpdateTime, LocalDateTime.now());
+        employeeDocumentMapper.update(null, updateWrapper);
         
         log.info("员工证件更新成功，证件ID：{}", id);
     }
@@ -846,9 +880,16 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw HrBusinessException.emergencyContactNotFound(id);
         }
         
-        // 2. 更新紧急联系人信息
-        BeanUtils.copyProperties(dto, contact);
-        emergencyContactMapper.updateById(contact);
+        // 2. 显式写入可空字段，保证联系地址等辅助信息可以被清空。
+        LambdaUpdateWrapper<EmergencyContact> updateWrapper = Wrappers.lambdaUpdate(EmergencyContact.class);
+        updateWrapper.eq(EmergencyContact::getId, id)
+                .set(EmergencyContact::getContactName, dto.getContactName())
+                .set(EmergencyContact::getRelationship, dto.getRelationship())
+                .set(EmergencyContact::getPhone, dto.getPhone())
+                .set(EmergencyContact::getAddress, dto.getAddress())
+                .set(EmergencyContact::getPriority, dto.getPriority())
+                .set(EmergencyContact::getUpdateTime, LocalDateTime.now());
+        emergencyContactMapper.update(null, updateWrapper);
         
         log.info("紧急联系人更新成功，联系人ID：{}", id);
     }

@@ -153,6 +153,9 @@ const defaultContactForm: ContactFormState = {
 
 const textValue = (value?: string | number | null) => value == null || value === '' ? '-' : String(value);
 
+const canDeleteContract = (contract?: EmployeeContract | null) =>
+  String(contract?.status || '').toUpperCase() === 'DRAFT';
+
 const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   employees,
   selectedEmployeeId,
@@ -325,9 +328,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       signDate: contractForm.signDate,
       startDate: contractForm.startDate,
       endDate: contractForm.endDate,
-      duration: contractForm.duration ? Number(contractForm.duration) : undefined,
-      fileUrl: contractForm.fileUrl.trim() || undefined,
-      status: contractForm.status,
+      duration: contractForm.duration ? Number(contractForm.duration) : null,
+      fileUrl: contractForm.fileUrl.trim() || null,
+      status: contractForm.status || null,
     };
 
     try {
@@ -347,6 +350,10 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   };
 
   const handleDeleteContract = async (item: EmployeeContract) => {
+    if (!canDeleteContract(item)) {
+      toast.error('只有草稿合同才能删除');
+      return;
+    }
     if (!window.confirm(`确认删除合同“${item.contractNo}”吗？`)) {
       return;
     }
@@ -391,9 +398,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
     const payload = {
       documentType: documentForm.documentType,
       documentNo: documentForm.documentNo.trim(),
-      issueDate: documentForm.issueDate || undefined,
-      expiryDate: documentForm.expiryDate || undefined,
-      fileUrl: documentForm.fileUrl.trim() || undefined,
+      issueDate: documentForm.issueDate || null,
+      expiryDate: documentForm.expiryDate || null,
+      fileUrl: documentForm.fileUrl.trim() || null,
     };
 
     try {
@@ -458,8 +465,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       contactName: contactForm.contactName.trim(),
       relationship: contactForm.relationship,
       phone: contactForm.phone.trim(),
-      address: contactForm.address.trim() || undefined,
-      priority: contactForm.priority ? Number(contactForm.priority) : undefined,
+      address: contactForm.address.trim() || null,
+      priority: contactForm.priority ? Number(contactForm.priority) : null,
     };
 
     try {
@@ -660,7 +667,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">合同列表</h3>
-                  <p className="mt-1 text-sm text-slate-500">当前员工已有 {contracts.length} 份合同，可继续验证编辑与删除流程。</p>
+                  <p className="mt-1 text-sm text-slate-500">当前员工已有 {contracts.length} 份合同。仅草稿合同允许删除，生效中合同请走续签或终止流程。</p>
                 </div>
                 <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                   {contractsLoading ? '同步中' : `${contracts.length} 条记录`}
@@ -698,7 +705,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             <Edit3 size={14} className="mr-1" />
                             编辑
                           </Button>
-                          <Button size="sm" variant="destructive" onClick={() => void handleDeleteContract(item)}>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={!canDeleteContract(item)}
+                            title={canDeleteContract(item) ? '删除草稿合同' : '只有草稿合同才能删除'}
+                            onClick={() => void handleDeleteContract(item)}
+                          >
                             <Trash2 size={14} className="mr-1" />
                             删除
                           </Button>

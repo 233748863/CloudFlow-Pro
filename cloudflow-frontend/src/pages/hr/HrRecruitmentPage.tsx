@@ -46,6 +46,8 @@ const interviewStatusTone: Record<string, string> = {
   CANCELLED: 'bg-slate-100 text-slate-700',
 };
 
+const editableCandidateStatuses = ['NEW', 'SCREENING', 'INTERVIEW', 'REJECTED'];
+
 const requestFormDefault: RecruitmentRequestPayload = {
   deptId: 103,
   positionId: 0,
@@ -412,19 +414,24 @@ export const HrRecruitmentPage: React.FC = () => {
                     <TableCell>{item.positionName || '-'}</TableCell>
                     <TableCell><span className={`rounded-full px-2 py-1 text-xs font-medium ${candidateStatusTone[item.status] || candidateStatusTone.NEW}`}>{item.statusDesc || item.status}</span></TableCell>
                     <TableCell className="text-right">
-                      <Select value={item.status} onValueChange={value => handleCandidateStatusChange(item.id, value)}>
-                        <SelectTrigger className="ml-auto w-[140px]">
-                          <SelectValue placeholder="更新状态" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NEW">新简历</SelectItem>
-                          <SelectItem value="SCREENING">筛选中</SelectItem>
-                          <SelectItem value="INTERVIEW">面试中</SelectItem>
-                          <SelectItem value="OFFER">Offer</SelectItem>
-                          <SelectItem value="HIRED">已入职</SelectItem>
-                          <SelectItem value="REJECTED">已拒绝</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {['OFFER', 'HIRED'].includes(item.status) ? (
+                        <div className="ml-auto w-[160px] text-right text-xs text-slate-500">
+                          请在 Offer / 入职模块继续推进
+                        </div>
+                      ) : (
+                        <Select value={item.status} onValueChange={value => handleCandidateStatusChange(item.id, value)}>
+                          <SelectTrigger className="ml-auto w-[140px]">
+                            <SelectValue placeholder="更新状态" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {editableCandidateStatuses.map(status => (
+                              <SelectItem key={status} value={status}>
+                                {status === 'NEW' ? '新简历' : status === 'SCREENING' ? '筛选中' : status === 'INTERVIEW' ? '面试中' : '已拒绝'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

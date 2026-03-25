@@ -27,6 +27,13 @@ const statusLabel: Record<string, string> = {
   RESIGNED: '已离职',
 };
 
+const typeLabel: Record<string, string> = {
+  FULL_TIME: '全职',
+  PART_TIME: '兼职',
+  INTERN: '实习生',
+  CONTRACTOR: '外包',
+};
+
 export const HrEmployeePage: React.FC = () => {
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
@@ -152,11 +159,20 @@ export const HrEmployeePage: React.FC = () => {
     if (!validateForm()) return;
 
     const payload: HrEmployeePayload = {
-      ...form,
       employeeNo: form.employeeNo.trim(),
       name: form.name.trim(),
-      phone: form.phone?.trim() || undefined,
-      email: form.email?.trim() || undefined,
+      gender: form.gender,
+      birthDate: form.birthDate || null,
+      phone: form.phone?.trim() || null,
+      email: form.email?.trim() || null,
+      deptId: form.deptId ?? null,
+      postId: form.postId ?? null,
+      positionId: form.positionId ?? null,
+      employeeType: form.employeeType,
+      employeeStatus: form.employeeStatus,
+      hireDate: form.hireDate || null,
+      regularDate: form.regularDate || null,
+      resignDate: form.resignDate || null,
     };
 
     try {
@@ -243,7 +259,7 @@ export const HrEmployeePage: React.FC = () => {
                 <TableCell>{item.deptName || '-'}</TableCell>
                 <TableCell>{item.postName || '-'}</TableCell>
                 <TableCell>{item.positionName || '-'}</TableCell>
-                <TableCell>{item.employeeType}</TableCell>
+                <TableCell>{typeLabel[item.employeeType] || item.employeeType}</TableCell>
                 <TableCell>{statusLabel[item.employeeStatus] || item.employeeStatus}</TableCell>
                 <TableCell>{item.hireDate || '-'}</TableCell>
                 <TableCell className="text-right">

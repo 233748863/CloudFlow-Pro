@@ -16,6 +16,7 @@ import com.cloudflow.hr.domain.entity.Offer;
 import com.cloudflow.hr.domain.entity.OnboardingApplication;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.vo.OfferVO;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.OnboardingApplicationMapper;
 import com.cloudflow.hr.mapper.OfferMapper;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 public class OfferServiceImpl implements OfferService {
 
     private static final Map<String, String> OFFER_STATUS_MAP = new HashMap<>();
+    private static final List<String> ACTIVE_OFFER_STATUSES = List.of("DRAFT", "APPROVING", "APPROVED", "SENT", "ACCEPTED");
 
     static {
         OFFER_STATUS_MAP.put("DRAFT", "草稿");
@@ -74,16 +76,31 @@ public class OfferServiceImpl implements OfferService {
 
         Candidate candidate = candidateMapper.selectById(dto.getCandidateId());
         if (candidate == null) {
-            throw new RuntimeException("候选人不存在");
+            throw new HrBusinessException("CANDIDATE_NOT_FOUND", "候选人不存在");
+        }
+        if (!"INTERVIEW".equals(candidate.getStatus())) {
+            throw new HrBusinessException("INVALID_CANDIDATE_STATUS", "只有面试中的候选人才能创建 Offer");
+        }
+
+        Offer existingOffer = findActiveOfferByCandidateId(candidate.getId());
+        if (existingOffer != null) {
+            throw new HrBusinessException("OFFER_ALREADY_EXISTS",
+                    String.format("候选人已存在进行中的 Offer：%s", existingOffer.getOfferNo()));
+        }
+
+        OnboardingApplication existingApplication = findExistingOnboardingApplication(candidate.getId());
+        if (existingApplication != null) {
+            throw new HrBusinessException("ONBOARDING_ALREADY_EXISTS",
+                    String.format("候选人已存在入职申请 #%d，不能重复创建 Offer", existingApplication.getId()));
         }
 
         Position position = positionMapper.selectById(dto.getPositionId());
         if (position == null) {
-            throw new RuntimeException("职位不存在");
+            throw new HrBusinessException("POSITION_NOT_FOUND", "职位不存在");
         }
 
         if (dto.getExpiryDate().isBefore(dto.getExpectedDate())) {
-            throw new RuntimeException("Offer 有效期不能早于预计入职日期");
+            throw new HrBusinessException("INVALID_OFFER_DATE", "Offer 有效期不能早于预计入职日期");
         }
 
         Offer offer = new Offer();
@@ -304,6 +321,15 @@ public class OfferServiceImpl implements OfferService {
                         .comparingInt((OnboardingApplication application) -> getOnboardingStatusPriority(application.getStatus()))
                         .thenComparing(OnboardingApplication::getId, Comparator.nullsLast(Long::compareTo)))
                 .orElse(null);
+    }
+
+    private Offer findActiveOfferByCandidateId(Long candidateId) {
+        LambdaQueryWrapper<Offer> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Offer::getCandidateId, candidateId)
+                .in(Offer::getStatus, ACTIVE_OFFER_STATUSES)
+                .orderByDesc(Offer::getId);
+
+        return offerMapper.selectList(wrapper).stream().findFirst().orElse(null);
     }
 
     private int getOnboardingStatusPriority(String status) {

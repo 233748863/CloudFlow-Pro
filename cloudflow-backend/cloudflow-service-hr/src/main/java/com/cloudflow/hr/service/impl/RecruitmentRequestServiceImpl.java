@@ -12,11 +12,13 @@ import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.domain.dto.RecruitmentRequestCreateDTO;
 import com.cloudflow.hr.domain.dto.RecruitmentRequestQueryDTO;
+import com.cloudflow.hr.domain.entity.Candidate;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.RecruitmentRequest;
 import com.cloudflow.hr.domain.vo.RecruitmentRequestVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.exception.HrSystemException;
+import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.PositionMapper;
 import com.cloudflow.hr.mapper.RecruitmentRequestMapper;
 import com.cloudflow.hr.service.RecruitmentRequestService;
@@ -44,6 +46,7 @@ import java.util.Random;
 public class RecruitmentRequestServiceImpl implements RecruitmentRequestService {
 
     private final RecruitmentRequestMapper recruitmentRequestMapper;
+    private final CandidateMapper candidateMapper;
     private final PositionMapper positionMapper;
     private final AuthServiceClient authServiceClient;
     private final WorkflowServiceClient workflowServiceClient;
@@ -217,7 +220,7 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
         }
 
         // 3. 招聘未招满时不允许标记为完成，避免与“取消需求”语义混淆
-        int hiredCount = request.getHiredCount() == null ? 0 : request.getHiredCount();
+        int hiredCount = countHiredCandidates(request.getId());
         if (hiredCount < request.getHeadcount()) {
             throw new HrBusinessException("HEADCOUNT_NOT_MET",
                     String.format("招聘人数未达标，当前 %d/%d，不能完成需求", hiredCount, request.getHeadcount()));
@@ -267,6 +270,7 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
         // 2. 转换为VO
         RecruitmentRequestVO vo = new RecruitmentRequestVO();
         BeanUtils.copyProperties(request, vo);
+        vo.setHiredCount(countHiredCandidates(request.getId()));
 
         // 3. 填充部门名称
         fillDeptName(vo);
@@ -313,6 +317,7 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
         voPage.setRecords(requestPage.getRecords().stream().map(request -> {
             RecruitmentRequestVO vo = new RecruitmentRequestVO();
             BeanUtils.copyProperties(request, vo);
+            vo.setHiredCount(countHiredCandidates(request.getId()));
             
             // 填充部门名称
             fillDeptName(vo);
@@ -396,5 +401,20 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
             default:
                 return status;
         }
+    }
+
+    /**
+     * 统计某个招聘需求下已入职候选人数，避免依赖可能滞后的冗余字段。
+     */
+    private int countHiredCandidates(Long requestId) {
+        if (requestId == null) {
+            return 0;
+        }
+
+        LambdaQueryWrapper<Candidate> wrapper = Wrappers.lambdaQuery(Candidate.class)
+                .eq(Candidate::getRequestId, requestId)
+                .eq(Candidate::getStatus, "HIRED");
+        Long count = candidateMapper.selectCount(wrapper);
+        return count == null ? 0 : count.intValue();
     }
 }
