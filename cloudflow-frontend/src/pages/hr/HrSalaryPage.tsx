@@ -2285,6 +2285,7 @@ export const HrSalaryPage: React.FC = () => {
       modeLabel,
       modeHint,
       riskItems,
+      blockingRiskItems,
       riskSummary,
     };
   }, [
@@ -2459,6 +2460,7 @@ export const HrSalaryPage: React.FC = () => {
       }
     }
 
+    const blockingRiskItems = riskItems.filter(item => item.severity === 'danger');
     const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     const riskSummary = !(trimmedCode || trimmedName || editingItemId)
       ? {
@@ -2489,6 +2491,7 @@ export const HrSalaryPage: React.FC = () => {
       modeLabel,
       modeHint,
       riskItems,
+      blockingRiskItems,
       riskSummary,
     };
   }, [
@@ -6312,6 +6315,11 @@ export const HrSalaryPage: React.FC = () => {
       toast.error('请填写项目编码和项目名称');
       return;
     }
+    if (itemFormDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = itemFormDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
+      return;
+    }
 
     setActionLoading(true);
     try {
@@ -6369,6 +6377,11 @@ export const HrSalaryPage: React.FC = () => {
     }
     if (!structureForm.itemIds.length) {
       toast.error('至少选择一个薪资项目');
+      return;
+    }
+    if (structureFormDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = structureFormDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
       return;
     }
 
