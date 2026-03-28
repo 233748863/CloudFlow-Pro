@@ -2042,6 +2042,7 @@ export const HrSalaryPage: React.FC = () => {
       }
     }
 
+    const blockingRiskItems = riskItems.filter(item => item.severity === 'danger');
     const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     const riskSummary = !selectedLevel
       ? {
@@ -2083,6 +2084,7 @@ export const HrSalaryPage: React.FC = () => {
       modeLabel,
       modeHint,
       riskItems,
+      blockingRiskItems,
       riskSummary,
     };
   }, [
@@ -6452,6 +6454,11 @@ export const HrSalaryPage: React.FC = () => {
     }
     if (!(gradeForm.minSalary <= gradeForm.midSalary && gradeForm.midSalary <= gradeForm.maxSalary)) {
       toast.error('请确保最低薪资 <= 中位薪资 <= 最高薪资');
+      return;
+    }
+    if (gradeFormDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = gradeFormDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
       return;
     }
 
