@@ -5054,6 +5054,7 @@ export const HrSalaryPage: React.FC = () => {
     }
 
     const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const blockingRiskItems = riskItems.filter(item => item.severity === 'danger');
     const riskSummary = !adjustmentBaseline
       ? {
         label: '等待加载',
@@ -5085,6 +5086,7 @@ export const HrSalaryPage: React.FC = () => {
       modeLabel,
       modeHint,
       riskItems,
+      blockingRiskItems,
       riskSummary,
     };
   }, [
@@ -6543,6 +6545,11 @@ export const HrSalaryPage: React.FC = () => {
     const afterTotal = Number(Object.values(salaryData).reduce((sum, value) => sum + value, 0).toFixed(2));
     if (afterTotal <= 0) {
       toast.error('调薪后总额必须大于 0');
+      return;
+    }
+    if (adjustmentFormDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = adjustmentFormDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
       return;
     }
 
