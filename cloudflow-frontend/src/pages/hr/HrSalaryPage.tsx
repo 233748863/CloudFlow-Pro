@@ -1503,6 +1503,7 @@ export const HrSalaryPage: React.FC = () => {
       });
     }
 
+    const blockingRiskItems = riskItems.filter(item => item.severity === 'danger');
     const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     const riskSummary = !score
       ? {
@@ -3649,6 +3650,7 @@ export const HrSalaryPage: React.FC = () => {
       estimatedAfterTaxIncome,
       differenceFromCurrentTax,
       riskItems,
+      blockingRiskItems,
       riskSummary,
     };
   }, [
@@ -4138,6 +4140,7 @@ export const HrSalaryPage: React.FC = () => {
       modeLabel,
       modeHint,
       riskItems,
+      blockingRiskItems,
       riskSummary,
     };
   }, [
@@ -4933,6 +4936,292 @@ export const HrSalaryPage: React.FC = () => {
     () => sumInputMap(assignForm.salaryData),
     [assignForm.salaryData],
   );
+
+  const assignFormEmployee = useMemo(
+    () => employeeMap.get(assignForm.employeeId) || null,
+    [assignForm.employeeId, employeeMap],
+  );
+
+  // 首次分配薪资会直接生成员工当前档案，这里先把入职时间、结构样本和金额分布预览出来，避免真实写库后才发现口径错了。
+  const assignFormDiagnostics = useMemo(() => {
+    const selectedItems = assignStructurePreview?.items || [];
+    const selectedEmployee = assignFormEmployee;
+    const selectedEffectiveDate = assignForm.effectiveDate || '';
+    const selectedStructureUsage = assignForm.structureId
+      ? structureActiveSalaryStatsMap.get(assignForm.structureId) || null
+      : null;
+    const benchmarkRecords = workingEmployeeSalaries.filter(item =>
+      item.structureId === assignForm.structureId
+      && String(item.status || '').toUpperCase() === 'ACTIVE'
+      && employeeMap.get(item.employeeId)?.employeeStatus !== 'RESIGNED',
+    );
+    const benchmarkTotals = benchmarkRecords
+      .map(item => normalizeAmount(item.totalSalary))
+      .filter(value => Number.isFinite(value) && value > 0);
+    const benchmarkStats = {
+      count: benchmarkTotals.length,
+      min: benchmarkTotals.length ? Math.min(...benchmarkTotals) : 0,
+      median: getMedianValue(benchmarkTotals),
+      max: benchmarkTotals.length ? Math.max(...benchmarkTotals) : 0,
+    };
+    const amountMap = selectedItems.reduce<Record<string, number>>((result, item) => {
+      const itemKey = String(item.id);
+      const rawValue = String(assignForm.salaryData[itemKey] ?? '').trim();
+      const amount = Number(rawValue || 0);
+      result[itemKey] = Number.isFinite(amount) ? normalizeAmount(amount) : 0;
+      return result;
+    }, {});
+    const filledItems = selectedItems.filter(item => String(assignForm.salaryData[String(item.id)] ?? '').trim() !== '');
+    const positiveItems = selectedItems.filter(item => amountMap[String(item.id)] > 0);
+    const fixedItems = selectedItems.filter(item => item.itemType === 'FIXED');
+    const variableItems = selectedItems.filter(item => item.itemType === 'VARIABLE');
+    const fixedBlankItems = fixedItems.filter(item => String(assignForm.salaryData[String(item.id)] ?? '').trim() === '');
+    const fixedZeroItems = fixedItems.filter(item => amountMap[String(item.id)] <= 0);
+    const basicItems = selectedItems.filter(item => item.category === 'BASIC');
+    const zeroBasicItems = basicItems.filter(item => amountMap[String(item.id)] <= 0);
+    const positiveVariableItems = variableItems.filter(item => amountMap[String(item.id)] > 0);
+    const formulaItems = selectedItems.filter(item => Boolean(String(item.formula || '').trim()));
+    const hireDate = toDateInputValue(selectedEmployee?.hireDate) || '';
+    const currentSalaryRecord = activeEmployeeSalaryMap.get(assignForm.employeeId) || null;
+    const effectiveBeforeHire = Boolean(hireDate && selectedEffectiveDate && selectedEffectiveDate < hireDate);
+    const hireDelayDays = hireDate && selectedEffectiveDate
+      ? Math.round((
+        new Date(`${selectedEffectiveDate}T00:00:00`).getTime()
+        - new Date(`${hireDate}T00:00:00`).getTime()
+      ) / (24 * 60 * 60 * 1000))
+      : 0;
+    const delayedInitialAssignment = Boolean(hireDate && selectedEffectiveDate && hireDelayDays > 30);
+    const currentSalaryExists = Boolean(currentSalaryRecord);
+    const noPositiveAmounts = selectedItems.length > 0 && assignTotal <= 0;
+    const fixedItemsAllZero = fixedItems.length > 0 && fixedZeroItems.length === fixedItems.length;
+    const benchmarkOutOfRange = benchmarkStats.count > 0
+      && (assignTotal < benchmarkStats.min || assignTotal > benchmarkStats.max);
+    const benchmarkExtremeOutlier = benchmarkStats.count > 0
+      && (
+        assignTotal < Number((benchmarkStats.min * 0.8).toFixed(2))
+        || assignTotal > Number((benchmarkStats.max * 1.2).toFixed(2))
+      );
+    const benchmarkFarFromMedian = benchmarkStats.count > 0
+      && !benchmarkOutOfRange
+      && Math.abs(assignTotal - benchmarkStats.median) >= Math.max(1500, benchmarkStats.median * 0.15);
+    const basicInfoMissing = !assignForm.employeeId || !assignForm.structureId || !selectedEffectiveDate;
+
+    let modeLabel = '等待选择员工和结构';
+    let modeHint = '选定员工、结构和生效日期后，这里会预览首薪分配是否合理。';
+    if (selectedEmployee && assignForm.structureId && selectedEffectiveDate) {
+      if (currentSalaryExists) {
+        modeLabel = '当前员工已经存在现薪';
+        modeHint = '这更像重复分配或并发写库，建议先刷新员工列表再决定是否继续。';
+      } else if (selectedItems.length === 0) {
+        modeLabel = '结构为空，无法分配首薪';
+        modeHint = '当前结构没有任何薪资项目，保存后无法形成可用的员工薪资明细。';
+      } else if (effectiveBeforeHire) {
+        modeLabel = '入职前分配首薪';
+        modeHint = `员工入职日是 ${hireDate}，当前生效日 ${selectedEffectiveDate} 早于入职时间。`;
+      } else if (delayedInitialAssignment) {
+        modeLabel = '回补历史首薪';
+        modeHint = `员工 ${hireDate} 已入职，但首薪准备到 ${selectedEffectiveDate} 才生效，属于明显回补链路。`;
+      } else if (positiveVariableItems.length > 0) {
+        modeLabel = '首薪包含浮动项';
+        modeHint = '当前首次分配已经把浮动项一起带入，后续调薪和绩效链路要重点核对。';
+      } else {
+        modeLabel = '创建首条员工薪资档案';
+        modeHint = '保存后会直接生成当前员工的第一条薪资档案，并进入现薪联调工作区。';
+      }
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (!assignForm.employeeId) {
+      riskItems.push({
+        key: 'missing-employee',
+        title: '还没有选择员工',
+        detail: '首薪分配必须明确具体员工，否则无法判断入职时间和后续联调链路。',
+        severity: 'warning',
+      });
+    }
+    if (!assignForm.structureId) {
+      riskItems.push({
+        key: 'missing-structure',
+        title: '还没有选择薪资结构',
+        detail: '没有结构时无法展开项目明细，也无法判断这次分配是否符合当前样本口径。',
+        severity: 'warning',
+      });
+    }
+    if (!selectedEffectiveDate) {
+      riskItems.push({
+        key: 'missing-effective-date',
+        title: '还没有填写生效日期',
+        detail: '首薪档案会直接按这个日期落库，没有生效日期就无法判断当前口径。',
+        severity: 'danger',
+      });
+    }
+    if (currentSalaryExists && currentSalaryRecord) {
+      riskItems.push({
+        key: 'employee-already-has-salary',
+        title: '当前员工已经存在现薪档案',
+        detail: `当前现薪是 ${toDateInputValue(currentSalaryRecord.effectiveDate) || '-'} / ${formatCurrency(currentSalaryRecord.totalSalary)}，继续分配会制造重复链路。`,
+        severity: 'danger',
+      });
+    }
+    if (assignForm.structureId && selectedItems.length === 0) {
+      riskItems.push({
+        key: 'empty-structure',
+        title: '当前薪资结构没有任何项目',
+        detail: '像“高管薪资结构”“销售薪资结构”这类空结构当前无法直接用于员工首薪分配。',
+        severity: 'danger',
+      });
+    }
+    if (effectiveBeforeHire) {
+      riskItems.push({
+        key: 'effective-before-hire',
+        title: '生效日期早于员工入职日',
+        detail: `员工入职日是 ${hireDate}，当前却准备在 ${selectedEffectiveDate} 生效。`,
+        severity: 'danger',
+      });
+    }
+    if (noPositiveAmounts) {
+      riskItems.push({
+        key: 'all-zero-amounts',
+        title: '当前首薪明细全部是 0',
+        detail: '全 0 薪资会直接生成无效档案，真实联调也无法继续核对税前税后结果。',
+        severity: 'danger',
+      });
+    }
+    if (fixedItemsAllZero) {
+      riskItems.push({
+        key: 'fixed-items-zero',
+        title: '固定项金额全部为 0',
+        detail: '首次分配如果固定项全为 0，通常说明结构金额还没录入完整。',
+        severity: 'danger',
+      });
+    }
+    if (zeroBasicItems.length > 0) {
+      riskItems.push({
+        key: 'basic-item-zero',
+        title: '基本工资项当前仍为 0',
+        detail: `${zeroBasicItems.map(item => item.itemName).join('、')} 还没有录入正值，首薪口径明显不完整。`,
+        severity: 'danger',
+      });
+    }
+    if (fixedBlankItems.length > 0) {
+      riskItems.push({
+        key: 'fixed-items-blank',
+        title: '仍有固定项没有填写金额',
+        detail: `${fixedBlankItems.slice(0, 3).map(item => item.itemName).join('、')}${fixedBlankItems.length > 3 ? ' 等' : ''} 仍是空值，提交时会按 0 落库。`,
+        severity: 'warning',
+      });
+    }
+    if (positiveVariableItems.length > 0) {
+      riskItems.push({
+        key: 'variable-items-positive',
+        title: '首次分配已经带入浮动项',
+        detail: `${positiveVariableItems.map(item => item.itemName).join('、')} 当前有正值，后续调薪和绩效核对时要确认是否应首薪即生效。`,
+        severity: 'warning',
+      });
+    }
+    if (formulaItems.length > 0) {
+      riskItems.push({
+        key: 'formula-items-exist',
+        title: '当前结构包含公式项',
+        detail: `${formulaItems.map(item => item.itemName).join('、')} 带有公式，首次分配前要确认这里是否应该手工录值。`,
+        severity: 'warning',
+      });
+    }
+    if (benchmarkExtremeOutlier) {
+      riskItems.push({
+        key: 'benchmark-extreme-outlier',
+        title: '当前首薪总额明显偏离结构现有样本',
+        detail: `当前总额 ${formatCurrency(assignTotal)}，而该结构现有样本区间大致是 ${formatCurrency(benchmarkStats.min)} - ${formatCurrency(benchmarkStats.max)}。`,
+        severity: 'danger',
+      });
+    } else if (benchmarkOutOfRange) {
+      riskItems.push({
+        key: 'benchmark-out-of-range',
+        title: '当前首薪总额超出结构样本区间',
+        detail: `当前总额 ${formatCurrency(assignTotal)} 超出了该结构已在用样本的 ${formatCurrency(benchmarkStats.min)} - ${formatCurrency(benchmarkStats.max)}。`,
+        severity: 'warning',
+      });
+    } else if (benchmarkFarFromMedian) {
+      riskItems.push({
+        key: 'benchmark-far-from-median',
+        title: '当前首薪总额与结构中位样本差异较大',
+        detail: `当前总额 ${formatCurrency(assignTotal)}，结构中位样本约 ${formatCurrency(benchmarkStats.median)}。`,
+        severity: 'warning',
+      });
+    }
+    if (selectedItems.length > 0 && benchmarkStats.count === 0) {
+      riskItems.push({
+        key: 'no-benchmark-sample',
+        title: '当前结构还没有可参考的现薪样本',
+        detail: '这次保存后会成为该结构的首个在岗薪资样本，建议把金额填得更保守可核对。',
+        severity: 'warning',
+      });
+    }
+    if (delayedInitialAssignment) {
+      riskItems.push({
+        key: 'delayed-initial-assignment',
+        title: '首薪生效日明显晚于入职日',
+        detail: `员工入职 ${hireDate}，当前要到 ${selectedEffectiveDate} 才生成首薪档案，属于回补历史链路。`,
+        severity: 'warning',
+      });
+    }
+
+    const blockingRiskItems = riskItems.filter(item => item.severity === 'danger');
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = basicInfoMissing
+      ? {
+        label: '待补完整',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先把员工、结构和生效日期补完整，再判断首薪分配是否可直接写库。',
+      }
+      : !score
+        ? {
+          label: '可直接分配',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前员工、结构样本和首薪金额关系都比较清晰，可以继续真实联调。',
+        }
+        : score <= 2
+          ? {
+            label: '分配需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的首薪分配提示。`,
+          }
+          : {
+            label: '分配存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整参数再保存。`,
+          };
+
+    return {
+      selectedEmployee,
+      selectedStructureUsage,
+      benchmarkStats,
+      selectedItemCount: selectedItems.length,
+      filledItemCount: filledItems.length,
+      positiveItemCount: positiveItems.length,
+      fixedItemCount: fixedItems.length,
+      variableItemCount: variableItems.length,
+      positiveVariableItemCount: positiveVariableItems.length,
+      hireDate,
+      modeLabel,
+      modeHint,
+      riskItems,
+      blockingRiskItems,
+      riskSummary,
+    };
+  }, [
+    activeEmployeeSalaryMap,
+    assignForm.effectiveDate,
+    assignForm.employeeId,
+    assignForm.salaryData,
+    assignForm.structureId,
+    assignFormEmployee,
+    assignStructurePreview,
+    assignTotal,
+    employeeMap,
+    structureActiveSalaryStatsMap,
+    workingEmployeeSalaries,
+  ]);
 
   const adjustmentAfterTotal = useMemo(
     () => sumInputMap(adjustForm.afterSalaryData),
@@ -6298,6 +6587,11 @@ export const HrSalaryPage: React.FC = () => {
       toast.error('请填写薪资明细');
       return;
     }
+    if (assignFormDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = assignFormDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
+      return;
+    }
 
     setActionLoading(true);
     try {
@@ -6335,6 +6629,11 @@ export const HrSalaryPage: React.FC = () => {
     }
     if (isFutureDate(insuranceForm.effectiveDate)) {
       toast.error('五险一金生效日期不能晚于今天');
+      return;
+    }
+    if (insuranceAssignDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = insuranceAssignDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
       return;
     }
 
@@ -6482,6 +6781,11 @@ export const HrSalaryPage: React.FC = () => {
       deductionItems = JSON.stringify(payload);
     } catch (error: any) {
       toast.error(error?.message || '专项附加扣除标准配置不正确');
+      return;
+    }
+    if (taxConfigDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = taxConfigDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
       return;
     }
 
@@ -11119,6 +11423,11 @@ export const HrSalaryPage: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-1 text-xs text-slate-400">
+                  {assignFormDiagnostics.selectedEmployee
+                    ? `${assignFormDiagnostics.selectedEmployee.deptName || '未分配部门'} / 入职 ${assignFormDiagnostics.hireDate || '-'}`
+                    : '选择员工后显示部门和入职时间'}
+                </div>
               </div>
               <div>
                 <Label>薪资结构</Label>
@@ -11136,6 +11445,11 @@ export const HrSalaryPage: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-1 text-xs text-slate-400">
+                  {assignFormDiagnostics.selectedStructureUsage
+                    ? `${assignFormDiagnostics.selectedStructureUsage.employeeIds.size} 名员工 / ${assignFormDiagnostics.selectedStructureUsage.archiveCount} 条档案`
+                    : '当前结构还没有在岗员工样本'}
+                </div>
               </div>
               <div>
                 <Label>生效日期</Label>
@@ -11145,8 +11459,81 @@ export const HrSalaryPage: React.FC = () => {
                   max={getTodayValue()}
                   onChange={event => setAssignForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
                 />
-                <div className="mt-1 text-xs text-slate-400">未来生效请走调薪流程，避免当前薪资档案被提前切换。</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {assignFormDiagnostics.hireDate && assignForm.effectiveDate
+                    ? `当前正在分配 ${assignFormDiagnostics.hireDate === assignForm.effectiveDate ? '入职当天' : assignForm.effectiveDate < assignFormDiagnostics.hireDate ? '入职前' : '入职后'} 的首薪档案`
+                    : '未来生效请走调薪流程，避免当前薪资档案被提前切换。'}
+                </div>
               </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前保存影响</div>
+                <div className="mt-2 font-semibold text-slate-900">{assignFormDiagnostics.modeLabel}</div>
+                <div className="mt-1 text-sm text-slate-500">{assignFormDiagnostics.modeHint}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">结构样本</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">{assignFormDiagnostics.benchmarkStats.count}</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {assignFormDiagnostics.benchmarkStats.count
+                    ? `当前结构样本 ${formatCurrency(assignFormDiagnostics.benchmarkStats.min)} - ${formatCurrency(assignFormDiagnostics.benchmarkStats.max)}`
+                    : '当前还没有可参考的现薪样本'}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {assignFormDiagnostics.benchmarkStats.count
+                    ? `中位样本约 ${formatCurrency(assignFormDiagnostics.benchmarkStats.median)}`
+                    : '这次保存后可能成为首个联调样本'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前口径</div>
+                <div className="mt-2 font-semibold text-slate-900">
+                  已录入 {assignFormDiagnostics.filledItemCount} / {assignFormDiagnostics.selectedItemCount} 项
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  固定项 {assignFormDiagnostics.fixedItemCount} 个 / 浮动项 {assignFormDiagnostics.variableItemCount} 个
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  正值 {assignFormDiagnostics.positiveItemCount} 项
+                  {assignFormDiagnostics.positiveVariableItemCount > 0
+                    ? ` / 其中浮动项 ${assignFormDiagnostics.positiveVariableItemCount} 项`
+                    : ' / 当前没有录入正值浮动项'}
+                </div>
+              </div>
+            </div>
+
+            <div className={`mt-4 rounded-2xl border p-4 ${assignFormDiagnostics.riskSummary.className}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="font-semibold text-current">
+                    {assignFormDiagnostics.riskItems.length ? '分配前联调校验' : '分配口径已对齐'}
+                  </div>
+                  <div className="mt-1 text-sm opacity-90">{assignFormDiagnostics.riskSummary.hint}</div>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${assignFormDiagnostics.riskSummary.className}`}>
+                  {assignFormDiagnostics.riskSummary.label}
+                </span>
+              </div>
+
+              {assignFormDiagnostics.riskItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {assignFormDiagnostics.riskItems.map(item => (
+                    <div
+                      key={item.key}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        item.severity === 'danger'
+                          ? 'border-rose-200 bg-white/70 text-rose-700'
+                          : 'border-amber-200 bg-white/70 text-amber-700'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 space-y-4">
