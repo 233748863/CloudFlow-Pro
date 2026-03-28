@@ -150,6 +150,8 @@ const insuranceLedgerStatusOptions = [
 ];
 
 const INSURANCE_LEDGER_PAGE_SIZE = 5;
+const INSURANCE_SCHEME_CATALOG_PAGE_SIZE = 500;
+const EMPLOYEE_INSURANCE_LEDGER_CATALOG_PAGE_SIZE = 200;
 
 type TaxDeductionFormState = {
   employeeId: number;
@@ -595,6 +597,18 @@ const normalizeAmount = (value?: number | string | null) => {
   return Number.isFinite(amount) ? Number(amount.toFixed(2)) : 0;
 };
 
+const getMedianValue = (values: number[]) => {
+  if (!values.length) return 0;
+
+  const sortedValues = [...values].sort((left, right) => left - right);
+  const middleIndex = Math.floor(sortedValues.length / 2);
+  if (sortedValues.length % 2 === 0) {
+    return normalizeAmount((sortedValues[middleIndex - 1] + sortedValues[middleIndex]) / 2);
+  }
+
+  return normalizeAmount(sortedValues[middleIndex]);
+};
+
 const buildSalaryItemAmountMap = (items?: EmployeeSalaryDetail['items'] | null) => {
   const result: Record<string, number> = {};
 
@@ -610,6 +624,41 @@ const salaryDataEquals = (left: Record<string, number>, right: Record<string, nu
   return keys.every(key => normalizeAmount(left[key]) === normalizeAmount(right[key]));
 };
 
+const isSalaryLandingMatched = (
+  record?: { effectiveDate?: string | null; totalSalary?: number | string | null } | null,
+  effectiveDate?: string | null,
+  totalSalary?: number | string | null,
+) =>
+  Boolean(record)
+  && (toDateInputValue(record?.effectiveDate) || '') === (toDateInputValue(effectiveDate) || '')
+  && normalizeAmount(record?.totalSalary) === normalizeAmount(totalSalary);
+
+const sortInsuranceLedgerRecords = (records: EmployeeInsurance[]) =>
+  [...records].sort((left, right) => {
+    const rightEffectiveTime = new Date(right.effectiveDate || right.updateTime || right.createTime || 0).getTime();
+    const leftEffectiveTime = new Date(left.effectiveDate || left.updateTime || left.createTime || 0).getTime();
+    if (rightEffectiveTime !== leftEffectiveTime) {
+      return rightEffectiveTime - leftEffectiveTime;
+    }
+
+    if (left.status !== right.status) {
+      return left.status === 'ACTIVE' ? -1 : 1;
+    }
+
+    const rightUpdateTime = new Date(right.updateTime || right.createTime || 0).getTime();
+    const leftUpdateTime = new Date(left.updateTime || left.createTime || 0).getTime();
+    return rightUpdateTime - leftUpdateTime || right.id - left.id;
+  });
+
+const isInsuranceDetailMatchedWithLedger = (
+  detail?: EmployeeInsuranceDetail | null,
+  record?: EmployeeInsurance | null,
+) =>
+  Boolean(detail && record)
+  && Number(detail?.schemeId ?? 0) === Number(record?.schemeId ?? 0)
+  && normalizeAmount(detail?.base) === normalizeAmount(record?.base)
+  && (toDateInputValue(detail?.effectiveDate) || '') === (toDateInputValue(record?.effectiveDate) || '');
+
 const getDateOffsetFromToday = (value?: string | null) => {
   if (!value) return null;
 
@@ -620,6 +669,29 @@ const getDateOffsetFromToday = (value?: string | null) => {
   }
 
   return Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+};
+
+const getNormalizedDateValue = (value?: string | null) =>
+  toDateInputValue(value) || '';
+
+const getDeductionRangeEndValue = (value?: string | null) =>
+  getNormalizedDateValue(value) || '9999-12-31';
+
+const isDeductionRangeOverlapping = (
+  leftStart?: string | null,
+  leftEnd?: string | null,
+  rightStart?: string | null,
+  rightEnd?: string | null,
+) => {
+  const normalizedLeftStart = getNormalizedDateValue(leftStart);
+  const normalizedRightStart = getNormalizedDateValue(rightStart);
+  if (!normalizedLeftStart || !normalizedRightStart) {
+    return false;
+  }
+
+  const normalizedLeftEnd = getDeductionRangeEndValue(leftEnd);
+  const normalizedRightEnd = getDeductionRangeEndValue(rightEnd);
+  return normalizedLeftStart <= normalizedRightEnd && normalizedRightStart <= normalizedLeftEnd;
 };
 
 const buildAmountPayload = (valueMap: Record<string, string>) => {
@@ -740,6 +812,7 @@ export const HrSalaryPage: React.FC = () => {
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [salaryItems, setSalaryItems] = useState<SalaryItem[]>([]);
   const [salaryStructures, setSalaryStructures] = useState<SalaryStructure[]>([]);
+  const [salaryStructureDetailMap, setSalaryStructureDetailMap] = useState<Record<number, SalaryStructureDetail>>({});
   const [salaryGrades, setSalaryGrades] = useState<SalaryGrade[]>([]);
   const [insuranceSchemes, setInsuranceSchemes] = useState<InsuranceScheme[]>([]);
   const [jobLevels, setJobLevels] = useState<JobLevelOption[]>([]);
@@ -749,6 +822,8 @@ export const HrSalaryPage: React.FC = () => {
   const [employeeSalaryHistory, setEmployeeSalaryHistory] = useState<EmployeeSalary[]>([]);
   const [employeeInsuranceDetail, setEmployeeInsuranceDetail] = useState<EmployeeInsuranceDetail | null>(null);
   const [employeeInsuranceLedgerPage, setEmployeeInsuranceLedgerPage] = useState<HrPagedResult<EmployeeInsurance> | null>(null);
+  const [employeeInsuranceLedgerCatalog, setEmployeeInsuranceLedgerCatalog] = useState<EmployeeInsurance[]>([]);
+  const [insuranceLedgerCatalog, setInsuranceLedgerCatalog] = useState<EmployeeInsurance[]>([]);
   const [employeeInsuranceCalculation, setEmployeeInsuranceCalculation] = useState<InsuranceCalculation | null>(null);
   const [employeeTaxDeductions, setEmployeeTaxDeductions] = useState<EmployeeTaxDeduction[]>([]);
   const [employeeAllTaxDeductions, setEmployeeAllTaxDeductions] = useState<EmployeeTaxDeduction[]>([]);
@@ -791,6 +866,7 @@ export const HrSalaryPage: React.FC = () => {
   const [adjustmentDetail, setAdjustmentDetail] = useState<SalaryAdjustment | null>(null);
   const [adjustmentEmployeeSalaryDetail, setAdjustmentEmployeeSalaryDetail] = useState<EmployeeSalaryDetail | null>(null);
   const [adjustmentEmployeeSalaryHistory, setAdjustmentEmployeeSalaryHistory] = useState<EmployeeSalary[]>([]);
+  const [adjustmentFormHistory, setAdjustmentFormHistory] = useState<SalaryAdjustmentHistory[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [structureDialogOpen, setStructureDialogOpen] = useState(false);
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
@@ -825,6 +901,14 @@ export const HrSalaryPage: React.FC = () => {
   const salaryItemMap = useMemo(
     () => new Map(salaryItems.map(item => [String(item.id), item])),
     [salaryItems],
+  );
+  const insuranceSchemeMap = useMemo(
+    () => new Map(insuranceSchemes.map(item => [item.id, item])),
+    [insuranceSchemes],
+  );
+  const salaryStructureDetails = useMemo(
+    () => Object.values(salaryStructureDetailMap),
+    [salaryStructureDetailMap],
   );
 
   const enabledSalaryItems = useMemo(
@@ -886,6 +970,154 @@ export const HrSalaryPage: React.FC = () => {
     () => new Map(employees.map(employee => [employee.id, employee])),
     [employees],
   );
+
+  const insuranceSchemeUsageMap = useMemo(
+    () => insuranceLedgerCatalog.reduce((result, record) => {
+      const current = result.get(record.schemeId) || {
+        recordCount: 0,
+        activeRecordCount: 0,
+        futureRecordCount: 0,
+        expiredRecordCount: 0,
+        employeeIds: new Set<number>(),
+        activeEmployeeIds: new Set<number>(),
+        sampleEmployeeNames: [] as string[],
+      };
+
+      current.recordCount += 1;
+      current.employeeIds.add(record.employeeId);
+      if (record.employeeName && !current.sampleEmployeeNames.includes(record.employeeName) && current.sampleEmployeeNames.length < 3) {
+        current.sampleEmployeeNames.push(record.employeeName);
+      }
+
+      const employee = employeeMap.get(record.employeeId);
+      const isWorkingEmployee = employee ? employee.employeeStatus !== 'RESIGNED' : true;
+      const isActiveLedger = String(record.status || '').toUpperCase() === 'ACTIVE';
+
+      if (isActiveLedger) {
+        current.activeRecordCount += 1;
+        if (isWorkingEmployee) {
+          current.activeEmployeeIds.add(record.employeeId);
+        }
+        if (isFutureDate(record.effectiveDate)) {
+          current.futureRecordCount += 1;
+        }
+      } else {
+        current.expiredRecordCount += 1;
+      }
+
+      result.set(record.schemeId, current);
+      return result;
+    }, new Map<number, {
+      recordCount: number;
+      activeRecordCount: number;
+      futureRecordCount: number;
+      expiredRecordCount: number;
+      employeeIds: Set<number>;
+      activeEmployeeIds: Set<number>;
+      sampleEmployeeNames: string[];
+    }>()),
+    [employeeMap, insuranceLedgerCatalog],
+  );
+
+  const activeLinkedInsuranceSchemes = useMemo(
+    () => insuranceSchemes.filter(item => Boolean(insuranceSchemeUsageMap.get(item.id)?.activeRecordCount)),
+    [insuranceSchemeUsageMap, insuranceSchemes],
+  );
+
+  const unusedInsuranceSchemes = useMemo(
+    () => insuranceSchemes.filter(item => !insuranceSchemeUsageMap.get(item.id)?.recordCount),
+    [insuranceSchemeUsageMap, insuranceSchemes],
+  );
+
+  const expiredOnlyInsuranceSchemes = useMemo(
+    () => insuranceSchemes.filter(item => {
+      const usage = insuranceSchemeUsageMap.get(item.id);
+      return Boolean(usage?.recordCount) && !usage?.activeRecordCount;
+    }),
+    [insuranceSchemeUsageMap, insuranceSchemes],
+  );
+
+  const disabledLinkedInsuranceSchemes = useMemo(
+    () => insuranceSchemes.filter(item => Number(item.status ?? 1) === 0 && Boolean(insuranceSchemeUsageMap.get(item.id)?.recordCount)),
+    [insuranceSchemeUsageMap, insuranceSchemes],
+  );
+
+  const invalidBaseInsuranceSchemes = useMemo(
+    () => insuranceSchemes.filter(item => Number(item.baseMin ?? 0) > Number(item.baseMax ?? 0)),
+    [insuranceSchemes],
+  );
+
+  const insuranceSchemeRiskItems = useMemo(() => {
+    const items: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+
+    if (invalidBaseInsuranceSchemes.length > 0) {
+      items.push({
+        key: 'invalid-base-range',
+        title: '存在基数区间异常',
+        detail: `当前有 ${invalidBaseInsuranceSchemes.length} 个社保方案的基数下限高于上限，联调前需要先修正。`,
+        severity: 'danger',
+      });
+    }
+
+    if (disabledLinkedInsuranceSchemes.length > 0) {
+      items.push({
+        key: 'disabled-linked-schemes',
+        title: '禁用方案仍有历史台账',
+        detail: `当前有 ${disabledLinkedInsuranceSchemes.length} 个禁用方案仍被台账引用，核对历史数据时要注意不要误判为当前有效方案。`,
+        severity: 'danger',
+      });
+    }
+
+    if (expiredOnlyInsuranceSchemes.length > 0) {
+      items.push({
+        key: 'expired-only-schemes',
+        title: '存在仅保留历史台账的方案',
+        detail: `${expiredOnlyInsuranceSchemes.map(item => item.schemeName).join('、')} 当前都没有 ACTIVE 台账，只能作为历史样本参考。`,
+        severity: 'warning',
+      });
+    }
+
+    if (unusedInsuranceSchemes.length > 0) {
+      items.push({
+        key: 'unused-schemes',
+        title: '存在未命中员工的方案',
+        detail: `${unusedInsuranceSchemes.map(item => item.schemeName).join('、')} 目前还没有任何员工台账命中，建议补一条分配样本再继续联调。`,
+        severity: 'warning',
+      });
+    }
+
+    return items;
+  }, [
+    disabledLinkedInsuranceSchemes,
+    expiredOnlyInsuranceSchemes,
+    invalidBaseInsuranceSchemes.length,
+    unusedInsuranceSchemes,
+  ]);
+
+  const insuranceSchemeRiskSummary = useMemo(() => {
+    const score = insuranceSchemeRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    if (!score) {
+      return {
+        label: '方案可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前方案状态、台账命中和基数区间都比较清晰，可以直接核对员工社保分配结果。',
+      };
+    }
+
+    if (score <= 2) {
+      return {
+        label: '方案需注意',
+        className: 'border-amber-200 bg-amber-50 text-amber-700',
+        hint: `发现 ${insuranceSchemeRiskItems.length} 条需要人工确认的社保方案联调提示。`,
+      };
+    }
+
+    return {
+      label: '方案信息不足',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+      hint: `当前有 ${insuranceSchemeRiskItems.length} 条高风险提示，建议先补齐方案分配口径再继续联调。`,
+    };
+  }, [insuranceSchemeRiskItems]);
 
   const jobLevelMap = useMemo(
     () => new Map(jobLevels.map(level => [level.id, level])),
@@ -965,6 +1197,10 @@ export const HrSalaryPage: React.FC = () => {
     () => employeeSalaries.filter(record => employeeMap.get(record.employeeId)?.employeeStatus !== 'RESIGNED'),
     [employeeMap, employeeSalaries],
   );
+  const activeEmployeeSalaryMap = useMemo(
+    () => new Map(workingEmployeeSalaries.map(record => [record.employeeId, record])),
+    [workingEmployeeSalaries],
+  );
 
   const employeesWithSalary = useMemo(
     () => workingEmployeeSalaries
@@ -994,6 +1230,285 @@ export const HrSalaryPage: React.FC = () => {
         .some(value => String(value).toLowerCase().includes(normalizedKeyword)),
     );
   }, [adjustmentKeyword, salaryAdjustments]);
+
+  const adjustmentListDiagnostics = useMemo(() => {
+    const duplicateEmployeeDateGroups = Array.from(
+      salaryAdjustments.reduce((result, item) => {
+        const effectiveDate = toDateInputValue(item.effectiveDate);
+        if (!effectiveDate) return result;
+        const key = `${item.employeeId}__${effectiveDate}`;
+        const current = result.get(key) || {
+          employeeId: item.employeeId,
+          employeeName: item.employeeName || employeeMap.get(item.employeeId)?.name || `员工 #${item.employeeId}`,
+          effectiveDate,
+          count: 0,
+        };
+        current.count += 1;
+        result.set(key, current);
+        return result;
+      }, new Map<string, {
+        employeeId: number;
+        employeeName: string;
+        effectiveDate: string;
+        count: number;
+      }>()),
+    )
+      .map(([, value]) => value)
+      .filter(item => item.count > 1)
+      .sort((left, right) => right.count - left.count || left.effectiveDate.localeCompare(right.effectiveDate));
+    const duplicateEmployeeDateMap = new Map(
+      duplicateEmployeeDateGroups.map(item => [`${item.employeeId}__${item.effectiveDate}`, item]),
+    );
+    const rowIssueMap = new Map<number, Array<{ key: string; label: string; detail: string; severity: 'warning' | 'danger' }>>();
+    let matchedCurrentCount = 0;
+    let pendingPastDueCount = 0;
+    let currentMismatchCount = 0;
+    let statusLagCount = 0;
+    let futureEffectiveCount = 0;
+    let resignedPendingCount = 0;
+
+    const pushRowIssue = (
+      recordId: number,
+      issue: { key: string; label: string; detail: string; severity: 'warning' | 'danger' },
+    ) => {
+      const current = rowIssueMap.get(recordId) || [];
+      current.push(issue);
+      rowIssueMap.set(recordId, current);
+    };
+
+    salaryAdjustments.forEach(item => {
+      const effectiveDate = toDateInputValue(item.effectiveDate) || '';
+      const duplicateGroup = duplicateEmployeeDateMap.get(`${item.employeeId}__${effectiveDate}`);
+      const currentSalary = activeEmployeeSalaryMap.get(item.employeeId) || null;
+      const matchedCurrent = isSalaryLandingMatched(currentSalary, item.effectiveDate, item.afterTotal);
+      const currentEffectiveDate = toDateInputValue(currentSalary?.effectiveDate) || '';
+      const status = String(item.status || '').toUpperCase();
+      const futureEffective = isFutureDate(item.effectiveDate);
+      const employee = employeeMap.get(item.employeeId);
+      const isResigned = employee?.employeeStatus === 'RESIGNED';
+
+      if (duplicateGroup) {
+        pushRowIssue(item.id, {
+          key: 'duplicate-employee-date',
+          label: '同日多单',
+          detail: `${duplicateGroup.employeeName} 在 ${duplicateGroup.effectiveDate} 共有 ${duplicateGroup.count} 张调薪单，联调时要确认最终由哪张单据落当前现薪。`,
+          severity: duplicateGroup.count > 1 ? 'warning' : 'warning',
+        });
+      }
+
+      if (futureEffective) {
+        futureEffectiveCount += 1;
+        pushRowIssue(item.id, {
+          key: 'future-effective',
+          label: '未来生效',
+          detail: `${effectiveDate} 才开始生效，这条调薪更像“未来档案预演”，不是今天已经实际发放。`,
+          severity: 'warning',
+        });
+      }
+
+      if (matchedCurrent) {
+        matchedCurrentCount += 1;
+        pushRowIssue(item.id, {
+          key: 'matched-current',
+          label: '已落当前现薪',
+          detail: '这条调薪已经和当前 ACTIVE 现薪对齐，继续核对五险一金和个税即可。',
+          severity: 'warning',
+        });
+      }
+
+      if (isResigned && ['DRAFT', 'APPROVING', 'APPROVED'].includes(status)) {
+        resignedPendingCount += 1;
+        pushRowIssue(item.id, {
+          key: 'resigned-pending',
+          label: '离职员工待推进',
+          detail: '这名员工已经离职，但调薪单还没走完状态流转，建议确认是否还需要继续推进。',
+          severity: 'warning',
+        });
+      }
+
+      switch (status) {
+        case 'EFFECTIVE':
+          if (!matchedCurrent) {
+            if (currentSalary && currentEffectiveDate > effectiveDate) {
+              pushRowIssue(item.id, {
+                key: 'covered-by-newer-salary',
+                label: '已被后续覆盖',
+                detail: `当前现薪生效日是 ${currentEffectiveDate}，说明这条调薪已经被后续现薪链路覆盖。`,
+                severity: 'warning',
+              });
+            } else if (currentSalary && currentEffectiveDate < effectiveDate && !futureEffective) {
+              currentMismatchCount += 1;
+              pushRowIssue(item.id, {
+                key: 'effective-not-current',
+                label: '已生效未追平',
+                detail: `状态已是 EFFECTIVE，但当前现薪仍停在 ${currentEffectiveDate || '-'} / ${formatCurrency(currentSalary.totalSalary)}。`,
+                severity: 'danger',
+              });
+            } else if (!currentSalary && !futureEffective) {
+              currentMismatchCount += 1;
+              pushRowIssue(item.id, {
+                key: 'effective-no-current-salary',
+                label: '已生效无现薪',
+                detail: '状态已是 EFFECTIVE，但当前员工没有可命中的 ACTIVE 现薪记录。',
+                severity: 'danger',
+              });
+            }
+          }
+          break;
+        case 'APPROVED':
+          if (matchedCurrent) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approved-but-current',
+              label: '状态滞后',
+              detail: '当前现薪已经命中这条调薪，但单据状态还停留在 APPROVED。',
+              severity: 'danger',
+            });
+          } else if (!futureEffective) {
+            pendingPastDueCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approved-past-due',
+              label: '到期未执行',
+              detail: `生效日 ${effectiveDate} 已到，但这条单据还没真正落到当前现薪。`,
+              severity: 'danger',
+            });
+          }
+          break;
+        case 'APPROVING':
+          if (matchedCurrent) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approving-but-current',
+              label: '审批中已落当前',
+              detail: '当前现薪已经命中这条调薪，但流程状态仍在审批中。',
+              severity: 'danger',
+            });
+          } else if (!futureEffective) {
+            pendingPastDueCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approving-past-due',
+              label: '审批滞后',
+              detail: `生效日 ${effectiveDate} 已到，这条单据仍卡在审批中。`,
+              severity: 'warning',
+            });
+          }
+          break;
+        case 'DRAFT':
+          if (matchedCurrent) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'draft-but-current',
+              label: '草稿已落当前',
+              detail: '当前现薪已经命中这条调薪，但单据还是草稿，属于明显的链路异常。',
+              severity: 'danger',
+            });
+          } else if (!futureEffective) {
+            pendingPastDueCount += 1;
+            pushRowIssue(item.id, {
+              key: 'stale-draft',
+              label: '草稿过期',
+              detail: `生效日 ${effectiveDate} 已到，这条草稿如果继续保留，很容易和真实现薪脱节。`,
+              severity: 'warning',
+            });
+          }
+          break;
+        case 'REJECTED':
+          if (matchedCurrent) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'rejected-but-current',
+              label: '已拒绝却落当前',
+              detail: '当前现薪已经命中这条已拒绝单据，需要优先回查后端状态与落库逻辑。',
+              severity: 'danger',
+            });
+          }
+          break;
+        default:
+          break;
+      }
+    });
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (currentMismatchCount > 0) {
+      riskItems.push({
+        key: 'current-mismatch',
+        title: '存在已生效但当前现薪未追平的调薪',
+        detail: `当前有 ${currentMismatchCount} 条 EFFECTIVE 记录没有命中当前现薪，优先核对生效后的现薪切换。`,
+        severity: 'danger',
+      });
+    }
+    if (pendingPastDueCount > 0) {
+      riskItems.push({
+        key: 'pending-past-due',
+        title: '存在过了生效日仍未推进的调薪',
+        detail: `当前有 ${pendingPastDueCount} 条单据已经过了生效日，但仍停留在草稿、审批中或 APPROVED。`,
+        severity: 'danger',
+      });
+    }
+    if (statusLagCount > 0) {
+      riskItems.push({
+        key: 'status-lag',
+        title: '存在状态与当前现薪不同步的调薪',
+        detail: `当前有 ${statusLagCount} 条非 EFFECTIVE 单据已经命中当前现薪，状态同步需要回查。`,
+        severity: 'danger',
+      });
+    }
+    if (duplicateEmployeeDateGroups.length > 0) {
+      const first = duplicateEmployeeDateGroups[0];
+      riskItems.push({
+        key: 'duplicate-employee-date',
+        title: '存在同一员工同日多张调薪单',
+        detail: `${first.employeeName} 在 ${first.effectiveDate} 共有 ${first.count} 张调薪单，联调时要重点确认覆盖顺序。`,
+        severity: 'warning',
+      });
+    }
+    if (futureEffectiveCount > 0) {
+      riskItems.push({
+        key: 'future-effective',
+        title: '存在未来生效调薪',
+        detail: `当前有 ${futureEffectiveCount} 条记录的生效日晚于今天，核对时要区分“未来档案”与“当前现薪”。`,
+        severity: 'warning',
+      });
+    }
+    if (resignedPendingCount > 0) {
+      riskItems.push({
+        key: 'resigned-pending',
+        title: '存在离职员工的待推进调薪',
+        detail: `当前有 ${resignedPendingCount} 条待推进调薪挂在离职员工名下，建议尽快人工确认。`,
+        severity: 'warning',
+      });
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !score
+      ? {
+        label: '申请列表可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前调薪单据、现薪结果和状态流转比较一致，可以直接沿着单据继续核链路。',
+      }
+      : score <= 2
+        ? {
+          label: '申请列表需注意',
+          className: 'border-amber-200 bg-amber-50 text-amber-700',
+          hint: `发现 ${riskItems.length} 条需要人工确认的调薪列表提示。`,
+        }
+        : {
+          label: '申请列表存在风险',
+          className: 'border-rose-200 bg-rose-50 text-rose-700',
+          hint: `当前有 ${riskItems.length} 条高风险提示，建议先把异常单据收敛后再继续联调。`,
+        };
+
+    return {
+      matchedCurrentCount,
+      pendingPastDueCount,
+      currentMismatchCount,
+      duplicateEmployeeDateGroups,
+      futureEffectiveCount,
+      riskItems,
+      riskSummary,
+      rowIssueMap,
+    };
+  }, [activeEmployeeSalaryMap, employeeMap, salaryAdjustments]);
 
   const sortedSalaryGrades = useMemo(
     () => [...salaryGrades].sort((left, right) => {
@@ -1060,6 +1575,706 @@ export const HrSalaryPage: React.FC = () => {
   const gradeCoverageRate = activeJobLevels.length
     ? Number(((sortedSalaryGrades.length / activeJobLevels.length) * 100).toFixed(1))
     : 0;
+
+  const gradeSeriesCoverage = useMemo(
+    () => gradeSeriesSummary.map(item => {
+      const coverage = item.total
+        ? Number(((item.configured / item.total) * 100).toFixed(1))
+        : 0;
+      const missing = Math.max(item.total - item.configured, 0);
+
+      if (item.configured === item.total) {
+        return {
+          ...item,
+          coverage,
+          missing,
+          cardClassName: 'border-emerald-200 bg-emerald-50/80',
+          textClassName: 'text-emerald-700',
+          barClassName: 'bg-emerald-500',
+        };
+      }
+
+      if (item.configured === 0) {
+        return {
+          ...item,
+          coverage,
+          missing,
+          cardClassName: 'border-rose-200 bg-rose-50/80',
+          textClassName: 'text-rose-700',
+          barClassName: 'bg-rose-500',
+        };
+      }
+
+      return {
+        ...item,
+        coverage,
+        missing,
+        cardClassName: 'border-amber-200 bg-amber-50/80',
+        textClassName: 'text-amber-700',
+        barClassName: 'bg-amber-500',
+      };
+    }),
+    [gradeSeriesSummary],
+  );
+
+  const uncoveredGradeSeries = useMemo(
+    () => gradeSeriesCoverage.filter(item => item.configured < item.total),
+    [gradeSeriesCoverage],
+  );
+
+  const emptyGradeSeries = useMemo(
+    () => gradeSeriesCoverage.filter(item => item.configured === 0),
+    [gradeSeriesCoverage],
+  );
+
+  const salaryGradeDiagnostics = useMemo(() => {
+    const rowIssueMap = new Map<number, Array<{
+      key: string;
+      label: string;
+      detail: string;
+      severity: 'warning' | 'danger';
+    }>>();
+    const overlapPairs: Array<{
+      series: string;
+      left: SalaryGrade;
+      right: SalaryGrade;
+      overlapAmount: number;
+    }> = [];
+    const invalidRanges: Array<{
+      grade: SalaryGrade;
+      reason: string;
+    }> = [];
+    const overlapGradeIds = new Set<number>();
+    const invalidGradeIds = new Set<number>();
+    const previousBySeries = new Map<string, SalaryGrade>();
+
+    const pushRowIssue = (
+      gradeId: number,
+      issue: {
+        key: string;
+        label: string;
+        detail: string;
+        severity: 'warning' | 'danger';
+      },
+    ) => {
+      const current = rowIssueMap.get(gradeId) || [];
+      if (!current.some(item => item.key === issue.key)) {
+        current.push(issue);
+        rowIssueMap.set(gradeId, current);
+      }
+    };
+
+    // 按同一职级序列顺序比较相邻薪级，直接定位真实联调里最容易遗漏的区间重叠问题。
+    sortedSalaryGrades.forEach(item => {
+      const series = jobLevelMap.get(item.levelId)?.levelSeries || item.levelCode || '未分组';
+      const minSalary = Number(item.minSalary || 0);
+      const midSalary = Number(item.midSalary || 0);
+      const maxSalary = Number(item.maxSalary || 0);
+
+      if (minSalary > maxSalary) {
+        invalidRanges.push({ grade: item, reason: '最低薪资高于最高薪资' });
+        invalidGradeIds.add(item.id);
+        pushRowIssue(item.id, {
+          key: 'range-order',
+          label: '区间顺序异常',
+          detail: '最低薪资高于最高薪资，保存口径需要先修正。',
+          severity: 'danger',
+        });
+      }
+
+      if (midSalary < minSalary || midSalary > maxSalary) {
+        invalidRanges.push({ grade: item, reason: '中位薪资不在最低和最高之间' });
+        invalidGradeIds.add(item.id);
+        pushRowIssue(item.id, {
+          key: 'mid-out-of-range',
+          label: '中位超出区间',
+          detail: '中位薪资没有落在最低和最高之间，测算口径会失真。',
+          severity: 'danger',
+        });
+      }
+
+      const previous = previousBySeries.get(series);
+      if (previous) {
+        const overlapAmount = Number(previous.maxSalary || 0) - minSalary;
+        if (overlapAmount > 0) {
+          const previousLabel = previous.levelCode || previous.levelName || `#${previous.id}`;
+          const currentLabel = item.levelCode || item.levelName || `#${item.id}`;
+          overlapPairs.push({
+            series,
+            left: previous,
+            right: item,
+            overlapAmount,
+          });
+          overlapGradeIds.add(previous.id);
+          overlapGradeIds.add(item.id);
+          pushRowIssue(previous.id, {
+            key: `overlap-next-${item.id}`,
+            label: '区间重叠',
+            detail: `与 ${currentLabel} 重叠 ${formatCurrency(overlapAmount)}。`,
+            severity: 'danger',
+          });
+          pushRowIssue(item.id, {
+            key: `overlap-prev-${previous.id}`,
+            label: '区间重叠',
+            detail: `与 ${previousLabel} 重叠 ${formatCurrency(overlapAmount)}。`,
+            severity: 'danger',
+          });
+        }
+      }
+
+      previousBySeries.set(series, item);
+    });
+
+    return {
+      rowIssueMap,
+      overlapPairs,
+      invalidRanges,
+      overlapGradeIds,
+      invalidGradeIds,
+    };
+  }, [jobLevelMap, sortedSalaryGrades]);
+
+  const salaryGradeRiskItems = useMemo(() => {
+    const items: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+
+    if (salaryGradeDiagnostics.overlapPairs.length > 0) {
+      const firstPair = salaryGradeDiagnostics.overlapPairs[0];
+      items.push({
+        key: 'range-overlap',
+        title: '存在薪级区间重叠',
+        detail: `当前发现 ${salaryGradeDiagnostics.overlapPairs.length} 组区间重叠，${firstPair.series} 序列的 ${firstPair.left.levelCode || firstPair.left.levelName || '-'} 与 ${firstPair.right.levelCode || firstPair.right.levelName || '-'} 重叠 ${formatCurrency(firstPair.overlapAmount)}。`,
+        severity: 'danger',
+      });
+    }
+
+    if (salaryGradeDiagnostics.invalidGradeIds.size > 0) {
+      items.push({
+        key: 'invalid-range',
+        title: '存在区间顺序异常',
+        detail: `当前有 ${salaryGradeDiagnostics.invalidGradeIds.size} 条薪级的最低、中位、最高顺序不一致，保存口径需要先修正。`,
+        severity: 'danger',
+      });
+    }
+
+    if (emptyGradeSeries.length > 0) {
+      items.push({
+        key: 'empty-series',
+        title: '存在整条序列未配置',
+        detail: `${emptyGradeSeries.map(item => `${item.series} ${item.configured}/${item.total}`).join('、')}，这些序列现在完全无法参与薪级联调。`,
+        severity: 'danger',
+      });
+    }
+
+    const partialSeries = uncoveredGradeSeries.filter(item => item.configured > 0);
+    if (partialSeries.length > 0) {
+      items.push({
+        key: 'partial-series',
+        title: '序列覆盖还不完整',
+        detail: `${partialSeries.map(item => `${item.series} ${item.configured}/${item.total}`).join('、')}，建议按序列继续补齐，避免相邻职级口径断档。`,
+        severity: 'warning',
+      });
+    }
+
+    if (pendingGradeLevels.length > 0) {
+      items.push({
+        key: 'pending-levels',
+        title: '启用职级仍有待配置薪级',
+        detail: `当前还有 ${pendingGradeLevels.length} 个启用职级未配置薪级，整体覆盖率 ${gradeCoverageRate}%。`,
+        severity: pendingGradeLevels.length >= 5 ? 'danger' : 'warning',
+      });
+    }
+
+    return items;
+  }, [
+    emptyGradeSeries,
+    gradeCoverageRate,
+    pendingGradeLevels.length,
+    salaryGradeDiagnostics.invalidGradeIds.size,
+    salaryGradeDiagnostics.overlapPairs,
+    uncoveredGradeSeries,
+  ]);
+
+  const salaryGradeRiskSummary = useMemo(() => {
+    const score = salaryGradeRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    if (!score) {
+      return {
+        label: '薪级可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前薪级覆盖、序列关系和区间口径基本对齐，可以直接核对薪酬带宽。',
+      };
+    }
+
+    if (score <= 3) {
+      return {
+        label: '薪级需注意',
+        className: 'border-amber-200 bg-amber-50 text-amber-700',
+        hint: `发现 ${salaryGradeRiskItems.length} 条需要人工确认的薪级联调提示。`,
+      };
+    }
+
+    return {
+      label: '薪级信息不足',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+      hint: `当前有 ${salaryGradeRiskItems.length} 条高风险提示，建议先补齐薪级口径再继续联调。`,
+    };
+  }, [salaryGradeRiskItems]);
+
+  const gradeFormSelectedLevel = useMemo(
+    () => jobLevelMap.get(gradeForm.levelId) || null,
+    [gradeForm.levelId, jobLevelMap],
+  );
+
+  const gradeFormExistingGrade = useMemo(
+    () => salaryGrades.find(item => item.levelId === gradeForm.levelId) || null,
+    [gradeForm.levelId, salaryGrades],
+  );
+
+  const gradeFormSeriesLevels = useMemo(() => {
+    if (!gradeFormSelectedLevel) return [] as JobLevelOption[];
+
+    return activeJobLevels
+      .filter(level => (level.levelSeries || '未分组') === (gradeFormSelectedLevel.levelSeries || '未分组'))
+      .sort((left, right) => {
+        const rankCompare = Number(left.levelRank || 0) - Number(right.levelRank || 0);
+        if (rankCompare !== 0) return rankCompare;
+        return String(left.levelCode || '').localeCompare(String(right.levelCode || ''), 'zh-CN');
+      });
+  }, [activeJobLevels, gradeFormSelectedLevel]);
+
+  const gradeFormNeighborContext = useMemo(() => {
+    if (!gradeFormSelectedLevel) {
+      return {
+        previousLevel: null as JobLevelOption | null,
+        previousGrade: null as SalaryGrade | null,
+        nextLevel: null as JobLevelOption | null,
+        nextGrade: null as SalaryGrade | null,
+      };
+    }
+
+    const targetIndex = gradeFormSeriesLevels.findIndex(level => level.id === gradeFormSelectedLevel.id);
+    if (targetIndex < 0) {
+      return {
+        previousLevel: null as JobLevelOption | null,
+        previousGrade: null as SalaryGrade | null,
+        nextLevel: null as JobLevelOption | null,
+        nextGrade: null as SalaryGrade | null,
+      };
+    }
+
+    let previousLevel: JobLevelOption | null = null;
+    let previousGrade: SalaryGrade | null = null;
+    for (let index = targetIndex - 1; index >= 0; index -= 1) {
+      const level = gradeFormSeriesLevels[index];
+      const grade = salaryGrades.find(item => item.levelId === level.id) || null;
+      if (grade) {
+        previousLevel = level;
+        previousGrade = grade;
+        break;
+      }
+    }
+
+    let nextLevel: JobLevelOption | null = null;
+    let nextGrade: SalaryGrade | null = null;
+    for (let index = targetIndex + 1; index < gradeFormSeriesLevels.length; index += 1) {
+      const level = gradeFormSeriesLevels[index];
+      const grade = salaryGrades.find(item => item.levelId === level.id) || null;
+      if (grade) {
+        nextLevel = level;
+        nextGrade = grade;
+        break;
+      }
+    }
+
+    return {
+      previousLevel,
+      previousGrade,
+      nextLevel,
+      nextGrade,
+    };
+  }, [gradeFormSelectedLevel, gradeFormSeriesLevels, salaryGrades]);
+
+  // 薪级弹窗要在保存前就预览上下级关系，避免把区间重叠带到真实联调里。
+  const gradeFormDiagnostics = useMemo(() => {
+    const minSalary = normalizeAmount(gradeForm.minSalary);
+    const midSalary = normalizeAmount(gradeForm.midSalary);
+    const maxSalary = normalizeAmount(gradeForm.maxSalary);
+    const selectedLevel = gradeFormSelectedLevel;
+    const existingGrade = gradeFormExistingGrade;
+    const { previousLevel, previousGrade, nextLevel, nextGrade } = gradeFormNeighborContext;
+    const isSelectedLevelActive = selectedLevel ? selectedLevel.status !== 0 : false;
+    const fillsPendingLevel = Boolean(selectedLevel && isSelectedLevelActive && !configuredGradeLevelIds.has(selectedLevel.id));
+    const nextConfiguredCount = fillsPendingLevel ? sortedSalaryGrades.length + 1 : sortedSalaryGrades.length;
+    const nextCoverageRate = activeJobLevels.length
+      ? Number(((nextConfiguredCount / activeJobLevels.length) * 100).toFixed(1))
+      : 0;
+    const seriesConfiguredCount = gradeFormSeriesLevels.filter(level => configuredGradeLevelIds.has(level.id)).length;
+    const nextSeriesConfiguredCount = fillsPendingLevel ? seriesConfiguredCount + 1 : seriesConfiguredCount;
+    const nextSeriesCoverageRate = gradeFormSeriesLevels.length
+      ? Number(((nextSeriesConfiguredCount / gradeFormSeriesLevels.length) * 100).toFixed(1))
+      : 0;
+    const noChanges = Boolean(existingGrade)
+      && normalizeAmount(existingGrade.minSalary) === minSalary
+      && normalizeAmount(existingGrade.midSalary) === midSalary
+      && normalizeAmount(existingGrade.maxSalary) === maxSalary
+      && String(existingGrade.currency || 'CNY') === String(gradeForm.currency || 'CNY');
+    const placeholderRange = minSalary === 0 && midSalary === 0 && maxSalary === 0;
+    const invalidRange = minSalary > maxSalary;
+    const invalidMid = midSalary < minSalary || midSalary > maxSalary;
+    const previousOverlapAmount = previousGrade ? normalizeAmount(Number(previousGrade.maxSalary || 0) - minSalary) : 0;
+    const nextOverlapAmount = nextGrade ? normalizeAmount(maxSalary - Number(nextGrade.minSalary || 0)) : 0;
+    const overlapsPrevious = Boolean(previousGrade && previousOverlapAmount > 0);
+    const overlapsNext = Boolean(nextGrade && nextOverlapAmount > 0);
+    const currencyMismatches = [previousGrade, nextGrade].filter((grade): grade is SalaryGrade =>
+      Boolean(grade) && String(grade.currency || 'CNY') !== String(gradeForm.currency || 'CNY'),
+    );
+
+    let modeLabel = '等待选择职级';
+    let modeHint = '先选择职级，再判断这次保存是补齐空档、覆盖旧配置还是会影响相邻薪级。';
+    if (selectedLevel) {
+      if (noChanges) {
+        modeLabel = '无变化覆盖保存';
+        modeHint = '当前输入和现有薪级完全一致，继续保存只会重复覆盖一份相同配置。';
+      } else if (!isSelectedLevelActive) {
+        modeLabel = '配置停用职级';
+        modeHint = '当前职级处于停用状态，这条薪级不会计入启用职级覆盖率。';
+      } else if (existingGrade) {
+        modeLabel = '覆盖已有薪级';
+        modeHint = `当前会把 ${selectedLevel.levelCode || selectedLevel.levelName || '目标职级'} 的现有区间替换为新的带宽。`;
+      } else if (gradeFormSeriesLevels.length > 0 && nextSeriesConfiguredCount === gradeFormSeriesLevels.length) {
+        modeLabel = '补齐整条序列';
+        modeHint = `保存后 ${selectedLevel.levelSeries || '当前'} 序列会变成全覆盖，可以直接做带宽联调。`;
+      } else {
+        modeLabel = '新增薪级配置';
+        modeHint = '保存后会新增一条薪级带宽，并刷新页面覆盖率与待配置清单。';
+      }
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (selectedLevel) {
+      if (!isSelectedLevelActive) {
+        riskItems.push({
+          key: 'inactive-level',
+          title: '当前职级已停用',
+          detail: '停用职级虽然还能保存薪级，但不会纳入启用职级覆盖率，真实联调价值有限。',
+          severity: 'warning',
+        });
+      }
+      if (placeholderRange) {
+        riskItems.push({
+          key: 'placeholder-range',
+          title: '薪级区间仍是默认值',
+          detail: '当前最低、中位、最高都是 0，保存后无法作为真实薪酬带宽样本使用。',
+          severity: 'warning',
+        });
+      }
+      if (noChanges) {
+        riskItems.push({
+          key: 'no-changes',
+          title: '本次保存不会带来变化',
+          detail: '当前输入和已有薪级完全一致，继续保存通常没有业务意义。',
+          severity: 'warning',
+        });
+      }
+      if (invalidRange) {
+        riskItems.push({
+          key: 'range-order',
+          title: '最低薪资高于最高薪资',
+          detail: '区间顺序已经反了，保存后会直接制造异常薪级样本。',
+          severity: 'danger',
+        });
+      }
+      if (!invalidRange && invalidMid) {
+        riskItems.push({
+          key: 'mid-out-of-range',
+          title: '中位薪资没有落在区间内',
+          detail: '中位薪资必须位于最低和最高之间，否则后续带宽展示会失真。',
+          severity: 'danger',
+        });
+      }
+      if (overlapsPrevious && previousLevel && previousGrade) {
+        riskItems.push({
+          key: 'overlap-previous',
+          title: '与上一级薪级发生重叠',
+          detail: `${previousLevel.levelCode || previousLevel.levelName || '上一级'} 当前上限是 ${formatCurrency(previousGrade.maxSalary)}，会和本次最低薪资重叠 ${formatCurrency(previousOverlapAmount)}。`,
+          severity: 'danger',
+        });
+      }
+      if (overlapsNext && nextLevel && nextGrade) {
+        riskItems.push({
+          key: 'overlap-next',
+          title: '与下一级薪级发生重叠',
+          detail: `${nextLevel.levelCode || nextLevel.levelName || '下一级'} 当前下限是 ${formatCurrency(nextGrade.minSalary)}，会被本次最高薪资压住 ${formatCurrency(nextOverlapAmount)}。`,
+          severity: 'danger',
+        });
+      }
+      if (currencyMismatches.length > 0) {
+        riskItems.push({
+          key: 'currency-mismatch',
+          title: '币种与相邻薪级不一致',
+          detail: `相邻已配置薪级使用 ${Array.from(new Set(currencyMismatches.map(item => item.currency || 'CNY'))).join(' / ')}，当前币种是 ${gradeForm.currency || 'CNY'}，联调对比时要额外换算。`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !selectedLevel
+      ? {
+        label: '等待选择',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先选择一个职级，再预览保存后会不会补齐覆盖率或撞到邻级区间。',
+      }
+      : !score
+        ? {
+          label: '可直接保存',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前区间顺序、相邻关系和覆盖影响都比较清晰，可以继续保存薪级。',
+        }
+        : score <= 2
+          ? {
+            label: '保存需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的薪级保存提示。`,
+          }
+          : {
+            label: '保存存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整区间再保存。`,
+          };
+
+    return {
+      selectedLevel,
+      existingGrade,
+      previousLevel,
+      previousGrade,
+      nextLevel,
+      nextGrade,
+      currentCoverageRate: gradeCoverageRate,
+      nextCoverageRate,
+      seriesConfiguredCount,
+      nextSeriesConfiguredCount,
+      seriesTotal: gradeFormSeriesLevels.length,
+      nextSeriesCoverageRate,
+      modeLabel,
+      modeHint,
+      riskItems,
+      riskSummary,
+    };
+  }, [
+    activeJobLevels.length,
+    configuredGradeLevelIds,
+    gradeCoverageRate,
+    gradeForm.currency,
+    gradeForm.maxSalary,
+    gradeForm.midSalary,
+    gradeForm.minSalary,
+    gradeFormExistingGrade,
+    gradeFormNeighborContext,
+    gradeFormSelectedLevel,
+    gradeFormSeriesLevels,
+    jobLevelMap,
+    salaryGrades,
+    sortedSalaryGrades.length,
+  ]);
+
+  const structureFormExistingDetail = useMemo(() => {
+    if (!editingStructureId) return null;
+    if (structureDetail?.id === editingStructureId) return structureDetail;
+    return salaryStructureDetailMap[editingStructureId] || null;
+  }, [editingStructureId, salaryStructureDetailMap, structureDetail]);
+
+  const structureFormSelectedItems = useMemo(
+    () => structureForm.itemIds
+      .map(itemId => salaryItemMap.get(String(itemId)))
+      .filter((item): item is SalaryItem => Boolean(item)),
+    [salaryItemMap, structureForm.itemIds],
+  );
+
+  const structureFormDiagnostics = useMemo(() => {
+    const trimmedCode = structureForm.structureCode.trim();
+    const trimmedName = structureForm.structureName.trim();
+    const trimmedDescription = (structureForm.description || '').trim();
+    const selectedItemIds = Array.from(new Set(structureForm.itemIds)).sort((left, right) => left - right);
+    const existingItemIds = structureFormExistingDetail
+      ? Array.from(new Set((structureFormExistingDetail.items || []).map(item => item.id))).sort((left, right) => left - right)
+      : [];
+    const selectedItems = structureFormSelectedItems;
+    const disabledSelectedItems = selectedItems.filter(item => Number(item.status ?? 1) !== 1);
+    const taxableItems = selectedItems.filter(item => Boolean(item.isTaxable));
+    const variableItems = selectedItems.filter(item => item.itemType === 'VARIABLE');
+    const duplicateCodeTarget = trimmedCode
+      ? salaryStructures.find(item => item.id !== editingStructureId && String(item.structureCode || '').trim().toUpperCase() === trimmedCode.toUpperCase()) || null
+      : null;
+    const duplicateNameTarget = trimmedName
+      ? salaryStructures.find(item => item.id !== editingStructureId && String(item.structureName || '').trim() === trimmedName) || null
+      : null;
+    const activeUsage = editingStructureId ? structureActiveSalaryStatsMap.get(editingStructureId) || null : null;
+    const removedItems = structureFormExistingDetail
+      ? (structureFormExistingDetail.items || []).filter(item => !selectedItemIds.includes(item.id))
+      : [];
+    const noChanges = Boolean(structureFormExistingDetail)
+      && trimmedCode === String(structureFormExistingDetail?.structureCode || '').trim()
+      && trimmedName === String(structureFormExistingDetail?.structureName || '').trim()
+      && trimmedDescription === String(structureFormExistingDetail?.description || '').trim()
+      && Number(structureForm.status ?? 1) === Number(structureFormExistingDetail?.status ?? 1)
+      && selectedItemIds.length === existingItemIds.length
+      && selectedItemIds.every((itemId, index) => itemId === existingItemIds[index]);
+
+    let modeLabel = '等待填写结构信息';
+    let modeHint = '先填写编码、名称并勾选项目，再判断这次保存是新建结构、覆盖旧配置还是会影响现有档案。';
+    if (trimmedCode || trimmedName || selectedItemIds.length > 0) {
+      if (noChanges) {
+        modeLabel = '无变化重复保存';
+        modeHint = '当前输入和已有结构完全一致，继续保存通常不会带来新的联调价值。';
+      } else if (!editingStructureId) {
+        modeLabel = '新建薪资结构';
+        modeHint = '保存后会新增一套结构，后续员工分配时可以直接选用这套项目组合。';
+      } else if (Number(structureForm.status ?? 1) !== 1 && activeUsage?.archiveCount) {
+        modeLabel = '禁用在用结构';
+        modeHint = `当前结构还命中 ${activeUsage.archiveCount} 条在岗档案，禁用后只会拦住新分配，不会自动迁移历史数据。`;
+      } else if (removedItems.length > 0) {
+        modeLabel = '收缩结构项目';
+        modeHint = `本次会移除 ${removedItems.length} 个已存在项目，后续查看结构和新分配员工时都会看到新口径。`;
+      } else {
+        modeLabel = '覆盖已有结构';
+        modeHint = '保存后会直接替换这套结构的项目组合和状态，页面上的结构详情会同步刷新。';
+      }
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (trimmedCode || trimmedName || editingStructureId || selectedItemIds.length > 0) {
+      if (!trimmedCode) {
+        riskItems.push({
+          key: 'missing-code',
+          title: '还没有填写结构编码',
+          detail: '结构编码会直接影响后续筛选和联调识别，建议先填一个稳定编码。',
+          severity: 'warning',
+        });
+      }
+      if (!trimmedName) {
+        riskItems.push({
+          key: 'missing-name',
+          title: '还没有填写结构名称',
+          detail: '结构名称会在员工分配和结构详情里直接展示，建议提前确定清晰命名。',
+          severity: 'warning',
+        });
+      }
+      if (selectedItemIds.length === 0) {
+        riskItems.push({
+          key: 'missing-items',
+          title: '当前没有关联任何项目',
+          detail: '空结构无法用于员工薪资分配，保存后也无法形成有效联调样本。',
+          severity: 'danger',
+        });
+      }
+      if (duplicateCodeTarget) {
+        riskItems.push({
+          key: 'duplicate-code',
+          title: '结构编码与现有结构重复',
+          detail: `当前编码已被 ${duplicateCodeTarget.structureName} (${duplicateCodeTarget.structureCode}) 使用，后续联调筛选会很容易混淆。`,
+          severity: 'danger',
+        });
+      }
+      if (duplicateNameTarget) {
+        riskItems.push({
+          key: 'duplicate-name',
+          title: '结构名称与现有结构重复',
+          detail: `当前名称已被 ${duplicateNameTarget.structureCode} 使用，建议改成更容易区分的名称。`,
+          severity: 'warning',
+        });
+      }
+      if (disabledSelectedItems.length > 0) {
+        riskItems.push({
+          key: 'disabled-items',
+          title: '结构里仍选中了禁用项目',
+          detail: `${disabledSelectedItems.map(item => item.itemName).join('、')} 当前都已停用，继续保留只会增加后续维护和分配核对成本。`,
+          severity: 'warning',
+        });
+      }
+      if (selectedItemIds.length > 0 && taxableItems.length === 0) {
+        riskItems.push({
+          key: 'missing-taxable-items',
+          title: '当前结构没有计税项目',
+          detail: '这套结构里没有任何参与计税的项目，后续个税联调只能得到 0 税基样本。',
+          severity: 'warning',
+        });
+      }
+      if (noChanges) {
+        riskItems.push({
+          key: 'no-changes',
+          title: '本次保存不会改变结构口径',
+          detail: '编码、名称、状态和项目集合都没有变化，继续保存通常只是重复覆盖。',
+          severity: 'warning',
+        });
+      }
+      if (Number(structureForm.status ?? 1) !== 1 && activeUsage?.archiveCount) {
+        riskItems.push({
+          key: 'disable-in-use',
+          title: '正在禁用一套被在岗档案引用的结构',
+          detail: `当前还有 ${activeUsage.archiveCount} 条在岗档案、${activeUsage.employeeIds.size} 名员工引用这套结构，其中 ${activeUsage.futureCount} 条还是未来生效。`,
+          severity: 'danger',
+        });
+      }
+      if (removedItems.length > 0 && activeUsage?.archiveCount) {
+        riskItems.push({
+          key: 'remove-items-in-use',
+          title: '正在调整一套已在使用中的结构项目',
+          detail: `当前移除了 ${removedItems.map(item => item.itemName).join('、')}，这会改变后续新分配和结构详情里可见的项目口径。`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !(trimmedCode || trimmedName || editingStructureId || selectedItemIds.length > 0)
+      ? {
+        label: '等待填写',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先把结构编码、名称和项目组合填出来，再判断保存风险。',
+      }
+      : !score
+        ? {
+          label: '可直接保存',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前结构编码、项目组合和使用影响都比较清晰，可以继续保存。',
+        }
+        : score <= 2
+          ? {
+            label: '保存需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的结构保存提示。`,
+          }
+          : {
+            label: '保存存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整结构参数再保存。`,
+          };
+
+    return {
+      selectedItems,
+      disabledSelectedItems,
+      taxableItems,
+      variableItems,
+      activeUsage,
+      removedItems,
+      modeLabel,
+      modeHint,
+      riskItems,
+      riskSummary,
+    };
+  }, [
+    editingStructureId,
+    salaryItemMap,
+    salaryStructures,
+    structureActiveSalaryStatsMap,
+    structureForm.description,
+    structureForm.itemIds,
+    structureForm.status,
+    structureForm.structureCode,
+    structureForm.structureName,
+    structureFormExistingDetail,
+    structureFormSelectedItems,
+  ]);
 
   const metrics = useMemo(() => {
     const pendingAdjustmentCount = salaryAdjustments.filter(item =>
@@ -1155,14 +2370,268 @@ export const HrSalaryPage: React.FC = () => {
     )),
     [employeeMap, structureLinkedEmployeeRecords],
   );
+  const structureLinkedEmployeeIds = useMemo(
+    () => Array.from(new Set(structureLinkedEmployeeRecords.map(item => item.employeeId))),
+    [structureLinkedEmployeeRecords],
+  );
+  const structureLinkedFutureEmployeeRecords = useMemo(
+    () => structureLinkedEmployeeRecords.filter(item => isFutureDate(item.effectiveDate)),
+    [structureLinkedEmployeeRecords],
+  );
+  const structureLinkedCurrentEmployeeRecords = useMemo(
+    () => structureLinkedEmployeeRecords.filter(item => !isFutureDate(item.effectiveDate)),
+    [structureLinkedEmployeeRecords],
+  );
+  const structureLinkedEmployeeRows = useMemo(
+    () => [...structureLinkedEmployeeRecords].sort((left, right) => {
+      const leftFuture = isFutureDate(left.effectiveDate) ? 1 : 0;
+      const rightFuture = isFutureDate(right.effectiveDate) ? 1 : 0;
+      if (leftFuture !== rightFuture) {
+        return rightFuture - leftFuture;
+      }
+
+      const rightTime = new Date(right.effectiveDate || right.updateTime || right.createTime || 0).getTime();
+      const leftTime = new Date(left.effectiveDate || left.updateTime || left.createTime || 0).getTime();
+      return rightTime - leftTime || right.id - left.id;
+    }),
+    [structureLinkedEmployeeRecords],
+  );
+  const structureLinkedSalaryStats = useMemo(() => {
+    const totals = structureLinkedEmployeeRecords
+      .map(item => normalizeAmount(item.totalSalary))
+      .filter(value => Number.isFinite(value) && value > 0);
+
+    return {
+      count: totals.length,
+      min: totals.length ? Math.min(...totals) : 0,
+      median: getMedianValue(totals),
+      max: totals.length ? Math.max(...totals) : 0,
+    };
+  }, [structureLinkedEmployeeRecords]);
+  const structureActiveSalaryStatsMap = useMemo(
+    () => workingEmployeeSalaries.reduce((result, item) => {
+      const current = result.get(item.structureId) || {
+        archiveCount: 0,
+        employeeIds: new Set<number>(),
+        futureCount: 0,
+      };
+      current.archiveCount += 1;
+      current.employeeIds.add(item.employeeId);
+      if (isFutureDate(item.effectiveDate)) {
+        current.futureCount += 1;
+      }
+      result.set(item.structureId, current);
+      return result;
+    }, new Map<number, { archiveCount: number; employeeIds: Set<number>; futureCount: number }>()),
+    [workingEmployeeSalaries],
+  );
   const structureItemStats = useMemo(() => {
     const items = structureDetail?.items || [];
     return {
       total: items.length,
       fixed: items.filter(item => item.itemType === 'FIXED').length,
       variable: items.filter(item => item.itemType === 'VARIABLE').length,
+      taxable: items.filter(item => Boolean(item.isTaxable)).length,
+      disabled: items.filter(item => Number(item.status ?? 1) !== 1).length,
+      formula: items.filter(item => Boolean(item.formula && String(item.formula).trim())).length,
     };
   }, [structureDetail]);
+  // 结构风险直接汇总到详情区，方便从基础配置一路核到员工现薪，不再来回切页找异常。
+  const structureRiskItems = useMemo(() => {
+    if (!structureDetail) return [] as Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }>;
+
+    const items: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+
+    if (structureDetail.items?.length === 0) {
+      items.push({
+        key: 'empty-items',
+        title: '结构还没有关联薪资项目',
+        detail: '空结构无法直接用于真实分配，即使结构本身启用，也很难在员工现薪里形成可核对的薪资明细。',
+        severity: 'danger',
+      });
+    }
+
+    if (Number(structureDetail.status ?? 1) !== 1 && structureLinkedEmployeeRecords.length > 0) {
+      items.push({
+        key: 'disabled-structure-in-use',
+        title: '结构已禁用但仍有现薪在用',
+        detail: `当前还有 ${structureLinkedEmployeeRecords.length} 条 ACTIVE 在岗现薪引用这套结构，禁用只会阻止新分配，不会自动迁移旧档案。`,
+        severity: 'danger',
+      });
+    }
+
+    if (structureItemStats.disabled > 0) {
+      items.push({
+        key: 'disabled-items',
+        title: '结构仍引用禁用薪资项目',
+        detail: `当前结构包含 ${structureItemStats.disabled} 个禁用项目，历史明细仍能展示，但后续编辑和分配要注意是否继续保留这些项目。`,
+        severity: 'warning',
+      });
+    }
+
+    if (structureLinkedFutureEmployeeRecords.length > 0) {
+      items.push({
+        key: 'future-linked-salaries',
+        title: '关联现薪里包含未来生效档案',
+        detail: `当前有 ${structureLinkedFutureEmployeeRecords.length} 条关联现薪的生效日晚于今天，做结构联调时要区分“接口当前返回”和“今天已实际生效”的员工。`,
+        severity: 'warning',
+      });
+    }
+
+    if (structureLinkedEmployeeRecords.length === 0) {
+      items.push({
+        key: 'no-linked-employees',
+        title: '当前没有在岗样本',
+        detail: '还没有在岗员工使用这套结构，基础配置是完整的，但还无法直接验证员工现薪、调薪和个税测算链路。',
+        severity: 'warning',
+      });
+    }
+
+    return items;
+  }, [
+    structureDetail,
+    structureItemStats.disabled,
+    structureLinkedEmployeeRecords.length,
+    structureLinkedFutureEmployeeRecords.length,
+  ]);
+  const structureRiskSummary = useMemo(() => {
+    const score = structureRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    if (!score) {
+      return {
+        label: '结构可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前结构、项目和现薪样本口径已经对齐，可以直接核对结构联动结果。',
+      };
+    }
+
+    if (score <= 2) {
+      return {
+        label: '结构需注意',
+        className: 'border-amber-200 bg-amber-50 text-amber-700',
+        hint: `发现 ${structureRiskItems.length} 条需要人工确认的结构联调提示。`,
+      };
+    }
+
+    return {
+      label: '结构信息不足',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+      hint: `当前有 ${structureRiskItems.length} 条高风险提示，建议先补齐结构口径再继续联调。`,
+    };
+  }, [structureRiskItems]);
+  const salaryItemUsageMap = useMemo(
+    () => salaryStructureDetails.reduce((result, detail) => {
+      const structureSalaryStats = structureActiveSalaryStatsMap.get(detail.id);
+
+      (detail.items || []).forEach(item => {
+        const current = result.get(item.id) || {
+          structureIds: new Set<number>(),
+          enabledStructureIds: new Set<number>(),
+          activeEmployeeIds: new Set<number>(),
+          activeArchiveCount: 0,
+          futureArchiveCount: 0,
+          sampleStructureNames: [] as string[],
+        };
+
+        current.structureIds.add(detail.id);
+        if (Number(detail.status ?? 1) === 1) {
+          current.enabledStructureIds.add(detail.id);
+        }
+        if (detail.structureName && !current.sampleStructureNames.includes(detail.structureName) && current.sampleStructureNames.length < 3) {
+          current.sampleStructureNames.push(detail.structureName);
+        }
+
+        if (structureSalaryStats) {
+          current.activeArchiveCount += structureSalaryStats.archiveCount;
+          current.futureArchiveCount += structureSalaryStats.futureCount;
+          structureSalaryStats.employeeIds.forEach(employeeId => current.activeEmployeeIds.add(employeeId));
+        }
+
+        result.set(item.id, current);
+      });
+
+      return result;
+    }, new Map<number, {
+      structureIds: Set<number>;
+      enabledStructureIds: Set<number>;
+      activeEmployeeIds: Set<number>;
+      activeArchiveCount: number;
+      futureArchiveCount: number;
+      sampleStructureNames: string[];
+    }>()),
+    [salaryStructureDetails, structureActiveSalaryStatsMap],
+  );
+  const orphanSalaryItems = useMemo(
+    () => salaryItems.filter(item => !salaryItemUsageMap.get(item.id)?.structureIds.size),
+    [salaryItemUsageMap, salaryItems],
+  );
+  const linkedSalaryItems = useMemo(
+    () => salaryItems.filter(item => Boolean(salaryItemUsageMap.get(item.id)?.activeArchiveCount)),
+    [salaryItemUsageMap, salaryItems],
+  );
+  const disabledReferencedSalaryItems = useMemo(
+    () => salaryItems.filter(item => Number(item.status ?? 1) === 0 && Boolean(salaryItemUsageMap.get(item.id)?.structureIds.size)),
+    [salaryItemUsageMap, salaryItems],
+  );
+  const formulaSalaryItems = useMemo(
+    () => salaryItems.filter(item => Boolean(item.formula && String(item.formula).trim())),
+    [salaryItems],
+  );
+  const salaryItemRiskItems = useMemo(() => {
+    const items: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+
+    if (disabledReferencedSalaryItems.length > 0) {
+      items.push({
+        key: 'disabled-referenced',
+        title: '禁用项目仍被结构引用',
+        detail: `当前有 ${disabledReferencedSalaryItems.length} 个禁用项目仍挂在薪资结构里，历史明细还能展示，但后续结构编辑和员工分配要重点核对。`,
+        severity: 'danger',
+      });
+    }
+
+    if (orphanSalaryItems.length > 0) {
+      items.push({
+        key: 'orphan-items',
+        title: '存在未被任何结构引用的项目',
+        detail: `当前有 ${orphanSalaryItems.length} 个项目还没被任何薪资结构使用，适合清理或继续补结构联动。`,
+        severity: 'warning',
+      });
+    }
+
+    if (formulaSalaryItems.length > 0) {
+      items.push({
+        key: 'formula-items',
+        title: '存在带公式的薪资项目',
+        detail: `当前有 ${formulaSalaryItems.length} 个项目带公式配置，联调时要确认这些公式只是展示属性，还是已经被后端真实使用。`,
+        severity: 'warning',
+      });
+    }
+
+    return items;
+  }, [disabledReferencedSalaryItems.length, formulaSalaryItems.length, orphanSalaryItems.length]);
+  const salaryItemRiskSummary = useMemo(() => {
+    const score = salaryItemRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    if (!score) {
+      return {
+        label: '项目可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前项目、结构引用和现薪命中关系比较清晰，可以直接核对项目联动。',
+      };
+    }
+
+    if (score <= 2) {
+      return {
+        label: '项目需注意',
+        className: 'border-amber-200 bg-amber-50 text-amber-700',
+        hint: `发现 ${salaryItemRiskItems.length} 条需要人工确认的项目联调提示。`,
+      };
+    }
+
+    return {
+      label: '项目信息不足',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+      hint: `当前有 ${salaryItemRiskItems.length} 条高风险提示，建议先补齐项目和结构关系。`,
+    };
+  }, [salaryItemRiskItems]);
   const defaultAssignableEmployeeId = (
     (selectedEmployeeId && assignableEmployees.some(employee => String(employee.id) === selectedEmployeeId)
       ? Number(selectedEmployeeId)
@@ -1386,6 +2855,250 @@ export const HrSalaryPage: React.FC = () => {
 
   const latestEmployeeAdjustment = sortedEmployeeAdjustmentHistory[0] || null;
 
+  const employeeCurrentSalarySnapshot = useMemo(
+    () => employeeSalaryDetail || currentEmployeeRecord,
+    [currentEmployeeRecord, employeeSalaryDetail],
+  );
+
+  const employeeAdjustmentHistoryDiagnostics = useMemo(() => {
+    const duplicateEffectiveDates = Array.from(
+      sortedEmployeeAdjustmentHistory.reduce((result, item) => {
+        const effectiveDate = toDateInputValue(item.effectiveDate);
+        if (!effectiveDate) return result;
+        result.set(effectiveDate, (result.get(effectiveDate) || 0) + 1);
+        return result;
+      }, new Map<string, number>()),
+    )
+      .filter(([, count]) => count > 1)
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+    const duplicateDateMap = new Map(duplicateEffectiveDates);
+    const matchedArchiveMap = new Map<number, EmployeeSalary>();
+    const rowIssueMap = new Map<number, Array<{ key: string; label: string; detail: string; severity: 'warning' | 'danger' }>>();
+    let landedCurrentCount = 0;
+    let landedHistoryCount = 0;
+    let pendingPastDueCount = 0;
+    let unmatchedEffectiveCount = 0;
+    let statusLagCount = 0;
+    let futureEffectiveCount = 0;
+
+    const pushRowIssue = (
+      recordId: number,
+      issue: { key: string; label: string; detail: string; severity: 'warning' | 'danger' },
+    ) => {
+      const current = rowIssueMap.get(recordId) || [];
+      current.push(issue);
+      rowIssueMap.set(recordId, current);
+    };
+
+    sortedEmployeeAdjustmentHistory.forEach(item => {
+      const effectiveDate = toDateInputValue(item.effectiveDate) || '';
+      const duplicateCount = effectiveDate ? duplicateDateMap.get(effectiveDate) || 0 : 0;
+      const matchedCurrent = isSalaryLandingMatched(employeeCurrentSalarySnapshot, item.effectiveDate, item.afterTotal);
+      const matchedArchive = employeeSalaryHistory.find(record => isSalaryLandingMatched(record, item.effectiveDate, item.afterTotal)) || null;
+      const status = String(item.status || '').toUpperCase();
+      const futureEffective = isFutureDate(item.effectiveDate);
+
+      if (matchedArchive) {
+        matchedArchiveMap.set(item.id, matchedArchive);
+      }
+
+      if (duplicateCount > 0) {
+        pushRowIssue(item.id, {
+          key: 'duplicate-effective-date',
+          label: '同日多次',
+          detail: `${effectiveDate} 共有 ${duplicateCount} 条调薪记录，联调时要结合薪资档案确认最终落哪一条。`,
+          severity: duplicateCount > 1 ? 'warning' : 'warning',
+        });
+      }
+
+      if (matchedCurrent) {
+        landedCurrentCount += 1;
+        pushRowIssue(item.id, {
+          key: 'landed-current',
+          label: '已落当前现薪',
+          detail: '这条调薪已经命中当前 ACTIVE 现薪，后续测算会直接按这条结果继续走。',
+          severity: 'warning',
+        });
+      } else if (matchedArchive) {
+        landedHistoryCount += 1;
+        pushRowIssue(item.id, {
+          key: 'landed-history',
+          label: '已落历史档案',
+          detail: `已命中薪资档案 #${matchedArchive.id}，当前现薪可能已经被后续调薪覆盖。`,
+          severity: 'warning',
+        });
+      }
+
+      if (futureEffective) {
+        futureEffectiveCount += 1;
+        pushRowIssue(item.id, {
+          key: 'future-effective',
+          label: '未来生效',
+          detail: `${effectiveDate} 才开始生效，核对今天的口径时不要把它当成当前已发放薪资。`,
+          severity: 'warning',
+        });
+      }
+
+      switch (status) {
+        case 'EFFECTIVE':
+          if (!matchedCurrent && !matchedArchive) {
+            unmatchedEffectiveCount += 1;
+            pushRowIssue(item.id, {
+              key: 'effective-unmatched',
+              label: '已生效未落档',
+              detail: `状态已经是 EFFECTIVE，但当前没有在薪资档案中找到 ${effectiveDate} / ${formatCurrency(item.afterTotal)} 的落档记录。`,
+              severity: 'danger',
+            });
+          }
+          break;
+        case 'APPROVED':
+          if (matchedCurrent || matchedArchive) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approved-but-landed',
+              label: '状态滞后',
+              detail: '这条调薪已经在薪资档案中命中，但单据状态还停留在 APPROVED，建议回查状态同步。',
+              severity: 'danger',
+            });
+          } else if (!futureEffective) {
+            pendingPastDueCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approved-past-due',
+              label: '到期未执行',
+              detail: `生效日 ${effectiveDate} 已到，但当前还没看到落档结果，通常需要继续执行生效。`,
+              severity: 'danger',
+            });
+          }
+          break;
+        case 'APPROVING':
+          if (matchedCurrent || matchedArchive) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approving-but-landed',
+              label: '审批中已落档',
+              detail: '这条调薪还在审批中，但工资档案已经命中，联调时要重点核对流程与落库先后关系。',
+              severity: 'danger',
+            });
+          } else if (!futureEffective) {
+            pendingPastDueCount += 1;
+            pushRowIssue(item.id, {
+              key: 'approving-past-due',
+              label: '审批滞后',
+              detail: `生效日 ${effectiveDate} 已到，单据仍停留在审批中。`,
+              severity: 'warning',
+            });
+          }
+          break;
+        case 'DRAFT':
+          if (matchedCurrent || matchedArchive) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'draft-but-landed',
+              label: '草稿已落档',
+              detail: '这条单据仍是草稿，但薪资档案已经命中对应结果，说明状态和落档链路不一致。',
+              severity: 'danger',
+            });
+          } else if (!futureEffective) {
+            pendingPastDueCount += 1;
+            pushRowIssue(item.id, {
+              key: 'stale-draft',
+              label: '草稿过期',
+              detail: `生效日 ${effectiveDate} 已到，这条草稿如果继续保留，很容易和真实现薪口径脱节。`,
+              severity: 'warning',
+            });
+          }
+          break;
+        case 'REJECTED':
+          if (matchedCurrent || matchedArchive) {
+            statusLagCount += 1;
+            pushRowIssue(item.id, {
+              key: 'rejected-but-landed',
+              label: '已拒绝却落档',
+              detail: '这条单据状态是 REJECTED，但薪资档案已经命中，属于需要优先排查的链路异常。',
+              severity: 'danger',
+            });
+          }
+          break;
+        default:
+          break;
+      }
+    });
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (unmatchedEffectiveCount > 0) {
+      riskItems.push({
+        key: 'effective-unmatched',
+        title: '存在已生效但未落档的调薪',
+        detail: `当前有 ${unmatchedEffectiveCount} 条 EFFECTIVE 记录没有在员工薪资档案里命中，优先核对生效落库逻辑。`,
+        severity: 'danger',
+      });
+    }
+    if (pendingPastDueCount > 0) {
+      riskItems.push({
+        key: 'pending-past-due',
+        title: '存在过了生效日仍未推进的调薪',
+        detail: `当前有 ${pendingPastDueCount} 条单据已经过了生效日，但状态还没推进到最终落档。`,
+        severity: 'danger',
+      });
+    }
+    if (statusLagCount > 0) {
+      riskItems.push({
+        key: 'status-lag',
+        title: '存在状态与落档不同步的调薪',
+        detail: `当前有 ${statusLagCount} 条非 EFFECTIVE 单据已经命中现薪或历史档案，流程状态需要回查。`,
+        severity: 'danger',
+      });
+    }
+    if (duplicateEffectiveDates.length > 0) {
+      const [effectiveDate, count] = duplicateEffectiveDates[0];
+      riskItems.push({
+        key: 'duplicate-effective-date',
+        title: '存在同日多次调薪',
+        detail: `${effectiveDate} 共有 ${count} 条调薪记录，联调时要结合历史档案确认最终落哪一条。`,
+        severity: 'warning',
+      });
+    }
+    if (futureEffectiveCount > 0) {
+      riskItems.push({
+        key: 'future-effective',
+        title: '存在未来生效调薪',
+        detail: `当前有 ${futureEffectiveCount} 条记录的生效日晚于今天，测算时要区分“已创建未来档案”和“当前已发放”。`,
+        severity: 'warning',
+      });
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !score
+      ? {
+        label: '履历可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前员工的调薪履历、薪资档案和现薪口径比较一致，可以直接顺着链路往下核。',
+      }
+      : score <= 2
+        ? {
+          label: '履历需注意',
+          className: 'border-amber-200 bg-amber-50 text-amber-700',
+          hint: `发现 ${riskItems.length} 条需要人工确认的调薪履历提示。`,
+        }
+        : {
+          label: '履历存在风险',
+          className: 'border-rose-200 bg-rose-50 text-rose-700',
+          hint: `当前有 ${riskItems.length} 条高风险提示，建议先核对调薪状态流转和薪资档案结果。`,
+        };
+
+    return {
+      duplicateEffectiveDates,
+      landedCurrentCount,
+      landedHistoryCount,
+      pendingPastDueCount,
+      unmatchedEffectiveCount,
+      riskItems,
+      riskSummary,
+      rowIssueMap,
+      matchedArchiveMap,
+    };
+  }, [employeeCurrentSalarySnapshot, employeeSalaryHistory, sortedEmployeeAdjustmentHistory]);
+
   const filteredEmployeeSalaryHistory = useMemo(() => {
     if (salaryHistoryStatusFilter === ALL_VALUE) {
       return employeeSalaryHistory;
@@ -1519,6 +3232,211 @@ export const HrSalaryPage: React.FC = () => {
     [taxConfigForm.deductionItems],
   );
 
+  const taxConfigReferenceEntries = useMemo(
+    () => deductionTypeOptions
+      .map(item => ({
+        type: item.value,
+        label: item.label,
+        amount: Number(taxConfigForm.deductionItems[item.value] || 0),
+      }))
+      .filter(item => item.amount > 0),
+    [taxConfigForm.deductionItems],
+  );
+
+  const taxConfigDiagnostics = useMemo(() => {
+    const rows = taxConfigBracketPreview.rows;
+    const gapPairs: Array<{ from: number; to: number }> = [];
+    const rateDropPairs: Array<{ fromIndex: number; toIndex: number; previousRate: number; nextRate: number }> = [];
+    const deductionDropPairs: Array<{ fromIndex: number; toIndex: number; previousDeduction: number; nextDeduction: number }> = [];
+    const threshold = Number(taxConfigForm.threshold || 0);
+
+    for (let index = 1; index < rows.length; index += 1) {
+      const previous = rows[index - 1];
+      const current = rows[index];
+
+      if (previous.max != null && Number(current.min) > Number(previous.max)) {
+        gapPairs.push({
+          from: Number(previous.max),
+          to: Number(current.min),
+        });
+      }
+
+      if (Number(current.rate) < Number(previous.rate)) {
+        rateDropPairs.push({
+          fromIndex: index,
+          toIndex: index + 1,
+          previousRate: Number(previous.rate),
+          nextRate: Number(current.rate),
+        });
+      }
+
+      if (Number(current.deduction) < Number(previous.deduction)) {
+        deductionDropPairs.push({
+          fromIndex: index,
+          toIndex: index + 1,
+          previousDeduction: Number(previous.deduction),
+          nextDeduction: Number(current.deduction),
+        });
+      }
+    }
+
+    const hasOpenEndedLastBracket = rows.length > 0 && rows[rows.length - 1].max == null;
+    const sampleTaxableIncome = Number(currentTaxableIncome || 0);
+    const sampleTaxableAmount = Number(Math.max(sampleTaxableIncome - threshold - currentTaxDeductionTotal, 0).toFixed(2));
+    const matchedBracketIndex = rows.findIndex(item =>
+      sampleTaxableAmount >= Number(item.min)
+      && (item.max == null || sampleTaxableAmount < Number(item.max)),
+    );
+    const matchedBracket = matchedBracketIndex >= 0 ? rows[matchedBracketIndex] : null;
+    const nextBracket = matchedBracketIndex >= 0
+      ? rows[matchedBracketIndex + 1] || null
+      : rows.find(item => sampleTaxableAmount < Number(item.min)) || null;
+    const remainingToNextBracket = nextBracket
+      ? Number(Math.max(Number(nextBracket.min) - sampleTaxableAmount, 0).toFixed(2))
+      : null;
+    const estimatedTaxAmount = matchedBracket
+      ? Number(Math.max(sampleTaxableAmount * Number(matchedBracket.rate || 0) - Number(matchedBracket.deduction || 0), 0).toFixed(2))
+      : 0;
+    const estimatedAfterTaxIncome = Number((currentGrossSalary - currentPersonalInsurance - estimatedTaxAmount).toFixed(2));
+    const differenceFromCurrentTax = Number((estimatedTaxAmount - currentTaxAmount).toFixed(2));
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (taxConfigBracketPreview.error) {
+      riskItems.push({
+        key: 'json-invalid',
+        title: '税率档 JSON 解析失败',
+        detail: taxConfigBracketPreview.error,
+        severity: 'danger',
+      });
+    } else {
+      if (threshold <= 0) {
+        riskItems.push({
+          key: 'threshold-invalid',
+          title: '起征点未设置为有效值',
+          detail: '当前起征点小于等于 0，保存后会直接影响所有员工的个税口径。',
+          severity: 'danger',
+        });
+      }
+
+      if (gapPairs.length > 0) {
+        const firstGap = gapPairs[0];
+        riskItems.push({
+          key: 'bracket-gap',
+          title: '税率档之间存在断层',
+          detail: `当前税率档在 ${formatCurrency(firstGap.from)} 到 ${formatCurrency(firstGap.to)} 之间存在空档，部分应纳税所得额将落不到任何税档。`,
+          severity: 'danger',
+        });
+      }
+
+      if (rateDropPairs.length > 0) {
+        const firstDrop = rateDropPairs[0];
+        riskItems.push({
+          key: 'rate-drop',
+          title: '后续税率低于前一档',
+          detail: `第 ${firstDrop.toIndex} 档税率 ${formatPercent(firstDrop.nextRate * 100)} 低于第 ${firstDrop.fromIndex} 档的 ${formatPercent(firstDrop.previousRate * 100)}。`,
+          severity: 'danger',
+        });
+      }
+
+      if (deductionDropPairs.length > 0) {
+        const firstDrop = deductionDropPairs[0];
+        riskItems.push({
+          key: 'deduction-drop',
+          title: '速算扣除数出现倒退',
+          detail: `第 ${firstDrop.toIndex} 档速算扣除数 ${formatCurrency(firstDrop.nextDeduction)} 低于第 ${firstDrop.fromIndex} 档的 ${formatCurrency(firstDrop.previousDeduction)}。`,
+          severity: 'warning',
+        });
+      }
+
+      if (!hasOpenEndedLastBracket) {
+        riskItems.push({
+          key: 'last-bracket-capped',
+          title: '最后一档仍设置了上限',
+          detail: '当前最后一档没有放开为无上限，高收入样本可能在页面里落不到任何税档。',
+          severity: 'warning',
+        });
+      }
+
+      if (taxConfigReferenceEntries.length === 0) {
+        riskItems.push({
+          key: 'reference-empty',
+          title: '专项附加扣除参考标准为空',
+          detail: '当前没有配置任何正向专项附加扣除参考值，HR 在录入员工扣除时缺少模板基线。',
+          severity: 'warning',
+        });
+      }
+
+      if (currentEmployeeRecord && rows.length > 0 && matchedBracketIndex === -1) {
+        riskItems.push({
+          key: 'sample-outside-brackets',
+          title: '当前联调样本落不到任何税档',
+          detail: `${currentSelectedEmployeeLabel || '当前员工'} 的应纳税所得额 ${formatCurrency(sampleTaxableAmount)} 没有命中任何税率档。`,
+          severity: 'danger',
+        });
+      }
+
+      if (currentEmployeeRecord && taxConfigReferenceEntries.length > 0 && currentTaxDeductionTotal === 0) {
+        riskItems.push({
+          key: 'sample-deduction-empty',
+          title: '当前联调样本仍按 0 扣除项估算',
+          detail: `${currentSelectedEmployeeLabel || '当前员工'} 当前 ${taxReferencePeriod} 没有命中专项扣除，样本预览会按 0 扣除项继续估算。`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !score
+      ? {
+        label: '配置可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前税率档、参考标准和样本预览都比较清晰，可以直接核对个税结果。',
+      }
+      : score <= 2
+        ? {
+          label: '配置需注意',
+          className: 'border-amber-200 bg-amber-50 text-amber-700',
+          hint: `发现 ${riskItems.length} 条需要人工确认的个税配置联调提示。`,
+        }
+        : {
+          label: '配置信息不足',
+          className: 'border-rose-200 bg-rose-50 text-rose-700',
+          hint: `当前有 ${riskItems.length} 条高风险提示，建议先修正个税配置再继续联调。`,
+        };
+
+    return {
+      gapPairs,
+      rateDropPairs,
+      deductionDropPairs,
+      hasOpenEndedLastBracket,
+      threshold,
+      sampleTaxableIncome,
+      sampleTaxableAmount,
+      matchedBracketIndex,
+      matchedBracket,
+      nextBracket,
+      remainingToNextBracket,
+      estimatedTaxAmount,
+      estimatedAfterTaxIncome,
+      differenceFromCurrentTax,
+      riskItems,
+      riskSummary,
+    };
+  }, [
+    currentEmployeeRecord,
+    currentGrossSalary,
+    currentPersonalInsurance,
+    currentSelectedEmployeeLabel,
+    currentTaxAmount,
+    currentTaxDeductionTotal,
+    currentTaxableIncome,
+    taxConfigBracketPreview.error,
+    taxConfigBracketPreview.rows,
+    taxConfigForm.threshold,
+    taxConfigReferenceEntries.length,
+    taxReferencePeriod,
+  ]);
+
   const currentNetIncome = useMemo(
     () => Number(
       employeeTaxCalculation?.afterTaxIncome
@@ -1538,30 +3456,469 @@ export const HrSalaryPage: React.FC = () => {
   );
 
   const employeeInsuranceLedgerRecords = useMemo(
-    () => [...(employeeInsuranceLedgerPage?.records ?? [])].sort((left, right) => {
-      const rightEffectiveTime = new Date(right.effectiveDate || right.updateTime || right.createTime || 0).getTime();
-      const leftEffectiveTime = new Date(left.effectiveDate || left.updateTime || left.createTime || 0).getTime();
-      if (rightEffectiveTime !== leftEffectiveTime) {
-        return rightEffectiveTime - leftEffectiveTime;
-      }
-
-      if (left.status !== right.status) {
-        return left.status === 'ACTIVE' ? -1 : 1;
-      }
-
-      const rightUpdateTime = new Date(right.updateTime || right.createTime || 0).getTime();
-      const leftUpdateTime = new Date(left.updateTime || left.createTime || 0).getTime();
-      return rightUpdateTime - leftUpdateTime || right.id - left.id;
-    }),
+    () => sortInsuranceLedgerRecords(employeeInsuranceLedgerPage?.records ?? []),
     [employeeInsuranceLedgerPage?.records],
   );
 
-  const latestEmployeeInsuranceLedger = employeeInsuranceLedgerRecords[0] || null;
+  const employeeInsuranceLedgerCatalogRecords = useMemo(
+    () => sortInsuranceLedgerRecords(employeeInsuranceLedgerCatalog),
+    [employeeInsuranceLedgerCatalog],
+  );
+
+  const latestEmployeeInsuranceLedger = employeeInsuranceLedgerCatalogRecords[0] || employeeInsuranceLedgerRecords[0] || null;
+
+  const employeeInsuranceLedgerDiagnostics = useMemo(() => {
+    const allRecords = employeeInsuranceLedgerCatalogRecords;
+    const activeRecords = allRecords.filter(item => String(item.status || '').toUpperCase() === 'ACTIVE');
+    const futureRecords = allRecords.filter(item => isFutureDate(item.effectiveDate));
+    const duplicateEffectiveDates = Array.from(
+      allRecords.reduce((result, item) => {
+        const effectiveDate = toDateInputValue(item.effectiveDate);
+        if (!effectiveDate) return result;
+        const current = result.get(effectiveDate) || { count: 0, activeCount: 0 };
+        current.count += 1;
+        if (String(item.status || '').toUpperCase() === 'ACTIVE') {
+          current.activeCount += 1;
+        }
+        result.set(effectiveDate, current);
+        return result;
+      }, new Map<string, { count: number; activeCount: number }>()),
+    )
+      .filter(([, value]) => value.count > 1)
+      .sort((left, right) => right[1].count - left[1].count || left[0].localeCompare(right[0]));
+    const duplicateDateMap = new Map(duplicateEffectiveDates);
+    const rowIssueMap = new Map<number, Array<{ key: string; label: string; detail: string; severity: 'warning' | 'danger' }>>();
+    const outOfRangeRecords: EmployeeInsurance[] = [];
+    const disabledSchemeRecords: EmployeeInsurance[] = [];
+    const baseShiftCandidates: Array<{
+      current: EmployeeInsurance;
+      previous: EmployeeInsurance;
+      delta: number;
+      absoluteDelta: number;
+    }> = [];
+
+    const pushRowIssue = (
+      recordId: number,
+      issue: { key: string; label: string; detail: string; severity: 'warning' | 'danger' },
+    ) => {
+      const current = rowIssueMap.get(recordId) || [];
+      current.push(issue);
+      rowIssueMap.set(recordId, current);
+    };
+
+    allRecords.forEach((record, index) => {
+      const effectiveDate = toDateInputValue(record.effectiveDate) || '';
+      const duplicateInfo = effectiveDate ? duplicateDateMap.get(effectiveDate) : undefined;
+      if (duplicateInfo) {
+        pushRowIssue(record.id, {
+          key: 'duplicate-effective-date',
+          label: '同日重复',
+          detail: `${effectiveDate} 同时存在 ${duplicateInfo.count} 条社保台账，说明当天发生过重复分配或多次覆盖。`,
+          severity: duplicateInfo.activeCount > 1 ? 'danger' : 'warning',
+        });
+      }
+
+      if (String(record.status || '').toUpperCase() === 'ACTIVE' && activeRecords.length > 1) {
+        pushRowIssue(record.id, {
+          key: 'multiple-active',
+          label: 'ACTIVE 重复',
+          detail: `当前员工共有 ${activeRecords.length} 条 ACTIVE 台账，联调时需要确认到底哪一条才是当前真实口径。`,
+          severity: 'danger',
+        });
+      }
+
+      if (isFutureDate(record.effectiveDate)) {
+        pushRowIssue(record.id, {
+          key: 'future-effective',
+          label: '未来生效',
+          detail: `${effectiveDate} 才开始生效，这条记录会影响后续月份的社保口径，不代表今天已经执行。`,
+          severity: 'warning',
+        });
+      }
+
+      const scheme = insuranceSchemeMap.get(record.schemeId);
+      if (scheme) {
+        if (Number(scheme.status ?? 1) === 0) {
+          disabledSchemeRecords.push(record);
+          pushRowIssue(record.id, {
+            key: 'disabled-scheme',
+            label: '方案已禁用',
+            detail: `${scheme.schemeName || '当前方案'} 已被禁用，这条台账只适合做历史核对，不应再作为新分配口径。`,
+            severity: 'warning',
+          });
+        }
+
+        const base = Number(record.base ?? 0);
+        const min = Number(scheme.baseMin ?? 0);
+        const max = Number(scheme.baseMax ?? 0);
+        const outOfRange = (min > 0 && base < min) || (max > 0 && base > max);
+        if (outOfRange) {
+          outOfRangeRecords.push(record);
+          pushRowIssue(record.id, {
+            key: 'base-out-of-range',
+            label: '基数超范围',
+            detail: `当前基数 ${formatCurrency(base)} 超出方案区间 ${formatCurrency(min)} - ${formatCurrency(max)}。`,
+            severity: 'danger',
+          });
+        }
+      }
+
+      const previousRecord = allRecords[index + 1];
+      if (!previousRecord) return;
+
+      const currentEffectiveDate = toDateInputValue(record.effectiveDate) || '';
+      const previousEffectiveDate = toDateInputValue(previousRecord.effectiveDate) || '';
+      if (currentEffectiveDate === previousEffectiveDate) return;
+
+      const delta = Number((Number(record.base || 0) - Number(previousRecord.base || 0)).toFixed(2));
+      if (Math.abs(delta) <= 0.005) return;
+
+      baseShiftCandidates.push({
+        current: record,
+        previous: previousRecord,
+        delta,
+        absoluteDelta: Math.abs(delta),
+      });
+    });
+
+    const latestBaseShift = baseShiftCandidates[0] || null;
+    const activeReferenceRecord = activeRecords[0] || null;
+    const detailMatchedActiveLedger = activeReferenceRecord
+      ? isInsuranceDetailMatchedWithLedger(employeeInsuranceDetail, activeReferenceRecord)
+      : !employeeInsuranceDetail;
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (!allRecords.length) {
+      riskItems.push({
+        key: 'empty-ledger',
+        title: '当前员工还没有社保台账',
+        detail: '这名员工还没有沉淀任何社保分配历史，社保测算和历史切换都无法做真实联调。',
+        severity: 'danger',
+      });
+    } else {
+      if (activeRecords.length === 0) {
+        riskItems.push({
+          key: 'missing-active-ledger',
+          title: '当前没有 ACTIVE 台账',
+          detail: '这名员工只有历史社保记录，当前月份的社保口径可能已经丢失或未重新分配。',
+          severity: 'danger',
+        });
+      }
+
+      if (activeRecords.length > 1) {
+        riskItems.push({
+          key: 'multiple-active-ledgers',
+          title: 'ACTIVE 台账不止一条',
+          detail: `当前共有 ${activeRecords.length} 条 ACTIVE 台账，最晚一条是 ${toDateInputValue(activeRecords[0]?.effectiveDate) || '-'} / ${activeRecords[0]?.schemeName || '-'}`,
+          severity: 'danger',
+        });
+      }
+
+      if (duplicateEffectiveDates.length > 0) {
+        const [effectiveDate, duplicateInfo] = duplicateEffectiveDates[0];
+        riskItems.push({
+          key: 'duplicate-effective-dates',
+          title: '存在重复生效日',
+          detail: `${effectiveDate} 共有 ${duplicateInfo.count} 条台账，其中 ACTIVE ${duplicateInfo.activeCount} 条，建议回查当天的分配或覆盖链路。`,
+          severity: duplicateInfo.activeCount > 1 ? 'danger' : 'warning',
+        });
+      }
+
+      if (futureRecords.length > 0) {
+        riskItems.push({
+          key: 'future-ledgers',
+          title: '存在未来生效台账',
+          detail: `最新一条未来记录是 ${toDateInputValue(futureRecords[0]?.effectiveDate) || '-'} / ${futureRecords[0]?.schemeName || '-'}，核对本月数据时不要误把它当成当前口径。`,
+          severity: 'warning',
+        });
+      }
+
+      if (outOfRangeRecords.length > 0) {
+        const first = outOfRangeRecords[0];
+        riskItems.push({
+          key: 'out-of-range-base',
+          title: '存在基数超出方案区间的台账',
+          detail: `${first.schemeName || '-'} 的台账 #${first.id} 基数为 ${formatCurrency(first.base)}，已经超出方案定义范围。`,
+          severity: 'danger',
+        });
+      }
+
+      if (disabledSchemeRecords.length > 0) {
+        const first = disabledSchemeRecords[0];
+        riskItems.push({
+          key: 'disabled-scheme-ledger',
+          title: '历史台账命中了禁用方案',
+          detail: `${first.schemeName || '-'} 已被禁用，但台账 #${first.id} 仍引用这套方案，核对历史链路时要避免误判成当前可用方案。`,
+          severity: 'warning',
+        });
+      }
+
+      if (employeeInsuranceDetail && activeReferenceRecord && !detailMatchedActiveLedger) {
+        riskItems.push({
+          key: 'detail-ledger-mismatch',
+          title: '详情口径和 ACTIVE 台账未完全对齐',
+          detail: `当前详情是 ${toDateInputValue(employeeInsuranceDetail.effectiveDate) || '-'} / ${employeeInsuranceDetail.schemeName || '-'} / ${formatCurrency(employeeInsuranceDetail.base)}，但最新 ACTIVE 台账是 ${toDateInputValue(activeReferenceRecord.effectiveDate) || '-'} / ${activeReferenceRecord.schemeName || '-'} / ${formatCurrency(activeReferenceRecord.base)}。`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !score
+      ? {
+        label: '台账可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前员工的社保台账链路比较清晰，可以直接核对当前口径和历史切换。',
+      }
+      : score <= 2
+        ? {
+          label: '台账需注意',
+          className: 'border-amber-200 bg-amber-50 text-amber-700',
+          hint: `发现 ${riskItems.length} 条需要人工确认的社保台账提示。`,
+        }
+        : {
+          label: '台账存在风险',
+          className: 'border-rose-200 bg-rose-50 text-rose-700',
+          hint: `当前有 ${riskItems.length} 条高风险提示，建议先核对台账链路再继续联调测算。`,
+        };
+
+    return {
+      allRecords,
+      activeRecords,
+      futureRecords,
+      duplicateEffectiveDates,
+      latestBaseShift,
+      activeReferenceRecord,
+      detailMatchedActiveLedger,
+      riskItems,
+      riskSummary,
+      rowIssueMap,
+    };
+  }, [employeeInsuranceDetail, employeeInsuranceLedgerCatalogRecords, insuranceSchemeMap]);
 
   const selectedInsuranceScheme = useMemo(
     () => enabledInsuranceSchemes.find(item => item.id === insuranceForm.schemeId) || null,
     [enabledInsuranceSchemes, insuranceForm.schemeId],
   );
+
+  const insuranceAssignPreview = useMemo(() => {
+    if (!selectedInsuranceScheme || Number(insuranceForm.base || 0) <= 0) {
+      return null;
+    }
+
+    const base = Number(insuranceForm.base || 0);
+    const rows = [
+      {
+        key: 'pension',
+        label: '养老保险',
+        personalRate: Number(selectedInsuranceScheme.pensionPersonalRate ?? 0),
+        companyRate: Number(selectedInsuranceScheme.pensionCompanyRate ?? 0),
+      },
+      {
+        key: 'medical',
+        label: '医疗保险',
+        personalRate: Number(selectedInsuranceScheme.medicalPersonalRate ?? 0),
+        companyRate: Number(selectedInsuranceScheme.medicalCompanyRate ?? 0),
+      },
+      {
+        key: 'unemployment',
+        label: '失业保险',
+        personalRate: Number(selectedInsuranceScheme.unemploymentPersonalRate ?? 0),
+        companyRate: Number(selectedInsuranceScheme.unemploymentCompanyRate ?? 0),
+      },
+      {
+        key: 'injury',
+        label: '工伤保险',
+        personalRate: 0,
+        companyRate: Number(selectedInsuranceScheme.injuryCompanyRate ?? 0),
+      },
+      {
+        key: 'maternity',
+        label: '生育保险',
+        personalRate: 0,
+        companyRate: Number(selectedInsuranceScheme.maternityCompanyRate ?? 0),
+      },
+      {
+        key: 'housingFund',
+        label: '住房公积金',
+        personalRate: Number(selectedInsuranceScheme.housingFundPersonalRate ?? 0),
+        companyRate: Number(selectedInsuranceScheme.housingFundCompanyRate ?? 0),
+      },
+    ].map(item => {
+      const personalAmount = normalizeAmount(base * item.personalRate / 100);
+      const companyAmount = normalizeAmount(base * item.companyRate / 100);
+      return {
+        ...item,
+        personalAmount,
+        companyAmount,
+        totalAmount: normalizeAmount(personalAmount + companyAmount),
+      };
+    });
+
+    const personalTotal = normalizeAmount(rows.reduce((sum, item) => sum + item.personalAmount, 0));
+    const companyTotal = normalizeAmount(rows.reduce((sum, item) => sum + item.companyAmount, 0));
+
+    return {
+      rows,
+      personalTotal,
+      companyTotal,
+      totalAmount: normalizeAmount(personalTotal + companyTotal),
+    };
+  }, [insuranceForm.base, selectedInsuranceScheme]);
+
+  const insuranceAssignDiagnostics = useMemo(() => {
+    const currentActiveLedger = employeeInsuranceLedgerDiagnostics.activeReferenceRecord;
+    const selectedEffectiveDate = insuranceForm.effectiveDate || '';
+    const schemeEffectiveDate = toDateInputValue(selectedInsuranceScheme?.effectiveDate) || '';
+    const sameDateRecords = selectedEffectiveDate
+      ? employeeInsuranceLedgerDiagnostics.allRecords.filter(item => (toDateInputValue(item.effectiveDate) || '') === selectedEffectiveDate)
+      : [];
+    const sameAsCurrentActive = Boolean(
+      currentActiveLedger
+      && Number(currentActiveLedger.schemeId) === Number(insuranceForm.schemeId)
+      && normalizeAmount(currentActiveLedger.base) === normalizeAmount(insuranceForm.base)
+      && (toDateInputValue(currentActiveLedger.effectiveDate) || '') === selectedEffectiveDate,
+    );
+    const replaceCurrentSameDay = Boolean(
+      currentActiveLedger
+      && selectedEffectiveDate
+      && (toDateInputValue(currentActiveLedger.effectiveDate) || '') === selectedEffectiveDate
+      && !sameAsCurrentActive,
+    );
+    const backfillHistory = Boolean(
+      currentActiveLedger
+      && selectedEffectiveDate
+      && (toDateInputValue(currentActiveLedger.effectiveDate) || '') > selectedEffectiveDate,
+    );
+    const schemeStartsLater = Boolean(schemeEffectiveDate && selectedEffectiveDate && schemeEffectiveDate > selectedEffectiveDate);
+    const baseMin = Number(selectedInsuranceScheme?.baseMin ?? 0);
+    const baseMax = Number(selectedInsuranceScheme?.baseMax ?? 0);
+    const baseOutOfRange = Boolean(
+      selectedInsuranceScheme
+      && ((baseMin > 0 && Number(insuranceForm.base || 0) < baseMin) || (baseMax > 0 && Number(insuranceForm.base || 0) > baseMax)),
+    );
+
+    let modeLabel = '等待选择方案';
+    let modeHint = '选择方案、基数和生效日期后，这里会显示本次分配会如何影响当前社保链路。';
+
+    if (selectedInsuranceScheme && selectedEffectiveDate) {
+      if (!currentActiveLedger) {
+        modeLabel = '创建首条社保台账';
+        modeHint = '当前员工还没有 ACTIVE 台账，保存后会直接生成当前可用的社保口径。';
+      } else if (sameAsCurrentActive) {
+        modeLabel = '重复提交当前口径';
+        modeHint = '方案、基数和生效日都与当前 ACTIVE 完全一致，继续保存大概率只会制造重复台账。';
+      } else if (replaceCurrentSameDay) {
+        modeLabel = '同日覆盖当前 ACTIVE';
+        modeHint = `当前 ACTIVE 也是 ${selectedEffectiveDate} 生效，本次分配最容易把当天链路叠成多条记录。`;
+      } else if (backfillHistory) {
+        modeLabel = '回补历史台账';
+        modeHint = `当前 ACTIVE 生效于 ${toDateInputValue(currentActiveLedger.effectiveDate) || '-'}，这次会回补更早的历史日期 ${selectedEffectiveDate}。`;
+      } else {
+        modeLabel = '切换当前社保口径';
+        modeHint = `当前 ACTIVE 是 ${toDateInputValue(currentActiveLedger.effectiveDate) || '-'} / ${currentActiveLedger.schemeName || '-'}，保存后会切换成新的当前口径。`;
+      }
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (selectedInsuranceScheme) {
+      if (schemeStartsLater) {
+        riskItems.push({
+          key: 'scheme-effective-date',
+          title: '分配日期早于方案生效日',
+          detail: `当前方案要到 ${schemeEffectiveDate || '-'} 才开始生效，但本次分配日期是 ${selectedEffectiveDate || '-'}。`,
+          severity: 'danger',
+        });
+      }
+
+      if (baseOutOfRange) {
+        riskItems.push({
+          key: 'base-out-of-range',
+          title: '缴纳基数超出方案范围',
+          detail: `当前输入 ${formatCurrency(insuranceForm.base)}，方案区间是 ${formatCurrency(baseMin)} - ${formatCurrency(baseMax)}。`,
+          severity: 'danger',
+        });
+      }
+
+      if (sameDateRecords.length > 0) {
+        const activeCount = sameDateRecords.filter(item => String(item.status || '').toUpperCase() === 'ACTIVE').length;
+        riskItems.push({
+          key: 'same-date-records',
+          title: '目标日期已存在社保台账',
+          detail: `${selectedEffectiveDate} 已经有 ${sameDateRecords.length} 条台账，其中 ACTIVE ${activeCount} 条，继续保存会让同日链路更复杂。`,
+          severity: activeCount > 0 ? 'danger' : 'warning',
+        });
+      }
+
+      if (sameAsCurrentActive) {
+        riskItems.push({
+          key: 'same-as-current',
+          title: '本次分配与当前 ACTIVE 完全一致',
+          detail: '如果只是想刷新测算，不需要再次保存；继续提交只会增加重复样本。',
+          severity: 'warning',
+        });
+      }
+
+      if (backfillHistory) {
+        riskItems.push({
+          key: 'backfill-history',
+          title: '本次是在回补历史台账',
+          detail: '这会影响历史链路核对，不适合当成“切换当前社保方案”的常规操作。',
+          severity: 'warning',
+        });
+      }
+
+      if (!currentActiveLedger) {
+        riskItems.push({
+          key: 'first-active-ledger',
+          title: '当前员工还没有 ACTIVE 台账',
+          detail: '这次保存会生成首条可用社保记录，后续五险一金测算也会跟着切到这套方案。',
+          severity: 'warning',
+        });
+      }
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !selectedInsuranceScheme
+      ? {
+        label: '等待选择',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先选择社保方案，再决定是否需要保存新的分配记录。',
+      }
+      : !score
+        ? {
+          label: '可直接分配',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前方案、生效日和基数看起来都合理，可以直接继续真实联调。',
+        }
+        : score <= 2
+          ? {
+            label: '分配需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的分配提示。`,
+          }
+          : {
+            label: '分配存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整参数再保存。`,
+          };
+
+    return {
+      currentActiveLedger,
+      sameDateRecords,
+      modeLabel,
+      modeHint,
+      riskItems,
+      riskSummary,
+    };
+  }, [
+    employeeInsuranceLedgerDiagnostics.activeReferenceRecord,
+    employeeInsuranceLedgerDiagnostics.allRecords,
+    insuranceForm.base,
+    insuranceForm.effectiveDate,
+    insuranceForm.schemeId,
+    selectedInsuranceScheme,
+  ]);
 
   const taxReferencePeriod = useMemo(() => {
     const { year, month } = getYearMonthFromDate(
@@ -1741,6 +4098,17 @@ export const HrSalaryPage: React.FC = () => {
     ],
   );
 
+  const currentTaxConfigReferenceMap = useMemo(
+    () => {
+      const itemValues = parseTaxDeductionItemValues(currentTaxConfig?.deductionItems);
+      return deductionTypeOptions.reduce((result, item) => {
+        result.set(item.value, Number(itemValues[item.value] || 0));
+        return result;
+      }, new Map<string, number>());
+    },
+    [currentTaxConfig?.deductionItems],
+  );
+
   const sortedEmployeeTaxDeductions = useMemo(
     () => [...employeeTaxDeductions].sort((left, right) => {
       const rightTime = new Date(right.startDate || right.createTime || 0).getTime();
@@ -1767,6 +4135,280 @@ export const HrSalaryPage: React.FC = () => {
     () => new Set(employeeTaxDeductions.map(item => item.id)),
     [employeeTaxDeductions],
   );
+
+  const employeeTaxDeductionDiagnostics = useMemo(() => {
+    const rowIssueMap = new Map<number, Array<{
+      key: string;
+      label: string;
+      detail: string;
+      severity: 'warning' | 'danger';
+    }>>();
+    const summaryMap = new Map<string, {
+      type: string;
+      label: string;
+      referenceAmount: number;
+      totalCount: number;
+      activeCount: number;
+      inScopeCount: number;
+      inScopeAmount: number;
+      activeOutOfScopeCount: number;
+      records: EmployeeTaxDeduction[];
+      activeRecords: EmployeeTaxDeduction[];
+      inScopeRecords: EmployeeTaxDeduction[];
+      latestRecord: EmployeeTaxDeduction | null;
+      latestInScopeRecord: EmployeeTaxDeduction | null;
+      hasOverlap: boolean;
+      hasDuplicateInScope: boolean;
+    }>();
+    const overlapTypes: Array<{ type: string; label: string; recordIds: number[] }> = [];
+    const duplicateInScopeTypes: Array<{ type: string; label: string; count: number }> = [];
+    const activeOutOfScopeTypes: Array<{ type: string; label: string; count: number }> = [];
+
+    const pushRowIssue = (
+      recordId: number,
+      issue: {
+        key: string;
+        label: string;
+        detail: string;
+        severity: 'warning' | 'danger';
+      },
+    ) => {
+      const current = rowIssueMap.get(recordId) || [];
+      if (!current.some(item => item.key === issue.key)) {
+        current.push(issue);
+        rowIssueMap.set(recordId, current);
+      }
+    };
+
+    deductionTypeOptions.forEach(item => {
+      summaryMap.set(item.value, {
+        type: item.value,
+        label: item.label,
+        referenceAmount: Number(currentTaxConfigReferenceMap.get(item.value) || 0),
+        totalCount: 0,
+        activeCount: 0,
+        inScopeCount: 0,
+        inScopeAmount: 0,
+        activeOutOfScopeCount: 0,
+        records: [],
+        activeRecords: [],
+        inScopeRecords: [],
+        latestRecord: null,
+        latestInScopeRecord: null,
+        hasOverlap: false,
+        hasDuplicateInScope: false,
+      });
+    });
+
+    sortedEmployeeAllTaxDeductions.forEach(item => {
+      const current = summaryMap.get(item.deductionType) || {
+        type: item.deductionType,
+        label: deductionTypeLabel(item.deductionType),
+        referenceAmount: Number(currentTaxConfigReferenceMap.get(item.deductionType) || 0),
+        totalCount: 0,
+        activeCount: 0,
+        inScopeCount: 0,
+        inScopeAmount: 0,
+        activeOutOfScopeCount: 0,
+        records: [],
+        activeRecords: [],
+        inScopeRecords: [],
+        latestRecord: null as EmployeeTaxDeduction | null,
+        latestInScopeRecord: null as EmployeeTaxDeduction | null,
+        hasOverlap: false,
+        hasDuplicateInScope: false,
+      };
+
+      current.totalCount += 1;
+      current.records.push(item);
+      if (!current.latestRecord) {
+        current.latestRecord = item;
+      }
+
+      const isActive = String(item.status || '').toUpperCase() === 'ACTIVE';
+      const inScope = activeTaxDeductionIds.has(item.id);
+      if (isActive) {
+        current.activeCount += 1;
+        current.activeRecords.push(item);
+        if (!inScope) {
+          current.activeOutOfScopeCount += 1;
+        }
+      }
+      if (inScope) {
+        current.inScopeCount += 1;
+        current.inScopeAmount += Number(item.amount || 0);
+        current.inScopeRecords.push(item);
+        if (!current.latestInScopeRecord) {
+          current.latestInScopeRecord = item;
+        }
+      }
+
+      summaryMap.set(item.deductionType, current);
+    });
+
+    summaryMap.forEach(summary => {
+      if (summary.inScopeCount > 1) {
+        summary.hasDuplicateInScope = true;
+        duplicateInScopeTypes.push({
+          type: summary.type,
+          label: summary.label,
+          count: summary.inScopeCount,
+        });
+        summary.inScopeRecords.forEach(record => {
+          pushRowIssue(record.id, {
+            key: `duplicate-in-scope-${summary.type}`,
+            label: '本月重复命中',
+            detail: `${summary.label} 当前月份命中了 ${summary.inScopeCount} 条 ACTIVE 记录，个税口径需要人工确认。`,
+            severity: 'danger',
+          });
+        });
+      }
+
+      if (summary.activeOutOfScopeCount > 0) {
+        activeOutOfScopeTypes.push({
+          type: summary.type,
+          label: summary.label,
+          count: summary.activeOutOfScopeCount,
+        });
+        summary.activeRecords
+          .filter(record => !activeTaxDeductionIds.has(record.id))
+          .forEach(record => {
+            pushRowIssue(record.id, {
+              key: `active-out-of-scope-${record.id}`,
+              label: 'ACTIVE 但未参与本月',
+              detail: `${summary.label} 记录仍是 ACTIVE 状态，但当前 ${taxReferencePeriod} 没有命中。`,
+              severity: 'warning',
+            });
+          });
+      }
+
+      const sortedActiveRecords = [...summary.activeRecords].sort((left, right) => {
+        const leftStart = getNormalizedDateValue(left.startDate);
+        const rightStart = getNormalizedDateValue(right.startDate);
+        return leftStart.localeCompare(rightStart, 'zh-CN') || left.id - right.id;
+      });
+
+      for (let index = 1; index < sortedActiveRecords.length; index += 1) {
+        const previous = sortedActiveRecords[index - 1];
+        const current = sortedActiveRecords[index];
+        if (!isDeductionRangeOverlapping(previous.startDate, previous.endDate, current.startDate, current.endDate)) {
+          continue;
+        }
+
+        summary.hasOverlap = true;
+        overlapTypes.push({
+          type: summary.type,
+          label: summary.label,
+          recordIds: [previous.id, current.id],
+        });
+
+        const previousLabel = `${toDateInputValue(previous.startDate) || '-'} ~ ${toDateInputValue(previous.endDate) || '长期有效'}`;
+        const currentLabel = `${toDateInputValue(current.startDate) || '-'} ~ ${toDateInputValue(current.endDate) || '长期有效'}`;
+
+        pushRowIssue(previous.id, {
+          key: `overlap-next-${current.id}`,
+          label: '生效区间重叠',
+          detail: `与同类型记录 ${currentLabel} 区间重叠。`,
+          severity: 'danger',
+        });
+        pushRowIssue(current.id, {
+          key: `overlap-prev-${previous.id}`,
+          label: '生效区间重叠',
+          detail: `与同类型记录 ${previousLabel} 区间重叠。`,
+          severity: 'danger',
+        });
+      }
+    });
+
+    const referenceEntries = Array.from(summaryMap.values())
+      .filter(item => item.referenceAmount > 0 || item.totalCount > 0)
+      .sort((left, right) => left.label.localeCompare(right.label, 'zh-CN'));
+
+    const missingReferenceEntries = referenceEntries.filter(item => item.referenceAmount > 0 && item.inScopeCount === 0);
+
+    return {
+      rowIssueMap,
+      referenceEntries,
+      missingReferenceEntries,
+      overlapTypes,
+      duplicateInScopeTypes,
+      activeOutOfScopeTypes,
+    };
+  }, [
+    activeTaxDeductionIds,
+    currentTaxConfigReferenceMap,
+    sortedEmployeeAllTaxDeductions,
+    taxReferencePeriod,
+  ]);
+
+  const taxDeductionRiskItems = useMemo(() => {
+    const items: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+
+    if (employeeTaxDeductionDiagnostics.duplicateInScopeTypes.length > 0) {
+      const first = employeeTaxDeductionDiagnostics.duplicateInScopeTypes[0];
+      items.push({
+        key: 'duplicate-in-scope',
+        title: '同类专项扣除在本月重复命中',
+        detail: `${first.label} 当前月份命中了 ${first.count} 条 ACTIVE 记录，同一税月可能被重复计入。`,
+        severity: 'danger',
+      });
+    }
+
+    if (employeeTaxDeductionDiagnostics.overlapTypes.length > 0) {
+      const first = employeeTaxDeductionDiagnostics.overlapTypes[0];
+      items.push({
+        key: 'overlap-ranges',
+        title: '存在同类扣除区间重叠',
+        detail: `${first.label} 至少有 ${first.recordIds.length} 条 ACTIVE 记录生效区间重叠，建议先整理历史记录。`,
+        severity: 'danger',
+      });
+    }
+
+    if (employeeTaxDeductionDiagnostics.activeOutOfScopeTypes.length > 0) {
+      items.push({
+        key: 'active-out-of-scope',
+        title: 'ACTIVE 记录未命中当前税月',
+        detail: `${employeeTaxDeductionDiagnostics.activeOutOfScopeTypes.map(item => `${item.label} ${item.count} 条`).join('、')}，当前 ${taxReferencePeriod} 的个税测算不会读取这些记录。`,
+        severity: 'warning',
+      });
+    }
+
+    if (employeeTaxDeductionDiagnostics.missingReferenceEntries.length > 0) {
+      items.push({
+        key: 'missing-reference',
+        title: '当前员工还没有命中参考扣除项',
+        detail: `按当前全局配置，${employeeTaxDeductionDiagnostics.missingReferenceEntries.map(item => `${item.label} ${formatCurrency(item.referenceAmount)}`).join('、')} 都可作为参考模板，但本月尚未命中。`,
+        severity: sortedEmployeeTaxDeductions.length === 0 ? 'danger' : 'warning',
+      });
+    }
+
+    return items;
+  }, [employeeTaxDeductionDiagnostics, sortedEmployeeTaxDeductions.length, taxReferencePeriod]);
+
+  const taxDeductionRiskSummary = useMemo(() => {
+    const score = taxDeductionRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    if (!score) {
+      return {
+        label: '扣除链路可直接联调',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        hint: '当前专项扣除记录、当前税月命中和个税配置参考值都比较清晰，可以直接核对个税结果。',
+      };
+    }
+
+    if (score <= 2) {
+      return {
+        label: '扣除链路需注意',
+        className: 'border-amber-200 bg-amber-50 text-amber-700',
+        hint: `发现 ${taxDeductionRiskItems.length} 条需要人工确认的专项扣除联调提示。`,
+      };
+    }
+
+    return {
+      label: '扣除信息不足',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+      hint: `当前有 ${taxDeductionRiskItems.length} 条高风险提示，建议先补齐专项扣除记录再继续联调。`,
+    };
+  }, [taxDeductionRiskItems]);
 
   const taxDeductionFilterTypeOptions = useMemo(
     () => Array.from(new Set(
@@ -1812,16 +4454,217 @@ export const HrSalaryPage: React.FC = () => {
     [adjustForm.afterSalaryData],
   );
 
+  const adjustmentFormEmployee = useMemo(
+    () => employeeMap.get(adjustForm.employeeId) || null,
+    [adjustForm.employeeId, employeeMap],
+  );
+
+  const adjustmentFormDiagnostics = useMemo(() => {
+    const baselineAmountMap = buildSalaryItemAmountMap(adjustmentBaseline?.items);
+    const nextAmountMap = Object.entries(adjustForm.afterSalaryData).reduce<Record<string, number>>((result, [key, value]) => {
+      const amount = Number(value || 0);
+      result[key] = Number.isFinite(amount) ? normalizeAmount(amount) : 0;
+      return result;
+    }, {});
+    const changedItemCount = Array.from(new Set([...Object.keys(baselineAmountMap), ...Object.keys(nextAmountMap)])).filter(key =>
+      normalizeAmount(baselineAmountMap[key]) !== normalizeAmount(nextAmountMap[key]),
+    ).length;
+    const baselineEffectiveDate = toDateInputValue(adjustmentBaseline?.effectiveDate) || '';
+    const selectedEffectiveDate = adjustForm.effectiveDate || '';
+    const employeeAdjustments = [...adjustmentFormHistory]
+      .sort((left, right) => {
+        const rightTime = new Date(right.effectiveDate || right.createTime || 0).getTime();
+        const leftTime = new Date(left.effectiveDate || left.createTime || 0).getTime();
+        return rightTime - leftTime || right.id - left.id;
+      });
+    const sameDateAdjustments = employeeAdjustments.filter(item => (toDateInputValue(item.effectiveDate) || '') === selectedEffectiveDate);
+    const futureAdjustments = employeeAdjustments.filter(item => isFutureDate(item.effectiveDate));
+    const currentActiveSalary = activeEmployeeSalaryMap.get(adjustForm.employeeId) || null;
+    const noChanges = Boolean(adjustmentBaseline) && changedItemCount === 0;
+    const isDecrease = adjustmentBaseline ? adjustmentAfterTotal < Number(adjustmentBaseline.totalSalary || 0) : false;
+    const sameDayCurrent = Boolean(baselineEffectiveDate && selectedEffectiveDate && baselineEffectiveDate === selectedEffectiveDate);
+    const backfillHistory = Boolean(baselineEffectiveDate && selectedEffectiveDate && selectedEffectiveDate < baselineEffectiveDate);
+    const sameAsCurrentActive = isSalaryLandingMatched(currentActiveSalary, selectedEffectiveDate, adjustmentAfterTotal);
+    const exactDuplicate = sameDateAdjustments.some(item => normalizeAmount(item.afterTotal) === normalizeAmount(adjustmentAfterTotal));
+
+    let modeLabel = '等待选择员工';
+    let modeHint = '选择员工后会读取当前现薪，并判断本次调薪会落到哪条链路。';
+    if (adjustmentBaseline && selectedEffectiveDate) {
+      if (noChanges) {
+        modeLabel = '无变化重复提交';
+        modeHint = '当前调薪后明细与员工现薪完全一致，继续创建大概率只会新增一张没有业务意义的单据。';
+      } else if (sameDayCurrent) {
+        modeLabel = '同日覆盖当前现薪';
+        modeHint = `当前现薪本身就是 ${baselineEffectiveDate} 生效，本次调薪会把同一天的薪资链路叠得更复杂。`;
+      } else if (backfillHistory) {
+        modeLabel = '回补历史调薪';
+        modeHint = `当前现薪生效日是 ${baselineEffectiveDate}，这次会回补更早的历史日期 ${selectedEffectiveDate}。`;
+      } else if (isFutureDate(selectedEffectiveDate)) {
+        modeLabel = '创建未来生效调薪';
+        modeHint = '这条调薪会先沉淀为未来档案，今天的现薪和测算不会立刻切过去。';
+      } else {
+        modeLabel = '创建新调薪链路';
+        modeHint = '审批通过并执行生效后，当前 ACTIVE 现薪会被新的薪资档案替换。';
+      }
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (adjustmentBaseline) {
+      if (noChanges) {
+        riskItems.push({
+          key: 'no-changes',
+          title: '调薪后明细没有变化',
+          detail: '当前金额明细和现薪完全一致，继续创建通常只会制造重复调薪单。',
+          severity: 'danger',
+        });
+      }
+      if (sameDateAdjustments.length > 0) {
+        riskItems.push({
+          key: 'same-date-adjustments',
+          title: '目标生效日已有调薪单',
+          detail: `${selectedEffectiveDate || '-'} 已经有 ${sameDateAdjustments.length} 张调薪单，继续创建会让同日覆盖链路更难核对。`,
+          severity: sameDateAdjustments.some(item => String(item.status || '').toUpperCase() === 'EFFECTIVE') ? 'danger' : 'warning',
+        });
+      }
+      if (exactDuplicate || sameAsCurrentActive) {
+        riskItems.push({
+          key: 'exact-duplicate',
+          title: '调薪结果已经存在',
+          detail: '当前调薪后的总额已经和现有现薪或同日调薪结果命中，再提一张单据很容易变成重复样本。',
+          severity: 'danger',
+        });
+      }
+      if (backfillHistory) {
+        riskItems.push({
+          key: 'backfill-history',
+          title: '本次是在回补历史调薪',
+          detail: `当前现薪生效于 ${baselineEffectiveDate}，这次却准备回填到更早的 ${selectedEffectiveDate}。`,
+          severity: 'warning',
+        });
+      }
+      if (isDecrease) {
+        riskItems.push({
+          key: 'decrease-salary',
+          title: '本次调薪后的总额低于现薪',
+          detail: `当前现薪是 ${formatCurrency(adjustmentBaseline.totalSalary)}，调薪后变成 ${formatCurrency(adjustmentAfterTotal)}，这更像降薪链路。`,
+          severity: 'warning',
+        });
+      }
+      if (futureAdjustments.length > 0 && isFutureDate(selectedEffectiveDate)) {
+        riskItems.push({
+          key: 'future-chain-exists',
+          title: '当前员工已存在未来调薪链路',
+          detail: `这名员工已经有 ${futureAdjustments.length} 条未来生效调薪，继续新增前建议先核对现有未来档案。`,
+          severity: 'warning',
+        });
+      }
+      if (!adjustForm.adjustmentReason.trim()) {
+        riskItems.push({
+          key: 'missing-reason',
+          title: '还没有填写调薪原因',
+          detail: '真实联调时建议把原因填清楚，后面回看同日多单或未来调薪链路会更容易排查。',
+          severity: 'warning',
+        });
+      }
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !adjustmentBaseline
+      ? {
+        label: '等待加载',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先读取员工现薪，再判断这条调薪会不会制造重复或异常链路。',
+      }
+      : !score
+        ? {
+          label: '可直接创建',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前调薪后明细、日期和历史链路看起来都合理，可以继续创建调薪申请。',
+        }
+        : score <= 2
+          ? {
+            label: '创建需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的调薪创建提示。`,
+          }
+          : {
+            label: '创建存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整参数再创建调薪单。`,
+          };
+
+    return {
+      changedItemCount,
+      sameDateAdjustments,
+      futureAdjustments,
+      modeLabel,
+      modeHint,
+      riskItems,
+      riskSummary,
+    };
+  }, [
+    activeEmployeeSalaryMap,
+    adjustForm.adjustmentReason,
+    adjustForm.afterSalaryData,
+    adjustForm.employeeId,
+    adjustForm.effectiveDate,
+    adjustmentAfterTotal,
+    adjustmentBaseline,
+    employeeMap,
+    adjustmentFormHistory,
+  ]);
+
+  const loadSalaryStructureDetailCatalog = async (structures: SalaryStructure[]) => {
+    if (!structures.length) {
+      setSalaryStructureDetailMap({});
+      if (!selectedStructureId) {
+        setStructureDetail(null);
+      }
+      return;
+    }
+
+    const detailResults = await Promise.allSettled(
+      structures.map(item => getSalaryStructure(item.id)),
+    );
+
+    const nextDetailMap = detailResults.reduce<Record<number, SalaryStructureDetail>>((result, current, index) => {
+      if (current.status === 'fulfilled') {
+        result[structures[index].id] = current.value;
+      } else {
+        console.error(current.reason);
+      }
+      return result;
+    }, {});
+
+    setSalaryStructureDetailMap(nextDetailMap);
+
+    if (!selectedStructureId) return;
+
+    const selectedDetail = nextDetailMap[Number(selectedStructureId)];
+    if (selectedDetail) {
+      setStructureDetail(selectedDetail);
+    } else if (!nextDetailMap[Number(selectedStructureId)]) {
+      setStructureDetail(null);
+    }
+  };
+
   const loadFoundationData = async () => {
     setFoundationLoading(true);
     try {
-      const [employeeRes, itemRes, structureRes, gradeRes, schemeRes, levelRes, taxConfigRes] = await Promise.all([
+      const [employeeRes, itemRes, structureRes, gradeRes, schemeRes, levelRes, insuranceLedgerRes, taxConfigRes] = await Promise.all([
         listEmployees(),
         listSalaryItems(),
         listSalaryStructures(),
         listSalaryGrades(),
         listInsuranceSchemes(),
         listJobLevels(),
+        listEmployeeInsurances({
+          pageNum: 1,
+          pageSize: INSURANCE_SCHEME_CATALOG_PAGE_SIZE,
+        }).catch(error => {
+          console.error(error);
+          return null;
+        }),
         getCurrentTaxConfig().catch(error => {
           console.error(error);
           return null;
@@ -1830,10 +4673,13 @@ export const HrSalaryPage: React.FC = () => {
 
       setEmployees(Array.isArray(employeeRes) ? employeeRes : []);
       setSalaryItems(Array.isArray(itemRes) ? itemRes : []);
-      setSalaryStructures(Array.isArray(structureRes) ? structureRes : []);
+      const structureRows = Array.isArray(structureRes) ? structureRes : [];
+      setSalaryStructures(structureRows);
+      await loadSalaryStructureDetailCatalog(structureRows);
       setSalaryGrades(Array.isArray(gradeRes) ? gradeRes : []);
       setInsuranceSchemes(Array.isArray(schemeRes) ? schemeRes : []);
       setJobLevels(Array.isArray(levelRes) ? levelRes : []);
+      setInsuranceLedgerCatalog(Array.isArray(insuranceLedgerRes?.records) ? insuranceLedgerRes.records : []);
       setCurrentTaxConfig(taxConfigRes);
     } catch (error) {
       console.error(error);
@@ -1927,7 +4773,15 @@ export const HrSalaryPage: React.FC = () => {
   const loadStructureDetail = async (structureId: number) => {
     setStructureDetailLoading(true);
     try {
-      setStructureDetail(await getSalaryStructure(structureId));
+      const cachedDetail = salaryStructureDetailMap[structureId];
+      if (cachedDetail) {
+        setStructureDetail(cachedDetail);
+        return;
+      }
+
+      const detail = await getSalaryStructure(structureId);
+      setStructureDetail(detail);
+      setSalaryStructureDetailMap(prev => ({ ...prev, [structureId]: detail }));
     } catch (error) {
       console.error(error);
       setStructureDetail(null);
@@ -2047,12 +4901,22 @@ export const HrSalaryPage: React.FC = () => {
   ) => {
     setEmployeeInsuranceListLoading(true);
     try {
-      const data = await listEmployeeInsurances({
-        employeeId,
-        status: nextStatusFilter === ALL_VALUE ? undefined : nextStatusFilter,
-        pageNum: nextPageNum,
-        pageSize: INSURANCE_LEDGER_PAGE_SIZE,
-      });
+      const [data, catalogData] = await Promise.all([
+        listEmployeeInsurances({
+          employeeId,
+          status: nextStatusFilter === ALL_VALUE ? undefined : nextStatusFilter,
+          pageNum: nextPageNum,
+          pageSize: INSURANCE_LEDGER_PAGE_SIZE,
+        }),
+        listEmployeeInsurances({
+          employeeId,
+          pageNum: 1,
+          pageSize: EMPLOYEE_INSURANCE_LEDGER_CATALOG_PAGE_SIZE,
+        }).catch(error => {
+          console.error(error);
+          return null;
+        }),
+      ]);
 
       const normalizedPage: HrPagedResult<EmployeeInsurance> = {
         records: Array.isArray(data?.records) ? data.records : [],
@@ -2063,14 +4927,17 @@ export const HrSalaryPage: React.FC = () => {
       };
 
       if (normalizedPage.pages > 0 && nextPageNum > normalizedPage.pages) {
+        setEmployeeInsuranceLedgerCatalog(Array.isArray(catalogData?.records) ? catalogData.records : []);
         setInsuranceLedgerPageNum(normalizedPage.pages);
         return;
       }
 
       setEmployeeInsuranceLedgerPage(normalizedPage);
+      setEmployeeInsuranceLedgerCatalog(Array.isArray(catalogData?.records) ? catalogData.records : []);
     } catch (error) {
       console.error(error);
       setEmployeeInsuranceLedgerPage(null);
+      setEmployeeInsuranceLedgerCatalog([]);
       toast.error('员工社保台账加载失败');
     } finally {
       setEmployeeInsuranceListLoading(false);
@@ -2222,6 +5089,7 @@ export const HrSalaryPage: React.FC = () => {
       setEmployeeAdjustmentHistory([]);
       setEmployeeInsuranceDetail(null);
       setEmployeeInsuranceLedgerPage(null);
+      setEmployeeInsuranceLedgerCatalog([]);
       setEmployeeInsuranceCalculation(null);
       setEmployeeTaxDeductions([]);
       setEmployeeAllTaxDeductions([]);
@@ -2316,16 +5184,24 @@ export const HrSalaryPage: React.FC = () => {
   useEffect(() => {
     if (!adjustDialogOpen || !adjustForm.employeeId) {
       setAdjustmentBaseline(null);
+      setAdjustmentFormHistory([]);
       return;
     }
 
     let cancelled = false;
     const loadBaseline = async () => {
       try {
-        const detail = await getEmployeeSalary(adjustForm.employeeId);
+        const [detail, historyRows] = await Promise.all([
+          getEmployeeSalary(adjustForm.employeeId),
+          getSalaryAdjustmentHistory(adjustForm.employeeId).catch(error => {
+            console.error(error);
+            return [] as SalaryAdjustmentHistory[];
+          }),
+        ]);
         if (cancelled) return;
 
         setAdjustmentBaseline(detail);
+        setAdjustmentFormHistory(Array.isArray(historyRows) ? historyRows : []);
         setAdjustForm(prev => ({
           ...prev,
           afterSalaryData: detail.items.reduce<Record<string, string>>((result, item) => {
@@ -2336,6 +5212,7 @@ export const HrSalaryPage: React.FC = () => {
       } catch (error) {
         console.error(error);
         setAdjustmentBaseline(null);
+        setAdjustmentFormHistory([]);
         toast.error('调薪表单加载员工现薪失败');
       }
     };
@@ -2520,6 +5397,25 @@ export const HrSalaryPage: React.FC = () => {
       endDate: toDateInputValue(item.endDate) || '',
       status: item.status || 'ACTIVE',
       remark: item.remark || '',
+    });
+  };
+
+  const applyTaxDeductionReferenceTemplate = (deductionType: string, amount?: number) => {
+    if (!currentEmployeeRecord) {
+      toast.error('请先选择员工');
+      return;
+    }
+
+    const referenceAmount = Number(amount ?? currentTaxConfigReferenceMap.get(deductionType) ?? 0);
+    setEditingTaxDeductionId(null);
+    setTaxDeductionForm({
+      employeeId: currentEmployeeRecord.employeeId,
+      deductionType,
+      amount: Number.isFinite(referenceAmount) ? referenceAmount : 0,
+      startDate: getMonthStartValue(employeeSalaryDetail?.effectiveDate || currentEmployeeRecord.effectiveDate),
+      endDate: '',
+      status: 'ACTIVE',
+      remark: '',
     });
   };
 
@@ -4120,32 +7016,101 @@ export const HrSalaryPage: React.FC = () => {
 
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                          <div className="text-xs text-slate-400">台账总数</div>
+                          <div className="text-xs text-slate-400">全量台账</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">
-                            {employeeInsuranceLedgerPage?.total ?? 0}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">当前筛选：{insuranceLedgerStatusOptions.find(option => option.value === insuranceLedgerStatusFilter)?.label}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                          <div className="text-xs text-slate-400">当前生效方案</div>
-                          <div className="mt-2 font-semibold text-slate-900">
-                            {employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '-'}
+                            {employeeInsuranceLedgerDiagnostics.allRecords.length}
                           </div>
                           <div className="mt-1 text-sm text-slate-500">
-                            {employeeInsuranceDetail?.city || latestEmployeeInsuranceLedger?.city || '暂无城市信息'}
+                            当前筛选展示 {employeeInsuranceLedgerPage?.total ?? 0} 条
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {insuranceLedgerStatusOptions.find(option => option.value === insuranceLedgerStatusFilter)?.label}
                           </div>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                          <div className="text-xs text-slate-400">最近生效日期</div>
+                          <div className="text-xs text-slate-400">当前 ACTIVE 方案</div>
                           <div className="mt-2 font-semibold text-slate-900">
-                            {toDateInputValue(latestEmployeeInsuranceLedger?.effectiveDate || employeeInsuranceDetail?.effectiveDate) || '-'}
+                            {employeeInsuranceLedgerDiagnostics.activeReferenceRecord?.schemeName || employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '-'}
                           </div>
                           <div className="mt-1 text-sm text-slate-500">
-                            当前基数 {formatCurrency(latestEmployeeInsuranceLedger?.base ?? employeeInsuranceDetail?.base)}
+                            {employeeInsuranceLedgerDiagnostics.activeReferenceRecord?.city || employeeInsuranceDetail?.city || latestEmployeeInsuranceLedger?.city || '暂无城市信息'}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {employeeInsuranceLedgerDiagnostics.activeRecords.length
+                              ? `ACTIVE ${employeeInsuranceLedgerDiagnostics.activeRecords.length} 条，${employeeInsuranceLedgerDiagnostics.detailMatchedActiveLedger ? '详情已命中最新台账' : '详情与最新台账待核对'}`
+                              : '当前没有 ACTIVE 台账'}
                           </div>
                         </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">未来生效记录</div>
+                          <div className="mt-2 text-2xl font-semibold text-amber-700">
+                            {employeeInsuranceLedgerDiagnostics.futureRecords.length}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {employeeInsuranceLedgerDiagnostics.futureRecords[0]
+                              ? `${toDateInputValue(employeeInsuranceLedgerDiagnostics.futureRecords[0].effectiveDate) || '-'} / ${employeeInsuranceLedgerDiagnostics.futureRecords[0].schemeName || '-'}`
+                              : '当前没有未来生效记录'}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {employeeInsuranceLedgerDiagnostics.futureRecords[0]
+                              ? `最新未来基数 ${formatCurrency(employeeInsuranceLedgerDiagnostics.futureRecords[0].base)}`
+                              : '可以直接按当前社保口径核对本月结果'}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">最近基数变化</div>
+                          <div className={`mt-2 text-2xl font-semibold ${
+                            (employeeInsuranceLedgerDiagnostics.latestBaseShift?.delta ?? 0) >= 0 ? 'text-sky-700' : 'text-rose-700'
+                          }`}>
+                            {employeeInsuranceLedgerDiagnostics.latestBaseShift
+                              ? `${employeeInsuranceLedgerDiagnostics.latestBaseShift.delta >= 0 ? '+' : '-'}${formatCurrency(Math.abs(employeeInsuranceLedgerDiagnostics.latestBaseShift.delta))}`
+                              : '-'}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {employeeInsuranceLedgerDiagnostics.latestBaseShift
+                              ? `${toDateInputValue(employeeInsuranceLedgerDiagnostics.latestBaseShift.previous.effectiveDate) || '-'} -> ${toDateInputValue(employeeInsuranceLedgerDiagnostics.latestBaseShift.current.effectiveDate) || '-'}`
+                              : '暂无可比较的历史切换'}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {employeeInsuranceLedgerDiagnostics.latestBaseShift
+                              ? `${formatCurrency(employeeInsuranceLedgerDiagnostics.latestBaseShift.previous.base)} -> ${formatCurrency(employeeInsuranceLedgerDiagnostics.latestBaseShift.current.base)}`
+                              : '至少两条不同生效日记录后才会展示'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`rounded-2xl border p-4 ${employeeInsuranceLedgerDiagnostics.riskSummary.className}`}>
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <div className="font-semibold text-current">
+                              {employeeInsuranceLedgerDiagnostics.riskItems.length ? '社保台账联调风险提示' : '社保台账链路已对齐'}
+                            </div>
+                            <div className="mt-1 text-sm opacity-90">{employeeInsuranceLedgerDiagnostics.riskSummary.hint}</div>
+                          </div>
+                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${employeeInsuranceLedgerDiagnostics.riskSummary.className}`}>
+                            {employeeInsuranceLedgerDiagnostics.riskSummary.label}
+                          </span>
+                        </div>
+
+                        {employeeInsuranceLedgerDiagnostics.riskItems.length > 0 && (
+                          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {employeeInsuranceLedgerDiagnostics.riskItems.map(item => (
+                              <div
+                                key={item.key}
+                                className={`rounded-2xl border px-4 py-3 ${
+                                  item.severity === 'danger'
+                                    ? 'border-rose-200 bg-white/70 text-rose-700'
+                                    : 'border-amber-200 bg-white/70 text-amber-700'
+                                }`}
+                              >
+                                <div className="text-sm font-semibold">{item.title}</div>
+                                <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
@@ -4156,29 +7121,66 @@ export const HrSalaryPage: React.FC = () => {
                               <TableHead>缴费基数</TableHead>
                               <TableHead>生效日期</TableHead>
                               <TableHead>状态</TableHead>
+                              <TableHead>联调提示</TableHead>
                               <TableHead>更新时间</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {employeeInsuranceLedgerRecords.map(item => (
-                              <TableRow key={item.id}>
-                                <TableCell>
-                                  <div className="font-medium text-slate-900">{item.schemeName || '-'}</div>
-                                  <div className="mt-1 text-xs text-slate-400">{item.city || '未填写城市'}</div>
-                                </TableCell>
-                                <TableCell>{formatCurrency(item.base)}</TableCell>
-                                <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
-                                <TableCell>
-                                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
-                                    {salaryArchiveStatusLabel(item.status)}
-                                  </span>
-                                </TableCell>
-                                <TableCell>{toDateInputValue(item.updateTime || item.createTime) || '-'}</TableCell>
-                              </TableRow>
-                            ))}
+                            {employeeInsuranceLedgerRecords.map(item => {
+                              const rowIssues = employeeInsuranceLedgerDiagnostics.rowIssueMap.get(item.id) || [];
+                              const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
+                                ? 'bg-rose-50/40'
+                                : rowIssues.length
+                                  ? 'bg-amber-50/40'
+                                  : '';
+
+                              return (
+                                <TableRow key={item.id} className={rowClassName}>
+                                  <TableCell>
+                                    <div className="font-medium text-slate-900">{item.schemeName || '-'}</div>
+                                    <div className="mt-1 text-xs text-slate-400">{item.city || '未填写城市'}</div>
+                                  </TableCell>
+                                  <TableCell>{formatCurrency(item.base)}</TableCell>
+                                  <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
+                                  <TableCell>
+                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
+                                      {salaryArchiveStatusLabel(item.status)}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    {rowIssues.length > 0 ? (
+                                      <div className="space-y-2">
+                                        <div className="flex flex-wrap gap-2">
+                                          {rowIssues.map(issue => (
+                                            <span
+                                              key={issue.key}
+                                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                                issue.severity === 'danger'
+                                                  ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                                  : 'border-amber-200 bg-amber-50 text-amber-700'
+                                              }`}
+                                            >
+                                              {issue.label}
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <div className="space-y-1 text-xs text-slate-500">
+                                          {rowIssues.slice(0, 2).map(issue => (
+                                            <div key={`${item.id}-${issue.key}`}>{issue.detail}</div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-slate-400">链路正常</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>{toDateInputValue(item.updateTime || item.createTime) || '-'}</TableCell>
+                                </TableRow>
+                              );
+                            })}
                             {!employeeInsuranceLedgerRecords.length && !employeeInsuranceListLoading && (
                               <TableRow>
-                                <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                                <TableCell colSpan={6} className="py-10 text-center text-slate-400">
                                   当前筛选条件下没有社保台账记录。
                                 </TableCell>
                               </TableRow>
@@ -4256,16 +7258,16 @@ export const HrSalaryPage: React.FC = () => {
 
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                           <div className="text-xs text-slate-400">累计调薪次数</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{sortedEmployeeAdjustmentHistory.length}</div>
                           <div className="mt-1 text-sm text-slate-500">仅统计当前员工的历史调薪单据</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                          <div className="text-xs text-slate-400">最近生效日期</div>
-                          <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(latestEmployeeAdjustment?.effectiveDate) || '-'}</div>
-                          <div className="mt-1 text-sm text-slate-500">{latestEmployeeAdjustment?.applicationNo || '暂无调薪记录'}</div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {employeeAdjustmentHistoryDiagnostics.duplicateEffectiveDates.length
+                              ? `其中 ${employeeAdjustmentHistoryDiagnostics.duplicateEffectiveDates.length} 个生效日发生过多次调薪`
+                              : '当前没有同日多次调薪'}
+                          </div>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                           <div className="text-xs text-slate-400">最近状态</div>
@@ -4274,12 +7276,68 @@ export const HrSalaryPage: React.FC = () => {
                               <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(latestEmployeeAdjustment.status)}`}>
                                 {adjustmentStatusLabel(latestEmployeeAdjustment.status)}
                               </div>
-                              <div className="mt-2 text-sm text-slate-500">{adjustmentTypeLabel(latestEmployeeAdjustment.adjustmentType)}</div>
+                              <div className="mt-2 text-sm text-slate-500">
+                                {toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '-'} / {latestEmployeeAdjustment.applicationNo}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400">{adjustmentTypeLabel(latestEmployeeAdjustment.adjustmentType)}</div>
                             </>
                           ) : (
                             <div className="mt-2 text-sm text-slate-500">暂无调薪记录</div>
                           )}
                         </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">落档命中</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900">
+                            {employeeAdjustmentHistoryDiagnostics.landedCurrentCount + employeeAdjustmentHistoryDiagnostics.landedHistoryCount}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            当前现薪 {employeeAdjustmentHistoryDiagnostics.landedCurrentCount} 条 / 历史档案 {employeeAdjustmentHistoryDiagnostics.landedHistoryCount} 条
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="text-xs text-slate-400">待核对风险</div>
+                          <div className="mt-2 text-2xl font-semibold text-rose-700">
+                            {employeeAdjustmentHistoryDiagnostics.pendingPastDueCount + employeeAdjustmentHistoryDiagnostics.unmatchedEffectiveCount}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            过期未推进 {employeeAdjustmentHistoryDiagnostics.pendingPastDueCount} 条
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            已生效未落档 {employeeAdjustmentHistoryDiagnostics.unmatchedEffectiveCount} 条
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`rounded-2xl border p-4 ${employeeAdjustmentHistoryDiagnostics.riskSummary.className}`}>
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <div className="font-semibold text-current">
+                              {employeeAdjustmentHistoryDiagnostics.riskItems.length ? '调薪履历联调风险提示' : '调薪履历链路已对齐'}
+                            </div>
+                            <div className="mt-1 text-sm opacity-90">{employeeAdjustmentHistoryDiagnostics.riskSummary.hint}</div>
+                          </div>
+                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${employeeAdjustmentHistoryDiagnostics.riskSummary.className}`}>
+                            {employeeAdjustmentHistoryDiagnostics.riskSummary.label}
+                          </span>
+                        </div>
+
+                        {employeeAdjustmentHistoryDiagnostics.riskItems.length > 0 && (
+                          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {employeeAdjustmentHistoryDiagnostics.riskItems.map(item => (
+                              <div
+                                key={item.key}
+                                className={`rounded-2xl border px-4 py-3 ${
+                                  item.severity === 'danger'
+                                    ? 'border-rose-200 bg-white/70 text-rose-700'
+                                    : 'border-amber-200 bg-white/70 text-amber-700'
+                                }`}
+                              >
+                                <div className="text-sm font-semibold">{item.title}</div>
+                                <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
@@ -4291,16 +7349,24 @@ export const HrSalaryPage: React.FC = () => {
                               <TableHead>调薪变化</TableHead>
                               <TableHead>生效日期</TableHead>
                               <TableHead>状态</TableHead>
+                              <TableHead>联调提示</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {sortedEmployeeAdjustmentHistory.map(item => {
                               const amount = Number(item.adjustmentAmount || 0);
+                              const rowIssues = employeeAdjustmentHistoryDiagnostics.rowIssueMap.get(item.id) || [];
+                              const matchedArchive = employeeAdjustmentHistoryDiagnostics.matchedArchiveMap.get(item.id) || null;
+                              const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
+                                ? 'cursor-pointer bg-rose-50/40 hover:bg-rose-50'
+                                : rowIssues.length
+                                  ? 'cursor-pointer bg-amber-50/40 hover:bg-amber-50'
+                                  : 'cursor-pointer hover:bg-slate-50';
 
                               return (
                                 <TableRow
                                   key={item.id}
-                                  className="cursor-pointer hover:bg-slate-50"
+                                  className={rowClassName}
                                   onClick={() => openAdjustmentFromHistory(item.id)}
                                 >
                                   <TableCell>
@@ -4328,12 +7394,42 @@ export const HrSalaryPage: React.FC = () => {
                                       {adjustmentStatusLabel(item.status)}
                                     </span>
                                   </TableCell>
+                                  <TableCell>
+                                    {rowIssues.length > 0 ? (
+                                      <div className="space-y-2">
+                                        <div className="flex flex-wrap gap-2">
+                                          {rowIssues.map(issue => (
+                                            <span
+                                              key={issue.key}
+                                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                                issue.severity === 'danger'
+                                                  ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                                  : 'border-amber-200 bg-amber-50 text-amber-700'
+                                              }`}
+                                            >
+                                              {issue.label}
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <div className="space-y-1 text-xs text-slate-500">
+                                          {rowIssues.slice(0, 2).map(issue => (
+                                            <div key={`${item.id}-${issue.key}`}>{issue.detail}</div>
+                                          ))}
+                                          {matchedArchive && (
+                                            <div>命中薪资档案 #{matchedArchive.id}</div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-slate-400">链路正常</span>
+                                    )}
+                                  </TableCell>
                                 </TableRow>
                               );
                             })}
                             {!sortedEmployeeAdjustmentHistory.length && !employeeAdjustmentHistoryLoading && (
                               <TableRow>
-                                <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                                <TableCell colSpan={6} className="py-10 text-center text-slate-400">
                                   当前员工还没有调薪记录。
                                 </TableCell>
                               </TableRow>
@@ -4464,21 +7560,87 @@ export const HrSalaryPage: React.FC = () => {
                     </Button>
                   </div>
 
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4 text-sm text-amber-700">
-                    当前服务端返回 {adjustmentPage?.total || 0} 条调薪记录，审批通过后如果生效日不晚于今天，后端会直接生效。
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                      <div className="text-xs text-slate-400">已落当前现薪</div>
+                      <div className="mt-2 text-2xl font-semibold text-emerald-700">{adjustmentListDiagnostics.matchedCurrentCount}</div>
+                      <div className="mt-1 text-sm text-slate-500">当前 ACTIVE 现薪已命中的调薪单</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                      <div className="text-xs text-slate-400">过期未推进</div>
+                      <div className="mt-2 text-2xl font-semibold text-rose-700">{adjustmentListDiagnostics.pendingPastDueCount}</div>
+                      <div className="mt-1 text-sm text-slate-500">生效日已到但状态仍未推进</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                      <div className="text-xs text-slate-400">当前现薪未追平</div>
+                      <div className="mt-2 text-2xl font-semibold text-rose-700">{adjustmentListDiagnostics.currentMismatchCount}</div>
+                      <div className="mt-1 text-sm text-slate-500">EFFECTIVE 但当前现薪仍未命中</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                      <div className="text-xs text-slate-400">同日多单 / 未来生效</div>
+                      <div className="mt-2 text-2xl font-semibold text-amber-700">
+                        {adjustmentListDiagnostics.duplicateEmployeeDateGroups.length} / {adjustmentListDiagnostics.futureEffectiveCount}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-500">同一员工同日多张单据，或仍属于未来链路</div>
+                    </div>
+                  </div>
+
+                  <div className={`rounded-2xl border p-4 ${adjustmentListDiagnostics.riskSummary.className}`}>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="font-semibold text-current">
+                          {adjustmentListDiagnostics.riskItems.length ? '调薪申请联调风险提示' : '调薪申请链路已对齐'}
+                        </div>
+                        <div className="mt-1 text-sm opacity-90">{adjustmentListDiagnostics.riskSummary.hint}</div>
+                      </div>
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentListDiagnostics.riskSummary.className}`}>
+                        {adjustmentListDiagnostics.riskSummary.label}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 text-xs opacity-90">
+                      当前服务端返回 {adjustmentPage?.total || 0} 条调薪记录，审批通过后如果生效日不晚于今天，后端会直接生效。
+                    </div>
+
+                    {adjustmentListDiagnostics.riskItems.length > 0 && (
+                      <div className="mt-4 grid grid-cols-1 gap-3">
+                        {adjustmentListDiagnostics.riskItems.map(item => (
+                          <div
+                            key={item.key}
+                            className={`rounded-2xl border px-4 py-3 ${
+                              item.severity === 'danger'
+                                ? 'border-rose-200 bg-white/70 text-rose-700'
+                                : 'border-amber-200 bg-white/70 text-amber-700'
+                            }`}
+                          >
+                            <div className="text-sm font-semibold">{item.title}</div>
+                            <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3">
                     {filteredAdjustments.map(item => {
                       const isActive = String(item.id) === selectedAdjustmentId;
+                      const rowIssues = adjustmentListDiagnostics.rowIssueMap.get(item.id) || [];
+                      const itemClassName = rowIssues.some(issue => issue.severity === 'danger')
+                        ? 'border-rose-200 bg-rose-50/80 shadow-sm hover:border-rose-300 hover:bg-rose-50'
+                        : rowIssues.length
+                          ? 'border-amber-200 bg-amber-50/80 shadow-sm hover:border-amber-300 hover:bg-amber-50'
+                          : isActive
+                            ? 'border-amber-200 bg-amber-50/80 shadow-sm'
+                            : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50';
+
                       return (
                         <button
                           key={item.id}
                           type="button"
                           className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                            isActive
+                            isActive && !rowIssues.length
                               ? 'border-amber-200 bg-amber-50/80 shadow-sm'
-                              : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                              : itemClassName
                           }`}
                           onClick={() => setSelectedAdjustmentId(String(item.id))}
                         >
@@ -4498,6 +7660,29 @@ export const HrSalaryPage: React.FC = () => {
                             <span>{formatCurrency(item.afterTotal)}</span>
                             <span>生效 {toDateInputValue(item.effectiveDate) || '-'}</span>
                           </div>
+                          {rowIssues.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <div className="flex flex-wrap gap-2">
+                                {rowIssues.map(issue => (
+                                  <span
+                                    key={issue.key}
+                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                      issue.severity === 'danger'
+                                        ? 'border-rose-200 bg-white/80 text-rose-700'
+                                        : 'border-amber-200 bg-white/80 text-amber-700'
+                                    }`}
+                                  >
+                                    {issue.label}
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="space-y-1 text-xs text-slate-500">
+                                {rowIssues.slice(0, 2).map(issue => (
+                                  <div key={`${item.id}-${issue.key}`}>{issue.detail}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </button>
                       );
                     })}
@@ -4787,12 +7972,65 @@ export const HrSalaryPage: React.FC = () => {
                 <div className="mb-5 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">薪资项目</h2>
-                    <p className="mt-1 text-sm text-slate-500">项目列表直接来自真实库，后续结构配置和员工分配都会依赖这里的数据。</p>
+                    <p className="mt-1 text-sm text-slate-500">项目列表直接来自真实库，这里继续把结构引用和现薪命中一起摊开，方便做真实联调。</p>
                   </div>
                   <Button variant="outline" onClick={openItemDialog}>
                     <FilePlus2 size={14} className="mr-2" />
                     新建项目
                   </Button>
+                </div>
+
+                <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
+                    <div className="text-xs text-slate-400">已启用项目</div>
+                    <div className="mt-2 text-2xl font-semibold text-slate-900">{enabledSalaryItems.length}</div>
+                    <div className="mt-2 text-sm text-slate-500">当前总数 {salaryItems.length}</div>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                    <div className="text-xs text-emerald-600">命中现薪联动</div>
+                    <div className="mt-2 text-2xl font-semibold text-emerald-700">{linkedSalaryItems.length}</div>
+                    <div className="mt-2 text-sm text-emerald-700">这些项目已落到当前 ACTIVE 现薪链路</div>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                    <div className="text-xs text-amber-600">孤立项目</div>
+                    <div className="mt-2 text-2xl font-semibold text-amber-700">{orphanSalaryItems.length}</div>
+                    <div className="mt-2 text-sm text-amber-700">当前未被任何薪资结构引用</div>
+                  </div>
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
+                    <div className="text-xs text-sky-600">带公式项目</div>
+                    <div className="mt-2 text-2xl font-semibold text-sky-700">{formulaSalaryItems.length}</div>
+                    <div className="mt-2 text-sm text-sky-700">联调时要额外确认公式是否真实生效</div>
+                  </div>
+                </div>
+
+                <div className={`mb-4 rounded-2xl border p-4 ${
+                  salaryItemRiskItems.length
+                    ? salaryItemRiskSummary.className
+                    : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+                }`}>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="font-medium">
+                        {salaryItemRiskItems.length ? '项目联调风险提示' : '项目口径已对齐'}
+                      </div>
+                      <div className="mt-1 text-sm opacity-90">{salaryItemRiskSummary.hint}</div>
+                    </div>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryItemRiskSummary.className}`}>
+                      {salaryItemRiskSummary.label}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm">
+                    {salaryItemRiskItems.length ? salaryItemRiskItems.map(item => (
+                      <div key={item.key} className="rounded-xl bg-white/50 p-3">
+                        <div className="font-medium">{item.title}</div>
+                        <div className="mt-1 opacity-90">{item.detail}</div>
+                      </div>
+                    )) : (
+                      <div className="rounded-xl bg-white/50 p-3">
+                        当前项目和结构、现薪引用关系已经比较完整，可以直接继续核对员工分配和调薪链路。
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
@@ -4801,23 +8039,66 @@ export const HrSalaryPage: React.FC = () => {
                       <TableRow>
                         <TableHead>项目名称</TableHead>
                         <TableHead>编码</TableHead>
-                        <TableHead>类型</TableHead>
-                        <TableHead>分类</TableHead>
-                        <TableHead>计税</TableHead>
+                        <TableHead>类型 / 分类</TableHead>
+                        <TableHead>联动体检</TableHead>
+                        <TableHead>项目状态</TableHead>
                         <TableHead className="text-right">操作</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {salaryItems.map(item => (
+                      {salaryItems.map(item => {
+                        const usage = salaryItemUsageMap.get(item.id);
+
+                        return (
                         <TableRow key={item.id}>
                           <TableCell>
                             <div className="font-medium text-slate-900">{item.itemName}</div>
                             <div className="text-xs text-slate-400">排序 {item.sortOrder ?? '-'}</div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
+                                Number(item.status ?? 1) === 1
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                  : 'border-amber-200 bg-amber-50 text-amber-700'
+                              }`}>
+                                {Number(item.status ?? 1) === 1 ? '项目启用' : '项目禁用'}
+                              </span>
+                              {item.formula && String(item.formula).trim() && (
+                                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+                                  带公式
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>{item.itemCode}</TableCell>
-                          <TableCell>{item.itemTypeDesc || itemTypeLabel(item.itemType)}</TableCell>
-                          <TableCell>{item.categoryDesc || itemCategoryLabel(item.category)}</TableCell>
-                          <TableCell>{item.isTaxable ? '计税' : '不计税'}</TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{item.itemTypeDesc || itemTypeLabel(item.itemType)}</div>
+                            <div className="mt-1 text-xs text-slate-400">{item.categoryDesc || itemCategoryLabel(item.category)}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">
+                              {usage?.structureIds.size || 0} 套结构 / {usage?.activeEmployeeIds.size || 0} 名员工
+                            </div>
+                            <div className="mt-1 text-xs text-slate-400">
+                              {usage?.structureIds.size
+                                ? `命中 ${usage?.activeArchiveCount || 0} 条 ACTIVE 现薪${usage?.futureArchiveCount ? `，其中 ${usage.futureArchiveCount} 条未来生效` : ''}`
+                                : '当前还没有结构引用这个项目'}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-400">
+                              {usage?.sampleStructureNames.length
+                                ? `结构样本：${usage.sampleStructureNames.join(' / ')}`
+                                : '暂无结构样本'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{item.isTaxable ? '参与计税' : '不参与计税'}</div>
+                            <div className="mt-1 text-xs text-slate-400">
+                              {Number(item.status ?? 1) === 0 && usage?.structureIds.size
+                                ? '已禁用但仍被结构引用'
+                                : usage?.structureIds.size
+                                  ? '已进入结构联动'
+                                  : '仍是孤立项目'}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-2">
                               <Button variant="outline" size="sm" onClick={() => openItemEditDialog(item)}>
@@ -4834,7 +8115,7 @@ export const HrSalaryPage: React.FC = () => {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )})}
                       {!salaryItems.length && !foundationLoading && (
                         <TableRow>
                           <TableCell colSpan={6} className="py-10 text-center text-slate-400">
@@ -4915,7 +8196,7 @@ export const HrSalaryPage: React.FC = () => {
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                           {structureDetail.description || '当前结构未填写描述。'}
                         </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                             <div className="text-xs text-slate-400">结构状态</div>
                             <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(structureDetail.status)}`}>
@@ -4929,21 +8210,72 @@ export const HrSalaryPage: React.FC = () => {
                           </div>
                           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                             <div className="text-xs text-slate-400">在岗关联员工</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureLinkedEmployeeRecords.length}</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureLinkedEmployeeIds.length}</div>
                             <div className="mt-2 text-sm text-slate-500">
                               {structureLinkedDeptNames.length
                                 ? `覆盖 ${structureLinkedDeptNames.slice(0, 3).join(' / ')}${structureLinkedDeptNames.length > 3 ? ' 等部门' : ''}`
                                 : '当前还没有在岗员工使用这套结构。'}
                             </div>
+                            <div className="mt-2 text-xs text-slate-400">
+                              当前命中 {structureLinkedEmployeeRecords.length} 条 ACTIVE 现薪档案
+                            </div>
                           </div>
                           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                            <div className="text-xs text-slate-400">项目组成</div>
+                            <div className="text-xs text-slate-400">关联现薪分布</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureLinkedSalaryStats.count}</div>
+                            <div className="mt-2 text-sm text-slate-500">
+                              {structureLinkedSalaryStats.count
+                                ? `最低 ${formatCurrency(structureLinkedSalaryStats.min)} / 中位 ${formatCurrency(structureLinkedSalaryStats.median)}`
+                                : '当前还没有可用于测算的现薪样本。'}
+                            </div>
+                            <div className="mt-2 text-xs text-slate-400">
+                              {structureLinkedFutureEmployeeRecords.length
+                                ? `${structureLinkedFutureEmployeeRecords.length} 条未来生效，${structureLinkedCurrentEmployeeRecords.length} 条已到生效日`
+                                : '当前关联样本都已进入生效区间'}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div className="text-xs text-slate-400">项目体检</div>
                             <div className="mt-2 text-2xl font-semibold text-slate-900">{structureItemStats.total}</div>
                             <div className="mt-2 text-sm text-slate-500">
                               {structureItemStats.total
-                                ? `${structureItemStats.fixed} 个固定项 / ${structureItemStats.variable} 个浮动项`
+                                ? `${structureItemStats.fixed} 个固定项 / ${structureItemStats.variable} 个浮动项 / ${structureItemStats.taxable} 个计税项`
                                 : '当前结构还没有配置薪资项目。'}
                             </div>
+                            <div className={`mt-2 text-xs ${structureItemStats.disabled ? 'text-amber-600' : 'text-slate-400'}`}>
+                              {structureItemStats.disabled
+                                ? `${structureItemStats.disabled} 个禁用项目仍在结构里`
+                                : `${structureItemStats.formula} 个项目带公式配置`}
+                            </div>
+                          </div>
+                        </div>
+                        <div className={`rounded-2xl border p-4 ${
+                          structureRiskItems.length
+                            ? structureRiskSummary.className
+                            : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+                        }`}>
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                              <div className="font-medium">
+                                {structureRiskItems.length ? '结构联调风险提示' : '结构口径已对齐'}
+                              </div>
+                              <div className="mt-1 text-sm opacity-90">{structureRiskSummary.hint}</div>
+                            </div>
+                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureRiskSummary.className}`}>
+                              {structureRiskSummary.label}
+                            </span>
+                          </div>
+                          <div className="mt-3 space-y-2 text-sm">
+                            {structureRiskItems.length ? structureRiskItems.map(item => (
+                              <div key={item.key} className="rounded-xl bg-white/50 p-3">
+                                <div className="font-medium">{item.title}</div>
+                                <div className="mt-1 opacity-90">{item.detail}</div>
+                              </div>
+                            )) : (
+                              <div className="rounded-xl bg-white/50 p-3">
+                                当前结构下的项目状态、在岗样本和生效口径都比较完整，适合直接切到员工现薪继续核对。
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-sm text-sky-700 lg:flex-row lg:items-center lg:justify-between">
@@ -4958,6 +8290,69 @@ export const HrSalaryPage: React.FC = () => {
                             </Button>
                           )}
                         </div>
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                          <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                              <div className="font-semibold text-slate-900">关联现薪样本</div>
+                              <div className="mt-1 text-sm text-slate-500">这里直接读取当前在岗 ACTIVE 现薪，方便从结构配置跳回员工现薪闭环核对。</div>
+                            </div>
+                            <div className="text-xs text-slate-400">
+                              共 {structureLinkedEmployeeRows.length} 条 / {structureLinkedEmployeeIds.length} 名员工
+                              {structureLinkedSalaryStats.count ? ` / 最高 ${formatCurrency(structureLinkedSalaryStats.max)}` : ''}
+                            </div>
+                          </div>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>员工</TableHead>
+                                <TableHead>部门</TableHead>
+                                <TableHead>总薪资</TableHead>
+                                <TableHead>生效日期</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {structureLinkedEmployeeRows.map(item => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <div className="font-medium text-slate-900">{item.employeeName || `员工 #${item.employeeId}`}</div>
+                                    <div className="mt-1 text-xs text-slate-400">{item.employeeNo || '-'}</div>
+                                  </TableCell>
+                                  <TableCell>{employeeMap.get(item.employeeId)?.deptName || '-'}</TableCell>
+                                  <TableCell>{formatCurrency(item.totalSalary)}</TableCell>
+                                  <TableCell>
+                                    <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
+                                    <div className="mt-1 flex flex-wrap gap-2">
+                                      {isFutureDate(item.effectiveDate) ? (
+                                        <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                          未来生效
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                          已生效
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex justify-end">
+                                      <Button variant="outline" size="sm" onClick={() => focusEmployeeWorkspace(item.employeeId)}>
+                                        查看现薪
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {!structureLinkedEmployeeRows.length && (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                                    当前结构还没有在岗现薪样本。
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                           {structureDetail.items?.map(item => (
                             <div key={item.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -4965,6 +8360,27 @@ export const HrSalaryPage: React.FC = () => {
                               <div className="mt-1 text-xs text-slate-400">{item.itemCode}</div>
                               <div className="mt-2 text-xs text-slate-500">
                                 {item.categoryDesc || itemCategoryLabel(item.category)} / {item.itemTypeDesc || itemTypeLabel(item.itemType)}
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
+                                  Number(item.status ?? 1) === 1
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                    : 'border-amber-200 bg-amber-50 text-amber-700'
+                                }`}>
+                                  {Number(item.status ?? 1) === 1 ? '项目启用' : '项目禁用'}
+                                </span>
+                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
+                                  item.isTaxable
+                                    ? 'border-sky-200 bg-sky-50 text-sky-700'
+                                    : 'border-slate-200 bg-slate-50 text-slate-600'
+                                }`}>
+                                  {item.isTaxable ? '参与计税' : '不计税'}
+                                </span>
+                                {item.formula && String(item.formula).trim() && (
+                                  <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                                    带公式
+                                  </span>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -5022,11 +8438,59 @@ export const HrSalaryPage: React.FC = () => {
                 </div>
               </div>
 
-              {gradeSeriesSummary.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {gradeSeriesSummary.map(item => (
-                    <div key={item.series} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-                      {item.series} 序列 {item.configured}/{item.total}
+              <div className={`mt-4 rounded-2xl border p-4 ${salaryGradeRiskSummary.className}`}>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold">
+                      {salaryGradeRiskItems.length ? '薪级联调风险提示' : '薪级口径已对齐'}
+                    </div>
+                    <div className="mt-1 text-sm opacity-90">{salaryGradeRiskSummary.hint}</div>
+                  </div>
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryGradeRiskSummary.className}`}>
+                    {salaryGradeRiskSummary.label}
+                  </span>
+                </div>
+
+                {salaryGradeRiskItems.length > 0 && (
+                  <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                    {salaryGradeRiskItems.map(item => (
+                      <div
+                        key={item.key}
+                        className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                          item.severity === 'danger'
+                            ? 'border-rose-200 text-rose-800'
+                            : 'border-amber-200 text-amber-800'
+                        }`}
+                      >
+                        <div className="text-sm font-semibold">{item.title}</div>
+                        <div className="mt-1 text-sm opacity-90">{item.detail}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {gradeSeriesCoverage.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {gradeSeriesCoverage.map(item => (
+                    <div key={item.series} className={`rounded-2xl border px-4 py-4 ${item.cardClassName}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className={`text-sm font-semibold ${item.textClassName}`}>{item.series} 序列</div>
+                          <div className="mt-1 text-xs text-slate-500">{item.configured}/{item.total} 个职级已配薪级</div>
+                        </div>
+                        <div className={`text-sm font-semibold ${item.textClassName}`}>{item.coverage}%</div>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80">
+                        <div className={`h-full rounded-full ${item.barClassName}`} style={{ width: `${item.coverage}%` }} />
+                      </div>
+                      <div className="mt-3 text-xs text-slate-600">
+                        {item.missing
+                          ? item.configured === 0
+                            ? `当前整条 ${item.series} 序列都还没配置，真实联调会直接缺口。`
+                            : `还差 ${item.missing} 个职级，建议按序列继续补齐。`
+                          : '当前序列已全部覆盖，可以直接核对带宽区间。'}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -5079,42 +8543,79 @@ export const HrSalaryPage: React.FC = () => {
                       <TableHead>中位薪资</TableHead>
                       <TableHead>最高薪资</TableHead>
                       <TableHead>币种</TableHead>
+                      <TableHead>联调提示</TableHead>
                       <TableHead className="text-right">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedSalaryGrades.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="font-medium text-slate-900">{item.levelName || '-'}</div>
-                          <div className="text-xs text-slate-400">
-                            {[item.levelCode, jobLevelMap.get(item.levelId)?.levelSeries ? `${jobLevelMap.get(item.levelId)?.levelSeries} 序列` : ''].filter(Boolean).join(' / ') || '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatCurrency(item.minSalary)}</TableCell>
-                        <TableCell>{formatCurrency(item.midSalary)}</TableCell>
-                        <TableCell>{formatCurrency(item.maxSalary)}</TableCell>
-                        <TableCell>{item.currencyDesc || item.currency || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => openGradeEditDialog(item)}>
-                              编辑
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={actionLoading}
-                              onClick={() => void handleDeleteGrade(item)}
-                            >
-                              删除
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {sortedSalaryGrades.map(item => {
+                      const rowIssues = salaryGradeDiagnostics.rowIssueMap.get(item.id) || [];
+                      const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
+                        ? 'bg-rose-50/40'
+                        : rowIssues.length
+                          ? 'bg-amber-50/40'
+                          : '';
+
+                      return (
+                        <TableRow key={item.id} className={rowClassName}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{item.levelName || '-'}</div>
+                            <div className="text-xs text-slate-400">
+                              {[item.levelCode, jobLevelMap.get(item.levelId)?.levelSeries ? `${jobLevelMap.get(item.levelId)?.levelSeries} 序列` : ''].filter(Boolean).join(' / ') || '-'}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatCurrency(item.minSalary)}</TableCell>
+                          <TableCell>{formatCurrency(item.midSalary)}</TableCell>
+                          <TableCell>{formatCurrency(item.maxSalary)}</TableCell>
+                          <TableCell>{item.currencyDesc || item.currency || '-'}</TableCell>
+                          <TableCell>
+                            {rowIssues.length > 0 ? (
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap gap-2">
+                                  {rowIssues.map(issue => (
+                                    <span
+                                      key={issue.key}
+                                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                        issue.severity === 'danger'
+                                          ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                          : 'border-amber-200 bg-amber-50 text-amber-700'
+                                      }`}
+                                    >
+                                      {issue.label}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="space-y-1 text-xs text-slate-500">
+                                  {rowIssues.slice(0, 2).map(issue => (
+                                    <div key={`${issue.key}-detail`}>{issue.detail}</div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-slate-400">区间正常</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" onClick={() => openGradeEditDialog(item)}>
+                                编辑
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={actionLoading}
+                                onClick={() => void handleDeleteGrade(item)}
+                              >
+                                删除
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {!salaryGrades.length && !foundationLoading && (
                       <TableRow>
-                        <TableCell colSpan={6} className="py-10 text-center text-slate-400">
+                        <TableCell colSpan={7} className="py-10 text-center text-slate-400">
                           当前还没有薪资等级数据，可以直接设置一条用于联调。
                         </TableCell>
                       </TableRow>
@@ -5161,6 +8662,38 @@ export const HrSalaryPage: React.FC = () => {
                 </div>
               </div>
 
+              <div className={`mt-4 rounded-2xl border p-4 ${insuranceSchemeRiskSummary.className}`}>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold">
+                      {insuranceSchemeRiskItems.length ? '社保方案联调风险提示' : '社保方案口径已对齐'}
+                    </div>
+                    <div className="mt-1 text-sm opacity-90">{insuranceSchemeRiskSummary.hint}</div>
+                  </div>
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${insuranceSchemeRiskSummary.className}`}>
+                    {insuranceSchemeRiskSummary.label}
+                  </span>
+                </div>
+
+                {insuranceSchemeRiskItems.length > 0 && (
+                  <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                    {insuranceSchemeRiskItems.map(item => (
+                      <div
+                        key={item.key}
+                        className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                          item.severity === 'danger'
+                            ? 'border-rose-200 text-rose-800'
+                            : 'border-amber-200 text-amber-800'
+                        }`}
+                      >
+                        <div className="text-sm font-semibold">{item.title}</div>
+                        <div className="mt-1 text-sm opacity-90">{item.detail}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
                   <Select value={insuranceSchemeCityFilter} onValueChange={setInsuranceSchemeCityFilter}>
@@ -5203,6 +8736,24 @@ export const HrSalaryPage: React.FC = () => {
                 当前先读取服务端全量方案，再在前端按城市和状态补筛，便于把禁用方案一起保留在维护视图里继续联调。
               </div>
 
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                  <div className="text-xs text-emerald-600">命中 ACTIVE 台账方案</div>
+                  <div className="mt-2 text-2xl font-semibold text-emerald-700">{activeLinkedInsuranceSchemes.length}</div>
+                  <div className="mt-2 text-sm text-emerald-700">当前至少有一条员工台账在用</div>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                  <div className="text-xs text-amber-600">待补分配样本</div>
+                  <div className="mt-2 text-2xl font-semibold text-amber-700">{unusedInsuranceSchemes.length}</div>
+                  <div className="mt-2 text-sm text-amber-700">当前还没有员工命中的方案</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+                  <div className="text-xs text-slate-500">仅历史台账</div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-700">{expiredOnlyInsuranceSchemes.length}</div>
+                  <div className="mt-2 text-sm text-slate-600">保留历史样本但当前无人使用</div>
+                </div>
+              </div>
+
               <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
                 <Table>
                   <TableHeader>
@@ -5211,6 +8762,7 @@ export const HrSalaryPage: React.FC = () => {
                       <TableHead>基数范围</TableHead>
                       <TableHead>公司比例</TableHead>
                       <TableHead>个人比例</TableHead>
+                      <TableHead>联调命中</TableHead>
                       <TableHead>生效 / 状态</TableHead>
                       <TableHead className="text-right">操作</TableHead>
                     </TableRow>
@@ -5227,12 +8779,46 @@ export const HrSalaryPage: React.FC = () => {
                         + Number(item.medicalPersonalRate || 0)
                         + Number(item.unemploymentPersonalRate || 0)
                         + Number(item.housingFundPersonalRate || 0);
+                      const usage = insuranceSchemeUsageMap.get(item.id);
+                      const rowIssues: Array<{ label: string; severity: 'warning' | 'danger' }> = [];
+                      if (Number(item.baseMin ?? 0) > Number(item.baseMax ?? 0)) {
+                        rowIssues.push({ label: '区间异常', severity: 'danger' });
+                      }
+                      if (Number(item.status ?? 1) === 0 && usage?.recordCount) {
+                        rowIssues.push({ label: '禁用仍有台账', severity: 'danger' });
+                      }
+                      if (!usage?.recordCount) {
+                        rowIssues.push({ label: '未命中员工', severity: 'warning' });
+                      } else if (!usage.activeRecordCount) {
+                        rowIssues.push({ label: '仅历史台账', severity: 'warning' });
+                      }
+                      const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
+                        ? 'bg-rose-50/40'
+                        : rowIssues.length
+                          ? 'bg-amber-50/40'
+                          : '';
 
                       return (
-                        <TableRow key={item.id}>
+                        <TableRow key={item.id} className={rowClassName}>
                           <TableCell>
                             <div className="font-medium text-slate-900">{item.schemeName}</div>
                             <div className="text-xs text-slate-400">{item.city || '-'}</div>
+                            {rowIssues.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {rowIssues.map(issue => (
+                                  <span
+                                    key={`${item.id}-${issue.label}`}
+                                    className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
+                                      issue.severity === 'danger'
+                                        ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                        : 'border-amber-200 bg-amber-50 text-amber-700'
+                                    }`}
+                                  >
+                                    {issue.label}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div>{formatCurrency(item.baseMin)} - {formatCurrency(item.baseMax)}</div>
@@ -5245,6 +8831,30 @@ export const HrSalaryPage: React.FC = () => {
                           <TableCell>
                             <div className="font-medium text-slate-900">{formatPercent(personalRate)}</div>
                             <div className="mt-1 text-xs text-slate-400">含养老/医疗/失业/公积金</div>
+                          </TableCell>
+                          <TableCell>
+                            {usage?.recordCount ? (
+                              <div>
+                                <div className="font-medium text-slate-900">
+                                  {usage.activeRecordCount
+                                    ? `${usage.activeRecordCount} 条 ACTIVE 台账 / ${usage.activeEmployeeIds.size} 名员工`
+                                    : '当前没有 ACTIVE 台账'}
+                                </div>
+                                <div className={`mt-1 text-xs ${usage.activeRecordCount ? 'text-slate-400' : 'text-amber-600'}`}>
+                                  {[
+                                    usage.futureRecordCount ? `${usage.futureRecordCount} 条未来生效` : '',
+                                    usage.expiredRecordCount ? `${usage.expiredRecordCount} 条历史台账` : usage.activeRecordCount ? '当前口径已命中' : '',
+                                  ].filter(Boolean).join(' / ') || '当前还没有可参考的联调样本'}
+                                </div>
+                                {usage.sampleEmployeeNames.length > 0 && (
+                                  <div className="mt-1 text-xs text-slate-400">
+                                    样本：{usage.sampleEmployeeNames.join('、')}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-slate-400">当前还没有员工命中</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
@@ -5264,7 +8874,7 @@ export const HrSalaryPage: React.FC = () => {
                     })}
                     {!filteredInsuranceSchemes.length && !foundationLoading && (
                       <TableRow>
-                        <TableCell colSpan={6} className="py-10 text-center text-slate-400">
+                        <TableCell colSpan={7} className="py-10 text-center text-slate-400">
                           当前筛选条件下没有社保方案数据。
                         </TableCell>
                       </TableRow>
@@ -5444,6 +9054,72 @@ export const HrSalaryPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前保存影响</div>
+                <div className="mt-2 font-semibold text-slate-900">{structureFormDiagnostics.modeLabel}</div>
+                <div className="mt-1 text-sm text-slate-500">{structureFormDiagnostics.modeHint}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">项目体检</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">{structureFormDiagnostics.selectedItems.length}</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  计税 {structureFormDiagnostics.taxableItems.length} 个 / 浮动 {structureFormDiagnostics.variableItems.length} 个
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {structureFormDiagnostics.disabledSelectedItems.length
+                    ? `${structureFormDiagnostics.disabledSelectedItems.length} 个禁用项目仍被选中`
+                    : '当前没有选中禁用项目'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">历史命中</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">{structureFormDiagnostics.activeUsage?.archiveCount || 0}</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {structureFormDiagnostics.activeUsage
+                    ? `${structureFormDiagnostics.activeUsage.employeeIds.size} 名员工 / ${structureFormDiagnostics.activeUsage.futureCount} 条未来生效`
+                    : '当前结构还没有在岗样本命中'}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {structureFormDiagnostics.removedItems.length
+                    ? `本次会移除 ${structureFormDiagnostics.removedItems.length} 个既有项目`
+                    : '当前没有移除既有项目'}
+                </div>
+              </div>
+            </div>
+
+            <div className={`mt-4 rounded-2xl border p-4 ${structureFormDiagnostics.riskSummary.className}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="font-semibold text-current">
+                    {structureFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
+                  </div>
+                  <div className="mt-1 text-sm opacity-90">{structureFormDiagnostics.riskSummary.hint}</div>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureFormDiagnostics.riskSummary.className}`}>
+                  {structureFormDiagnostics.riskSummary.label}
+                </span>
+              </div>
+
+              {structureFormDiagnostics.riskItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {structureFormDiagnostics.riskItems.map(item => (
+                    <div
+                      key={item.key}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        item.severity === 'danger'
+                          ? 'border-rose-200 bg-white/70 text-rose-700'
+                          : 'border-amber-200 bg-white/70 text-amber-700'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={closeStructureDialog}>取消</Button>
               <Button disabled={actionLoading} onClick={() => void handleSaveStructure()}>
@@ -5504,6 +9180,115 @@ export const HrSalaryPage: React.FC = () => {
                     <SelectItem value="USD">美元</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">目标职级</div>
+                <div className="mt-2 font-semibold text-slate-900">
+                  {gradeFormDiagnostics.selectedLevel
+                    ? [gradeFormDiagnostics.selectedLevel.levelCode, gradeFormDiagnostics.selectedLevel.levelName].filter(Boolean).join(' / ')
+                    : '请选择职级'}
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {gradeFormDiagnostics.selectedLevel
+                    ? `${gradeFormDiagnostics.selectedLevel.levelSeries || '未分组'} 序列 / Rank ${gradeFormDiagnostics.selectedLevel.levelRank}`
+                    : '选中后会显示当前序列和排序信息'}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {gradeFormDiagnostics.existingGrade
+                    ? `当前已配 ${formatCurrency(gradeFormDiagnostics.existingGrade.minSalary)} - ${formatCurrency(gradeFormDiagnostics.existingGrade.maxSalary)}`
+                    : '当前职级还没有薪级配置'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前保存影响</div>
+                <div className="mt-2 font-semibold text-slate-900">{gradeFormDiagnostics.modeLabel}</div>
+                <div className="mt-1 text-sm text-slate-500">{gradeFormDiagnostics.modeHint}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">覆盖率变化</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">
+                  {gradeFormDiagnostics.currentCoverageRate}% → {gradeFormDiagnostics.nextCoverageRate}%
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  序列内 {gradeFormDiagnostics.seriesConfiguredCount}/{gradeFormDiagnostics.seriesTotal} → {gradeFormDiagnostics.nextSeriesConfiguredCount}/{gradeFormDiagnostics.seriesTotal}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  预计序列覆盖率 {gradeFormDiagnostics.nextSeriesCoverageRate}%
+                </div>
+              </div>
+            </div>
+
+            <div className={`mt-4 rounded-2xl border p-4 ${gradeFormDiagnostics.riskSummary.className}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="font-semibold text-current">
+                    {gradeFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
+                  </div>
+                  <div className="mt-1 text-sm opacity-90">{gradeFormDiagnostics.riskSummary.hint}</div>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${gradeFormDiagnostics.riskSummary.className}`}>
+                  {gradeFormDiagnostics.riskSummary.label}
+                </span>
+              </div>
+
+              {gradeFormDiagnostics.riskItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {gradeFormDiagnostics.riskItems.map(item => (
+                    <div
+                      key={item.key}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        item.severity === 'danger'
+                          ? 'border-rose-200 bg-white/70 text-rose-700'
+                          : 'border-amber-200 bg-white/70 text-amber-700'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <div className="text-xs text-slate-400">上一级已配薪级</div>
+                {gradeFormDiagnostics.previousLevel && gradeFormDiagnostics.previousGrade ? (
+                  <>
+                    <div className="mt-2 font-semibold text-slate-900">
+                      {[gradeFormDiagnostics.previousLevel.levelCode, gradeFormDiagnostics.previousLevel.levelName].filter(Boolean).join(' / ')}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-500">
+                      {formatCurrency(gradeFormDiagnostics.previousGrade.minSalary)} - {formatCurrency(gradeFormDiagnostics.previousGrade.maxSalary)}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      币种 {gradeFormDiagnostics.previousGrade.currency || 'CNY'}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-2 text-sm text-slate-500">当前序列里还没有更低一级的已配薪级。</div>
+                )}
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <div className="text-xs text-slate-400">下一级已配薪级</div>
+                {gradeFormDiagnostics.nextLevel && gradeFormDiagnostics.nextGrade ? (
+                  <>
+                    <div className="mt-2 font-semibold text-slate-900">
+                      {[gradeFormDiagnostics.nextLevel.levelCode, gradeFormDiagnostics.nextLevel.levelName].filter(Boolean).join(' / ')}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-500">
+                      {formatCurrency(gradeFormDiagnostics.nextGrade.minSalary)} - {formatCurrency(gradeFormDiagnostics.nextGrade.maxSalary)}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      币种 {gradeFormDiagnostics.nextGrade.currency || 'CNY'}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-2 text-sm text-slate-500">当前序列里还没有更高一级的已配薪级。</div>
+                )}
               </div>
             </div>
 
@@ -5775,6 +9560,131 @@ export const HrSalaryPage: React.FC = () => {
                     </div>
                   </div>
 
+                  <div className={`mt-4 rounded-2xl border p-4 ${taxConfigDiagnostics.riskSummary.className}`}>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold">
+                          {taxConfigDiagnostics.riskItems.length ? '个税配置联调风险提示' : '个税配置口径已对齐'}
+                        </div>
+                        <div className="mt-1 text-sm opacity-90">{taxConfigDiagnostics.riskSummary.hint}</div>
+                      </div>
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${taxConfigDiagnostics.riskSummary.className}`}>
+                        {taxConfigDiagnostics.riskSummary.label}
+                      </span>
+                    </div>
+
+                    {taxConfigDiagnostics.riskItems.length > 0 && (
+                      <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                        {taxConfigDiagnostics.riskItems.map(item => (
+                          <div
+                            key={item.key}
+                            className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                              item.severity === 'danger'
+                                ? 'border-rose-200 text-rose-800'
+                                : 'border-amber-200 text-amber-800'
+                            }`}
+                          >
+                            <div className="text-sm font-semibold">{item.title}</div>
+                            <div className="mt-1 text-sm opacity-90">{item.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-semibold text-slate-900">当前联调样本预览</div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {currentEmployeeRecord
+                              ? `使用 ${currentSelectedEmployeeLabel || '当前员工'} 的 ${taxReferencePeriod} 口径，预估当前编辑值会命中哪一档。`
+                              : '当前没有选中联调样本，下面只展示配置本身。'}
+                          </div>
+                        </div>
+                        {currentEmployeeRecord && (
+                          <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                            {currentEmployeeEffectiveDate || '-'}
+                          </span>
+                        )}
+                      </div>
+
+                      {currentEmployeeRecord ? (
+                        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div className="text-xs text-slate-400">计税前收入</div>
+                            <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(taxConfigDiagnostics.sampleTaxableIncome)}</div>
+                            <div className="mt-2 text-sm text-slate-500">税前减个人社保后的口径</div>
+                          </div>
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                            <div className="text-xs text-amber-600">应纳税所得额</div>
+                            <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(taxConfigDiagnostics.sampleTaxableAmount)}</div>
+                            <div className="mt-2 text-sm text-amber-700">已扣起征点与专项扣除</div>
+                          </div>
+                          <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
+                            <div className="text-xs text-sky-600">命中税档</div>
+                            <div className="mt-2 text-lg font-semibold text-sky-700">
+                              {taxConfigDiagnostics.matchedBracket
+                                ? `第 ${taxConfigDiagnostics.matchedBracketIndex + 1} 档 / ${formatPercent(Number(taxConfigDiagnostics.matchedBracket.rate || 0) * 100)}`
+                                : '未命中'}
+                            </div>
+                            <div className="mt-2 text-sm text-sky-700">
+                              {taxConfigDiagnostics.remainingToNextBracket != null && taxConfigDiagnostics.nextBracket
+                                ? `距下一档还差 ${formatCurrency(taxConfigDiagnostics.remainingToNextBracket)}`
+                                : taxConfigDiagnostics.matchedBracket
+                                  ? '当前已落在最后一档或无下一档'
+                                  : '请先检查税率档区间是否连续'}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                            <div className="text-xs text-emerald-600">预估个税 / 到手</div>
+                            <div className="mt-2 text-2xl font-semibold text-emerald-700">{formatCurrency(taxConfigDiagnostics.estimatedTaxAmount)}</div>
+                            <div className="mt-2 text-sm text-emerald-700">
+                              到手 {formatCurrency(taxConfigDiagnostics.estimatedAfterTaxIncome)}
+                            </div>
+                            <div className="mt-2 text-xs text-emerald-700">
+                              {taxConfigDiagnostics.differenceFromCurrentTax === 0
+                                ? '与当前后端个税结果一致'
+                                : `较当前后端结果${taxConfigDiagnostics.differenceFromCurrentTax > 0 ? '增加' : '减少'} ${formatCurrency(Math.abs(taxConfigDiagnostics.differenceFromCurrentTax))}`}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-4 py-10 text-center text-sm text-slate-500">
+                          当前没有选中员工，无法展示样本税档预览。
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="font-semibold text-slate-900">专项附加扣除参考值</div>
+                      <div className="mt-1 text-sm text-slate-500">这里展示的是当前编辑值里的正向模板，方便你核对 HR 常用扣除标准是否录齐。</div>
+
+                      {taxConfigReferenceEntries.length > 0 ? (
+                        <div className="mt-4 space-y-3">
+                          {taxConfigReferenceEntries.map(item => (
+                            <div key={item.type} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="font-medium text-slate-900">{item.label}</div>
+                                <div className="text-sm font-semibold text-slate-900">{formatCurrency(item.amount)}</div>
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400">
+                                {currentTaxConfigReferenceMap.get(item.type) === item.amount
+                                  ? '与当前已生效配置一致'
+                                  : `当前已生效值 ${formatCurrency(currentTaxConfigReferenceMap.get(item.type) || 0)}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50/80 px-4 py-10 text-center text-sm text-amber-700">
+                          当前编辑值里还没有任何正向专项附加扣除模板。
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <Textarea
                     className="mt-4 min-h-[260px] font-mono text-sm"
                     value={taxConfigForm.taxBracketsJson}
@@ -5796,18 +9706,52 @@ export const HrSalaryPage: React.FC = () => {
                             <TableHead>终点</TableHead>
                             <TableHead>税率</TableHead>
                             <TableHead>速算扣除数</TableHead>
+                            <TableHead>联调样本</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {taxConfigBracketPreview.rows.map((item, index) => (
-                            <TableRow key={`${item.min}-${item.max ?? 'none'}-${item.rate}-${index}`}>
-                              <TableCell>第 {index + 1} 档</TableCell>
-                              <TableCell>{formatCurrency(item.min)}</TableCell>
-                              <TableCell>{item.max == null ? '无上限' : formatCurrency(item.max)}</TableCell>
-                              <TableCell>{formatPercent(Number(item.rate || 0) * 100)}</TableCell>
-                              <TableCell>{formatCurrency(item.deduction)}</TableCell>
-                            </TableRow>
-                          ))}
+                          {taxConfigBracketPreview.rows.map((item, index) => {
+                            const matched = taxConfigDiagnostics.matchedBracketIndex === index;
+                            const next = taxConfigDiagnostics.nextBracket
+                              && taxConfigDiagnostics.nextBracket.min === item.min
+                              && taxConfigDiagnostics.nextBracket.max === item.max
+                              && taxConfigDiagnostics.nextBracket.rate === item.rate
+                              && taxConfigDiagnostics.nextBracket.deduction === item.deduction;
+                            const rowClassName = matched ? 'bg-sky-50/60' : '';
+
+                            return (
+                              <TableRow key={`${item.min}-${item.max ?? 'none'}-${item.rate}-${index}`} className={rowClassName}>
+                                <TableCell>第 {index + 1} 档</TableCell>
+                                <TableCell>{formatCurrency(item.min)}</TableCell>
+                                <TableCell>{item.max == null ? '无上限' : formatCurrency(item.max)}</TableCell>
+                                <TableCell>{formatPercent(Number(item.rate || 0) * 100)}</TableCell>
+                                <TableCell>{formatCurrency(item.deduction)}</TableCell>
+                                <TableCell>
+                                  {matched ? (
+                                    <div className="space-y-1">
+                                      <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                                        当前样本命中
+                                      </span>
+                                      <div className="text-xs text-slate-500">
+                                        应纳税所得额 {formatCurrency(taxConfigDiagnostics.sampleTaxableAmount)}
+                                      </div>
+                                    </div>
+                                  ) : next ? (
+                                    <div className="space-y-1">
+                                      <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                                        下一档
+                                      </span>
+                                      <div className="text-xs text-slate-500">
+                                        还差 {formatCurrency(taxConfigDiagnostics.remainingToNextBracket || 0)}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-slate-400">未命中</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
@@ -5844,6 +9788,17 @@ export const HrSalaryPage: React.FC = () => {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
+                {employeeTaxDeductionDiagnostics.missingReferenceEntries.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => applyTaxDeductionReferenceTemplate(
+                      employeeTaxDeductionDiagnostics.missingReferenceEntries[0].type,
+                      employeeTaxDeductionDiagnostics.missingReferenceEntries[0].referenceAmount,
+                    )}
+                  >
+                    优先回填一条
+                  </Button>
+                )}
                 {editingTaxDeductionId && (
                   <Button variant="outline" onClick={() => resetTaxDeductionForm(currentEmployeeRecord?.employeeId)}>
                     新建一条
@@ -5986,6 +9941,146 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
                 </div>
 
+                <div className={`mt-4 rounded-2xl border p-4 ${taxDeductionRiskSummary.className}`}>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="text-sm font-semibold">
+                        {taxDeductionRiskItems.length ? '专项扣除联调风险提示' : '专项扣除口径已对齐'}
+                      </div>
+                      <div className="mt-1 text-sm opacity-90">{taxDeductionRiskSummary.hint}</div>
+                    </div>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionRiskSummary.className}`}>
+                      {taxDeductionRiskSummary.label}
+                    </span>
+                  </div>
+
+                  {taxDeductionRiskItems.length > 0 && (
+                    <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                      {taxDeductionRiskItems.map(item => (
+                        <div
+                          key={item.key}
+                          className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                            item.severity === 'danger'
+                              ? 'border-rose-200 text-rose-800'
+                              : 'border-amber-200 text-amber-800'
+                          }`}
+                        >
+                          <div className="text-sm font-semibold">{item.title}</div>
+                          <div className="mt-1 text-sm opacity-90">{item.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {employeeTaxDeductionDiagnostics.referenceEntries.length > 0 && (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                    <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="font-semibold text-slate-900">个税参考模板</div>
+                        <div className="mt-1 text-sm text-slate-500">直接对照当前个税配置里的标准值，看当前员工本月是否已经命中专项扣除。</div>
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        参考项 {employeeTaxDeductionDiagnostics.referenceEntries.filter(item => item.referenceAmount > 0).length} 个
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                      {employeeTaxDeductionDiagnostics.referenceEntries.map(item => {
+                        const cardClassName = item.hasDuplicateInScope || item.hasOverlap
+                          ? 'border-rose-200 bg-rose-50/70'
+                          : item.inScopeCount > 0
+                            ? 'border-emerald-200 bg-emerald-50/70'
+                            : item.referenceAmount > 0
+                              ? 'border-amber-200 bg-amber-50/70'
+                              : 'border-slate-200 bg-white/80';
+                        const textClassName = item.hasDuplicateInScope || item.hasOverlap
+                          ? 'text-rose-700'
+                          : item.inScopeCount > 0
+                            ? 'text-emerald-700'
+                            : item.referenceAmount > 0
+                              ? 'text-amber-700'
+                              : 'text-slate-700';
+
+                        return (
+                          <div key={item.type} className={`rounded-2xl border px-4 py-4 ${cardClassName}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className={`text-sm font-semibold ${textClassName}`}>{item.label}</div>
+                                <div className="mt-1 text-xs text-slate-500">
+                                  参考值 {item.referenceAmount > 0 ? formatCurrency(item.referenceAmount) : '未配置'}
+                                </div>
+                              </div>
+                              <div className={`text-sm font-semibold ${textClassName}`}>
+                                {item.inScopeCount > 0 ? '已命中' : item.activeCount > 0 ? 'ACTIVE 未命中' : '未命中'}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                              <div className="rounded-xl bg-white/70 px-3 py-2">
+                                <div className="text-xs text-slate-400">本月命中</div>
+                                <div className="mt-1 font-semibold text-slate-900">
+                                  {item.inScopeCount ? `${item.inScopeCount} 条 / ${formatCurrency(item.inScopeAmount)}` : '0 条'}
+                                </div>
+                              </div>
+                              <div className="rounded-xl bg-white/70 px-3 py-2">
+                                <div className="text-xs text-slate-400">历史记录</div>
+                                <div className="mt-1 font-semibold text-slate-900">
+                                  {item.totalCount} 条
+                                  {item.activeOutOfScopeCount ? ` / ${item.activeOutOfScopeCount} 条待生效` : ''}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {item.hasDuplicateInScope && (
+                                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+                                  本月重复命中
+                                </span>
+                              )}
+                              {item.hasOverlap && (
+                                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+                                  区间重叠
+                                </span>
+                              )}
+                              {item.activeOutOfScopeCount > 0 && (
+                                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                                  ACTIVE 未命中当前税月
+                                </span>
+                              )}
+                              {item.inScopeCount > 0 && (
+                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                  已参与 {taxReferencePeriod} 测算
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-3 flex justify-end gap-2">
+                              {item.latestInScopeRecord ? (
+                                <Button variant="outline" size="sm" onClick={() => openTaxDeductionEditDialog(item.latestInScopeRecord!)}>
+                                  编辑当前命中
+                                </Button>
+                              ) : item.referenceAmount > 0 ? (
+                                <Button variant="outline" size="sm" onClick={() => applyTaxDeductionReferenceTemplate(item.type, item.referenceAmount)}>
+                                  回填到表单
+                                </Button>
+                              ) : item.latestRecord ? (
+                                <Button variant="outline" size="sm" onClick={() => openTaxDeductionEditDialog(item.latestRecord!)}>
+                                  编辑最近记录
+                                </Button>
+                              ) : (
+                                <Button variant="outline" size="sm" disabled>
+                                  暂无操作
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
                     <Select value={taxDeductionTypeFilter} onValueChange={setTaxDeductionTypeFilter}>
@@ -6050,59 +10145,105 @@ export const HrSalaryPage: React.FC = () => {
                         <TableHead>月金额</TableHead>
                         <TableHead>生效区间</TableHead>
                         <TableHead>状态</TableHead>
+                        <TableHead>联调提示</TableHead>
                         <TableHead className="text-right">操作</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredEmployeeAllTaxDeductions.map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
-                            <div className="mt-1 text-xs text-slate-400">{item.remark || '无备注'}</div>
-                          </TableCell>
-                          <TableCell>{formatCurrency(item.amount)}</TableCell>
-                          <TableCell>
-                            <div>{toDateInputValue(item.startDate) || '-'}</div>
-                            <div className="mt-1 text-xs text-slate-400">截止 {toDateInputValue(item.endDate) || '长期有效'}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-2">
-                              <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionStatusClass(item.status)}`}>
-                                {taxDeductionStatusLabel(item.status)}
-                              </span>
-                              {activeTaxDeductionIds.has(item.id) && (
-                                <span className="inline-flex w-fit rounded-full border border-sky-100 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
-                                  参与{taxReferencePeriod}测算
+                      {filteredEmployeeAllTaxDeductions.map(item => {
+                        const rowIssues = employeeTaxDeductionDiagnostics.rowIssueMap.get(item.id) || [];
+                        const referenceAmount = Number(currentTaxConfigReferenceMap.get(item.deductionType) || 0);
+                        const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
+                          ? 'bg-rose-50/40'
+                          : rowIssues.length
+                            ? 'bg-amber-50/40'
+                            : '';
+
+                        return (
+                          <TableRow key={item.id} className={rowClassName}>
+                            <TableCell>
+                              <div className="font-medium text-slate-900">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
+                              <div className="mt-1 text-xs text-slate-400">{item.remark || '无备注'}</div>
+                            </TableCell>
+                            <TableCell>{formatCurrency(item.amount)}</TableCell>
+                            <TableCell>
+                              <div>{toDateInputValue(item.startDate) || '-'}</div>
+                              <div className="mt-1 text-xs text-slate-400">截止 {toDateInputValue(item.endDate) || '长期有效'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-2">
+                                <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionStatusClass(item.status)}`}>
+                                  {taxDeductionStatusLabel(item.status)}
                                 </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" className="rounded-xl" onClick={() => openTaxDeductionEditDialog(item)}>
-                                编辑
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                                onClick={() => void handleDeleteTaxDeduction(item)}
-                              >
-                                删除
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                {activeTaxDeductionIds.has(item.id) && (
+                                  <span className="inline-flex w-fit rounded-full border border-sky-100 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                                    参与{taxReferencePeriod}测算
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap gap-2">
+                                  {referenceAmount > 0 && (
+                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                      参考值 {formatCurrency(referenceAmount)}
+                                    </span>
+                                  )}
+                                  {!rowIssues.length && !activeTaxDeductionIds.has(item.id) && (
+                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                      记录正常
+                                    </span>
+                                  )}
+                                  {rowIssues.map(issue => (
+                                    <span
+                                      key={issue.key}
+                                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                        issue.severity === 'danger'
+                                          ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                          : 'border-amber-200 bg-amber-50 text-amber-700'
+                                      }`}
+                                    >
+                                      {issue.label}
+                                    </span>
+                                  ))}
+                                </div>
+                                {rowIssues.length > 0 && (
+                                  <div className="space-y-1 text-xs text-slate-500">
+                                    {rowIssues.slice(0, 2).map(issue => (
+                                      <div key={`${issue.key}-detail`}>{issue.detail}</div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" className="rounded-xl" onClick={() => openTaxDeductionEditDialog(item)}>
+                                  编辑
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                                  onClick={() => void handleDeleteTaxDeduction(item)}
+                                >
+                                  删除
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                       {!filteredEmployeeAllTaxDeductions.length && !taxDeductionListLoading && (
                         <TableRow>
-                          <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                          <TableCell colSpan={6} className="py-10 text-center text-slate-400">
                             当前筛选条件下没有专项扣除记录。
                           </TableCell>
                         </TableRow>
                       )}
                       {taxDeductionListLoading && (
                         <TableRow>
-                          <TableCell colSpan={5} className="py-10 text-center text-slate-400">
+                          <TableCell colSpan={6} className="py-10 text-center text-slate-400">
                             正在加载专项扣除记录...
                           </TableCell>
                         </TableRow>
@@ -6192,6 +10333,106 @@ export const HrSalaryPage: React.FC = () => {
               </div>
               <div className="mt-3 text-xs text-slate-500">{selectedInsuranceScheme?.baseRule || '选择方案后可查看基数规则。'}</div>
             </div>
+
+            <div className={`mt-4 rounded-2xl border p-4 ${insuranceAssignDiagnostics.riskSummary.className}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="font-semibold text-current">
+                    {selectedInsuranceScheme ? '分配前联调校验' : '等待选择社保方案'}
+                  </div>
+                  <div className="mt-1 text-sm opacity-90">{insuranceAssignDiagnostics.riskSummary.hint}</div>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${insuranceAssignDiagnostics.riskSummary.className}`}>
+                  {insuranceAssignDiagnostics.riskSummary.label}
+                </span>
+              </div>
+
+              {insuranceAssignDiagnostics.riskItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {insuranceAssignDiagnostics.riskItems.map(item => (
+                    <div
+                      key={item.key}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        item.severity === 'danger'
+                          ? 'border-rose-200 bg-white/70 text-rose-700'
+                          : 'border-amber-200 bg-white/70 text-amber-700'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前 ACTIVE</div>
+                <div className="mt-2 font-semibold text-slate-900">
+                  {insuranceAssignDiagnostics.currentActiveLedger?.schemeName || employeeInsuranceDetail?.schemeName || '暂无当前方案'}
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {insuranceAssignDiagnostics.currentActiveLedger
+                    ? `${toDateInputValue(insuranceAssignDiagnostics.currentActiveLedger.effectiveDate) || '-'} / ${formatCurrency(insuranceAssignDiagnostics.currentActiveLedger.base)}`
+                    : employeeInsuranceDetail
+                      ? `${toDateInputValue(employeeInsuranceDetail.effectiveDate) || '-'} / ${formatCurrency(employeeInsuranceDetail.base)}`
+                      : '当前员工还没有 ACTIVE 台账'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">本次保存影响</div>
+                <div className="mt-2 font-semibold text-slate-900">{insuranceAssignDiagnostics.modeLabel}</div>
+                <div className="mt-1 text-sm text-slate-500">{insuranceAssignDiagnostics.modeHint}</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {insuranceAssignDiagnostics.sameDateRecords.length > 0
+                    ? `目标日期已有 ${insuranceAssignDiagnostics.sameDateRecords.length} 条同日台账`
+                    : '目标日期当前没有同日台账'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">预计缴纳合计</div>
+                <div className="mt-2 font-semibold text-slate-900">
+                  {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.totalAmount) : '-'}
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  个人 {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.personalTotal) : '-'}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  公司 {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.companyTotal) : '-'}
+                </div>
+              </div>
+            </div>
+
+            {insuranceAssignPreview && (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>项目</TableHead>
+                      <TableHead>个人承担</TableHead>
+                      <TableHead>公司承担</TableHead>
+                      <TableHead>合计</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {insuranceAssignPreview.rows.map(row => (
+                      <TableRow key={row.key}>
+                        <TableCell>
+                          <div className="font-medium text-slate-900">{row.label}</div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            个人 {formatPercent(row.personalRate)} / 公司 {formatPercent(row.companyRate)}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatCurrency(row.personalAmount)}</TableCell>
+                        <TableCell>{formatCurrency(row.companyAmount)}</TableCell>
+                        <TableCell>{formatCurrency(row.totalAmount)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
 
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={closeInsuranceDialog}>取消</Button>
@@ -6365,6 +10606,65 @@ export const HrSalaryPage: React.FC = () => {
                   {formatCurrency(adjustmentAfterTotal - Number(adjustmentBaseline?.totalSalary || 0))}
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前现薪</div>
+                <div className="mt-2 font-semibold text-slate-900">
+                  {adjustmentFormEmployee ? buildEmployeeLabel(adjustmentFormEmployee) : '请选择员工'}
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {adjustmentBaseline
+                    ? `${toDateInputValue(adjustmentBaseline.effectiveDate) || '-'} / ${formatCurrency(adjustmentBaseline.totalSalary)}`
+                    : '读取员工现薪后显示'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">本次创建影响</div>
+                <div className="mt-2 font-semibold text-slate-900">{adjustmentFormDiagnostics.modeLabel}</div>
+                <div className="mt-1 text-sm text-slate-500">{adjustmentFormDiagnostics.modeHint}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">变更规模</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">{adjustmentFormDiagnostics.changedItemCount}</div>
+                <div className="mt-1 text-sm text-slate-500">变动薪资项目数</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  同日已有 {adjustmentFormDiagnostics.sameDateAdjustments.length} 张，未来链路 {adjustmentFormDiagnostics.futureAdjustments.length} 条
+                </div>
+              </div>
+            </div>
+
+            <div className={`mt-4 rounded-2xl border p-4 ${adjustmentFormDiagnostics.riskSummary.className}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="font-semibold text-current">
+                    {adjustmentFormDiagnostics.riskItems.length ? '创建前联调校验' : '创建口径已对齐'}
+                  </div>
+                  <div className="mt-1 text-sm opacity-90">{adjustmentFormDiagnostics.riskSummary.hint}</div>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentFormDiagnostics.riskSummary.className}`}>
+                  {adjustmentFormDiagnostics.riskSummary.label}
+                </span>
+              </div>
+
+              {adjustmentFormDiagnostics.riskItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {adjustmentFormDiagnostics.riskItems.map(item => (
+                    <div
+                      key={item.key}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        item.severity === 'danger'
+                          ? 'border-rose-200 bg-white/70 text-rose-700'
+                          : 'border-amber-200 bg-white/70 text-amber-700'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="mt-6">
