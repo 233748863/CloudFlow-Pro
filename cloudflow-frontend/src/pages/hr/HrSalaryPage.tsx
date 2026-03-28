@@ -694,6 +694,30 @@ const isDeductionRangeOverlapping = (
   return normalizedLeftStart <= normalizedRightEnd && normalizedRightStart <= normalizedLeftEnd;
 };
 
+const getYearMonthValue = (value?: string | null) => {
+  const normalizedValue = toDateInputValue(value);
+  return normalizedValue ? normalizedValue.slice(0, 7) : '';
+};
+
+// 专项扣除按月份参与个税测算，这里统一按 YYYY-MM 判断当前表单会不会命中本月。
+const isTaxDeductionInReferencePeriod = (
+  startDate?: string | null,
+  endDate?: string | null,
+  referencePeriod?: string | null,
+) => {
+  if (!referencePeriod) {
+    return false;
+  }
+
+  const startMonth = getYearMonthValue(startDate);
+  if (!startMonth) {
+    return false;
+  }
+
+  const endMonth = getYearMonthValue(endDate);
+  return startMonth <= referencePeriod && (!endMonth || endMonth >= referencePeriod);
+};
+
 const buildAmountPayload = (valueMap: Record<string, string>) => {
   const payload: Record<string, number> = {};
 
@@ -2274,6 +2298,211 @@ export const HrSalaryPage: React.FC = () => {
     structureForm.structureName,
     structureFormExistingDetail,
     structureFormSelectedItems,
+  ]);
+
+  const itemFormExistingItem = useMemo(
+    () => (editingItemId ? salaryItems.find(item => item.id === editingItemId) || null : null),
+    [editingItemId, salaryItems],
+  );
+
+  const itemFormDiagnostics = useMemo(() => {
+    const trimmedCode = itemForm.itemCode.trim();
+    const trimmedName = itemForm.itemName.trim();
+    const trimmedFormula = (itemForm.formula || '').trim();
+    const usage = editingItemId ? salaryItemUsageMap.get(editingItemId) || null : null;
+    const duplicateCodeTarget = trimmedCode
+      ? salaryItems.find(item => item.id !== editingItemId && String(item.itemCode || '').trim().toUpperCase() === trimmedCode.toUpperCase()) || null
+      : null;
+    const duplicateNameTarget = trimmedName
+      ? salaryItems.find(item => item.id !== editingItemId && String(item.itemName || '').trim() === trimmedName) || null
+      : null;
+    const noChanges = Boolean(itemFormExistingItem)
+      && trimmedCode === String(itemFormExistingItem?.itemCode || '').trim()
+      && trimmedName === String(itemFormExistingItem?.itemName || '').trim()
+      && itemForm.itemType === itemFormExistingItem?.itemType
+      && itemForm.category === itemFormExistingItem?.category
+      && Boolean(itemForm.isTaxable) === Boolean(itemFormExistingItem?.isTaxable)
+      && Number(itemForm.status ?? 1) === Number(itemFormExistingItem?.status ?? 1)
+      && Number(itemForm.sortOrder ?? 0) === Number(itemFormExistingItem?.sortOrder ?? 0)
+      && trimmedFormula === String(itemFormExistingItem?.formula || '').trim();
+    const disablesInUseItem = Number(itemForm.status ?? 1) !== 1 && Boolean(usage?.structureIds.size);
+    const taxableChangedInUse = Boolean(
+      usage?.activeArchiveCount
+      && itemFormExistingItem
+      && Boolean(itemForm.isTaxable) !== Boolean(itemFormExistingItem.isTaxable),
+    );
+    const categoryChangedInUse = Boolean(
+      usage?.activeArchiveCount
+      && itemFormExistingItem
+      && itemForm.category !== itemFormExistingItem.category,
+    );
+    const typeChangedInUse = Boolean(
+      usage?.activeArchiveCount
+      && itemFormExistingItem
+      && itemForm.itemType !== itemFormExistingItem.itemType,
+    );
+    const isCoreTaxableCategory = ['BASIC', 'BONUS', 'TAX'].includes(itemForm.category);
+    const suspiciousNonTaxable = isCoreTaxableCategory && !itemForm.isTaxable;
+    const suspiciousTaxableDeduction = ['DEDUCTION', 'INSURANCE'].includes(itemForm.category) && itemForm.isTaxable;
+
+    let modeLabel = '等待填写项目信息';
+    let modeHint = '先填写编码、名称和分类，再判断这次保存是新建项目、覆盖旧口径还是会影响在用结构。';
+    if (trimmedCode || trimmedName) {
+      if (noChanges) {
+        modeLabel = '无变化重复保存';
+        modeHint = '当前输入和已有项目完全一致，继续保存通常只是重复覆盖。';
+      } else if (!editingItemId) {
+        modeLabel = '新建薪资项目';
+        modeHint = '保存后项目会进入结构配置池，后续还需要放进结构才能真正参与员工薪资联调。';
+      } else if (disablesInUseItem) {
+        modeLabel = '禁用在用项目';
+        modeHint = `当前项目还挂在 ${usage?.structureIds.size || 0} 套结构里，禁用后只会阻止新结构继续选它。`;
+      } else if (taxableChangedInUse || categoryChangedInUse || typeChangedInUse) {
+        modeLabel = '调整在用项目口径';
+        modeHint = '当前项目已经进入在岗档案样本，修改计税、分类或类型后要重点核对后续结构和个税口径。';
+      } else {
+        modeLabel = '覆盖已有项目';
+        modeHint = '保存后会直接更新项目属性，结构列表和项目体检会同步刷新。';
+      }
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (trimmedCode || trimmedName || editingItemId) {
+      if (!trimmedCode) {
+        riskItems.push({
+          key: 'missing-code',
+          title: '还没有填写项目编码',
+          detail: '项目编码会直接用于结构维护和后续问题排查，建议先填一个稳定编码。',
+          severity: 'warning',
+        });
+      }
+      if (!trimmedName) {
+        riskItems.push({
+          key: 'missing-name',
+          title: '还没有填写项目名称',
+          detail: '项目名称会直接展示在员工薪资明细里，建议保持清晰可辨识。',
+          severity: 'warning',
+        });
+      }
+      if (duplicateCodeTarget) {
+        riskItems.push({
+          key: 'duplicate-code',
+          title: '项目编码与现有项目重复',
+          detail: `当前编码已被 ${duplicateCodeTarget.itemName} 使用，结构和员工明细联调时会很容易混淆。`,
+          severity: 'danger',
+        });
+      }
+      if (duplicateNameTarget) {
+        riskItems.push({
+          key: 'duplicate-name',
+          title: '项目名称与现有项目重复',
+          detail: `当前名称已被 ${duplicateNameTarget.itemCode} 使用，建议改成更容易区分的名字。`,
+          severity: 'warning',
+        });
+      }
+      if (noChanges) {
+        riskItems.push({
+          key: 'no-changes',
+          title: '本次保存不会带来变化',
+          detail: '编码、名称、分类、类型、计税状态和公式都没有变化，继续保存意义不大。',
+          severity: 'warning',
+        });
+      }
+      if (disablesInUseItem) {
+        riskItems.push({
+          key: 'disable-in-use',
+          title: '正在禁用一个已在使用中的项目',
+          detail: `当前项目已命中 ${usage?.structureIds.size || 0} 套结构、${usage?.activeEmployeeIds.size || 0} 名员工、${usage?.activeArchiveCount || 0} 条在岗档案。`,
+          severity: 'danger',
+        });
+      }
+      if (taxableChangedInUse && itemFormExistingItem) {
+        riskItems.push({
+          key: 'taxable-changed',
+          title: '正在改变在用项目的计税口径',
+          detail: `当前会把“${itemFormExistingItem.itemName}”从${itemFormExistingItem.isTaxable ? '计税' : '不计税'}改成${itemForm.isTaxable ? '计税' : '不计税'}。`,
+          severity: 'danger',
+        });
+      }
+      if (categoryChangedInUse && itemFormExistingItem) {
+        riskItems.push({
+          key: 'category-changed',
+          title: '正在改变在用项目的分类',
+          detail: `当前会把项目分类从 ${itemCategoryLabel(itemFormExistingItem.category)} 改成 ${itemCategoryLabel(itemForm.category)}，结构口径要一起复核。`,
+          severity: 'warning',
+        });
+      }
+      if (typeChangedInUse && itemFormExistingItem) {
+        riskItems.push({
+          key: 'type-changed',
+          title: '正在改变在用项目的类型',
+          detail: `当前会把项目类型从 ${itemTypeLabel(itemFormExistingItem.itemType)} 改成 ${itemTypeLabel(itemForm.itemType)}，可能影响后续维护认知。`,
+          severity: 'warning',
+        });
+      }
+      if (suspiciousNonTaxable) {
+        riskItems.push({
+          key: 'suspicious-non-taxable',
+          title: '当前分类通常应参与计税',
+          detail: `${itemCategoryLabel(itemForm.category)} 类项目一般会进入税基，当前设置为不计税，建议联调前再确认。`,
+          severity: 'warning',
+        });
+      }
+      if (suspiciousTaxableDeduction) {
+        riskItems.push({
+          key: 'suspicious-taxable-deduction',
+          title: '当前分类通常不建议再次计税',
+          detail: `${itemCategoryLabel(itemForm.category)} 类项目通常作为扣减项处理，当前设置为计税要确认是否符合业务口径。`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !(trimmedCode || trimmedName || editingItemId)
+      ? {
+        label: '等待填写',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先把编码、名称和分类填出来，再判断保存风险。',
+      }
+      : !score
+        ? {
+          label: '可直接保存',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前项目编码、口径和使用影响都比较清晰，可以继续保存。',
+        }
+        : score <= 2
+          ? {
+            label: '保存需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的项目保存提示。`,
+          }
+          : {
+            label: '保存存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整参数再保存。`,
+          };
+
+    return {
+      usage,
+      modeLabel,
+      modeHint,
+      riskItems,
+      riskSummary,
+    };
+  }, [
+    editingItemId,
+    itemForm.category,
+    itemForm.formula,
+    itemForm.isTaxable,
+    itemForm.itemCode,
+    itemForm.itemName,
+    itemForm.itemType,
+    itemForm.sortOrder,
+    itemForm.status,
+    itemFormExistingItem,
+    salaryItemUsageMap,
+    salaryItems,
   ]);
 
   const metrics = useMemo(() => {
@@ -4410,6 +4639,262 @@ export const HrSalaryPage: React.FC = () => {
     };
   }, [taxDeductionRiskItems]);
 
+  const taxDeductionFormExistingRecord = useMemo(
+    () => (editingTaxDeductionId
+      ? employeeAllTaxDeductions.find(item => item.id === editingTaxDeductionId) || null
+      : null),
+    [editingTaxDeductionId, employeeAllTaxDeductions],
+  );
+
+  // 专项扣除表单要在保存前预览“本月是否命中”和“会不会撞上历史记录”，否则个税联调很难定位差异来源。
+  const taxDeductionFormDiagnostics = useMemo(() => {
+    const deductionType = taxDeductionForm.deductionType;
+    const label = deductionTypeLabel(deductionType);
+    const amount = normalizeAmount(taxDeductionForm.amount);
+    const trimmedRemark = taxDeductionForm.remark.trim();
+    const startDate = taxDeductionForm.startDate;
+    const endDate = taxDeductionForm.endDate;
+    const startMonth = getYearMonthValue(startDate);
+    const endMonth = getYearMonthValue(endDate);
+    const normalizedStatus = String(taxDeductionForm.status || 'ACTIVE').toUpperCase();
+    const proposedActive = normalizedStatus === 'ACTIVE';
+    const proposedInScope = proposedActive && isTaxDeductionInReferencePeriod(startDate, endDate, taxReferencePeriod);
+    const existingRecord = taxDeductionFormExistingRecord;
+    const referenceAmount = Number(currentTaxConfigReferenceMap.get(deductionType) || 0);
+    const sameTypeHistoryRecords = deductionType
+      ? employeeAllTaxDeductions.filter(item => item.deductionType === deductionType)
+      : [];
+    const comparableSameTypeRecords = sameTypeHistoryRecords.filter(item => item.id !== editingTaxDeductionId);
+    const sameTypeActiveRecords = comparableSameTypeRecords.filter(item => String(item.status || '').toUpperCase() === 'ACTIVE');
+    const sameTypeInScopeRecords = employeeTaxDeductions.filter(
+      item => item.deductionType === deductionType && item.id !== editingTaxDeductionId,
+    );
+    const predictedInScopeCount = sameTypeInScopeRecords.length + (proposedInScope ? 1 : 0);
+    const predictedInScopeAmount = normalizeAmount(
+      sameTypeInScopeRecords.reduce((sum, item) => sum + Number(item.amount || 0), 0) + (proposedInScope ? amount : 0),
+    );
+    const overlappingActiveRecords = deductionType && proposedActive && startDate
+      ? sameTypeActiveRecords.filter(item => isDeductionRangeOverlapping(item.startDate, item.endDate, startDate, endDate || null))
+      : [];
+    const referenceDelta = referenceAmount > 0 ? normalizeAmount(amount - referenceAmount) : 0;
+    const referenceDeltaRatio = referenceAmount > 0
+      ? Number((Math.abs(referenceDelta) / referenceAmount).toFixed(3))
+      : 0;
+    const hasLargeReferenceDeviation = referenceAmount > 0
+      && Math.abs(referenceDelta) >= Math.max(200, referenceAmount * 0.3);
+    const hasExtremeReferenceDeviation = referenceAmount > 0
+      && Math.abs(referenceDelta) >= Math.max(500, referenceAmount * 0.5);
+    const basicInfoMissing = !deductionType || !startDate || amount <= 0;
+    const noChanges = Boolean(existingRecord)
+      && existingRecord.deductionType === deductionType
+      && normalizeAmount(existingRecord.amount) === amount
+      && (toDateInputValue(existingRecord.startDate) || '') === startDate
+      && (toDateInputValue(existingRecord.endDate) || '') === endDate
+      && String(existingRecord.status || 'ACTIVE').toUpperCase() === normalizedStatus
+      && String(existingRecord.remark || '').trim() === trimmedRemark;
+    const duplicateNewCurrentRecord = !editingTaxDeductionId && proposedInScope && sameTypeInScopeRecords.length > 0;
+    const duplicateCurrentPeriod = !duplicateNewCurrentRecord && proposedInScope && predictedInScopeCount > 1;
+    const activeButOutOfScope = proposedActive && Boolean(deductionType && startDate) && !proposedInScope;
+    const needsRemark = !trimmedRemark && (
+      overlappingActiveRecords.length > 0
+      || duplicateNewCurrentRecord
+      || duplicateCurrentPeriod
+      || hasLargeReferenceDeviation
+    );
+    const isExistingRecordInScope = Boolean(existingRecord && activeTaxDeductionIds.has(existingRecord.id));
+
+    let modeLabel = '新增专项扣除';
+    let modeHint = `保存后会写入 ${label} 历史，并刷新 ${taxReferencePeriod} 的个税测算结果。`;
+    if (!deductionType) {
+      modeLabel = '等待选择扣除类型';
+      modeHint = '先选定扣除类型，再判断这次保存是补录历史、命中本月，还是会撞上已有记录。';
+    } else if (noChanges) {
+      modeLabel = '无变化重复保存';
+      modeHint = '当前金额、区间、状态和备注都没有变化，继续保存通常没有业务意义。';
+    } else if (!editingTaxDeductionId && proposedInScope && sameTypeInScopeRecords.length === 0) {
+      modeLabel = '新增本月生效扣除';
+      modeHint = `保存后 ${label} 会立即参与 ${taxReferencePeriod} 的个税测算。`;
+    } else if (!editingTaxDeductionId && activeButOutOfScope && startMonth > taxReferencePeriod) {
+      modeLabel = '预埋未来月份扣除';
+      modeHint = `这条记录会保留为 ACTIVE，但要到 ${startMonth} 才会参与个税测算。`;
+    } else if (!editingTaxDeductionId && activeButOutOfScope && endMonth && endMonth < taxReferencePeriod) {
+      modeLabel = '补录历史月份扣除';
+      modeHint = `这条记录只影响 ${endMonth} 及之前月份，当前 ${taxReferencePeriod} 个税不会读取。`;
+    } else if (editingTaxDeductionId && !proposedActive) {
+      modeLabel = '关闭当前扣除';
+      modeHint = '保存后这条记录会退出 ACTIVE 状态，不会再被当前税月测算读取。';
+    } else if (editingTaxDeductionId && isExistingRecordInScope && !proposedInScope) {
+      modeLabel = '把当前命中移出税月';
+      modeHint = `保存后这条记录不会再参与 ${taxReferencePeriod} 个税，需要重点复核税额变化。`;
+    } else if (editingTaxDeductionId) {
+      modeLabel = '覆盖已有专项扣除';
+      modeHint = `保存后会直接更新 ${label} 的金额或区间，并同步刷新右侧个税结果。`;
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (!deductionType) {
+      riskItems.push({
+        key: 'missing-type',
+        title: '还没有选择扣除类型',
+        detail: '不明确扣除类型时，无法判断这条记录是否会命中当前税月与参考标准。',
+        severity: 'warning',
+      });
+    }
+    if (!startDate) {
+      riskItems.push({
+        key: 'missing-start-date',
+        title: '还没有填写开始日期',
+        detail: '专项扣除按月份参与个税测算，没有开始日期就无法判断生效月份。',
+        severity: 'danger',
+      });
+    }
+    if (amount <= 0) {
+      riskItems.push({
+        key: 'invalid-amount',
+        title: '扣除金额必须大于 0',
+        detail: '金额为 0 时不会形成有效专项扣除，当前保存也无法用于真实个税联调。',
+        severity: 'danger',
+      });
+    }
+    if (endDate && startDate && endDate < startDate) {
+      riskItems.push({
+        key: 'invalid-range',
+        title: '结束日期早于开始日期',
+        detail: '生效区间顺序已经反了，保存后会直接制造异常扣除记录。',
+        severity: 'danger',
+      });
+    }
+    if (noChanges) {
+      riskItems.push({
+        key: 'no-changes',
+        title: '本次保存不会带来变化',
+        detail: '当前金额、开始日期、结束日期、状态和备注都与原记录一致。',
+        severity: 'warning',
+      });
+    }
+    if (duplicateNewCurrentRecord) {
+      riskItems.push({
+        key: 'existing-current-hit',
+        title: '当前税月已存在同类型命中记录',
+        detail: `${label} 在 ${taxReferencePeriod} 已命中 ${sameTypeInScopeRecords.length} 条 ACTIVE 记录，再新增会直接形成重复扣除。`,
+        severity: 'danger',
+      });
+    } else if (duplicateCurrentPeriod) {
+      riskItems.push({
+        key: 'duplicate-current-period',
+        title: '保存后同类型会在本月重复命中',
+        detail: `${label} 保存后预计会在 ${taxReferencePeriod} 命中 ${predictedInScopeCount} 条记录，个税口径需要人工确认。`,
+        severity: 'danger',
+      });
+    }
+    if (overlappingActiveRecords.length > 0) {
+      const first = overlappingActiveRecords[0];
+      riskItems.push({
+        key: 'overlap-active-ranges',
+        title: '与现有 ACTIVE 记录的区间重叠',
+        detail: `当前区间会和 ${toDateInputValue(first.startDate) || '-'} ~ ${toDateInputValue(first.endDate) || '长期有效'} 的 ${label} 记录重叠。`,
+        severity: 'danger',
+      });
+    }
+    if (activeButOutOfScope) {
+      riskItems.push({
+        key: 'active-out-of-scope',
+        title: '当前保存不会参与本月个税',
+        detail: `${label} 会保持 ACTIVE，但不会命中 ${taxReferencePeriod}，右侧个税测算结果不会读取这条记录。`,
+        severity: 'warning',
+      });
+    }
+    if (hasExtremeReferenceDeviation) {
+      riskItems.push({
+        key: 'reference-drift-large',
+        title: '当前金额与参考标准偏差过大',
+        detail: `${label} 当前输入 ${formatCurrency(amount)}，与参考标准 ${formatCurrency(referenceAmount)} 相差 ${formatCurrency(Math.abs(referenceDelta))}。`,
+        severity: 'danger',
+      });
+    } else if (hasLargeReferenceDeviation) {
+      riskItems.push({
+        key: 'reference-drift',
+        title: '当前金额与参考标准存在明显偏差',
+        detail: `${label} 当前输入 ${formatCurrency(amount)}，与参考标准 ${formatCurrency(referenceAmount)} 偏差 ${formatCurrency(Math.abs(referenceDelta))}。`,
+        severity: 'warning',
+      });
+    }
+    if (needsRemark) {
+      riskItems.push({
+        key: 'missing-remark',
+        title: '建议补充备注说明差异原因',
+        detail: '当前属于重叠、重复命中或金额明显偏差场景，没有备注会增加后续联调排查成本。',
+        severity: 'warning',
+      });
+    }
+
+    const blockingRiskItems = riskItems.filter(item =>
+      ['existing-current-hit', 'duplicate-current-period', 'overlap-active-ranges'].includes(item.key),
+    );
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = basicInfoMissing
+      ? {
+        label: '待补完整',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先把扣除类型、金额和开始日期补完整，再判断是否会影响当前税月的个税口径。',
+      }
+      : !score
+        ? {
+          label: '可直接保存',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前扣除类型、金额、时间区间和本月命中关系都比较清晰，可以继续保存。',
+        }
+        : score <= 2
+          ? {
+            label: '保存需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的专项扣除保存提示。`,
+          }
+          : {
+            label: '保存存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整金额或区间再保存。`,
+          };
+
+    return {
+      label,
+      amount,
+      startMonth,
+      endMonth,
+      referenceAmount,
+      referenceDelta,
+      referenceDeltaRatio,
+      sameTypeHistoryCount: sameTypeHistoryRecords.length,
+      sameTypeActiveCount: sameTypeHistoryRecords.filter(item => String(item.status || '').toUpperCase() === 'ACTIVE').length,
+      sameTypeCurrentScopeCount: sameTypeInScopeRecords.length,
+      predictedInScopeCount,
+      predictedInScopeAmount,
+      overlappingActiveCount: overlappingActiveRecords.length,
+      proposedActive,
+      proposedInScope,
+      noChanges,
+      modeLabel,
+      modeHint,
+      riskItems,
+      blockingRiskItems,
+      riskSummary,
+    };
+  }, [
+    activeTaxDeductionIds,
+    currentTaxConfigReferenceMap,
+    editingTaxDeductionId,
+    employeeAllTaxDeductions,
+    employeeTaxDeductions,
+    taxDeductionForm.amount,
+    taxDeductionForm.deductionType,
+    taxDeductionForm.endDate,
+    taxDeductionForm.remark,
+    taxDeductionForm.startDate,
+    taxDeductionForm.status,
+    taxDeductionFormExistingRecord,
+    taxReferencePeriod,
+  ]);
+
   const taxDeductionFilterTypeOptions = useMemo(
     () => Array.from(new Set(
       employeeAllTaxDeductions
@@ -5886,6 +6371,15 @@ export const HrSalaryPage: React.FC = () => {
     }
     if (taxDeductionForm.endDate && taxDeductionForm.endDate < taxDeductionForm.startDate) {
       toast.error('结束日期不能早于开始日期');
+      return;
+    }
+    if (taxDeductionFormDiagnostics.noChanges) {
+      toast.error('当前没有实际变更，无需重复保存');
+      return;
+    }
+    if (taxDeductionFormDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = taxDeductionFormDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
       return;
     }
 
@@ -8969,6 +9463,68 @@ export const HrSalaryPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前保存影响</div>
+                <div className="mt-2 font-semibold text-slate-900">{itemFormDiagnostics.modeLabel}</div>
+                <div className="mt-1 text-sm text-slate-500">{itemFormDiagnostics.modeHint}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">结构命中</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">{itemFormDiagnostics.usage?.structureIds.size || 0}</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {itemFormDiagnostics.usage
+                    ? `${itemFormDiagnostics.usage.activeEmployeeIds.size} 名员工 / ${itemFormDiagnostics.usage.activeArchiveCount} 条在岗档案`
+                    : '当前项目还没有被结构引用'}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {itemFormDiagnostics.usage?.futureArchiveCount
+                    ? `${itemFormDiagnostics.usage.futureArchiveCount} 条未来生效档案`
+                    : '当前没有未来生效样本'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前口径</div>
+                <div className="mt-2 font-semibold text-slate-900">{itemCategoryLabel(itemForm.category)} / {itemTypeLabel(itemForm.itemType)}</div>
+                <div className="mt-1 text-sm text-slate-500">{itemForm.isTaxable ? '参与计税' : '不参与计税'}</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {itemForm.formula?.trim() ? '已填写计算公式' : '当前没有计算公式'}
+                </div>
+              </div>
+            </div>
+
+            <div className={`mt-4 rounded-2xl border p-4 ${itemFormDiagnostics.riskSummary.className}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="font-semibold text-current">
+                    {itemFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
+                  </div>
+                  <div className="mt-1 text-sm opacity-90">{itemFormDiagnostics.riskSummary.hint}</div>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${itemFormDiagnostics.riskSummary.className}`}>
+                  {itemFormDiagnostics.riskSummary.label}
+                </span>
+              </div>
+
+              {itemFormDiagnostics.riskItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {itemFormDiagnostics.riskItems.map(item => (
+                    <div
+                      key={item.key}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        item.severity === 'danger'
+                          ? 'border-rose-200 bg-white/70 text-rose-700'
+                          : 'border-amber-200 bg-white/70 text-amber-700'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={closeItemDialog}>取消</Button>
               <Button disabled={actionLoading} onClick={() => void handleSaveItem()}>
@@ -9856,6 +10412,11 @@ export const HrSalaryPage: React.FC = () => {
                     ) : (
                       <Input value="生效中" disabled />
                     )}
+                    <div className="mt-1 text-xs text-slate-400">
+                      {taxDeductionFormDiagnostics.proposedInScope
+                        ? `保存后会参与 ${taxReferencePeriod} 个税测算`
+                        : `保存后不会命中 ${taxReferencePeriod}`}
+                    </div>
                   </div>
                   <div>
                     <Label>月扣除金额</Label>
@@ -9866,6 +10427,11 @@ export const HrSalaryPage: React.FC = () => {
                       value={taxDeductionForm.amount || ''}
                       onChange={event => setTaxDeductionForm(prev => ({ ...prev, amount: Number(event.target.value || 0) }))}
                     />
+                    <div className="mt-1 text-xs text-slate-400">
+                      {taxDeductionFormDiagnostics.referenceAmount > 0
+                        ? `当前参考标准 ${formatCurrency(taxDeductionFormDiagnostics.referenceAmount)}`
+                        : '当前个税配置里暂未提供这个类型的参考标准'}
+                    </div>
                   </div>
                   <div>
                     <Label>开始日期</Label>
@@ -9895,6 +10461,82 @@ export const HrSalaryPage: React.FC = () => {
                       placeholder="例如：独生子女 2000 元标准，2026 年起执行"
                     />
                   </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div className="text-xs text-slate-400">当前保存影响</div>
+                    <div className="mt-2 font-semibold text-slate-900">{taxDeductionFormDiagnostics.modeLabel}</div>
+                    <div className="mt-1 text-sm text-slate-500">{taxDeductionFormDiagnostics.modeHint}</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div className="text-xs text-slate-400">本月命中预估</div>
+                    <div className="mt-2 font-semibold text-slate-900">
+                      {taxDeductionFormDiagnostics.proposedInScope ? `会命中 ${taxReferencePeriod}` : `不会命中 ${taxReferencePeriod}`}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-500">
+                      当前同类型已命中 {taxDeductionFormDiagnostics.sameTypeCurrentScopeCount} 条，保存后预计
+                      {' '}
+                      {taxDeductionFormDiagnostics.predictedInScopeCount}
+                      {' '}
+                      条 / {formatCurrency(taxDeductionFormDiagnostics.predictedInScopeAmount)}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {taxDeductionFormDiagnostics.overlappingActiveCount > 0
+                        ? `存在 ${taxDeductionFormDiagnostics.overlappingActiveCount} 条 ACTIVE 区间重叠`
+                        : '当前没有与历史 ACTIVE 记录的区间重叠'}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div className="text-xs text-slate-400">参考与历史</div>
+                    <div className="mt-2 font-semibold text-slate-900">
+                      {taxDeductionFormDiagnostics.referenceAmount > 0
+                        ? formatCurrency(taxDeductionFormDiagnostics.referenceAmount)
+                        : '未配置参考值'}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-500">
+                      历史 {taxDeductionFormDiagnostics.sameTypeHistoryCount} 条 / ACTIVE {taxDeductionFormDiagnostics.sameTypeActiveCount} 条
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {taxDeductionFormDiagnostics.referenceAmount > 0
+                        ? taxDeductionFormDiagnostics.referenceDelta === 0
+                          ? '当前输入与参考标准一致'
+                          : `当前输入较参考${taxDeductionFormDiagnostics.referenceDelta > 0 ? '高' : '低'} ${formatCurrency(Math.abs(taxDeductionFormDiagnostics.referenceDelta))} / ${formatPercent(taxDeductionFormDiagnostics.referenceDeltaRatio * 100)}`
+                        : '可结合右侧参考模板和历史记录判断当前金额是否合理'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`mt-4 rounded-2xl border p-4 ${taxDeductionFormDiagnostics.riskSummary.className}`}>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="font-semibold text-current">
+                        {taxDeductionFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
+                      </div>
+                      <div className="mt-1 text-sm opacity-90">{taxDeductionFormDiagnostics.riskSummary.hint}</div>
+                    </div>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionFormDiagnostics.riskSummary.className}`}>
+                      {taxDeductionFormDiagnostics.riskSummary.label}
+                    </span>
+                  </div>
+
+                  {taxDeductionFormDiagnostics.riskItems.length > 0 && (
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {taxDeductionFormDiagnostics.riskItems.map(item => (
+                        <div
+                          key={item.key}
+                          className={`rounded-2xl border px-4 py-3 ${
+                            item.severity === 'danger'
+                              ? 'border-rose-200 bg-white/70 text-rose-700'
+                              : 'border-amber-200 bg-white/70 text-amber-700'
+                          }`}
+                        >
+                          <div className="text-sm font-semibold">{item.title}</div>
+                          <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3">
