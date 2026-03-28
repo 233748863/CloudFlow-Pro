@@ -1143,6 +1143,273 @@ export const HrSalaryPage: React.FC = () => {
     };
   }, [insuranceSchemeRiskItems]);
 
+  const insuranceSchemeFormDiagnostics = useMemo(() => {
+    const trimmedName = insuranceSchemeForm.schemeName.trim();
+    const trimmedCity = insuranceSchemeForm.city.trim();
+    const trimmedBaseRule = (insuranceSchemeForm.baseRule || '').trim();
+    const selectedEffectiveDate = insuranceSchemeForm.effectiveDate || '';
+    const editingScheme = editingInsuranceSchemeId
+      ? insuranceSchemes.find(item => item.id === editingInsuranceSchemeId) || null
+      : null;
+    const usage = editingInsuranceSchemeId
+      ? insuranceSchemeUsageMap.get(editingInsuranceSchemeId) || null
+      : null;
+    const companyTotalRate = normalizeAmount(
+      Number(insuranceSchemeForm.pensionCompanyRate || 0)
+      + Number(insuranceSchemeForm.medicalCompanyRate || 0)
+      + Number(insuranceSchemeForm.unemploymentCompanyRate || 0)
+      + Number(insuranceSchemeForm.injuryCompanyRate || 0)
+      + Number(insuranceSchemeForm.maternityCompanyRate || 0)
+      + Number(insuranceSchemeForm.housingFundCompanyRate || 0),
+    );
+    const personalTotalRate = normalizeAmount(
+      Number(insuranceSchemeForm.pensionPersonalRate || 0)
+      + Number(insuranceSchemeForm.medicalPersonalRate || 0)
+      + Number(insuranceSchemeForm.unemploymentPersonalRate || 0)
+      + Number(insuranceSchemeForm.housingFundPersonalRate || 0),
+    );
+    const totalRate = normalizeAmount(companyTotalRate + personalTotalRate);
+    const duplicateIdentityTarget = trimmedName && trimmedCity && selectedEffectiveDate
+      ? insuranceSchemes.find(item =>
+        item.id !== editingInsuranceSchemeId
+        && String(item.schemeName || '').trim() === trimmedName
+        && String(item.city || '').trim() === trimmedCity
+        && (toDateInputValue(item.effectiveDate) || '') === selectedEffectiveDate,
+      ) || null
+      : null;
+    const sameCityEffectiveTargets = trimmedCity && selectedEffectiveDate
+      ? insuranceSchemes.filter(item =>
+        item.id !== editingInsuranceSchemeId
+        && String(item.city || '').trim() === trimmedCity
+        && (toDateInputValue(item.effectiveDate) || '') === selectedEffectiveDate
+        && Number(item.status ?? 1) === 1
+      )
+      : [];
+    const emptyBaseRange = Number(insuranceSchemeForm.baseMin || 0) === 0 && Number(insuranceSchemeForm.baseMax || 0) === 0;
+    const allRatesZero = companyTotalRate <= 0 && personalTotalRate <= 0;
+    const extremeRate = companyTotalRate > 100 || personalTotalRate > 100 || totalRate > 150;
+    const noChanges = Boolean(editingScheme)
+      && trimmedName === String(editingScheme?.schemeName || '').trim()
+      && trimmedCity === String(editingScheme?.city || '').trim()
+      && selectedEffectiveDate === (toDateInputValue(editingScheme?.effectiveDate) || '')
+      && trimmedBaseRule === String(editingScheme?.baseRule || '').trim()
+      && Number(insuranceSchemeForm.status ?? 1) === Number(editingScheme?.status ?? 1)
+      && normalizeAmount(insuranceSchemeForm.baseMin) === normalizeAmount(editingScheme?.baseMin)
+      && normalizeAmount(insuranceSchemeForm.baseMax) === normalizeAmount(editingScheme?.baseMax)
+      && normalizeAmount(insuranceSchemeForm.pensionCompanyRate) === normalizeAmount(editingScheme?.pensionCompanyRate)
+      && normalizeAmount(insuranceSchemeForm.pensionPersonalRate) === normalizeAmount(editingScheme?.pensionPersonalRate)
+      && normalizeAmount(insuranceSchemeForm.medicalCompanyRate) === normalizeAmount(editingScheme?.medicalCompanyRate)
+      && normalizeAmount(insuranceSchemeForm.medicalPersonalRate) === normalizeAmount(editingScheme?.medicalPersonalRate)
+      && normalizeAmount(insuranceSchemeForm.unemploymentCompanyRate) === normalizeAmount(editingScheme?.unemploymentCompanyRate)
+      && normalizeAmount(insuranceSchemeForm.unemploymentPersonalRate) === normalizeAmount(editingScheme?.unemploymentPersonalRate)
+      && normalizeAmount(insuranceSchemeForm.injuryCompanyRate) === normalizeAmount(editingScheme?.injuryCompanyRate)
+      && normalizeAmount(insuranceSchemeForm.maternityCompanyRate) === normalizeAmount(editingScheme?.maternityCompanyRate)
+      && normalizeAmount(insuranceSchemeForm.housingFundCompanyRate) === normalizeAmount(editingScheme?.housingFundCompanyRate)
+      && normalizeAmount(insuranceSchemeForm.housingFundPersonalRate) === normalizeAmount(editingScheme?.housingFundPersonalRate);
+    const disablesLinkedScheme = Number(insuranceSchemeForm.status ?? 1) !== 1 && Boolean(usage?.recordCount);
+    const inUseParameterChanged = Boolean(
+      editingScheme
+      && usage?.recordCount
+      && !noChanges
+      && (
+        selectedEffectiveDate !== (toDateInputValue(editingScheme?.effectiveDate) || '')
+        || trimmedBaseRule !== String(editingScheme?.baseRule || '').trim()
+        || normalizeAmount(insuranceSchemeForm.baseMin) !== normalizeAmount(editingScheme?.baseMin)
+        || normalizeAmount(insuranceSchemeForm.baseMax) !== normalizeAmount(editingScheme?.baseMax)
+        || normalizeAmount(insuranceSchemeForm.pensionCompanyRate) !== normalizeAmount(editingScheme?.pensionCompanyRate)
+        || normalizeAmount(insuranceSchemeForm.pensionPersonalRate) !== normalizeAmount(editingScheme?.pensionPersonalRate)
+        || normalizeAmount(insuranceSchemeForm.medicalCompanyRate) !== normalizeAmount(editingScheme?.medicalCompanyRate)
+        || normalizeAmount(insuranceSchemeForm.medicalPersonalRate) !== normalizeAmount(editingScheme?.medicalPersonalRate)
+        || normalizeAmount(insuranceSchemeForm.unemploymentCompanyRate) !== normalizeAmount(editingScheme?.unemploymentCompanyRate)
+        || normalizeAmount(insuranceSchemeForm.unemploymentPersonalRate) !== normalizeAmount(editingScheme?.unemploymentPersonalRate)
+        || normalizeAmount(insuranceSchemeForm.injuryCompanyRate) !== normalizeAmount(editingScheme?.injuryCompanyRate)
+        || normalizeAmount(insuranceSchemeForm.maternityCompanyRate) !== normalizeAmount(editingScheme?.maternityCompanyRate)
+        || normalizeAmount(insuranceSchemeForm.housingFundCompanyRate) !== normalizeAmount(editingScheme?.housingFundCompanyRate)
+        || normalizeAmount(insuranceSchemeForm.housingFundPersonalRate) !== normalizeAmount(editingScheme?.housingFundPersonalRate)
+      ),
+    );
+
+    let modeLabel = '等待填写方案信息';
+    let modeHint = '先把方案名称、城市和基数范围填完整，再判断这次保存会不会影响现有台账链路。';
+    if (trimmedName || trimmedCity || selectedEffectiveDate || editingInsuranceSchemeId) {
+      if (noChanges) {
+        modeLabel = '无变化重复保存';
+        modeHint = '当前输入和现有方案完全一致，继续保存通常只会重复覆盖一份相同口径。';
+      } else if (!editingInsuranceSchemeId) {
+        modeLabel = '新建社保方案';
+        modeHint = '保存后方案会进入员工分配池，后续还需要补一条员工台账才能形成真实联调样本。';
+      } else if (disablesLinkedScheme) {
+        modeLabel = '禁用在用方案';
+        modeHint = `当前方案仍命中 ${usage?.recordCount || 0} 条台账，禁用后只会阻止后续新分配，不会自动迁移历史台账。`;
+      } else if (inUseParameterChanged) {
+        modeLabel = '调整在用方案口径';
+        modeHint = '当前方案已经进入真实台账链路，修改比例、基数或生效日后要重点核对受影响员工。';
+      } else {
+        modeLabel = '覆盖现有方案';
+        modeHint = '保存后会直接刷新方案参数，后续员工分配和台账测算会基于新口径继续。';
+      }
+    }
+
+    const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
+    if (trimmedName || trimmedCity || selectedEffectiveDate || editingInsuranceSchemeId) {
+      if (!trimmedName) {
+        riskItems.push({
+          key: 'missing-name',
+          title: '还没有填写方案名称',
+          detail: '方案名称会直接出现在员工分配弹窗和台账明细里，建议先使用稳定命名。',
+          severity: 'warning',
+        });
+      }
+      if (!trimmedCity) {
+        riskItems.push({
+          key: 'missing-city',
+          title: '还没有填写适用城市',
+          detail: '没有城市时无法快速判断基数规则和方案适用范围。',
+          severity: 'warning',
+        });
+      }
+      if (!selectedEffectiveDate) {
+        riskItems.push({
+          key: 'missing-effective-date',
+          title: '还没有填写方案生效日期',
+          detail: '没有生效日期就无法判断这套方案会从哪一天开始进入员工社保链路。',
+          severity: 'danger',
+        });
+      }
+      if (duplicateIdentityTarget) {
+        riskItems.push({
+          key: 'duplicate-scheme-identity',
+          title: '方案口径与现有方案重复',
+          detail: `${duplicateIdentityTarget.schemeName} 已经在 ${duplicateIdentityTarget.city || '-'} / ${(toDateInputValue(duplicateIdentityTarget.effectiveDate) || '-')} 存在一套同名同城同生效日方案。`,
+          severity: 'danger',
+        });
+      }
+      if (sameCityEffectiveTargets.length > 0) {
+        riskItems.push({
+          key: 'same-city-effective',
+          title: '同城同日已存在启用方案',
+          detail: `${trimmedCity} 在 ${selectedEffectiveDate} 已有 ${sameCityEffectiveTargets.length} 套启用方案，后续员工分配时要明确选用哪一套。`,
+          severity: 'warning',
+        });
+      }
+      if (emptyBaseRange) {
+        riskItems.push({
+          key: 'empty-base-range',
+          title: '基数范围仍是默认空值',
+          detail: '当前基数上下限都还是 0，后续员工分配时很难据此判断基数是否合理。',
+          severity: 'warning',
+        });
+      }
+      if (allRatesZero) {
+        riskItems.push({
+          key: 'all-rates-zero',
+          title: '公司和个人比例当前全部为 0',
+          detail: '这会生成一套空壳方案，员工分配后社保测算结果会全部归零。',
+          severity: 'danger',
+        });
+      }
+      if (extremeRate) {
+        riskItems.push({
+          key: 'extreme-total-rate',
+          title: '当前比例合计明显偏高',
+          detail: `公司 ${formatPercent(companyTotalRate)} / 个人 ${formatPercent(personalTotalRate)} / 合计 ${formatPercent(totalRate)}，建议联调前再确认口径。`,
+          severity: 'warning',
+        });
+      }
+      if (!trimmedBaseRule) {
+        riskItems.push({
+          key: 'missing-base-rule',
+          title: '基数规则说明为空',
+          detail: '后续核对基数上下限时缺少可读说明，容易让联调样本失去参照。',
+          severity: 'warning',
+        });
+      }
+      if (noChanges) {
+        riskItems.push({
+          key: 'no-changes',
+          title: '本次保存不会带来变化',
+          detail: '名称、城市、生效日、基数和比例都没有变化，继续保存通常只是重复覆盖。',
+          severity: 'warning',
+        });
+      }
+      if (disablesLinkedScheme) {
+        riskItems.push({
+          key: 'disable-linked-scheme',
+          title: '正在禁用一个已命中台账的方案',
+          detail: `当前方案已命中 ${usage?.recordCount || 0} 条台账，其中 ACTIVE ${usage?.activeRecordCount || 0} 条、命中 ${usage?.activeEmployeeIds.size || 0} 名在岗员工。`,
+          severity: 'danger',
+        });
+      }
+      if (inUseParameterChanged) {
+        riskItems.push({
+          key: 'change-linked-scheme',
+          title: '正在调整一套已进入台账链路的方案',
+          detail: `当前方案已经命中 ${usage?.recordCount || 0} 条台账、${usage?.activeEmployeeIds.size || 0} 名在岗员工，改口径后要重查受影响样本。`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    const blockingRiskItems = riskItems.filter(item => item.severity === 'danger');
+    const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
+    const riskSummary = !(trimmedName || trimmedCity || selectedEffectiveDate || editingInsuranceSchemeId)
+      ? {
+        label: '等待填写',
+        className: 'border-slate-200 bg-slate-50 text-slate-600',
+        hint: '先把方案名称、城市和生效日期填完整，再判断这次保存风险。',
+      }
+      : !score
+        ? {
+          label: '可直接保存',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          hint: '当前方案口径、台账命中和比例汇总都比较清晰，可以继续保存。',
+        }
+        : score <= 2
+          ? {
+            label: '保存需注意',
+            className: 'border-amber-200 bg-amber-50 text-amber-700',
+            hint: `发现 ${riskItems.length} 条需要人工确认的社保方案保存提示。`,
+          }
+          : {
+            label: '保存存在风险',
+            className: 'border-rose-200 bg-rose-50 text-rose-700',
+            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整方案参数再保存。`,
+          };
+
+    return {
+      usage,
+      companyTotalRate,
+      personalTotalRate,
+      totalRate,
+      modeLabel,
+      modeHint,
+      riskItems,
+      blockingRiskItems,
+      riskSummary,
+    };
+  }, [
+    editingInsuranceSchemeId,
+    insuranceSchemeForm.baseMax,
+    insuranceSchemeForm.baseMin,
+    insuranceSchemeForm.baseRule,
+    insuranceSchemeForm.city,
+    insuranceSchemeForm.effectiveDate,
+    insuranceSchemeForm.housingFundCompanyRate,
+    insuranceSchemeForm.housingFundPersonalRate,
+    insuranceSchemeForm.injuryCompanyRate,
+    insuranceSchemeForm.maternityCompanyRate,
+    insuranceSchemeForm.medicalCompanyRate,
+    insuranceSchemeForm.medicalPersonalRate,
+    insuranceSchemeForm.pensionCompanyRate,
+    insuranceSchemeForm.pensionPersonalRate,
+    insuranceSchemeForm.schemeName,
+    insuranceSchemeForm.status,
+    insuranceSchemeForm.unemploymentCompanyRate,
+    insuranceSchemeForm.unemploymentPersonalRate,
+    insuranceSchemeUsageMap,
+    insuranceSchemes,
+  ]);
+
   const jobLevelMap = useMemo(
     () => new Map(jobLevels.map(level => [level.id, level])),
     [jobLevels],
@@ -6533,6 +6800,11 @@ export const HrSalaryPage: React.FC = () => {
         return;
       }
     }
+    if (insuranceSchemeFormDiagnostics.blockingRiskItems.length > 0) {
+      const firstBlockingRisk = insuranceSchemeFormDiagnostics.blockingRiskItems[0];
+      toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
+      return;
+    }
 
     const payload: InsuranceSchemePayload = {
       ...insuranceSchemeForm,
@@ -10301,25 +10573,77 @@ export const HrSalaryPage: React.FC = () => {
               <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   公司承担合计：
-                  {formatPercent(
-                    Number(insuranceSchemeForm.pensionCompanyRate || 0)
-                    + Number(insuranceSchemeForm.medicalCompanyRate || 0)
-                    + Number(insuranceSchemeForm.unemploymentCompanyRate || 0)
-                    + Number(insuranceSchemeForm.injuryCompanyRate || 0)
-                    + Number(insuranceSchemeForm.maternityCompanyRate || 0)
-                    + Number(insuranceSchemeForm.housingFundCompanyRate || 0),
-                  )}
+                  {formatPercent(insuranceSchemeFormDiagnostics.companyTotalRate)}
                 </div>
                 <div>
                   个人承担合计：
-                  {formatPercent(
-                    Number(insuranceSchemeForm.pensionPersonalRate || 0)
-                    + Number(insuranceSchemeForm.medicalPersonalRate || 0)
-                    + Number(insuranceSchemeForm.unemploymentPersonalRate || 0)
-                    + Number(insuranceSchemeForm.housingFundPersonalRate || 0),
-                  )}
+                  {formatPercent(insuranceSchemeFormDiagnostics.personalTotalRate)}
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">当前保存影响</div>
+                <div className="mt-2 font-semibold text-slate-900">{insuranceSchemeFormDiagnostics.modeLabel}</div>
+                <div className="mt-1 text-sm text-slate-500">{insuranceSchemeFormDiagnostics.modeHint}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">台账命中</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">{insuranceSchemeFormDiagnostics.usage?.recordCount || 0}</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  {insuranceSchemeFormDiagnostics.usage
+                    ? `ACTIVE ${insuranceSchemeFormDiagnostics.usage.activeRecordCount} 条 / 在岗 ${insuranceSchemeFormDiagnostics.usage.activeEmployeeIds.size} 人`
+                    : '当前方案还没有任何员工台账'}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {insuranceSchemeFormDiagnostics.usage
+                    ? `未来生效 ${insuranceSchemeFormDiagnostics.usage.futureRecordCount} 条`
+                    : '保存后需要补员工分配样本'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">比例合计</div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">{formatPercent(insuranceSchemeFormDiagnostics.totalRate)}</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  公司 {formatPercent(insuranceSchemeFormDiagnostics.companyTotalRate)}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  个人 {formatPercent(insuranceSchemeFormDiagnostics.personalTotalRate)}
+                </div>
+              </div>
+            </div>
+
+            <div className={`mt-4 rounded-2xl border p-4 ${insuranceSchemeFormDiagnostics.riskSummary.className}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="font-semibold text-current">
+                    {insuranceSchemeFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
+                  </div>
+                  <div className="mt-1 text-sm opacity-90">{insuranceSchemeFormDiagnostics.riskSummary.hint}</div>
+                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${insuranceSchemeFormDiagnostics.riskSummary.className}`}>
+                  {insuranceSchemeFormDiagnostics.riskSummary.label}
+                </span>
+              </div>
+
+              {insuranceSchemeFormDiagnostics.riskItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {insuranceSchemeFormDiagnostics.riskItems.map(item => (
+                    <div
+                      key={item.key}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        item.severity === 'danger'
+                          ? 'border-rose-200 bg-white/70 text-rose-700'
+                          : 'border-amber-200 bg-white/70 text-amber-700'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
