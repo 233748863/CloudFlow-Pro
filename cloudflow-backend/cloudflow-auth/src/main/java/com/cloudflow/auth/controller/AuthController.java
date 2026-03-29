@@ -69,16 +69,16 @@ public class AuthController {
     public R<?> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
         long startAt = System.currentTimeMillis();
 
-        // ?????????????????????????????
+        // 先校验滑块验证码，避免未通过人机校验时继续执行登录流程。
         if (!captchaService.validatePassToken(form.getCaptchaToken())) {
             loginLogService.recordLoginFailure(
                 form.getUsername(),
                 tenantConfigProperties.getDefaultTenantId(),
                 request,
-                "??????????????",
+                "验证码失效或错误，请重新验证",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("??????????????");
+            return R.fail("验证码失效或错误，请重新验证");
         }
 
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
@@ -90,10 +90,33 @@ public class AuthController {
                 form.getUsername(),
                 tenantConfigProperties.getDefaultTenantId(),
                 request,
-                "?????",
+                "用户不存在",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("?????");
+            return R.fail("用户不存在");
+        }
+
+        // 明确拦截停用/删除账号，避免继续进入后续流程后抛出模糊 500。
+        if ("2".equals(user.getDelFlag())) {
+            loginLogService.recordLoginFailure(
+                form.getUsername(),
+                user.getTenantId(),
+                request,
+                "账号不存在",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("账号不存在");
+        }
+
+        if (!"0".equals(user.getStatus())) {
+            loginLogService.recordLoginFailure(
+                form.getUsername(),
+                user.getTenantId(),
+                request,
+                "账号已停用",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("账号已停用");
         }
 
         if (!BCrypt.checkpw(form.getPassword(), user.getPassword())) {
@@ -101,10 +124,10 @@ public class AuthController {
                 form.getUsername(),
                 user.getTenantId(),
                 request,
-                "????",
+                "密码错误",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("????");
+            return R.fail("密码错误");
         }
 
         String loginIp = getClientIp(request);
@@ -118,10 +141,10 @@ public class AuthController {
                 form.getUsername(),
                 user.getTenantId(),
                 request,
-                "????????",
+                "用户信息异常",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("????????");
+            return R.fail("用户信息异常");
         }
 
         Map<String, Object> loginUser = new HashMap<>();

@@ -22,15 +22,8 @@ import java.util.UUID;
 public class WorkflowApprovalCallbackStreamConfig {
 
     @Bean
-    public Subscription workflowApprovalCallbackSubscription(RedisConnectionFactory factory,
-                                                             RedisStreamUtil redisStreamUtil,
-                                                             WorkflowApprovalCallbackStreamConsumer consumer) {
-        // 回调流是 workflow 和 HR 共享的通道，消费组也必须绑定全局 key。
-        redisStreamUtil.createGlobalGroup(
-                WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_STREAM_KEY,
-                WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_GROUP
-        );
-
+    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> workflowApprovalCallbackContainer(
+            RedisConnectionFactory factory) {
         StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options =
                 StreamMessageListenerContainer.StreamMessageListenerContainerOptions.builder()
                         .pollTimeout(Duration.ofSeconds(1))
@@ -38,14 +31,26 @@ public class WorkflowApprovalCallbackStreamConfig {
 
         StreamMessageListenerContainer<String, MapRecord<String, String, String>> container =
                 StreamMessageListenerContainer.create(factory, options);
+        container.start();
+        return container;
+    }
+
+    @Bean
+    public Subscription workflowApprovalCallbackSubscription(
+            StreamMessageListenerContainer<String, MapRecord<String, String, String>> workflowApprovalCallbackContainer,
+            RedisStreamUtil redisStreamUtil,
+            WorkflowApprovalCallbackStreamConsumer consumer) {
+        // 回调流是 workflow 和 HR 共享的通道，消费组也必须绑定全局 key。
+        redisStreamUtil.createGlobalGroup(
+                WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_STREAM_KEY,
+                WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_GROUP
+        );
 
         String consumerName = "hr-callback-" + UUID.randomUUID().toString().substring(0, 8);
-        Subscription subscription = container.receive(
+        return workflowApprovalCallbackContainer.receive(
                 Consumer.from(WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_GROUP, consumerName),
                 StreamOffset.create(WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_STREAM_KEY, ReadOffset.lastConsumed()),
                 consumer
         );
-        container.start();
-        return subscription;
     }
 }

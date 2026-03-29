@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -49,9 +50,10 @@ public class RoleAssignStrategy implements AssignUserStrategy {
         if (!StringUtils.hasText(roleKey)) {
             return new ArrayList<>();
         }
+        String normalizedRoleKey = roleKey.trim().toLowerCase(Locale.ROOT);
 
         SysRole role = sysRoleMapper.selectOne(
-                new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, roleKey));
+                new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, normalizedRoleKey));
         if (role == null) {
             log.warn("[RoleAssignStrategy] 角色不存在: {}", roleKey);
             return new ArrayList<>();
@@ -80,8 +82,9 @@ public class RoleAssignStrategy implements AssignUserStrategy {
             return "指定角色";
         }
         try {
+            String normalizedRoleKey = approverValue.trim().toLowerCase(Locale.ROOT);
             SysRole role = sysRoleMapper.selectOne(
-                    new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, approverValue));
+                    new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, normalizedRoleKey));
             if (role != null) {
                 return role.getRoleName();
             }

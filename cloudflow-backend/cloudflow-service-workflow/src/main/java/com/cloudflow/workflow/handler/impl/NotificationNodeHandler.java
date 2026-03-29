@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -96,8 +97,9 @@ public class NotificationNodeHandler implements INodeHandler {
         } else if ("ROLE".equals(recipientType)) {
             String roleKey = (String) props.get("recipientValue");
             if (StringUtils.hasText(roleKey)) {
+                String normalizedRoleKey = roleKey.trim().toLowerCase(Locale.ROOT);
                 SysRole role = sysRoleMapper.selectOne(
-                        new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, roleKey));
+                        new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, normalizedRoleKey));
                 if (role != null) {
                     List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
                             new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));

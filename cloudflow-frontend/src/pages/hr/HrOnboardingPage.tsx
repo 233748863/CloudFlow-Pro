@@ -36,12 +36,15 @@ import {
   getPositionOptions,
   listCandidates,
   listOnboardingApplications,
+  rejectOnboarding,
   submitOnboardingApplication,
 } from '@/services/api/hr';
 import { flattenDeptTree, hasWorkflowStatus, normalizeRows, toDateInputValue } from './hrShared';
 
 const EMPTY_VALUE = '__empty__';
 const ALL_STATUS_VALUE = '__all__';
+const PHONE_PATTERN = /^1[3-9]\d{9}$/;
+const EMAIL_PATTERN = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$/;
 
 const onboardingStatusOptions = [
   { value: ALL_STATUS_VALUE, label: '全部状态' },
@@ -68,7 +71,9 @@ const getDefaultPositionId = (postId: number, positions: PositionOption[]) =>
 
 const onboardingStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
-  if (/(CONFIRM|COMPLETE|SUCCESS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
+  // 真实联调口径：ONBOARDED 是最终完成态，REJECTED 需要明确区分成失败态。
+  if (/(ONBOARD|CONFIRM|COMPLETE|SUCCESS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
+  if (/(REJECT|FAIL)/i.test(status)) return 'bg-rose-50 text-rose-700';
   if (/(APPROV|PENDING|TASK)/i.test(status)) return 'bg-amber-50 text-amber-700';
   return 'bg-slate-100 text-slate-700';
 };
@@ -293,6 +298,7 @@ export const HrOnboardingPage: React.FC = () => {
   const pendingTaskCount = Math.max(tasks.length - completedTaskCount, 0);
   const canSubmitApplication = hasWorkflowStatus(currentApplication?.status, 'DRAFT');
   const canApproveApplication = hasWorkflowStatus(currentApplication?.status, 'APPROVING');
+  const canRejectApplication = hasWorkflowStatus(currentApplication?.status, 'APPROVING');
   const canConfirmApplication = hasWorkflowStatus(currentApplication?.status, 'APPROVED') && pendingTaskCount === 0;
 
   const resetCreateForm = () => {
@@ -316,9 +322,31 @@ export const HrOnboardingPage: React.FC = () => {
   };
 
   const handleCreateApplication = async () => {
+    const name = createForm.name.trim();
+    const phone = createForm.phone.trim();
+    const email = (createForm.email || '').trim();
+
+    if (!name) {
+      toast.error('姓名不能为空');
+      return;
+    }
+
+    if (!PHONE_PATTERN.test(phone)) {
+      toast.error('请输入正确的 11 位手机号');
+      return;
+    }
+
+    if (email && !EMAIL_PATTERN.test(email)) {
+      toast.error('请输入正确的邮箱地址');
+      return;
+    }
+
     try {
       const applicationId = await createOnboardingApplication({
         ...createForm,
+        name,
+        phone,
+        email: email || undefined,
         candidateId: createForm.candidateId || undefined,
         positionId: createForm.positionId || undefined,
       });
@@ -358,6 +386,20 @@ export const HrOnboardingPage: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '审批入职申请失败');
+    }
+  };
+
+  const handleRejectApplication = async () => {
+    if (!currentApplication) return;
+
+    try {
+      await rejectOnboarding(currentApplication.id);
+      toast.success('入职申请已驳回');
+      await loadCandidateAvailability();
+      await loadApplicationList(currentApplication.id);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || '驳回入职申请失败');
     }
   };
 
@@ -554,6 +596,7 @@ export const HrOnboardingPage: React.FC = () => {
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" disabled={!canSubmitApplication} onClick={handleSubmitApplication}>提交申请</Button>
                 <Button variant="outline" disabled={!canApproveApplication} onClick={handleApproveApplication}>审批通过</Button>
+                <Button variant="outline" disabled={!canRejectApplication} onClick={handleRejectApplication}>驳回申请</Button>
                 <div className="flex gap-2">
                   <Input type="date" value={confirmDate} onChange={event => setConfirmDate(event.target.value)} />
                   <Button disabled={!canConfirmApplication} onClick={handleConfirmApplication}>确认入职</Button>
@@ -598,11 +641,27 @@ export const HrOnboardingPage: React.FC = () => {
                 <div className="text-xs text-slate-400">预计入职日期</div>
                 <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(currentApplication.expectedDate) || '-'}</div>
               </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="text-xs text-slate-400">创建时间</div>
+                <div className="mt-2 font-semibold text-slate-900">
+                  {currentApplication.createTime ? new Date(currentApplication.createTime).toLocaleString('zh-CN') : '-'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2">
+                <div className="text-xs text-slate-400">流程实例 ID</div>
+                <div className="mt-2 break-all font-mono text-sm text-slate-700">{currentApplication.processInstanceId || '-'}</div>
+              </div>
             </div>
           )}
 
           {detailLoading && (
             <div className="mt-4 text-sm text-slate-400">正在加载申请详情...</div>
+          )}
+          {currentApplication && (
+            <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-800">
+              审批通过后后端会自动生成 4 项入职任务；任务全部完成后才能确认入职。
+              确认入职时会新建员工档案，员工初始状态为试用期，并回写申请上的员工 ID。
+            </div>
           )}
           {currentApplication && hasWorkflowStatus(currentApplication.status, 'APPROVED') && pendingTaskCount > 0 && (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -733,11 +792,22 @@ export const HrOnboardingPage: React.FC = () => {
               </div>
               <div>
                 <Label>手机号</Label>
-                <Input value={createForm.phone} onChange={event => setCreateForm(prev => ({ ...prev, phone: event.target.value }))} />
+                <Input
+                  inputMode="numeric"
+                  maxLength={11}
+                  placeholder="请输入 11 位手机号"
+                  value={createForm.phone}
+                  onChange={event => setCreateForm(prev => ({ ...prev, phone: event.target.value.replace(/\s+/g, '') }))}
+                />
               </div>
               <div>
                 <Label>邮箱</Label>
-                <Input value={createForm.email || ''} onChange={event => setCreateForm(prev => ({ ...prev, email: event.target.value }))} />
+                <Input
+                  type="email"
+                  placeholder="请输入邮箱地址"
+                  value={createForm.email || ''}
+                  onChange={event => setCreateForm(prev => ({ ...prev, email: event.target.value.trim() }))}
+                />
               </div>
               <div>
                 <Label>部门</Label>

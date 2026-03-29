@@ -13,6 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -73,26 +77,33 @@ public class TimerScanJob {
             if (lock.tryLock(1, 50, TimeUnit.SECONDS)) {
                 try {
                     long now = System.currentTimeMillis();
-                    
-                    // 从 Redis ZSet 中获取所有已到期的定时任务（score <= 当前时间）
-                    Set<Object> expiredTimerKeys = redisCache.getCacheZSetByScoreRange(TIMER_ZSET_KEY, 0, (double) now);
-                    
-                    if (expiredTimerKeys == null || expiredTimerKeys.isEmpty()) {
-                        return;
-                    }
-                    
-                    log.info("[TimerScanJob] 发现 {} 个到期的定时任务", expiredTimerKeys.size());
-                    
-                    for (Object timerKeyObj : expiredTimerKeys) {
-                        String timerKey = timerKeyObj.toString();
+
+                    List<Long> tenantIds = resolveTimerTenantIds();
+                    for (Long tenantId : tenantIds) {
                         try {
-                            handleExpiredTimer(timerKey);
-                        } catch (Exception e) {
-                            log.error("[TimerScanJob] 处理定时任务失败, timerKey={}, error={}", timerKey, e.getMessage(), e);
+                            UserContext.setTenantId(tenantId);
+                            Set<Object> expiredTimerKeys = redisCache.getCacheZSetByScoreRange(TIMER_ZSET_KEY, 0, (double) now);
+                            if (expiredTimerKeys == null || expiredTimerKeys.isEmpty()) {
+                                continue;
+                            }
+
+                            log.info("[TimerScanJob] 发现 {} 个到期的定时任务, tenantId={}", expiredTimerKeys.size(), tenantId);
+
+                            for (Object timerKeyObj : expiredTimerKeys) {
+                                UserContext.setTenantId(tenantId);
+                                String timerKey = normalizeTimerKey(timerKeyObj);
+                                try {
+                                    handleExpiredTimer(timerKey);
+                                } catch (Exception e) {
+                                    log.error("[TimerScanJob] 处理定时任务失败, tenantId={}, timerKey={}, error={}",
+                                            tenantId, timerKey, e.getMessage(), e);
+                                }
+                                UserContext.setTenantId(tenantId);
+                                redisCache.removeCacheZSet(TIMER_ZSET_KEY, timerKey);
+                            }
+                        } finally {
+                            UserContext.clear();
                         }
-                        
-                        // 无论处理成功与否，都从 ZSet 中移除，避免重复处理
-                        redisCache.removeCacheZSet(TIMER_ZSET_KEY, timerKey);
                     }
                 } finally {
                     lock.unlock();
@@ -191,11 +202,11 @@ public class TimerScanJob {
             handleTimerFallback(instance, nodeKey, timerData, e);
             
         } finally {
-            // 7. 清理用户上下文
-            UserContext.clear();
-            
-            // 8. 清理 Redis 中的定时任务数据
+            // 7. 清理 Redis 中的定时任务数据
             cleanupTimerData(timerKey);
+            
+            // 8. 清理用户上下文
+            UserContext.clear();
         }
     }
 
@@ -330,6 +341,40 @@ public class TimerScanJob {
         } catch (Exception e) {
             log.warn("[TimerScanJob] 清理定时任务数据失败, timerKey={}, error={}", timerKey, e.getMessage());
         }
+    }
+
+    private List<Long> resolveTimerTenantIds() {
+        Collection<String> prefixedKeys = redisCache.keys("*:" + TIMER_ZSET_KEY);
+        Set<Long> tenantIds = new LinkedHashSet<>();
+        if (prefixedKeys != null) {
+            for (String fullKey : prefixedKeys) {
+                int separatorIndex = fullKey.indexOf(':');
+                if (separatorIndex <= 0) {
+                    continue;
+                }
+                String tenantPrefix = fullKey.substring(0, separatorIndex);
+                try {
+                    tenantIds.add(Long.valueOf(tenantPrefix));
+                } catch (NumberFormatException e) {
+                    log.warn("[TimerScanJob] 无法解析定时任务租户前缀: {}", fullKey);
+                }
+            }
+        }
+        if (tenantIds.isEmpty()) {
+            tenantIds.add(null);
+        }
+        return new ArrayList<>(tenantIds);
+    }
+
+    private String normalizeTimerKey(Object timerKeyObj) {
+        if (timerKeyObj == null) {
+            return null;
+        }
+        String timerKey = timerKeyObj.toString();
+        if (timerKey.length() >= 2 && timerKey.startsWith("\"") && timerKey.endsWith("\"")) {
+            return timerKey.substring(1, timerKey.length() - 1);
+        }
+        return timerKey;
     }
 
     /**

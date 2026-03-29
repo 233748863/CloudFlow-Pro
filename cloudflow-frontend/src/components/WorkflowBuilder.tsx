@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useState,
   useEffect,
   useRef,
@@ -184,6 +184,7 @@ const APPROVER_TYPE_LABELS: Record<string, string> = {
   ROLE: "按角色",
   USER: "指定人员",
   USERS: "指定多人",
+  INITIATOR: "发起人",
   DEPT_MANAGER: "部门负责人",
   DIRECT_LEADER: "直属上级",
   DEPT: "按部门",
@@ -406,22 +407,22 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "n1",
           type: NodeType.APPROVAL,
           title: "法务审核",
-          approverType: "ROLE",
-          approverValue: "LEGAL",
+          approverType: "USER",
+          approverValue: "6",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "总经理签发",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "盖章归档",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -478,7 +479,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "行政盖章",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -530,7 +531,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "end",
@@ -576,14 +577,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "行政审批",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "车辆调度确认",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -635,7 +636,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "财务审核",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "end",
@@ -689,12 +690,6 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "流程结束",
         },
         {
-          id: "b1",
-          type: NodeType.CONDITION,
-          title: "金额 ≤ 5000",
-          condition: "amount <= 5000",
-        },
-        {
           id: "b2",
           type: NodeType.CONDITION,
           title: "金额 > 5000",
@@ -705,7 +700,12 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
+        },
+        {
+          id: "end_high",
+          type: NodeType.END,
+          title: "流程结束",
         },
       ],
       edges: [
@@ -721,12 +721,6 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           isDefault: true,
         },
         {
-          id: "n1->b1",
-          source: "n1",
-          target: "b1",
-          condition: "amount <= 5000",
-        },
-        {
           id: "n1->b2",
           source: "n1",
           target: "b2",
@@ -736,6 +730,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "b2->n2",
           source: "b2",
           target: "n2",
+        },
+        {
+          id: "n2->end_high",
+          source: "n2",
+          target: "end_high",
         },
       ],
     },
@@ -759,21 +758,21 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "财务审核",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "出纳付款",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "end",
@@ -830,14 +829,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "财务部审核",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "总经理批准",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "end",
@@ -888,7 +887,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "HR审核",
           approverType: "ROLE",
-          approverValue: "HR",
+          approverValue: "hr",
         },
         {
           id: "n2",
@@ -901,7 +900,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "IT开通账号",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -958,14 +957,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "HR审核",
           approverType: "ROLE",
-          approverValue: "HR",
+          approverValue: "hr",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "资产交接确认",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -1022,14 +1021,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "HR评估",
           approverType: "ROLE",
-          approverValue: "HR",
+          approverValue: "hr",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "总经理批准",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "end",
@@ -1086,7 +1085,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "HR审核",
           approverType: "ROLE",
-          approverValue: "HR",
+          approverValue: "hr",
         },
         {
           id: "end",
@@ -1140,12 +1139,6 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "流程结束",
         },
         {
-          id: "b1",
-          type: NodeType.CONDITION,
-          title: "金额 ≤ 10万",
-          condition: "amount <= 100000",
-        },
-        {
           id: "b2",
           type: NodeType.CONDITION,
           title: "金额 > 10万",
@@ -1156,7 +1149,12 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
+        },
+        {
+          id: "end_high",
+          type: NodeType.END,
+          title: "流程结束",
         },
       ],
       edges: [
@@ -1172,12 +1170,6 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           isDefault: true,
         },
         {
-          id: "n1->b1",
-          source: "n1",
-          target: "b1",
-          condition: "amount <= 100000",
-        },
-        {
           id: "n1->b2",
           source: "n1",
           target: "b2",
@@ -1187,6 +1179,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "b2->n2",
           source: "b2",
           target: "n2",
+        },
+        {
+          id: "n2->end_high",
+          source: "n2",
+          target: "end_high",
         },
       ],
     },
@@ -1210,14 +1207,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "销售总监审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "财务确认",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "end",
@@ -1263,21 +1260,21 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "IT主管审核",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "安全审查",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "运维部署",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -1334,14 +1331,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "IT审核",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "安全确认",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -1392,21 +1389,21 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "技术评审",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "测试验证",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "上线审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "end",
@@ -1457,21 +1454,21 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "设备科审核",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "院长审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "招标采购",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "end",
@@ -1522,21 +1519,21 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "监理审核",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "质检验收",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "甲方确认",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "end",
@@ -1593,7 +1590,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "教务处审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "end",
@@ -1639,20 +1636,20 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "维修主管派单",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "维修完成确认",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n3",
           type: NodeType.APPROVAL,
           title: "报修人验收",
-          approverType: "USER",
+          approverType: "INITIATOR",
         },
         {
           id: "end",
@@ -1703,14 +1700,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "仓库确认库存",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "物流安排",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "end",
@@ -1756,14 +1753,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "逐项审核",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "n2",
           type: NodeType.APPROVAL,
           title: "最终确认",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "end",
@@ -1828,12 +1825,6 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "流程结束",
         },
         {
-          id: "pa_b1",
-          type: NodeType.CONDITION,
-          title: "金额 ≤ 5000",
-          condition: "amount <= 5000",
-        },
-        {
           id: "pa_b2",
           type: NodeType.CONDITION,
           title: "5000 < 金额 ≤ 50000",
@@ -1844,7 +1835,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "财务总监审核",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "pa_b3",
@@ -1857,14 +1848,46 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "pa_n4",
           type: NodeType.APPROVAL,
           title: "财务总监审核",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
+        },
+        {
+          id: "pa_n5_mid",
+          type: NodeType.NOTIFICATION,
+          title: "通知采购结果",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "采购审批结果通知",
+            notificationContent:
+              "您的采购申请（金额: ${amount}）已审批完成，请查看结果。",
+          },
+        },
+        {
+          id: "pa_end_mid",
+          type: NodeType.END,
+          title: "流程结束",
+        },
+        {
+          id: "pa_n5_high",
+          type: NodeType.NOTIFICATION,
+          title: "通知采购结果",
+          props: {
+            recipientType: "INITIATOR",
+            notificationTitle: "采购审批结果通知",
+            notificationContent:
+              "您的采购申请（金额: ${amount}）已审批完成，请查看结果。",
+          },
+        },
+        {
+          id: "pa_end_high",
+          type: NodeType.END,
+          title: "流程结束",
         },
       ],
       edges: [
@@ -1883,12 +1906,6 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "pa_n5->pa_end",
           source: "pa_n5",
           target: "pa_end",
-        },
-        {
-          id: "pa_n1->pa_b1",
-          source: "pa_n1",
-          target: "pa_b1",
-          condition: "amount <= 5000",
         },
         {
           id: "pa_n1->pa_b2",
@@ -1916,6 +1933,26 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "pa_n3->pa_n4",
           source: "pa_n3",
           target: "pa_n4",
+        },
+        {
+          id: "pa_n2->pa_n5_mid",
+          source: "pa_n2",
+          target: "pa_n5_mid",
+        },
+        {
+          id: "pa_n5_mid->pa_end_mid",
+          source: "pa_n5_mid",
+          target: "pa_end_mid",
+        },
+        {
+          id: "pa_n4->pa_n5_high",
+          source: "pa_n4",
+          target: "pa_n5_high",
+        },
+        {
+          id: "pa_n5_high->pa_end_high",
+          source: "pa_n5_high",
+          target: "pa_end_high",
         },
       ],
     },
@@ -1945,7 +1982,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.PARALLEL,
           title: "并行评审（技术+财务）",
           approverType: "ROLE",
-          approverValue: "ADMIN,FINANCE",
+          approverValue: "admin,finance",
           branchStrategy: "PARALLEL",
         },
         {
@@ -1953,7 +1990,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "proj_n6",
@@ -1981,7 +2018,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "技术委员会评审",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "proj_b2",
@@ -1993,7 +2030,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "财务部预算评估",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
       ],
       edges: [
@@ -2066,7 +2103,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "试用期到期提醒",
           props: {
             timerType: "DELAY",
-            delayMinutes: 60,
+            delayMinutes: 1,
           },
         },
         {
@@ -2080,14 +2117,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "HR综合审核",
           approverType: "ROLE",
-          approverValue: "HR",
+          approverValue: "hr",
         },
         {
           id: "reg_n4",
           type: NodeType.PARALLEL,
           title: "并行办理（IT+行政）",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           branchStrategy: "PARALLEL",
         },
         {
@@ -2115,7 +2152,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.MANUAL,
           title: "IT开通正式权限",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "为转正员工开通正式员工系统权限、邮箱等",
             priority: "HIGH",
@@ -2131,7 +2168,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.MANUAL,
           title: "行政办理工牌社保",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "办理正式工牌、更新社保信息、签订正式合同",
             priority: "MEDIUM",
@@ -2212,9 +2249,9 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.SCRIPT,
           title: "自动故障分级",
           props: {
-            scriptType: "JAVASCRIPT",
+            scriptType: "GROOVY",
             scriptContent:
-              'const level = severity >= 8 ? "P1" : severity >= 5 ? "P2" : "P3";\nreturn { incidentLevel: level };',
+              'def level = severity >= 8 ? "P1" : severity >= 5 ? "P2" : "P3"; return [incidentLevel: level]',
             continueOnError: false,
           },
           branchStrategy: "EXCLUSIVE",
@@ -2223,7 +2260,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "inc_n7",
           type: NodeType.MANUAL,
           title: "报修人验证确认",
-          approverType: "USER",
+          approverType: "INITIATOR",
           props: {
             taskDescription: "请确认故障是否已修复，如未修复请退回重新处理",
             priority: "MEDIUM",
@@ -2256,7 +2293,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "紧急通知管理层",
           props: {
             recipientType: "ROLE",
-            recipientValue: "MANAGER",
+            recipientValue: "manager",
             notificationTitle: "【紧急】P1级故障告警",
             notificationContent:
               "系统发生P1级紧急故障，请立即关注！故障描述: ${description}",
@@ -2267,7 +2304,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.MANUAL,
           title: "紧急修复处理",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "P1级紧急故障，需立即响应并修复",
             priority: "HIGH",
@@ -2284,14 +2321,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "运维主管派单",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "inc_n5",
           type: NodeType.MANUAL,
           title: "运维工程师处理",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "P2级故障，请在4小时内完成修复",
             priority: "MEDIUM",
@@ -2308,7 +2345,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.MANUAL,
           title: "运维工程师处理",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "P3级一般故障，请在24小时内处理",
             priority: "LOW",
@@ -2354,6 +2391,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           target: "inc_n3",
         },
         {
+          id: "inc_n3->inc_n7",
+          source: "inc_n3",
+          target: "inc_n7",
+        },
+        {
           id: "inc_n1->inc_b2",
           source: "inc_n1",
           target: "inc_b2",
@@ -2370,6 +2412,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           target: "inc_n5",
         },
         {
+          id: "inc_n5->inc_n7",
+          source: "inc_n5",
+          target: "inc_n7",
+        },
+        {
           id: "inc_n1->inc_b3",
           source: "inc_n1",
           target: "inc_b3",
@@ -2379,6 +2426,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "inc_b3->inc_n6",
           source: "inc_b3",
           target: "inc_n6",
+        },
+        {
+          id: "inc_n6->inc_n7",
+          source: "inc_n6",
+          target: "inc_n7",
         },
       ],
     },
@@ -2408,15 +2460,15 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "sc_n5",
           type: NodeType.APPROVAL,
           title: "法务合规审核",
-          approverType: "ROLE",
-          approverValue: "LEGAL",
+          approverType: "USER",
+          approverValue: "6",
         },
         {
           id: "sc_n6",
           type: NodeType.PARALLEL,
           title: "并行办理（财务+行政）",
           approverType: "ROLE",
-          approverValue: "FINANCE,ADMIN",
+          approverValue: "finance,admin",
           branchStrategy: "PARALLEL",
         },
         {
@@ -2445,7 +2497,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "财务确认收款条款",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
         {
           id: "sc_b4",
@@ -2457,7 +2509,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.MANUAL,
           title: "行政盖章归档",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "合同盖章并归档原件",
             priority: "HIGH",
@@ -2474,7 +2526,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "销售总监审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "sc_b2",
@@ -2487,14 +2539,14 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "sc_n4",
           type: NodeType.APPROVAL,
           title: "董事会审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
       ],
       edges: [
@@ -2557,6 +2609,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           target: "sc_n2",
         },
         {
+          id: "sc_n2->sc_n5",
+          source: "sc_n2",
+          target: "sc_n5",
+        },
+        {
           id: "sc_n1->sc_b2",
           source: "sc_n1",
           target: "sc_b2",
@@ -2571,6 +2628,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "sc_n3->sc_n4",
           source: "sc_n3",
           target: "sc_n4",
+        },
+        {
+          id: "sc_n4->sc_n5",
+          source: "sc_n4",
+          target: "sc_n5",
         },
       ],
     },
@@ -2594,17 +2656,16 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "采购部审核需求",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "bid_n2",
           type: NodeType.SCRIPT,
           title: "自动生成招标文件",
           props: {
-            scriptType: "API",
-            apiUrl: "/api/bidding/generate",
-            apiMethod: "POST",
-            apiBody: '{"projectName": "${projectName}", "budget": "${budget}"}',
+            scriptType: "GROOVY",
+            scriptContent:
+              'def tenderNo = "TENDER-" + System.currentTimeMillis(); return [tenderGenerated: true, tenderNo: tenderNo, tenderProjectName: projectName, tenderBudget: budget]',
             continueOnError: false,
           },
         },
@@ -2614,7 +2675,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "等待投标截止（7天）",
           props: {
             timerType: "DELAY",
-            delayMinutes: 10080,
+            delayMinutes: 1,
           },
         },
         {
@@ -2622,7 +2683,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.PARALLEL,
           title: "并行评标",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           branchStrategy: "PARALLEL",
         },
         {
@@ -2630,7 +2691,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "评标委员会定标",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "bid_n8",
@@ -2658,7 +2719,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "技术专家评标",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "bid_b2",
@@ -2670,7 +2731,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "商务专家评标",
           approverType: "ROLE",
-          approverValue: "FINANCE",
+          approverValue: "finance",
         },
       ],
       edges: [
@@ -2752,10 +2813,9 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.SCRIPT,
           title: "自动记录事故信息",
           props: {
-            scriptType: "API",
-            apiUrl: "/api/safety/record",
-            apiMethod: "POST",
-            apiBody: '{"type": "${accidentType}", "location": "${location}"}',
+            scriptType: "GROOVY",
+            scriptContent:
+              'def summary = (accidentType ?: "未知事故") + "@" + (location ?: "未知地点"); return [accidentRecorded: true, accidentSummary: summary]',
             continueOnError: true,
           },
         },
@@ -2764,7 +2824,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.PARALLEL,
           title: "并行处置（现场+通知）",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           branchStrategy: "PARALLEL",
         },
         {
@@ -2772,21 +2832,21 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "事故调查报告审核",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "sf_n6",
           type: NodeType.APPROVAL,
           title: "整改方案审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "sf_n7",
           type: NodeType.MANUAL,
           title: "执行整改措施",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "按照整改方案执行安全整改措施",
             priority: "HIGH",
@@ -2797,7 +2857,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "整改验收确认",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "sf_end",
@@ -2814,7 +2874,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.MANUAL,
           title: "现场紧急处置",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "立即前往事故现场进行紧急处置，确保人员安全",
             priority: "HIGH",
@@ -2831,7 +2891,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "通知安全管理层",
           props: {
             recipientType: "ROLE",
-            recipientValue: "MANAGER",
+            recipientValue: "manager",
             notificationTitle: "【紧急】安全事故报告",
             notificationContent:
               "发生安全事故，地点: ${location}，请立即关注。",
@@ -2901,7 +2961,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     id: "leave_advanced",
     name: "请假全流程",
-    description: "天数判断 → 分级审批 → 子流程交接 → 定时提醒 → 通知",
+    description: "天数判断 → 分级审批 → 交接确认 → 定时提醒 → 通知",
     category: "office",
     icon: Calendar,
     color: "text-pink-500 bg-pink-50",
@@ -2921,12 +2981,13 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         },
         {
           id: "la_n5",
-          type: NodeType.SUBPROCESS,
-          title: "工作交接子流程",
+          type: NodeType.MANUAL,
+          title: "发起人确认工作交接",
+          approverType: "INITIATOR",
           props: {
-            subprocessId: "handover_process",
-            variableMapping: '{"assignee": "${initiator}", "days": "${days}"}',
-            waitForCompletion: true,
+            taskDescription:
+              "请在休假前完成工作交接，并确认交接安排已同步给相关同事。",
+            priority: "MEDIUM",
           },
         },
         {
@@ -2935,7 +2996,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "假期结束前1天提醒",
           props: {
             timerType: "DELAY",
-            delayMinutes: 1440,
+            delayMinutes: 1,
           },
         },
         {
@@ -2989,7 +3050,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "总经理审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
       ],
       edges: [
@@ -3032,9 +3093,19 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           condition: "days > 3 && days <= 7",
         },
         {
+          id: "la_b1->la_n5",
+          source: "la_b1",
+          target: "la_n5",
+        },
+        {
           id: "la_b2->la_n2",
           source: "la_b2",
           target: "la_n2",
+        },
+        {
+          id: "la_n2->la_n5",
+          source: "la_n2",
+          target: "la_n5",
         },
         {
           id: "la_n1->la_b3",
@@ -3051,6 +3122,11 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           id: "la_n3->la_n4",
           source: "la_n3",
           target: "la_n4",
+        },
+        {
+          id: "la_n4->la_n5",
+          source: "la_n4",
+          target: "la_n5",
         },
       ],
     },
@@ -3074,17 +3150,16 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "技术负责人代码审查",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
         },
         {
           id: "dep_n2",
           type: NodeType.SCRIPT,
           title: "自动构建与测试",
           props: {
-            scriptType: "API",
-            apiUrl: "/api/ci/build",
-            apiMethod: "POST",
-            apiBody: '{"branch": "${branch}", "version": "${version}"}',
+            scriptType: "GROOVY",
+            scriptContent:
+              'return [buildStatus: "SUCCESS", buildBranch: branch, buildVersion: version, buildFinishedAt: System.currentTimeMillis()]',
             continueOnError: false,
           },
         },
@@ -3093,7 +3168,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.APPROVAL,
           title: "发布审批",
           approverType: "ROLE",
-          approverValue: "MANAGER",
+          approverValue: "manager",
         },
         {
           id: "dep_n4",
@@ -3101,7 +3176,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "等待发布窗口",
           props: {
             timerType: "DELAY",
-            delayMinutes: 30,
+            delayMinutes: 1,
           },
         },
         {
@@ -3109,7 +3184,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.PARALLEL,
           title: "并行执行（部署+监控）",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           branchStrategy: "PARALLEL",
         },
         {
@@ -3117,7 +3192,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.MANUAL,
           title: "发布后验证确认",
           approverType: "ROLE",
-          approverValue: "ADMIN",
+          approverValue: "admin",
           props: {
             taskDescription: "验证发布后系统功能正常，检查关键业务指标",
             priority: "HIGH",
@@ -3148,10 +3223,9 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           type: NodeType.SCRIPT,
           title: "执行自动部署",
           props: {
-            scriptType: "API",
-            apiUrl: "/api/deploy/execute",
-            apiMethod: "POST",
-            apiBody: '{"version": "${version}"}',
+            scriptType: "GROOVY",
+            scriptContent:
+              'return [deployStatus: "SUCCESS", deployedVersion: version, deployedAt: System.currentTimeMillis()]',
             continueOnError: false,
           },
         },
@@ -3166,7 +3240,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
           title: "通知运维团队监控",
           props: {
             recipientType: "ROLE",
-            recipientValue: "ADMIN",
+            recipientValue: "admin",
             notificationTitle: "发布监控通知",
             notificationContent:
               "版本 ${version} 正在发布，请密切关注系统监控指标。",
@@ -4074,6 +4148,14 @@ const PropertyPanel = ({
                   </p>
                 </div>
               )}
+              {formData.approverType === "INITIATOR" && (
+                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-600 font-medium">发起人</p>
+                  <p className="text-[10px] text-pink-400 mt-0.5">
+                    系统将自动把当前节点分配给流程发起人本人处理。
+                  </p>
+                </div>
+              )}
               {formData.approverType === "DEPT_MANAGER" && (
                 <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
                   <p className="text-xs text-pink-600 font-medium">
@@ -4829,6 +4911,14 @@ const PropertyPanel = ({
                   <p className="text-xs text-pink-600 font-medium">直属上级</p>
                   <p className="text-[10px] text-pink-400 mt-0.5">
                     系统将自动查找流程发起人的直属上级作为处理人。无需手动指定。
+                  </p>
+                </div>
+              )}
+              {formData.approverType === "INITIATOR" && (
+                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-pink-600 font-medium">发起人</p>
+                  <p className="text-[10px] text-pink-400 mt-0.5">
+                    系统将自动把人工任务分配给流程发起人本人处理。
                   </p>
                 </div>
               )}
@@ -5978,7 +6068,9 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
       return;
     }
     if (
-      !["DIRECT_LEADER", "DEPT_MANAGER"].includes(String(node.approverType)) &&
+      !["DIRECT_LEADER", "DEPT_MANAGER", "INITIATOR"].includes(
+        String(node.approverType),
+      ) &&
       !node.approverValue
     ) {
       pushError(

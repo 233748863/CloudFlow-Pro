@@ -4,7 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.WfProcessArchive;
+import com.cloudflow.workflow.domain.WfDeployApproval;
+import com.cloudflow.workflow.domain.WfDeployApprovalStep;
+import com.cloudflow.workflow.domain.WfDeployImpact;
+import com.cloudflow.workflow.domain.WfDeployNotification;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
+import com.cloudflow.workflow.domain.WfProcessVersionSnapshot;
 import com.cloudflow.workflow.domain.WorkflowVersion;
 import com.cloudflow.workflow.domain.dto.ArchivedWorkflowDTO;
 import com.cloudflow.workflow.domain.dto.BatchOperationResultDTO;
@@ -15,6 +20,13 @@ import com.cloudflow.workflow.enums.TargetType;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessArchiveMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
+import com.cloudflow.workflow.mapper.WfDeployApprovalMapper;
+import com.cloudflow.workflow.mapper.WfDeployApprovalStepMapper;
+import com.cloudflow.workflow.mapper.WfDeployImpactMapper;
+import com.cloudflow.workflow.mapper.WfDeployNotificationMapper;
+import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
+import com.cloudflow.workflow.mapper.WfDeployRollbackHistoryMapper;
+import com.cloudflow.workflow.mapper.WfProcessVersionSnapshotMapper;
 import com.cloudflow.workflow.mapper.WorkflowVersionMapper;
 import com.cloudflow.workflow.service.IArchiveService;
 import com.cloudflow.workflow.service.IAuditLogService;
@@ -53,6 +65,27 @@ public class ArchiveServiceImpl implements IArchiveService {
 
     @Autowired
     private WorkflowVersionMapper versionMapper;
+
+    @Autowired
+    private WfProcessVersionSnapshotMapper versionSnapshotMapper;
+
+    @Autowired
+    private WfDeployRecordMapper deployRecordMapper;
+
+    @Autowired
+    private WfDeployApprovalMapper deployApprovalMapper;
+
+    @Autowired
+    private WfDeployApprovalStepMapper deployApprovalStepMapper;
+
+    @Autowired
+    private WfDeployRollbackHistoryMapper deployRollbackHistoryMapper;
+
+    @Autowired
+    private WfDeployImpactMapper deployImpactMapper;
+
+    @Autowired
+    private WfDeployNotificationMapper deployNotificationMapper;
 
     @Autowired
     private SafetyChecker safetyChecker;
@@ -525,16 +558,86 @@ public class ArchiveServiceImpl implements IArchiveService {
             int versionCount = versionMapper.delete(versionQuery);
             log.debug("删除版本历史: workflowId={}, count={}", workflowId, versionCount);
 
-            // 3. 删除归档记录
+            // 3. 删除版本快照
+            LambdaQueryWrapper<WfProcessVersionSnapshot> snapshotQuery = new LambdaQueryWrapper<>();
+            snapshotQuery.eq(WfProcessVersionSnapshot::getProcessDefId, workflowId);
+            int snapshotCount = versionSnapshotMapper.delete(snapshotQuery);
+            log.debug("删除版本快照: workflowId={}, count={}", workflowId, snapshotCount);
+
+            // 4. 删除发布记录及其关联数据
+            LambdaQueryWrapper<com.cloudflow.workflow.domain.WfDeployRecord> deployRecordQuery = new LambdaQueryWrapper<>();
+            deployRecordQuery.eq(com.cloudflow.workflow.domain.WfDeployRecord::getProcessDefId, workflowId);
+            List<Long> deployIds = deployRecordMapper.selectList(deployRecordQuery).stream()
+                .map(com.cloudflow.workflow.domain.WfDeployRecord::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+            if (!deployIds.isEmpty()) {
+                LambdaQueryWrapper<WfDeployNotification> notificationQuery = new LambdaQueryWrapper<>();
+                notificationQuery.in(WfDeployNotification::getDeployId, deployIds);
+                int notificationCount = deployNotificationMapper.delete(notificationQuery);
+
+                LambdaQueryWrapper<WfDeployImpact> impactQuery = new LambdaQueryWrapper<>();
+                impactQuery.in(WfDeployImpact::getDeployId, deployIds);
+                int impactCount = deployImpactMapper.delete(impactQuery);
+
+                LambdaQueryWrapper<WfDeployApproval> approvalQuery = new LambdaQueryWrapper<>();
+                approvalQuery.in(WfDeployApproval::getDeployId, deployIds);
+                List<Long> approvalIds = deployApprovalMapper.selectList(approvalQuery).stream()
+                    .map(WfDeployApproval::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+                if (!approvalIds.isEmpty()) {
+                    LambdaQueryWrapper<WfDeployApprovalStep> approvalStepQuery = new LambdaQueryWrapper<>();
+                    approvalStepQuery.in(WfDeployApprovalStep::getApprovalId, approvalIds);
+                    int approvalStepCount = deployApprovalStepMapper.delete(approvalStepQuery);
+                    log.debug("删除发布审批步骤: workflowId={}, count={}", workflowId, approvalStepCount);
+                }
+                int approvalCount = deployApprovalMapper.delete(approvalQuery);
+
+                LambdaQueryWrapper<com.cloudflow.workflow.domain.WfDeployRollbackHistory> rollbackHistoryQuery =
+                    new LambdaQueryWrapper<>();
+                rollbackHistoryQuery.in(com.cloudflow.workflow.domain.WfDeployRollbackHistory::getOriginalDeployId, deployIds)
+                    .or()
+                    .in(com.cloudflow.workflow.domain.WfDeployRollbackHistory::getRollbackDeployId, deployIds);
+                int rollbackByDeployCount = deployRollbackHistoryMapper.delete(rollbackHistoryQuery);
+
+                int deployRecordCount = deployRecordMapper.delete(deployRecordQuery);
+                log.debug("删除发布关联记录: workflowId={}, deploys={}, approvals={}, notifications={}, impacts={}, rollbackByDeploy={}",
+                    workflowId, deployRecordCount, approvalCount, notificationCount, impactCount, rollbackByDeployCount);
+            }
+
+            // 5. 删除按流程定义关联的发布审批/回滚历史兜底记录
+            LambdaQueryWrapper<WfDeployApproval> approvalByDefQuery = new LambdaQueryWrapper<>();
+            approvalByDefQuery.eq(WfDeployApproval::getProcessDefId, workflowId);
+            List<Long> danglingApprovalIds = deployApprovalMapper.selectList(approvalByDefQuery).stream()
+                .map(WfDeployApproval::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+            if (!danglingApprovalIds.isEmpty()) {
+                LambdaQueryWrapper<WfDeployApprovalStep> approvalStepQuery = new LambdaQueryWrapper<>();
+                approvalStepQuery.in(WfDeployApprovalStep::getApprovalId, danglingApprovalIds);
+                deployApprovalStepMapper.delete(approvalStepQuery);
+            }
+            int approvalByDefCount = deployApprovalMapper.delete(approvalByDefQuery);
+
+            LambdaQueryWrapper<com.cloudflow.workflow.domain.WfDeployRollbackHistory> rollbackByDefQuery =
+                new LambdaQueryWrapper<>();
+            rollbackByDefQuery.eq(com.cloudflow.workflow.domain.WfDeployRollbackHistory::getProcessDefId, workflowId);
+            int rollbackByDefCount = deployRollbackHistoryMapper.delete(rollbackByDefQuery);
+            log.debug("删除流程定义级发布关联记录: workflowId={}, approvals={}, rollbackByDef={}",
+                workflowId, approvalByDefCount, rollbackByDefCount);
+
+            // 6. 删除归档记录
             LambdaQueryWrapper<WfProcessArchive> archiveQuery = new LambdaQueryWrapper<>();
             archiveQuery.eq(WfProcessArchive::getWorkflowId, workflowId);
             int archiveCount = archiveMapper.delete(archiveQuery);
             log.debug("删除归档记录: workflowId={}, count={}", workflowId, archiveCount);
 
-            // 4. 删除流程历史审计日志（按 workflowId + targetType 级联清理）
+            // 7. 删除流程历史审计日志（按 workflowId + targetType 级联清理）
             int workflowAuditLogCount = auditLogService.deleteByTarget(TargetType.WORKFLOW, workflowId);
 
-            // 5. 额外清理关联版本的审计日志，避免残留 VERSION 目标类型的孤儿记录
+            // 8. 额外清理关联版本的审计日志，避免残留 VERSION 目标类型的孤儿记录
             int versionAuditLogCount = 0;
             for (String versionId : versionIds) {
                 versionAuditLogCount += auditLogService.deleteByTarget(TargetType.VERSION, versionId);
@@ -542,9 +645,10 @@ public class ArchiveServiceImpl implements IArchiveService {
             log.debug("删除流程历史审计日志: workflowId={}, workflowLogCount={}, versionLogCount={}",
                 workflowId, workflowAuditLogCount, versionAuditLogCount);
 
-            definitionMapper.deleteById(workflowId);
+            // 9. 真正物理删除流程定义，避免逻辑删除残留在主表中。
+            definitionMapper.deletePhysicalById(workflowId);
 
-            // 6. 记录审计日志
+            // 10. 记录审计日志
             auditLogService.log(
                 OperationType.WORKFLOW_DELETE,
                 TargetType.WORKFLOW,

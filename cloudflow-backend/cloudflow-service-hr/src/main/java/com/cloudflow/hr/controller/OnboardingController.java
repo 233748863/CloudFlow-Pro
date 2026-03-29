@@ -68,6 +68,19 @@ public class OnboardingController {
     }
 
     /**
+     * 审批拒绝处理（由工作流回调或桌面端手工办理）
+     *
+     * @param applicationId 入职申请ID
+     * @return 操作结果
+     */
+    @PostMapping("/application/{applicationId}/reject")
+    public R<Void> rejectOnboarding(@PathVariable Long applicationId) {
+        log.info("入职申请审批拒绝，申请ID：{}", applicationId);
+        onboardingService.rejectOnboarding(applicationId);
+        return R.ok();
+    }
+
+    /**
      * 完成入职任务
      *
      * @param dto 任务完成DTO

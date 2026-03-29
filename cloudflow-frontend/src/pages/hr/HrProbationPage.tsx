@@ -71,11 +71,11 @@ const getProbationActionHint = (status?: string) => {
     case 'APPROVING':
       return '下一步：审批当前申请';
     case 'APPROVED':
-      return '流程完成，员工已转正';
+      return '流程完成，员工主档应已转为正式并写入预计转正日期';
     case 'EXTENDED':
-      return '试用期已延长，观察结束后可重新发起';
+      return '试用期已延长，员工仍保持试用期，观察结束后可重新发起';
     case 'REJECTED':
-      return '流程已驳回，可重新发起';
+      return '流程已驳回；是否还能重新发起，取决于员工主档是否仍处于试用期';
     default:
       return '查看详情并核对转正信息';
   }
@@ -628,6 +628,16 @@ export const HrProbationPage: React.FC = () => {
                   <div className="text-xs text-slate-400">预计转正日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.expectedRegularDate) || '-'}</div>
                 </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="text-xs text-slate-400">创建时间</div>
+                  <div className="mt-2 font-semibold text-slate-900">
+                    {detail.createTime ? new Date(detail.createTime).toLocaleString('zh-CN') : '-'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2">
+                  <div className="text-xs text-slate-400">流程实例 ID</div>
+                  <div className="mt-2 break-all font-mono text-sm text-slate-700">{detail.processInstanceId || '-'}</div>
+                </div>
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
                   <div className="text-xs text-slate-400">自我评价</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.selfEvaluation || '-'}</div>
@@ -647,6 +657,12 @@ export const HrProbationPage: React.FC = () => {
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
                     {canRejectDetail ? '可驳回' : '当前状态不可驳回'}
                   </span>
+                </div>
+
+                {/* 真实联调发现：是否填写延长天数会直接决定申请终态和员工主档状态。 */}
+                <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                  填写正整数延长天数时，后端会把申请置为“延长试用期”，员工继续保持试用期；
+                  留空则走“已拒绝”，当前后端实现会同步把员工主档更新为离职。
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">

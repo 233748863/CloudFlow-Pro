@@ -61,6 +61,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     @Autowired
     private WfTaskHistoryMapper taskHistoryMapper;
     @Autowired
+    private WfNodeRecordMapper nodeRecordMapper;
+    @Autowired
     private WorkflowPermissionService permissionService;
     @Autowired
     private RateLimiterService rateLimiterService;
@@ -252,6 +254,11 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 .eq(WfTaskHistory::getInstanceId, instanceId)
                 .orderByAsc(WfTaskHistory::getCreateTime)
         );
+        List<WfNodeRecord> nodeRecords = nodeRecordMapper.selectList(
+            new LambdaQueryWrapper<WfNodeRecord>()
+                .eq(WfNodeRecord::getInstanceId, instanceId)
+                .orderByAsc(WfNodeRecord::getStartTime)
+        );
         if (histories != null && !histories.isEmpty()) {
             throw WorkflowException.invalidState("流程已有审批记录，无法撤回");
         }
@@ -352,36 +359,25 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         );
 
         // 已完成节点
-        List<String> finishedNodeKeys = histories.stream()
-            .map(WfTaskHistory::getNodeKey)
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
+        List<WfNodeRecord> nodeRecords = nodeRecordMapper.selectList(
+            new LambdaQueryWrapper<WfNodeRecord>()
+                .eq(WfNodeRecord::getInstanceId, instanceId)
+                .orderByAsc(WfNodeRecord::getStartTime)
+        );
+        List<String> finishedNodeKeys = new ArrayList<>(
+            collectFinishedNodeKeys(instance.getStatus(), histories, nodeRecords));
 
         // 活动节点
-        List<String> activeNodeKeys = activeTasks.stream()
-            .map(WfTask::getNodeKey)
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
+        List<String> activeNodeKeys = new ArrayList<>(
+            collectActiveNodeKeys(instance.getStatus(), activeTasks, nodeRecords));
 
         // 构建历史详情
-        List<Map<String, Object>> historyDetails = new ArrayList<>();
-        for (WfTaskHistory h : histories) {
-            Map<String, Object> detail = new HashMap<>();
-            detail.put("nodeKey", h.getNodeKey());
-            detail.put("nodeName", h.getNodeName());
-            detail.put("operatorId", h.getOperatorId());
-            detail.put("operatorName", h.getOperatorName());
-            detail.put("action", h.getAction());
-            detail.put("comment", h.getComment());
-            detail.put("createTime", h.getCreateTime());
-            detail.put("durationSeconds", h.getDurationSeconds());
-            historyDetails.add(detail);
-        }
+        List<Map<String, Object>> historyDetails = buildTraceHistoryDetails(
+            histories, nodeRecords, instance.getStatus());
 
         // 构建活动任务详情
-        List<Map<String, Object>> activeDetails = new ArrayList<>();
+        List<Map<String, Object>> activeDetails = buildTraceActiveDetails(
+            activeTasks, nodeRecords, instance.getStatus());
         for (WfTask t : activeTasks) {
             Map<String, Object> detail = new HashMap<>();
             detail.put("taskId", t.getTaskId());
@@ -395,15 +391,27 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             detail.put("createTime", t.getCreateTime());
             activeDetails.add(detail);
         }
+        // 以统一聚合结果覆盖旧的纯任务明细，确保自动节点与网关节点也能进入 trace。
+        activeDetails = buildTraceActiveDetails(activeTasks, nodeRecords, instance.getStatus());
 
         // 构建步骤详情
+        // 以统一聚合结果覆盖旧的纯任务明细，确保自动节点与网关节点也能进入 trace。
+        activeDetails = buildTraceActiveDetails(activeTasks, nodeRecords, instance.getStatus());
+        activeDetails = buildTraceActiveDetails(activeTasks, nodeRecords, instance.getStatus());
         List<Map<String, Object>> stepsDetail = null;
         try {
             WfProcessDefinition def = resolveDefinitionByInstance(instance);
             if (def != null && StringUtils.hasText(def.getModelJson())) {
                 WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
                 List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
-                String currentNodeKey = activeNodeKeys.isEmpty() ? null : activeNodeKeys.get(0);
+                Set<String> stepNodeKeys = steps.stream()
+                    .map(step -> step.get("nodeKey"))
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.toSet());
+                String currentNodeKey = activeNodeKeys.stream()
+                    .filter(stepNodeKeys::contains)
+                    .findFirst()
+                    .orElse(null);
                 stepsDetail = nodeExecutionService.buildAllStepsDetail(steps, histories, currentNodeKey);
             }
         } catch (Exception e) {
@@ -413,11 +421,15 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         // 检测并行分支
         List<Map<String, Object>> parallelBranches = new ArrayList<>();
         if (activeNodeKeys.size() > 1) {
-            for (WfTask t : activeTasks) {
+            for (Map<String, Object> detail : activeDetails) {
                 Map<String, Object> branch = new HashMap<>();
-                branch.put("nodeKey", t.getNodeKey());
-                branch.put("nodeName", t.getNodeName());
-                branch.put("assignee", t.getAssignee());
+                branch.put("nodeKey", detail.get("nodeKey"));
+                branch.put("nodeName", detail.get("nodeName"));
+                branch.put("assignee", firstNotBlank(
+                    detail.get("assigneeName") != null ? String.valueOf(detail.get("assigneeName")) : null,
+                    detail.get("assigneeId") != null ? String.valueOf(detail.get("assigneeId")) : null,
+                    detail.get("assignee") != null ? String.valueOf(detail.get("assignee")) : null
+                ));
                 parallelBranches.add(branch);
             }
         }
@@ -434,6 +446,209 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             result.put("stepsDetail", stepsDetail);
         }
         return result;
+    }
+
+    private Set<String> collectFinishedNodeKeys(String processStatus,
+                                                List<WfTaskHistory> histories,
+                                                List<WfNodeRecord> nodeRecords) {
+        Set<String> finishedNodeKeys = new LinkedHashSet<>();
+        if (histories != null) {
+            histories.stream()
+                .map(WfTaskHistory::getNodeKey)
+                .filter(StringUtils::hasText)
+                .forEach(finishedNodeKeys::add);
+        }
+        if (nodeRecords != null) {
+            nodeRecords.stream()
+                .filter(record -> shouldTreatNodeRecordAsCompleted(record, processStatus))
+                .map(WfNodeRecord::getNodeKey)
+                .filter(StringUtils::hasText)
+                .forEach(finishedNodeKeys::add);
+        }
+        return finishedNodeKeys;
+    }
+
+    private Set<String> collectActiveNodeKeys(String processStatus,
+                                              List<WfTask> activeTasks,
+                                              List<WfNodeRecord> nodeRecords) {
+        Set<String> activeNodeKeys = new LinkedHashSet<>();
+        if (!isDisplayActiveProcess(processStatus)) {
+            return activeNodeKeys;
+        }
+        if (activeTasks != null) {
+            activeTasks.stream()
+                .map(WfTask::getNodeKey)
+                .filter(StringUtils::hasText)
+                .forEach(activeNodeKeys::add);
+        }
+        if (nodeRecords != null) {
+            nodeRecords.stream()
+                .filter(record -> record != null
+                    && "RUNNING".equalsIgnoreCase(record.getStatus())
+                    && StringUtils.hasText(record.getNodeKey()))
+                .map(WfNodeRecord::getNodeKey)
+                .forEach(activeNodeKeys::add);
+        }
+        return activeNodeKeys;
+    }
+
+    private List<Map<String, Object>> buildTraceHistoryDetails(List<WfTaskHistory> histories,
+                                                               List<WfNodeRecord> nodeRecords,
+                                                               String processStatus) {
+        List<Map<String, Object>> historyDetails = new ArrayList<>();
+        if (histories != null) {
+            for (WfTaskHistory history : histories) {
+                Map<String, Object> detail = new HashMap<>();
+                detail.put("nodeKey", history.getNodeKey());
+                detail.put("nodeName", history.getNodeName());
+                detail.put("operatorId", history.getOperatorId());
+                detail.put("operatorName", history.getOperatorName());
+                detail.put("action", history.getAction());
+                detail.put("comment", history.getComment());
+                detail.put("createTime", history.getCreateTime());
+                detail.put("completeTime", history.getCreateTime());
+                detail.put("durationSeconds", history.getDurationSeconds());
+                historyDetails.add(detail);
+            }
+        }
+        if (nodeRecords != null) {
+            for (WfNodeRecord record : nodeRecords) {
+                if (!isTraceAutoNodeRecord(record) || !shouldTreatNodeRecordAsCompleted(record, processStatus)) {
+                    continue;
+                }
+                Map<String, Object> detail = new HashMap<>();
+                detail.put("nodeKey", record.getNodeKey());
+                detail.put("nodeName", record.getNodeName());
+                detail.put("operatorId", record.getExecutorId());
+                detail.put("operatorName", firstNotBlank(record.getExecutorName(), resolveSystemNodeActor(record)));
+                detail.put("action", "COMPLETE");
+                detail.put("createTime", record.getStartTime());
+                detail.put("completeTime", record.getEndTime() != null ? record.getEndTime() : record.getStartTime());
+                detail.put("durationSeconds", record.getDurationMs() != null ? record.getDurationMs() / 1000 : null);
+                detail.put("nodeType", record.getNodeType());
+                historyDetails.add(detail);
+            }
+        }
+        historyDetails.sort(Comparator.comparing(
+            this::extractTraceSortTime,
+            Comparator.nullsLast(Comparator.naturalOrder())));
+        return historyDetails;
+    }
+
+    private List<Map<String, Object>> buildTraceActiveDetails(List<WfTask> activeTasks,
+                                                              List<WfNodeRecord> nodeRecords,
+                                                              String processStatus) {
+        List<Map<String, Object>> activeDetails = new ArrayList<>();
+        if (!isDisplayActiveProcess(processStatus)) {
+            return activeDetails;
+        }
+
+        Set<String> taskNodeKeys = new HashSet<>();
+        if (activeTasks != null) {
+            for (WfTask task : activeTasks) {
+                if (StringUtils.hasText(task.getNodeKey())) {
+                    taskNodeKeys.add(task.getNodeKey());
+                }
+                Map<String, Object> detail = new HashMap<>();
+                detail.put("taskId", task.getTaskId());
+                detail.put("nodeKey", task.getNodeKey());
+                detail.put("nodeName", task.getNodeName());
+                detail.put("assignee", task.getAssignee());
+                detail.put("assigneeId", task.getAssignee());
+                detail.put("assigneeName", StringUtils.hasText(task.getAssigneeName())
+                    ? task.getAssigneeName()
+                    : (task.getAssignee() != null ? String.valueOf(task.getAssignee()) : null));
+                detail.put("createTime", task.getCreateTime());
+                activeDetails.add(detail);
+            }
+        }
+
+        if (nodeRecords != null) {
+            for (WfNodeRecord record : nodeRecords) {
+                if (!isTraceAutoNodeRecord(record)
+                        || !"RUNNING".equalsIgnoreCase(record.getStatus())
+                        || taskNodeKeys.contains(record.getNodeKey())) {
+                    continue;
+                }
+                Map<String, Object> detail = new HashMap<>();
+                detail.put("nodeKey", record.getNodeKey());
+                detail.put("nodeName", record.getNodeName());
+                detail.put("assigneeId", record.getExecutorId());
+                detail.put("assigneeName", firstNotBlank(record.getExecutorName(), resolveSystemNodeActor(record)));
+                detail.put("createTime", record.getStartTime());
+                detail.put("nodeType", record.getNodeType());
+                activeDetails.add(detail);
+            }
+        }
+
+        activeDetails.sort(Comparator.comparing(
+            this::extractTraceSortTime,
+            Comparator.nullsLast(Comparator.naturalOrder())));
+        return activeDetails;
+    }
+
+    private boolean shouldTreatNodeRecordAsCompleted(WfNodeRecord record, String processStatus) {
+        if (record == null || !StringUtils.hasText(record.getNodeKey())) {
+            return false;
+        }
+        if ("COMPLETED".equalsIgnoreCase(record.getStatus())) {
+            return true;
+        }
+        // 监听器异步收口时，终态流程里残留的 RUNNING 记录按已完成展示，避免自动节点长期 pending。
+        return !isDisplayActiveProcess(processStatus) && "RUNNING".equalsIgnoreCase(record.getStatus());
+    }
+
+    private boolean isTraceAutoNodeRecord(WfNodeRecord record) {
+        if (record == null) {
+            return false;
+        }
+        String nodeType = record.getNodeType();
+        if (!StringUtils.hasText(nodeType)) {
+            return true;
+        }
+        return !"APPROVAL".equalsIgnoreCase(nodeType)
+            && !"MANUAL".equalsIgnoreCase(nodeType)
+            && !"START".equalsIgnoreCase(nodeType);
+    }
+
+    private boolean isDisplayActiveProcess(String processStatus) {
+        return WfProcessStatus.RUNNING.getCode().equals(processStatus)
+            || WfProcessStatus.SUSPENDED.getCode().equals(processStatus);
+    }
+
+    private String resolveSystemNodeActor(WfNodeRecord record) {
+        String nodeType = record != null ? record.getNodeType() : null;
+        if ("TIMER".equalsIgnoreCase(nodeType)) {
+            return "系统定时器";
+        }
+        if ("SCRIPT".equalsIgnoreCase(nodeType)) {
+            return "系统脚本";
+        }
+        if ("NOTIFICATION".equalsIgnoreCase(nodeType)) {
+            return "系统通知";
+        }
+        if ("PARALLEL".equalsIgnoreCase(nodeType) || "CONDITION".equalsIgnoreCase(nodeType)) {
+            return "系统网关";
+        }
+        if ("END".equalsIgnoreCase(nodeType)) {
+            return "系统完成";
+        }
+        return "系统";
+    }
+
+    private LocalDateTime extractTraceSortTime(Map<String, Object> detail) {
+        if (detail == null) {
+            return null;
+        }
+        Object completeTime = detail.get("completeTime");
+        if (completeTime instanceof LocalDateTime) {
+            return (LocalDateTime) completeTime;
+        }
+        Object createTime = detail.get("createTime");
+        if (createTime instanceof LocalDateTime) {
+            return (LocalDateTime) createTime;
+        }
+        return null;
     }
 
     @Override
@@ -541,6 +756,8 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                     WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
                     WfNodeConfig timerNode = nodeExecutionService.findNode(root, nodeKey);
                     if (timerNode != null) {
+                        // 定时节点真正完成的时刻发生在续跑触发时，不能在注册 timer 时提前记 completed。
+                        workflowEventPublisher.publishNodeCompleted(instance, timerNode);
                         nodeExecutionService.advanceAfterNode(instance, timerNode, nodeKey, variables, 0, root);
                     }
                 }
@@ -581,6 +798,11 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 .eq(WfTaskHistory::getInstanceId, instanceId)
                 .orderByAsc(WfTaskHistory::getCreateTime)
         );
+        List<WfNodeRecord> nodeRecords = nodeRecordMapper.selectList(
+            new LambdaQueryWrapper<WfNodeRecord>()
+                .eq(WfNodeRecord::getInstanceId, instanceId)
+                .orderByAsc(WfNodeRecord::getStartTime)
+        );
         List<WfTask> activeTasks = taskMapper.selectList(
             new LambdaQueryWrapper<WfTask>()
                 .eq(WfTask::getInstanceId, instanceId)
@@ -588,16 +810,12 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         );
 
         // 已完成节点Key集合
-        Set<String> finishedNodeKeys = histories.stream()
-            .map(WfTaskHistory::getNodeKey)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
+        Set<String> finishedNodeKeys = collectFinishedNodeKeys(
+            instance.getStatus(), histories, nodeRecords);
 
         // 活动节点Key集合
-        Set<String> activeNodeKeys = activeTasks.stream()
-            .map(WfTask::getNodeKey)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
+        Set<String> activeNodeKeys = collectActiveNodeKeys(
+            instance.getStatus(), activeTasks, nodeRecords);
 
         // 解析模型JSON，递归构建节点和连线
         List<Map<String, Object>> nodes = new ArrayList<>();

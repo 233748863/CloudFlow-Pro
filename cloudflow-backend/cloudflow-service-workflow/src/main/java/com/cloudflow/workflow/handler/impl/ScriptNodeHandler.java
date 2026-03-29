@@ -6,6 +6,8 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.handler.INodeHandler;
 import com.cloudflow.workflow.service.HttpClientService;
 import com.cloudflow.workflow.service.ScriptExecutionService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,10 +18,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 脚本节点处理器
- * 支持 Groovy/JavaScript/API 三种执行模式
- *
- * @author CloudFlow
+ * 脚本节点处理器。
+ * 支持 Groovy、JavaScript 和 API 三种执行方式。
  */
 @Component
 @RequiredArgsConstructor
@@ -29,6 +29,7 @@ public class ScriptNodeHandler implements INodeHandler {
 
     private final ScriptExecutionService scriptExecutionService;
     private final HttpClientService httpClientService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public String getNodeType() {
@@ -47,7 +48,6 @@ public class ScriptNodeHandler implements INodeHandler {
             }
 
             String scriptType = (String) props.getOrDefault("scriptType", "GROOVY");
-
             switch (scriptType) {
                 case "API":
                     handleApiCall(node, props, variables);
@@ -73,46 +73,36 @@ public class ScriptNodeHandler implements INodeHandler {
                 throw new WorkflowException("SCRIPT_EXECUTION_FAILED", "脚本节点执行失败: " + e.getMessage(), e);
             }
         }
-        return true; // 自动继续流转
+        return true;
     }
 
-    /**
-     * 处理 API 调用模式
-     */
     private void handleApiCall(WfNodeConfig node, Map<String, Object> props, Map<String, Object> variables) {
         String apiUrl = (String) props.get("apiUrl");
         String apiMethod = (String) props.getOrDefault("apiMethod", "POST");
+        if (!StringUtils.hasText(apiUrl)) {
+            return;
+        }
 
-        if (!StringUtils.hasText(apiUrl)) return;
+        log.info("[ScriptNodeHandler] 执行 API 调用, url={}, method={}", apiUrl, apiMethod);
 
-        log.info("[ScriptNodeHandler] 执行API调用, url={}, method={}", apiUrl, apiMethod);
-
-        // 准备请求头
         Map<String, String> headers = new HashMap<>();
         if (props.containsKey("apiHeaders")) {
             try {
                 @SuppressWarnings("unchecked")
                 Map<String, String> configHeaders = (Map<String, String>) props.get("apiHeaders");
-                if (configHeaders != null) headers.putAll(configHeaders);
+                if (configHeaders != null) {
+                    headers.putAll(configHeaders);
+                }
             } catch (Exception e) {
                 log.warn("[ScriptNodeHandler] 解析请求头失败: {}", e.getMessage());
             }
         }
         headers.putIfAbsent("Content-Type", "application/json");
 
-        // 准备请求体，替换变量引用
-        @SuppressWarnings("unchecked")
-        Map<String, Object> requestBody = props.containsKey("apiBody") ? (Map<String, Object>) props.get("apiBody") : null;
-        if (requestBody != null && variables != null) {
-            requestBody = replaceVariables(requestBody, variables);
-        }
-
-        // 执行请求
+        Map<String, Object> requestBody = buildApiRequestBody(props.get("apiBody"), variables);
         HttpClientService.ApiResponse response = httpClientService.executeRequest(apiUrl, apiMethod, headers, requestBody);
 
-        log.info("[ScriptNodeHandler] API调用完成, statusCode={}", response.getStatusCode());
-
-        // 存储响应到变量
+        log.info("[ScriptNodeHandler] API 调用完成, statusCode={}", response.getStatusCode());
         if (variables != null) {
             variables.put("_apiResponse_" + node.getId(), response.getBody());
             variables.put("_apiStatusCode_" + node.getId(), response.getStatusCode());
@@ -121,60 +111,116 @@ public class ScriptNodeHandler implements INodeHandler {
         if (!response.isSuccess()) {
             Boolean continueOnError = (Boolean) props.getOrDefault("continueOnError", true);
             if (!continueOnError) {
-                throw new WorkflowException("API_CALL_FAILED", "API调用失败: HTTP " + response.getStatusCode());
+                throw new WorkflowException("API_CALL_FAILED", "API 调用失败: HTTP " + response.getStatusCode());
+            }
+        }
+    }
+
+    private void handleGroovyScript(WfNodeConfig node, Map<String, Object> props, Map<String, Object> variables) {
+        String scriptContent = decodeHtmlEntities((String) props.get("scriptContent"));
+        if (!StringUtils.hasText(scriptContent)) {
+            return;
+        }
+        Object result = scriptExecutionService.executeGroovyScript(scriptContent, variables);
+        storeScriptResult(node, variables, result);
+        log.info("[ScriptNodeHandler] Groovy 脚本执行完成, result={}", result);
+    }
+
+    private void handleJavaScript(WfNodeConfig node, Map<String, Object> props, Map<String, Object> variables) {
+        String scriptContent = decodeHtmlEntities((String) props.get("scriptContent"));
+        if (!StringUtils.hasText(scriptContent)) {
+            return;
+        }
+        Object result = scriptExecutionService.executeJavaScript(scriptContent, variables);
+        storeScriptResult(node, variables, result);
+        log.info("[ScriptNodeHandler] JavaScript 脚本执行完成, result={}", result);
+    }
+
+    private Map<String, Object> buildApiRequestBody(Object rawApiBody, Map<String, Object> variables) {
+        if (rawApiBody == null) {
+            return null;
+        }
+        if (rawApiBody instanceof Map<?, ?> rawMap) {
+            Map<String, Object> copied = new HashMap<>();
+            for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+                if (entry.getKey() != null) {
+                    copied.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+            return variables != null ? replaceVariables(copied, variables) : copied;
+        }
+        if (rawApiBody instanceof String rawText) {
+            String replaced = replaceVariablesInString(decodeHtmlEntities(rawText), variables);
+            if (!StringUtils.hasText(replaced)) {
+                return null;
+            }
+            try {
+                return objectMapper.readValue(replaced, new TypeReference<Map<String, Object>>() {});
+            } catch (Exception e) {
+                throw new WorkflowException("API_BODY_INVALID", "API 请求体不是合法 JSON: " + e.getMessage(), e);
+            }
+        }
+        throw new WorkflowException("API_BODY_INVALID", "暂不支持的 API 请求体类型: " + rawApiBody.getClass().getSimpleName());
+    }
+
+    private void storeScriptResult(WfNodeConfig node, Map<String, Object> variables, Object result) {
+        if (variables == null || result == null) {
+            return;
+        }
+        variables.put("_scriptResult_" + node.getId(), result);
+        if (result instanceof Map<?, ?> resultMap) {
+            for (Map.Entry<?, ?> entry : resultMap.entrySet()) {
+                if (entry.getKey() != null) {
+                    variables.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
             }
         }
     }
 
     /**
-     * 处理 Groovy 脚本模式
-     */
-    private void handleGroovyScript(WfNodeConfig node, Map<String, Object> props, Map<String, Object> variables) {
-        String scriptContent = (String) props.get("scriptContent");
-        if (!StringUtils.hasText(scriptContent)) return;
-
-        Object result = scriptExecutionService.executeGroovyScript(scriptContent, variables);
-        if (variables != null && result != null) {
-            variables.put("_scriptResult_" + node.getId(), result);
-        }
-        log.info("[ScriptNodeHandler] Groovy脚本执行完成, result={}", result);
-    }
-
-    /**
-     * 处理 JavaScript 脚本模式
-     */
-    private void handleJavaScript(WfNodeConfig node, Map<String, Object> props, Map<String, Object> variables) {
-        String scriptContent = (String) props.get("scriptContent");
-        if (!StringUtils.hasText(scriptContent)) return;
-
-        Object result = scriptExecutionService.executeJavaScript(scriptContent, variables);
-        if (variables != null && result != null) {
-            variables.put("_scriptResult_" + node.getId(), result);
-        }
-        log.info("[ScriptNodeHandler] JavaScript脚本执行完成, result={}", result);
-    }
-
-    /**
-     * 替换 Map 中的 ${variable} 变量引用
+     * 递归替换请求体中的变量引用。
      */
     private Map<String, Object> replaceVariables(Map<String, Object> map, Map<String, Object> variables) {
         Map<String, Object> result = new HashMap<>();
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             Object value = entry.getValue();
             if (value instanceof String) {
-                String strValue = (String) value;
-                for (Map.Entry<String, Object> var : variables.entrySet()) {
-                    strValue = strValue.replace("${" + var.getKey() + "}", String.valueOf(var.getValue()));
+                result.put(entry.getKey(), replaceVariablesInString((String) value, variables));
+            } else if (value instanceof Map<?, ?> nested) {
+                Map<String, Object> nestedMap = new HashMap<>();
+                for (Map.Entry<?, ?> nestedEntry : nested.entrySet()) {
+                    if (nestedEntry.getKey() != null) {
+                        nestedMap.put(String.valueOf(nestedEntry.getKey()), nestedEntry.getValue());
+                    }
                 }
-                result.put(entry.getKey(), strValue);
-            } else if (value instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> nested = (Map<String, Object>) value;
-                result.put(entry.getKey(), replaceVariables(nested, variables));
+                result.put(entry.getKey(), replaceVariables(nestedMap, variables));
             } else {
                 result.put(entry.getKey(), value);
             }
         }
         return result;
+    }
+
+    private String replaceVariablesInString(String source, Map<String, Object> variables) {
+        if (source == null || variables == null || variables.isEmpty()) {
+            return source;
+        }
+        String replaced = source;
+        for (Map.Entry<String, Object> var : variables.entrySet()) {
+            replaced = replaced.replace("${" + var.getKey() + "}", String.valueOf(var.getValue()));
+        }
+        return replaced;
+    }
+
+    private String decodeHtmlEntities(String source) {
+        if (!StringUtils.hasText(source)) {
+            return source;
+        }
+        return source
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&");
     }
 }

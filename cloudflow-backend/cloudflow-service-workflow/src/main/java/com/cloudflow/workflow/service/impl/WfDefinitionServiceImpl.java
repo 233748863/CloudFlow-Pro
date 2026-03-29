@@ -114,6 +114,57 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         }
         validateBoundFormTenant(definition.getFormId(), definition.getTenantId(), "保存");
 
+        String currentUserId = UserContext.getUserId() != null ? UserContext.getUserId().toString() : "system";
+        LocalDateTime now = LocalDateTime.now();
+
+        // 已有草稿：原地更新，避免前端编辑草稿时 definitionId 漂移。
+        if (StringUtils.hasText(definition.getDefinitionId())) {
+            WfProcessDefinition existing = processDefinitionMapper.selectById(definition.getDefinitionId());
+            if (existing == null) {
+                throw WorkflowException.processNotFound(definition.getDefinitionId());
+            }
+
+            ensureDefinitionTenantAccess(existing.getTenantId(), "保存");
+
+            if ("DRAFT".equalsIgnoreCase(existing.getStatus())) {
+                if (definition.getVersionLock() != null
+                        && existing.getVersionLock() != null
+                        && !Objects.equals(definition.getVersionLock(), existing.getVersionLock())) {
+                    throw WorkflowException.invalidState("流程定义已被其他用户修改，请刷新后重试");
+                }
+
+                assertProcessVersionSlotAvailable(
+                        definition.getProcessKey(),
+                        Optional.ofNullable(existing.getVersion()).orElse(1),
+                        existing.getTenantId(),
+                        existing.getDefinitionId()
+                );
+
+                mergeDraftDefinition(existing, definition, now, currentUserId);
+                processDefinitionMapper.updateById(existing);
+                log.info("[saveProcessDefinition] 草稿原地更新成功, definitionId={}, version={}",
+                        existing.getDefinitionId(), existing.getVersion());
+
+                String changeLog = "保存流程定义，版本 " + Optional.ofNullable(existing.getVersion()).orElse(1);
+                versionService.createVersion(
+                        existing.getDefinitionId(),
+                        existing.getModelJson(),
+                        changeLog,
+                        currentUserId
+                );
+                log.info("[saveProcessDefinition] 草稿版本记录创建成功");
+
+                auditService.log(WorkflowAuditService.AuditAction.DEFINITION_UPDATE, existing.getDefinitionId(),
+                        "processKey=" + existing.getProcessKey() + ", version=" + existing.getVersion());
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("id", existing.getDefinitionId());
+                result.put("version", existing.getVersion());
+                result.put("processKey", existing.getProcessKey());
+                return R.ok(result);
+            }
+        }
+
         // 查找当前Key的最大版本
         LambdaQueryWrapper<WfProcessDefinition> lastDefQuery = new LambdaQueryWrapper<WfProcessDefinition>()
             .eq(WfProcessDefinition::getProcessKey, definition.getProcessKey())
@@ -143,13 +194,13 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         definition.setVersionLock(0);
         definition.setIsLatest(1);
         definition.setStatus("DRAFT");
-        definition.setCreateTime(LocalDateTime.now());
+        definition.setCreateTime(now);
+        definition.setUpdateTime(now);
 
         processDefinitionMapper.insert(definition);
         log.info("[saveProcessDefinition] 流程定义保存成功, definitionId={}, version={}", definition.getDefinitionId(), version);
         
         // 自动创建版本记录（强一致性：失败则回滚，不再静默吞异常）
-        String currentUserId = UserContext.getUserId() != null ? UserContext.getUserId().toString() : "system";
         String changeLog = "保存流程定义，版本 " + version;
         versionService.createVersion(
             definition.getDefinitionId(),
@@ -525,6 +576,58 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, definitionTenantId)) {
             throw new PermissionDeniedException("无权" + operation + "其他租户流程定义");
+        }
+    }
+
+    /**
+     * 草稿原地更新时，保留 definitionId / version / createTime 等身份信息，仅覆盖可编辑字段。
+     */
+    private void mergeDraftDefinition(
+            WfProcessDefinition target,
+            WfProcessDefinition source,
+            LocalDateTime now,
+            String currentUserId
+    ) {
+        target.setTenantId(source.getTenantId() != null ? source.getTenantId() : target.getTenantId());
+        target.setProcessName(source.getProcessName());
+        target.setProcessKey(source.getProcessKey());
+        target.setFormId(source.getFormId());
+        target.setModelJson(source.getModelJson());
+        target.setStartPermissionType(source.getStartPermissionType());
+        target.setStartPermissionValue(source.getStartPermissionValue());
+        target.setCategory(source.getCategory());
+        target.setTags(source.getTags());
+        target.setDescription(source.getDescription());
+        target.setDeptId(source.getDeptId());
+        target.setTemplateId(source.getTemplateId());
+        target.setUpdateTime(now);
+        target.setUpdateBy(currentUserId);
+        target.setVersionLock(Optional.ofNullable(target.getVersionLock()).orElse(0) + 1);
+        target.setIsLatest(1);
+        target.setStatus("DRAFT");
+    }
+
+    /**
+     * 草稿允许改 processKey，但不能占用其他流程版本已存在的 (processKey, version, tenant) 唯一槽位。
+     */
+    private void assertProcessVersionSlotAvailable(
+            String processKey,
+            Integer version,
+            Long tenantId,
+            String excludeDefinitionId
+    ) {
+        LambdaQueryWrapper<WfProcessDefinition> wrapper = new LambdaQueryWrapper<WfProcessDefinition>()
+                .eq(WfProcessDefinition::getProcessKey, processKey)
+                .eq(WfProcessDefinition::getVersion, version);
+        if (tenantId != null) {
+            wrapper.eq(WfProcessDefinition::getTenantId, tenantId);
+        }
+        if (StringUtils.hasText(excludeDefinitionId)) {
+            wrapper.ne(WfProcessDefinition::getDefinitionId, excludeDefinitionId);
+        }
+        Long count = processDefinitionMapper.selectCount(wrapper);
+        if (count != null && count > 0) {
+            throw WorkflowException.validationError("当前流程Key已存在相同版本定义，请修改流程Key后重试");
         }
     }
 

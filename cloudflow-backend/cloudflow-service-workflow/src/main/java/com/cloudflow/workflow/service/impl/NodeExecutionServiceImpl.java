@@ -169,6 +169,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
         // 全局监听器 — 节点开始执行前回调
         globalListenerDispatcher.fireStart(instance, node, variables);
+        workflowEventPublisher.publishNodeStarted(instance, node);
 
         // 按节点类型分发处理
         if ("APPROVAL".equals(node.getType())) {
@@ -182,16 +183,21 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                 applyOutputsMapping(node, variables, instance);
                 // 全局监听器 — 非审批节点执行完成后回调
                 globalListenerDispatcher.fireFinish(instance, node, variables);
+                workflowEventPublisher.publishNodeCompleted(instance, node);
                 advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
             }
         } else if ("CONDITION".equals(node.getType()) || "GATEWAY".equals(node.getType())) {
             handleConditionGateway(node, instance, variables, depth, rootNode);
+            workflowEventPublisher.publishNodeCompleted(instance, node);
         } else if ("PARALLEL".equals(node.getType())) {
             handleParallelGateway(node, instance, variables, depth, rootNode);
+            workflowEventPublisher.publishNodeCompleted(instance, node);
         } else if ("END".equals(node.getType())) {
+            workflowEventPublisher.publishNodeCompleted(instance, node);
             completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
         } else {
             // 未知或开始节点，直接继续
+            workflowEventPublisher.publishNodeCompleted(instance, node);
             advanceAfterNode(instance, node, node.getId(), variables, depth, rootNode);
         }
     }
@@ -529,12 +535,31 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         if (nextNode != null) {
             runNode(instance, nextNode, variables, depth + 1, rootNode);
         } else {
-            completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+            WfNodeConfig parallelJoinNode = findParallelJoinNodeForBranch(rootNode, currentNode.getId());
+            if (parallelJoinNode != null) {
+                runNode(instance, parallelJoinNode, variables, depth + 1, rootNode);
+            } else {
+                completeInstance(instance, WfProcessStatus.COMPLETED.getCode());
+            }
         }
     }
 
     @Override
     public void completeInstance(WfProcessInstance instance, String status) {
+        List<WfTask> remainingTasks = taskMapper.selectList(
+                new LambdaQueryWrapper<WfTask>()
+                        .eq(WfTask::getInstanceId, instance.getInstanceId())
+                        .eq(WfTask::getStatus, WfTaskStatus.TODO.getCode())
+        );
+        if (remainingTasks != null && !remainingTasks.isEmpty()) {
+            for (WfTask task : remainingTasks) {
+                if (StringUtils.hasText(task.getTaskId())) {
+                    taskReminderJob.cancelReminders(task.getTaskId());
+                    cleanupTaskArtifacts(task.getTaskId());
+                }
+            }
+        }
+
         instance.setStatus(status);
         instance.setEndTime(LocalDateTime.now());
         processInstanceMapper.updateById(instance);
@@ -628,22 +653,93 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
 
     // ==================== 条件评估 ====================
 
+    private WfNodeConfig findParallelJoinNodeForBranch(WfNodeConfig root, String currentNodeId) {
+        if (root == null || !StringUtils.hasText(currentNodeId)) {
+            return null;
+        }
+
+        WorkflowRuntimeGraph runtimeGraph = requireRuntimeGraph(root);
+        for (String nodeId : runtimeGraph.getNodeIds()) {
+            WfNodeConfig candidate = runtimeGraph.getNode(nodeId);
+            if (candidate == null || !"PARALLEL".equals(candidate.getType())) {
+                continue;
+            }
+
+            WorkflowRuntimeGraph.EdgeLink defaultEdge = null;
+            List<WorkflowRuntimeGraph.EdgeLink> outgoingEdges = runtimeGraph.getOutgoingEdges(nodeId);
+            for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
+                if (edge.isDefault()) {
+                    defaultEdge = edge;
+                    break;
+                }
+            }
+            if (defaultEdge == null) {
+                continue;
+            }
+
+            for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
+                if (edge == defaultEdge) {
+                    continue;
+                }
+                if (isReachableInBranch(runtimeGraph, edge.getTargetId(), currentNodeId, new HashSet<>())) {
+                    return runtimeGraph.getNode(defaultEdge.getTargetId());
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isReachableInBranch(WorkflowRuntimeGraph runtimeGraph,
+                                        String fromNodeId,
+                                        String targetNodeId,
+                                        Set<String> visited) {
+        if (!StringUtils.hasText(fromNodeId) || !visited.add(fromNodeId)) {
+            return false;
+        }
+        if (fromNodeId.equals(targetNodeId)) {
+            return true;
+        }
+        List<WorkflowRuntimeGraph.EdgeLink> outgoingEdges = runtimeGraph.getOutgoingEdges(fromNodeId);
+        if (outgoingEdges == null || outgoingEdges.isEmpty()) {
+            return false;
+        }
+        for (WorkflowRuntimeGraph.EdgeLink edge : outgoingEdges) {
+            if (isReachableInBranch(runtimeGraph, edge.getTargetId(), targetNodeId, visited)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean evaluateCondition(String condition, Map<String, Object> variables) {
         if (!StringUtils.hasText(condition)) return true;
-        String trimmed = condition.trim();
+        String decodedCondition = decodeHtmlEntities(condition);
+        String trimmed = decodedCondition.trim();
         if (!trimmed.startsWith("{")) {
             try {
-                securityUtils.validateSpelExpression(condition);
+                securityUtils.validateSpelExpression(decodedCondition);
             } catch (Exception e) {
                 log.warn("[evaluateCondition] SpEL 表达式安全校验失败: {}", e.getMessage());
                 return false;
             }
         }
-        return conditionExpressionEngine.evaluate(condition, variables);
+        return conditionExpressionEngine.evaluate(decodedCondition, variables);
     }
 
     // ==================== 人员分配 ====================
+
+    private String decodeHtmlEntities(String source) {
+        if (!StringUtils.hasText(source)) {
+            return source;
+        }
+        return source
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&");
+    }
 
     @Override
     public Long resolveAssignee(WfNodeConfig node, WfProcessInstance instance) {
@@ -770,6 +866,14 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
     }
 
+    private void cleanupTaskArtifacts(String taskId) {
+        try {
+            taskMapper.deleteById(taskId);
+        } catch (Exception e) {
+            log.warn("[cleanupTaskArtifacts] 删除残留任务失败, taskId={}, error={}", taskId, e.getMessage());
+        }
+    }
+
     @Override
     public List<Map<String, Object>> buildAllStepsDetail(List<Map<String, String>> steps,
                                                           List<WfTaskHistory> histories,
@@ -864,6 +968,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         if (StringUtils.hasText(approverType)) {
             switch (approverType) {
                 case "USER": typeLabel = "指定人员"; break;
+                case "INITIATOR": typeLabel = "发起人"; break;
                 case "ROLE": typeLabel = "按角色"; break;
                 case "DEPT_MANAGER": typeLabel = "部门经理"; break;
                 case "DIRECT_LEADER": typeLabel = "直属领导"; break;
@@ -915,7 +1020,12 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     private List<Map<String, Object>> resolveApproverUsers(String approverType, String approverValue) {
         List<Map<String, Object>> approverUsers = new ArrayList<>();
         try {
-            if ("USER".equals(approverType) && StringUtils.hasText(approverValue)) {
+            if ("INITIATOR".equals(approverType)) {
+                Map<String, Object> u = new HashMap<>();
+                u.put("userId", 0L);
+                u.put("userName", "发起人");
+                approverUsers.add(u);
+            } else if ("USER".equals(approverType) && StringUtils.hasText(approverValue)) {
                 SysUser user = sysUserMapper.selectById(Long.valueOf(approverValue));
                 if (user != null) {
                     Map<String, Object> u = new HashMap<>();

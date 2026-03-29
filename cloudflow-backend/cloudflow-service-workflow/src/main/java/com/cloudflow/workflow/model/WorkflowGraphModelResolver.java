@@ -197,7 +197,7 @@ public class WorkflowGraphModelResolver {
         for (Map.Entry<String, Integer> entry : incomingCount.entrySet()) {
             String nodeId = entry.getKey();
             int inDegree = entry.getValue();
-            if (!nodeId.equals(startId) && inDegree > 1) {
+            if (false && !nodeId.equals(startId) && inDegree > 1) {
                 throw WorkflowException.validationError("暂不支持多入边汇聚节点，请先拆分节点: " + nodeId);
             }
         }
