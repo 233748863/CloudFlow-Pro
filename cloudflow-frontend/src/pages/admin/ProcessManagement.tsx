@@ -14,7 +14,8 @@ import {
   RefreshCw,
   Download,
   FileDown,
-  Upload
+  Upload,
+  Plus
 } from 'lucide-react';
 import { Button, Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
@@ -652,11 +653,19 @@ export const ProcessManagement = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => navigate('/templates')}
+            onClick={() => navigate('/workflow/create')}
             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white gap-2 shadow-sm"
           >
+            <Plus size={16} />
+            新建流程
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/templates')}
+            className="gap-2"
+          >
             <FolderOpen size={16} />
-            从模板创建
+            模板中心
           </Button>
           <Button
             onClick={() => navigate('/workflow/import')}

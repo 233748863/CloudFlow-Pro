@@ -10449,7 +10449,7 @@ export const HrSalaryPage: React.FC = () => {
                   <h2 className="text-lg font-semibold text-slate-900">薪资等级</h2>
                   <p className="mt-1 text-sm text-slate-500">薪级区间基于职级维护，现在把覆盖率、待配置职级和已配置清单放到同一区域，方便真实联调。</p>
                 </div>
-                <Button variant="outline" onClick={openGradeDialog}>
+                <Button variant="outline" onClick={() => openGradeDialog()}>
                   <Landmark size={14} className="mr-2" />
                   设置薪级
                 </Button>

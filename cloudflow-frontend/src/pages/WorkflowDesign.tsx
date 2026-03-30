@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
 import {
@@ -239,6 +239,8 @@ export const WorkflowDesign = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedWorkflowId = useMemo(() => (searchParams.get('id') || '').trim(), [searchParams]);
+  const createMode = useMemo(() => (searchParams.get('mode') || '').trim().toLowerCase(), [searchParams]);
+  const allowBlankCreation = createMode === 'blank';
 
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [savedForms, setSavedForms] = useState<FormDefinition[]>([]);
@@ -259,6 +261,8 @@ export const WorkflowDesign = () => {
       if (searchParams.get('id') === definitionId) return;
 
       const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('mode');
+      nextParams.delete('entry');
       nextParams.set('id', definitionId);
       navigate({ search: `?${nextParams.toString()}` }, { replace: true });
     },
@@ -296,6 +300,9 @@ export const WorkflowDesign = () => {
   }, []);
 
   const loadData = useCallback(async () => {
+    if (!requestedWorkflowId && !allowBlankCreation) {
+      return;
+    }
     const loadKey = requestedWorkflowId || '__default__';
     if (inFlightLoadKeyRef.current === loadKey) {
       return;
@@ -373,7 +380,7 @@ export const WorkflowDesign = () => {
         setLoading(false);
       }
     }
-  }, [requestedWorkflowId]);
+  }, [allowBlankCreation, requestedWorkflowId]);
 
   useEffect(() => {
     loadData();
@@ -456,6 +463,10 @@ export const WorkflowDesign = () => {
       onError: (err) => logWorkflow.error('流程自动保存失败:', err),
     },
   );
+
+  if (!requestedWorkflowId && !allowBlankCreation) {
+    return <Navigate to="/workflow/create" replace />;
+  }
 
   if (loading) {
     return (

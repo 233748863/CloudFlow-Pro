@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   Eye,
   FolderOpen,
@@ -13,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Button,
   Card,
@@ -260,7 +262,11 @@ const getTemplateMetrics = (template: TemplateItem, graph: { nodes: PreviewNode[
 };
 
 export const TemplateLibrary: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const entrySource = (searchParams.get("entry") || "").trim().toLowerCase();
+  const fromCreateFlow = entrySource === "create";
 
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
@@ -431,14 +437,22 @@ export const TemplateLibrary: React.FC = () => {
 
       const definitionId = data?.definitionId;
       if (definitionId) {
-        window.location.assign(`/workflow/design?id=${definitionId}`);
+        navigate(`/workflow/design?id=${definitionId}`);
       } else {
-        window.location.assign("/workflow/design");
+        navigate("/workflow/create");
       }
     } catch (error) {
       console.error(TEXT.createFailed, error);
       toast.error(TEXT.createFailed);
     }
+  };
+
+  const handleStartBlankWorkflow = () => {
+    navigate("/workflow/design?mode=blank&entry=create");
+  };
+
+  const handleBackToCreateFlow = () => {
+    navigate("/workflow/create");
   };
   const renderCategoryTree = (nodes: CategoryNode[], level = 0): React.ReactNode => {
     return nodes.map((node) => {
@@ -615,11 +629,27 @@ export const TemplateLibrary: React.FC = () => {
   return (
     <div className="p-6 h-full flex flex-col bg-slate-50 overflow-y-auto">
       <div className="mb-6 shrink-0 space-y-2">
+        {fromCreateFlow ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm" onClick={handleBackToCreateFlow} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              返回创建方式
+            </Button>
+            <Button size="sm" onClick={handleStartBlankWorkflow} className="gap-2">
+              <Plus className="h-4 w-4" />
+              直接空白创建
+            </Button>
+          </div>
+        ) : null}
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
           <Workflow className="text-pink-500" />
-          {TEXT.pageTitle}
+          {fromCreateFlow ? "从模板创建流程" : TEXT.pageTitle}
         </h1>
-        <p className="max-w-3xl text-sm leading-6 text-slate-500">{TEXT.pageDescription}</p>
+        <p className="max-w-3xl text-sm leading-6 text-slate-500">
+          {fromCreateFlow
+            ? "这是创建流程的第二步。先挑选合适模板，再生成流程草稿进入设计器；如果没有合适模板，也可以随时回到空白创建。"
+            : TEXT.pageDescription}
+        </p>
       </div>
 
       <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0">

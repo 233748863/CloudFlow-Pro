@@ -5,11 +5,13 @@ import { Check, ChevronDown } from 'lucide-react';
 const SelectContext = React.createContext<{
   value?: string;
   onValueChange?: (value: string) => void;
+  disabled: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;
   labels: Record<string, React.ReactNode>;
   registerLabel: (value: string, label: React.ReactNode) => void;
 }>({
+  disabled: false,
   open: false,
   setOpen: () => {},
   labels: {},
@@ -20,7 +22,17 @@ const SelectContext = React.createContext<{
  * Select 根组件
  * 管理下拉框的打开/关闭状态和选中值
  */
-export const Select = ({ children, value, onValueChange }: { children: React.ReactNode; value?: string; onValueChange?: (value: string) => void }) => {
+export const Select = ({
+  children,
+  value,
+  onValueChange,
+  disabled = false,
+}: {
+  children: React.ReactNode;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  disabled?: boolean;
+}) => {
   const [open, setOpen] = useState(false);
   const [labels, setLabels] = useState<Record<string, React.ReactNode>>({});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,8 +56,14 @@ export const Select = ({ children, value, onValueChange }: { children: React.Rea
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
+  useEffect(() => {
+    if (disabled && open) {
+      setOpen(false);
+    }
+  }, [disabled, open]);
+
   return (
-    <SelectContext.Provider value={{ value, onValueChange, open, setOpen, labels, registerLabel }}>
+    <SelectContext.Provider value={{ value, onValueChange, disabled, open, setOpen, labels, registerLabel }}>
       <div className="relative" ref={containerRef}>{children}</div>
     </SelectContext.Provider>
   );
@@ -56,7 +74,7 @@ export const Select = ({ children, value, onValueChange }: { children: React.Rea
  * 点击展开/收起下拉列表
  */
 export const SelectTrigger = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
-  const { setOpen, open } = React.useContext(SelectContext);
+  const { setOpen, open, disabled } = React.useContext(SelectContext);
   // 允许页面通过 className 显式控制宽度，避免固定的 w-full 把触发器宽度挤塌。
   const hasExplicitWidth = className
     .split(/\s+/)
@@ -65,8 +83,12 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
   return (
     <button
       type="button"
+      disabled={disabled}
       className={`flex h-10 items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 focus:border-slate-200 disabled:cursor-not-allowed disabled:opacity-50 ${hasExplicitWidth ? '' : 'w-full'} ${className}`}
-      onClick={() => setOpen(!open)}
+      onClick={() => {
+        if (disabled) return;
+        setOpen(!open);
+      }}
     >
       {children}
       <ChevronDown size={16} className={`ml-2 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />

@@ -78,6 +78,11 @@ const WorkflowDesign = React.lazy(() =>
     default: module.WorkflowDesign,
   })),
 );
+const WorkflowCreate = React.lazy(() =>
+  import("./pages/WorkflowCreate").then((module) => ({
+    default: module.WorkflowCreate,
+  })),
+);
 const FormDesign = React.lazy(() =>
   import("./pages/FormDesign").then((module) => ({
     default: module.FormDesign,
@@ -406,7 +411,17 @@ const desktopRoutes = [
             element: (
               <RoleGuard allowedRoles={["ADMIN", "admin"]}>
                 <Suspense fallback={<Loading />}>
-                  <WorkflowDesign />
+                  <WorkflowCreate />
+                </Suspense>
+              </RoleGuard>
+            ),
+          },
+          {
+            path: "/workflow/create",
+            element: (
+              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+                <Suspense fallback={<Loading />}>
+                  <WorkflowCreate />
                 </Suspense>
               </RoleGuard>
             ),

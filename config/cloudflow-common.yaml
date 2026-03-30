@@ -96,6 +96,8 @@ cloudflow:
       - sys_dict_type
       - sys_dict_data
       - sys_config
+      - workflow_template
+      - template_category
 
   security:
     token:

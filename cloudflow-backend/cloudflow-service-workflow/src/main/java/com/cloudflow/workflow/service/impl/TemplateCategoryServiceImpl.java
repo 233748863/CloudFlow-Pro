@@ -224,7 +224,8 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
         LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowTemplate::getCategoryId, categoryId);
         if (currentTenantId != null) {
-            wrapper.eq(WorkflowTemplate::getTenantId, currentTenantId);
+            wrapper.and(w -> w.eq(WorkflowTemplate::getTenantId, currentTenantId)
+                .or(q -> q.isNull(WorkflowTemplate::getTenantId).eq(WorkflowTemplate::getIsSystem, 1)));
         }
         return templateMapper.selectCount(wrapper).intValue();
     }
@@ -290,8 +291,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
         wrapper.eq(WorkflowTemplate::getStatus, "active");
         if (currentTenantId != null) {
             wrapper.and(w -> w.eq(WorkflowTemplate::getTenantId, currentTenantId)
-                .or()
-                .isNull(WorkflowTemplate::getTenantId));
+                .or(q -> q.isNull(WorkflowTemplate::getTenantId).eq(WorkflowTemplate::getIsSystem, 1)));
         }
         
         List<WorkflowTemplate> templates = templateMapper.selectList(wrapper);

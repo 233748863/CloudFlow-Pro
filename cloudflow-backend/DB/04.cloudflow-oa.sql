@@ -1730,7 +1730,7 @@ INSERT INTO wf_deploy_impact (
 INSERT INTO workflow_template (
   id, name, description, category_id, tags, definition, preview_image, created_by, created_at, updated_at, usage_count, is_system, status, tenant_id
 ) VALUES
-('demo_tpl_vehicle_001', '用车申请简化模板', '适用于短途接待用车的简化流程', 'cat-admin',
+('demo_tpl_vehicle_001', '用车申请简化模板', '适用于短途接待用车的简化流程', 'cat-office',
  '["用车","行政","简化"]',
  '{"nodes":[{"id":"start","type":"START","title":"提交用车"},{"id":"approve","type":"APPROVAL","title":"直属上级审批","approverType":"ROLE","approverValue":"manager"},{"id":"end","type":"END","title":"结束"}],"edges":[{"id":"start->approve","source":"start","target":"approve"},{"id":"approve->end","source":"approve","target":"end"}]}',
  '/demo/workflow/template/vehicle-simple.png', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 18, 0, 'active', 100000);
