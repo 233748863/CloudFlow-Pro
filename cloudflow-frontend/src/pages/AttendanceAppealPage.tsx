@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Calendar, ClipboardCheck, Download, Edit, Paperclip, Plus, RotateCcw, Search, Send, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { attendanceAppealApi, AttendanceAppeal } from '../services/api/attendanceAppeal';
+import { attendanceAppealApi, AttendanceAppeal } from '@/services/api/hrAttendance';
 import { FileUpload } from '../components/FileUpload';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';

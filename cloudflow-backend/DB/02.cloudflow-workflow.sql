@@ -551,10 +551,10 @@ INSERT INTO `wf_process_category` (`category_id`, `parent_id`, `category_name`, 
 (3, 0, '财务管理',     'finance',       'DollarSign',   3, '0'),
 (4, 0, '行政管理',     'admin',         'Building',     4, '0'),
 (5, 0, '项目管理',     'project',       'FolderKanban', 5, '0'),
-(10, 1, '请假管理',    'oa_leave',      'Calendar',     1, '0'),
-(11, 1, '加班管理',    'oa_overtime',   'Clock',        2, '0'),
+(10, 2, '请假管理',    'hr_leave',      'Calendar',     1, '0'),
+(11, 2, '加班管理',    'hr_overtime',   'Clock',        2, '0'),
 (12, 1, '出差管理',    'oa_trip',       'Plane',        3, '0'),
-(13, 1, '考勤管理',    'oa_attendance', 'UserCheck',    4, '0'),
+(13, 2, '考勤管理',    'hr_attendance', 'UserCheck',    4, '0'),
 (14, 1, '访客管理',    'oa_visitor',    'UserPlus',     5, '0'),
 (20, 3, '报销管理',    'fin_expense',   'Receipt',      1, '0'),
 (21, 3, '付款管理',    'fin_payment',   'CreditCard',   2, '0'),
@@ -864,7 +864,7 @@ INSERT INTO template_category (id, name, description, order_num, tenant_id) VALU
 -- 统一的系统模板库（平台级，tenant_id 为空）
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
 ('tpl-leave-001', '请假审批', '员工提交 → 部门经理审批 → 完成', 'cat-hr',
-'["请假","行政办公","模板"]',
+'["请假","人事","模板"]',
 '{
   "nodes": [
     {
@@ -3369,7 +3369,7 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
 ('tpl-leave_advanced-001', '请假全流程', '天数判断 → 分级审批 → 交接确认 → 定时提醒 → 通知', 'cat-hr',
-'["请假","行政办公","模板"]',
+'["请假","人事","模板"]',
 '{
   "nodes": [
     {

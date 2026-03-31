@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowRight, Calendar, CheckCircle2, CircleDot, Clock3, MapPin, RefreshCw, ShieldCheck, Sparkles, Timer, Wifi } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
-import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/admin';
+import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/hrAttendance';
 import { useAuth } from '@/context/AuthContext';
 import { useMount } from '@/hooks/useMount';
 

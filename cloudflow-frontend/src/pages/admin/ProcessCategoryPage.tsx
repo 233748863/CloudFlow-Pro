@@ -384,7 +384,7 @@ const ProcessCategoryPage: React.FC = () => {
                 </label>
                 <Input
                   className="font-mono"
-                  placeholder="如: oa_leave"
+                  placeholder="如: hr_leave"
                   value={form.categoryCode || ''}
                   onChange={e => setForm({ ...form, categoryCode: e.target.value })}
                 />

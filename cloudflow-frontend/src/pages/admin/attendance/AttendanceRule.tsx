@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/admin';
+import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/hrAttendance';
 import { useMount } from '@/hooks/useMount';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DatePicker, Input, Label, Switch, Textarea } from '@/components/ui';
 import { toast } from 'sonner';

@@ -139,10 +139,10 @@ const MeetingRoomPage = React.lazy(() =>
   })),
 );
 const AttendanceCheckIn = React.lazy(
-  () => import("./pages/admin/attendance/AttendanceCheckIn"),
+  () => import("./pages/hr/HrAttendanceCheckInPage"),
 );
 const AttendanceRulePage = React.lazy(
-  () => import("./pages/admin/attendance/AttendanceRule"),
+  () => import("./pages/hr/HrAttendanceRulePage"),
 );
 const AssetList = React.lazy(() => import("./pages/admin/asset/AssetList"));
 const VehicleList = React.lazy(
@@ -200,11 +200,13 @@ const OnlineUserPage = React.lazy(() =>
   })),
 );
 
-// OA扩展模块页面 - 补卡申请、加班申请、出差申请、通讯录、访客管理、值班排班
+// HR 假勤与 OA 扩展模块页面
+// HR 假勤页面
 const AttendanceAppealPage = React.lazy(
-  () => import("./pages/AttendanceAppealPage"),
+  () => import("./pages/hr/HrAttendanceAppealPage"),
 );
-const OvertimePage = React.lazy(() => import("./pages/OvertimePage"));
+const OvertimePage = React.lazy(() => import("./pages/hr/HrOvertimePage"));
+// OA 扩展页面
 const BusinessTripPage = React.lazy(() => import("./pages/BusinessTripPage"));
 const ContactPage = React.lazy(() => import("./pages/ContactPage"));
 const VisitorPage = React.lazy(() => import("./pages/VisitorPage"));
@@ -551,14 +553,6 @@ const desktopRoutes = [
             ),
           },
           {
-            path: "/admin/attendance/checkin",
-            element: <Navigate to="/hr/attendance/checkin" replace />,
-          },
-          {
-            path: "/admin/attendance/rule",
-            element: <Navigate to="/hr/attendance/rule" replace />,
-          },
-          {
             path: "/admin/asset",
             element: (
               <Suspense fallback={<Loading />}>
@@ -642,7 +636,8 @@ const desktopRoutes = [
               </Suspense>
             ),
           },
-          // === OA扩展模块路由 ===
+          // === HR 假勤与 OA 扩展模块路由 ===
+          // HR 假勤路由
           {
             path: "/hr/attendance/appeal",
             element: (
@@ -659,14 +654,7 @@ const desktopRoutes = [
               </Suspense>
             ),
           },
-          {
-            path: "/office/attendance-appeal",
-            element: <Navigate to="/hr/attendance/appeal" replace />,
-          },
-          {
-            path: "/office/overtime",
-            element: <Navigate to="/hr/overtime" replace />,
-          },
+          // OA 扩展路由
           {
             path: "/office/business-trip",
             element: (
@@ -945,10 +933,6 @@ const mobileRoutes = [
                 <MobileMeetingRoom />
               </Suspense>
             ),
-          },
-          {
-            path: "/leave/request",
-            element: <Navigate to="/hr/leave/request" replace />,
           },
           {
             path: "/hr/leave/request",

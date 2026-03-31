@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Clock, Download, Edit, Paperclip, Plus, RotateCcw, Search, Send, Timer, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { overtimeApi, OvertimeRequest } from '../services/api/overtime';
+import { overtimeApi, OvertimeRequest } from '@/services/api/hrOvertime';
 import { FileUpload } from '../components/FileUpload';
 import { toBackendDateString, toLocalDatetimeString } from '../utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';

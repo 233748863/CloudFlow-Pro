@@ -7,8 +7,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * OA Excel 导出辅助工具。
- * 统一处理时间格式、状态枚举和敏感字段展示，避免各业务重复维护。
+ * OA 导出辅助工具。
+ * <p>
+ * 这里只保留 OA 当前仍在使用的导出格式化逻辑，避免混入 HR 假勤领域的历史残留。
  */
 public final class OaExcelExportHelper {
 
@@ -36,24 +37,8 @@ public final class OaExcelExportHelper {
             case "APPROVED" -> "已通过";
             case "REJECTED" -> "已驳回";
             case "CANCELLED" -> "已取消";
-            case "PAID" -> "已打款";
+            case "PAID" -> "已付款";
             default -> status;
-        };
-    }
-
-    public static String formatLeaveType(String leaveType) {
-        if (leaveType == null) {
-            return "";
-        }
-        return switch (leaveType) {
-            case "ANNUAL" -> "年假";
-            case "SICK" -> "病假";
-            case "PERSONAL" -> "事假";
-            case "MATERNITY" -> "产假";
-            case "MARRIAGE" -> "婚假";
-            case "BEREAVEMENT" -> "丧假";
-            case "OTHER" -> "其他";
-            default -> leaveType;
         };
     }
 
@@ -95,71 +80,6 @@ public final class OaExcelExportHelper {
             case "OTHER" -> "其他";
             default -> transportType;
         };
-    }
-
-    public static String formatOvertimeType(String overtimeType) {
-        if (overtimeType == null) {
-            return "";
-        }
-        return switch (overtimeType) {
-            case "WORKDAY" -> "工作日";
-            case "WEEKEND" -> "周末";
-            case "HOLIDAY" -> "节假日";
-            default -> overtimeType;
-        };
-    }
-
-    public static String formatCompensateType(String compensateType) {
-        if (compensateType == null) {
-            return "";
-        }
-        return switch (compensateType) {
-            case "SALARY" -> "加班费";
-            case "LEAVE" -> "调休";
-            default -> compensateType;
-        };
-    }
-
-    public static String formatAppealType(String appealType) {
-        if (appealType == null) {
-            return "";
-        }
-        return switch (appealType) {
-            case "MAKEUP" -> "补卡";
-            case "FIELD" -> "外勤";
-            default -> appealType;
-        };
-    }
-
-    public static String formatCheckType(String checkType) {
-        if (checkType == null) {
-            return "";
-        }
-        return switch (checkType) {
-            case "1" -> "签到";
-            case "2" -> "签退";
-            default -> checkType;
-        };
-    }
-
-    public static String formatOriginalStatus(String originalStatus) {
-        if (originalStatus == null) {
-            return "";
-        }
-        return switch (originalStatus) {
-            case "LATE" -> "迟到";
-            case "EARLY" -> "早退";
-            case "ABSENT" -> "缺卡";
-            case "ABNORMAL" -> "异常";
-            default -> originalStatus;
-        };
-    }
-
-    public static String formatMealFlag(Integer needMeal) {
-        if (needMeal == null) {
-            return "";
-        }
-        return needMeal == 1 ? "是" : "否";
     }
 
     public static String maskBankCard(String account) {
