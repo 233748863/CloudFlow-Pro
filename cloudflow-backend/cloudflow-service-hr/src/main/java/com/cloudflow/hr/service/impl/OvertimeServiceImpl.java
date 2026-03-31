@@ -120,6 +120,62 @@ public class OvertimeServiceImpl implements OvertimeService {
         return application.getId();
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateOvertimeApplication(Long id, OvertimeApplicationCreateDTO dto) {
+        Long tenantId = SecurityUtils.getTenantId();
+        OvertimeApplication application = overtimeApplicationMapper.selectById(id);
+        if (application == null || !application.getTenantId().equals(tenantId)) {
+            throw new HrBusinessException("加班申请不存在");
+        }
+        if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
+            throw new HrBusinessException("只有草稿或已驳回的申请才允许编辑");
+        }
+
+        Employee employee = employeeMapper.selectById(dto.getEmployeeId());
+        if (employee == null || !employee.getTenantId().equals(tenantId)) {
+            throw new HrBusinessException("员工不存在");
+        }
+        validateOvertimeEligibleEmployee(employee);
+
+        if (dto.getEndTime().isBefore(dto.getStartTime())) {
+            throw new HrBusinessException("结束时间不能早于开始时间");
+        }
+
+        BigDecimal duration = calculateDuration(dto.getStartTime(), dto.getEndTime());
+        if (duration.compareTo(DAILY_OVERTIME_LIMIT) > 0) {
+            throw new HrBusinessException("单次加班时长不能超过" + DAILY_OVERTIME_LIMIT + "小时");
+        }
+
+        application.setEmployeeId(dto.getEmployeeId());
+        application.setStartTime(dto.getStartTime());
+        application.setEndTime(dto.getEndTime());
+        application.setDuration(duration);
+        application.setOvertimeType(dto.getOvertimeType());
+        application.setReason(dto.getReason());
+        application.setCompensationType(dto.getCompensationType());
+        application.setCompensationHours(
+                calculateCompensationHours(duration, dto.getOvertimeType(), dto.getCompensationType()));
+        application.setProcessInstanceId(null);
+        application.setStatus("DRAFT");
+        overtimeApplicationMapper.updateById(application);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteOvertimeApplication(Long id) {
+        Long tenantId = SecurityUtils.getTenantId();
+        OvertimeApplication application = overtimeApplicationMapper.selectById(id);
+        if (application == null || !application.getTenantId().equals(tenantId)) {
+            throw new HrBusinessException("加班申请不存在");
+        }
+        if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
+            throw new HrBusinessException("只有草稿或已驳回的申请才允许删除");
+        }
+
+        overtimeApplicationMapper.deleteById(id);
+    }
+
     /**
      * 提交加班申请（启动审批流程）
      */
@@ -348,6 +404,11 @@ public class OvertimeServiceImpl implements OvertimeService {
      * @param compensationType 补偿类型
      * @return 补偿时长
      */
+    private BigDecimal calculateDuration(LocalDateTime startTime, LocalDateTime endTime) {
+        long minutes = ChronoUnit.MINUTES.between(startTime, endTime);
+        return new BigDecimal(minutes).divide(new BigDecimal("60"), 2, RoundingMode.HALF_UP);
+    }
+
     private BigDecimal calculateCompensationHours(BigDecimal duration, String overtimeType, String compensationType) {
         // 如果是加班费，补偿时长等于加班时长
         if ("PAYMENT".equals(compensationType)) {

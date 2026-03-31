@@ -535,7 +535,7 @@ const desktopRoutes = [
             ),
           },
           {
-            path: "/admin/attendance/checkin",
+            path: "/hr/attendance/checkin",
             element: (
               <Suspense fallback={<Loading />}>
                 <AttendanceCheckIn />
@@ -543,12 +543,20 @@ const desktopRoutes = [
             ),
           },
           {
-            path: "/admin/attendance/rule",
+            path: "/hr/attendance/rule",
             element: (
               <Suspense fallback={<Loading />}>
                 <AttendanceRulePage />
               </Suspense>
             ),
+          },
+          {
+            path: "/admin/attendance/checkin",
+            element: <Navigate to="/hr/attendance/checkin" replace />,
+          },
+          {
+            path: "/admin/attendance/rule",
+            element: <Navigate to="/hr/attendance/rule" replace />,
           },
           {
             path: "/admin/asset",
@@ -636,7 +644,7 @@ const desktopRoutes = [
           },
           // === OA扩展模块路由 ===
           {
-            path: "/office/attendance-appeal",
+            path: "/hr/attendance/appeal",
             element: (
               <Suspense fallback={<Loading />}>
                 <AttendanceAppealPage />
@@ -644,12 +652,20 @@ const desktopRoutes = [
             ),
           },
           {
-            path: "/office/overtime",
+            path: "/hr/overtime",
             element: (
               <Suspense fallback={<Loading />}>
                 <OvertimePage />
               </Suspense>
             ),
+          },
+          {
+            path: "/office/attendance-appeal",
+            element: <Navigate to="/hr/attendance/appeal" replace />,
+          },
+          {
+            path: "/office/overtime",
+            element: <Navigate to="/hr/overtime" replace />,
           },
           {
             path: "/office/business-trip",
@@ -932,6 +948,10 @@ const mobileRoutes = [
           },
           {
             path: "/leave/request",
+            element: <Navigate to="/hr/leave/request" replace />,
+          },
+          {
+            path: "/hr/leave/request",
             element: (
               <Suspense fallback={<Loading />}>
                 <MobileLeaveRequest />

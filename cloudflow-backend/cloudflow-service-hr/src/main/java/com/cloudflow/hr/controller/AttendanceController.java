@@ -17,10 +17,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 考勤打卡控制器
+ * HR 考勤控制器。
  *
- * @author CloudFlow
- * @date 2026-03-20
+ * <p>补卡能力现在由 HR 微服务统一承接，前端旧 OA 页面会通过适配层重定向到这里。</p>
  */
 @Slf4j
 @RestController
@@ -30,12 +29,6 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
 
-    /**
-     * 上班打卡
-     *
-     * @param dto 打卡请求DTO
-     * @return 操作结果
-     */
     @PostMapping("/check-in")
     public R<Void> checkIn(@Valid @RequestBody AttendanceCheckDTO dto) {
         log.info("上班打卡请求，employeeId: {}, checkMethod: {}", dto.getEmployeeId(), dto.getCheckMethod());
@@ -43,12 +36,6 @@ public class AttendanceController {
         return R.ok();
     }
 
-    /**
-     * 下班打卡
-     *
-     * @param dto 打卡请求DTO
-     * @return 操作结果
-     */
     @PostMapping("/check-out")
     public R<Void> checkOut(@Valid @RequestBody AttendanceCheckDTO dto) {
         log.info("下班打卡请求，employeeId: {}, checkMethod: {}", dto.getEmployeeId(), dto.getCheckMethod());
@@ -56,25 +43,39 @@ public class AttendanceController {
         return R.ok();
     }
 
-    /**
-     * 创建补卡申请
-     *
-     * @param dto 补卡申请DTO
-     * @return 申请ID
-     */
     @PostMapping("/supplement")
     public R<Long> createSupplementApplication(@Valid @RequestBody AttendanceSupplementDTO dto) {
         log.info("创建补卡申请，employeeId: {}, attendanceDate: {}", dto.getEmployeeId(), dto.getAttendanceDate());
-        Long id = attendanceService.createSupplementApplication(dto);
-        return R.ok(id);
+        return R.ok(attendanceService.createSupplementApplication(dto));
     }
 
-    /**
-     * 提交补卡申请
-     *
-     * @param id 申请ID
-     * @return 操作结果
-     */
+    @GetMapping("/supplement/list")
+    public R<List<AttendanceRecordVO>> listSupplementApplications(AttendanceRecordQueryDTO query) {
+        log.info("查询补卡申请列表，query: {}", query);
+        return R.ok(attendanceService.listSupplementApplications(query));
+    }
+
+    @GetMapping("/supplement/{id}")
+    public R<AttendanceRecordVO> getSupplementApplication(@PathVariable Long id) {
+        log.info("查询补卡申请详情，id: {}", id);
+        return R.ok(attendanceService.getSupplementApplication(id));
+    }
+
+    @PutMapping("/supplement/{id}")
+    public R<Void> updateSupplementApplication(@PathVariable Long id,
+                                               @Valid @RequestBody AttendanceSupplementDTO dto) {
+        log.info("更新补卡申请，id: {}", id);
+        attendanceService.updateSupplementApplication(id, dto);
+        return R.ok();
+    }
+
+    @DeleteMapping("/supplement/{id}")
+    public R<Void> deleteSupplementApplication(@PathVariable Long id) {
+        log.info("删除补卡申请，id: {}", id);
+        attendanceService.deleteSupplementApplication(id);
+        return R.ok();
+    }
+
     @PostMapping("/supplement/{id}/submit")
     public R<Void> submitSupplementApplication(@PathVariable Long id) {
         log.info("提交补卡申请，id: {}", id);
@@ -82,12 +83,6 @@ public class AttendanceController {
         return R.ok();
     }
 
-    /**
-     * 审批通过补卡申请
-     *
-     * @param id 申请ID
-     * @return 操作结果
-     */
     @PostMapping("/supplement/{id}/approve")
     public R<Void> approveSupplementApplication(@PathVariable Long id) {
         log.info("审批通过补卡申请，id: {}", id);
@@ -95,45 +90,24 @@ public class AttendanceController {
         return R.ok();
     }
 
-    /**
-     * 审批拒绝补卡申请
-     *
-     * @param id 申请ID
-     * @return 操作结果
-     */
     @PostMapping("/supplement/{id}/reject")
     public R<Void> rejectSupplementApplication(@PathVariable Long id) {
-        log.info("审批拒绝补卡申请，id: {}", id);
+        log.info("审批驳回补卡申请，id: {}", id);
         attendanceService.rejectSupplementApplication(id);
         return R.ok();
     }
 
-    /**
-     * 查询打卡记录列表
-     *
-     * @param query 查询条件
-     * @return 打卡记录列表
-     */
     @GetMapping("/records")
     public R<List<AttendanceRecordVO>> listAttendanceRecords(AttendanceRecordQueryDTO query) {
-        log.info("查询打卡记录列表，query: {}", query);
-        List<AttendanceRecordVO> records = attendanceService.listAttendanceRecords(query);
-        return R.ok(records);
+        log.info("查询考勤记录列表，query: {}", query);
+        return R.ok(attendanceService.listAttendanceRecords(query));
     }
 
-    /**
-     * 获取某天的打卡记录
-     *
-     * @param employeeId 员工ID
-     * @param date 日期
-     * @return 每日考勤VO
-     */
     @GetMapping("/daily")
     public R<AttendanceDailyVO> getDailyAttendance(
             @RequestParam Long employeeId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
-        log.info("获取每日考勤，employeeId: {}, date: {}", employeeId, date);
-        AttendanceDailyVO vo = attendanceService.getDailyAttendance(employeeId, date);
-        return R.ok(vo);
+        log.info("查询日考勤，employeeId: {}, date: {}", employeeId, date);
+        return R.ok(attendanceService.getDailyAttendance(employeeId, date));
     }
 }

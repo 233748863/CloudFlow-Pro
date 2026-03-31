@@ -737,6 +737,109 @@ CREATE TABLE hr_attendance_monthly (
 -- =========================================================
 
 -- 1. 薪资项目表
+-- =========================================================
+-- HR 假勤演示数据（从 OA 迁移）
+-- =========================================================
+
+UPDATE hr_schedule_rule
+SET rule_name = '标准考勤制',
+    rule_config = '{"shiftId": 103, "workDays": [1,2,3,4,5], "overtimeEnabled": true, "overtimeMinMinutes": 30, "lateToleranceCount": 0, "severeLateMinutes": 60, "absentMinutes": 240, "photoRequired": false, "radius": 200}',
+    description = '标准工作日考勤规则，供 HR 假勤演示数据使用'
+WHERE tenant_id = 100000
+  AND rule_type = 'FIXED';
+
+INSERT INTO hr_schedule_plan (
+  id, tenant_id, plan_name, target_type, target_id, shift_id, schedule_date, status,
+  create_time, update_time, create_by, update_by
+) VALUES
+(11001, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11002, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11003, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11004, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11005, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11006, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11007, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11008, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
+(11009, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1);
+
+INSERT INTO hr_attendance_record (
+  id, tenant_id, employee_id, attendance_date, shift_id, check_type, check_time, check_method,
+  location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(9301, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE, 'GPS',
+ '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常上班打卡', NOW(), NOW(), 1, 1, 0),
+(9302, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 12 MINUTE, 'GPS',
+ '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常下班打卡', NOW(), NOW(), 1, 1, 0),
+(9303, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 35 MINUTE, 'GPS',
+ '上海市黄浦区总部园区A座', 'NORMAL', NULL, '项目联调后下班', NOW(), NOW(), 1, 1, 0),
+(9304, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 56 MINUTE, 'WIFI',
+ 'CloudFlow-Office', 'NORMAL', NULL, '会议前提前到岗', NOW(), NOW(), 1, 1, 0),
+(9305, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 6 MINUTE, 'WIFI',
+ 'CloudFlow-Office', 'NORMAL', NULL, '正常签退', NOW(), NOW(), 1, 1, 0),
+(9306, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR, 'GPS',
+ '浦东新区客户现场机房', 'NORMAL', NULL, '客户现场支持后签退', NOW(), NOW(), 1, 1, 0),
+(9001, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE, 'SUPPLEMENT',
+ '上海市黄浦区总部园区A座', 'APPROVING', 'demo_inst_007', '因地铁故障导致漏打卡，实际已于 09:03 到达公司。', DATE_SUB(NOW(), INTERVAL 9 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR), 5, 5, 0),
+(9002, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 42 MINUTE, 'SUPPLEMENT',
+ '浦东新区客户现场机房', 'SUPPLEMENT', 'demo_inst_008', '客户现场部署支持，未在公司网络范围内打卡。', DATE_SUB(NOW(), INTERVAL 30 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), 9, 9, 0);
+
+INSERT INTO hr_leave_quota (
+  id, tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota,
+  expiry_date, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(1101, 100000, 1005, 100, YEAR(CURDATE()), 10.00, 0.00, 5.00, 5.00,
+ STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
+(1102, 100000, 1002, 100, YEAR(CURDATE()), 5.00, 0.00, 0.00, 5.00,
+ STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
+(1103, 100000, 1002, 107, YEAR(CURDATE()), 16.00, 4.00, 3.50, 8.50,
+ DATE_ADD(CURDATE(), INTERVAL 90 DAY), NOW(), NOW(), 'admin', 'admin', 0);
+
+INSERT INTO hr_leave_application (
+  id, tenant_id, application_no, employee_id, leave_type_id, start_time, end_time, duration, unit, reason,
+  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(9001, 100000, 'QJ202603110001', 1005, 100,
+ DATE_ADD(CURDATE(), INTERVAL 7 DAY) + INTERVAL 9 HOUR,
+ DATE_ADD(CURDATE(), INTERVAL 11 DAY) + INTERVAL 18 HOUR,
+ 5.00, 'DAY', '清明假期前后返乡探亲，已完成当前迭代开发任务交接。',
+ 'demo_inst_001', 'APPROVING', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR), 'zhang', 'zhang', 0),
+(9002, 100000, 'QJ202603110002', 1001, 101,
+ DATE_SUB(CURDATE(), INTERVAL 6 DAY) + INTERVAL 9 HOUR,
+ DATE_SUB(CURDATE(), INTERVAL 4 DAY) + INTERVAL 18 HOUR,
+ 2.00, 'DAY', '因流感发烧请假休息，并已提供就诊证明。',
+ 'demo_inst_002', 'APPROVED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0);
+
+INSERT INTO hr_overtime_application (
+  id, tenant_id, application_no, employee_id, start_time, end_time, duration, overtime_type, reason,
+  compensation_type, compensation_hours, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(9001, 100000, 'JB202603110001', 1002,
+ CURDATE() + INTERVAL 19 HOUR,
+ CURDATE() + INTERVAL 22 HOUR + INTERVAL 30 MINUTE,
+ 3.50, 'WORKDAY', '为客户演示修复流程详情页附件预览兼容性问题。',
+ 'TIME_OFF', 3.50, 'demo_inst_009', 'APPROVING', DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 7 HOUR), 'test_fe', 'test_fe', 0),
+(9002, 100000, 'JB202603110002', 1003,
+ DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 10 HOUR,
+ DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 18 HOUR,
+ 8.00, 'WEEKEND', '周末配合客户进行灰度发布与数据迁移。',
+ 'PAYMENT', 8.00, 'demo_inst_010', 'APPROVED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), 'test_be', 'test_be', 0);
+
+INSERT INTO hr_attendance_monthly (
+  id, tenant_id, employee_id, year, month, work_days, actual_days, late_times, early_times, absent_days,
+  missing_times, leave_days, overtime_hours, attendance_rate, status, create_time, update_time, create_by, update_by, deleted
+) VALUES
+(12001, 100000, 1005, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 1, 5.00, 0.00, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
+(12002, 100000, 1002, YEAR(CURDATE()), MONTH(CURDATE()), 23, 21, 0, 0, 0, 0, 0.00, 3.50, 91.30, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
+(12003, 100000, 1003, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 0, 0.00, 8.00, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0);
+
 DROP TABLE IF EXISTS hr_salary_item;
 CREATE TABLE hr_salary_item (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',

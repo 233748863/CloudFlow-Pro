@@ -40,6 +40,37 @@ public interface AttendanceService {
     Long createSupplementApplication(AttendanceSupplementDTO dto);
 
     /**
+     * 查询补卡申请列表
+     *
+     * @param query 查询条件
+     * @return 补卡申请列表
+     */
+    List<AttendanceRecordVO> listSupplementApplications(AttendanceRecordQueryDTO query);
+
+    /**
+     * 获取补卡申请详情
+     *
+     * @param id 补卡申请ID
+     * @return 补卡申请详情
+     */
+    AttendanceRecordVO getSupplementApplication(Long id);
+
+    /**
+     * 更新补卡草稿
+     *
+     * @param id 补卡申请ID
+     * @param dto 更新内容
+     */
+    void updateSupplementApplication(Long id, AttendanceSupplementDTO dto);
+
+    /**
+     * 删除补卡草稿
+     *
+     * @param id 补卡申请ID
+     */
+    void deleteSupplementApplication(Long id);
+
+    /**
      * 提交补卡申请
      *
      * @param id 申请ID

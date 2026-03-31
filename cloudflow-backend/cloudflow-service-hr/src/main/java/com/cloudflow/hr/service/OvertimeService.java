@@ -25,6 +25,21 @@ public interface OvertimeService {
     Long createOvertimeApplication(OvertimeApplicationCreateDTO dto);
 
     /**
+     * 更新加班申请草稿
+     *
+     * @param id 申请ID
+     * @param dto 更新内容
+     */
+    void updateOvertimeApplication(Long id, OvertimeApplicationCreateDTO dto);
+
+    /**
+     * 删除加班申请草稿
+     *
+     * @param id 申请ID
+     */
+    void deleteOvertimeApplication(Long id);
+
+    /**
      * 提交加班申请（启动审批流程）
      * 
      * @param id 申请ID

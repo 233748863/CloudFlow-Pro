@@ -16,10 +16,6 @@ import java.util.List;
 
 /**
  * 加班管理控制器
- * 提供加班申请、审批和统计接口
- * 
- * @author CloudFlow
- * @since 2026-03-20
  */
 @Slf4j
 @RestController
@@ -35,8 +31,28 @@ public class OvertimeController {
     @PostMapping("/applications")
     public R<Long> createOvertimeApplication(@Valid @RequestBody OvertimeApplicationCreateDTO dto) {
         log.info("创建加班申请，员工ID: {}", dto.getEmployeeId());
-        Long id = overtimeService.createOvertimeApplication(dto);
-        return R.ok(id);
+        return R.ok(overtimeService.createOvertimeApplication(dto));
+    }
+
+    /**
+     * 更新加班草稿
+     */
+    @PutMapping("/applications/{id}")
+    public R<Void> updateOvertimeApplication(@PathVariable Long id,
+                                             @Valid @RequestBody OvertimeApplicationCreateDTO dto) {
+        log.info("更新加班申请，ID: {}", id);
+        overtimeService.updateOvertimeApplication(id, dto);
+        return R.ok();
+    }
+
+    /**
+     * 删除加班草稿
+     */
+    @DeleteMapping("/applications/{id}")
+    public R<Void> deleteOvertimeApplication(@PathVariable Long id) {
+        log.info("删除加班申请，ID: {}", id);
+        overtimeService.deleteOvertimeApplication(id);
+        return R.ok();
     }
 
     /**
@@ -60,11 +76,11 @@ public class OvertimeController {
     }
 
     /**
-     * 审批拒绝加班申请
+     * 审批驳回加班申请
      */
     @PostMapping("/applications/{id}/reject")
     public R<Void> rejectOvertimeApplication(@PathVariable Long id) {
-        log.info("审批拒绝加班申请，ID: {}", id);
+        log.info("审批驳回加班申请，ID: {}", id);
         overtimeService.rejectOvertimeApplication(id);
         return R.ok();
     }
@@ -75,8 +91,7 @@ public class OvertimeController {
     @GetMapping("/applications")
     public R<List<OvertimeApplicationVO>> listOvertimeApplications(@Valid OvertimeApplicationQueryDTO query) {
         log.info("查询加班申请列表");
-        List<OvertimeApplicationVO> list = overtimeService.listOvertimeApplications(query);
-        return R.ok(list);
+        return R.ok(overtimeService.listOvertimeApplications(query));
     }
 
     /**
@@ -85,20 +100,16 @@ public class OvertimeController {
     @GetMapping("/applications/{id}")
     public R<OvertimeApplicationVO> getOvertimeApplication(@PathVariable Long id) {
         log.info("获取加班申请详情，ID: {}", id);
-        OvertimeApplicationVO vo = overtimeService.getOvertimeApplication(id);
-        return R.ok(vo);
+        return R.ok(overtimeService.getOvertimeApplication(id));
     }
 
     /**
      * 获取员工加班统计
      */
     @GetMapping("/statistics/{employeeId}")
-    public R<OvertimeStatisticsVO> getOvertimeStatistics(
-            @PathVariable Long employeeId,
-            @RequestParam String yearMonth) {
+    public R<OvertimeStatisticsVO> getOvertimeStatistics(@PathVariable Long employeeId,
+                                                         @RequestParam String yearMonth) {
         log.info("获取员工加班统计，员工ID: {}, 年月: {}", employeeId, yearMonth);
-        YearMonth ym = YearMonth.parse(yearMonth);
-        OvertimeStatisticsVO statistics = overtimeService.getOvertimeStatistics(employeeId, ym);
-        return R.ok(statistics);
+        return R.ok(overtimeService.getOvertimeStatistics(employeeId, YearMonth.parse(yearMonth)));
     }
 }

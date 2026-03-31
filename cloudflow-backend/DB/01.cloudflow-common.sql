@@ -288,7 +288,7 @@ INSERT INTO sys_menu VALUES(101, '我的日程',   1, 2, '/schedule',           
 -- 办公协同 (parent_id=2)
 INSERT INTO sys_menu VALUES(200, '会议室',     2, 1, '/meeting-room',        'pages/MeetingRoomPage',        NULL, 0, 0, 'C', '0', '0', 'office:meeting',            'Monitor',         'admin', NOW(), '', null, '会议室管理');
 INSERT INTO sys_menu VALUES(201, '公告中心',   2, 2, '/announcement',        'pages/AnnouncementPage',       NULL, 0, 0, 'C', '0', '0', 'office:announcement',       'Megaphone',       'admin', NOW(), '', null, '公告中心');
-INSERT INTO sys_menu VALUES(202, '考勤打卡',   2, 3, '/admin/attendance/checkin', 'pages/admin/attendance/AttendanceCheckIn', NULL, 0, 0, 'C', '0', '0', 'office:attendance:checkin', 'ClipboardCheck', 'admin', NOW(), '', null, '考勤打卡');
+INSERT INTO sys_menu VALUES(202, '考勤打卡',   7, 11, '/hr/attendance/checkin', 'pages/admin/attendance/AttendanceCheckIn', NULL, 0, 0, 'C', '0', '0', 'hr:attendance:checkin', 'ClipboardCheck', 'admin', NOW(), '', null, 'HR考勤打卡');
 
 -- 流程中心 (parent_id=3)
 INSERT INTO sys_menu VALUES(300, '发起流程',   3, 1, '/workplace',           'pages/Workplace',              NULL, 0, 0, 'C', '0', '0', 'process:start',             'PlayCircle',      'admin', NOW(), '', null, '发起流程');
@@ -309,7 +309,7 @@ INSERT INTO sys_menu VALUES(501, '资产管理',   5, 2, '/admin/asset',        
 INSERT INTO sys_menu VALUES(502, '车辆管理',   5, 3, '/admin/vehicle/list', 'pages/admin/vehicle/VehicleList', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:list',      'Car',             'admin', NOW(), '', null, '车辆管理');
 INSERT INTO sys_menu VALUES(503, '用车申请',   5, 4, '/admin/vehicle/booking', 'pages/admin/vehicle/VehicleBooking', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:booking', 'Car',          'admin', NOW(), '', null, '用车申请');
 INSERT INTO sys_menu VALUES(504, '用车记录',   5, 5, '/admin/vehicle/usage', 'pages/admin/vehicle/VehicleUsageList', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:usage',   'Car',             'admin', NOW(), '', null, '用车记录');
-INSERT INTO sys_menu VALUES(505, '考勤规则',   5, 6, '/admin/attendance/rule', 'pages/admin/attendance/AttendanceRule', NULL, 0, 0, 'C', '0', '0', 'admin:attendance:rule', 'ClipboardCheck', 'admin', NOW(), '', null, '考勤规则设置');
+INSERT INTO sys_menu VALUES(505, '考勤规则',   7, 12, '/hr/attendance/rule', 'pages/admin/attendance/AttendanceRule', NULL, 0, 0, 'C', '0', '0', 'hr:attendance:rule', 'ClipboardCheck', 'admin', NOW(), '', null, 'HR考勤规则设置');
 
 -- 系统管理 (parent_id=6)
 INSERT INTO sys_menu VALUES(600, '用户管理',   6, 1, '/system/users',       'pages/system/UserList',        NULL, 0, 0, 'C', '0', '0', 'system:user:list',           'Users',           'admin', NOW(), '', null, '用户管理');
@@ -342,9 +342,9 @@ INSERT INTO sys_menu VALUES(724, '转正申请',   7, 8, '/hr/probation',       
 INSERT INTO sys_menu VALUES(725, '调岗管理',   7, 9, '/hr/transfer',        'pages/hr/HrTransferPage',       NULL, 0, 0, 'C', '0', '0', 'hr:transfer:list',     'GitMerge',        'admin', NOW(), '', null, '调岗申请管理');
 INSERT INTO sys_menu VALUES(726, '离职办理',   7, 10, '/hr/resignation',    'pages/hr/HrResignationPage',    NULL, 0, 0, 'C', '0', '0', 'hr:resignation:list',  'LogOut',          'admin', NOW(), '', null, '离职申请与交接办理');
 
--- 办公协同(parent_id=2)扩展菜单：补卡申请、加班申请、出差申请、通讯录
-INSERT INTO sys_menu VALUES(203, '补卡申请',   2, 4, '/office/attendance-appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'office:attendance:appeal',  'ClipboardEdit',   'admin', NOW(), '', null, '补卡/外勤申请');
-INSERT INTO sys_menu VALUES(204, '加班申请',   2, 5, '/office/overtime',          'pages/OvertimePage',           NULL, 0, 0, 'C', '0', '0', 'office:overtime:list',      'Clock',           'admin', NOW(), '', null, '加班申请');
+-- 办公协同(parent_id=2)扩展菜单：出差申请、通讯录
+INSERT INTO sys_menu VALUES(203, '补卡申请',   7, 13, '/hr/attendance/appeal', 'pages/AttendanceAppealPage',   NULL, 0, 0, 'C', '0', '0', 'hr:attendance:appeal', 'ClipboardEdit',   'admin', NOW(), '', null, 'HR补卡/外勤申请');
+INSERT INTO sys_menu VALUES(204, '加班申请',   7, 14, '/hr/overtime',          'pages/OvertimePage',           NULL, 0, 0, 'C', '0', '0', 'hr:overtime:list',     'Clock',           'admin', NOW(), '', null, 'HR加班申请');
 INSERT INTO sys_menu VALUES(205, '出差申请',   2, 6, '/office/business-trip',     'pages/BusinessTripPage',       NULL, 0, 0, 'C', '0', '0', 'office:trip:list',          'Plane',           'admin', NOW(), '', null, '出差申请');
 INSERT INTO sys_menu VALUES(206, '通讯录',     2, 7, '/office/contact',           'pages/ContactPage',            NULL, 0, 0, 'C', '0', '0', 'office:contact:list',       'BookUser',        'admin', NOW(), '', null, '企业通讯录');
 
@@ -615,8 +615,8 @@ INSERT INTO `sys_dict_type` (`dict_name`, `dict_type`, `remark`) VALUES
 ('是否', 'sys_yes_no', '系统是否列表'),
 ('通知类型', 'sys_notice_type', '通知类型列表'),
 ('审批状态', 'oa_approval_status', 'OA审批状态'),
-('请假类型', 'oa_leave_type', '请假类型列表'),
-('加班类型', 'oa_overtime_type', '加班类型列表'),
+('请假类型', 'hr_leave_type', '请假类型列表'),
+('加班类型', 'hr_overtime_type', '加班类型列表'),
 ('出差状态', 'oa_trip_status', '出差状态列表'),
 ('费用类型', 'oa_expense_type', '费用报销类型');
 
@@ -652,18 +652,18 @@ INSERT INTO `sys_dict_data` (`dict_sort`, `dict_label`, `dict_value`, `dict_type
 
 -- 请假类型
 INSERT INTO `sys_dict_data` (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
-(1, '年假', 'ANNUAL', 'oa_leave_type', 'success'),
-(2, '事假', 'PERSONAL', 'oa_leave_type', 'default'),
-(3, '病假', 'SICK', 'oa_leave_type', 'warning'),
-(4, '婚假', 'MARRIAGE', 'oa_leave_type', 'success'),
-(5, '产假', 'MATERNITY', 'oa_leave_type', 'success'),
-(6, '丧假', 'BEREAVEMENT', 'oa_leave_type', 'default');
+(1, '年假', 'ANNUAL', 'hr_leave_type', 'success'),
+(2, '事假', 'PERSONAL', 'hr_leave_type', 'default'),
+(3, '病假', 'SICK', 'hr_leave_type', 'warning'),
+(4, '婚假', 'MARRIAGE', 'hr_leave_type', 'success'),
+(5, '产假', 'MATERNITY', 'hr_leave_type', 'success'),
+(6, '丧假', 'BEREAVEMENT', 'hr_leave_type', 'default');
 
 -- 加班类型
 INSERT INTO `sys_dict_data` (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
-(1, '工作日加班', 'WORKDAY', 'oa_overtime_type', 'default'),
-(2, '周末加班', 'WEEKEND', 'oa_overtime_type', 'warning'),
-(3, '节假日加班', 'HOLIDAY', 'oa_overtime_type', 'danger');
+(1, '工作日加班', 'WORKDAY', 'hr_overtime_type', 'default'),
+(2, '周末加班', 'WEEKEND', 'hr_overtime_type', 'warning'),
+(3, '节假日加班', 'HOLIDAY', 'hr_overtime_type', 'danger');
 
 -- 出差状态
 INSERT INTO `sys_dict_data` (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES

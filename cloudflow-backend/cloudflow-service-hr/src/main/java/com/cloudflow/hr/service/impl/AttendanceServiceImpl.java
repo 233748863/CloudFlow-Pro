@@ -32,109 +32,268 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * 考勤打卡服务实现类
- * 
- * @author CloudFlow
- * @date 2026-03-20
+ * HR 考勤服务实现。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AttendanceServiceImpl implements AttendanceService {
-    
+
+    private static final String CHECK_TYPE_IN = "CHECK_IN";
+    private static final String CHECK_TYPE_OUT = "CHECK_OUT";
+    private static final String CHECK_METHOD_SUPPLEMENT = "SUPPLEMENT";
+    private static final String STATUS_NORMAL = "NORMAL";
+    private static final String STATUS_LATE = "LATE";
+    private static final String STATUS_EARLY = "EARLY";
+    private static final String STATUS_MISSING = "MISSING";
+    private static final String STATUS_SUPPLEMENT = "SUPPLEMENT";
+    private static final String STATUS_APPROVING = "APPROVING";
+    private static final String STATUS_REJECTED = "REJECTED";
+    private static final String TARGET_EMPLOYEE = "EMPLOYEE";
+    private static final String TARGET_DEPT = "DEPT";
+    private static final String PLAN_STATUS_PUBLISHED = "PUBLISHED";
+
+    // GPS 打卡允许距离，单位米。
+    private static final double GPS_ALLOWED_DISTANCE = 500.0;
+    private static final double COMPANY_LATITUDE = 39.9042;
+    private static final double COMPANY_LONGITUDE = 116.4074;
+    private static final List<String> WIFI_WHITELIST = List.of("CompanyWiFi", "CompanyWiFi-5G", "CompanyGuest");
+
     private final AttendanceRecordMapper attendanceRecordMapper;
     private final EmployeeMapper employeeMapper;
     private final SchedulePlanMapper schedulePlanMapper;
     private final ShiftMapper shiftMapper;
     private final WorkflowServiceClient workflowServiceClient;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
-    
-    // GPS打卡允许的距离范围（米）
-    private static final double GPS_ALLOWED_DISTANCE = 500.0;
-    
-    // 公司GPS坐标（示例：北京市朝阳区）
-    private static final double COMPANY_LATITUDE = 39.9042;
-    private static final double COMPANY_LONGITUDE = 116.4074;
-    
-    // WiFi白名单
-    private static final List<String> WIFI_WHITELIST = List.of("CompanyWiFi", "CompanyWiFi-5G", "CompanyGuest");
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void checkIn(AttendanceCheckDTO dto) {
-        log.info("员工上班打卡，employeeId: {}, checkMethod: {}", dto.getEmployeeId(), dto.getCheckMethod());
-        
-        // 设置打卡类型为上班打卡
-        dto.setCheckType("CHECK_IN");
-        
-        // 执行打卡
+        dto.setCheckType(CHECK_TYPE_IN);
         doCheckAttendance(dto);
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void checkOut(AttendanceCheckDTO dto) {
-        log.info("员工下班打卡，employeeId: {}, checkMethod: {}", dto.getEmployeeId(), dto.getCheckMethod());
-        
-        // 设置打卡类型为下班打卡
-        dto.setCheckType("CHECK_OUT");
-        
-        // 执行打卡
+        dto.setCheckType(CHECK_TYPE_OUT);
         doCheckAttendance(dto);
     }
-    
-    /**
-     * 执行打卡逻辑
-     * 
-     * @param dto 打卡请求DTO
-     */
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createSupplementApplication(AttendanceSupplementDTO dto) {
+        Employee employee = resolveAttendanceEmployee(dto.getEmployeeId());
+        dto.setEmployeeId(employee.getId());
+        validateAttendanceEligibleEmployee(employee, "补卡申请");
+        validateSupplementConflict(employee.getId(), dto.getAttendanceDate(), dto.getCheckType(), null);
+
+        SchedulePlan schedulePlan = requireSchedulePlan(employee, dto.getAttendanceDate());
+
+        AttendanceRecord record = new AttendanceRecord();
+        record.setTenantId(employee.getTenantId());
+        record.setEmployeeId(employee.getId());
+        record.setAttendanceDate(dto.getAttendanceDate());
+        record.setShiftId(schedulePlan.getShiftId());
+        record.setCheckType(dto.getCheckType());
+        record.setCheckTime(dto.getCheckTime());
+        record.setCheckMethod(CHECK_METHOD_SUPPLEMENT);
+        record.setStatus(STATUS_MISSING);
+        record.setRemark(dto.getReason());
+        attendanceRecordMapper.insert(record);
+
+        return record.getId();
+    }
+
+    @Override
+    public List<AttendanceRecordVO> listSupplementApplications(AttendanceRecordQueryDTO query) {
+        Long tenantId = SecurityUtils.getTenantId();
+        LambdaQueryWrapper<AttendanceRecord> wrapper = buildAttendanceQuery(query, tenantId);
+        wrapper.eq(AttendanceRecord::getCheckMethod, CHECK_METHOD_SUPPLEMENT)
+                .orderByDesc(AttendanceRecord::getAttendanceDate, AttendanceRecord::getCheckTime, AttendanceRecord::getCreateTime);
+        return attendanceRecordMapper.selectList(wrapper).stream()
+                .map(this::toAttendanceRecordVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public AttendanceRecordVO getSupplementApplication(Long id) {
+        return toAttendanceRecordVO(getSupplementRecord(id));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSupplementApplication(Long id, AttendanceSupplementDTO dto) {
+        AttendanceRecord record = getSupplementRecord(id);
+        validateEditableSupplement(record);
+
+        Employee employee = resolveAttendanceEmployee(dto.getEmployeeId());
+        dto.setEmployeeId(employee.getId());
+        validateAttendanceEligibleEmployee(employee, "补卡申请编辑");
+        validateSupplementConflict(employee.getId(), dto.getAttendanceDate(), dto.getCheckType(), id);
+
+        SchedulePlan schedulePlan = requireSchedulePlan(employee, dto.getAttendanceDate());
+
+        record.setTenantId(employee.getTenantId());
+        record.setEmployeeId(employee.getId());
+        record.setAttendanceDate(dto.getAttendanceDate());
+        record.setShiftId(schedulePlan.getShiftId());
+        record.setCheckType(dto.getCheckType());
+        record.setCheckTime(dto.getCheckTime());
+        record.setCheckMethod(CHECK_METHOD_SUPPLEMENT);
+        record.setStatus(STATUS_MISSING);
+        record.setProcessInstanceId(null);
+        record.setRemark(dto.getReason());
+        attendanceRecordMapper.updateById(record);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteSupplementApplication(Long id) {
+        AttendanceRecord record = getSupplementRecord(id);
+        validateEditableSupplement(record);
+        attendanceRecordMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void submitSupplementApplication(Long id) {
+        AttendanceRecord record = getSupplementRecord(id);
+        if (!STATUS_MISSING.equals(record.getStatus())) {
+            throw new HrBusinessException("只有草稿状态的补卡申请才能提交");
+        }
+
+        ProcessStartDTO processStartDTO = new ProcessStartDTO();
+        processStartDTO.setTenantId(record.getTenantId());
+        processStartDTO.setProcessDefinitionKey(workflowProcessKeyProperties.getAttendanceSupplement());
+        processStartDTO.setBusinessType("ATTENDANCE_SUPPLEMENT");
+        processStartDTO.setBusinessId(id);
+        processStartDTO.setBusinessNo("ATTENDANCE-" + id);
+        processStartDTO.setProcessTitle("补卡申请-" + id);
+        processStartDTO.setStartUserId(SecurityUtils.getUserId());
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("employeeId", record.getEmployeeId());
+        variables.put("attendanceDate", record.getAttendanceDate() != null ? record.getAttendanceDate().toString() : null);
+        variables.put("checkType", record.getCheckType());
+        variables.put("reason", record.getRemark());
+        processStartDTO.setVariables(variables);
+
+        try {
+            R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (!result.isSuccess()) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败: " + result.getMsg());
+            }
+            record.setStatus(STATUS_APPROVING);
+            record.setProcessInstanceId(result.getData());
+            attendanceRecordMapper.updateById(record);
+        } catch (Exception e) {
+            log.error("启动补卡审批流程失败，recordId: {}", id, e);
+            throw new HrBusinessException("启动审批流程失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void approveSupplementApplication(Long id) {
+        AttendanceRecord record = getSupplementRecord(id);
+        if (!STATUS_APPROVING.equals(record.getStatus())) {
+            throw new HrBusinessException("只有审批中的补卡申请才能通过");
+        }
+        record.setStatus(STATUS_SUPPLEMENT);
+        attendanceRecordMapper.updateById(record);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectSupplementApplication(Long id) {
+        AttendanceRecord record = getSupplementRecord(id);
+        if (!STATUS_APPROVING.equals(record.getStatus())) {
+            throw new HrBusinessException("只有审批中的补卡申请才能驳回");
+        }
+        record.setStatus(STATUS_REJECTED);
+        attendanceRecordMapper.updateById(record);
+    }
+
+    @Override
+    public List<AttendanceRecordVO> listAttendanceRecords(AttendanceRecordQueryDTO query) {
+        Long tenantId = SecurityUtils.getTenantId();
+        LambdaQueryWrapper<AttendanceRecord> wrapper = buildAttendanceQuery(query, tenantId);
+        wrapper.orderByDesc(AttendanceRecord::getAttendanceDate, AttendanceRecord::getCheckTime);
+        return attendanceRecordMapper.selectList(wrapper).stream()
+                .map(this::toAttendanceRecordVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public AttendanceDailyVO getDailyAttendance(Long employeeId, LocalDate date) {
+        Employee employee = getEmployeeByIdWithinTenant(employeeId);
+        List<AttendanceRecord> records = attendanceRecordMapper.selectByEmployeeAndDateAll(employee.getId(), date);
+        SchedulePlan schedulePlan = getSchedulePlan(employee, date);
+
+        AttendanceDailyVO vo = new AttendanceDailyVO();
+        vo.setEmployeeId(employee.getId());
+        vo.setEmployeeName(employee.getName());
+        vo.setAttendanceDate(date);
+
+        if (schedulePlan != null) {
+            vo.setShiftId(schedulePlan.getShiftId());
+            Shift shift = shiftMapper.selectById(schedulePlan.getShiftId());
+            if (shift != null) {
+                vo.setShiftName(shift.getShiftName());
+            }
+        }
+
+        AttendanceRecordVO checkInVO = null;
+        AttendanceRecordVO checkOutVO = null;
+        for (AttendanceRecord record : records) {
+            AttendanceRecordVO recordVO = toAttendanceRecordVO(record);
+            if (CHECK_TYPE_IN.equals(record.getCheckType())) {
+                checkInVO = recordVO;
+            } else if (CHECK_TYPE_OUT.equals(record.getCheckType())) {
+                checkOutVO = recordVO;
+            }
+        }
+
+        vo.setCheckInRecord(checkInVO);
+        vo.setCheckOutRecord(checkOutVO);
+        calculateAttendanceStatus(vo, checkInVO, checkOutVO);
+        return vo;
+    }
+
     private void doCheckAttendance(AttendanceCheckDTO dto) {
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
-        
-        // 1. 验证员工是否存在
-        Employee employee = employeeMapper.selectById(dto.getEmployeeId());
-        if (employee == null) {
-            throw new HrBusinessException("员工不存在");
-        }
+        Employee employee = resolveAttendanceEmployee(dto.getEmployeeId());
+        dto.setEmployeeId(employee.getId());
         validateAttendanceEligibleEmployee(employee, "考勤打卡");
-        
-        // 2. 检查是否已经打过卡
+
         AttendanceRecord existingRecord = attendanceRecordMapper.selectByEmployeeAndDate(
-                dto.getEmployeeId(), today, dto.getCheckType());
+                employee.getId(), today, dto.getCheckType());
         if (existingRecord != null) {
-            throw new HrBusinessException("今天已经打过" + 
-                    ("CHECK_IN".equals(dto.getCheckType()) ? "上班卡" : "下班卡") + "，请勿重复打卡");
+            String label = CHECK_TYPE_IN.equals(dto.getCheckType()) ? "上班卡" : "下班卡";
+            throw new HrBusinessException("今天已经打过" + label + "，请勿重复打卡");
         }
-        
-        // 3. 获取员工今天的排班信息
-        SchedulePlan schedulePlan = getSchedulePlan(dto.getEmployeeId(), today);
-        if (schedulePlan == null) {
-            throw new HrBusinessException("今天没有排班，无法打卡");
-        }
-        
-        // 4. 获取班次信息
+
+        SchedulePlan schedulePlan = requireSchedulePlan(employee, today);
         Shift shift = shiftMapper.selectById(schedulePlan.getShiftId());
-        if (shift == null) {
+        if (shift == null || !employee.getTenantId().equals(shift.getTenantId())) {
             throw new HrBusinessException("班次信息不存在");
         }
-        
-        // 5. 验证打卡方式
+
         validateCheckMethod(dto);
-        
-        // 6. 判断打卡状态（正常、迟到、早退）
         String status = determineAttendanceStatus(dto.getCheckType(), now.toLocalTime(), shift);
-        
-        // 7. 创建打卡记录
+
         AttendanceRecord record = new AttendanceRecord();
         record.setTenantId(employee.getTenantId());
-        record.setEmployeeId(dto.getEmployeeId());
+        record.setEmployeeId(employee.getId());
         record.setAttendanceDate(today);
         record.setShiftId(shift.getId());
         record.setCheckType(dto.getCheckType());
@@ -143,17 +302,9 @@ public class AttendanceServiceImpl implements AttendanceService {
         record.setLocation(dto.getLocation());
         record.setStatus(status);
         record.setRemark(dto.getRemark());
-        
         attendanceRecordMapper.insert(record);
-        
-        log.info("打卡成功，recordId: {}, status: {}", record.getId(), status);
     }
-    
-    /**
-     * 验证打卡方式
-     * 
-     * @param dto 打卡请求DTO
-     */
+
     private void validateCheckMethod(AttendanceCheckDTO dto) {
         switch (dto.getCheckMethod()) {
             case "GPS":
@@ -169,427 +320,241 @@ public class AttendanceServiceImpl implements AttendanceService {
                 throw new HrBusinessException("不支持的打卡方式: " + dto.getCheckMethod());
         }
     }
-    
-    /**
-     * 验证GPS位置
-     * 
-     * @param latitude 纬度
-     * @param longitude 经度
-     */
+
     private void validateGpsLocation(Double latitude, Double longitude) {
         if (latitude == null || longitude == null) {
-            throw new HrBusinessException("GPS定位信息不完整");
+            throw new HrBusinessException("GPS 定位信息不完整");
         }
-        
-        // 计算距离（使用Haversine公式）
+
         double distance = calculateDistance(latitude, longitude, COMPANY_LATITUDE, COMPANY_LONGITUDE);
-        
-        log.info("GPS打卡距离: {} 米", distance);
-        
         if (distance > GPS_ALLOWED_DISTANCE) {
-            throw new HrBusinessException(String.format("GPS定位超出允许范围，当前距离: %.0f米，允许范围: %.0f米", 
+            throw new HrBusinessException(String.format("GPS 定位超出允许范围，当前距离 %.0f 米，允许范围 %.0f 米",
                     distance, GPS_ALLOWED_DISTANCE));
         }
     }
-    
-    /**
-     * 计算两个GPS坐标之间的距离（米）
-     * 使用Haversine公式
-     * 
-     * @param lat1 纬度1
-     * @param lon1 经度1
-     * @param lat2 纬度2
-     * @param lon2 经度2
-     * @return 距离（米）
-     */
+
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int EARTH_RADIUS = 6371000; // 地球半径（米）
-        
+        final int earthRadius = 6371000;
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
-        
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        
-        return EARTH_RADIUS * c;
-    }
-    
-    /**
-     * 验证WiFi SSID
-     * 
-     * @param wifiSsid WiFi SSID
-     */
-    private void validateWifiSsid(String wifiSsid) {
-        if (wifiSsid == null || wifiSsid.trim().isEmpty()) {
-            throw new HrBusinessException("WiFi SSID不能为空");
-        }
-        
-        if (!WIFI_WHITELIST.contains(wifiSsid)) {
-            throw new HrBusinessException("WiFi SSID不在白名单中: " + wifiSsid);
-        }
-        
-        log.info("WiFi验证通过，SSID: {}", wifiSsid);
-    }
-    
-    /**
-     * 验证人脸识别token
-     * 
-     * @param faceToken 人脸识别token
-     */
-    private void validateFaceToken(String faceToken) {
-        if (faceToken == null || faceToken.trim().isEmpty()) {
-            throw new HrBusinessException("人脸识别token不能为空");
-        }
-        
-        // TODO: 调用人脸识别服务验证token
-        // 这里简化处理，实际应该调用第三方人脸识别API
-        log.info("人脸识别验证通过，token: {}", faceToken);
-    }
-    
-    /**
-     * 判断打卡状态
-     * 
-     * @param checkType 打卡类型
-     * @param checkTime 打卡时间
-     * @param shift 班次信息
-     * @return 打卡状态
-     */
-    private String determineAttendanceStatus(String checkType, LocalTime checkTime, Shift shift) {
-        if ("CHECK_IN".equals(checkType)) {
-            // 上班打卡：判断是否迟到
-            LocalTime startTime = shift.getStartTime();
-            LocalTime lateThreshold = startTime.plusMinutes(shift.getLateThreshold());
-            
-            if (checkTime.isAfter(lateThreshold)) {
-                log.info("迟到，打卡时间: {}, 班次开始时间: {}, 迟到阈值: {} 分钟", 
-                        checkTime, startTime, shift.getLateThreshold());
-                return "LATE";
-            }
-        } else if ("CHECK_OUT".equals(checkType)) {
-            // 下班打卡：判断是否早退
-            LocalTime endTime = shift.getEndTime();
-            LocalTime earlyThreshold = endTime.minusMinutes(shift.getEarlyThreshold());
-            
-            if (checkTime.isBefore(earlyThreshold)) {
-                log.info("早退，打卡时间: {}, 班次结束时间: {}, 早退阈值: {} 分钟", 
-                        checkTime, endTime, shift.getEarlyThreshold());
-                return "EARLY";
-            }
-        }
-        
-        return "NORMAL";
-    }
-    
-    /**
-     * 获取员工的排班信息
-     * 
-     * @param employeeId 员工ID
-     * @param date 日期
-     * @return 排班信息
-     */
-    private SchedulePlan getSchedulePlan(Long employeeId, LocalDate date) {
-        LambdaQueryWrapper<SchedulePlan> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SchedulePlan::getTargetType, "EMPLOYEE")
-                .eq(SchedulePlan::getTargetId, employeeId)
-                .eq(SchedulePlan::getScheduleDate, date)
-                .eq(SchedulePlan::getStatus, "PUBLISHED");
-        
-        return schedulePlanMapper.selectOne(wrapper);
+        return earthRadius * c;
     }
 
-    /**
-     * 考勤相关操作只允许已入职员工执行。
-     */
+    private void validateWifiSsid(String wifiSsid) {
+        if (wifiSsid == null || wifiSsid.trim().isEmpty()) {
+            throw new HrBusinessException("WiFi SSID 不能为空");
+        }
+        if (!WIFI_WHITELIST.contains(wifiSsid)) {
+            throw new HrBusinessException("WiFi SSID 不在白名单中: " + wifiSsid);
+        }
+    }
+
+    private void validateFaceToken(String faceToken) {
+        if (faceToken == null || faceToken.trim().isEmpty()) {
+            throw new HrBusinessException("人脸识别 token 不能为空");
+        }
+    }
+
+    private String determineAttendanceStatus(String checkType, LocalTime checkTime, Shift shift) {
+        if (CHECK_TYPE_IN.equals(checkType)) {
+            LocalTime startTime = shift.getStartTime();
+            int lateThreshold = shift.getLateThreshold() == null ? 0 : shift.getLateThreshold();
+            if (startTime != null && checkTime.isAfter(startTime.plusMinutes(lateThreshold))) {
+                return STATUS_LATE;
+            }
+        }
+
+        if (CHECK_TYPE_OUT.equals(checkType)) {
+            LocalTime endTime = shift.getEndTime();
+            int earlyThreshold = shift.getEarlyThreshold() == null ? 0 : shift.getEarlyThreshold();
+            if (endTime != null && checkTime.isBefore(endTime.minusMinutes(earlyThreshold))) {
+                return STATUS_EARLY;
+            }
+        }
+
+        return STATUS_NORMAL;
+    }
+
+    private SchedulePlan requireSchedulePlan(Employee employee, LocalDate date) {
+        SchedulePlan schedulePlan = getSchedulePlan(employee, date);
+        if (schedulePlan == null) {
+            throw new HrBusinessException("当天没有排班，无法执行当前操作");
+        }
+        return schedulePlan;
+    }
+
+    private SchedulePlan getSchedulePlan(Employee employee, LocalDate date) {
+        Long tenantId = employee.getTenantId();
+
+        LambdaQueryWrapper<SchedulePlan> employeeWrapper = new LambdaQueryWrapper<>();
+        employeeWrapper.eq(SchedulePlan::getTenantId, tenantId)
+                .eq(SchedulePlan::getTargetType, TARGET_EMPLOYEE)
+                .eq(SchedulePlan::getTargetId, employee.getId())
+                .eq(SchedulePlan::getScheduleDate, date)
+                .eq(SchedulePlan::getStatus, PLAN_STATUS_PUBLISHED);
+        SchedulePlan employeePlan = schedulePlanMapper.selectOne(employeeWrapper);
+        if (employeePlan != null) {
+            return employeePlan;
+        }
+
+        if (employee.getDeptId() == null) {
+            return null;
+        }
+
+        LambdaQueryWrapper<SchedulePlan> deptWrapper = new LambdaQueryWrapper<>();
+        deptWrapper.eq(SchedulePlan::getTenantId, tenantId)
+                .eq(SchedulePlan::getTargetType, TARGET_DEPT)
+                .eq(SchedulePlan::getTargetId, employee.getDeptId())
+                .eq(SchedulePlan::getScheduleDate, date)
+                .eq(SchedulePlan::getStatus, PLAN_STATUS_PUBLISHED);
+        return schedulePlanMapper.selectOne(deptWrapper);
+    }
+
+    private Employee resolveAttendanceEmployee(Long employeeId) {
+        if (employeeId != null) {
+            return getEmployeeByIdWithinTenant(employeeId);
+        }
+
+        Long tenantId = SecurityUtils.getTenantId();
+        Long userId = SecurityUtils.getUserId();
+        if (userId == null) {
+            throw new HrBusinessException("未找到当前登录用户，无法定位员工档案");
+        }
+
+        LambdaQueryWrapper<Employee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Employee::getTenantId, tenantId)
+                .eq(Employee::getUserId, userId)
+                .last("LIMIT 1");
+        Employee employee = employeeMapper.selectOne(wrapper);
+        if (employee == null) {
+            throw new HrBusinessException("当前登录用户未关联 HR 员工档案");
+        }
+        return employee;
+    }
+
+    private Employee getEmployeeByIdWithinTenant(Long employeeId) {
+        Long tenantId = SecurityUtils.getTenantId();
+        Employee employee = employeeMapper.selectById(employeeId);
+        if (employee == null || !tenantId.equals(employee.getTenantId())) {
+            throw new HrBusinessException("员工不存在");
+        }
+        return employee;
+    }
+
     private void validateAttendanceEligibleEmployee(Employee employee, String operation) {
         if ("PROBATION".equals(employee.getEmployeeStatus()) || "REGULAR".equals(employee.getEmployeeStatus())) {
             return;
         }
         throw HrBusinessException.invalidEmployeeStatus(employee.getId(), employee.getEmployeeStatus(), operation);
     }
-    
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createSupplementApplication(AttendanceSupplementDTO dto) {
-        log.info("创建补卡申请，employeeId: {}, attendanceDate: {}, checkType: {}", 
-                dto.getEmployeeId(), dto.getAttendanceDate(), dto.getCheckType());
-        
-        // 1. 验证员工是否存在
-        Employee employee = employeeMapper.selectById(dto.getEmployeeId());
-        if (employee == null) {
-            throw new HrBusinessException("员工不存在");
+
+    private void validateSupplementConflict(Long employeeId,
+                                            LocalDate attendanceDate,
+                                            String checkType,
+                                            Long currentRecordId) {
+        AttendanceRecord existingRecord = attendanceRecordMapper.selectByEmployeeAndDate(employeeId, attendanceDate, checkType);
+        if (existingRecord != null && (currentRecordId == null || !existingRecord.getId().equals(currentRecordId))) {
+            throw new HrBusinessException("该日期已存在对应打卡记录，无法重复补卡");
         }
-        validateAttendanceEligibleEmployee(employee, "补卡申请");
-        
-        // 2. 验证是否已经有打卡记录
-        AttendanceRecord existingRecord = attendanceRecordMapper.selectByEmployeeAndDate(
-                dto.getEmployeeId(), dto.getAttendanceDate(), dto.getCheckType());
-        if (existingRecord != null) {
-            throw new HrBusinessException("该日期已有打卡记录，无需补卡");
-        }
-        
-        // 3. 获取排班信息
-        SchedulePlan schedulePlan = getSchedulePlan(dto.getEmployeeId(), dto.getAttendanceDate());
-        if (schedulePlan == null) {
-            throw new HrBusinessException("该日期没有排班，无法补卡");
-        }
-        
-        // 4. 创建补卡记录（状态为MISSING，等待审批）
-        AttendanceRecord record = new AttendanceRecord();
-        record.setTenantId(employee.getTenantId());
-        record.setEmployeeId(dto.getEmployeeId());
-        record.setAttendanceDate(dto.getAttendanceDate());
-        record.setShiftId(schedulePlan.getShiftId());
-        record.setCheckType(dto.getCheckType());
-        record.setCheckTime(dto.getCheckTime());
-        record.setCheckMethod("SUPPLEMENT");
-        record.setStatus("MISSING");
-        record.setRemark(dto.getReason());
-        
-        attendanceRecordMapper.insert(record);
-        
-        log.info("补卡申请创建成功，recordId: {}", record.getId());
-        
-        return record.getId();
     }
-    
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void submitSupplementApplication(Long id) {
-        log.info("提交补卡申请，recordId: {}", id);
-        
-        // 1. 查询补卡记录
+
+    private AttendanceRecord getSupplementRecord(Long id) {
+        Long tenantId = SecurityUtils.getTenantId();
         AttendanceRecord record = attendanceRecordMapper.selectById(id);
-        if (record == null) {
-            throw new HrBusinessException("补卡记录不存在");
+        if (record == null || !tenantId.equals(record.getTenantId()) || !CHECK_METHOD_SUPPLEMENT.equals(record.getCheckMethod())) {
+            throw new HrBusinessException("补卡申请不存在");
         }
-        
-        if (!"MISSING".equals(record.getStatus())) {
-            throw new HrBusinessException("该补卡申请状态不正确，无法提交");
-        }
-        
-        // 2. 调用工作流服务启动审批流程
-        ProcessStartDTO processStartDTO = new ProcessStartDTO();
-        processStartDTO.setTenantId(record.getTenantId());
-        processStartDTO.setProcessDefinitionKey(workflowProcessKeyProperties.getAttendanceSupplement());
-        processStartDTO.setBusinessType("ATTENDANCE_SUPPLEMENT");
-        processStartDTO.setBusinessId(id);
-        processStartDTO.setBusinessNo("ATTENDANCE-" + id);
-        processStartDTO.setProcessTitle("补卡申请-" + id);
-        processStartDTO.setStartUserId(SecurityUtils.getUserId());
-        processStartDTO.setProcessTitle("补卡申请");
-        
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("employeeId", record.getEmployeeId());
-        variables.put("attendanceDate", record.getAttendanceDate().toString());
-        variables.put("checkType", record.getCheckType());
-        variables.put("reason", record.getRemark());
-        processStartDTO.setVariables(variables);
-        
-        try {
-            R<String> result = workflowServiceClient.startProcess(processStartDTO);
-            if (!result.isSuccess()) {
-                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
-            }
-
-            String processInstanceId = result.getData();
-            
-            // 3. 更新补卡记录的流程实例ID
-            record.setStatus("APPROVING");
-            record.setProcessInstanceId(processInstanceId);
-            attendanceRecordMapper.updateById(record);
-            
-            log.info("补卡审批流程启动成功，processInstanceId: {}", processInstanceId);
-        } catch (Exception e) {
-            log.error("启动补卡审批流程失败", e);
-            throw new HrBusinessException("启动审批流程失败: " + e.getMessage());
-        }
-    }
-    
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void approveSupplementApplication(Long id) {
-        log.info("审批通过补卡申请，recordId: {}", id);
-        
-        // 1. 查询补卡记录
-        AttendanceRecord record = attendanceRecordMapper.selectById(id);
-        if (record == null) {
-            throw new HrBusinessException("补卡记录不存在");
-        }
-        
-        // 2. 更新补卡记录状态为SUPPLEMENT
-        if (!"APPROVING".equals(record.getStatus())) {
-            throw new HrBusinessException("只有审批中的补卡申请才能通过");
-        }
-
-        record.setStatus("SUPPLEMENT");
-        attendanceRecordMapper.updateById(record);
-        
-        log.info("补卡申请审批通过，recordId: {}", id);
-    }
-    
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void rejectSupplementApplication(Long id) {
-        log.info("审批拒绝补卡申请，recordId: {}", id);
-
-        AttendanceRecord record = attendanceRecordMapper.selectById(id);
-        if (record == null) {
-            throw new HrBusinessException("补卡记录不存在");
-        }
-        if (!"APPROVING".equals(record.getStatus())) {
-            throw new HrBusinessException("只有审批中的补卡申请才能拒绝");
-        }
-
-        record.setStatus("REJECTED");
-        attendanceRecordMapper.updateById(record);
-
-        log.info("补卡申请审批拒绝完成，recordId: {}", id);
+        return record;
     }
 
-    @Override
-    public List<AttendanceRecordVO> listAttendanceRecords(AttendanceRecordQueryDTO query) {
-        log.info("查询打卡记录列表，query: {}", query);
-        
-        // 构建查询条件
+    private void validateEditableSupplement(AttendanceRecord record) {
+        if (STATUS_MISSING.equals(record.getStatus()) || STATUS_REJECTED.equals(record.getStatus())) {
+            return;
+        }
+        throw new HrBusinessException("只有草稿或已驳回的补卡申请才允许编辑或删除");
+    }
+
+    private LambdaQueryWrapper<AttendanceRecord> buildAttendanceQuery(AttendanceRecordQueryDTO query, Long tenantId) {
         LambdaQueryWrapper<AttendanceRecord> wrapper = new LambdaQueryWrapper<>();
-        
+        wrapper.eq(AttendanceRecord::getTenantId, tenantId);
+
+        if (query.getDeptId() != null) {
+            LambdaQueryWrapper<Employee> employeeWrapper = new LambdaQueryWrapper<>();
+            employeeWrapper.eq(Employee::getTenantId, tenantId)
+                    .eq(Employee::getDeptId, query.getDeptId());
+            List<Long> employeeIds = employeeMapper.selectList(employeeWrapper).stream()
+                    .map(Employee::getId)
+                    .collect(Collectors.toList());
+            if (employeeIds.isEmpty()) {
+                wrapper.in(AttendanceRecord::getEmployeeId, Collections.singletonList(-1L));
+            } else {
+                wrapper.in(AttendanceRecord::getEmployeeId, employeeIds);
+            }
+        }
+
         if (query.getEmployeeId() != null) {
             wrapper.eq(AttendanceRecord::getEmployeeId, query.getEmployeeId());
         }
-        
-        if (query.getStartDate() != null && query.getEndDate() != null) {
-            wrapper.between(AttendanceRecord::getAttendanceDate, query.getStartDate(), query.getEndDate());
+        if (query.getStartDate() != null) {
+            wrapper.ge(AttendanceRecord::getAttendanceDate, query.getStartDate());
         }
-        
-        if (query.getCheckType() != null && !query.getCheckType().isEmpty()) {
+        if (query.getEndDate() != null) {
+            wrapper.le(AttendanceRecord::getAttendanceDate, query.getEndDate());
+        }
+        if (query.getCheckType() != null && !query.getCheckType().trim().isEmpty()) {
             wrapper.eq(AttendanceRecord::getCheckType, query.getCheckType());
         }
-        
-        if (query.getStatus() != null && !query.getStatus().isEmpty()) {
+        if (query.getStatus() != null && !query.getStatus().trim().isEmpty()) {
             wrapper.eq(AttendanceRecord::getStatus, query.getStatus());
         }
-        
-        wrapper.orderByDesc(AttendanceRecord::getAttendanceDate, AttendanceRecord::getCheckTime);
-        
-        // 查询打卡记录
-        List<AttendanceRecord> records = attendanceRecordMapper.selectList(wrapper);
-        
-        // 转换为VO
-        List<AttendanceRecordVO> voList = new ArrayList<>();
-        for (AttendanceRecord record : records) {
-            AttendanceRecordVO vo = new AttendanceRecordVO();
-            BeanUtils.copyProperties(record, vo);
-            
-            // 查询员工信息
-            Employee employee = employeeMapper.selectById(record.getEmployeeId());
-            if (employee != null) {
-                vo.setEmployeeName(employee.getName());
-                vo.setEmployeeNo(employee.getEmployeeNo());
-            }
-            
-            // 查询班次信息
-            if (record.getShiftId() != null) {
-                Shift shift = shiftMapper.selectById(record.getShiftId());
-                if (shift != null) {
-                    vo.setShiftName(shift.getShiftName());
-                }
-            }
-            
-            voList.add(vo);
-        }
-        
-        return voList;
+        return wrapper;
     }
-    
-    @Override
-    public AttendanceDailyVO getDailyAttendance(Long employeeId, LocalDate date) {
-        log.info("获取每日考勤，employeeId: {}, date: {}", employeeId, date);
-        
-        // 1. 查询员工信息
-        Employee employee = employeeMapper.selectById(employeeId);
-        if (employee == null) {
-            throw new HrBusinessException("员工不存在");
+
+    private AttendanceRecordVO toAttendanceRecordVO(AttendanceRecord record) {
+        AttendanceRecordVO vo = new AttendanceRecordVO();
+        BeanUtils.copyProperties(record, vo);
+
+        Employee employee = employeeMapper.selectById(record.getEmployeeId());
+        if (employee != null) {
+            vo.setEmployeeName(employee.getName());
+            vo.setEmployeeNo(employee.getEmployeeNo());
         }
-        
-        // 2. 查询当天的所有打卡记录
-        List<AttendanceRecord> records = attendanceRecordMapper.selectByEmployeeAndDateAll(employeeId, date);
-        
-        // 3. 查询排班信息
-        SchedulePlan schedulePlan = getSchedulePlan(employeeId, date);
-        
-        // 4. 构建VO
-        AttendanceDailyVO vo = new AttendanceDailyVO();
-        vo.setEmployeeId(employeeId);
-        vo.setEmployeeName(employee.getName());
-        vo.setAttendanceDate(date);
-        
-        if (schedulePlan != null) {
-            vo.setShiftId(schedulePlan.getShiftId());
-            
-            Shift shift = shiftMapper.selectById(schedulePlan.getShiftId());
+
+        if (record.getShiftId() != null) {
+            Shift shift = shiftMapper.selectById(record.getShiftId());
             if (shift != null) {
                 vo.setShiftName(shift.getShiftName());
             }
         }
-        
-        // 5. 分离上班和下班打卡记录
-        AttendanceRecordVO checkInVO = null;
-        AttendanceRecordVO checkOutVO = null;
-        
-        for (AttendanceRecord record : records) {
-            AttendanceRecordVO recordVO = new AttendanceRecordVO();
-            BeanUtils.copyProperties(record, recordVO);
-            recordVO.setEmployeeName(employee.getName());
-            recordVO.setEmployeeNo(employee.getEmployeeNo());
-            
-            if ("CHECK_IN".equals(record.getCheckType())) {
-                checkInVO = recordVO;
-            } else if ("CHECK_OUT".equals(record.getCheckType())) {
-                checkOutVO = recordVO;
-            }
-        }
-        
-        vo.setCheckInRecord(checkInVO);
-        vo.setCheckOutRecord(checkOutVO);
-        
-        // 6. 计算考勤状态和工作时长
-        calculateAttendanceStatus(vo, checkInVO, checkOutVO);
-        
         return vo;
     }
-    
-    /**
-     * 计算考勤状态和工作时长
-     * 
-     * @param vo 每日考勤VO
-     * @param checkInVO 上班打卡记录
-     * @param checkOutVO 下班打卡记录
-     */
-    private void calculateAttendanceStatus(AttendanceDailyVO vo, 
-                                          AttendanceRecordVO checkInVO, 
-                                          AttendanceRecordVO checkOutVO) {
-        // 判断考勤状态
+
+    private void calculateAttendanceStatus(AttendanceDailyVO vo,
+                                           AttendanceRecordVO checkInVO,
+                                           AttendanceRecordVO checkOutVO) {
         if (checkInVO == null && checkOutVO == null) {
-            vo.setAttendanceStatus("ABSENT"); // 旷工
-        } else if (checkInVO == null || checkOutVO == null) {
-            vo.setAttendanceStatus("MISSING"); // 缺卡
-        } else if ("LATE".equals(checkInVO.getStatus()) && "EARLY".equals(checkOutVO.getStatus())) {
-            vo.setAttendanceStatus("LATE"); // 迟到早退，标记为迟到
-        } else if ("LATE".equals(checkInVO.getStatus())) {
-            vo.setAttendanceStatus("LATE"); // 迟到
-        } else if ("EARLY".equals(checkOutVO.getStatus())) {
-            vo.setAttendanceStatus("EARLY"); // 早退
-        } else {
-            vo.setAttendanceStatus("NORMAL"); // 正常
+            vo.setAttendanceStatus("ABSENT");
+            return;
         }
-        
-        // 计算工作时长
-        if (checkInVO != null && checkOutVO != null) {
+
+        if (checkInVO == null || checkOutVO == null) {
+            vo.setAttendanceStatus(STATUS_MISSING);
+        } else if (STATUS_LATE.equals(checkInVO.getStatus())) {
+            vo.setAttendanceStatus(STATUS_LATE);
+        } else if (STATUS_EARLY.equals(checkOutVO.getStatus())) {
+            vo.setAttendanceStatus(STATUS_EARLY);
+        } else {
+            vo.setAttendanceStatus(STATUS_NORMAL);
+        }
+
+        if (checkInVO != null && checkOutVO != null
+                && checkInVO.getCheckTime() != null && checkOutVO.getCheckTime() != null) {
             Duration duration = Duration.between(checkInVO.getCheckTime(), checkOutVO.getCheckTime());
-            vo.setWorkMinutes((int) duration.toMinutes());
+            vo.setWorkMinutes((int) Math.max(duration.toMinutes(), 0));
         }
     }
 }

@@ -1,8 +1,8 @@
 -- =========================================================
--- CloudFlow Pro - 宸ヤ綔娴佸紩鎿庢牳蹇冩ā鍧楁暟鎹簱鑴氭湰
--- 妯″潡锛氭祦绋嬪畾涔夈€佹祦绋嬪疄渚嬨€佷换鍔＄鐞嗐€佽〃鍗曞畾涔夈€侀€氱煡
--- 鐗堟湰锛歷1.1
--- 鍒涘缓鏃ユ湡锛?026-02-09
+-- CloudFlow Pro - 工作流引擎核心模块数据库脚本
+-- 模块：流程定义、流程实例、任务管理、表单定义、通知
+-- 版本：v1.1
+-- 创建日期：2026-02-09
 -- =========================================================
 
 SET NAMES utf8mb4;
@@ -543,146 +543,146 @@ CREATE TABLE wf_process_copy (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='wf_process_copy';
 
 -- =========================================================
--- 鍒濆鍖栨暟鎹?- 娴佺▼鍒嗙被銆佽〃鍗曘€佹祦绋嬪畾涔変笌绀轰緥鏁版嵁
+-- 初始化数据 - 流程分类、表单、流程定义与示例数据
 -- =========================================================
 INSERT INTO `wf_process_category` (`category_id`, `parent_id`, `category_name`, `category_code`, `icon`, `sort_order`, `status`) VALUES
-(1, 0, 'OA鍔炲叕',       'oa',            'Briefcase',    1, '0'),
-(2, 0, '浜轰簨绠＄悊',     'hr',            'Users',        2, '0'),
-(3, 0, '璐㈠姟绠＄悊',     'finance',       'DollarSign',   3, '0'),
-(4, 0, '琛屾斂绠＄悊',     'admin',         'Building',     4, '0'),
-(5, 0, '椤圭洰绠＄悊',     'project',       'FolderKanban', 5, '0'),
-(10, 1, '璇峰亣绠＄悊',    'oa_leave',      'Calendar',     1, '0'),
-(11, 1, '鍔犵彮绠＄悊',    'oa_overtime',   'Clock',        2, '0'),
-(12, 1, '鍑哄樊绠＄悊',    'oa_trip',       'Plane',        3, '0'),
-(13, 1, '鑰冨嫟绠＄悊',    'oa_attendance', 'UserCheck',    4, '0'),
-(14, 1, '璁垮绠＄悊',    'oa_visitor',    'UserPlus',     5, '0'),
-(20, 3, '鎶ラ攢绠＄悊',    'fin_expense',   'Receipt',      1, '0'),
-(21, 3, '浠樻绠＄悊',    'fin_payment',   'CreditCard',   2, '0'),
-(22, 3, '棰勭畻绠＄悊',    'fin_budget',    'PieChart',     3, '0'),
-(30, 4, '杞﹁締绠＄悊',    'adm_vehicle',   'Car',          1, '0'),
-(31, 4, '浼氳绠＄悊',    'adm_meeting',   'Video',        2, '0'),
-(32, 4, '閫氱煡绠＄悊',    'adm_notice',    'Bell',         3, '0');
+(1, 0, 'OA办公',       'oa',            'Briefcase',    1, '0'),
+(2, 0, '人事管理',     'hr',            'Users',        2, '0'),
+(3, 0, '财务管理',     'finance',       'DollarSign',   3, '0'),
+(4, 0, '行政管理',     'admin',         'Building',     4, '0'),
+(5, 0, '项目管理',     'project',       'FolderKanban', 5, '0'),
+(10, 1, '请假管理',    'oa_leave',      'Calendar',     1, '0'),
+(11, 1, '加班管理',    'oa_overtime',   'Clock',        2, '0'),
+(12, 1, '出差管理',    'oa_trip',       'Plane',        3, '0'),
+(13, 1, '考勤管理',    'oa_attendance', 'UserCheck',    4, '0'),
+(14, 1, '访客管理',    'oa_visitor',    'UserPlus',     5, '0'),
+(20, 3, '报销管理',    'fin_expense',   'Receipt',      1, '0'),
+(21, 3, '付款管理',    'fin_payment',   'CreditCard',   2, '0'),
+(22, 3, '预算管理',    'fin_budget',    'PieChart',     3, '0'),
+(30, 4, '车辆管理',    'adm_vehicle',   'Car',          1, '0'),
+(31, 4, '会议管理',    'adm_meeting',   'Video',        2, '0'),
+(32, 4, '通知管理',    'adm_notice',    'Bell',         3, '0');
 
--- 琛ㄥ崟瀹氫箟
+-- 表单定义
 INSERT INTO wf_form_definition (form_id, form_name, fields_json, create_time) VALUES
-('form_reimburse', '璐㈠姟鎶ラ攢琛ㄥ崟', '[{"id":"f1","type":"SELECT","label":"鎶ラ攢绫诲瀷","required":true,"options":["宸梾璐?,"鎷涘緟璐?,"鍔炲叕璐?,"鍥㈠缓璐?]},{"id":"f2","type":"NUMBER","label":"鎶ラ攢閲戦","required":true},{"id":"f3","type":"DATE","label":"鍙戠敓鏃ユ湡","required":true},{"id":"f4","type":"TEXTAREA","label":"璐圭敤鏄庣粏璇存槑","required":true}]', NOW()),
-('form_payment', '瀵瑰叕浠樻鐢宠琛ㄥ崟', '[{"id":"p1","type":"TEXT","label":"鏀舵鏂瑰悕绉?,"required":true},{"id":"p2","type":"TEXT","label":"閾惰璐﹀彿","required":true},{"id":"p3","type":"NUMBER","label":"浠樻閲戦","required":true},{"id":"p4","type":"TEXT","label":"鍚堝悓缂栧彿","required":false}]', NOW()),
-('form_leave', '璇峰亣鐢宠琛ㄥ崟', '[{"id":"l1","type":"SELECT","label":"璇峰亣绫诲瀷","required":true,"options":["骞村亣","浜嬪亣","鐥呭亣","濠氬亣","浜у亣"]},{"id":"l2","type":"DATE","label":"寮€濮嬫椂闂?,"required":true},{"id":"l3","type":"DATE","label":"缁撴潫鏃堕棿","required":true},{"id":"l4","type":"NUMBER","label":"鍏辫澶╂暟","required":true},{"id":"l5","type":"TEXTAREA","label":"璇峰亣浜嬬敱","required":true}]', NOW()),
-('form_contract', '鍚堝悓瀹℃壒琛ㄥ崟', '[{"id":"c1","type":"TEXT","label":"鍚堝悓鍚嶇О","required":true},{"id":"c2","type":"TEXT","label":"瀵规柟鍗曚綅","required":true},{"id":"c3","type":"NUMBER","label":"鍚堝悓閲戦","required":true},{"id":"c4","type":"SELECT","label":"鍚堝悓绫诲瀷","required":true,"options":["閲囪喘鍚堝悓","閿€鍞悎鍚?,"鏈嶅姟鍗忚"]},{"id":"c5","type":"TEXTAREA","label":"涓昏鏉℃鎽樿","required":true}]', NOW()),
-('form_recruit', '鎷涜仒鐢宠琛ㄥ崟', '[{"id":"r1","type":"TEXT","label":"鎷涜仒宀椾綅","required":true},{"id":"r2","type":"NUMBER","label":"鎷涜仒浜烘暟","required":true},{"id":"r3","type":"SELECT","label":"鑱岀骇","required":true,"options":["P5","P6","P7","P8"]},{"id":"r4","type":"TEXTAREA","label":"宀椾綅鑱岃矗","required":true},{"id":"r5","type":"NUMBER","label":"棰勭畻钖祫锛堝崈鍏冿級","required":true}]', NOW());
+('form_reimburse', '财务报销表单', '[{"id":"f1","type":"SELECT","label":"报销类型","required":true,"options":["差旅费","招待费","办公费","团建费"]},{"id":"f2","type":"NUMBER","label":"报销金额","required":true},{"id":"f3","type":"DATE","label":"发生日期","required":true},{"id":"f4","type":"TEXTAREA","label":"费用明细说明","required":true}]', NOW()),
+('form_payment', '对公付款申请表单', '[{"id":"p1","type":"TEXT","label":"收款方名称","required":true},{"id":"p2","type":"TEXT","label":"银行账号","required":true},{"id":"p3","type":"NUMBER","label":"付款金额","required":true},{"id":"p4","type":"TEXT","label":"合同编号","required":false}]', NOW()),
+('form_leave', '请假申请表单', '[{"id":"l1","type":"SELECT","label":"请假类型","required":true,"options":["年假","事假","病假","婚假","产假"]},{"id":"l2","type":"DATE","label":"开始时间","required":true},{"id":"l3","type":"DATE","label":"结束时间","required":true},{"id":"l4","type":"NUMBER","label":"共计天数","required":true},{"id":"l5","type":"TEXTAREA","label":"请假事由","required":true}]', NOW()),
+('form_contract', '合同审批表单', '[{"id":"c1","type":"TEXT","label":"合同名称","required":true},{"id":"c2","type":"TEXT","label":"对方单位","required":true},{"id":"c3","type":"NUMBER","label":"合同金额","required":true},{"id":"c4","type":"SELECT","label":"合同类型","required":true,"options":["采购合同","销售合同","服务协议"]},{"id":"c5","type":"TEXTAREA","label":"主要条款摘要","required":true}]', NOW()),
+('form_recruit', '招聘申请表单', '[{"id":"r1","type":"TEXT","label":"招聘岗位","required":true},{"id":"r2","type":"NUMBER","label":"招聘人数","required":true},{"id":"r3","type":"SELECT","label":"职级","required":true,"options":["P5","P6","P7","P8"]},{"id":"r4","type":"TEXTAREA","label":"岗位职责","required":true},{"id":"r5","type":"NUMBER","label":"预算薪资（千元）","required":true}]', NOW());
 
--- 鏍稿績娴佺▼瀹氫箟锛坣odes + edges锛?
+-- 核心流程定义（nodes + edges）
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
-('wf_reimburse', '璐㈠姟鎶ラ攢娴佺▼', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鎶ラ攢"},{"id":"n1","type":"APPROVAL","title":"鐩村睘涓婄骇瀹℃壒","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw1","type":"CONDITION","title":"閲戦鏍￠獙"},{"id":"b1","type":"APPROVAL","title":"璐㈠姟涓荤瀹℃壒","approverType":"ROLE","approverValue":"finance","condition":"amount < 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"娴佺▼缁撴潫"},{"id":"b2","type":"APPROVAL","title":"璐㈠姟鎬荤洃瀹℃壒","approverType":"ROLE","approverValue":"finance","condition":"amount >= 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
-
-INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
-('wf_leave', '鍛樺伐璇峰亣娴佺▼', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦璇峰亣"},{"id":"n1","type":"APPROVAL","title":"閮ㄩ棬缁忕悊瀹℃壒","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw_leave","type":"CONDITION","title":"澶╂暟鏍￠獙"},{"id":"b1","type":"APPROVAL","title":"HR澶囨","approverType":"ROLE","approverValue":"hr","condition":"days <= 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"娴佺▼缁撴潫"},{"id":"b2","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","condition":"days > 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw_leave","source":"n1","target":"gw_leave"},{"id":"gw_leave->b1","source":"gw_leave","target":"b1"},{"id":"gw_leave->b2","source":"gw_leave","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
+('wf_reimburse', '财务报销流程', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"流程结束"},{"id":"b2","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount >= 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
-('wf_contract', '鍚堝悓瀹℃壒娴佺▼', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"nodes":[{"id":"root","type":"START","title":"鍙戣捣鍚堝悓"},{"id":"n1","type":"APPROVAL","title":"娉曞姟涓庤储鍔′細绛?,"signType":"ALL","approverType":"USERS","approverValue":"3,6","props":{"buttons":["APPROVE","REJECT"]}},{"id":"n2","type":"APPROVAL","title":"鎬荤粡鐞嗙鍙?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+('wf_leave', '员工请假流程', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"nodes":[{"id":"root","type":"START","title":"提交请假"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw_leave","type":"CONDITION","title":"天数校验"},{"id":"b1","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr","condition":"days <= 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"流程结束"},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"days > 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw_leave","source":"n1","target":"gw_leave"},{"id":"gw_leave->b1","source":"gw_leave","target":"b1"},{"id":"gw_leave->b2","source":"gw_leave","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
-('wf_recruit', '鎷涜仒鐢宠娴佺▼', 'biz_recruit', 1, 'PUBLISHED', 1, 'form_recruit', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鎷涜仒闇€姹?},{"id":"n1","type":"APPROVAL","title":"閮ㄩ棬鎬荤洃瀹℃壒","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"n2","type":"APPROVAL","title":"HR瀹℃牳","approverType":"ROLE","approverValue":"hr","props":{"buttons":["APPROVE","REJECT","DELEGATE"]}},{"id":"n3","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}', NOW());
+('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"nodes":[{"id":"root","type":"START","title":"发起合同"},{"id":"n1","type":"APPROVAL","title":"法务与财务会签","signType":"ALL","approverType":"USERS","approverValue":"3,6","props":{"buttons":["APPROVE","REJECT"]}},{"id":"n2","type":"APPROVAL","title":"总经理签发","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
-('wf_payment', '瀵瑰叕浠樻娴佺▼', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦浠樻鐢宠"},{"id":"n1","type":"APPROVAL","title":"璐㈠姟涓荤瀹℃壒","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","RETURN","DELEGATE"]}},{"id":"gw1","type":"CONDITION","title":"閲戦鏍￠獙"},{"id":"b1","type":"APPROVAL","title":"璐㈠姟鎬荤洃瀹℃壒","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"娴佺▼缁撴潫"},{"id":"b2","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
+('wf_recruit', '招聘申请流程', 'biz_recruit', 1, 'PUBLISHED', 1, 'form_recruit', '{"nodes":[{"id":"root","type":"START","title":"提交招聘需求"},{"id":"n1","type":"APPROVAL","title":"部门总监审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"n2","type":"APPROVAL","title":"HR审核","approverType":"ROLE","approverValue":"hr","props":{"buttons":["APPROVE","REJECT","DELEGATE"]}},{"id":"n3","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}', NOW());
 
--- 閫氱敤 OA 娴佺▼瀹氫箟
-INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_attendance_appeal', '琛ュ崱/澶栧嫟瀹℃壒娴佺▼', 'attendance_appeal', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鐢宠"},{"id":"n1","type":"APPROVAL","title":"鐩村睘涓婄骇瀹℃壒","approverType":"DIRECT_LEADER"},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
+('wf_payment', '对公付款流程', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"nodes":[{"id":"root","type":"START","title":"提交付款申请"},{"id":"n1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","RETURN","DELEGATE"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"流程结束"},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
 
+-- 通用 OA 流程定义
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_overtime_request', '鍔犵彮瀹℃壒娴佺▼', 'overtime_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鍔犵彮鐢宠"},{"id":"n1","type":"APPROVAL","title":"鐩村睘涓婄骇瀹℃壒","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"HR澶囨","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
-
-INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_expense_claim', '鎶ラ攢瀹℃壒娴佺▼', 'expense_claim', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鎶ラ攢"},{"id":"n1","type":"APPROVAL","title":"鐩村睘涓婄骇瀹℃壒","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"璐㈠姟瀹℃牳","approverType":"ROLE","approverValue":"finance"},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+('wf_attendance_appeal', '补卡/外勤审批流程', 'attendance_appeal', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_leave_request', '璇峰亣瀹℃壒娴佺▼', 'leave_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦璇峰亣"},{"id":"n1","type":"APPROVAL","title":"閮ㄩ棬缁忕悊瀹℃壒","approverType":"DEPT_MANAGER"},{"id":"n2","type":"APPROVAL","title":"HR澶囨","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
-
--- HR 瀹℃壒娴佺▼瀹氫箟
-INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_offer_approval', 'Offer瀹℃壒娴佺▼', 'offer_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦Offer瀹℃壒"},{"id":"n1","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+('wf_overtime_request', '加班审批流程', 'overtime_request', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交加班申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_onboarding_approval', '鍏ヨ亴瀹℃壒娴佺▼', 'onboarding_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鍏ヨ亴鐢宠"},{"id":"n1","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+('wf_expense_claim', '报销审批流程', 'expense_claim', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"财务审核","approverType":"ROLE","approverValue":"finance"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_probation_confirmation_approval', '杞瀹℃壒娴佺▼', 'probation_confirmation_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦杞鐢宠"},{"id":"n1","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+('wf_leave_request', '请假审批流程', 'leave_request', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交请假"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER"},{"id":"n2","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+-- HR 审批流程定义
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_offer_approval', 'Offer审批流程', 'offer_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交Offer审批"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_resignation_approval', '绂昏亴瀹℃壒娴佺▼', 'resignation_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦绂昏亴鐢宠"},{"id":"n1","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+('wf_onboarding_approval', '入职审批流程', 'onboarding_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交入职申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_salary_adjustment_approval', '璋冭柂瀹℃壒娴佺▼', 'salary_adjustment_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦璋冭柂鐢宠"},{"id":"n1","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+('wf_probation_confirmation_approval', '转正审批流程', 'probation_confirmation_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交转正申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_transfer_approval', '璋冨矖瀹℃壒娴佺▼', 'transfer_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦璋冨矖鐢宠"},{"id":"n1","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+('wf_resignation_approval', '离职审批流程', 'resignation_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交离职申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_payment_request', '浠樻瀹℃壒娴佺▼', 'payment_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦浠樻鐢宠"},{"id":"n1","type":"APPROVAL","title":"璐㈠姟涓荤瀹℃壒","approverType":"ROLE","approverValue":"finance"},{"id":"gw1","type":"CONDITION","title":"閲戦鏍￠獙"},{"id":"b1","type":"APPROVAL","title":"璐㈠姟鎬荤洃瀹℃壒","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000"},{"id":"end_b1","type":"END","title":"娴佺▼缁撴潫"},{"id":"b2","type":"APPROVAL","title":"鎬荤粡鐞嗗鎵?,"approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end_b2","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
+('wf_salary_adjustment_approval', '调薪审批流程', 'salary_adjustment_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交调薪申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_business_trip', '鍑哄樊瀹℃壒娴佺▼', 'business_trip', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鍑哄樊鐢宠"},{"id":"n1","type":"APPROVAL","title":"閮ㄩ棬缁忕悊瀹℃壒","approverType":"DEPT_MANAGER"},{"id":"n2","type":"APPROVAL","title":"HR澶囨","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+('wf_transfer_approval', '调岗审批流程', 'transfer_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交调岗申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_vehicle_approval', '鐢ㄨ溅瀹℃壒娴佺▼', 'vehicle_approval', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"鎻愪氦鐢ㄨ溅鐢宠"},{"id":"n1","type":"APPROVAL","title":"鐩村睘涓婄骇瀹℃壒","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"琛屾斂纭娲捐溅","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"娴佺▼缁撴潫"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+('wf_payment_request', '付款审批流程', 'payment_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交付款申请"},{"id":"n1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance"},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000"},{"id":"end_b1","type":"END","title":"流程结束"},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_business_trip', '出差审批流程', 'business_trip', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交出差申请"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER"},{"id":"n2","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+INSERT INTO wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_vehicle_approval', '用车审批流程', 'vehicle_approval', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交用车申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政确认派车","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 娴嬭瘯鏁版嵁
--- 鐢ㄤ簬寮€鍙戝拰娴嬭瘯鐜
--- 鎻掑叆娴嬭瘯娴佺▼瀹炰緥
+-- 测试数据
+-- 用于开发和测试环境
+-- 插入测试流程实例
 INSERT INTO wf_process_instance (
   instance_id, tenant_id, process_def_key, definition_id, business_key,
   title, start_user_id, start_user_name, status, start_time, end_time, variables, priority
 ) VALUES
-('test_inst_001', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_001', '寮犱笁鐨勫樊鏃呰垂鎶ラ攢', 5, '寮犱笁', 'RUNNING', DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL, '{"f1":"宸梾璐?,"f2":1500,"f3":"2026-02-08","f4":"鍖椾含瀹㈡埛鎷滆宸梾鎶ラ攢"}', 'NORMAL'),
-('test_inst_002', 100000, 'biz_leave', 'wf_leave', 'BIZ_002', '寮犱笁鐨勫勾鍋囩敵璇?, 5, '寮犱笁', 'RUNNING', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, '{"l1":"骞村亣","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"鏄ヨ妭杩斾埂鎺翰"}', 'URGENT'),
-('test_inst_003', 100000, 'biz_contract', 'wf_contract', 'BIZ_003', 'XX绉戞妧閲囪喘鍚堝悓瀹℃壒', 2, '鏉庣粡鐞?, 'RUNNING', DATE_SUB(NOW(), INTERVAL 12 HOUR), NULL, '{"c1":"XX绉戞妧鍔炲叕璁惧閲囪喘鍚堝悓","c2":"XX绉戞妧鏈夐檺鍏徃","c3":50000,"c4":"閲囪喘鍚堝悓","c5":"閲囪喘鍔炲叕鐢佃剳鍙婄浉鍏宠澶?}', 'HIGH'),
-('test_inst_004', 100000, 'biz_payment', 'wf_payment', 'BIZ_004', '鍚堝悓浠樻鐢宠', 3, '鐜嬭储鍔?, 'RUNNING', DATE_SUB(NOW(), INTERVAL 10 HOUR), NULL, '{"p1":"鏉窞浜戝惎绉戞妧鏈夐檺鍏徃","p2":"6217000012345678901","p3":30000,"p4":"HT-2026-001"}', 'NORMAL'),
-('test_inst_005', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_005', '鏉庣粡鐞嗙殑瀹㈡埛鎷涘緟璐规姤閿€', 2, '鏉庣粡鐞?, 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), '{"f1":"鎷涘緟璐?,"f2":2500,"f3":"2026-02-09","f4":"瀹㈡埛鍟嗗姟瀹磋"}', 'URGENT'),
-('test_inst_006', 100000, 'biz_leave', 'wf_leave', 'BIZ_006', '璧礖R鐨勭梾鍋囩敵璇?, 4, '璧礖R', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '{"l1":"鐥呭亣","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"鎰熷啋鍙戠儳闇€瑕佷紤鎭?}', 'NORMAL'),
-('test_inst_007', 100000, 'biz_recruit', 'wf_recruit', 'BIZ_007', '楂樼骇Java寮€鍙戝伐绋嬪笀鎷涜仒鐢宠', 4, '璧礖R', 'RUNNING', DATE_SUB(NOW(), INTERVAL 8 HOUR), NULL, '{"r1":"楂樼骇Java寮€鍙戝伐绋嬪笀","r2":2,"r3":"P7","r4":"璐熻矗鏍稿績涓氬姟绯荤粺寮€鍙?,"r5":35}', 'HIGH');
+('test_inst_001', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_001', '张三的差旅费报销', 5, '张三', 'RUNNING', DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL, '{"f1":"差旅费","f2":1500,"f3":"2026-02-08","f4":"北京客户拜访差旅报销"}', 'NORMAL'),
+('test_inst_002', 100000, 'biz_leave', 'wf_leave', 'BIZ_002', '张三的年假申请', 5, '张三', 'RUNNING', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, '{"l1":"年假","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"春节返乡探亲"}', 'URGENT'),
+('test_inst_003', 100000, 'biz_contract', 'wf_contract', 'BIZ_003', 'XX科技采购合同审批', 2, '李经理', 'RUNNING', DATE_SUB(NOW(), INTERVAL 12 HOUR), NULL, '{"c1":"XX科技办公设备采购合同","c2":"XX科技有限公司","c3":50000,"c4":"采购合同","c5":"采购办公电脑及相关设备"}', 'HIGH'),
+('test_inst_004', 100000, 'biz_payment', 'wf_payment', 'BIZ_004', '合同付款申请', 3, '王财务', 'RUNNING', DATE_SUB(NOW(), INTERVAL 10 HOUR), NULL, '{"p1":"杭州云启科技有限公司","p2":"6217000012345678901","p3":30000,"p4":"HT-2026-001"}', 'NORMAL'),
+('test_inst_005', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_005', '李经理的客户招待费报销', 2, '李经理', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), '{"f1":"招待费","f2":2500,"f3":"2026-02-09","f4":"客户商务宴请"}', 'URGENT'),
+('test_inst_006', 100000, 'biz_leave', 'wf_leave', 'BIZ_006', '赵HR的病假申请', 4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '{"l1":"病假","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"感冒发烧需要休息"}', 'NORMAL'),
+('test_inst_007', 100000, 'biz_recruit', 'wf_recruit', 'BIZ_007', '高级Java开发工程师招聘申请', 4, '赵HR', 'RUNNING', DATE_SUB(NOW(), INTERVAL 8 HOUR), NULL, '{"r1":"高级Java开发工程师","r2":2,"r3":"P7","r4":"负责核心业务系统开发","r5":35}', 'HIGH');
 
--- 鎻掑叆寰呭姙浠诲姟
+-- 插入待办任务
 INSERT INTO wf_task (
   task_id, tenant_id, instance_id, node_key, node_name,
   assignee, assignee_name, status, priority, create_time, due_time
 ) VALUES
-('test_task_001', 100000, 'test_inst_001', 'n1', '鐩村睘涓婄骇瀹℃壒', 2, '鏉庣粡鐞?, 'TODO', 'NORMAL', DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY)),
-('test_task_002', 100000, 'test_inst_002', 'n1', '閮ㄩ棬缁忕悊瀹℃壒', 2, '鏉庣粡鐞?, 'TODO', 'URGENT', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY)),
-('test_task_003', 100000, 'test_inst_003', 'n1', '娉曞姟涓庤储鍔′細绛?, 6, '鍒樻硶鍔?, 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_ADD(NOW(), INTERVAL 3 DAY)),
-('test_task_004', 100000, 'test_inst_003', 'n1', '娉曞姟涓庤储鍔′細绛?, 3, '鐜嬭储鍔?, 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_ADD(NOW(), INTERVAL 3 DAY)),
-('test_task_005', 100000, 'test_inst_004', 'n1', '璐㈠姟涓荤瀹℃壒', 3, '鐜嬭储鍔?, 'TODO', 'NORMAL', DATE_SUB(NOW(), INTERVAL 10 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY)),
-('test_task_006', 100000, 'test_inst_007', 'n2', 'HR瀹℃牳', 4, '璧礖R', 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 8 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY));
+('test_task_001', 100000, 'test_inst_001', 'n1', '直属上级审批', 2, '李经理', 'TODO', 'NORMAL', DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY)),
+('test_task_002', 100000, 'test_inst_002', 'n1', '部门经理审批', 2, '李经理', 'TODO', 'URGENT', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY)),
+('test_task_003', 100000, 'test_inst_003', 'n1', '法务与财务会签', 6, '刘法务', 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_ADD(NOW(), INTERVAL 3 DAY)),
+('test_task_004', 100000, 'test_inst_003', 'n1', '法务与财务会签', 3, '王财务', 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_ADD(NOW(), INTERVAL 3 DAY)),
+('test_task_005', 100000, 'test_inst_004', 'n1', '财务主管审批', 3, '王财务', 'TODO', 'NORMAL', DATE_SUB(NOW(), INTERVAL 10 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY)),
+('test_task_006', 100000, 'test_inst_007', 'n2', 'HR审核', 4, '赵HR', 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 8 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY));
 
--- 鎻掑叆浼氱浠诲姟璁板綍
+-- 插入会签任务记录
 INSERT INTO wf_countersign_task (
   countersign_id, tenant_id, instance_id, node_key, node_name,
   sign_type, total_count, voted_count, approve_count, reject_count, status, create_time
 ) VALUES
-('cs_inst_003', 100000, 'test_inst_003', 'n1', '娉曞姟涓庤储鍔′細绛?, 'ALL', 2, 0, 0, 0, 'VOTING', DATE_SUB(NOW(), INTERVAL 12 HOUR));
+('cs_inst_003', 100000, 'test_inst_003', 'n1', '法务与财务会签', 'ALL', 2, 0, 0, 0, 'VOTING', DATE_SUB(NOW(), INTERVAL 12 HOUR));
 
--- 鎻掑叆浠诲姟鍘嗗彶璁板綍
+-- 插入任务历史记录
 INSERT INTO wf_task_history (
   history_id, tenant_id, task_id, instance_id, node_name, node_key,
   operator_id, operator_name, action, comment, duration_seconds, create_time
 ) VALUES
-('test_hist_001', 100000, 'test_task_done_001', 'test_inst_005', '鐩村睘涓婄骇瀹℃壒', 'n1', 2, '鏉庣粡鐞?, 'APPROVE', '鍚屾剰鎶ラ攢', 300, DATE_SUB(NOW(), INTERVAL 3 DAY)),
-('test_hist_002', 100000, 'test_task_done_002', 'test_inst_005', '璐㈠姟涓荤瀹℃壒', 'b1', 3, '鐜嬭储鍔?, 'APPROVE', '璐㈠姟宸插鏍?, 600, DATE_SUB(NOW(), INTERVAL 2 DAY)),
-('test_hist_003', 100000, 'test_task_done_003', 'test_inst_006', '閮ㄩ棬缁忕悊瀹℃壒', 'n1', 2, '鏉庣粡鐞?, 'APPROVE', '鍚屾剰璇峰亣', 180, DATE_SUB(NOW(), INTERVAL 5 DAY)),
-('test_hist_004', 100000, 'test_task_done_004', 'test_inst_006', 'HR澶囨', 'b1', 4, '璧礖R', 'APPROVE', '宸插妗?, 120, DATE_SUB(NOW(), INTERVAL 4 DAY));
+('test_hist_001', 100000, 'test_task_done_001', 'test_inst_005', '直属上级审批', 'n1', 2, '李经理', 'APPROVE', '同意报销', 300, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+('test_hist_002', 100000, 'test_task_done_002', 'test_inst_005', '财务主管审批', 'b1', 3, '王财务', 'APPROVE', '财务已审核', 600, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+('test_hist_003', 100000, 'test_task_done_003', 'test_inst_006', '部门经理审批', 'n1', 2, '李经理', 'APPROVE', '同意请假', 180, DATE_SUB(NOW(), INTERVAL 5 DAY)),
+('test_hist_004', 100000, 'test_task_done_004', 'test_inst_006', 'HR备案', 'b1', 4, '赵HR', 'APPROVE', '已备案', 120, DATE_SUB(NOW(), INTERVAL 4 DAY));
 
--- 鎻掑叆娴佺▼鎶勯€佽褰?
+-- 插入流程抄送记录
 INSERT INTO wf_process_copy (
   tenant_id, instance_id, process_def_key, title, node_id, node_name,
   start_user_id, start_user_name, user_id, form_data, is_read, read_time, create_time
 ) VALUES
-(100000, 'test_inst_002', 'biz_leave', '寮犱笁鐨勫勾鍋囩敵璇?, 'n1', '閮ㄩ棬缁忕悊瀹℃壒', 5, '寮犱笁', 1, '{"l1":"骞村亣","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"鏄ヨ妭杩斾埂鎺翰"}', 0, NULL, DATE_SUB(NOW(), INTERVAL 20 HOUR)),
-(100000, 'test_inst_003', 'biz_contract', 'XX绉戞妧閲囪喘鍚堝悓瀹℃壒', 'n1', '娉曞姟涓庤储鍔′細绛?, 2, '鏉庣粡鐞?, 1, '{"c1":"XX绉戞妧鍔炲叕璁惧閲囪喘鍚堝悓","c2":"XX绉戞妧鏈夐檺鍏徃","c3":50000,"c4":"閲囪喘鍚堝悓","c5":"閲囪喘鍔炲叕鐢佃剳鍙婄浉鍏宠澶?}', 0, NULL, DATE_SUB(NOW(), INTERVAL 12 HOUR)),
-(100000, 'test_inst_004', 'biz_payment', '鍚堝悓浠樻鐢宠', 'n1', '璐㈠姟涓荤瀹℃壒', 3, '鐜嬭储鍔?, 1, '{"p1":"鏉窞浜戝惎绉戞妧鏈夐檺鍏徃","p2":"6217000012345678901","p3":30000,"p4":"HT-2026-001"}', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 10 HOUR)),
-(100000, 'test_inst_006', 'biz_leave', '璧礖R鐨勭梾鍋囩敵璇?, 'b1', 'HR澶囨', 4, '璧礖R', 1, '{"l1":"鐥呭亣","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"鎰熷啋鍙戠儳闇€瑕佷紤鎭?}', 1, DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY));
+(100000, 'test_inst_002', 'biz_leave', '张三的年假申请', 'n1', '部门经理审批', 5, '张三', 1, '{"l1":"年假","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"春节返乡探亲"}', 0, NULL, DATE_SUB(NOW(), INTERVAL 20 HOUR)),
+(100000, 'test_inst_003', 'biz_contract', 'XX科技采购合同审批', 'n1', '法务与财务会签', 2, '李经理', 1, '{"c1":"XX科技办公设备采购合同","c2":"XX科技有限公司","c3":50000,"c4":"采购合同","c5":"采购办公电脑及相关设备"}', 0, NULL, DATE_SUB(NOW(), INTERVAL 12 HOUR)),
+(100000, 'test_inst_004', 'biz_payment', '合同付款申请', 'n1', '财务主管审批', 3, '王财务', 1, '{"p1":"杭州云启科技有限公司","p2":"6217000012345678901","p3":30000,"p4":"HT-2026-001"}', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 10 HOUR)),
+(100000, 'test_inst_006', 'biz_leave', '赵HR的病假申请', 'b1', 'HR备案', 4, '赵HR', 1, '{"l1":"病假","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"感冒发烧需要休息"}', 1, DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY));
 DROP TABLE IF EXISTS wf_deploy_rollback_history;
 CREATE TABLE wf_deploy_rollback_history (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'id',
@@ -851,35 +851,37 @@ CREATE TABLE wf_audit_log (
 -- =========================================================
 --
 -- =========================================================
--- 缁熶竴鐨勭郴缁熸ā鏉垮垎绫伙紙骞冲彴绾э紝tenant_id 涓虹┖锛?INSERT INTO template_category (id, name, description, order_num, tenant_id) VALUES
-('cat-office', '琛屾斂鍔炲叕', '鏃ュ父琛屾斂銆侀€氱敤瀹℃壒涓庡姙鍏崗鍚屾祦绋嬫ā鏉?, 1, NULL),
-('cat-finance', '璐㈠姟', '璐圭敤銆佷粯娆俱€侀绠楃瓑璐㈠姟娴佺▼妯℃澘', 2, NULL),
-('cat-hr', '浜轰簨', '鍏ヨ浆璋冪銆佸煿璁垚闀跨瓑浜轰簨娴佺▼妯℃澘', 3, NULL),
-('cat-sales', '閿€鍞笟鍔?, '鎶ヤ环銆佹姌鎵ｃ€佸悎鍚岀瓑閿€鍞祦绋嬫ā鏉?, 4, NULL),
-('cat-it', 'IT杩愮淮', '鏉冮檺銆佸彂甯冦€佹晠闅滅瓑 IT 杩愮淮娴佺▼妯℃澘', 5, NULL),
-('cat-industry', '琛屼笟涓撳睘', '琛屼笟鍦烘櫙涓嬬殑涓撲笟娴佺▼妯℃澘', 6, NULL),
-('cat-other', '鍏朵粬', '椤圭洰銆佹竻鍗曠瓑閫氱敤琛ュ厖娴佺▼妯℃澘', 7, NULL);
+-- 统一的系统模板分类（平台级，tenant_id 为空）
+INSERT INTO template_category (id, name, description, order_num, tenant_id) VALUES
+('cat-office', '行政办公', '日常行政、通用审批与办公协同流程模板', 1, NULL),
+('cat-finance', '财务', '费用、付款、预算等财务流程模板', 2, NULL),
+('cat-hr', '人事', '入转调离、培训成长等人事流程模板', 3, NULL),
+('cat-sales', '销售业务', '报价、折扣、合同等销售流程模板', 4, NULL),
+('cat-it', 'IT运维', '权限、发布、故障等 IT 运维流程模板', 5, NULL),
+('cat-industry', '行业专属', '行业场景下的专业流程模板', 6, NULL),
+('cat-other', '其他', '项目、清单等通用补充流程模板', 7, NULL);
 
--- 缁熶竴鐨勭郴缁熸ā鏉垮簱锛堝钩鍙扮骇锛宼enant_id 涓虹┖锛?INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-leave-001', '璇峰亣瀹℃壒', '鍛樺伐鎻愪氦 鈫?閮ㄩ棬缁忕悊瀹℃壒 鈫?瀹屾垚', 'cat-office',
-'["璇峰亣","琛屾斂鍔炲叕","妯℃澘"]',
+-- 统一的系统模板库（平台级，tenant_id 为空）
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-leave-001', '请假审批', '员工提交 → 部门经理审批 → 完成', 'cat-hr',
+'["请假","行政办公","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦璇峰亣"
+      "title": "提交请假"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -898,40 +900,40 @@ CREATE TABLE wf_audit_log (
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-contract-001', '鍚堝悓瀹℃壒', '璧疯崏 鈫?娉曞姟瀹℃牳 鈫?鎬荤粡鐞嗙鍙?鈫?鐩栫珷褰掓。', 'cat-office',
-'["鍚堝悓","琛屾斂鍔炲叕","妯℃澘"]',
+('tpl-contract-001', '合同审批', '起草 → 法务审核 → 总经理签发 → 盖章归档', 'cat-office',
+'["合同","行政办公","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "璧疯崏鍚堝悓"
+      "title": "起草合同"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "娉曞姟瀹℃牳",
+      "title": "法务审核",
       "approverType": "USER",
       "approverValue": "6"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗙鍙?,
+      "title": "总经理签发",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "鐩栫珷褰掓。",
+      "title": "盖章归档",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -960,32 +962,32 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-seal-001', '鐢ㄥ嵃鐢宠', '鐢宠鐢ㄥ嵃 鈫?閮ㄩ棬瀹℃壒 鈫?琛屾斂鐩栫珷 鈫?瀹屾垚', 'cat-office',
-'["鐢ㄥ嵃","琛屾斂鍔炲叕","妯℃澘"]',
+('tpl-seal-001', '用印申请', '申请用印 → 部门审批 → 行政盖章 → 完成', 'cat-office',
+'["用印","行政办公","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鐢宠鐢ㄥ嵃"
+      "title": "申请用印"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "琛屾斂鐩栫珷",
+      "title": "行政盖章",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1009,32 +1011,32 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-travel-001', '鍑哄樊鐢宠', '鎻愪氦鍑哄樊 鈫?閮ㄩ棬瀹℃壒 鈫?鎬荤粡鐞嗗鎵?鈫?瀹屾垚', 'cat-office',
-'["鍑哄樊","琛屾斂鍔炲叕","妯℃澘"]',
+('tpl-travel-001', '出差申请', '提交出差 → 部门审批 → 总经理审批 → 完成', 'cat-office',
+'["出差","行政办公","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鍑哄樊鐢宠"
+      "title": "提交出差申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1058,33 +1060,33 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-vehicle-001', '鐢ㄨ溅鐢宠', '鐢宠鐢ㄨ溅 鈫?琛屾斂瀹℃壒 鈫?杞﹁締璋冨害 鈫?瀹屾垚', 'cat-office',
-'["鐢ㄨ溅","琛屾斂鍔炲叕","妯℃澘"]',
+('tpl-vehicle-001', '用车申请', '申请用车 → 行政审批 → 车辆调度 → 完成', 'cat-office',
+'["用车","行政办公","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鐢宠鐢ㄨ溅"
+      "title": "申请用车"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "琛屾斂瀹℃壒",
+      "title": "行政审批",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "杞﹁締璋冨害纭",
+      "title": "车辆调度确认",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1108,32 +1110,32 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-reimbursement-001', '鎶ラ攢瀹℃壒', '鎻愪氦鎶ラ攢 鈫?閮ㄩ棬缁忕悊 鈫?璐㈠姟瀹℃牳 鈫?瀹屾垚', 'cat-finance',
-'["鎶ラ攢","璐㈠姟","妯℃澘"]',
+('tpl-reimbursement-001', '报销审批', '提交报销 → 部门经理 → 财务审核 → 完成', 'cat-finance',
+'["报销","财务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鎶ラ攢"
+      "title": "提交报销"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "璐㈠姟瀹℃牳",
+      "title": "财务审核",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1157,44 +1159,44 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-purchase-001', '閲囪喘瀹℃壒', '鎻愪氦閲囪喘 鈫?閲戦鍒ゆ柇 鈫?鍒嗙骇瀹℃壒 鈫?瀹屾垚', 'cat-finance',
-'["閲囪喘","璐㈠姟","妯℃澘"]',
+('tpl-purchase-001', '采购审批', '提交采购 → 金额判断 → 分级审批 → 完成', 'cat-finance',
+'["采购","财务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦閲囪喘鐢宠"
+      "title": "提交采购申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER",
       "branchStrategy": "EXCLUSIVE"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "b2",
       "type": "CONDITION",
-      "title": "閲戦 > 5000",
+      "title": "金额 > 5000",
       "condition": "amount > 5000"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end_high",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1230,40 +1232,40 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-payment-001', '浠樻鐢宠', '鎻愪氦浠樻 鈫?璐㈠姟瀹℃牳 鈫?鎬荤粡鐞嗗鎵?鈫?鍑虹撼浠樻', 'cat-finance',
-'["浠樻","璐㈠姟","妯℃澘"]',
+('tpl-payment-001', '付款申请', '提交付款 → 财务审核 → 总经理审批 → 出纳付款', 'cat-finance',
+'["付款","财务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦浠樻鐢宠"
+      "title": "提交付款申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "璐㈠姟瀹℃牳",
+      "title": "财务审核",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "鍑虹撼浠樻",
+      "title": "出纳付款",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1292,39 +1294,39 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-budget-001', '棰勭畻瀹℃壒', '缂栧埗棰勭畻 鈫?閮ㄩ棬瀹℃牳 鈫?璐㈠姟瀹℃牳 鈫?鎬荤粡鐞嗘壒鍑?, 'cat-finance',
-'["棰勭畻","璐㈠姟","妯℃澘"]',
+('tpl-budget-001', '预算审批', '编制预算 → 部门审核 → 财务审核 → 总经理批准', 'cat-finance',
+'["预算","财务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "缂栧埗棰勭畻"
+      "title": "编制预算"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬璐熻矗浜哄鏍?,
+      "title": "部门负责人审核",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "璐㈠姟閮ㄥ鏍?,
+      "title": "财务部审核",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗘壒鍑?,
+      "title": "总经理批准",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1353,39 +1355,39 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-onboarding-001', '鍏ヨ亴瀹℃壒', '鎻愪氦鍏ヨ亴 鈫?HR瀹℃牳 鈫?閮ㄩ棬纭 鈫?IT寮€閫氳处鍙?, 'cat-hr',
-'["鍏ヨ亴","浜轰簨","妯℃澘"]',
+('tpl-onboarding-001', '入职审批', '提交入职 → HR审核 → 部门确认 → IT开通账号', 'cat-hr',
+'["入职","人事","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鍏ヨ亴鐢宠"
+      "title": "提交入职申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "HR瀹℃牳",
+      "title": "HR审核",
       "approverType": "ROLE",
       "approverValue": "hr"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬璐熻矗浜虹‘璁?,
+      "title": "部门负责人确认",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "IT寮€閫氳处鍙?,
+      "title": "IT开通账号",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1414,39 +1416,39 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-resignation-001', '绂昏亴瀹℃壒', '鎻愪氦绂昏亴 鈫?閮ㄩ棬瀹℃壒 鈫?HR瀹℃牳 鈫?璧勪骇浜ゆ帴', 'cat-hr',
-'["绂昏亴","浜轰簨","妯℃澘"]',
+('tpl-resignation-001', '离职审批', '提交离职 → 部门审批 → HR审核 → 资产交接', 'cat-hr',
+'["离职","人事","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦绂昏亴鐢宠"
+      "title": "提交离职申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "HR瀹℃牳",
+      "title": "HR审核",
       "approverType": "ROLE",
       "approverValue": "hr"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "璧勪骇浜ゆ帴纭",
+      "title": "资产交接确认",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1475,39 +1477,39 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-promotion-001', '鏅嬪崌瀹℃壒', '鎻愬悕鎺ㄨ崘 鈫?閮ㄩ棬瀹℃牳 鈫?HR璇勪及 鈫?鎬荤粡鐞嗘壒鍑?, 'cat-hr',
-'["鏅嬪崌","浜轰簨","妯℃澘"]',
+('tpl-promotion-001', '晋升审批', '提名推荐 → 部门审核 → HR评估 → 总经理批准', 'cat-hr',
+'["晋升","人事","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愬悕鎺ㄨ崘"
+      "title": "提名推荐"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬璐熻矗浜哄鏍?,
+      "title": "部门负责人审核",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "HR璇勪及",
+      "title": "HR评估",
       "approverType": "ROLE",
       "approverValue": "hr"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗘壒鍑?,
+      "title": "总经理批准",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1536,32 +1538,32 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-training-001', '鍩硅鐢宠', '鎻愪氦鍩硅 鈫?閮ㄩ棬瀹℃壒 鈫?HR瀹℃牳 鈫?瀹屾垚', 'cat-hr',
-'["鍩硅","浜轰簨","妯℃澘"]',
+('tpl-training-001', '培训申请', '提交培训 → 部门审批 → HR审核 → 完成', 'cat-hr',
+'["培训","人事","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鍩硅鐢宠"
+      "title": "提交培训申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "HR瀹℃牳",
+      "title": "HR审核",
       "approverType": "ROLE",
       "approverValue": "hr"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1585,44 +1587,44 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-quote-001', '鎶ヤ环瀹℃壒', '鎻愪氦鎶ヤ环 鈫?閿€鍞富绠?鈫?閲戦鍒ゆ柇 鈫?鍒嗙骇瀹℃壒', 'cat-sales',
-'["鎶ヤ环","閿€鍞笟鍔?,"妯℃澘"]',
+('tpl-quote-001', '报价审批', '提交报价 → 销售主管 → 金额判断 → 分级审批', 'cat-sales',
+'["报价","销售业务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鎶ヤ环鍗?
+      "title": "提交报价单"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閿€鍞富绠″鏍?,
+      "title": "销售主管审核",
       "approverType": "DIRECT_LEADER",
       "branchStrategy": "EXCLUSIVE"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "b2",
       "type": "CONDITION",
-      "title": "閲戦 > 10涓?,
+      "title": "金额 > 10万",
       "condition": "amount > 100000"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end_high",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1658,33 +1660,33 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-discount-001', '鎶樻墸瀹℃壒', '鐢宠鎶樻墸 鈫?閿€鍞€荤洃 鈫?璐㈠姟纭 鈫?瀹屾垚', 'cat-sales',
-'["鎶樻墸","閿€鍞笟鍔?,"妯℃澘"]',
+('tpl-discount-001', '折扣审批', '申请折扣 → 销售总监 → 财务确认 → 完成', 'cat-sales',
+'["折扣","销售业务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鐢宠鎶樻墸"
+      "title": "申请折扣"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閿€鍞€荤洃瀹℃壒",
+      "title": "销售总监审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "璐㈠姟纭",
+      "title": "财务确认",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1708,40 +1710,40 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-server-001', '鏈嶅姟鍣ㄧ敵璇?, '鎻愪氦鐢宠 鈫?IT瀹℃牳 鈫?瀹夊叏瀹℃煡 鈫?杩愮淮閮ㄧ讲', 'cat-it',
-'["鏈嶅姟鍣?,"IT杩愮淮","妯℃澘"]',
+('tpl-server-001', '服务器申请', '提交申请 → IT审核 → 安全审查 → 运维部署', 'cat-it',
+'["服务器","IT运维","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鏈嶅姟鍣ㄧ敵璇?
+      "title": "提交服务器申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "IT涓荤瀹℃牳",
+      "title": "IT主管审核",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "瀹夊叏瀹℃煡",
+      "title": "安全审查",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "杩愮淮閮ㄧ讲",
+      "title": "运维部署",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1770,39 +1772,39 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-permission-001', '鏉冮檺鐢宠', '鎻愪氦鏉冮檺 鈫?閮ㄩ棬瀹℃壒 鈫?IT瀹℃牳 鈫?瀹夊叏纭', 'cat-it',
-'["鏉冮檺","IT杩愮淮","妯℃澘"]',
+('tpl-permission-001', '权限申请', '提交权限 → 部门审批 → IT审核 → 安全确认', 'cat-it',
+'["权限","IT运维","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鏉冮檺鐢宠"
+      "title": "提交权限申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "IT瀹℃牳",
+      "title": "IT审核",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "瀹夊叏纭",
+      "title": "安全确认",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1831,40 +1833,40 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-change-001', '鍙樻洿鍙戝竷', '鎻愪氦鍙樻洿 鈫?鎶€鏈瘎瀹?鈫?娴嬭瘯楠岃瘉 鈫?涓婄嚎瀹℃壒', 'cat-it',
-'["鍙樻洿鍙戝竷","IT杩愮淮","妯℃澘"]',
+('tpl-change-001', '变更发布', '提交变更 → 技术评审 → 测试验证 → 上线审批', 'cat-it',
+'["变更发布","IT运维","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鍙樻洿鐢宠"
+      "title": "提交变更申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "鎶€鏈瘎瀹?,
+      "title": "技术评审",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "娴嬭瘯楠岃瘉",
+      "title": "测试验证",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "涓婄嚎瀹℃壒",
+      "title": "上线审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1893,40 +1895,40 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-medical-001', '鍖荤枟鍣ㄦ閲囪喘', '绉戝鐢宠 鈫?璁惧绉戝鏍?鈫?闄㈤暱瀹℃壒 鈫?鎷涙爣閲囪喘', 'cat-industry',
-'["鍖荤枟鍣ㄦ閲囪喘","琛屼笟涓撳睘","妯℃澘"]',
+('tpl-medical-001', '医疗器械采购', '科室申请 → 设备科审核 → 院长审批 → 招标采购', 'cat-industry',
+'["医疗器械采购","行业专属","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "绉戝鎻愪氦鐢宠"
+      "title": "科室提交申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "璁惧绉戝鏍?,
+      "title": "设备科审核",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "闄㈤暱瀹℃壒",
+      "title": "院长审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "鎷涙爣閲囪喘",
+      "title": "招标采购",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -1955,40 +1957,40 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-construction-001', '宸ョ▼楠屾敹', '鎻愪氦楠屾敹 鈫?鐩戠悊瀹℃牳 鈫?璐ㄦ楠屾敹 鈫?鐢叉柟纭', 'cat-industry',
-'["宸ョ▼楠屾敹","琛屼笟涓撳睘","妯℃澘"]',
+('tpl-construction-001', '工程验收', '提交验收 → 监理审核 → 质检验收 → 甲方确认', 'cat-industry',
+'["工程验收","行业专属","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦楠屾敹鐢宠"
+      "title": "提交验收申请"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "鐩戠悊瀹℃牳",
+      "title": "监理审核",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "璐ㄦ楠屾敹",
+      "title": "质检验收",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "鐢叉柟纭",
+      "title": "甲方确认",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -2017,32 +2019,32 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-education-001', '璇剧▼瀹℃壒', '鏁欏笀鎻愪氦 鈫?鏁欑爺缁勫鏍?鈫?鏁欏姟澶勫鎵?鈫?瀹屾垚', 'cat-industry',
-'["璇剧▼","琛屼笟涓撳睘","妯℃澘"]',
+('tpl-education-001', '课程审批', '教师提交 → 教研组审核 → 教务处审批 → 完成', 'cat-industry',
+'["课程","行业专属","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦璇剧▼鏂规"
+      "title": "提交课程方案"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "鏁欑爺缁勫鏍?,
+      "title": "教研组审核",
       "approverType": "DIRECT_LEADER"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鏁欏姟澶勫鎵?,
+      "title": "教务处审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -2066,39 +2068,39 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-maintenance-001', '璁惧缁翠慨', '鎶ヤ慨 鈫?缁翠慨涓荤娲惧崟 鈫?缁翠慨瀹屾垚 鈫?楠屾敹纭', 'cat-industry',
-'["璁惧缁翠慨","琛屼笟涓撳睘","妯℃澘"]',
+('tpl-maintenance-001', '设备维修', '报修 → 维修主管派单 → 维修完成 → 验收确认', 'cat-industry',
+'["设备维修","行业专属","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鎶ヤ慨"
+      "title": "提交报修"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "缁翠慨涓荤娲惧崟",
+      "title": "维修主管派单",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "缁翠慨瀹屾垚纭",
+      "title": "维修完成确认",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n3",
       "type": "APPROVAL",
-      "title": "鎶ヤ慨浜洪獙鏀?,
+      "title": "报修人验收",
       "approverType": "INITIATOR"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -2127,33 +2129,33 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-logistics-001', '鍙戣揣瀹℃壒', '鍒涘缓鍙戣揣鍗?鈫?浠撳簱纭 鈫?鐗╂祦瀹夋帓 鈫?瀹屾垚', 'cat-industry',
-'["鍙戣揣","琛屼笟涓撳睘","妯℃澘"]',
+('tpl-logistics-001', '发货审批', '创建发货单 → 仓库确认 → 物流安排 → 完成', 'cat-industry',
+'["发货","行业专属","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鍒涘缓鍙戣揣鍗?
+      "title": "创建发货单"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "浠撳簱纭搴撳瓨",
+      "title": "仓库确认库存",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鐗╂祦瀹夋帓",
+      "title": "物流安排",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -2177,33 +2179,33 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-checklist-001', '瀹℃牳娓呭崟', '鎻愪氦娓呭崟 鈫?閫愰」瀹℃牳 鈫?鏈€缁堢‘璁?鈫?瀹屾垚', 'cat-other',
-'["瀹℃牳娓呭崟","鍏朵粬","妯℃澘"]',
+('tpl-checklist-001', '审核清单', '提交清单 → 逐项审核 → 最终确认 → 完成', 'cat-other',
+'["审核清单","其他","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦瀹℃牳娓呭崟"
+      "title": "提交审核清单"
     },
     {
       "id": "n1",
       "type": "APPROVAL",
-      "title": "閫愰」瀹℃牳",
+      "title": "逐项审核",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "n2",
       "type": "APPROVAL",
-      "title": "鏈€缁堢‘璁?,
+      "title": "最终确认",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -2227,99 +2229,99 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-purchase_advanced-001', '澶ч閲囪喘鍏ㄦ祦绋?, '閮ㄩ棬瀹℃壒 鈫?閲戦鍒嗙骇 鈫?澶氱骇瀹℃壒 鈫?閫氱煡缁撴灉', 'cat-finance',
-'["澶ч閲囪喘","璐㈠姟","妯℃澘"]',
+('tpl-purchase_advanced-001', '大额采购全流程', '部门审批 → 金额分级 → 多级审批 → 通知结果', 'cat-finance',
+'["大额采购","财务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦閲囪喘鐢宠"
+      "title": "提交采购申请"
     },
     {
       "id": "pa_n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER",
       "branchStrategy": "EXCLUSIVE"
     },
     {
       "id": "pa_n5",
       "type": "NOTIFICATION",
-      "title": "閫氱煡閲囪喘缁撴灉",
+      "title": "通知采购结果",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "閲囪喘瀹℃壒缁撴灉閫氱煡",
-        "notificationContent": "鎮ㄧ殑閲囪喘鐢宠锛堥噾棰? ${amount}锛夊凡瀹℃壒瀹屾垚锛岃鏌ョ湅缁撴灉銆?
+        "notificationTitle": "采购审批结果通知",
+        "notificationContent": "您的采购申请（金额: ${amount}）已审批完成，请查看结果。"
       }
     },
     {
       "id": "pa_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "pa_b2",
       "type": "CONDITION",
-      "title": "5000 < 閲戦 鈮?50000",
+      "title": "5000 < 金额 ≤ 50000",
       "condition": "amount > 5000 && amount <= 50000"
     },
     {
       "id": "pa_n2",
       "type": "APPROVAL",
-      "title": "璐㈠姟鎬荤洃瀹℃牳",
+      "title": "财务总监审核",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "pa_b3",
       "type": "CONDITION",
-      "title": "閲戦 > 50000",
+      "title": "金额 > 50000",
       "condition": "amount > 50000"
     },
     {
       "id": "pa_n3",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "pa_n4",
       "type": "APPROVAL",
-      "title": "璐㈠姟鎬荤洃瀹℃牳",
+      "title": "财务总监审核",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "pa_n5_mid",
       "type": "NOTIFICATION",
-      "title": "閫氱煡閲囪喘缁撴灉",
+      "title": "通知采购结果",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "閲囪喘瀹℃壒缁撴灉閫氱煡",
-        "notificationContent": "鎮ㄧ殑閲囪喘鐢宠锛堥噾棰? ${amount}锛夊凡瀹℃壒瀹屾垚锛岃鏌ョ湅缁撴灉銆?
+        "notificationTitle": "采购审批结果通知",
+        "notificationContent": "您的采购申请（金额: ${amount}）已审批完成，请查看结果。"
       }
     },
     {
       "id": "pa_end_mid",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "pa_n5_high",
       "type": "NOTIFICATION",
-      "title": "閫氱煡閲囪喘缁撴灉",
+      "title": "通知采购结果",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "閲囪喘瀹℃壒缁撴灉閫氱煡",
-        "notificationContent": "鎮ㄧ殑閲囪喘鐢宠锛堥噾棰? ${amount}锛夊凡瀹℃壒瀹屾垚锛岃鏌ョ湅缁撴灉銆?
+        "notificationTitle": "采购审批结果通知",
+        "notificationContent": "您的采购申请（金额: ${amount}）已审批完成，请查看结果。"
       }
     },
     {
       "id": "pa_end_high",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     }
   ],
   "edges": [
@@ -2391,25 +2393,25 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-project_approval-001', '椤圭洰绔嬮」瀹℃壒', '閮ㄩ棬瀹℃牳 鈫?鎶€鏈?璐㈠姟骞惰璇勫 鈫?鎬荤粡鐞嗗鎵?鈫?閫氱煡', 'cat-other',
-'["椤圭洰绔嬮」","鍏朵粬","妯℃澘"]',
+('tpl-project_approval-001', '项目立项审批', '部门审核 → 技术+财务并行评审 → 总经理审批 → 通知', 'cat-other',
+'["项目立项","其他","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦绔嬮」鐢宠"
+      "title": "提交立项申请"
     },
     {
       "id": "proj_n1",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬璐熻矗浜哄鏍?,
+      "title": "部门负责人审核",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "proj_n2",
       "type": "PARALLEL",
-      "title": "骞惰璇勫锛堟妧鏈?璐㈠姟锛?,
+      "title": "并行评审（技术+财务）",
       "approverType": "ROLE",
       "approverValue": "admin,finance",
       "branchStrategy": "PARALLEL"
@@ -2417,46 +2419,46 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "proj_n5",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "proj_n6",
       "type": "NOTIFICATION",
-      "title": "閫氱煡绔嬮」缁撴灉",
+      "title": "通知立项结果",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "椤圭洰绔嬮」缁撴灉",
-        "notificationContent": "鎮ㄧ殑椤圭洰绔嬮」鐢宠宸插畬鎴愬鎵癸紝璇风櫥褰曠郴缁熸煡鐪嬭鎯呫€?
+        "notificationTitle": "项目立项结果",
+        "notificationContent": "您的项目立项申请已完成审批，请登录系统查看详情。"
       }
     },
     {
       "id": "proj_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "proj_b1",
       "type": "CONDITION",
-      "title": "鎶€鏈彲琛屾€ц瘎瀹?
+      "title": "技术可行性评审"
     },
     {
       "id": "proj_n3",
       "type": "APPROVAL",
-      "title": "鎶€鏈鍛樹細璇勫",
+      "title": "技术委员会评审",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "proj_b2",
       "type": "CONDITION",
-      "title": "璐㈠姟棰勭畻璇勪及"
+      "title": "财务预算评估"
     },
     {
       "id": "proj_n4",
       "type": "APPROVAL",
-      "title": "璐㈠姟閮ㄩ绠楄瘎浼?,
+      "title": "财务部预算评估",
       "approverType": "ROLE",
       "approverValue": "finance"
     }
@@ -2513,19 +2515,19 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-regularization-001', '鍛樺伐杞瀹℃壒', '瀹氭椂鎻愰啋 鈫?閮ㄩ棬璇勪及 鈫?HR瀹℃牳 鈫?骞惰鍔炵悊 鈫?閫氱煡', 'cat-hr',
-'["鍛樺伐杞","浜轰簨","妯℃澘"]',
+('tpl-regularization-001', '员工转正审批', '定时提醒 → 部门评估 → HR审核 → 并行办理 → 通知', 'cat-hr',
+'["员工转正","人事","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鍙戣捣杞娴佺▼"
+      "title": "发起转正流程"
     },
     {
       "id": "reg_n1",
       "type": "TIMER",
-      "title": "璇曠敤鏈熷埌鏈熸彁閱?,
+      "title": "试用期到期提醒",
       "props": {
         "timerType": "DELAY",
         "delayMinutes": 1
@@ -2534,20 +2536,20 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "reg_n2",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬璐熻矗浜鸿瘎浼?,
+      "title": "部门负责人评估",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "reg_n3",
       "type": "APPROVAL",
-      "title": "HR缁煎悎瀹℃牳",
+      "title": "HR综合审核",
       "approverType": "ROLE",
       "approverValue": "hr"
     },
     {
       "id": "reg_n4",
       "type": "PARALLEL",
-      "title": "骞惰鍔炵悊锛圛T+琛屾斂锛?,
+      "title": "并行办理（IT+行政）",
       "approverType": "ROLE",
       "approverValue": "admin",
       "branchStrategy": "PARALLEL"
@@ -2555,47 +2557,47 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "reg_n7",
       "type": "NOTIFICATION",
-      "title": "閫氱煡杞缁撴灉",
+      "title": "通知转正结果",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "杞瀹℃壒缁撴灉",
-        "notificationContent": "鎭枩锛佹偍鐨勮浆姝ｇ敵璇峰凡閫氳繃锛屾杩庢垚涓烘寮忓憳宸ャ€?
+        "notificationTitle": "转正审批结果",
+        "notificationContent": "恭喜！您的转正申请已通过，欢迎成为正式员工。"
       }
     },
     {
       "id": "reg_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "reg_b1",
       "type": "CONDITION",
-      "title": "IT鏉冮檺寮€閫?
+      "title": "IT权限开通"
     },
     {
       "id": "reg_n5",
       "type": "MANUAL",
-      "title": "IT寮€閫氭寮忔潈闄?,
+      "title": "IT开通正式权限",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "涓鸿浆姝ｅ憳宸ュ紑閫氭寮忓憳宸ョ郴缁熸潈闄愩€侀偖绠辩瓑",
+        "taskDescription": "为转正员工开通正式员工系统权限、邮箱等",
         "priority": "HIGH"
       }
     },
     {
       "id": "reg_b2",
       "type": "CONDITION",
-      "title": "琛屾斂鎵嬬画鍔炵悊"
+      "title": "行政手续办理"
     },
     {
       "id": "reg_n6",
       "type": "MANUAL",
-      "title": "琛屾斂鍔炵悊宸ョ墝绀句繚",
+      "title": "行政办理工牌社保",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "鍔炵悊姝ｅ紡宸ョ墝銆佹洿鏂扮ぞ淇濅俊鎭€佺璁㈡寮忓悎鍚?,
+        "taskDescription": "办理正式工牌、更新社保信息、签订正式合同",
         "priority": "MEDIUM"
       }
     }
@@ -2657,19 +2659,19 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-incident-001', 'IT鏁呴殰澶勭悊', '鑷姩鍒嗙骇 鈫?鎸夌骇鍒垎娴?鈫?澶勭悊 鈫?楠岃瘉纭', 'cat-it',
-'["IT鏁呴殰","IT杩愮淮","妯℃澘"]',
+('tpl-incident-001', 'IT故障处理', '自动分级 → 按级别分流 → 处理 → 验证确认', 'cat-it',
+'["IT故障","IT运维","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鏁呴殰鎶ュ憡"
+      "title": "提交故障报告"
     },
     {
       "id": "inc_n1",
       "type": "SCRIPT",
-      "title": "鑷姩鏁呴殰鍒嗙骇",
+      "title": "自动故障分级",
       "props": {
         "scriptType": "GROOVY",
         "scriptContent": "def level = severity >= 8 ? \"P1\" : severity >= 5 ? \"P2\" : \"P3\"; return [incidentLevel: level]",
@@ -2680,94 +2682,94 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "inc_n7",
       "type": "MANUAL",
-      "title": "鎶ヤ慨浜洪獙璇佺‘璁?,
+      "title": "报修人验证确认",
       "approverType": "INITIATOR",
       "props": {
-        "taskDescription": "璇风‘璁ゆ晠闅滄槸鍚﹀凡淇锛屽鏈慨澶嶈閫€鍥為噸鏂板鐞?,
+        "taskDescription": "请确认故障是否已修复，如未修复请退回重新处理",
         "priority": "MEDIUM"
       }
     },
     {
       "id": "inc_n8",
       "type": "NOTIFICATION",
-      "title": "閫氱煡鏁呴殰鍏抽棴",
+      "title": "通知故障关闭",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "鏁呴殰澶勭悊瀹屾垚",
-        "notificationContent": "鎮ㄦ彁浜ょ殑鏁呴殰鎶ュ憡宸插鐞嗗畬鎴愬苟鍏抽棴銆?
+        "notificationTitle": "故障处理完成",
+        "notificationContent": "您提交的故障报告已处理完成并关闭。"
       }
     },
     {
       "id": "inc_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "inc_b1",
       "type": "CONDITION",
-      "title": "P1 绱ф€ユ晠闅?,
+      "title": "P1 紧急故障",
       "condition": "incidentLevel == \"P1\""
     },
     {
       "id": "inc_n2",
       "type": "NOTIFICATION",
-      "title": "绱ф€ラ€氱煡绠＄悊灞?,
+      "title": "紧急通知管理层",
       "props": {
         "recipientType": "ROLE",
         "recipientValue": "manager",
-        "notificationTitle": "銆愮揣鎬ャ€慞1绾ф晠闅滃憡璀?,
-        "notificationContent": "绯荤粺鍙戠敓P1绾х揣鎬ユ晠闅滐紝璇风珛鍗冲叧娉紒鏁呴殰鎻忚堪: ${description}"
+        "notificationTitle": "【紧急】P1级故障告警",
+        "notificationContent": "系统发生P1级紧急故障，请立即关注！故障描述: ${description}"
       }
     },
     {
       "id": "inc_n3",
       "type": "MANUAL",
-      "title": "绱ф€ヤ慨澶嶅鐞?,
+      "title": "紧急修复处理",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "P1绾х揣鎬ユ晠闅滐紝闇€绔嬪嵆鍝嶅簲骞朵慨澶?,
+        "taskDescription": "P1级紧急故障，需立即响应并修复",
         "priority": "HIGH"
       }
     },
     {
       "id": "inc_b2",
       "type": "CONDITION",
-      "title": "P2 閲嶈鏁呴殰",
+      "title": "P2 重要故障",
       "condition": "incidentLevel == \"P2\""
     },
     {
       "id": "inc_n4",
       "type": "APPROVAL",
-      "title": "杩愮淮涓荤娲惧崟",
+      "title": "运维主管派单",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "inc_n5",
       "type": "MANUAL",
-      "title": "杩愮淮宸ョ▼甯堝鐞?,
+      "title": "运维工程师处理",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "P2绾ф晠闅滐紝璇峰湪4灏忔椂鍐呭畬鎴愪慨澶?,
+        "taskDescription": "P2级故障，请在4小时内完成修复",
         "priority": "MEDIUM"
       }
     },
     {
       "id": "inc_b3",
       "type": "CONDITION",
-      "title": "P3 涓€鑸晠闅?,
+      "title": "P3 一般故障",
       "condition": "incidentLevel == \"P3\""
     },
     {
       "id": "inc_n6",
       "type": "MANUAL",
-      "title": "杩愮淮宸ョ▼甯堝鐞?,
+      "title": "运维工程师处理",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "P3绾т竴鑸晠闅滐紝璇峰湪24灏忔椂鍐呭鐞?,
+        "taskDescription": "P3级一般故障，请在24小时内处理",
         "priority": "LOW"
       }
     }
@@ -2857,33 +2859,33 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-sales_contract-001', '閿€鍞悎鍚屽叏娴佺▼', '閿€鍞鏍?鈫?閲戦鍒嗙骇 鈫?娉曞姟瀹℃牳 鈫?骞惰鐩栫珷 鈫?閫氱煡', 'cat-sales',
-'["閿€鍞悎鍚?,"閿€鍞笟鍔?,"妯℃澘"]',
+('tpl-sales_contract-001', '销售合同全流程', '销售审核 → 金额分级 → 法务审核 → 并行盖章 → 通知', 'cat-sales',
+'["销售合同","销售业务","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鍚堝悓瀹℃壒"
+      "title": "提交合同审批"
     },
     {
       "id": "sc_n1",
       "type": "APPROVAL",
-      "title": "閿€鍞富绠″鏍?,
+      "title": "销售主管审核",
       "approverType": "DIRECT_LEADER",
       "branchStrategy": "EXCLUSIVE"
     },
     {
       "id": "sc_n5",
       "type": "APPROVAL",
-      "title": "娉曞姟鍚堣瀹℃牳",
+      "title": "法务合规审核",
       "approverType": "USER",
       "approverValue": "6"
     },
     {
       "id": "sc_n6",
       "type": "PARALLEL",
-      "title": "骞惰鍔炵悊锛堣储鍔?琛屾斂锛?,
+      "title": "并行办理（财务+行政）",
       "approverType": "ROLE",
       "approverValue": "finance,admin",
       "branchStrategy": "PARALLEL"
@@ -2891,76 +2893,76 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "sc_n9",
       "type": "NOTIFICATION",
-      "title": "閫氱煡鍚堝悓绛剧讲瀹屾垚",
+      "title": "通知合同签署完成",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "鍚堝悓瀹℃壒瀹屾垚",
-        "notificationContent": "鎮ㄦ彁浜ょ殑鍚堝悓锛堥噾棰? ${amount}锛夊凡瀹屾垚鍏ㄩ儴瀹℃壒娴佺▼锛岃鍙婃椂璺熻繘绛剧讲銆?
+        "notificationTitle": "合同审批完成",
+        "notificationContent": "您提交的合同（金额: ${amount}）已完成全部审批流程，请及时跟进签署。"
       }
     },
     {
       "id": "sc_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "sc_b3",
       "type": "CONDITION",
-      "title": "璐㈠姟纭"
+      "title": "财务确认"
     },
     {
       "id": "sc_n7",
       "type": "APPROVAL",
-      "title": "璐㈠姟纭鏀舵鏉℃",
+      "title": "财务确认收款条款",
       "approverType": "ROLE",
       "approverValue": "finance"
     },
     {
       "id": "sc_b4",
       "type": "CONDITION",
-      "title": "琛屾斂鐩栫珷"
+      "title": "行政盖章"
     },
     {
       "id": "sc_n8",
       "type": "MANUAL",
-      "title": "琛屾斂鐩栫珷褰掓。",
+      "title": "行政盖章归档",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "鍚堝悓鐩栫珷骞跺綊妗ｅ師浠?,
+        "taskDescription": "合同盖章并归档原件",
         "priority": "HIGH"
       }
     },
     {
       "id": "sc_b1",
       "type": "CONDITION",
-      "title": "閲戦 鈮?10涓?,
+      "title": "金额 ≤ 10万",
       "condition": "amount <= 100000"
     },
     {
       "id": "sc_n2",
       "type": "APPROVAL",
-      "title": "閿€鍞€荤洃瀹℃壒",
+      "title": "销售总监审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "sc_b2",
       "type": "CONDITION",
-      "title": "閲戦 > 10涓?,
+      "title": "金额 > 10万",
       "condition": "amount > 100000"
     },
     {
       "id": "sc_n3",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "sc_n4",
       "type": "APPROVAL",
-      "title": "钁ｄ簨浼氬鎵?,
+      "title": "董事会审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     }
@@ -3055,26 +3057,26 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-bidding-001', '鎷涙爣閲囪喘娴佺▼', '闇€姹傚鏍?鈫?鐢熸垚鏍囦功 鈫?绛夊緟鎶曟爣 鈫?骞惰璇勬爣 鈫?瀹℃壒', 'cat-industry',
-'["鎷涙爣閲囪喘","琛屼笟涓撳睘","妯℃澘"]',
+('tpl-bidding-001', '招标采购流程', '需求审核 → 生成标书 → 等待投标 → 并行评标 → 审批', 'cat-industry',
+'["招标采购","行业专属","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鎷涙爣闇€姹?
+      "title": "提交招标需求"
     },
     {
       "id": "bid_n1",
       "type": "APPROVAL",
-      "title": "閲囪喘閮ㄥ鏍搁渶姹?,
+      "title": "采购部审核需求",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "bid_n2",
       "type": "SCRIPT",
-      "title": "鑷姩鐢熸垚鎷涙爣鏂囦欢",
+      "title": "自动生成招标文件",
       "props": {
         "scriptType": "GROOVY",
         "scriptContent": "def tenderNo = \"TENDER-\" + System.currentTimeMillis(); return [tenderGenerated: true, tenderNo: tenderNo, tenderProjectName: projectName, tenderBudget: budget]",
@@ -3084,7 +3086,7 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "bid_n3",
       "type": "TIMER",
-      "title": "绛夊緟鎶曟爣鎴锛?澶╋級",
+      "title": "等待投标截止（7天）",
       "props": {
         "timerType": "DELAY",
         "delayMinutes": 1
@@ -3093,7 +3095,7 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "bid_n4",
       "type": "PARALLEL",
-      "title": "骞惰璇勬爣",
+      "title": "并行评标",
       "approverType": "ROLE",
       "approverValue": "admin",
       "branchStrategy": "PARALLEL"
@@ -3101,46 +3103,46 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "bid_n7",
       "type": "APPROVAL",
-      "title": "璇勬爣濮斿憳浼氬畾鏍?,
+      "title": "评标委员会定标",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "bid_n8",
       "type": "NOTIFICATION",
-      "title": "閫氱煡涓爣缁撴灉",
+      "title": "通知中标结果",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "鎷涙爣缁撴灉閫氱煡",
-        "notificationContent": "鎷涙爣椤圭洰銆?{projectName}銆嶅凡瀹屾垚璇勬爣锛岃鏌ョ湅涓爣缁撴灉銆?
+        "notificationTitle": "招标结果通知",
+        "notificationContent": "招标项目「${projectName}」已完成评标，请查看中标结果。"
       }
     },
     {
       "id": "bid_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "bid_b1",
       "type": "CONDITION",
-      "title": "鎶€鏈瘎鏍?
+      "title": "技术评标"
     },
     {
       "id": "bid_n5",
       "type": "APPROVAL",
-      "title": "鎶€鏈笓瀹惰瘎鏍?,
+      "title": "技术专家评标",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "bid_b2",
       "type": "CONDITION",
-      "title": "鍟嗗姟璇勬爣"
+      "title": "商务评标"
     },
     {
       "id": "bid_n6",
       "type": "APPROVAL",
-      "title": "鍟嗗姟涓撳璇勬爣",
+      "title": "商务专家评标",
       "approverType": "ROLE",
       "approverValue": "finance"
     }
@@ -3207,29 +3209,29 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-safety_incident-001', '瀹夊叏浜嬫晠澶勭悊', '鑷姩璁板綍 鈫?骞惰澶勭疆+閫氱煡 鈫?浜嬫晠璋冩煡 鈫?鏁存敼瀹℃壒', 'cat-industry',
-'["瀹夊叏浜嬫晠","琛屼笟涓撳睘","妯℃澘"]',
+('tpl-safety_incident-001', '安全事故处理', '自动记录 → 并行处置+通知 → 事故调查 → 整改审批', 'cat-industry',
+'["安全事故","行业专属","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎶ュ憡瀹夊叏浜嬫晠"
+      "title": "报告安全事故"
     },
     {
       "id": "sf_n1",
       "type": "SCRIPT",
-      "title": "鑷姩璁板綍浜嬫晠淇℃伅",
+      "title": "自动记录事故信息",
       "props": {
         "scriptType": "GROOVY",
-        "scriptContent": "def summary = (accidentType ?: \"鏈煡浜嬫晠\") + \"@\" + (location ?: \"鏈煡鍦扮偣\"); return [accidentRecorded: true, accidentSummary: summary]",
+        "scriptContent": "def summary = (accidentType ?: \"未知事故\") + \"@\" + (location ?: \"未知地点\"); return [accidentRecorded: true, accidentSummary: summary]",
         "continueOnError": true
       }
     },
     {
       "id": "sf_n2",
       "type": "PARALLEL",
-      "title": "骞惰澶勭疆锛堢幇鍦?閫氱煡锛?,
+      "title": "并行处置（现场+通知）",
       "approverType": "ROLE",
       "approverValue": "admin",
       "branchStrategy": "PARALLEL"
@@ -3237,70 +3239,70 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "sf_n5",
       "type": "APPROVAL",
-      "title": "浜嬫晠璋冩煡鎶ュ憡瀹℃牳",
+      "title": "事故调查报告审核",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "sf_n6",
       "type": "APPROVAL",
-      "title": "鏁存敼鏂规瀹℃壒",
+      "title": "整改方案审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "sf_n7",
       "type": "MANUAL",
-      "title": "鎵ц鏁存敼鎺柦",
+      "title": "执行整改措施",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "鎸夌収鏁存敼鏂规鎵ц瀹夊叏鏁存敼鎺柦",
+        "taskDescription": "按照整改方案执行安全整改措施",
         "priority": "HIGH"
       }
     },
     {
       "id": "sf_n8",
       "type": "APPROVAL",
-      "title": "鏁存敼楠屾敹纭",
+      "title": "整改验收确认",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "sf_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "sf_b1",
       "type": "CONDITION",
-      "title": "鐜板満澶勭疆"
+      "title": "现场处置"
     },
     {
       "id": "sf_n3",
       "type": "MANUAL",
-      "title": "鐜板満绱ф€ュ缃?,
+      "title": "现场紧急处置",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "绔嬪嵆鍓嶅線浜嬫晠鐜板満杩涜绱ф€ュ缃紝纭繚浜哄憳瀹夊叏",
+        "taskDescription": "立即前往事故现场进行紧急处置，确保人员安全",
         "priority": "HIGH"
       }
     },
     {
       "id": "sf_b2",
       "type": "CONDITION",
-      "title": "涓婃姤閫氱煡"
+      "title": "上报通知"
     },
     {
       "id": "sf_n4",
       "type": "NOTIFICATION",
-      "title": "閫氱煡瀹夊叏绠＄悊灞?,
+      "title": "通知安全管理层",
       "props": {
         "recipientType": "ROLE",
         "recipientValue": "manager",
-        "notificationTitle": "銆愮揣鎬ャ€戝畨鍏ㄤ簨鏁呮姤鍛?,
-        "notificationContent": "鍙戠敓瀹夊叏浜嬫晠锛屽湴鐐? ${location}锛岃绔嬪嵆鍏虫敞銆?
+        "notificationTitle": "【紧急】安全事故报告",
+        "notificationContent": "发生安全事故，地点: ${location}，请立即关注。"
       }
     }
   ],
@@ -3366,36 +3368,36 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-leave_advanced-001', '璇峰亣鍏ㄦ祦绋?, '澶╂暟鍒ゆ柇 鈫?鍒嗙骇瀹℃壒 鈫?浜ゆ帴纭 鈫?瀹氭椂鎻愰啋 鈫?閫氱煡', 'cat-office',
-'["璇峰亣","琛屾斂鍔炲叕","妯℃澘"]',
+('tpl-leave_advanced-001', '请假全流程', '天数判断 → 分级审批 → 交接确认 → 定时提醒 → 通知', 'cat-hr',
+'["请假","行政办公","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦璇峰亣鐢宠"
+      "title": "提交请假申请"
     },
     {
       "id": "la_n1",
       "type": "APPROVAL",
-      "title": "鐩村睘涓婄骇瀹℃壒",
+      "title": "直属上级审批",
       "approverType": "DIRECT_LEADER",
       "branchStrategy": "EXCLUSIVE"
     },
     {
       "id": "la_n5",
       "type": "MANUAL",
-      "title": "鍙戣捣浜虹‘璁ゅ伐浣滀氦鎺?,
+      "title": "发起人确认工作交接",
       "approverType": "INITIATOR",
       "props": {
-        "taskDescription": "璇峰湪浼戝亣鍓嶅畬鎴愬伐浣滀氦鎺ワ紝骞剁‘璁や氦鎺ュ畨鎺掑凡鍚屾缁欑浉鍏冲悓浜嬨€?,
+        "taskDescription": "请在休假前完成工作交接，并确认交接安排已同步给相关同事。",
         "priority": "MEDIUM"
       }
     },
     {
       "id": "la_n6",
       "type": "TIMER",
-      "title": "鍋囨湡缁撴潫鍓?澶╂彁閱?,
+      "title": "假期结束前1天提醒",
       "props": {
         "timerType": "DELAY",
         "delayMinutes": 1
@@ -3404,52 +3406,52 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "la_n7",
       "type": "NOTIFICATION",
-      "title": "閫氱煡璇峰亣缁撴灉",
+      "title": "通知请假结果",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "璇峰亣瀹℃壒缁撴灉",
-        "notificationContent": "鎮ㄧ殑璇峰亣鐢宠锛?{days}澶╋級宸插鎵归€氳繃锛岃鍋氬ソ宸ヤ綔浜ゆ帴銆?
+        "notificationTitle": "请假审批结果",
+        "notificationContent": "您的请假申请（${days}天）已审批通过，请做好工作交接。"
       }
     },
     {
       "id": "la_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "la_b1",
       "type": "CONDITION",
-      "title": "璇峰亣 鈮?3澶?,
+      "title": "请假 ≤ 3天",
       "condition": "days <= 3"
     },
     {
       "id": "la_b2",
       "type": "CONDITION",
-      "title": "3澶?< 璇峰亣 鈮?7澶?,
+      "title": "3天 < 请假 ≤ 7天",
       "condition": "days > 3 && days <= 7"
     },
     {
       "id": "la_n2",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "la_b3",
       "type": "CONDITION",
-      "title": "璇峰亣 > 7澶?,
+      "title": "请假 > 7天",
       "condition": "days > 7"
     },
     {
       "id": "la_n3",
       "type": "APPROVAL",
-      "title": "閮ㄩ棬缁忕悊瀹℃壒",
+      "title": "部门经理审批",
       "approverType": "DEPT_MANAGER"
     },
     {
       "id": "la_n4",
       "type": "APPROVAL",
-      "title": "鎬荤粡鐞嗗鎵?,
+      "title": "总经理审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     }
@@ -3534,26 +3536,26 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 1, 'active', 'system', NULL);
 
 INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
-('tpl-deployment-001', '鐢熶骇鐜鍙戝竷', '浠ｇ爜瀹℃煡 鈫?鑷姩鏋勫缓 鈫?绛夊緟绐楀彛 鈫?骞惰閮ㄧ讲+鐩戞帶 鈫?楠岃瘉', 'cat-it',
-'["鐢熶骇鐜鍙戝竷","IT杩愮淮","妯℃澘"]',
+('tpl-deployment-001', '生产环境发布', '代码审查 → 自动构建 → 等待窗口 → 并行部署+监控 → 验证', 'cat-it',
+'["生产环境发布","IT运维","模板"]',
 '{
   "nodes": [
     {
       "id": "start",
       "type": "START",
-      "title": "鎻愪氦鍙戝竷鐢宠"
+      "title": "提交发布申请"
     },
     {
       "id": "dep_n1",
       "type": "APPROVAL",
-      "title": "鎶€鏈礋璐ｄ汉浠ｇ爜瀹℃煡",
+      "title": "技术负责人代码审查",
       "approverType": "ROLE",
       "approverValue": "admin"
     },
     {
       "id": "dep_n2",
       "type": "SCRIPT",
-      "title": "鑷姩鏋勫缓涓庢祴璇?,
+      "title": "自动构建与测试",
       "props": {
         "scriptType": "GROOVY",
         "scriptContent": "return [buildStatus: \"SUCCESS\", buildBranch: branch, buildVersion: version, buildFinishedAt: System.currentTimeMillis()]",
@@ -3563,14 +3565,14 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "dep_n3",
       "type": "APPROVAL",
-      "title": "鍙戝竷瀹℃壒",
+      "title": "发布审批",
       "approverType": "ROLE",
       "approverValue": "manager"
     },
     {
       "id": "dep_n4",
       "type": "TIMER",
-      "title": "绛夊緟鍙戝竷绐楀彛",
+      "title": "等待发布窗口",
       "props": {
         "timerType": "DELAY",
         "delayMinutes": 1
@@ -3579,7 +3581,7 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "dep_n5",
       "type": "PARALLEL",
-      "title": "骞惰鎵ц锛堥儴缃?鐩戞帶锛?,
+      "title": "并行执行（部署+监控）",
       "approverType": "ROLE",
       "approverValue": "admin",
       "branchStrategy": "PARALLEL"
@@ -3587,38 +3589,38 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "dep_n8",
       "type": "MANUAL",
-      "title": "鍙戝竷鍚庨獙璇佺‘璁?,
+      "title": "发布后验证确认",
       "approverType": "ROLE",
       "approverValue": "admin",
       "props": {
-        "taskDescription": "楠岃瘉鍙戝竷鍚庣郴缁熷姛鑳芥甯革紝妫€鏌ュ叧閿笟鍔℃寚鏍?,
+        "taskDescription": "验证发布后系统功能正常，检查关键业务指标",
         "priority": "HIGH"
       }
     },
     {
       "id": "dep_n9",
       "type": "NOTIFICATION",
-      "title": "閫氱煡鍙戝竷瀹屾垚",
+      "title": "通知发布完成",
       "props": {
         "recipientType": "INITIATOR",
-        "notificationTitle": "鍙戝竷瀹屾垚閫氱煡",
-        "notificationContent": "鐗堟湰 ${version} 宸叉垚鍔熷彂甯冨埌鐢熶骇鐜銆?
+        "notificationTitle": "发布完成通知",
+        "notificationContent": "版本 ${version} 已成功发布到生产环境。"
       }
     },
     {
       "id": "dep_end",
       "type": "END",
-      "title": "娴佺▼缁撴潫"
+      "title": "流程结束"
     },
     {
       "id": "dep_b1",
       "type": "CONDITION",
-      "title": "鎵ц閮ㄧ讲"
+      "title": "执行部署"
     },
     {
       "id": "dep_n6",
       "type": "SCRIPT",
-      "title": "鎵ц鑷姩閮ㄧ讲",
+      "title": "执行自动部署",
       "props": {
         "scriptType": "GROOVY",
         "scriptContent": "return [deployStatus: \"SUCCESS\", deployedVersion: version, deployedAt: System.currentTimeMillis()]",
@@ -3628,17 +3630,17 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
     {
       "id": "dep_b2",
       "type": "CONDITION",
-      "title": "鐩戞帶鍛婅"
+      "title": "监控告警"
     },
     {
       "id": "dep_n7",
       "type": "NOTIFICATION",
-      "title": "閫氱煡杩愮淮鍥㈤槦鐩戞帶",
+      "title": "通知运维团队监控",
       "props": {
         "recipientType": "ROLE",
         "recipientValue": "admin",
-        "notificationTitle": "鍙戝竷鐩戞帶閫氱煡",
-        "notificationContent": "鐗堟湰 ${version} 姝ｅ湪鍙戝竷锛岃瀵嗗垏鍏虫敞绯荤粺鐩戞帶鎸囨爣銆?
+        "notificationTitle": "发布监控通知",
+        "notificationContent": "版本 ${version} 正在发布，请密切关注系统监控指标。"
       }
     }
   ],
@@ -3710,4 +3712,325 @@ INSERT INTO workflow_template (id, name, description, category_id, tags, definit
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 娴嬭瘯鏁版嵁
+-- 测试数据
+-- 用于开发和测试环境
+-- 插入测试流程实例
+INSERT INTO wf_process_instance (
+  instance_id, tenant_id, process_def_key, definition_id, business_key,
+  title, start_user_id, start_user_name, status, start_time, end_time, variables, priority
+) VALUES
+('test_inst_001', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_001', '张三的差旅费报销', 5, '张三', 'RUNNING', DATE_SUB(NOW(), INTERVAL 6 HOUR), NULL, '{"f1":"差旅费","f2":1500,"f3":"2026-02-08","f4":"北京客户拜访差旅报销"}', 'NORMAL'),
+('test_inst_002', 100000, 'biz_leave', 'wf_leave', 'BIZ_002', '张三的年假申请', 5, '张三', 'RUNNING', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, '{"l1":"年假","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"春节返乡探亲"}', 'URGENT'),
+('test_inst_003', 100000, 'biz_contract', 'wf_contract', 'BIZ_003', 'XX科技采购合同审批', 2, '李经理', 'RUNNING', DATE_SUB(NOW(), INTERVAL 12 HOUR), NULL, '{"c1":"XX科技办公设备采购合同","c2":"XX科技有限公司","c3":50000,"c4":"采购合同","c5":"采购办公电脑及相关设备"}', 'HIGH'),
+('test_inst_004', 100000, 'biz_payment', 'wf_payment', 'BIZ_004', '合同付款申请', 3, '王财务', 'RUNNING', DATE_SUB(NOW(), INTERVAL 10 HOUR), NULL, '{"p1":"杭州云启科技有限公司","p2":"6217000012345678901","p3":30000,"p4":"HT-2026-001"}', 'NORMAL'),
+('test_inst_005', 100000, 'biz_reimburse', 'wf_reimburse', 'BIZ_005', '李经理的客户招待费报销', 2, '李经理', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), '{"f1":"招待费","f2":2500,"f3":"2026-02-09","f4":"客户商务宴请"}', 'URGENT'),
+('test_inst_006', 100000, 'biz_leave', 'wf_leave', 'BIZ_006', '赵HR的病假申请', 4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '{"l1":"病假","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"感冒发烧需要休息"}', 'NORMAL'),
+('test_inst_007', 100000, 'biz_recruit', 'wf_recruit', 'BIZ_007', '高级Java开发工程师招聘申请', 4, '赵HR', 'RUNNING', DATE_SUB(NOW(), INTERVAL 8 HOUR), NULL, '{"r1":"高级Java开发工程师","r2":2,"r3":"P7","r4":"负责核心业务系统开发","r5":35}', 'HIGH');
+
+-- 插入待办任务
+INSERT INTO wf_task (
+  task_id, tenant_id, instance_id, node_key, node_name,
+  assignee, assignee_name, status, priority, create_time, due_time
+) VALUES
+('test_task_001', 100000, 'test_inst_001', 'n1', '直属上级审批', 2, '李经理', 'TODO', 'NORMAL', DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY)),
+('test_task_002', 100000, 'test_inst_002', 'n1', '部门经理审批', 2, '李经理', 'TODO', 'URGENT', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY)),
+('test_task_003', 100000, 'test_inst_003', 'n1', '法务与财务会签', 6, '刘法务', 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_ADD(NOW(), INTERVAL 3 DAY)),
+('test_task_004', 100000, 'test_inst_003', 'n1', '法务与财务会签', 3, '王财务', 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_ADD(NOW(), INTERVAL 3 DAY)),
+('test_task_005', 100000, 'test_inst_004', 'n1', '财务主管审批', 3, '王财务', 'TODO', 'NORMAL', DATE_SUB(NOW(), INTERVAL 10 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY)),
+('test_task_006', 100000, 'test_inst_007', 'n2', 'HR审核', 4, '赵HR', 'TODO', 'HIGH', DATE_SUB(NOW(), INTERVAL 8 HOUR), DATE_ADD(NOW(), INTERVAL 2 DAY));
+
+-- 插入会签任务记录
+INSERT INTO wf_countersign_task (
+  countersign_id, tenant_id, instance_id, node_key, node_name,
+  sign_type, total_count, voted_count, approve_count, reject_count, status, create_time
+) VALUES
+('cs_inst_003', 100000, 'test_inst_003', 'n1', '法务与财务会签', 'ALL', 2, 0, 0, 0, 'VOTING', DATE_SUB(NOW(), INTERVAL 12 HOUR));
+
+-- 插入任务历史记录
+INSERT INTO wf_task_history (
+  history_id, tenant_id, task_id, instance_id, node_name, node_key,
+  operator_id, operator_name, action, comment, duration_seconds, create_time
+) VALUES
+('test_hist_001', 100000, 'test_task_done_001', 'test_inst_005', '直属上级审批', 'n1', 2, '李经理', 'APPROVE', '同意报销', 300, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+('test_hist_002', 100000, 'test_task_done_002', 'test_inst_005', '财务主管审批', 'b1', 3, '王财务', 'APPROVE', '财务已审核', 600, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+('test_hist_003', 100000, 'test_task_done_003', 'test_inst_006', '部门经理审批', 'n1', 2, '李经理', 'APPROVE', '同意请假', 180, DATE_SUB(NOW(), INTERVAL 5 DAY)),
+('test_hist_004', 100000, 'test_task_done_004', 'test_inst_006', 'HR备案', 'b1', 4, '赵HR', 'APPROVE', '已备案', 120, DATE_SUB(NOW(), INTERVAL 4 DAY));
+
+-- 插入流程抄送记录
+INSERT INTO wf_process_copy (
+  tenant_id, instance_id, process_def_key, title, node_id, node_name,
+  start_user_id, start_user_name, user_id, form_data, is_read, read_time, create_time
+) VALUES
+(100000, 'test_inst_002', 'biz_leave', '张三的年假申请', 'n1', '部门经理审批', 5, '张三', 1, '{"l1":"年假","l2":"2026-02-15","l3":"2026-02-20","l4":5,"l5":"春节返乡探亲"}', 0, NULL, DATE_SUB(NOW(), INTERVAL 20 HOUR)),
+(100000, 'test_inst_003', 'biz_contract', 'XX科技采购合同审批', 'n1', '法务与财务会签', 2, '李经理', 1, '{"c1":"XX科技办公设备采购合同","c2":"XX科技有限公司","c3":50000,"c4":"采购合同","c5":"采购办公电脑及相关设备"}', 0, NULL, DATE_SUB(NOW(), INTERVAL 12 HOUR)),
+(100000, 'test_inst_004', 'biz_payment', '合同付款申请', 'n1', '财务主管审批', 3, '王财务', 1, '{"p1":"杭州云启科技有限公司","p2":"6217000012345678901","p3":30000,"p4":"HT-2026-001"}', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 10 HOUR)),
+(100000, 'test_inst_006', 'biz_leave', '赵HR的病假申请', 'b1', 'HR备案', 4, '赵HR', 1, '{"l1":"病假","l2":"2026-02-11","l3":"2026-02-13","l4":2,"l5":"感冒发烧需要休息"}', 1, DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY));
+DROP TABLE IF EXISTS wf_deploy_rollback_history;
+CREATE TABLE wf_deploy_rollback_history (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'id',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT 'tenant_id',
+  original_deploy_id BIGINT(20)     NOT NULL COMMENT 'original_deploy_id',
+  rollback_deploy_id BIGINT(20)     NOT NULL COMMENT 'rollback_deploy_id',
+  process_def_id    VARCHAR(64)     NOT NULL COMMENT 'process_def_id',
+    from_version      INT             NOT NULL COMMENT 'from_version',
+    to_version        INT             NOT NULL COMMENT 'to_version',
+    rollback_type     VARCHAR(20)     DEFAULT 'MANUAL' COMMENT 'rollback_type',
+    rollback_status   VARCHAR(20)     DEFAULT 'SUCCESS' COMMENT 'rollback_status',
+    rollback_reason   VARCHAR(500)    DEFAULT NULL COMMENT 'rollback_reason',
+    rollback_by       BIGINT(20)      NOT NULL COMMENT 'rollback_by',
+  rollback_by_name  VARCHAR(64)     DEFAULT NULL COMMENT 'rollback_by_name',
+  rollback_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT 'rollback_time',
+  success           TINYINT(1)      DEFAULT 1 COMMENT 'success',
+  error_message     TEXT            DEFAULT NULL COMMENT 'error_message',
+  PRIMARY KEY (id),
+  KEY idx_original_deploy (original_deploy_id),
+  KEY idx_rollback_deploy (rollback_deploy_id),
+  KEY idx_process_def_id (process_def_id),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_deploy_rollback_history';
+
+--
+DROP TABLE IF EXISTS wf_deploy_impact;
+CREATE TABLE wf_deploy_impact (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'id',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT 'tenant_id',
+  deploy_id         BIGINT(20)      NOT NULL COMMENT 'deploy_id',
+  impact_type       VARCHAR(30)     NOT NULL COMMENT 'impact_type',
+  impact_level      VARCHAR(20)     NOT NULL COMMENT 'impact_level',
+  impact_count      INT             DEFAULT 0 COMMENT 'impact_count',
+  impact_detail     TEXT            DEFAULT NULL COMMENT 'impact_detail',
+  mitigation_plan   TEXT            DEFAULT NULL COMMENT 'mitigation_plan',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT 'create_time',
+  PRIMARY KEY (id),
+  KEY idx_deploy_id (deploy_id),
+  KEY idx_impact_type (impact_type),
+  KEY idx_impact_level (impact_level),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_deploy_impact';
+
+-- =========================================================
+--
+-- =========================================================
+
+--
+DROP TABLE IF EXISTS workflow_template;
+CREATE TABLE workflow_template (
+    id VARCHAR(64) PRIMARY KEY COMMENT 'id',
+    name VARCHAR(200) NOT NULL COMMENT 'name',
+    description TEXT COMMENT 'description',
+    category_id VARCHAR(64) COMMENT 'category_id',
+    tags JSON COMMENT 'tags',
+    definition JSON NOT NULL COMMENT 'definition',
+    preview_image VARCHAR(500) COMMENT 'preview_image',
+    created_by VARCHAR(64) NOT NULL COMMENT 'created_by',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'created_at',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'updated_at',
+    usage_count INT DEFAULT 0 COMMENT 'usage_count',
+    is_system TINYINT(1) DEFAULT 0 COMMENT 'is_system',
+    status VARCHAR(20) DEFAULT 'active' COMMENT 'status',
+    tenant_id BIGINT(20) DEFAULT NULL COMMENT 'tenant_id',
+    INDEX idx_category (category_id),
+    INDEX idx_created_by (created_by),
+    INDEX idx_status (status),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_category_status (category_id, status) COMMENT 'idx_category_status',
+    INDEX idx_usage_count (usage_count DESC) COMMENT 'idx_usage_count',
+    INDEX idx_created_at (created_at DESC) COMMENT 'idx_created_at'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='workflow_template';
+
+--
+DROP TABLE IF EXISTS template_category;
+CREATE TABLE template_category (
+    id VARCHAR(64) PRIMARY KEY COMMENT 'id',
+    name VARCHAR(100) NOT NULL COMMENT 'name',
+    description VARCHAR(500) COMMENT 'description',
+    parent_id VARCHAR(64) COMMENT 'parent_id',
+    order_num INT DEFAULT 0 COMMENT 'order_num',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'created_at',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'updated_at',
+    tenant_id BIGINT(20) DEFAULT NULL COMMENT 'tenant_id',
+    INDEX idx_parent (parent_id),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_parent_order (parent_id, order_num) COMMENT 'idx_parent_order'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='template_category';
+
+--
+DROP TABLE IF EXISTS workflow_version;
+CREATE TABLE workflow_version (
+    id VARCHAR(64) PRIMARY KEY COMMENT 'id',
+    workflow_id VARCHAR(64) NOT NULL COMMENT 'workflow_id',
+    version_number VARCHAR(20) NOT NULL COMMENT 'version_number',
+    definition JSON NOT NULL COMMENT 'definition',
+    change_log TEXT COMMENT 'change_log',
+    change_type VARCHAR(20) NOT NULL COMMENT 'change_type',
+    created_by VARCHAR(64) NOT NULL COMMENT 'created_by',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'created_at',
+    is_rollback TINYINT(1) DEFAULT 0 COMMENT 'is_rollback',
+    rollback_from_version VARCHAR(20) COMMENT 'rollback_from_version',
+    checksum VARCHAR(64) NOT NULL COMMENT 'checksum',
+    tenant_id BIGINT(20) DEFAULT 100000 COMMENT 'tenant_id',
+    INDEX idx_workflow (workflow_id),
+    INDEX idx_version (workflow_id, version_number),
+    INDEX idx_created_at (created_at),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_workflow_created (workflow_id, created_at DESC) COMMENT 'idx_workflow_created',
+    INDEX idx_workflow_version_number (workflow_id, version_number) COMMENT 'idx_workflow_version_number',
+    UNIQUE KEY uk_workflow_version (workflow_id, version_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='workflow_version';
+
+--
+DROP TABLE IF EXISTS workflow_archive;
+CREATE TABLE workflow_archive (
+    id VARCHAR(64) PRIMARY KEY COMMENT 'id',
+    workflow_id VARCHAR(64) NOT NULL COMMENT 'workflow_id',
+    workflow_name VARCHAR(200) NOT NULL COMMENT 'workflow_name',
+    archived_by VARCHAR(64) NOT NULL COMMENT 'archived_by',
+    archived_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'archived_at',
+    archive_reason TEXT COMMENT 'archive_reason',
+    can_restore TINYINT(1) DEFAULT 1 COMMENT 'can_restore',
+    original_data JSON NOT NULL COMMENT 'original_data',
+    tenant_id BIGINT(20) DEFAULT 100000 COMMENT 'tenant_id',
+    INDEX idx_workflow (workflow_id),
+    INDEX idx_archived_by (archived_by),
+    INDEX idx_archived_at (archived_at),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_archived_at_desc (archived_at DESC) COMMENT 'idx_archived_at_desc',
+    INDEX idx_archived_by_time (archived_by, archived_at DESC) COMMENT 'idx_archived_by_time',
+    INDEX idx_workflow_restore (workflow_id, can_restore) COMMENT 'idx_workflow_restore'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='workflow_archive';
+
+--
+--
+--
+--
+DROP TABLE IF EXISTS wf_audit_log;
+CREATE TABLE wf_audit_log (
+    id VARCHAR(64) PRIMARY KEY COMMENT 'id',
+    operation_type VARCHAR(50) NOT NULL COMMENT 'operation_type',
+    target_type VARCHAR(50) NOT NULL COMMENT 'target_type',
+    target_id VARCHAR(64) NOT NULL COMMENT 'target_id',
+    target_name VARCHAR(200) COMMENT 'target_name',
+    operator_id VARCHAR(64) NOT NULL COMMENT 'operator_id',
+    operator_name VARCHAR(100) COMMENT 'operator_name',
+    operation_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'operation_time',
+    operation_reason TEXT COMMENT 'operation_reason',
+    operation_details TEXT COMMENT 'operation_details',
+    operation_result VARCHAR(20) NOT NULL DEFAULT 'SUCCESS' COMMENT 'operation_result',
+    error_message TEXT COMMENT 'error_message',
+    ip_address VARCHAR(50) COMMENT 'ip_address',
+    user_agent VARCHAR(500) COMMENT 'user_agent',
+    tenant_id BIGINT COMMENT 'tenant_id',
+    INDEX idx_operation_type (operation_type),
+    INDEX idx_target_type (target_type),
+    INDEX idx_target_id (target_id),
+    INDEX idx_operator_id (operator_id),
+    INDEX idx_operation_time (operation_time),
+    INDEX idx_tenant_id (tenant_id),
+    INDEX idx_target_operation (target_type, target_id, operation_type) COMMENT 'idx_target_operation',
+    INDEX idx_operator_time (operator_id, operation_time DESC) COMMENT 'idx_operator_time'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_audit_log';
+
+-- =========================================================
+--
+-- =========================================================
+INSERT INTO template_category (id, name, description, order_num, tenant_id) VALUES
+('cat-hr', '人事管理', '人力资源相关流程模板', 1, 100000),
+('cat-finance', '财务管理', '财务相关流程模板', 2, 100000),
+('cat-procurement', '采购管理', '采购相关流程模板', 3, 100000),
+('cat-contract', '合同管理', '合同审批相关流程模板', 4, 100000),
+('cat-admin', '行政管理', '行政管理流程模板', 5, 100000);
+
+-- =========================================================
+--
+-- =========================================================
+
+--
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-leave-001', '请假申请', '员工请假审批流程模板', 'cat-hr',
+'["请假", "审批", "人事"]',
+'{
+  "nodes": [
+    {"id": "start_leave", "type": "START", "title": "提交请假申请"},
+    {"id": "approval_leave_manager", "type": "APPROVAL", "title": "部门经理审批", "approverType": "ROLE", "approverValue": "manager"},
+    {"id": "end_leave", "type": "END", "title": "流程结束"}
+  ],
+  "edges": [
+    {"id": "start_leave->approval_leave_manager", "source": "start_leave", "target": "approval_leave_manager"},
+    {"id": "approval_leave_manager->end_leave", "source": "approval_leave_manager", "target": "end_leave"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+--
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-expense-001', '费用报销', '员工费用报销审批流程模板', 'cat-finance',
+'["报销", "财务", "审批"]',
+'{
+  "nodes": [
+    {"id": "start_expense", "type": "START", "title": "提交报销申请"},
+    {"id": "approval_expense_manager", "type": "APPROVAL", "title": "部门经理审批", "approverType": "ROLE", "approverValue": "manager"},
+    {"id": "approval_expense_finance", "type": "APPROVAL", "title": "财务审核", "approverType": "ROLE", "approverValue": "finance"},
+    {"id": "end_expense", "type": "END", "title": "流程结束"}
+  ],
+  "edges": [
+    {"id": "start_expense->approval_expense_manager", "source": "start_expense", "target": "approval_expense_manager"},
+    {"id": "approval_expense_manager->approval_expense_finance", "source": "approval_expense_manager", "target": "approval_expense_finance"},
+    {"id": "approval_expense_finance->end_expense", "source": "approval_expense_finance", "target": "end_expense"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+--
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-purchase-001', '采购申请', '物资采购审批流程模板', 'cat-procurement',
+'["采购", "审批", "物资"]',
+'{
+  "nodes": [
+    {"id": "start_purchase", "type": "START", "title": "提交采购申请"},
+    {"id": "approval_purchase_manager", "type": "APPROVAL", "title": "部门审批", "approverType": "ROLE", "approverValue": "manager"},
+    {"id": "end_purchase", "type": "END", "title": "流程结束"}
+  ],
+  "edges": [
+    {"id": "start_purchase->approval_purchase_manager", "source": "start_purchase", "target": "approval_purchase_manager"},
+    {"id": "approval_purchase_manager->end_purchase", "source": "approval_purchase_manager", "target": "end_purchase"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+--
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-contract-001', '合同审批', '合同审批流程（含法务审核）', 'cat-contract',
+'["合同", "审批", "法务"]',
+'{
+  "nodes": [
+    {"id": "start_contract", "type": "START", "title": "提交合同"},
+    {"id": "approval_contract_legal", "type": "APPROVAL", "title": "法务审核", "approverType": "USER", "approverValue": "6"},
+    {"id": "approval_contract_leader", "type": "APPROVAL", "title": "领导审批", "approverType": "ROLE", "approverValue": "admin"},
+    {"id": "end_contract", "type": "END", "title": "流程结束"}
+  ],
+  "edges": [
+    {"id": "start_contract->approval_contract_legal", "source": "start_contract", "target": "approval_contract_legal"},
+    {"id": "approval_contract_legal->approval_contract_leader", "source": "approval_contract_legal", "target": "approval_contract_leader"},
+    {"id": "approval_contract_leader->end_contract", "source": "approval_contract_leader", "target": "end_contract"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+--
+INSERT INTO workflow_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-trip-001', '出差申请', '员工出差审批流程模板', 'cat-admin',
+'["出差", "审批", "行政"]',
+'{
+  "nodes": [
+    {"id": "start_trip", "type": "START", "title": "提交出差申请"},
+    {"id": "approval_trip_manager", "type": "APPROVAL", "title": "部门经理审批", "approverType": "ROLE", "approverValue": "manager"},
+    {"id": "end_trip", "type": "END", "title": "流程结束"}
+  ],
+  "edges": [
+    {"id": "start_trip->approval_trip_manager", "source": "start_trip", "target": "approval_trip_manager"},
+    {"id": "approval_trip_manager->end_trip", "source": "approval_trip_manager", "target": "end_trip"}
+  ]
+}',
+1, 'active', 'system', 100000);
+
+SET FOREIGN_KEY_CHECKS = 1;

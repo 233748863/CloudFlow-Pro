@@ -1,17 +1,30 @@
 import request from './request';
+import {
+  createHrScheduleRule,
+  createHrShift,
+  getHrAttendanceMonthly,
+  hrCheckIn,
+  hrCheckOut,
+  listHrAttendanceRecords,
+  listHrScheduleRules,
+  listHrShifts,
+  resolveCurrentEmployeeId,
+  updateHrScheduleRule,
+  updateHrShift,
+} from './hr';
 
 // ================= 考勤管理 =================
 
 export interface AttendanceRecord {
   recordId?: number;
   userId?: number;
-  type: '1' | '2'; // 1: 签到, 2: 签退
+  type: '1' | '2';
   checkTime?: string;
   location?: string;
   address?: string;
   deviceInfo?: string;
   wifiInfo?: string;
-  status?: string; // 1: 正常, 2: 迟到, 3: 早退, ...
+  status?: string;
   remark?: string;
 }
 
@@ -21,23 +34,22 @@ export interface AttendanceRule {
   checkInTime: string;
   checkOutTime: string;
   elasticMinutes: number;
-  workDays?: string; // JSON: [1,2,3,4,5]
+  workDays?: string;
   lunchBreakStart?: string;
   lunchBreakEnd?: string;
-  overtimeEnabled?: number; // 0-否 1-是
+  overtimeEnabled?: number;
   overtimeMinMinutes?: number;
   lateToleranceCount?: number;
   severeLateMinutes?: number;
   absentMinutes?: number;
-  photoRequired?: number; // 0-否 1-是
-  enabled?: number; // 0-禁用 1-启用
+  photoRequired?: number;
+  enabled?: number;
   locationPoints?: string;
   wifiConfigs?: string;
   radius?: number;
   remark?: string;
 }
 
-// 考勤统计数据
 export interface AttendanceStatistics {
   month: string;
   userId: number;
@@ -51,38 +63,246 @@ export interface AttendanceStatistics {
   totalRecords: number;
 }
 
+const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
+
+const normalizeTime = (value?: string | null, fallback = '00:00:00') => {
+  const source = (value || fallback).trim();
+  if (/^\d{2}:\d{2}$/.test(source)) {
+    return `${source}:00`;
+  }
+  return source || fallback;
+};
+
+const parseJsonSafely = <T>(value?: string | null): T | null => {
+  if (!value) {
+    return null;
+  }
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeJsonField = (value?: string) => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = parseJsonSafely<unknown>(value);
+  return parsed ?? value;
+};
+
+const stringifyConfigField = (value?: unknown) => {
+  if (value == null || value === '') {
+    return '';
+  }
+  return typeof value === 'string' ? value : JSON.stringify(value);
+};
+
+const parseCoordinates = (location?: string) => {
+  if (!location) {
+    return {};
+  }
+  const [latitudeText, longitudeText] = location.split(',').map((item) => item.trim());
+  const latitude = Number(latitudeText);
+  const longitude = Number(longitudeText);
+  return {
+    latitude: Number.isFinite(latitude) ? latitude : undefined,
+    longitude: Number.isFinite(longitude) ? longitude : undefined,
+  };
+};
+
+const mapHrRuleToAttendanceRule = async () => {
+  const [rules, shifts] = await Promise.all([listHrScheduleRules(), listHrShifts()]);
+  const targetRule =
+    rules.find((rule) => rule.status === 1 && rule.ruleType === 'FIXED') ??
+    rules.find((rule) => rule.status === 1) ??
+    rules[0];
+
+  if (!targetRule) {
+    return null;
+  }
+
+  const ruleConfig = parseJsonSafely<Record<string, unknown>>(targetRule.ruleConfig) ?? {};
+  const shiftId = Number(ruleConfig.shiftId);
+  const shift = shifts.find((item) => item.id === shiftId);
+  const workDays = Array.isArray(ruleConfig.workDays) ? ruleConfig.workDays : DEFAULT_WORK_DAYS;
+
+  return {
+    ruleId: targetRule.id,
+    ruleName: targetRule.ruleName,
+    checkInTime: normalizeTime(shift?.startTime || (ruleConfig.checkInTime as string | undefined), '09:00:00'),
+    checkOutTime: normalizeTime(shift?.endTime || (ruleConfig.checkOutTime as string | undefined), '18:00:00'),
+    elasticMinutes: shift?.lateThreshold ?? Number(ruleConfig.elasticMinutes ?? 15),
+    workDays: JSON.stringify(workDays),
+    lunchBreakStart: normalizeTime(ruleConfig.lunchBreakStart as string | undefined, '12:00:00'),
+    lunchBreakEnd: normalizeTime(ruleConfig.lunchBreakEnd as string | undefined, '13:00:00'),
+    overtimeEnabled: ruleConfig.overtimeEnabled ? 1 : 0,
+    overtimeMinMinutes: Number(ruleConfig.overtimeMinMinutes ?? 30),
+    lateToleranceCount: Number(ruleConfig.lateToleranceCount ?? 0),
+    severeLateMinutes: Number(ruleConfig.severeLateMinutes ?? 60),
+    absentMinutes: Number(ruleConfig.absentMinutes ?? 240),
+    photoRequired: ruleConfig.photoRequired ? 1 : 0,
+    enabled: targetRule.status ?? 1,
+    locationPoints: stringifyConfigField(ruleConfig.locationPoints),
+    wifiConfigs: stringifyConfigField(ruleConfig.wifiConfigs),
+    radius: Number(ruleConfig.radius ?? 200),
+    remark: targetRule.description || (ruleConfig.remark as string | undefined) || '',
+  } satisfies AttendanceRule;
+};
+
+const ensureShift = async (data: AttendanceRule, currentShiftId?: number) => {
+  const shifts = await listHrShifts();
+  const selectedShift =
+    shifts.find((item) => item.id === currentShiftId) ??
+    shifts.find((item) => item.shiftCode === 'STANDARD') ??
+    shifts[0];
+
+  const shiftPayload = {
+    shiftName: data.ruleName || '标准班次',
+    startTime: normalizeTime(data.checkInTime),
+    endTime: normalizeTime(data.checkOutTime),
+    breakMinutes: 60,
+    lateThreshold: data.elasticMinutes ?? 15,
+    earlyThreshold: data.elasticMinutes ?? 15,
+    color: '#1890ff',
+    status: data.enabled ?? 1,
+  };
+
+  if (selectedShift) {
+    await updateHrShift(selectedShift.id, shiftPayload);
+    return selectedShift.id;
+  }
+
+  return createHrShift({
+    shiftCode: `ATT_${Date.now()}`,
+    ...shiftPayload,
+  });
+};
+
 // 打卡
-export const checkIn = (data: AttendanceRecord) => {
-  return request.post<boolean>('/oa/attendance/checkin', data);
+export const checkIn = async (data: AttendanceRecord) => {
+  const employeeId = await resolveCurrentEmployeeId(data.userId);
+  const { latitude, longitude } = parseCoordinates(data.location);
+  const payload = {
+    employeeId,
+    checkMethod: 'GPS' as const,
+    location: data.address || data.location,
+    latitude,
+    longitude,
+    remark: data.remark || data.deviceInfo || '',
+  };
+
+  if (data.type === '1') {
+    await hrCheckIn(payload);
+  } else {
+    await hrCheckOut(payload);
+  }
+  return true;
 };
 
 // 获取当前规则
-export const getAttendanceRule = () => {
-  return request.get<AttendanceRule>('/oa/attendance/rule');
-};
+export const getAttendanceRule = () => mapHrRuleToAttendanceRule();
 
 // 保存/更新考勤规则
-export const saveAttendanceRule = (data: AttendanceRule) => {
-  return request.post<boolean>('/oa/attendance/rule', data);
+export const saveAttendanceRule = async (data: AttendanceRule) => {
+  const rules = await listHrScheduleRules();
+  const currentRule =
+    rules.find((item) => item.id === data.ruleId) ??
+    rules.find((item) => item.ruleType === 'FIXED') ??
+    rules[0];
+  const currentConfig = parseJsonSafely<Record<string, unknown>>(currentRule?.ruleConfig) ?? {};
+  const currentShiftId = Number(currentConfig.shiftId);
+  const shiftId = await ensureShift(data, Number.isFinite(currentShiftId) ? currentShiftId : undefined);
+
+  const ruleConfig = JSON.stringify({
+    ...currentConfig,
+    shiftId,
+    workDays: parseJsonSafely<number[]>(data.workDays) ?? DEFAULT_WORK_DAYS,
+    lunchBreakStart: normalizeTime(data.lunchBreakStart, '12:00:00'),
+    lunchBreakEnd: normalizeTime(data.lunchBreakEnd, '13:00:00'),
+    overtimeEnabled: data.overtimeEnabled === 1,
+    overtimeMinMinutes: data.overtimeMinMinutes ?? 30,
+    lateToleranceCount: data.lateToleranceCount ?? 0,
+    severeLateMinutes: data.severeLateMinutes ?? 60,
+    absentMinutes: data.absentMinutes ?? 240,
+    photoRequired: data.photoRequired === 1,
+    locationPoints: normalizeJsonField(data.locationPoints),
+    wifiConfigs: normalizeJsonField(data.wifiConfigs),
+    radius: data.radius ?? 200,
+    remark: data.remark ?? '',
+  });
+
+  const rulePayload = {
+    ruleName: data.ruleName,
+    ruleType: 'FIXED',
+    ruleConfig,
+    description: data.remark ?? '',
+    status: data.enabled ?? 1,
+  };
+
+  if (currentRule) {
+    await updateHrScheduleRule(currentRule.id, rulePayload);
+  } else {
+    await createHrScheduleRule(rulePayload);
+  }
+  return true;
 };
 
 // 获取考勤记录列表
-export const getAttendanceRecords = (params: {
+export const getAttendanceRecords = async (params: {
   userId?: number;
   startDate?: string;
   endDate?: string;
   pageNum?: number;
   pageSize?: number;
 }) => {
-  return request.get('/oa/attendance/records', { params });
+  const employeeId = await resolveCurrentEmployeeId(params.userId);
+  const records = await listHrAttendanceRecords({
+    employeeId,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    pageNum: params.pageNum,
+    pageSize: params.pageSize,
+  });
+
+  return records.map((record) => ({
+    recordId: record.id,
+    userId: params.userId,
+    type: record.checkType === 'CHECK_OUT' ? '2' : '1',
+    checkTime: record.checkTime,
+    location: record.location || undefined,
+    status: record.status,
+    remark: record.remark || undefined,
+  })) as AttendanceRecord[];
 };
 
 // 获取月度考勤统计
-export const getAttendanceStatistics = (params: {
+export const getAttendanceStatistics = async (params: {
   userId?: number;
   month: string;
 }) => {
-  return request.get<AttendanceStatistics>('/oa/attendance/statistics', { params });
+  const employeeId = await resolveCurrentEmployeeId(params.userId);
+  const [yearText, monthText] = params.month.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const summary = await getHrAttendanceMonthly(employeeId, year, month);
+  const actualDays = summary.actualDays ?? 0;
+  const lateTimes = summary.lateTimes ?? 0;
+  const earlyTimes = summary.earlyTimes ?? 0;
+
+  return {
+    month: params.month,
+    userId: params.userId ?? employeeId,
+    totalDays: summary.workDays ?? 0,
+    normalCount: Math.max(actualDays - lateTimes - earlyTimes, 0),
+    lateCount: lateTimes,
+    earlyCount: earlyTimes,
+    outsideCount: 0,
+    absentCount: summary.absentDays ?? 0,
+    severeLateCount: 0,
+    totalRecords: actualDays * 2,
+  } satisfies AttendanceStatistics;
 };
 
 // ================= 资产管理 =================
@@ -93,7 +313,7 @@ export interface Asset {
   name: string;
   category?: string;
   model?: string;
-  status?: string; // 1: 闲置, 2: 在用, 3: 维修, 4: 报废
+  status?: string;
   price?: number;
   purchaseDate?: string;
   ownerId?: number;
@@ -103,7 +323,6 @@ export interface Asset {
   createTime?: string;
 }
 
-// 资产变动日志
 export interface AssetLog {
   logId?: number;
   refId?: number;
@@ -116,7 +335,6 @@ export interface AssetLog {
   createTime?: string;
 }
 
-// 资产查询参数
 export interface AssetQueryParams {
   pageNum?: number;
   pageSize?: number;
@@ -126,7 +344,6 @@ export interface AssetQueryParams {
   status?: string;
 }
 
-// 资产统计数据
 export interface AssetStatistics {
   total: number;
   statusCount: {
@@ -140,67 +357,54 @@ export interface AssetStatistics {
   categoryValue: Record<string, number>;
 }
 
-// 分页查询资产列表
 export const getAssetList = (params?: AssetQueryParams) => {
   return request.get('/oa/asset/list', { params });
 };
 
-// 获取资产详情
 export const getAssetDetail = (id: number) => {
   return request.get<Asset>(`/oa/asset/${id}`);
 };
 
-// 新增资产
 export const addAsset = (data: Asset) => {
   return request.post<boolean>('/oa/asset', data);
 };
 
-// 编辑资产
 export const updateAsset = (data: Asset) => {
   return request.put<boolean>('/oa/asset', data);
 };
 
-// 删除资产
 export const deleteAsset = (id: number) => {
   return request.delete<boolean>(`/oa/asset/${id}`);
 };
 
-// 资产领用
 export const borrowAsset = (id: number, userId: number) => {
   return request.post(`/oa/asset/${id}/borrow`, null, { params: { userId } });
 };
 
-// 资产归还
 export const returnAsset = (id: number) => {
   return request.post(`/oa/asset/${id}/return`);
 };
 
-// 资产送修
 export const repairAsset = (id: number, remark?: string) => {
   return request.post(`/oa/asset/${id}/repair`, null, { params: { remark } });
 };
 
-// 资产报废
 export const scrapAsset = (id: number, remark?: string) => {
   return request.post(`/oa/asset/${id}/scrap`, null, { params: { remark } });
 };
 
-// 获取资产变动日志
 export const getAssetLogs = (id: number) => {
   return request.get<AssetLog[]>(`/oa/asset/${id}/logs`);
 };
 
-// 获取资产统计
 export const getAssetStatistics = () => {
   return request.get<AssetStatistics>('/oa/asset/statistics');
 };
 
-// 获取所有分类列表
 export const getAssetCategories = () => {
   return request.get<string[]>('/oa/asset/categories');
 };
 
-// 获取二维码 URL
 export const getAssetQrCodeUrl = (id: number) => {
   return `/dev-api/oa/asset/${id}/qrcode`;
 };
