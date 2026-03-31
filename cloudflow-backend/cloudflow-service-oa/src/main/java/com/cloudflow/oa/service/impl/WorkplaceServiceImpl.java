@@ -121,14 +121,6 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             vehicleAction.setPath("/vehicle/booking");
             quickActions.add(vehicleAction);
             
-            WorkplaceSummaryDTO.QuickAction leaveAction = new WorkplaceSummaryDTO.QuickAction();
-            leaveAction.setId("leave");
-            leaveAction.setName("请假申请");
-            leaveAction.setIcon("calendar");
-            leaveAction.setColor("green");
-            leaveAction.setPath("/leave/apply");
-            quickActions.add(leaveAction);
-            
             WorkplaceSummaryDTO.QuickAction expenseAction = new WorkplaceSummaryDTO.QuickAction();
             expenseAction.setId("expense");
             expenseAction.setName("报销申请");

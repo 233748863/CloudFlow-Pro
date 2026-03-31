@@ -189,7 +189,7 @@ export const attendanceAppealApi = {
       total: records.length,
       rows: records,
       records,
-    } as Promise<PageResult<AttendanceAppeal>>;
+    } as PageResult<AttendanceAppeal>;
   },
 
   export: async (params: { pageNum?: number; pageSize?: number; status?: string; appealType?: string }) => {

@@ -222,7 +222,7 @@ class SyncManager {
       task_reject: { method: 'POST', url: `/workflow/task/complete` },
       notice_read: { method: 'POST', url: `/oa/notice/read/${action.payload.noticeId}` },
       schedule_create: { method: 'POST', url: `/oa/schedule` },
-      leave_request: { method: 'POST', url: `/workflow/process/start` },
+      hr_leave_request: { method: 'POST', url: `/workflow/process/start` },
       reimbursement_request: { method: 'POST', url: `/workflow/process/start` },
       vehicle_booking: { method: 'POST', url: `/workflow/process/start` },
       meeting_booking: { method: 'POST', url: `/oa/meeting-room` },

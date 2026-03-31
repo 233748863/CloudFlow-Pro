@@ -309,8 +309,8 @@ export const Dashboard = () => {
     { label: '报销申请', icon: <CreditCard size={20} />, path: '/expense/claim', tone: 'bg-amber-50 text-amber-600' },
     { label: '出差申请', icon: <Briefcase size={20} />, path: '/office/business-trip', tone: 'bg-rose-50 text-rose-600' },
     { label: '用车申请', icon: <Car size={20} />, path: '/admin/vehicle/booking', tone: 'bg-slate-100 text-slate-600' },
-    { label: '考勤打卡', icon: <UserCheck size={20} />, path: '/admin/attendance/checkin', tone: 'bg-pink-50 text-pink-600' },
-    { label: '加班申请', icon: <Timer size={20} />, path: '/office/overtime', tone: 'bg-amber-50 text-amber-600' },
+    { label: '考勤打卡', icon: <UserCheck size={20} />, path: '/hr/attendance/checkin', tone: 'bg-pink-50 text-pink-600' },
+    { label: '加班申请', icon: <Timer size={20} />, path: '/hr/overtime', tone: 'bg-amber-50 text-amber-600' },
     { label: '通讯录', icon: <Building2 size={20} />, path: '/office/contact', tone: 'bg-slate-100 text-slate-600' },
   ];
 

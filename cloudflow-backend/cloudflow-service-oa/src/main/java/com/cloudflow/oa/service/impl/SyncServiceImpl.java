@@ -133,7 +133,7 @@ public class SyncServiceImpl implements ISyncService {
                 // 但由于离线同步的特殊性，建议在前端直接调用工作流API，而不是通过同步接口
                 break;
 
-            case "leave_request":
+            case "hr_leave_request":
             case "reimbursement_request":
             case "vehicle_booking":
             case "meeting_booking":

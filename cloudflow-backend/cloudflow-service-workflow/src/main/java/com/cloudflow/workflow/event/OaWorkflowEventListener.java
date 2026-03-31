@@ -35,12 +35,9 @@ public class OaWorkflowEventListener {
     private WfProcessInstanceMapper processInstanceMapper;
 
     public OaWorkflowEventListener() {
-        register("leave_request", "biz_leave_request", "id", "instance_id", "LEAVE_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
         register("business_trip", "biz_business_trip", "id", "instance_id", "BUSINESS_TRIP:", "APPROVED", "REJECTED", "CANCELLED");
         register("expense_claim", "biz_expense_claim", "id", "instance_id", "EXPENSE_CLAIM:", "APPROVED", "REJECTED", "CANCELLED");
         register("payment_request", "biz_payment_request", "id", "instance_id", "PAYMENT_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
-        register("overtime_request", "biz_overtime_request", "id", "instance_id", "OVERTIME_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
-        register("attendance_appeal", "biz_attendance_appeal", "id", "instance_id", "ATTENDANCE_APPEAL:", "APPROVED", "REJECTED", "CANCELLED");
         register("vehicle_approval", "sys_vehicle_usage", "usage_id", "process_instance_id", null, "1", "2", "5");
     }
 
