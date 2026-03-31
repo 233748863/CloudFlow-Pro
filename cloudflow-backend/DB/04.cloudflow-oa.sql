@@ -1,6 +1,6 @@
 ﻿-- =========================================================
 -- CloudFlow Pro - OA办公模块数据库脚本
--- 模块：公告、日程、会议室、任务协作、考勤、资产、车辆管理
+-- 模块：公告、日程、会议室、任务协作、资产、车辆、访客、值班管理
 -- 版本：v1.0
 -- 创建日期：2026-02-09
 -- =========================================================
@@ -125,63 +125,6 @@ CREATE TABLE sys_work_task (
   KEY idx_work_task_dept (dept_id),
   KEY idx_work_task_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='协作任务表';
-
--- =========================================================
--- 四、考勤管理模块
--- =========================================================
-
--- 6. 考勤打卡记录表
-DROP TABLE IF EXISTS sys_attendance_record;
-CREATE TABLE sys_attendance_record (
-  record_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '记录ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  user_id           BIGINT(20)      NOT NULL COMMENT '用户ID',
-  type              CHAR(1)         NOT NULL COMMENT '类型（1签到 2签退）',
-  check_time        DATETIME        NOT NULL COMMENT '打卡时间',
-  location          VARCHAR(100)    DEFAULT NULL COMMENT '经纬度(lat,lng)',
-  address           VARCHAR(255)    DEFAULT NULL COMMENT '打卡地址',
-  device_info       VARCHAR(255)    DEFAULT NULL COMMENT '设备信息',
-  wifi_info         VARCHAR(100)    DEFAULT NULL COMMENT 'Wi-Fi信息',
-  status            CHAR(1)         DEFAULT '1' COMMENT '状态（1正常 2迟到 3早退 4外勤 5缺卡）',
-  remark            VARCHAR(255)    DEFAULT NULL COMMENT '备注',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
-  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
-  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (record_id),
-  KEY idx_att_user_time (user_id, check_time),
-  KEY idx_att_tenant (tenant_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考勤打卡记录表';
-
--- 7. 考勤规则表
-DROP TABLE IF EXISTS sys_attendance_rule;
-CREATE TABLE sys_attendance_rule (
-  rule_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '规则ID',
-  rule_name         VARCHAR(50)     NOT NULL COMMENT '规则名称',
-  check_in_time     TIME            NOT NULL COMMENT '上班时间',
-  check_out_time    TIME            NOT NULL COMMENT '下班时间',
-  elastic_minutes   INT(11)         DEFAULT 0 COMMENT '弹性时间(分钟)',
-  work_days         VARCHAR(50)     DEFAULT '[1,2,3,4,5]' COMMENT '工作日配置(JSON数组, 1=周一...7=周日)',
-  lunch_break_start TIME            DEFAULT '12:00:00' COMMENT '午休开始时间',
-  lunch_break_end   TIME            DEFAULT '13:00:00' COMMENT '午休结束时间',
-  overtime_enabled  TINYINT(1)      DEFAULT 0 COMMENT '是否允许加班(0否 1是)',
-  overtime_min_minutes INT(11)      DEFAULT 30 COMMENT '加班最低时长(分钟)',
-  late_tolerance_count INT(11)      DEFAULT 0 COMMENT '每月迟到容忍次数',
-  severe_late_minutes INT(11)       DEFAULT 60 COMMENT '严重迟到阈值(分钟)',
-  absent_minutes    INT(11)         DEFAULT 240 COMMENT '旷工阈值(分钟)',
-  photo_required    TINYINT(1)      DEFAULT 0 COMMENT '是否需要拍照打卡(0否 1是)',
-  enabled           TINYINT(1)      DEFAULT 1 COMMENT '是否启用(0禁用 1启用)',
-  location_points   TEXT            COMMENT '打卡点坐标集合(JSON)',
-  wifi_configs      TEXT            COMMENT 'Wi-Fi配置(JSON)',
-  radius            INT(11)         DEFAULT 200 COMMENT '打卡范围半径(米)',
-  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注说明',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
-  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
-  create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
-  update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (rule_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考勤规则表';
 
 -- =========================================================
 -- 五、资产管理模块
@@ -326,45 +269,14 @@ CREATE TABLE sys_vehicle_expense (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆费用记录表';
 
 -- =========================================================
--- 七、业务表（与工作流关联）
+-- 七、业务表（与工作流关联，OA 范围）
 -- =========================================================
-
--- 14. 请假申请表
-DROP TABLE IF EXISTS biz_leave_request;
-CREATE TABLE biz_leave_request (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id         BIGINT(20)      DEFAULT NULL COMMENT '租户ID',
-  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
-  user_id           BIGINT(20)      DEFAULT NULL COMMENT '申请人ID',
-  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
-  leave_no          VARCHAR(32)     DEFAULT NULL COMMENT '请假单号',
-  leave_type        VARCHAR(20)     DEFAULT NULL COMMENT '请假类型(ANNUAL年假/SICK病假/PERSONAL事假/MATERNITY产假/MARRIAGE婚假/BEREAVEMENT丧假/OTHER其他)',
-  start_time        DATETIME        DEFAULT NULL COMMENT '开始时间',
-  end_time          DATETIME        DEFAULT NULL COMMENT '结束时间',
-  leave_days        DECIMAL(5,1)    DEFAULT NULL COMMENT '请假天数',
-  reason            VARCHAR(500)    DEFAULT NULL COMMENT '请假事由',
-  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL',
-  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
-  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
-  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
-  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
-  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_leave_no (leave_no),
-  KEY idx_user_id (user_id),
-  KEY idx_tenant_id (tenant_id),
-  KEY idx_status (status),
-  KEY idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请假申请表';
 
 -- =========================================================
 -- 八、费用报销与付款申请模块
 -- =========================================================
 
--- 15. 报销申请表
+-- 14. 报销申请表
 DROP TABLE IF EXISTS biz_expense_claim;
 CREATE TABLE biz_expense_claim (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -391,7 +303,7 @@ CREATE TABLE biz_expense_claim (
   KEY idx_claim_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='报销申请表';
 
--- 16. 报销明细表
+-- 15. 报销明细表
 DROP TABLE IF EXISTS biz_expense_item;
 CREATE TABLE biz_expense_item (
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT 'tenant_id',
@@ -408,7 +320,7 @@ CREATE TABLE biz_expense_item (
   KEY idx_item_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='报销明细表';
 
--- 17. 付款申请表
+-- 16. 付款申请表
 DROP TABLE IF EXISTS biz_payment_request;
 CREATE TABLE biz_payment_request (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -441,89 +353,10 @@ CREATE TABLE biz_payment_request (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='付款申请表';
 
 -- =========================================================
--- 九、补卡/外勤申请模块
+-- 九、出差申请模块
 -- =========================================================
 
--- 19. 补卡申请表
-DROP TABLE IF EXISTS biz_attendance_appeal;
-CREATE TABLE biz_attendance_appeal (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
-  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
-  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
-  appeal_no         VARCHAR(32)     NOT NULL COMMENT '申请单号',
-  appeal_type       VARCHAR(20)     NOT NULL COMMENT '申请类型(MAKEUP补卡/FIELD外勤)',
-  appeal_date       DATE            NOT NULL COMMENT '补卡/外勤日期',
-  appeal_time       TIME            DEFAULT NULL COMMENT '补卡时间(补卡类型必填)',
-  check_type        CHAR(1)         DEFAULT NULL COMMENT '补卡打卡类型(1签到 2签退)',
-  original_record_id BIGINT(20)     DEFAULT NULL COMMENT '关联原始考勤记录ID',
-  original_status   VARCHAR(20)     DEFAULT NULL COMMENT '原始打卡状态(LATE迟到/EARLY早退/ABSENT缺卡/ABNORMAL异常)',
-  witness_name      VARCHAR(64)     DEFAULT NULL COMMENT '证明人姓名',
-  location          VARCHAR(100)    DEFAULT NULL COMMENT '外勤地点经纬度(lat,lng)',
-  address           VARCHAR(255)    DEFAULT NULL COMMENT '外勤地点地址',
-  reason            VARCHAR(500)    NOT NULL COMMENT '申请事由',
-  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
-  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
-  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
-  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
-  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
-  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_appeal_no (appeal_no),
-  KEY idx_appeal_user (user_id),
-  KEY idx_appeal_tenant (tenant_id),
-  KEY idx_appeal_status (status),
-  KEY idx_appeal_date (appeal_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补卡/外勤申请表';
-
--- =========================================================
--- 十、加班申请模块
--- =========================================================
-
--- 20. 加班申请表
-DROP TABLE IF EXISTS biz_overtime_request;
-CREATE TABLE biz_overtime_request (
-  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
-  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
-  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
-  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
-  overtime_no       VARCHAR(32)     NOT NULL COMMENT '加班单号',
-  overtime_type     VARCHAR(20)     NOT NULL COMMENT '加班类型(WORKDAY工作日/WEEKEND周末/HOLIDAY节假日)',
-  start_time        DATETIME        NOT NULL COMMENT '加班开始时间',
-  end_time          DATETIME        NOT NULL COMMENT '加班结束时间',
-  overtime_hours    DECIMAL(5,1)    DEFAULT NULL COMMENT '加班时长(小时)',
-  compensate_type   VARCHAR(20)     DEFAULT 'SALARY' COMMENT '补偿方式(SALARY加班费/LEAVE调休)',
-  reason            VARCHAR(500)    NOT NULL COMMENT '加班事由',
-  work_content      VARCHAR(500)    DEFAULT NULL COMMENT '加班工作内容',
-  expected_output   VARCHAR(500)    DEFAULT NULL COMMENT '预计产出/成果',
-  need_meal         TINYINT(1)      DEFAULT 0 COMMENT '是否需要用餐(0否 1是)',
-  work_location     VARCHAR(20)     DEFAULT 'OFFICE' COMMENT '加班地点(OFFICE办公室/HOME居家/OTHER其他)',
-  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
-  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
-  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
-  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
-  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
-  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
-  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_overtime_no (overtime_no),
-  KEY idx_overtime_user (user_id),
-  KEY idx_overtime_tenant (tenant_id),
-  KEY idx_overtime_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加班申请表';
-
--- =========================================================
--- 十一、出差申请模块
--- =========================================================
-
--- 21. 出差申请表
+-- 17. 出差申请表
 DROP TABLE IF EXISTS biz_business_trip;
 CREATE TABLE biz_business_trip (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -703,10 +536,6 @@ INSERT INTO sys_work_task (title, description, assignee_id, owner_id, priority, 
 ('开发任务看板功能', '前端使用 dnd-kit 实现拖拽看板', 1, 1, 2, 'DOING', NOW(), 'admin'),
 ('编写用户手册', '更新系统使用文档', 1, 1, 1, 'TODO', NOW(), 'admin');
 
--- 5. 初始化考勤规则
-INSERT INTO sys_attendance_rule (rule_name, check_in_time, check_out_time, elastic_minutes, work_days, lunch_break_start, lunch_break_end, overtime_enabled, overtime_min_minutes, late_tolerance_count, severe_late_minutes, absent_minutes, photo_required, enabled, tenant_id, create_time) 
-VALUES ('默认考勤组', '09:00:00', '18:00:00', 30, '[1,2,3,4,5]', '12:00:00', '13:00:00', 0, 30, 3, 60, 240, 0, 1, 100000, NOW());
-
 -- 6. 初始化值班排班示例数据
 INSERT INTO sys_duty_schedule (title, schedule_type, duty_date, shift_type, start_time, end_time, user_id, user_name, dept_id, location, duty_content, status, create_by, create_time) VALUES
 ('周一日常值班', 'DAILY', DATE_ADD(CURDATE(), INTERVAL 1 DAY), 'DAY', '09:00:00', '18:00:00', 1, 'admin', NULL, '前台', '负责来访接待和电话转接', 'SCHEDULED', 'admin', NOW()),
@@ -742,16 +571,16 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1.1 工作流关联数据清理
 -- -----------------------------
 DELETE FROM wf_task_read WHERE task_id IN (
-  'demo_task_001','demo_task_002','demo_task_003','demo_task_004','demo_task_005','demo_task_006','demo_task_007','demo_task_008',
-  'demo_task_009','demo_task_010','demo_task_011','demo_task_012','demo_task_013','demo_task_014','demo_task_015','demo_task_016'
+  'demo_task_002','demo_task_003','demo_task_004','demo_task_007','demo_task_008','demo_task_011','demo_task_012','demo_task_013',
+  'demo_task_014'
 );
 
 DELETE FROM wf_task_urge WHERE task_id IN (
-  'demo_task_002','demo_task_004','demo_task_006','demo_task_007','demo_task_011','demo_task_014'
+  'demo_task_002','demo_task_004','demo_task_007','demo_task_011','demo_task_014'
 );
 
 DELETE FROM wf_task_attachment WHERE task_id IN (
-  'demo_task_002','demo_task_004','demo_task_006','demo_task_007','demo_task_011','demo_task_014'
+  'demo_task_002','demo_task_004','demo_task_007','demo_task_011','demo_task_014'
 );
 
 DELETE FROM wf_task_delegation WHERE task_id IN (
@@ -759,7 +588,7 @@ DELETE FROM wf_task_delegation WHERE task_id IN (
 );
 
 DELETE FROM wf_task_candidate WHERE task_id IN (
-  'demo_task_002','demo_task_004','demo_task_006','demo_task_011','demo_task_014'
+  'demo_task_002','demo_task_004','demo_task_011','demo_task_014'
 );
 
 DELETE FROM wf_task_add_sign WHERE add_sign_id IN (
@@ -775,32 +604,27 @@ DELETE FROM wf_countersign_task WHERE countersign_id IN (
 );
 
 DELETE FROM wf_process_snapshot WHERE instance_id IN (
-  'demo_inst_001','demo_inst_002','demo_inst_003','demo_inst_004','demo_inst_005','demo_inst_006','demo_inst_007','demo_inst_008',
-  'demo_inst_009','demo_inst_010','demo_inst_011','demo_inst_012'
+  'demo_inst_003','demo_inst_005','demo_inst_011'
 );
 
 DELETE FROM wf_node_record WHERE instance_id IN (
-  'demo_inst_001','demo_inst_002','demo_inst_003','demo_inst_004','demo_inst_005','demo_inst_006','demo_inst_007','demo_inst_008',
-  'demo_inst_009','demo_inst_010','demo_inst_011','demo_inst_012'
+  'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
 );
 
 DELETE FROM wf_notification_log WHERE related_id IN (
-  'demo_inst_001','demo_inst_002','demo_inst_003','demo_inst_004','demo_inst_005','demo_inst_006','demo_inst_007','demo_inst_008',
-  'demo_inst_009','demo_inst_010','demo_inst_011','demo_inst_012'
+  'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
 );
 
 DELETE FROM wf_urge_effect WHERE task_id IN (
-  'demo_task_002','demo_task_004','demo_task_006','demo_task_007','demo_task_011','demo_task_014'
+  'demo_task_002','demo_task_004','demo_task_007','demo_task_011','demo_task_014'
 );
 
 DELETE FROM wf_process_copy WHERE instance_id IN (
-  'demo_inst_001','demo_inst_002','demo_inst_003','demo_inst_004','demo_inst_005','demo_inst_006','demo_inst_007','demo_inst_008',
-  'demo_inst_009','demo_inst_010','demo_inst_011','demo_inst_012'
+  'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
 );
 
 DELETE FROM wf_transaction_message WHERE business_id IN (
-  'demo_inst_001','demo_inst_002','demo_inst_003','demo_inst_004','demo_inst_005','demo_inst_006','demo_inst_007','demo_inst_008',
-  'demo_inst_009','demo_inst_010','demo_inst_011','demo_inst_012'
+  'demo_inst_003','demo_inst_005','demo_inst_011','demo_inst_012'
 );
 
 DELETE FROM wf_deploy_impact WHERE id IN (98001,98002);
@@ -813,30 +637,25 @@ DELETE FROM wf_audit_log WHERE id IN ('demo_audit_001');
 DELETE FROM workflow_template WHERE id IN ('demo_tpl_vehicle_001');
 
 DELETE FROM wf_task_history WHERE history_id IN (
-  'demo_hist_001','demo_hist_002','demo_hist_003','demo_hist_004','demo_hist_005','demo_hist_006','demo_hist_007','demo_hist_008',
-  'demo_hist_009','demo_hist_010','demo_hist_011','demo_hist_012','demo_hist_013','demo_hist_014','demo_hist_015','demo_hist_016',
-  'demo_hist_017','demo_hist_018','demo_hist_019','demo_hist_020','demo_hist_021','demo_hist_022'
+  'demo_hist_003','demo_hist_004','demo_hist_005','demo_hist_006','demo_hist_009','demo_hist_011','demo_hist_012','demo_hist_015',
+  'demo_hist_016','demo_hist_017','demo_hist_018','demo_hist_021','demo_hist_022'
 );
 
 DELETE FROM wf_task WHERE task_id IN (
-  'demo_task_001','demo_task_002','demo_task_003','demo_task_004','demo_task_005','demo_task_006','demo_task_007','demo_task_008',
-  'demo_task_009','demo_task_010','demo_task_011','demo_task_012','demo_task_013','demo_task_014','demo_task_015','demo_task_016'
+  'demo_task_002','demo_task_003','demo_task_004','demo_task_007','demo_task_008','demo_task_011','demo_task_012','demo_task_013',
+  'demo_task_014'
 );
 
 DELETE FROM wf_process_instance WHERE instance_id IN (
-  'demo_inst_001','demo_inst_002','demo_inst_003','demo_inst_004','demo_inst_005','demo_inst_006','demo_inst_007','demo_inst_008',
-  'demo_inst_009','demo_inst_010','demo_inst_011','demo_inst_012'
+  'demo_inst_003','demo_inst_004','demo_inst_005','demo_inst_006','demo_inst_011','demo_inst_012'
 );
 
 -- -----------------------------
 -- 1.2 业务表数据清理
 -- -----------------------------
-DELETE FROM biz_leave_request WHERE leave_no IN ('QJ202603110001','QJ202603110002');
 DELETE FROM biz_expense_item WHERE claim_id IN (9001,9002);
 DELETE FROM biz_expense_claim WHERE claim_no IN ('BX202603110001','BX202603110002');
 DELETE FROM biz_payment_request WHERE payment_no IN ('FK202603110001','FK202603110002');
-DELETE FROM biz_attendance_appeal WHERE appeal_no IN ('BK202603110001','BK202603110002');
-DELETE FROM biz_overtime_request WHERE overtime_no IN ('JB202603110001','JB202603110002');
 DELETE FROM biz_business_trip WHERE trip_no IN ('CC202603110001','CC202603110002');
 
 DELETE FROM sys_vehicle_expense WHERE expense_id IN (9101,9102,9103,9104,9105,9106,9107,9108);
@@ -847,13 +666,6 @@ DELETE FROM sys_asset_log WHERE log_id IN (9201,9202,9203,9204,9205,9206,9207,92
 DELETE FROM sys_asset WHERE asset_id IN (9001,9002,9003,9004,9005);
 DELETE FROM sys_consumable WHERE consumable_id IN (9001,9002,9003,9004,9005);
 
-DELETE FROM sys_attendance_record WHERE record_id IN (
-  9301,9302,9303,9304,9305,9306,9307,9308,9309,9310,9311,9312,9313,9314,9315,9316,
-  9317,9318,9319,9320,9321,9322,9323,9324
-);
-DELETE FROM sys_attendance_record WHERE record_id BETWEEN 94000 AND 94300;
-
-DELETE FROM sys_attendance_rule WHERE rule_id IN (91001,91002);
 DELETE FROM sys_file WHERE file_id IN (91001,91002,91003,91004);
 DELETE FROM sys_log WHERE log_id IN (91001,91002,91003,91004);
 DELETE FROM sys_audit_log WHERE audit_id IN (91001,91002);
@@ -960,60 +772,13 @@ INSERT INTO sys_work_task (
 (9405, 100000, '合同审批模板优化', '增加法务会签说明、风险提示和附件校验规则。', 6, 1, 104, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 3 DAY), '["法务","模板","流程"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 12 HOUR), 'liu', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0'),
 (9406, 100000, '清点备用笔记本库存', '核对设备编号、领用状态、维修与借用记录。', 7, 1, 105, 1, 'DONE', DATE_SUB(NOW(), INTERVAL 1 DAY), '["资产","盘点","IT"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 3 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 20 HOUR), '0'),
 (9407, 100000, '访客接待动线演练', '为大型客户到访准备接待流程与前台物料。', 4, 1, 103, 1, 'TODO', DATE_ADD(NOW(), INTERVAL 2 DAY), '["访客","接待","行政"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 4 HOUR), 'zhao', DATE_SUB(NOW(), INTERVAL 4 HOUR), '0'),
-(9408, 100000, '移动端打卡问题排查', '复现偶发定位失败与 Wi-Fi 校验异常，输出问题清单。', 9, 7, 107, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 36 HOUR), '["考勤","移动端","缺陷"]', NULL, 'chen', DATE_SUB(NOW(), INTERVAL 15 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0'),
+(9408, 100000, '访客通行二维码问题排查', '复现偶发二维码刷新失败与前台核验异常，输出问题清单。', 9, 7, 107, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 36 HOUR), '["访客","前台","缺陷"]', NULL, 'chen', DATE_SUB(NOW(), INTERVAL 15 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0'),
 (9409, 100000, '更新客户演示讲解稿', '梳理本周演示流程亮点与常见问题回答。', 8, 1, 106, 2, 'TODO', DATE_ADD(NOW(), INTERVAL 2 DAY), '["演示","讲解","前端"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'test_fe', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0'),
 (9410, 100000, '完善预算执行报表', '补充财务看板数据并检查异常指标。', 3, 1, 102, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 1 DAY), '["财务","报表","看板"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0'),
 (9411, 100000, '整理发布回滚预案', '汇总常见回滚步骤与联系人列表。', 7, 1, 105, 1, 'TODO', DATE_ADD(NOW(), INTERVAL 3 DAY), '["运维","发布","回滚"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 9 HOUR), 'chen', DATE_SUB(NOW(), INTERVAL 4 HOUR), '0'),
 (9412, 100000, '修订访客接待SOP', '补充贵宾接待流程与安全检查清单。', 4, 1, 103, 1, 'TODO', DATE_ADD(NOW(), INTERVAL 5 DAY), '["行政","SOP","访客"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 7 HOUR), 'zhao', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0'),
 (9413, 100000, '合同附件合规复核', '检查合同附件完整性与签署规范。', 6, 1, 104, 2, 'DOING', DATE_ADD(NOW(), INTERVAL 2 DAY), '["法务","合同","合规"]', NULL, 'admin', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'liu', DATE_SUB(NOW(), INTERVAL 3 HOUR), '0'),
-(9414, 100000, '移动端打卡体验优化', '收集试用反馈并输出优化建议。', 9, 7, 107, 2, 'TODO', DATE_ADD(NOW(), INTERVAL 4 DAY), '["考勤","移动端","体验"]', NULL, 'chen', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0');
-
--- -----------------------------
--- 2.4 考勤规则与打卡记录
--- -----------------------------
--- 说明：默认规则沿用初始化脚本已有数据，这里补充打卡记录用于仪表盘、补卡、外勤展示
-
-INSERT INTO sys_attendance_record (
-  record_id, tenant_id, user_id, type, check_time, location, address, device_info, wifi_info, status, remark, del_flag, create_time, update_time
-) VALUES
-(9301, 100000, 5, '1', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15', 'CloudFlow-Office', '1', '正常上班打卡', '0', NOW(), NOW()),
-(9302, 100000, 5, '2', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 12 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15', 'CloudFlow-Office', '1', '正常下班打卡', '0', NOW(), NOW()),
-(9303, 100000, 5, '1', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 28 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15', 'CloudFlow-Office', '2', '早高峰拥堵，轻微迟到', '0', NOW(), NOW()),
-(9304, 100000, 5, '2', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 35 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15', 'CloudFlow-Office', '1', '项目联调后下班', '0', NOW(), NOW()),
-(9305, 100000, 8, '1', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 56 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'MacBook Pro', 'CloudFlow-Office', '1', '会议前提前到岗', '0', NOW(), NOW()),
-(9306, 100000, 8, '2', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 6 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'MacBook Pro', 'CloudFlow-Office', '1', '正常签退', '0', NOW(), NOW()),
-(9307, 100000, 9, '1', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 42 MINUTE, '31.2310,121.4700', '客户现场机房', 'ThinkPad X1', 'Guest-WiFi', '4', '外勤支持客户部署', '0', NOW(), NOW()),
-(9308, 100000, 9, '2', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR + INTERVAL 10 MINUTE, '31.2310,121.4700', '客户现场机房', 'ThinkPad X1', 'Guest-WiFi', '4', '外勤结束返程', '0', NOW(), NOW()),
-(9309, 100000, 3, '1', CURDATE() + INTERVAL 8 HOUR + INTERVAL 58 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'Huawei Mate60', 'CloudFlow-Office', '1', '正常签到', '0', NOW(), NOW()),
-(9310, 100000, 3, '2', CURDATE() + INTERVAL 18 HOUR + INTERVAL 2 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'Huawei Mate60', 'CloudFlow-Office', '1', '正常签退', '0', NOW(), NOW()),
-(9311, 100000, 4, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 5 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 14', 'CloudFlow-Office', '1', 'HR晨会后签到', '0', NOW(), NOW()),
-(9312, 100000, 4, '2', CURDATE() + INTERVAL 18 HOUR + INTERVAL 18 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 14', 'CloudFlow-Office', '1', '面试安排后签退', '0', NOW(), NOW()),
-(9313, 100000, 2, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 12 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15 Pro', 'CloudFlow-Office', '1', '部门晨会导致晚几分钟', '0', NOW(), NOW()),
-(9314, 100000, 2, '2', CURDATE() + INTERVAL 20 HOUR + INTERVAL 10 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPhone 15 Pro', 'CloudFlow-Office', '1', '加班评审结束后签退', '0', NOW(), NOW()),
-(9315, 100000, 6, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 0 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPad Pro', 'CloudFlow-Office', '1', '合同评审日', '0', NOW(), NOW()),
-(9316, 100000, 6, '2', CURDATE() + INTERVAL 18 HOUR + INTERVAL 45 MINUTE, '31.2304,121.4737', '上海市黄浦区总部园区A座', 'iPad Pro', 'CloudFlow-Office', '1', '完成法务审查后签退', '0', NOW(), NOW()),
-(9317, 100000, 1, '1', DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 8 HOUR + INTERVAL 55 MINUTE, '31.2304,121.4737', '总部园区A座', 'Windows PC', 'CloudFlow-Office', '1', '管理员提前签到', '0', NOW(), NOW()),
-(9318, 100000, 1, '2', DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 18 HOUR + INTERVAL 5 MINUTE, '31.2304,121.4737', '总部园区A座', 'Windows PC', 'CloudFlow-Office', '1', '管理员正常签退', '0', NOW(), NOW()),
-(9319, 100000, 7, '1', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 20 MINUTE, '31.2304,121.4737', '总部园区A座', 'Huawei Mate60', 'CloudFlow-Office', '2', '演示设备准备稍迟到', '0', NOW(), NOW()),
-(9320, 100000, 7, '2', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 19 HOUR + INTERVAL 5 MINUTE, '31.2304,121.4737', '总部园区A座', 'Huawei Mate60', 'CloudFlow-Office', '1', '演示结束后签退', '0', NOW(), NOW()),
-(9321, 100000, 8, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 8 MINUTE, '31.2304,121.4737', '总部园区A座', 'MacBook Pro', 'CloudFlow-Office', '1', '演示准备签到', '0', NOW(), NOW()),
-(9322, 100000, 8, '2', CURDATE() + INTERVAL 18 HOUR + INTERVAL 22 MINUTE, '31.2304,121.4737', '总部园区A座', 'MacBook Pro', 'CloudFlow-Office', '1', '演示复盘后签退', '0', NOW(), NOW()),
-(9323, 100000, 9, '1', CURDATE() + INTERVAL 9 HOUR + INTERVAL 30 MINUTE, '31.2310,121.4700', '客户现场机房', 'ThinkPad X1', 'Guest-WiFi', '4', '外勤开始', '0', NOW(), NOW()),
-(9324, 100000, 9, '2', CURDATE() + INTERVAL 19 HOUR + INTERVAL 0 MINUTE, '31.2310,121.4700', '客户现场机房', 'ThinkPad X1', 'Guest-WiFi', '4', '外勤结束', '0', NOW(), NOW());
-
-INSERT INTO sys_attendance_rule (
-  rule_id, rule_name, check_in_time, check_out_time, elastic_minutes, work_days, lunch_break_start, lunch_break_end,
-  overtime_enabled, overtime_min_minutes, late_tolerance_count, severe_late_minutes, absent_minutes, photo_required, enabled,
-  location_points, wifi_configs, radius, remark, tenant_id, del_flag, create_by, create_time, update_by, update_time
-) VALUES
-(91001, '研发弹性考勤组', '09:30:00', '18:30:00', 15, '[1,2,3,4,5]', '12:00:00', '13:00:00', 1, 30, 2, 45, 180, 0, 1,
- '[{"name":"总部园区A座","lat":31.2304,"lng":121.4737},{"name":"研发中心B区","lat":31.2312,"lng":121.4722}]',
- '[{"ssid":"CloudFlow-Office","bssid":"AA:BB:CC:DD:EE:01"},{"ssid":"CloudFlow-Lab","bssid":"AA:BB:CC:DD:EE:02"}]',
- 200, '用于演示弹性打卡与多打卡点配置', 100000, '0', 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(91002, '客服轮班考勤组', '08:30:00', '17:30:00', 10, '[1,2,3,4,5,6]', '12:00:00', '12:30:00', 0, 30, 1, 30, 120, 1, 1,
- '[{"name":"客服中心","lat":31.2299,"lng":121.4742}]',
- '[{"ssid":"CloudFlow-CS","bssid":"AA:BB:CC:DD:EE:03"}]',
- 150, '用于演示轮班考勤与拍照打卡', 100000, '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY));
+(9414, 100000, '用车申请移动端体验优化', '收集试用反馈并输出移动端提交流程优化建议。', 9, 7, 107, 2, 'TODO', DATE_ADD(NOW(), INTERVAL 4 DAY), '["用车","移动端","体验"]', NULL, 'chen', DATE_SUB(NOW(), INTERVAL 6 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0');
 
 -- -----------------------------
 -- 2.5 资产、耗材与日志
@@ -1164,17 +929,17 @@ INSERT INTO sys_frontend_error_log (
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
  'error',
  JSON_OBJECT('module','workflow','page','ProcessDetail','env','demo'),
- JSON_OBJECT('instanceId','demo_inst_004','taskId','demo_task_006','browser','Chrome'),
+ JSON_OBJECT('instanceId','demo_inst_004','taskId','demo_task_011','browser','Chrome'),
  '10.10.0.25', 8, '前端测试', DATE_SUB(NOW(), INTERVAL 4 HOUR), DATE_SUB(NOW(), INTERVAL 4 HOUR)),
-(9902, 100000, '移动端考勤定位权限被拒绝',
+(9902, 100000, '访客预约二维码加载失败',
  'Error: geolocation permission denied',
- 'at MobileAttendance (src/mobile/pages/Attendance.tsx:86)\nat AttendancePage',
- '移动端考勤页面进入定位流程',
- '/mobile/attendance',
+ 'at MobileVisitorPass (src/mobile/pages/VisitorPass.tsx:86)\nat VisitorPassPage',
+ '访客预约页面加载通行二维码',
+ '/mobile/visitor/pass',
  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15',
  'warning',
- JSON_OBJECT('module','attendance','page','MobileAttendance','env','demo'),
- JSON_OBJECT('userId',5,'device','iPhone 15','network','4G'),
+ JSON_OBJECT('module','visitor','page','MobileVisitorPass','env','demo'),
+ JSON_OBJECT('visitorId',9702,'device','iPhone 15','network','4G'),
  '10.10.0.36', 5, '张三', DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 2 HOUR)),
 (9903, 100000, '日程页面数据加载超时',
  'AxiosError: timeout of 10000ms exceeded',
@@ -1206,15 +971,15 @@ INSERT INTO sys_frontend_error_log (
  JSON_OBJECT('module','vehicle','page','VehicleUsageList','env','demo'),
  JSON_OBJECT('status','PENDING','userId',7),
  '10.10.0.23', 7, '陈IT', DATE_SUB(NOW(), INTERVAL 35 MINUTE), DATE_SUB(NOW(), INTERVAL 35 MINUTE)),
-(9906, 100000, '考勤规则保存失败',
+(9906, 100000, '值班安排保存失败',
  'AxiosError: Request failed with status code 500',
- 'at AttendanceRule (src/pages/admin/attendance/AttendanceRule.tsx:190)\nat Admin',
- '考勤规则保存',
- '/admin/attendance/rule',
+ 'at DutyScheduleForm (src/pages/admin/duty/DutyScheduleForm.tsx:190)\nat Admin',
+ '值班安排保存',
+ '/admin/duty/schedule',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
  'error',
- JSON_OBJECT('module','attendance','page','AttendanceRule','env','demo'),
- JSON_OBJECT('ruleId',91002,'action','save'),
+ JSON_OBJECT('module','duty','page','DutyScheduleForm','env','demo'),
+ JSON_OBJECT('scheduleId',9803,'action','save'),
  '10.10.0.24', 7, '陈IT', DATE_SUB(NOW(), INTERVAL 20 MINUTE), DATE_SUB(NOW(), INTERVAL 20 MINUTE));
 
 INSERT INTO sys_file (
@@ -1222,8 +987,8 @@ INSERT INTO sys_file (
 ) VALUES
 (91001, 100000, '年度运维合同.pdf', '/demo/workflow/payment/service-contract.pdf',
  'https://demo.cloudflow.local/files/payment/fk202603110001-contract.pdf', 'LOCAL', 1864022, 'application/pdf', 'wang', DATE_SUB(NOW(), INTERVAL 13 HOUR), '0', '付款合同存档'),
-(91002, 100000, '演示缺陷清单.xlsx', '/demo/workflow/overtime/issue-list.xlsx',
- 'https://demo.cloudflow.local/files/overtime/issue-list.xlsx', 'LOCAL', 102400, 'application/xlsx', 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '演示缺陷汇总表'),
+(91002, 100000, '访客接待物料清单.xlsx', '/demo/oa/visitor/reception-checklist.xlsx',
+ 'https://demo.cloudflow.local/files/visitor/reception-checklist.xlsx', 'LOCAL', 102400, 'application/xlsx', 'test_fe', DATE_SUB(NOW(), INTERVAL 6 HOUR), '0', '访客接待物料准备清单'),
 (91003, 100000, '客户演示议程.pdf', '/demo/workflow/trip/training-agenda.pdf',
  'https://demo.cloudflow.local/files/trip/cc202603110001-plan.pdf', 'LOCAL', 280600, 'application/pdf', 'zhang', DATE_SUB(NOW(), INTERVAL 9 HOUR), '0', '客户培训资料归档'),
 (91004, 100000, '用车派车记录.docx', '/demo/workflow/vehicle/dispatch-note.docx',
@@ -1241,42 +1006,22 @@ INSERT INTO sys_log (
 (91003, 100000, '0', '用车申请列表查询', 'cloudflow-oa', '10.10.0.21',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
  '/api/oa/vehicle/usage/list', 'GET', '{"status":"PENDING","page":1}', 95, NULL, 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
-(91004, 100000, '9', '考勤规则保存失败', 'cloudflow-oa', '10.10.0.24',
+(91004, 100000, '9', '值班安排保存失败', 'cloudflow-oa', '10.10.0.24',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36',
- '/api/oa/attendance/rule', 'POST', '{"ruleId":91002}', 420, '数据库连接超时', 'chen', DATE_SUB(NOW(), INTERVAL 20 MINUTE));
+ '/api/oa/duty/schedule', 'POST', '{"scheduleId":9803}', 420, '数据库连接超时', 'chen', DATE_SUB(NOW(), INTERVAL 20 MINUTE));
 
 INSERT INTO sys_audit_log (
   audit_id, tenant_id, audit_name, audit_field, before_val, after_val, create_by, create_time
 ) VALUES
 (91001, 100000, '流程模板变更', 'status', 'draft', 'published', 'admin', DATE_SUB(NOW(), INTERVAL 12 DAY)),
-(91002, 100000, '考勤规则变更', 'check_in_time', '09:00:00', '09:30:00', 'admin', DATE_SUB(NOW(), INTERVAL 9 DAY));
+(91002, 100000, '值班安排变更', 'start_time', '09:00:00', '08:30:00', 'admin', DATE_SUB(NOW(), INTERVAL 9 DAY));
 
 -- =========================================================
 -- 三、业务申请表 + 工作流实例联动数据
 -- =========================================================
 
 -- -----------------------------
--- 3.1 请假申请
--- -----------------------------
-INSERT INTO biz_leave_request (
-  id, tenant_id, instance_id, user_id, user_name, leave_no, leave_type, start_time, end_time, leave_days, reason,
-  attachment_url, status, dept_id, dept_name, del_flag, create_by, create_time, update_by, update_time
-) VALUES
-(9001, 100000, 'demo_inst_001', 5, '张三', 'QJ202603110001', 'ANNUAL',
- DATE_ADD(CURDATE(), INTERVAL 7 DAY) + INTERVAL 9 HOUR,
- DATE_ADD(CURDATE(), INTERVAL 11 DAY) + INTERVAL 18 HOUR,
- 5.0, '清明假期前后返乡探亲，已完成当前迭代开发任务交接。',
- 'https://demo.cloudflow.local/files/leave/qj202603110001-handover.pdf',
- 'PENDING', 101, '研发部', '0', 'zhang', DATE_SUB(NOW(), INTERVAL 18 HOUR), 'zhang', DATE_SUB(NOW(), INTERVAL 18 HOUR)),
-(9002, 100000, 'demo_inst_002', 4, '赵HR', 'QJ202603110002', 'SICK',
- DATE_SUB(CURDATE(), INTERVAL 6 DAY) + INTERVAL 9 HOUR,
- DATE_SUB(CURDATE(), INTERVAL 4 DAY) + INTERVAL 18 HOUR,
- 2.0, '因流感发烧请假休息，并已提供就诊证明。',
- 'https://demo.cloudflow.local/files/leave/qj202603110002-medical.pdf',
- 'APPROVED', 103, '人力资源部', '0', 'zhao', DATE_SUB(NOW(), INTERVAL 6 DAY), 'zhao', DATE_SUB(NOW(), INTERVAL 4 DAY));
-
--- -----------------------------
--- 3.2 报销申请
+-- 3.1 报销申请
 -- -----------------------------
 INSERT INTO biz_expense_claim (
   id, tenant_id, instance_id, user_id, user_name, claim_no, category, total_amount, description, status,
@@ -1300,7 +1045,7 @@ INSERT INTO biz_expense_item (
 (90022, 100000, 9002, 'OFFICE', 540.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '打印耗材与财务标签纸', 'https://demo.cloudflow.local/files/expense/bx9002-print.jpg', NULL);
 
 -- -----------------------------
--- 3.3 付款申请
+-- 3.2 付款申请
 -- -----------------------------
 INSERT INTO biz_payment_request (
   id, tenant_id, instance_id, user_id, user_name, payment_no, payee_name, payee_account, payee_bank, amount,
@@ -1316,41 +1061,7 @@ INSERT INTO biz_payment_request (
  'PAID', 102, '财务部', '0', 'wang', DATE_SUB(NOW(), INTERVAL 10 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 4 DAY));
 
 -- -----------------------------
--- 3.4 补卡 / 外勤申请
--- -----------------------------
-INSERT INTO biz_attendance_appeal (
-  id, tenant_id, instance_id, user_id, user_name, appeal_no, appeal_type, appeal_date, appeal_time, check_type,
-  original_record_id, original_status, witness_name, location, address, reason, attachment_url, status, dept_id, dept_name,
-  del_flag, create_by, create_time, update_by, update_time
-) VALUES
-(9001, 100000, 'demo_inst_007', 5, '张三', 'BK202603110001', 'MAKEUP', DATE_SUB(CURDATE(), INTERVAL 1 DAY), '09:03:00', '1',
- 9303, 'LATE', '李经理', NULL, NULL, '因地铁故障导致迟到，实际已于 09:03 到达公司。', 'https://demo.cloudflow.local/files/attendance/bk202603110001-metro.jpg',
- 'PENDING', 101, '研发部', '0', 'zhang', DATE_SUB(NOW(), INTERVAL 9 HOUR), 'zhang', DATE_SUB(NOW(), INTERVAL 9 HOUR)),
-(9002, 100000, 'demo_inst_008', 9, '后端测试', 'BK202603110002', 'FIELD', DATE_SUB(CURDATE(), INTERVAL 1 DAY), NULL, NULL,
- 9307, 'ABNORMAL', '陈IT', '31.2310,121.4700', '浦东新区客户现场机房', '客户现场部署支持，未在公司 Wi-Fi 范围内打卡。', 'https://demo.cloudflow.local/files/attendance/bk202603110002-site.jpg',
- 'APPROVED', 107, '后端组', '0', 'test_be', DATE_SUB(NOW(), INTERVAL 30 HOUR), 'test_be', DATE_SUB(NOW(), INTERVAL 20 HOUR));
-
--- -----------------------------
--- 3.5 加班申请
--- -----------------------------
-INSERT INTO biz_overtime_request (
-  id, tenant_id, instance_id, user_id, user_name, overtime_no, overtime_type, start_time, end_time, overtime_hours,
-  compensate_type, reason, work_content, expected_output, need_meal, work_location, attachment_url, status,
-  dept_id, dept_name, del_flag, create_by, create_time, update_by, update_time
-) VALUES
-(9001, 100000, 'demo_inst_009', 8, '前端测试', 'JB202603110001', 'WORKDAY',
- CURDATE() + INTERVAL 19 HOUR, CURDATE() + INTERVAL 22 HOUR + INTERVAL 30 MINUTE, 3.5,
- 'LEAVE', '为客户演示修复流程详情页附件预览兼容性问题。', '完成流程详情页兼容修复与回归测试。', '提交可发布版本并附回归截图。', 1, 'OFFICE',
- 'https://demo.cloudflow.local/files/overtime/jb202603110001-plan.pdf',
- 'PENDING', 106, '前端组', '0', 'test_fe', DATE_SUB(NOW(), INTERVAL 7 HOUR), 'test_fe', DATE_SUB(NOW(), INTERVAL 7 HOUR)),
-(9002, 100000, 'demo_inst_010', 9, '后端测试', 'JB202603110002', 'WEEKEND',
- DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 10 HOUR, DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 18 HOUR, 8.0,
- 'SALARY', '周末配合客户进行灰度发布与数据迁移。', '执行数据库迁移、接口联调、日志巡检。', '保障客户系统成功灰度切换。', 1, 'OTHER',
- 'https://demo.cloudflow.local/files/overtime/jb202603110002-report.pdf',
- 'APPROVED', 107, '后端组', '0', 'test_be', DATE_SUB(NOW(), INTERVAL 6 DAY), 'test_be', DATE_SUB(NOW(), INTERVAL 5 DAY));
-
--- -----------------------------
--- 3.6 出差申请
+-- 3.3 出差申请
 -- -----------------------------
 INSERT INTO biz_business_trip (
   id, tenant_id, instance_id, user_id, user_name, trip_no, departure, destination, start_date, end_date, trip_days,
@@ -1373,7 +1084,7 @@ INSERT INTO biz_business_trip (
  'APPROVED', 103, '人力资源部', '0', 'zhao', DATE_SUB(NOW(), INTERVAL 13 DAY), 'zhao', DATE_SUB(NOW(), INTERVAL 10 DAY));
 
 -- -----------------------------
--- 3.7 用车审批业务（与工作流直接关联）
+-- 3.4 用车审批业务（与工作流直接关联）
 -- -----------------------------
 -- 说明：sys_vehicle_usage.usage_id = 9001 已在上文插入，并绑定 process_instance_id = demo_inst_012
 
@@ -1389,16 +1100,6 @@ INSERT INTO wf_process_instance (
   status, start_time, end_time, variables, priority, process_no, dept_id, create_by, update_by, create_time, update_time,
   del_flag, parent_instance_id, parent_node_key
 ) VALUES
-('demo_inst_001', 100000, 'biz_leave', 'wf_leave', 'LEAVE_REQUEST:9001', '张三的年假申请（清明返乡）', 5, '张三',
- 'RUNNING', DATE_SUB(NOW(), INTERVAL 18 HOUR), NULL,
- JSON_OBJECT('leaveNo','QJ202603110001','leaveType','年假','days',5,'deptName','研发部'),
- 'URGENT', 'PROC-DEMO-20260311-001', 101, 'zhang', 'zhang', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR), '0', NULL, NULL),
-
-('demo_inst_002', 100000, 'biz_leave', 'wf_leave', 'LEAVE_REQUEST:9002', '赵HR的病假申请', 4, '赵HR',
- 'COMPLETED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY),
- JSON_OBJECT('leaveNo','QJ202603110002','leaveType','病假','days',2,'deptName','人力资源部'),
- 'NORMAL', 'PROC-DEMO-20260311-002', 103, 'zhao', 'zhao', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '0', NULL, NULL),
-
 ('demo_inst_003', 100000, 'biz_reimburse', 'wf_reimburse', 'EXPENSE_CLAIM:9001', '张三的杭州出差报销', 5, '张三',
  'RUNNING', DATE_SUB(NOW(), INTERVAL 16 HOUR), NULL,
  JSON_OBJECT('claimNo','BX202603110001','amount',2680.50,'category','TRAVEL','deptName','研发部'),
@@ -1419,26 +1120,6 @@ INSERT INTO wf_process_instance (
  JSON_OBJECT('paymentNo','FK202603110002','amount',32000.00,'paymentType','PURCHASE','deptName','财务部'),
  'NORMAL', 'PROC-DEMO-20260311-006', 102, 'wang', 'wang', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), '0', NULL, NULL),
 
-('demo_inst_007', 100000, 'attendance_appeal', 'wf_attendance_appeal', 'ATTENDANCE_APPEAL:9001', '张三的补卡申请', 5, '张三',
- 'RUNNING', DATE_SUB(NOW(), INTERVAL 9 HOUR), NULL,
- JSON_OBJECT('appealNo','BK202603110001','appealType','MAKEUP','appealDate',DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY),'%Y-%m-%d')),
- 'NORMAL', 'PROC-DEMO-20260311-007', 101, 'zhang', 'zhang', DATE_SUB(NOW(), INTERVAL 9 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR), '0', NULL, NULL),
-
-('demo_inst_008', 100000, 'attendance_appeal', 'wf_attendance_appeal', 'ATTENDANCE_APPEAL:9002', '后端测试的外勤申请', 9, '后端测试',
- 'COMPLETED', DATE_SUB(NOW(), INTERVAL 30 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR),
- JSON_OBJECT('appealNo','BK202603110002','appealType','FIELD','appealDate',DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY),'%Y-%m-%d')),
- 'HIGH', 'PROC-DEMO-20260311-008', 107, 'test_be', 'test_be', DATE_SUB(NOW(), INTERVAL 30 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), '0', NULL, NULL),
-
-('demo_inst_009', 100000, 'overtime_request', 'wf_overtime_request', 'OVERTIME_REQUEST:9001', '前端测试的工作日加班申请', 8, '前端测试',
- 'RUNNING', DATE_SUB(NOW(), INTERVAL 7 HOUR), NULL,
- JSON_OBJECT('overtimeNo','JB202603110001','hours',3.5,'compensateType','LEAVE'),
- 'HIGH', 'PROC-DEMO-20260311-009', 106, 'test_fe', 'test_fe', DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 7 HOUR), '0', NULL, NULL),
-
-('demo_inst_010', 100000, 'overtime_request', 'wf_overtime_request', 'OVERTIME_REQUEST:9002', '后端测试的周末加班申请', 9, '后端测试',
- 'COMPLETED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY),
- JSON_OBJECT('overtimeNo','JB202603110002','hours',8.0,'compensateType','SALARY'),
- 'HIGH', 'PROC-DEMO-20260311-010', 107, 'test_be', 'test_be', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), '0', NULL, NULL),
-
 ('demo_inst_011', 100000, 'business_trip', 'wf_business_trip', 'BUSINESS_TRIP:9001', '张三的杭州客户出差申请', 5, '张三',
  'RUNNING', DATE_SUB(NOW(), INTERVAL 11 HOUR), NULL,
  JSON_OBJECT('tripNo','CC202603110001','destination','杭州','tripDays',3.0,'projectName','智慧园区二期项目'),
@@ -1456,22 +1137,15 @@ INSERT INTO wf_task (
   task_id, tenant_id, instance_id, node_key, node_name, assignee, assignee_name, proxy_user_id, candidate_roles,
   status, priority, is_timeout, create_time, due_time
 ) VALUES
-('demo_task_001', 100000, 'demo_inst_001', 'n1', '部门经理审批', 2, '李经理', NULL, 'manager', 'TODO', 'URGENT', 0, DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_ADD(NOW(), INTERVAL 1 DAY)),
 ('demo_task_002', 100000, 'demo_inst_003', 'b2', '财务总监审批', 3, '王财务', NULL, 'finance', 'TODO', 'HIGH', 1, DATE_SUB(NOW(), INTERVAL 5 HOUR), DATE_ADD(NOW(), INTERVAL 6 HOUR)),
 ('demo_task_003', 100000, 'demo_inst_005', 'n1', '财务主管审批', 3, '王财务', NULL, 'finance', 'DONE', 'URGENT', 0, DATE_SUB(NOW(), INTERVAL 14 HOUR), DATE_SUB(NOW(), INTERVAL 8 HOUR)),
 ('demo_task_004', 100000, 'demo_inst_005', 'b2', '总经理审批', 1, 'Admin', NULL, 'admin', 'TODO', 'URGENT', 0, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_ADD(NOW(), INTERVAL 10 HOUR)),
-('demo_task_005', 100000, 'demo_inst_007', 'n1', '直属上级审批', 2, '李经理', NULL, 'manager', 'TODO', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 9 HOUR), DATE_ADD(NOW(), INTERVAL 1 DAY)),
-('demo_task_006', 100000, 'demo_inst_009', 'n1', '直属上级审批', 2, '李经理', NULL, 'manager', 'TODO', 'HIGH', 0, DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_ADD(NOW(), INTERVAL 1 DAY)),
 ('demo_task_007', 100000, 'demo_inst_011', 'n1', '部门经理审批', 2, '李经理', NULL, 'manager', 'TODO', 'URGENT', 0, DATE_SUB(NOW(), INTERVAL 11 HOUR), DATE_ADD(NOW(), INTERVAL 20 HOUR)),
 ('demo_task_008', 100000, 'demo_inst_012', 'n1', '直属上级审批', 1, 'Admin', NULL, 'admin', 'TODO', 'HIGH', 0, DATE_SUB(NOW(), INTERVAL 3 HOUR), DATE_ADD(NOW(), INTERVAL 12 HOUR)),
-('demo_task_009', 100000, 'demo_inst_002', 'n1', '部门经理审批', 2, '李经理', NULL, 'manager', 'APPROVED', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY)),
-('demo_task_010', 100000, 'demo_inst_002', 'b1', 'HR备案', 4, '赵HR', NULL, 'hr', 'APPROVED', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
 ('demo_task_011', 100000, 'demo_inst_004', 'n1', '直属上级审批', 1, 'Admin', NULL, 'admin', 'APPROVED', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY)),
 ('demo_task_012', 100000, 'demo_inst_004', 'b1', '财务主管审批', 3, '王财务', NULL, 'finance', 'APPROVED', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY)),
 ('demo_task_013', 100000, 'demo_inst_006', 'n1', '财务主管审批', 3, '王财务', NULL, 'finance', 'APPROVED', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-('demo_task_014', 100000, 'demo_inst_006', 'b1', '财务总监审批', 3, '王财务', NULL, 'finance', 'APPROVED', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY)),
-('demo_task_015', 100000, 'demo_inst_008', 'n1', '直属上级审批', 7, '陈IT', NULL, 'manager', 'APPROVED', 'HIGH', 0, DATE_SUB(NOW(), INTERVAL 30 HOUR), DATE_SUB(NOW(), INTERVAL 24 HOUR)),
-('demo_task_016', 100000, 'demo_inst_010', 'n1', '直属上级审批', 7, '陈IT', NULL, 'manager', 'APPROVED', 'HIGH', 0, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY));
+('demo_task_014', 100000, 'demo_inst_006', 'b1', '财务总监审批', 3, '王财务', NULL, 'finance', 'APPROVED', 'NORMAL', 0, DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY));
 
 -- -----------------------------
 -- 4.3 任务历史
@@ -1480,11 +1154,6 @@ INSERT INTO wf_task_history (
   history_id, tenant_id, task_id, instance_id, node_name, node_key, operator_id, operator_name, action, comment,
   duration_seconds, variables_changed, create_time
 ) VALUES
-('demo_hist_001', 100000, 'demo_task_009', 'demo_inst_002', '部门经理审批', 'n1', 2, '李经理', 'APPROVE', '员工已完成工作交接，同意病假。', 1800,
- '{"result":"APPROVE","days":2}', DATE_SUB(NOW(), INTERVAL 5 DAY)),
-('demo_hist_002', 100000, 'demo_task_010', 'demo_inst_002', 'HR备案', 'b1', 4, '赵HR', 'APPROVE', '已完成备案并同步考勤。', 600,
- '{"status":"APPROVED"}', DATE_SUB(NOW(), INTERVAL 4 DAY)),
-
 ('demo_hist_003', 100000, 'demo_task_011', 'demo_inst_004', '直属上级审批', 'n1', 1, 'Admin', 'APPROVE', '采购事项合理，进入财务审核。', 2400,
  '{"approveNode":"leader"}', DATE_SUB(NOW(), INTERVAL 7 DAY)),
 ('demo_hist_004', 100000, 'demo_task_012', 'demo_inst_004', '财务主管审批', 'b1', 3, '王财务', 'APPROVE', '票据齐全，准予报销。', 3600,
@@ -1495,24 +1164,12 @@ INSERT INTO wf_task_history (
 ('demo_hist_006', 100000, 'demo_task_014', 'demo_inst_006', '财务总监审批', 'b1', 3, '王财务', 'APPROVE', '尾款支付完成，已通知出纳。', 1800,
  '{"status":"PAID"}', DATE_SUB(NOW(), INTERVAL 6 DAY)),
 
-('demo_hist_007', 100000, 'demo_task_015', 'demo_inst_008', '直属上级审批', 'n1', 7, '陈IT', 'APPROVE', '属正常客户外勤支持，准予通过。', 900,
- '{"appealType":"FIELD"}', DATE_SUB(NOW(), INTERVAL 20 HOUR)),
-('demo_hist_008', 100000, 'demo_task_016', 'demo_inst_010', '直属上级审批', 'n1', 7, '陈IT', 'APPROVE', '周末上线保障确有必要。', 1200,
- '{"overtimeHours":8.0}', DATE_SUB(NOW(), INTERVAL 5 DAY)),
-
 ('demo_hist_009', 100000, 'demo_task_003', 'demo_inst_005', '财务主管审批', 'n1', 3, '王财务', 'APPROVE', '预算已锁定，提交总经理终审。', 3200,
  '{"nextNode":"b2"}', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-
-('demo_hist_010', 100000, 'demo_task_001', 'demo_inst_001', '提交申请', 'root', 5, '张三', 'SUBMIT', '已提交年假申请并上传交接文档。', 120,
- '{"leaveNo":"QJ202603110001"}', DATE_SUB(NOW(), INTERVAL 18 HOUR)),
 ('demo_hist_011', 100000, 'demo_task_002', 'demo_inst_003', '提交报销', 'root', 5, '张三', 'SUBMIT', '已提交杭州客户拜访差旅报销。', 180,
  '{"claimNo":"BX202603110001","amount":2680.50}', DATE_SUB(NOW(), INTERVAL 16 HOUR)),
 ('demo_hist_012', 100000, 'demo_task_004', 'demo_inst_005', '提交付款申请', 'root', 3, '王财务', 'SUBMIT', '付款申请已发起。', 100,
  '{"paymentNo":"FK202603110001","amount":128000.00}', DATE_SUB(NOW(), INTERVAL 14 HOUR)),
-('demo_hist_013', 100000, 'demo_task_005', 'demo_inst_007', '提交申请', 'root', 5, '张三', 'SUBMIT', '补卡申请已发起。', 90,
- '{"appealNo":"BK202603110001"}', DATE_SUB(NOW(), INTERVAL 9 HOUR)),
-('demo_hist_014', 100000, 'demo_task_006', 'demo_inst_009', '提交加班申请', 'root', 8, '前端测试', 'SUBMIT', '演示问题修复加班申请已提交。', 90,
- '{"overtimeNo":"JB202603110001","hours":3.5}', DATE_SUB(NOW(), INTERVAL 7 HOUR)),
 ('demo_hist_015', 100000, 'demo_task_007', 'demo_inst_011', '提交出差申请', 'root', 5, '张三', 'SUBMIT', '杭州客户出差申请已提交。', 120,
  '{"tripNo":"CC202603110001","destination":"杭州"}', DATE_SUB(NOW(), INTERVAL 11 HOUR)),
 ('demo_hist_016', 100000, 'demo_task_008', 'demo_inst_012', '提交用车申请', 'root', 2, '李经理', 'SUBMIT', '客户拜访用车申请已提交。', 90,
@@ -1521,10 +1178,6 @@ INSERT INTO wf_task_history (
  '{"amount":2680.50,"route":"财务总监审批"}', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
 ('demo_hist_018', 100000, 'demo_task_004', 'demo_inst_005', '转办记录', 'b2', 1, 'Admin', 'DELEGATE', '总经理外出，先由本人稍后处理，保留原审批人。', 300,
  '{"delegate":"none"}', DATE_SUB(NOW(), INTERVAL 70 MINUTE)),
-('demo_hist_019', 100000, 'demo_task_005', 'demo_inst_007', '查阅流程', 'n1', 2, '李经理', 'READ', '已查看补卡说明和附件。', 60,
- '{"read":"true"}', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-('demo_hist_020', 100000, 'demo_task_006', 'demo_inst_009', '查阅流程', 'n1', 2, '李经理', 'READ', '已查看加班工作内容。', 50,
- '{"read":"true"}', DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
 ('demo_hist_021', 100000, 'demo_task_007', 'demo_inst_011', '催办记录', 'n1', 5, '张三', 'URGE', '客户要求尽快确认出差安排。', 30,
  '{"urgeCount":1}', DATE_SUB(NOW(), INTERVAL 40 MINUTE)),
 ('demo_hist_022', 100000, 'demo_task_008', 'demo_inst_012', '催办记录', 'n1', 2, '李经理', 'URGE', '客户明日上午来访，请尽快审批派车。', 30,
@@ -1534,18 +1187,14 @@ INSERT INTO wf_task_history (
 -- 4.4 任务已读、催办、附件、候选人、委托、加签
 -- -----------------------------
 INSERT INTO wf_task_read (tenant_id, task_id, user_id, read_time) VALUES
-(100000, 'demo_task_001', 2, DATE_SUB(NOW(), INTERVAL 4 HOUR)),
 (100000, 'demo_task_002', 3, DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
 (100000, 'demo_task_004', 1, DATE_SUB(NOW(), INTERVAL 40 MINUTE)),
-(100000, 'demo_task_005', 2, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-(100000, 'demo_task_006', 2, DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
 (100000, 'demo_task_007', 2, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
 (100000, 'demo_task_008', 1, DATE_SUB(NOW(), INTERVAL 15 MINUTE));
 
 INSERT INTO wf_task_urge (tenant_id, task_id, sender_id, recipient_id, reason, create_time) VALUES
 (100000, 'demo_task_002', 5, 3, '报销需在本周财务结算前完成。', DATE_SUB(NOW(), INTERVAL 55 MINUTE)),
 (100000, 'demo_task_004', 3, 1, '年度服务费付款窗口临近。', DATE_SUB(NOW(), INTERVAL 35 MINUTE)),
-(100000, 'demo_task_006', 8, 2, '今晚需要完成演示兼容性修复。', DATE_SUB(NOW(), INTERVAL 80 MINUTE)),
 (100000, 'demo_task_007', 5, 2, '客户已确认出差日程，请尽快审批。', DATE_SUB(NOW(), INTERVAL 40 MINUTE)),
 (100000, 'demo_task_011', 3, 1, '历史报销流程演示时可展示催办记录。', DATE_SUB(NOW(), INTERVAL 7 DAY)),
 (100000, 'demo_task_014', 3, 3, '财务节点自催办测试数据。', DATE_SUB(NOW(), INTERVAL 6 DAY));
@@ -1557,7 +1206,6 @@ INSERT INTO wf_task_attachment (
 ('demo_att_002', 100000, 'demo_task_002', 'demo_inst_003', '酒店发票.pdf', '/demo/workflow/expense/hotel-invoice.pdf', 538920, 'application/pdf', 5, DATE_SUB(NOW(), INTERVAL 15 HOUR)),
 ('demo_att_003', 100000, 'demo_task_004', 'demo_inst_005', '年度运维合同.pdf', '/demo/workflow/payment/service-contract.pdf', 1864022, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 13 HOUR)),
 ('demo_att_004', 100000, 'demo_task_004', 'demo_inst_005', '付款审批说明.docx', '/demo/workflow/payment/approval-note.docx', 86530, 'application/docx', 3, DATE_SUB(NOW(), INTERVAL 12 HOUR)),
-('demo_att_005', 100000, 'demo_task_006', 'demo_inst_009', '演示缺陷清单.xlsx', '/demo/workflow/overtime/issue-list.xlsx', 102400, 'application/xlsx', 8, DATE_SUB(NOW(), INTERVAL 6 HOUR)),
 ('demo_att_006', 100000, 'demo_task_007', 'demo_inst_011', '客户培训议程.pdf', '/demo/workflow/trip/training-agenda.pdf', 280600, 'application/pdf', 5, DATE_SUB(NOW(), INTERVAL 10 HOUR)),
 ('demo_att_007', 100000, 'demo_task_011', 'demo_inst_004', '采购报销清单.pdf', '/demo/workflow/history/office-expense-list.pdf', 221100, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 8 DAY)),
 ('demo_att_008', 100000, 'demo_task_014', 'demo_inst_006', '显示设备采购发票.pdf', '/demo/workflow/history/display-invoice.pdf', 401231, 'application/pdf', 3, DATE_SUB(NOW(), INTERVAL 9 DAY));
@@ -1565,7 +1213,6 @@ INSERT INTO wf_task_attachment (
 INSERT INTO wf_task_candidate (tenant_id, task_id, candidate_type, candidate_id, create_time) VALUES
 (100000, 'demo_task_002', 'ROLE', 'finance', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
 (100000, 'demo_task_004', 'ROLE', 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-(100000, 'demo_task_006', 'ROLE', 'manager', DATE_SUB(NOW(), INTERVAL 7 HOUR)),
 (100000, 'demo_task_011', 'ROLE', 'admin', DATE_SUB(NOW(), INTERVAL 8 DAY)),
 (100000, 'demo_task_014', 'ROLE', 'finance', DATE_SUB(NOW(), INTERVAL 8 DAY));
 
@@ -1594,7 +1241,7 @@ INSERT INTO wf_countersign_task (
 ) VALUES
 ('demo_cs_003', 100000, 'demo_inst_003', 'b2', '财务复核会签演示', 'ALL', 100, 2, 1, 1, 0, 'VOTING',
  '[3,6]', 1, DATE_SUB(NOW(), INTERVAL 4 HOUR), NULL),
-('demo_cs_011', 100000, 'demo_inst_011', 'n2', 'HR备案会签演示', 'ANY', 50, 2, 2, 2, 0, 'COMPLETED',
+('demo_cs_011', 100000, 'demo_inst_011', 'n2', '出差备案会签演示', 'ANY', 50, 2, 2, 2, 0, 'COMPLETED',
  '[4,1]', 2, DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 50 MINUTE));
 
 INSERT INTO wf_countersign_vote (
@@ -1610,9 +1257,6 @@ INSERT INTO wf_countersign_vote (
 INSERT INTO wf_process_snapshot (
   snapshot_id, tenant_id, instance_id, node_key, node_name, status, variables, active_tasks, create_time
 ) VALUES
-('demo_snap_001', 100000, 'demo_inst_001', 'n1', '部门经理审批', 'RUNNING',
- '{"leaveNo":"QJ202603110001","days":5,"start":"未来请假"}',
- '[{"taskId":"demo_task_001","assigneeName":"李经理","status":"TODO"}]', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
 ('demo_snap_002', 100000, 'demo_inst_003', 'b2', '财务总监审批', 'RUNNING',
  '{"claimNo":"BX202603110001","amount":2680.5}',
  '[{"taskId":"demo_task_002","assigneeName":"王财务","status":"TODO","timeout":true}]', DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
@@ -1627,10 +1271,6 @@ INSERT INTO wf_node_record (
   tenant_id, instance_id, process_def_key, node_key, node_name, node_type, status, executor_id, executor_name,
   start_time, end_time, duration_ms, extra_data, event_type, event_time, create_time
 ) VALUES
-(100000, 'demo_inst_001', 'biz_leave', 'root', '提交请假', 'START', 'COMPLETED', 5, '张三',
- DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR) + INTERVAL 2 MINUTE, 120000, '{"form":"leave"}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR)),
-(100000, 'demo_inst_001', 'biz_leave', 'n1', '部门经理审批', 'APPROVAL', 'RUNNING', 2, '李经理',
- DATE_SUB(NOW(), INTERVAL 18 HOUR), NULL, NULL, '{"priority":"URGENT"}', 'NODE_CREATED', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR)),
 (100000, 'demo_inst_003', 'biz_reimburse', 'root', '提交报销', 'START', 'COMPLETED', 5, '张三',
  DATE_SUB(NOW(), INTERVAL 16 HOUR), DATE_SUB(NOW(), INTERVAL 16 HOUR) + INTERVAL 3 MINUTE, 180000, '{"amount":2680.5}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 16 HOUR), DATE_SUB(NOW(), INTERVAL 16 HOUR)),
 (100000, 'demo_inst_003', 'biz_reimburse', 'n1', '直属上级审批', 'APPROVAL', 'COMPLETED', 2, '李经理',
@@ -1655,7 +1295,6 @@ INSERT INTO wf_node_record (
 INSERT INTO wf_transaction_message (
   message_id, tenant_id, business_type, business_id, content, status, retry_count, max_retry_count, next_retry_time, create_time, update_time, error_message
 ) VALUES
-('demo_msg_001', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_001', '请假申请已提交，等待部门经理审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR), NULL),
 ('demo_msg_002', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_003', '报销申请进入财务总监审批节点。', 'PENDING', 1, 5, DATE_ADD(NOW(), INTERVAL 10 MINUTE), DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_SUB(NOW(), INTERVAL 20 MINUTE), '短信通道短暂超时'),
 ('demo_msg_003', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_005', '高额付款申请等待总经理审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL),
 ('demo_msg_004', 100000, 'WORKFLOW_NOTIFY', 'demo_inst_011', '出差申请等待部门经理审批。', 'SENT', 0, 5, NULL, DATE_SUB(NOW(), INTERVAL 11 HOUR), DATE_SUB(NOW(), INTERVAL 11 HOUR), NULL),
@@ -1665,7 +1304,6 @@ INSERT INTO wf_notification_log (
   log_id, tenant_id, notification_type, recipient_id, recipient_name, title, content, send_status, send_time, error_message,
   related_type, related_id, create_time
 ) VALUES
-('demo_notice_001', 100000, 'INTERNAL', 2, '李经理', '待审批：张三的年假申请', '张三提交了 5 天年假申请，请及时审批。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 17 HOUR), NULL, 'PROCESS_INSTANCE', 'demo_inst_001', DATE_SUB(NOW(), INTERVAL 17 HOUR)),
 ('demo_notice_002', 100000, 'INTERNAL', 3, '王财务', '待审批：张三的杭州出差报销', '报销金额 2680.50 元，已进入财务审批节点。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 4 HOUR), NULL, 'PROCESS_INSTANCE', 'demo_inst_003', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
 ('demo_notice_003', 100000, 'SMS', 1, 'Admin', '待审批：年度运维服务付款申请', '付款金额 128000 元，请尽快完成总经理审批。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL, 'PROCESS_INSTANCE', 'demo_inst_005', DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
 ('demo_notice_004', 100000, 'INTERNAL', 2, '李经理', '待审批：杭州客户出差申请', '张三提交了杭州客户培训出差申请。', 'SUCCESS', DATE_SUB(NOW(), INTERVAL 10 HOUR), NULL, 'PROCESS_INSTANCE', 'demo_inst_011', DATE_SUB(NOW(), INTERVAL 10 HOUR)),
@@ -1676,7 +1314,6 @@ INSERT INTO wf_urge_effect (
 ) VALUES
 (100000, 'demo_task_002', 1, DATE_SUB(NOW(), INTERVAL 55 MINUTE), DATE_SUB(NOW(), INTERVAL 55 MINUTE), NULL, 3300),
 (100000, 'demo_task_004', 1, DATE_SUB(NOW(), INTERVAL 35 MINUTE), DATE_SUB(NOW(), INTERVAL 35 MINUTE), NULL, 2100),
-(100000, 'demo_task_006', 1, DATE_SUB(NOW(), INTERVAL 80 MINUTE), DATE_SUB(NOW(), INTERVAL 80 MINUTE), NULL, 4800),
 (100000, 'demo_task_007', 1, DATE_SUB(NOW(), INTERVAL 40 MINUTE), DATE_SUB(NOW(), INTERVAL 40 MINUTE), NULL, 2400),
 (100000, 'demo_task_011', 1, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 86400),
 (100000, 'demo_task_014', 1, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 3600);
@@ -1685,8 +1322,6 @@ INSERT INTO wf_process_copy (
   tenant_id, instance_id, process_def_key, title, node_id, node_name, start_user_id, start_user_name, user_id,
   form_data, is_read, read_time, create_time
 ) VALUES
-(100000, 'demo_inst_001', 'biz_leave', '张三的年假申请（清明返乡）', 'n1', '部门经理审批', 5, '张三', 4,
- '{"leaveNo":"QJ202603110001","leaveType":"ANNUAL","days":5}', 0, NULL, DATE_SUB(NOW(), INTERVAL 16 HOUR)),
 (100000, 'demo_inst_003', 'biz_reimburse', '张三的杭州出差报销', 'b2', '财务总监审批', 5, '张三', 2,
  '{"claimNo":"BX202603110001","amount":2680.50}', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 5 HOUR)),
 (100000, 'demo_inst_005', 'biz_payment', '年度运维服务付款申请', 'b2', '总经理审批', 3, '王财务', 6,
@@ -1867,32 +1502,6 @@ FROM (
   WHERE (a.n * 100 + b.n * 10 + c.n) < 300
 ) seq;
 
-INSERT INTO sys_attendance_record (
-  record_id, tenant_id, user_id, type, check_time, location, address, device_info, wifi_info, status, remark, del_flag, create_time, update_time
-)
-SELECT
-  94000 + n,
-  100000,
-  (n % 9) + 1,
-  CASE WHEN n % 2 = 0 THEN '2' ELSE '1' END,
-  DATE_SUB(CURDATE(), INTERVAL (n % 7) DAY) + INTERVAL (8 + (n % 2) * 9) HOUR + INTERVAL (n % 60) MINUTE,
-  '31.2304,121.4737',
-  '总部园区A座',
-  CASE WHEN n % 3 = 0 THEN 'iPhone 15' WHEN n % 3 = 1 THEN 'Huawei Mate60' ELSE 'ThinkPad X1' END,
-  'CloudFlow-Office',
-  CASE WHEN n % 5 = 0 THEN '2' ELSE '1' END,
-  CONCAT('批量打卡', n),
-  '0',
-  NOW(),
-  NOW()
-FROM (
-  SELECT (a.n * 100 + b.n * 10 + c.n) + 1 AS n
-  FROM (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a
-  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b
-  CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c
-  WHERE (a.n * 100 + b.n * 10 + c.n) < 300
-) seq;
-
 INSERT IGNORE INTO sys_announcement_read (tenant_id, announcement_id, user_id, read_time)
 SELECT
   100000,
@@ -1912,8 +1521,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =========================================================
 -- 脚本说明
 -- 1. 本脚本覆盖：
---    - OA：公告、会议室、日程、协作任务、考勤、资产、耗材、车辆、访客、值班、前端错误日志
---    - 业务申请：请假、报销、付款、补卡/外勤、加班、出差、用车
+--    - OA：公告、会议室、日程、协作任务、资产、耗材、车辆、访客、值班、前端错误日志
+--    - 业务申请：报销、付款、出差、用车
 --    - 工作流：流程实例、待办、已办、附件、催办、抄送、加签、会签、快照、通知、事务消息
 -- 2. 所有审批人与申请人都引用现有基础数据：
 --    admin=1，李经理=2，王财务=3，赵HR=4，张三=5，刘法务=6，陈IT=7，前端测试=8，后端测试=9
