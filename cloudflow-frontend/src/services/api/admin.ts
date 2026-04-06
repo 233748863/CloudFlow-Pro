@@ -1,5 +1,6 @@
 import request from './request';
 import {
+  assertCurrentEmployeeCanStartSelfService,
   createHrScheduleRule,
   createHrShift,
   getHrAttendanceMonthly,
@@ -182,10 +183,10 @@ const ensureShift = async (data: AttendanceRule, currentShiftId?: number) => {
 
 // 打卡
 export const checkIn = async (data: AttendanceRecord) => {
-  const employeeId = await resolveCurrentEmployeeId(data.userId);
+  const employee = await assertCurrentEmployeeCanStartSelfService('考勤打卡', data.userId);
   const { latitude, longitude } = parseCoordinates(data.location);
   const payload = {
-    employeeId,
+    employeeId: employee.id,
     checkMethod: 'GPS' as const,
     location: data.address || data.location,
     latitude,

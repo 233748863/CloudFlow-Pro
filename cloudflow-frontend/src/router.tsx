@@ -250,6 +250,11 @@ const VersionHistoryPage = React.lazy(() =>
     default: module.VersionHistoryPage,
   })),
 );
+const TemplateManagement = React.lazy(() =>
+  import("./pages/admin/TemplateManagement").then((module) => ({
+    default: module.TemplateManagement,
+  })),
+);
 const TemplateLibrary = React.lazy(() =>
   import("./pages/TemplateLibrary").then((module) => ({
     default: module.TemplateLibrary,
@@ -733,6 +738,16 @@ const desktopRoutes = [
               <Suspense fallback={<Loading />}>
                 <VersionHistoryPage />
               </Suspense>
+            ),
+          },
+          {
+            path: "/templates/manage",
+            element: (
+              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+                <Suspense fallback={<Loading />}>
+                  <TemplateManagement />
+                </Suspense>
+              </RoleGuard>
             ),
           },
           {

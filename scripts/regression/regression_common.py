@@ -15,9 +15,7 @@ from PIL import Image
 
 AUTH_BASE_URL = "http://127.0.0.1:9001"
 GATEWAY_BASE_URL = "http://127.0.0.1:9000"
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent
-ROOT_DIR = PROJECT_ROOT / ".codex-temp"
+ROOT_DIR = Path(__file__).resolve().parent
 LOG_DIR = ROOT_DIR / "logs"
 
 

@@ -83,6 +83,7 @@ class RecruitmentAndOfferServiceTest {
 
         recruitmentRequestService = new RecruitmentRequestServiceImpl(
                 recruitmentRequestMapper,
+                candidateMapper,
                 positionMapper,
                 authServiceClient,
                 workflowServiceClient,

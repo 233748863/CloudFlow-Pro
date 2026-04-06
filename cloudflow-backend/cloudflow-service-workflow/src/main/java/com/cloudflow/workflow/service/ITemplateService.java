@@ -23,11 +23,12 @@ public interface ITemplateService {
      * @param categoryId 分类ID（可选）
      * @param tags 标签列表（可选）
      * @param keyword 关键词（可选，搜索名称和描述）
+     * @param status 模板状态（active / inactive / all）
      * @param pageNum 页码
      * @param pageSize 每页大小
      * @return 分页结果
      */
-    Page<TemplateDTO> listTemplates(String categoryId, List<String> tags, String keyword, int pageNum, int pageSize);
+    Page<TemplateDTO> listTemplates(String categoryId, List<String> tags, String keyword, String status, int pageNum, int pageSize);
 
     /**
      * 根据ID获取模板详情
@@ -76,6 +77,13 @@ public interface ITemplateService {
      * @param templateId 模板ID
      */
     void incrementUsageCount(String templateId);
+
+    /**
+     * 获取推荐标签列表
+     * @param limit 返回数量上限
+     * @return 推荐标签
+     */
+    List<String> listRecommendedTags(int limit);
 
     /**
      * 从模板创建流程

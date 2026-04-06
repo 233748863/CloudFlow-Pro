@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Calendar, ClipboardCheck, Download, Edit, Paperclip, Plus, RotateCcw, Search, Send, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { attendanceAppealApi, AttendanceAppeal } from '@/services/api/hrAttendance';
+import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
 import { FileUpload } from '../components/FileUpload';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
@@ -21,10 +22,29 @@ export const AttendanceAppealPage: React.FC = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [current, setCurrent] = useState<AttendanceAppeal | null>(null);
   const [formData, setFormData] = useState<AttendanceAppeal>({ appealType: 'MAKEUP', appealDate: '', reason: '' });
+  const {
+    loading: eligibilityLoading,
+    canStartSelfService,
+    restrictionMessage,
+  } = useHrSelfServiceEligibility();
 
   useEffect(() => {
     fetchList();
   }, [searchParams]);
+
+  const ensureCanOperate = () => {
+    if (eligibilityLoading) {
+      toast.error('正在核对当前员工状态，请稍后再试');
+      return false;
+    }
+    if (!canStartSelfService) {
+      toast.error(restrictionMessage || '当前账号暂不能继续发起 HR 自助流程');
+      return false;
+    }
+    return true;
+  };
+
+  const selfServiceLocked = eligibilityLoading || !canStartSelfService;
 
   const fetchList = async () => {
     setLoading(true);
@@ -42,12 +62,18 @@ export const AttendanceAppealPage: React.FC = () => {
   };
 
   const handleAdd = () => {
+    if (!ensureCanOperate()) {
+      return;
+    }
     setCurrent(null);
     setFormData({ appealType: 'MAKEUP', appealDate: '', reason: '', checkType: '1', originalStatus: '', witnessName: '', attachmentUrl: '' });
     setShowDialog(true);
   };
 
   const handleEdit = async (id: number) => {
+    if (!ensureCanOperate()) {
+      return;
+    }
     try {
       const response = await attendanceAppealApi.getInfo(id);
       if (response) {
@@ -61,6 +87,9 @@ export const AttendanceAppealPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!ensureCanOperate()) {
+      return;
+    }
     if (!formData.appealDate || !formData.reason) {
       toast.error('请填写完整信息');
       return;
@@ -84,30 +113,36 @@ export const AttendanceAppealPage: React.FC = () => {
       }
       setShowDialog(false);
       fetchList();
-    } catch {
-      toast.error('保存失败');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '保存失败');
     }
   };
 
   const handleDelete = async (ids: number[]) => {
+    if (!ensureCanOperate()) {
+      return;
+    }
     if (!confirm('确定删除？')) return;
     try {
       await attendanceAppealApi.remove(ids);
       toast.success('删除成功');
       fetchList();
-    } catch {
-      toast.error('删除失败');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '删除失败');
     }
   };
 
   const handleSubmit = async (id: number) => {
+    if (!ensureCanOperate()) {
+      return;
+    }
     if (!confirm('确定提交审批？')) return;
     try {
       await attendanceAppealApi.submit(id);
       toast.success('提交成功');
       fetchList();
-    } catch {
-      toast.error('提交失败');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '提交失败');
     }
   };
 
@@ -188,7 +223,7 @@ export const AttendanceAppealPage: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={handleAdd}>
+                    <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={handleAdd} disabled={selfServiceLocked}>
                       <Plus size={16} className="mr-2" />
                       新增申请
                     </Button>
@@ -198,6 +233,23 @@ export const AttendanceAppealPage: React.FC = () => {
                     </Button>
                   </div>
                 </div>
+
+                {restrictionMessage && (
+                  <div
+                    data-testid="hr-self-service-restriction"
+                    className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/90 px-4 py-4 text-amber-900"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+                        <AlertCircle size={18} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold">当前账号暂不能继续发起 HR 自助流程</div>
+                        <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
@@ -323,9 +375,9 @@ export const AttendanceAppealPage: React.FC = () => {
                           <TableRowActions
                             align="end"
                             actions={[
-                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT' },
-                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT' },
-                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT' },
+                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT' || selfServiceLocked },
+                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT' || selfServiceLocked },
+                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT' || selfServiceLocked },
                             ]}
                           />
                         </td>

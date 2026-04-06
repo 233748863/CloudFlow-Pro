@@ -1,4 +1,5 @@
 import {
+  assertCurrentEmployeeCanStartSelfService,
   createHrOvertimeApplication,
   deleteHrOvertimeApplication,
   getHrOvertimeApplication,
@@ -124,6 +125,11 @@ const mapCompensateTypeFromHr = (value?: string) => {
   return value === 'PAYMENT' ? 'SALARY' : 'LEAVE';
 };
 
+const normalizeOptionalFilter = (value?: string) => {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+};
+
 const mapHrOvertimeToLegacy = (item: {
   id: number;
   applicationNo: string;
@@ -164,8 +170,8 @@ export const overtimeApi = {
     const employeeId = await resolveCurrentEmployeeId();
     const list = await listHrOvertimeApplications({
       employeeId,
-      status: params.status === 'PENDING' ? 'APPROVING' : params.status,
-      overtimeType: params.overtimeType,
+      status: normalizeOptionalFilter(params.status) === 'PENDING' ? 'APPROVING' : normalizeOptionalFilter(params.status),
+      overtimeType: normalizeOptionalFilter(params.overtimeType),
       pageNum: params.pageNum,
       pageSize: params.pageSize,
     });
@@ -192,9 +198,9 @@ export const overtimeApi = {
   },
 
   add: async (data: OvertimeRequest) => {
-    const employeeId = await resolveCurrentEmployeeId(data.userId);
+    const employee = await assertCurrentEmployeeCanStartSelfService('新增加班申请', data.userId);
     const id = await createHrOvertimeApplication({
-      employeeId,
+      employeeId: employee.id,
       startTime: data.startTime,
       endTime: data.endTime,
       overtimeType: data.overtimeType,
@@ -208,9 +214,9 @@ export const overtimeApi = {
     if (!data.id) {
       throw new Error('缺少加班申请ID');
     }
-    const employeeId = await resolveCurrentEmployeeId(data.userId);
+    const employee = await assertCurrentEmployeeCanStartSelfService('编辑加班申请', data.userId);
     await updateHrOvertimeApplication(data.id, {
-      employeeId,
+      employeeId: employee.id,
       startTime: data.startTime,
       endTime: data.endTime,
       overtimeType: data.overtimeType,
@@ -225,7 +231,10 @@ export const overtimeApi = {
     return true;
   },
 
-  submit: (id: number) => submitHrOvertimeApplication(id),
+  submit: async (id: number) => {
+    await assertCurrentEmployeeCanStartSelfService('提交加班申请');
+    return submitHrOvertimeApplication(id);
+  },
 
   cancel: async (id: number) => {
     await deleteHrOvertimeApplication(id);

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Calendar, Clock, FileText, Loader2 } from 'lucide-react';
+import { AlertCircle, ChevronLeft, Calendar, Clock, FileText, Loader2 } from 'lucide-react';
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
+import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
 import { toast } from 'sonner';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { leaveApi } from '@/services/api/leave';
@@ -31,6 +32,11 @@ export const MobileLeaveRequest: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const {
+    loading: eligibilityLoading,
+    canStartSelfService,
+    restrictionMessage,
+  } = useHrSelfServiceEligibility();
   const [form, setForm] = useState<LeaveForm>({
     type: 'annual',
     startDate: format(new Date(), 'yyyy-MM-dd'),
@@ -41,6 +47,20 @@ export const MobileLeaveRequest: React.FC = () => {
   });
 
   useKeyboardAwareScroll();
+
+  const ensureCanContinue = () => {
+    if (eligibilityLoading) {
+      toast.error('正在核对当前员工状态，请稍后再试');
+      return false;
+    }
+    if (!canStartSelfService) {
+      toast.error(restrictionMessage || '当前账号暂不能继续发起 HR 自助流程');
+      return false;
+    }
+    return true;
+  };
+
+  const selfServiceLocked = eligibilityLoading || !canStartSelfService;
 
   // 计算请假天数
   const getLeaveDays = () => {
@@ -73,6 +93,9 @@ export const MobileLeaveRequest: React.FC = () => {
 
   // 下一步
   const handleNext = () => {
+    if (!ensureCanContinue()) {
+      return;
+    }
     if (step === 1) {
       const error = validateStep1();
       if (error) {
@@ -92,6 +115,9 @@ export const MobileLeaveRequest: React.FC = () => {
 
   // 提交
   const handleSubmit = async () => {
+    if (!ensureCanContinue()) {
+      return;
+    }
     const error1 = validateStep1();
     if (error1) { toast.error(error1); return; }
     const error2 = validateStep2();
@@ -166,6 +192,23 @@ export const MobileLeaveRequest: React.FC = () => {
         </div>
       </div>
 
+      {restrictionMessage && (
+        <div
+          data-testid="hr-self-service-restriction"
+          className="mx-4 mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-full bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+              <AlertCircle size={16} />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">当前账号暂不能继续发起 HR 自助流程</div>
+              <div className="mt-1 text-xs leading-5 text-amber-800">{restrictionMessage}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Step 1: 选择类型和日期 */}
       {step === 1 && (
         <div className="p-4 space-y-4">
@@ -179,6 +222,7 @@ export const MobileLeaveRequest: React.FC = () => {
                 <button
                   key={type.value}
                   onClick={() => setForm({ ...form, type: type.value })}
+                  disabled={selfServiceLocked}
                   className={`py-3 px-2 rounded-lg text-sm font-medium border-2 transition-all ${
                     form.type === type.value
                       ? 'border-pink-500 bg-pink-50 text-pink-500'
@@ -229,7 +273,8 @@ export const MobileLeaveRequest: React.FC = () => {
 
           <button
             onClick={handleNext}
-            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium"
+            disabled={selfServiceLocked}
+            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium disabled:cursor-not-allowed disabled:opacity-50"
           >
             下一步
           </button>
@@ -284,7 +329,8 @@ export const MobileLeaveRequest: React.FC = () => {
 
           <button
             onClick={handleNext}
-            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium"
+            disabled={selfServiceLocked}
+            className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium disabled:cursor-not-allowed disabled:opacity-50"
           >
             下一步
           </button>
@@ -334,7 +380,7 @@ export const MobileLeaveRequest: React.FC = () => {
 
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || selfServiceLocked}
             className="w-full bg-pink-500 text-white py-3 rounded-lg font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting ? (

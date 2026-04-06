@@ -2,13 +2,16 @@ package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.workflow.domain.TemplateCategory;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WorkflowTemplate;
 import com.cloudflow.workflow.domain.dto.CreateFromTemplateRequest;
 import com.cloudflow.workflow.domain.dto.CreateTemplateRequest;
-import com.cloudflow.workflow.domain.dto.UpdateTemplateRequest;
 import com.cloudflow.workflow.domain.dto.TemplateDTO;
+import com.cloudflow.workflow.domain.dto.UpdateTemplateRequest;
 import com.cloudflow.workflow.exception.WorkflowException;
+import com.cloudflow.workflow.mapper.TemplateCategoryMapper;
 import com.cloudflow.workflow.mapper.WorkflowTemplateMapper;
 import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
@@ -23,7 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -41,6 +48,9 @@ public class TemplateServiceImpl implements ITemplateService {
     private WorkflowTemplateMapper templateMapper;
 
     @Autowired
+    private TemplateCategoryMapper categoryMapper;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
@@ -52,15 +62,19 @@ public class TemplateServiceImpl implements ITemplateService {
      * 分页查询模板列表（支持多条件筛选）
      */
     @Override
-    public Page<TemplateDTO> listTemplates(String categoryId, List<String> tags, String keyword, int pageNum, int pageSize) {
-        log.info("查询模板列表 - 分类:{}, 标签:{}, 关键词:{}, 页码:{}, 每页:{}", categoryId, tags, keyword, pageNum, pageSize);
+    public Page<TemplateDTO> listTemplates(String categoryId, List<String> tags, String keyword, String status, int pageNum, int pageSize) {
+        log.info("查询模板列表 - 分类:{}, 标签:{}, 关键词:{}, 状态:{}, 页码:{}, 每页:{}", categoryId, tags, keyword, status, pageNum, pageSize);
 
         // 构建查询条件
         LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
         Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
+        boolean isAdmin = SecurityUtils.isAdmin();
+        String normalizedStatus = normalizeListStatus(status, isAdmin);
 
-        // 只查询激活状态的模板
-        wrapper.eq(WorkflowTemplate::getStatus, "active");
+        // 模板库默认只看启用模板；管理端可显式请求 all / active / inactive。
+        if (!"all".equals(normalizedStatus)) {
+            wrapper.eq(WorkflowTemplate::getStatus, normalizedStatus);
+        }
         if (currentTenantId != null) {
             // 当前租户可见：本租户模板 + 平台系统模板（tenant_id 为空且 is_system=1）
             wrapper.and(w -> w.eq(WorkflowTemplate::getTenantId, currentTenantId)
@@ -92,11 +106,12 @@ public class TemplateServiceImpl implements ITemplateService {
         // 执行分页查询
         Page<WorkflowTemplate> page = new Page<>(pageNum, pageSize);
         Page<WorkflowTemplate> result = templateMapper.selectPage(page, wrapper);
+        Map<String, String> categoryNameMap = loadCategoryNameMap(result.getRecords());
 
         // 转换为DTO
         Page<TemplateDTO> dtoPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
         List<TemplateDTO> dtoList = result.getRecords().stream()
-                .map(this::convertToDTO)
+                .map(template -> convertToDTO(template, categoryNameMap))
                 .toList();
         dtoPage.setRecords(dtoList);
 
@@ -117,7 +132,7 @@ public class TemplateServiceImpl implements ITemplateService {
         }
         assertTemplateReadable(template, "查看模板");
 
-        return convertToDTO(template);
+        return convertToDTO(template, loadCategoryNameMap(List.of(template)));
     }
 
     /**
@@ -157,14 +172,14 @@ public class TemplateServiceImpl implements ITemplateService {
         template.setUpdatedAt(LocalDateTime.now());
         template.setUsageCount(0);
         template.setIsSystem(0); // 用户创建的模板，非系统模板
-        template.setStatus("active");
+        template.setStatus(resolveTemplateStatus(request.getStatus(), "active"));
         template.setTenantId(WorkflowSecurityUtils.getCurrentTenantId());
 
         // 保存到数据库
         templateMapper.insert(template);
 
         log.info("模板创建成功 - ID:{}", template.getId());
-        return convertToDTO(template);
+        return convertToDTO(template, loadCategoryNameMap(List.of(template)));
     }
 
     /**
@@ -208,7 +223,7 @@ public class TemplateServiceImpl implements ITemplateService {
             template.setPreviewImage(request.getPreviewImage());
         }
         if (StringUtils.hasText(request.getStatus())) {
-            template.setStatus(request.getStatus());
+            template.setStatus(resolveTemplateStatus(request.getStatus(), template.getStatus()));
         }
 
         template.setUpdatedAt(LocalDateTime.now());
@@ -217,7 +232,7 @@ public class TemplateServiceImpl implements ITemplateService {
         templateMapper.updateById(template);
 
         log.info("模板更新成功 - ID:{}", id);
-        return convertToDTO(template);
+        return convertToDTO(template, loadCategoryNameMap(List.of(template)));
     }
 
     /**
@@ -281,6 +296,40 @@ public class TemplateServiceImpl implements ITemplateService {
             assertTemplateReadable(template, "更新模板使用次数");
         }
         templateMapper.incrementUsageCount(templateId);
+    }
+
+    @Override
+    public List<String> listRecommendedTags(int limit) {
+        int normalizedLimit = Math.max(1, Math.min(limit, 50));
+        Long currentTenantId = WorkflowSecurityUtils.getCurrentTenantId();
+
+        LambdaQueryWrapper<WorkflowTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WorkflowTemplate::getStatus, "active");
+        if (currentTenantId != null) {
+            wrapper.and(w -> w.eq(WorkflowTemplate::getTenantId, currentTenantId)
+                    .or(q -> q.isNull(WorkflowTemplate::getTenantId).eq(WorkflowTemplate::getIsSystem, 1)));
+        }
+
+        Map<String, Integer> tagCounter = new HashMap<>();
+        List<WorkflowTemplate> templates = templateMapper.selectList(wrapper);
+        for (WorkflowTemplate template : templates) {
+            for (String tag : convertJsonToTags(template.getTags())) {
+                if (!StringUtils.hasText(tag)) {
+                    continue;
+                }
+                tagCounter.merge(tag.trim(), 1, Integer::sum);
+            }
+        }
+
+        return tagCounter.entrySet().stream()
+                .sorted(
+                        Comparator.<Map.Entry<String, Integer>>comparingInt(Map.Entry::getValue)
+                                .reversed()
+                                .thenComparing(Map.Entry::getKey)
+                )
+                .limit(normalizedLimit)
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
     /**
@@ -358,9 +407,10 @@ public class TemplateServiceImpl implements ITemplateService {
     /**
      * 将实体转换为DTO
      */
-    private TemplateDTO convertToDTO(WorkflowTemplate template) {
+    private TemplateDTO convertToDTO(WorkflowTemplate template, Map<String, String> categoryNameMap) {
         TemplateDTO dto = new TemplateDTO();
         BeanUtils.copyProperties(template, dto);
+        dto.setCategoryName(categoryNameMap.get(template.getCategoryId()));
 
         // 转换标签
         if (StringUtils.hasText(template.getTags())) {
@@ -376,6 +426,48 @@ public class TemplateServiceImpl implements ITemplateService {
         dto.setIsSystem(template.getIsSystem() == 1);
 
         return dto;
+    }
+
+    private Map<String, String> loadCategoryNameMap(List<WorkflowTemplate> templates) {
+        List<String> categoryIds = templates.stream()
+                .map(WorkflowTemplate::getCategoryId)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+
+        if (categoryIds.isEmpty()) {
+            return Map.of();
+        }
+
+        // 批量回填分类名称，避免前端再次维护一套本地映射。
+        return categoryMapper.selectBatchIds(categoryIds).stream()
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toMap(TemplateCategory::getId, TemplateCategory::getName, (left, right) -> left));
+    }
+
+    private String normalizeListStatus(String rawStatus, boolean isAdmin) {
+        if (!isAdmin) {
+            return "active";
+        }
+        if (!StringUtils.hasText(rawStatus)) {
+            return "active";
+        }
+        String normalized = rawStatus.trim().toLowerCase(Locale.ROOT);
+        if ("all".equals(normalized) || "active".equals(normalized) || "inactive".equals(normalized)) {
+            return normalized;
+        }
+        throw new WorkflowException("模板状态筛选仅支持 active、inactive 或 all");
+    }
+
+    private String resolveTemplateStatus(String rawStatus, String defaultStatus) {
+        if (!StringUtils.hasText(rawStatus)) {
+            return defaultStatus;
+        }
+        String normalized = rawStatus.trim().toLowerCase(Locale.ROOT);
+        if ("active".equals(normalized) || "inactive".equals(normalized)) {
+            return normalized;
+        }
+        throw new WorkflowException("模板状态仅支持 active 或 inactive");
     }
 
     /**
@@ -409,9 +501,6 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 创建流程定义对象
         WfProcessDefinition definition = new WfProcessDefinition();
-
-        // 生成流程ID
-        definition.setDefinitionId(UUID.randomUUID().toString().replace("-", ""));
 
         // 设置流程基本信息
         definition.setProcessName(request.getWorkflowName());

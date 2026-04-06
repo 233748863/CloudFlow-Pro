@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "run": "node full_ui_regression.mjs",
-    "run:oa": "node oa_ui_regression.cjs"
+    "run:oa": "node oa_module_ui_regression.mjs",
+    "run:hr": "node hr_module_ui_regression.mjs",
+    "run:workflow-template-migration": "node workflow_template_migration_e2e.mjs"
   },
   "dependencies": {
     "playwright": "^1.52.0"

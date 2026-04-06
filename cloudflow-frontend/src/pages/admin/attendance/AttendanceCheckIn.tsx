@@ -3,6 +3,7 @@ import { AlertCircle, ArrowRight, Calendar, CheckCircle2, CircleDot, Clock3, Map
 import { Button, Card } from '@/components/ui';
 import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/hrAttendance';
 import { useAuth } from '@/context/AuthContext';
+import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
 import { useMount } from '@/hooks/useMount';
 
 const formatDateCN = (date: Date) => {
@@ -38,6 +39,12 @@ const AttendanceCheckIn: React.FC = () => {
   const [rule, setRule] = useState<AttendanceRule | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; msg: string } | null>(null);
+  const [autoLocationRequested, setAutoLocationRequested] = useState(false);
+  const {
+    loading: eligibilityLoading,
+    canStartSelfService,
+    restrictionMessage,
+  } = useHrSelfServiceEligibility();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -54,6 +61,13 @@ const AttendanceCheckIn: React.FC = () => {
   });
 
   const getLocation = () => {
+    if (eligibilityLoading) {
+      return;
+    }
+    if (!canStartSelfService) {
+      setLocationError(restrictionMessage || '当前账号暂不能继续发起 HR 自助流程');
+      return;
+    }
     if (!navigator.geolocation) {
       setLocationError('您的浏览器不支持地理定位');
       return;
@@ -78,11 +92,32 @@ const AttendanceCheckIn: React.FC = () => {
     );
   };
 
-  useMount(() => {
+  useEffect(() => {
+    if (autoLocationRequested || eligibilityLoading || !canStartSelfService) {
+      return;
+    }
+    setAutoLocationRequested(true);
     getLocation();
-  });
+  }, [autoLocationRequested, canStartSelfService, eligibilityLoading]);
+
+  const selfServiceLocked = eligibilityLoading || !canStartSelfService;
+
+  const ensureCanCheckIn = () => {
+    if (eligibilityLoading) {
+      setResult({ success: false, msg: '正在核对当前员工状态，请稍后再试' });
+      return false;
+    }
+    if (!canStartSelfService) {
+      setResult({ success: false, msg: restrictionMessage || '当前账号暂不能继续发起 HR 自助流程' });
+      return false;
+    }
+    return true;
+  };
 
   const handleCheckIn = async (type: '1' | '2') => {
+    if (!ensureCanCheckIn()) {
+      return;
+    }
     if (!location) {
       setResult({ success: false, msg: '请先获取定位信息' });
       return;
@@ -98,8 +133,8 @@ const AttendanceCheckIn: React.FC = () => {
         wifiInfo: 'Web端无法获取Mac',
       });
       setResult({ success: true, msg: type === '1' ? '签到成功' : '签退成功' });
-    } catch {
-      setResult({ success: false, msg: '打卡失败，请重试' });
+    } catch (error) {
+      setResult({ success: false, msg: error instanceof Error ? error.message : '打卡失败，请重试' });
     } finally {
       setLoading(false);
     }
@@ -232,16 +267,33 @@ const AttendanceCheckIn: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => handleCheckIn('1')} disabled={loading || !location}>
+                    <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => handleCheckIn('1')} disabled={loading || !location || selfServiceLocked}>
                       上班打卡
                       <ArrowRight size={16} className="ml-2" />
                     </Button>
-                    <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={getLocation} disabled={loading}>
+                    <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={getLocation} disabled={loading || selfServiceLocked}>
                       <RefreshCw size={16} className={`mr-2 text-pink-500 ${loading ? 'animate-spin' : ''}`} />
                       重新定位
                     </Button>
                   </div>
                 </div>
+
+                {restrictionMessage && (
+                  <div
+                    data-testid="hr-self-service-restriction"
+                    className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/90 px-4 py-4 text-amber-900"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+                        <AlertCircle size={18} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold">当前账号暂不能继续发起 HR 自助流程</div>
+                        <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
@@ -334,7 +386,7 @@ const AttendanceCheckIn: React.FC = () => {
                 <Button
                   className="h-36 rounded-[28px] bg-pink-500 text-white shadow-[0_18px_36px_rgba(236,72,153,0.28)] hover:bg-pink-600"
                   onClick={() => handleCheckIn('1')}
-                  disabled={loading || !location}
+                  disabled={loading || !location || selfServiceLocked}
                 >
                   <div className="flex flex-col items-center justify-center">
                     <div className="mb-2 text-3xl font-bold">上班打卡</div>
@@ -345,7 +397,7 @@ const AttendanceCheckIn: React.FC = () => {
                 <Button
                   className="h-36 rounded-[28px] bg-rose-500 text-white shadow-[0_18px_36px_rgba(244,63,94,0.22)] hover:bg-rose-600"
                   onClick={() => handleCheckIn('2')}
-                  disabled={loading || !location}
+                  disabled={loading || !location || selfServiceLocked}
                 >
                   <div className="flex flex-col items-center justify-center">
                     <div className="mb-2 text-3xl font-bold">下班签退</div>
@@ -372,7 +424,7 @@ const AttendanceCheckIn: React.FC = () => {
                   </div>
                 )}
 
-                <Button variant="outline" onClick={getLocation} disabled={loading} className="h-11 w-full rounded-2xl bg-white">
+                <Button variant="outline" onClick={getLocation} disabled={loading || selfServiceLocked} className="h-11 w-full rounded-2xl bg-white">
                   <RefreshCw size={16} className={`mr-2 text-pink-500 ${loading ? 'animate-spin' : ''}`} />
                   {loading ? '定位中...' : '重新获取定位'}
                 </Button>

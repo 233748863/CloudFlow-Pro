@@ -31,6 +31,7 @@ import {
   SkeletonCard,
   Textarea,
 } from "@/components/ui";
+import { useWorkflowPermission } from "@/hooks/useWorkflowPermission";
 import { cn } from "@/utils/cn";
 import { useAuth } from "../context/AuthContext";
 import request from "../services/api/request";
@@ -142,7 +143,7 @@ const TEXT = {
   noCategoryDesc: "\u7cfb\u7edf\u8fd8\u6ca1\u6709\u914d\u7f6e\u6a21\u677f\u5206\u7c7b\uff0c\u4ecd\u53ef\u4ee5\u901a\u8fc7\u5173\u952e\u8bcd\u548c\u6807\u7b7e\u67e5\u627e\u6a21\u677f\u3002",
 };
 
-const COMMON_TAGS = [
+const DEFAULT_COMMON_TAGS = [
   "\u5ba1\u6279",
   "\u8bf7\u5047",
   "\u62a5\u9500",
@@ -265,6 +266,7 @@ export const TemplateLibrary: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { canManageTemplates } = useWorkflowPermission();
   const entrySource = (searchParams.get("entry") || "").trim().toLowerCase();
   const fromCreateFlow = entrySource === "create";
 
@@ -276,6 +278,7 @@ export const TemplateLibrary: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [recommendedTags, setRecommendedTags] = useState<string[]>(DEFAULT_COMMON_TAGS);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -365,9 +368,28 @@ export const TemplateLibrary: React.FC = () => {
     }
   }, [currentPage, pageSize, searchTerm, selectedCategory, selectedTags]);
 
+  const loadRecommendedTags = useCallback(async () => {
+    try {
+      const data = await request.get<string[]>("/workflow/templates/tags", {
+        params: { limit: 12 },
+      });
+      if (Array.isArray(data) && data.length > 0) {
+        setRecommendedTags(data);
+        return;
+      }
+    } catch (error) {
+      console.error("加载模板推荐标签失败", error);
+    }
+    setRecommendedTags(DEFAULT_COMMON_TAGS);
+  }, []);
+
   useEffect(() => {
     void loadCategories();
   }, [loadCategories]);
+
+  useEffect(() => {
+    void loadRecommendedTags();
+  }, [loadRecommendedTags]);
 
   useEffect(() => {
     void loadTemplates();
@@ -629,16 +651,26 @@ export const TemplateLibrary: React.FC = () => {
   return (
     <div className="p-6 h-full flex flex-col bg-slate-50 overflow-y-auto">
       <div className="mb-6 shrink-0 space-y-2">
-        {fromCreateFlow ? (
+        {fromCreateFlow || canManageTemplates ? (
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" size="sm" onClick={handleBackToCreateFlow} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              返回创建方式
-            </Button>
-            <Button size="sm" onClick={handleStartBlankWorkflow} className="gap-2">
-              <Plus className="h-4 w-4" />
-              直接空白创建
-            </Button>
+            {fromCreateFlow ? (
+              <>
+                <Button variant="outline" size="sm" onClick={handleBackToCreateFlow} className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  返回创建方式
+                </Button>
+                <Button size="sm" onClick={handleStartBlankWorkflow} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  直接空白创建
+                </Button>
+              </>
+            ) : null}
+            {canManageTemplates ? (
+              <Button variant="outline" size="sm" onClick={() => navigate("/templates/manage")} className="gap-2">
+                <FolderOpen className="h-4 w-4" />
+                管理模板
+              </Button>
+            ) : null}
           </div>
         ) : null}
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
@@ -695,7 +727,7 @@ export const TemplateLibrary: React.FC = () => {
               <p className="text-xs leading-5 text-slate-500">{TEXT.commonTagsDesc}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {COMMON_TAGS.map((tag) => {
+              {recommendedTags.map((tag) => {
                 const active = selectedTags.includes(tag);
                 return (
                   <Button

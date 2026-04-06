@@ -1,4 +1,5 @@
 import {
+  assertCurrentEmployeeCanStartSelfService,
   createHrAttendanceSupplement,
   deleteHrAttendanceSupplement,
   getHrAttendanceSupplement,
@@ -163,6 +164,11 @@ const toSupplementTime = (data: AttendanceAppeal) => {
   return `${data.appealDate} ${timePart}`;
 };
 
+const normalizeOptionalFilter = (value?: string) => {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+};
+
 /** 补卡/外勤申请 API */
 export const attendanceAppealApi = {
   list: async (params: { pageNum?: number; pageSize?: number; status?: string; appealType?: string }) => {
@@ -170,20 +176,23 @@ export const attendanceAppealApi = {
     const list = await listHrAttendanceSupplements({
       employeeId,
       status:
-        params.status === 'DRAFT'
+        normalizeOptionalFilter(params.status) === 'DRAFT'
           ? 'MISSING'
-          : params.status === 'PENDING'
+          : normalizeOptionalFilter(params.status) === 'PENDING'
             ? 'APPROVING'
-            : params.status === 'APPROVED'
+            : normalizeOptionalFilter(params.status) === 'APPROVED'
               ? 'SUPPLEMENT'
-              : params.status,
+              : normalizeOptionalFilter(params.status),
       pageNum: params.pageNum,
       pageSize: params.pageSize,
     });
 
     const records = list
       .map(mapHrSupplementToLegacy)
-      .filter((item) => !params.appealType || item.appealType === params.appealType);
+      .filter((item) => {
+        const appealType = normalizeOptionalFilter(params.appealType);
+        return !appealType || item.appealType === appealType;
+      });
 
     return {
       total: records.length,
@@ -207,9 +216,9 @@ export const attendanceAppealApi = {
   },
 
   add: async (data: AttendanceAppeal) => {
-    const employeeId = await resolveCurrentEmployeeId(data.userId);
+    const employee = await assertCurrentEmployeeCanStartSelfService('新增补卡或外勤申请', data.userId);
     const id = await createHrAttendanceSupplement({
-      employeeId,
+      employeeId: employee.id,
       attendanceDate: data.appealDate,
       checkType: mapCheckTypeToHr(data.checkType),
       checkTime: toSupplementTime(data),
@@ -222,9 +231,9 @@ export const attendanceAppealApi = {
     if (!data.id) {
       throw new Error('缺少补卡申请ID');
     }
-    const employeeId = await resolveCurrentEmployeeId(data.userId);
+    const employee = await assertCurrentEmployeeCanStartSelfService('编辑补卡或外勤申请', data.userId);
     await updateHrAttendanceSupplement(data.id, {
-      employeeId,
+      employeeId: employee.id,
       attendanceDate: data.appealDate,
       checkType: mapCheckTypeToHr(data.checkType),
       checkTime: toSupplementTime(data),
@@ -238,7 +247,10 @@ export const attendanceAppealApi = {
     return true;
   },
 
-  submit: (id: number) => submitHrAttendanceSupplement(id),
+  submit: async (id: number) => {
+    await assertCurrentEmployeeCanStartSelfService('提交补卡或外勤申请');
+    return submitHrAttendanceSupplement(id);
+  },
 
   cancel: async (id: number) => {
     await deleteHrAttendanceSupplement(id);

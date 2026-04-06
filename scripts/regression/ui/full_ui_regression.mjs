@@ -7,7 +7,10 @@ import { chromium } from "playwright";
 
 const currentFile = fileURLToPath(import.meta.url);
 const rootDir = path.resolve(path.dirname(currentFile), "..", "..", "..");
-const tokenFile = path.join(rootDir, ".codex-temp", "ui_session_tokens.json");
+const tokenFiles = [
+  path.join(rootDir, "scripts", "regression", "ui_session_tokens.json"),
+  path.join(rootDir, ".codex-temp", "ui_session_tokens.json"),
+];
 const outputFile = path.join(rootDir, ".codex-temp", "ui_regression_result.json");
 const tokenRefreshScript = path.join(rootDir, "scripts", "regression", "refresh_ui_tokens.py");
 
@@ -156,7 +159,14 @@ function mapUserInfo(info) {
 }
 
 async function readSessions() {
-  return JSON.parse(await fs.readFile(tokenFile, "utf-8"));
+  for (const tokenFile of tokenFiles) {
+    try {
+      return JSON.parse(await fs.readFile(tokenFile, "utf-8"));
+    } catch {
+      // 继续尝试下一个 token 文件。
+    }
+  }
+  throw new Error("未找到可用的 UI token 文件");
 }
 
 function refreshUiTokens() {

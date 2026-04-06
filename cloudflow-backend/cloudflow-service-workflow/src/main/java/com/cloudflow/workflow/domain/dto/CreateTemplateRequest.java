@@ -25,4 +25,7 @@ public class CreateTemplateRequest {
 
     /** 预览图URL */
     private String previewImage;
+
+    /** 状态（active / inactive） */
+    private String status;
 }

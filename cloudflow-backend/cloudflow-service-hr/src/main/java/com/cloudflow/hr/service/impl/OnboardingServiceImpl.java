@@ -61,6 +61,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OnboardingServiceImpl implements OnboardingService {
 
+    private static final int SYS_USER_NICK_NAME_MAX_LENGTH = 30;
+
     private final OnboardingApplicationMapper onboardingApplicationMapper;
     private final OnboardingTaskMapper onboardingTaskMapper;
     private final EmployeeMapper employeeMapper;
@@ -406,7 +408,7 @@ public class OnboardingServiceImpl implements OnboardingService {
         userCreateDTO.setTenantId(application.getTenantId());
         userCreateDTO.setDeptId(application.getDeptId());
         userCreateDTO.setUserName(application.getPhone());
-        userCreateDTO.setNickName(application.getName());
+        userCreateDTO.setNickName(buildUserNickName(application));
         userCreateDTO.setEmail(application.getEmail());
         userCreateDTO.setPhonenumber(application.getPhone());
         userCreateDTO.setSex(resolveUserSex(application.getGender()));
@@ -480,7 +482,7 @@ public class OnboardingServiceImpl implements OnboardingService {
     private void syncExistingUserAccount(Long userId, OnboardingApplication application) {
         UserUpdateDTO userUpdateDTO = new UserUpdateDTO();
         userUpdateDTO.setDeptId(application.getDeptId());
-        userUpdateDTO.setNickName(application.getName());
+        userUpdateDTO.setNickName(buildUserNickName(application));
         userUpdateDTO.setEmail(application.getEmail());
         userUpdateDTO.setPhonenumber(application.getPhone());
         userUpdateDTO.setSex(resolveUserSex(application.getGender()));
@@ -512,6 +514,24 @@ public class OnboardingServiceImpl implements OnboardingService {
             return "1";
         }
         return "2";
+    }
+
+    /**
+     * Auth 的 sys_user.nick_name 长度只有 30，入职姓名过长时需要提前收敛，
+     * 否则完成入职任务创建账号会直接写库失败。
+     */
+    private String buildUserNickName(OnboardingApplication application) {
+        String nickName = StringUtils.hasText(application.getName()) ? application.getName().trim() : application.getPhone();
+        if (!StringUtils.hasText(nickName)) {
+            return "新员工";
+        }
+        if (nickName.length() <= SYS_USER_NICK_NAME_MAX_LENGTH) {
+            return nickName;
+        }
+        String truncated = nickName.substring(0, SYS_USER_NICK_NAME_MAX_LENGTH);
+        log.warn("入职账号昵称超长，已截断，申请ID：{}，原长度：{}，截断后昵称：{}",
+                application.getId(), nickName.length(), truncated);
+        return truncated;
     }
 
     private String generateEmployeeNo() {

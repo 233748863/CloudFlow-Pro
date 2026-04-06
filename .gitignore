@@ -45,3 +45,7 @@ captcha_*.png
 .env
 .env.local
 .env.*.local
+
+
+#codex
+.codex-*

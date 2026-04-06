@@ -1,4 +1,5 @@
 import {
+  assertCurrentEmployeeCanStartSelfService,
   cancelHrLeaveApplication,
   createHrLeaveApplication,
   getHrLeaveApplication,
@@ -93,6 +94,11 @@ const resolveLeaveTypeId = async (leaveType: string) => {
   return matched;
 };
 
+const normalizeOptionalFilter = (value?: string) => {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+};
+
 /** 请假申请相关API */
 export const leaveApi = {
   /** 分页查询请假申请列表 */
@@ -104,11 +110,12 @@ export const leaveApi = {
     userId?: number;
   }) => {
     const employeeId = await resolveCurrentEmployeeId(params.userId);
-    const leaveType = params.leaveType ? await resolveLeaveTypeId(params.leaveType) : null;
+    const leaveTypeValue = normalizeOptionalFilter(params.leaveType);
+    const leaveType = leaveTypeValue ? await resolveLeaveTypeId(leaveTypeValue) : null;
     const page = await listHrLeaveApplications({
       employeeId,
       leaveTypeId: leaveType?.id,
-      status: params.status === 'PENDING' ? 'APPROVING' : params.status,
+      status: normalizeOptionalFilter(params.status) === 'PENDING' ? 'APPROVING' : normalizeOptionalFilter(params.status),
       pageNum: params.pageNum,
       pageSize: params.pageSize,
     });
@@ -145,11 +152,11 @@ export const leaveApi = {
 
   /** 新增请假申请 */
   add: async (data: LeaveRequest) => {
-    const employeeId = await resolveCurrentEmployeeId(data.userId);
+    const employee = await assertCurrentEmployeeCanStartSelfService('新增请假申请', data.userId);
     const leaveType = await resolveLeaveTypeId(data.leaveType);
     const duration = Number(data.leaveDays ?? 0);
     const id = await createHrLeaveApplication({
-      employeeId,
+      employeeId: employee.id,
       leaveTypeId: leaveType.id,
       startTime: data.startTime,
       endTime: data.endTime,
@@ -174,7 +181,10 @@ export const leaveApi = {
   },
 
   /** 提交请假申请 */
-  submit: (id: number) => submitHrLeaveApplication(id),
+  submit: async (id: number) => {
+    await assertCurrentEmployeeCanStartSelfService('提交请假申请');
+    return submitHrLeaveApplication(id);
+  },
 
   /** 取消请假申请 */
   cancel: (id: number) => cancelHrLeaveApplication(id),

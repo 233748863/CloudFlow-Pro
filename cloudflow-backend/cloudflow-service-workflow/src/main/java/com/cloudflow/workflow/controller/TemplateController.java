@@ -43,6 +43,7 @@ public class TemplateController {
             @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) String tags,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         try {
@@ -50,11 +51,22 @@ public class TemplateController {
             if (StringUtils.hasText(tags)) {
                 tagList = List.of(tags.split(","));
             }
-            Page<TemplateDTO> result = templateService.listTemplates(categoryId, tagList, keyword, pageNum, pageSize);
+            Page<TemplateDTO> result = templateService.listTemplates(categoryId, tagList, keyword, status, pageNum, pageSize);
             return R.ok(result);
         } catch (Exception e) {
             log.error("查询模板列表失败", e);
             return R.fail("查询模板列表失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/tags")
+    @SaCheckLogin
+    public R<List<String>> listRecommendedTags(@RequestParam(defaultValue = "12") int limit) {
+        try {
+            return R.ok(templateService.listRecommendedTags(limit));
+        } catch (Exception e) {
+            log.error("查询模板推荐标签失败", e);
+            return R.fail("查询模板推荐标签失败: " + e.getMessage());
         }
     }
 

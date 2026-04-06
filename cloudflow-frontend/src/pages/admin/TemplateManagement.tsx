@@ -113,6 +113,7 @@ export const TemplateManagement = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
@@ -165,7 +166,8 @@ export const TemplateManagement = () => {
     try {
       const params: Record<string, string | number> = {
         pageNum: currentPage,
-        pageSize
+        pageSize,
+        status: statusFilter
       };
       if (selectedCategory) {
         params.categoryId = selectedCategory;
@@ -191,7 +193,7 @@ export const TemplateManagement = () => {
 
   useEffect(() => {
     loadTemplates();
-  }, [currentPage, selectedCategory, searchTerm]);
+  }, [currentPage, selectedCategory, searchTerm, statusFilter]);
 
   const handleCreateTemplate = () => {
     setEditingTemplate(null);
@@ -432,6 +434,18 @@ export const TemplateManagement = () => {
               {cat.name}
             </option>
           ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as 'all' | 'active' | 'inactive');
+            setCurrentPage(1);
+          }}
+          className="px-4 py-2 border rounded-lg"
+        >
+          <option value="all">全部状态</option>
+          <option value="active">仅启用</option>
+          <option value="inactive">仅禁用</option>
         </select>
       </div>
 
