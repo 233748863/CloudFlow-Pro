@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, Edit, Paperclip, Plane, Plus, RotateCcw, Search, Send, Trash2, X } from 'lucide-react';
+import { Ban, CheckCircle2, Clock3, Download, Edit, Eye, Paperclip, Plane, Plus, RotateCcw, Search, Send, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { businessTripApi, BusinessTrip } from '../services/api/businessTrip';
 import { FileUpload } from '../components/FileUpload';
+import { ProcessTrace } from '../components/ProcessTrace';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceEmptyPanel, WorkspaceSectionHeader } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -17,9 +19,12 @@ export const BusinessTripPage: React.FC = () => {
   const [list, setList] = useState<BusinessTrip[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({ status: '', destination: '', pageNum: 1, pageSize: 10 });
+  const [destinationInput, setDestinationInput] = useState('');
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
   const [current, setCurrent] = useState<BusinessTrip | null>(null);
+  const [detailTrip, setDetailTrip] = useState<BusinessTrip | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [formData, setFormData] = useState<BusinessTrip>({
     destination: '',
     startDate: '',
@@ -47,11 +52,24 @@ export const BusinessTripPage: React.FC = () => {
         setList(response.records || response.rows || []);
         setTotal(response.total || 0);
       }
-    } catch {
-      toast.error('获取列表失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取列表失败'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyStatusFilter = (status: string) => {
+    setSearchParams(prev => ({ ...prev, status, pageNum: 1 }));
+  };
+
+  const applySearch = () => {
+    setSearchParams(prev => ({ ...prev, destination: destinationInput.trim(), pageNum: 1 }));
+  };
+
+  const handleResetFilters = () => {
+    setDestinationInput('');
+    setSearchParams({ status: '', destination: '', pageNum: 1, pageSize: 10 });
   };
 
   const handleAdd = () => {
@@ -81,8 +99,24 @@ export const BusinessTripPage: React.FC = () => {
         setFormData(response);
         setShowDialog(true);
       }
-    } catch {
-      toast.error('获取详情失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取详情失败'));
+    }
+  };
+
+  const handleView = async (trip: BusinessTrip) => {
+    // 先展示列表已有信息，再异步补齐接口详情，避免弹窗白屏等待。
+    setDetailTrip(trip);
+    setDetailLoading(true);
+    try {
+      const response = await businessTripApi.getInfo(trip.id!);
+      if (response) {
+        setDetailTrip(response);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取详情失败'));
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -111,8 +145,8 @@ export const BusinessTripPage: React.FC = () => {
       }
       setShowDialog(false);
       fetchList();
-    } catch {
-      toast.error('保存失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '保存失败'));
     }
   };
 
@@ -122,8 +156,8 @@ export const BusinessTripPage: React.FC = () => {
       await businessTripApi.remove(ids);
       toast.success('删除成功');
       fetchList();
-    } catch {
-      toast.error('删除失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -133,18 +167,34 @@ export const BusinessTripPage: React.FC = () => {
       await businessTripApi.submit(id);
       toast.success('提交成功');
       fetchList();
-    } catch {
-      toast.error('提交失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '提交失败'));
+    }
+  };
+
+  const handleCancel = async (id: number) => {
+    if (!confirm('确认取消这条出差申请吗？')) return;
+    try {
+      await businessTripApi.cancel(id);
+      toast.success('已取消出差申请');
+      setDetailTrip(prev => (prev?.id === id ? { ...prev, status: 'CANCELLED' } : prev));
+      fetchList();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '取消失败'));
     }
   };
 
   const handleExport = async () => {
     try {
       const blob = await businessTripApi.export(searchParams);
-      downloadBlob(blob, buildExcelFileName('出差申请'));
-      toast.success('导出成功');
-    } catch {
-      toast.error('导出失败');
+      const fileName = downloadBlob(blob, buildExcelFileName('出差申请'));
+      toast.success(
+        total > 0
+          ? `已导出 ${total} 条出差申请，下载文件：${fileName}`
+          : `已导出空结果，下载文件：${fileName}`,
+      );
+    } catch (error) {
+      toast.error(getErrorMessage(error, '导出失败'));
     }
   };
 
@@ -153,15 +203,37 @@ export const BusinessTripPage: React.FC = () => {
   const accommodationMap: Record<string, string> = { SELF: '自行安排', COMPANY: '公司安排', NONE: '无需住宿' };
 
   const getStatusBadge = (status: string) => {
-    const config: Record<string, { bg: string; text: string }> = {
-      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' },
-      PENDING: { bg: 'bg-pink-50', text: 'text-pink-500' },
-      APPROVED: { bg: 'bg-green-100', text: 'text-green-600' },
-      REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
-      CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
+    const config: Record<string, { tone: string }> = {
+      DRAFT: { tone: 'bg-white/82 text-slate-600 ring-1 ring-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
+      PENDING: { tone: 'bg-pink-50/88 text-pink-600 ring-1 ring-pink-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
+      APPROVED: { tone: 'bg-emerald-50/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
+      REJECTED: { tone: 'bg-rose-50/88 text-rose-600 ring-1 ring-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
+      CANCELLED: { tone: 'bg-slate-100/88 text-slate-500 ring-1 ring-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
     };
     const currentConfig = config[status] || config.DRAFT;
-    return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${currentConfig.bg} ${currentConfig.text}`}>{statusMap[status] || status}</span>;
+    return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${currentConfig.tone}`}>{statusMap[status] || status}</span>;
+  };
+
+  const getAttachmentList = (attachmentUrl?: string) => (
+    attachmentUrl
+      ?.split(',')
+      .map(item => item.trim())
+      .filter(Boolean)
+      ?? []
+  );
+
+  const renderDetailValue = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+    return value;
+  };
+
+  const formatAmount = (value?: number) => {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) {
+      return '-';
+    }
+    return `¥${Number(value).toFixed(2)}`;
   };
 
   const todayLabel = formatDateCN(new Date());
@@ -171,178 +243,381 @@ export const BusinessTripPage: React.FC = () => {
   const approvedCount = list.filter(item => item.status === 'APPROVED').length;
   const totalTripDays = list.reduce((sum, item) => sum + Number(item.tripDays || 0), 0);
 
-  const focusItems = useMemo(() => [
-    { label: '待提交草稿', value: `${draftCount} 条`, hint: '行程、联系人或附件仍可补充后再提交', tone: 'bg-slate-100 text-slate-600' },
-    { label: '审批中', value: `${pendingCount} 条`, hint: '等待主管确认的出差申请记录', tone: 'bg-pink-50 text-pink-600' },
-    { label: '累计天数', value: `${totalTripDays} 天`, hint: '当前筛选结果内出差天数合计', tone: 'bg-amber-50 text-amber-600' },
-  ], [draftCount, pendingCount, totalTripDays]);
+  const currentStatusLabel = searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态';
+
+  const statusQuickFilters = useMemo(() => ([
+    { label: '全部', value: '' },
+    { label: '草稿', value: 'DRAFT' },
+    { label: '审批中', value: 'PENDING' },
+    { label: '已通过', value: 'APPROVED' },
+    { label: '已驳回', value: 'REJECTED' },
+    { label: '已取消', value: 'CANCELLED' },
+  ]), []);
+
+  const getActionHint = (status?: string) => {
+    switch (status) {
+      case 'DRAFT':
+        return '可继续编辑并提交审批';
+      case 'PENDING':
+        return '可查看详情或取消申请';
+      case 'APPROVED':
+        return '审批完成，可回看附件与轨迹';
+      case 'REJECTED':
+        return '已驳回，建议先查看原因';
+      case 'CANCELLED':
+        return '已取消，仅保留记录留痕';
+      default:
+        return '可查看申请详情';
+    }
+  };
+
+  const hasActiveFilters = Boolean(searchParams.status || searchParams.destination);
+
+  // 顶部四张信息卡统一在这里定义，方便后续继续调整视觉层级和提示文案。
+  const heroMetrics = useMemo(() => ([
+    {
+      label: '当前结果',
+      value: `${total}`,
+      hint: hasActiveFilters
+        ? `${currentStatusLabel} · ${searchParams.destination || '全部目的地'}`
+        : '默认视图下全部申请',
+      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
+      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-500',
+      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
+      icon: <Plane size={17} />,
+    },
+    {
+      label: '待补充草稿',
+      value: `${draftCount}`,
+      hint: draftCount > 0 ? '建议优先补齐材料再提交' : '当前没有待补充草稿',
+      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
+      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
+      icon: <Edit size={17} />,
+    },
+    {
+      label: '审批中',
+      value: `${pendingCount}`,
+      hint: pendingCount > 0 ? '可查看流程轨迹与审批进度' : '当前没有审批中的申请',
+      panelClassName: 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
+      icon: <Clock3 size={17} />,
+    },
+    {
+      label: '累计出差天数',
+      value: `${totalTripDays} 天`,
+      hint: approvedCount > 0 ? `已通过 ${approvedCount} 条，便于快速估算投入` : '用于快速判断当前出差投入规模',
+      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
+      icon: <CheckCircle2 size={17} />,
+    },
+  ]), [approvedCount, currentStatusLabel, draftCount, hasActiveFilters, pendingCount, searchParams.destination, total, totalTripDays]);
+
+  const workspaceOverviewItems = [
+    {
+      label: '记录数',
+      value: `${total} 条`,
+      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+    {
+      label: '状态',
+      value: currentStatusLabel,
+      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+    {
+      label: '目的地',
+      value: searchParams.destination || '全部',
+      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+    {
+      label: '视图',
+      value: hasActiveFilters ? '筛选结果' : '默认视图',
+      toneClassName: hasActiveFilters
+        ? 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.9),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06),inset_0_1px_0_rgba(255,255,255,0.75)]'
+        : 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+  ];
+
+  const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-[36px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] shadow-[0_30px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-2xl';
+  const glassModalHeaderClass = 'sticky top-0 z-10 overflow-hidden border-b border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] px-6 pb-5 pt-6 backdrop-blur-2xl';
+  const glassModalSectionClass = 'relative z-0 overflow-visible rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] p-4 shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl focus-within:z-20';
+  const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const glassModalInputClass = 'h-12 rounded-[20px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
+  const glassModalTextareaClass = 'min-h-28 rounded-[22px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
+  const glassModalFooterClass = 'sticky bottom-0 flex justify-end gap-3 border-t border-white/75 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.74))] px-6 py-5 backdrop-blur-2xl';
+  const glassDetailCardClass = 'rounded-[22px] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(248,250,252,0.7))] p-4 shadow-[0_12px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl';
 
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-            <div className="relative p-7 sm:p-8">
-              <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_55%)]" />
-              <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
-              <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
+      <div className="relative z-10 space-y-3">
+        <Card className="overflow-hidden rounded-[30px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="relative p-4 sm:p-5">
+            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%)]" />
+            <div className="absolute -right-14 top-4 h-32 w-32 rounded-full bg-pink-200/25 blur-3xl" />
+            <div className="absolute bottom-0 left-1/3 h-16 w-16 rounded-full bg-amber-100/50 blur-2xl" />
 
-              <div className="relative">
-                <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
-                    <Plane size={14} />
-                    {todayLabel}
-                  </span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">出差申请</span>
-                </div>
-
-                <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="max-w-2xl">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
+            <div className="relative space-y-3">
+              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
                       <Plane size={14} />
-                      出差与行程
-                    </div>
-                    <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-950 sm:text-[2.85rem]">出差申请</h1>
-                    <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
-                      适用于客户拜访、驻场支持、培训参会、异地协作等场景。把行程、费用、交通住宿和现场联系人一次说明，方便审批与后续执行。
-                    </p>
+                      {todayLabel}
+                    </span>
+                    <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
                   </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={handleAdd}>
-                      <Plus size={16} className="mr-2" />
-                      新增申请
-                    </Button>
-                    <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={handleExport}>
-                      <Download size={16} className="mr-2 text-pink-500" />
-                      导出 Excel
-                    </Button>
-                  </div>
+                  <h1 className="mt-3 text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">出差申请</h1>
                 </div>
 
-                <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">申请总数</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{total}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">当前筛选条件下的申请数量</div>
+                <div className="flex flex-wrap gap-2 xl:justify-end">
+                  <Button className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600" onClick={handleAdd}>
+                    <Plus size={15} className="mr-2" />
+                    新建申请
+                  </Button>
+                  <Button variant="outline" className="h-9 rounded-xl bg-white/85 px-4" onClick={handleExport}>
+                    <Download size={15} className="mr-2 text-pink-500" />
+                    导出结果
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {heroMetrics.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
+                  >
+                    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
+                    <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
+                    <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
+                          <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
+                        </div>
+                        <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
+                          {item.icon}
+                        </div>
+                      </div>
+
+                      <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
+                    </div>
                   </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">审批中</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{pendingCount}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">仍在流程中等待处理的出差记录</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-3">
+            <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
+              <div className="relative px-4 py-4">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.09),transparent_60%)]" />
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">记录</div>
+                      <div className="mt-2 text-[1.65rem] font-bold tracking-tight text-slate-950">申请列表</div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                        {hasActiveFilters ? '已应用筛选' : '默认视图'}
+                      </span>
+                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                        共 {total} 条
+                      </span>
+                    </div>
                   </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">累计天数</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{totalTripDays} 天</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">用于快速判断近期出差投入规模</div>
+
+                  <div className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
+                    {workspaceOverviewItems.map((item) => (
+                      <div
+                        key={item.label}
+                        className={`rounded-[18px] border px-3.5 py-2.5 shadow-sm ${item.toneClassName}`}
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</div>
+                        <div className="mt-1.5 text-sm font-semibold tracking-tight">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-4 backdrop-blur-xl">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="inline-flex flex-wrap items-center gap-1 rounded-[20px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-md">
+                      {statusQuickFilters.map((item) => {
+                        const active = searchParams.status === item.value;
+                        return (
+                          <button
+                            key={item.value || 'ALL'}
+                            type="button"
+                            onClick={() => applyStatusFilter(item.value)}
+                            className={[
+                              'rounded-[16px] px-3 py-1.5 text-[11px] font-medium transition',
+                              active
+                                ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]'
+                                : 'text-slate-600 hover:bg-white/88 hover:text-pink-600',
+                            ].join(' ')}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {hasActiveFilters ? (
+                      <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white">
+                        <RotateCcw size={15} className="mr-2" />
+                        清空所有条件
+                      </Button>
+                    ) : (
+                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                        当前未应用额外筛选
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+                    <div className="relative">
+                      <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        type="text"
+                        placeholder="按目的地搜索，如 杭州、苏州"
+                        value={destinationInput}
+                        onChange={e => setDestinationInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            applySearch();
+                          }
+                        }}
+                        className="h-10 rounded-2xl border-white/85 bg-white/78 pl-10 pr-4 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
+                      />
+                    </div>
+
+                    <Button size="sm" onClick={applySearch} className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600">
+                      <Search size={15} className="mr-2" />
+                      应用筛选
+                    </Button>
+
+                    <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white">
+                      <RotateCcw size={15} className="mr-2" />
+                      清空条件
+                    </Button>
                   </div>
                 </div>
               </div>
             </div>
-          </Card>
 
-          <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-            <WorkspaceSectionHeader eyebrow="今日焦点" title="先看这些" />
-            <div className="mt-5 space-y-3">
-              {focusItems.map(item => (
-                <div key={item.label} className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4">
-                  <div className={`rounded-2xl p-3 ${item.tone}`}>
-                    <Plane size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                      <div className="text-xs font-semibold text-slate-400">{item.value}</div>
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">{item.hint}</div>
-                  </div>
+            <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.68))] px-4 py-3 backdrop-blur-xl">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">当前结果</div>
+                  <div className="mt-1 text-[11px] text-slate-400">轻玻璃视图下展示申请记录与当前操作</div>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="flex flex-col gap-5">
-            <div className="rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
-              <WorkspaceSectionHeader eyebrow="申请工作区" title="出差申请记录" />
-              <div className="mt-2 text-sm leading-6 text-slate-500">先按状态和目的地筛选，再继续补充交通、住宿、费用、联系人和附件材料。</div>
-            </div>
-
-            <div className="rounded-[24px] border border-slate-100 bg-white/85 p-4 shadow-sm">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_minmax(0,1fr)_auto_auto]">
-                <Select value={searchParams.status} onValueChange={value => setSearchParams({ ...searchParams, status: value })}>
-                  <SelectTrigger className="h-12 rounded-2xl">
-                    <SelectValue placeholder="请选择" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">全部状态</SelectItem>
-                    <SelectItem value="DRAFT">草稿</SelectItem>
-                    <SelectItem value="PENDING">审批中</SelectItem>
-                    <SelectItem value="APPROVED">已通过</SelectItem>
-                    <SelectItem value="REJECTED">已驳回</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Input type="text" placeholder="搜索目的地" value={searchParams.destination} onChange={e => setSearchParams({ ...searchParams, destination: e.target.value })} className="h-12 rounded-2xl" />
-
-                <Button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="h-12 rounded-2xl bg-pink-500 text-white hover:bg-pink-600">
-                  <Search size={16} className="mr-2" />
-                  搜索
-                </Button>
-
-                <Button variant="outline" onClick={() => setSearchParams({ status: '', destination: '', pageNum: 1, pageSize: 10 })} className="h-12 rounded-2xl">
-                  <RotateCcw size={16} className="mr-2" />
-                  重置
-                </Button>
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {total} 条</span>
               </div>
-            </div>
-
-            <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <TableHeader className="sticky top-0 z-10">
+                  <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
                     <tr>
-                      <TableHead className="px-4 py-3 text-left">出差单号</TableHead>
-                      <TableHead className="px-4 py-3 text-left">出发地→目的地</TableHead>
-                      <TableHead className="px-4 py-3 text-left">日期</TableHead>
-                      <TableHead className="px-4 py-3 text-left">天数</TableHead>
-                      <TableHead className="px-4 py-3 text-left">交通</TableHead>
-                      <TableHead className="px-4 py-3 text-left">住宿</TableHead>
-                      <TableHead className="px-4 py-3 text-left">费用</TableHead>
-                      <TableHead className="px-4 py-3 text-left">附件</TableHead>
-                      <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                      <TableActionHead className="px-4 py-3 w-52">操作</TableActionHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">出差单号</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">出发地→目的地</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">日期</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">天数</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">交通</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">住宿</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">费用</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">附件</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
+                      <TableActionHead className="px-4 py-3 w-52 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-white/70">
                     {loading ? (
-                      <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500"><div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500"></div></td></tr>
+                      <tr><td colSpan={10} className="px-4 py-10 text-center text-slate-500"><div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500"></div></td></tr>
                     ) : list.length === 0 ? (
-                      <tr><td colSpan={10} className="px-0 py-0"><WorkspaceEmptyPanel icon={<Plane size={26} />} title="暂无出差申请" description="创建新的出差申请后，这里会展示行程、费用、住宿安排和审批状态。" /></td></tr>
+                      <tr><td colSpan={10} className="px-0 py-0"><WorkspaceEmptyPanel variant="glass" icon={<Plane size={26} />} title={hasActiveFilters ? '当前条件下暂无记录' : '暂无出差申请'} description={hasActiveFilters ? '试试切换状态、清空目的地条件，或者直接新建一条出差申请。' : '创建新的出差申请后，这里会展示行程、费用、住宿安排和审批状态。'} /></td></tr>
                     ) : list.map(item => (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
-                        <td className="px-4 py-3 text-sm text-slate-900">{item.tripNo}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-slate-900">{item.departure ? `${item.departure} → ` : ''}{item.destination}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{item.startDate} ~ {item.endDate}</td>
-                        <td className="px-4 py-3 text-sm">{item.tripDays || '-'}天</td>
-                        <td className="px-4 py-3 text-sm">{transportMap[item.transportType || ''] || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{accommodationMap[item.accommodation || ''] || '-'}</td>
-                        <td className="px-4 py-3 text-sm">¥{item.estimatedCost?.toFixed(2) || '0.00'}</td>
-                        <td className="px-4 py-3 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-pink-400" /> : <span className="text-slate-300">-</span>}</td>
-                        <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                          <TableRowActions
-                            align="end"
-                            actions={[
-                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT' },
-                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT' },
-                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT' },
-                            ]}
-                          />
+                      <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
+                        <td className="px-4 py-2.5 text-sm text-slate-900">{item.tripNo}</td>
+                        <td className="px-4 py-2.5 text-sm font-medium text-slate-900">{item.departure ? `${item.departure} → ` : ''}{item.destination}</td>
+                        <td className="px-4 py-2.5 text-sm text-slate-600">{item.startDate} ~ {item.endDate}</td>
+                        <td className="px-4 py-2.5 text-sm">{item.tripDays || '-'}天</td>
+                        <td className="px-4 py-2.5 text-sm">{transportMap[item.transportType || ''] || '-'}</td>
+                        <td className="px-4 py-2.5 text-sm">{accommodationMap[item.accommodation || ''] || '-'}</td>
+                        <td className="px-4 py-2.5 text-sm">¥{item.estimatedCost?.toFixed(2) || '0.00'}</td>
+                        <td className="px-4 py-2.5 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-pink-400" /> : <span className="text-slate-300">-</span>}</td>
+                        <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-right">
+                          <div className="flex flex-col items-end gap-1">
+                            <TableRowActions
+                              align="end"
+                              className="gap-1"
+                              actions={[
+                                {
+                                  label: '详情',
+                                  title: '查看申请详情与流程轨迹',
+                                  icon: <Eye size={14} />,
+                                  onClick: () => void handleView(item),
+                                  tone: 'neutral',
+                                  className: 'rounded-full bg-slate-50/90 px-2.5 ring-1 ring-slate-200/80 hover:bg-slate-100',
+                                },
+                                {
+                                  label: '编辑',
+                                  title: '继续补充草稿内容',
+                                  icon: <Edit size={14} />,
+                                  onClick: () => handleEdit(item.id!),
+                                  tone: 'primary',
+                                  hidden: item.status !== 'DRAFT',
+                                  className: 'rounded-full bg-pink-50/90 px-2.5 ring-1 ring-pink-100',
+                                },
+                                {
+                                  label: '提交',
+                                  title: '发起审批流程',
+                                  icon: <Send size={14} />,
+                                  onClick: () => handleSubmit(item.id!),
+                                  tone: 'success',
+                                  hidden: item.status !== 'DRAFT',
+                                  className: 'rounded-full bg-emerald-50/90 px-2.5 ring-1 ring-emerald-100 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800',
+                                },
+                                {
+                                  label: '取消',
+                                  title: '取消当前审批中的申请',
+                                  icon: <Ban size={14} />,
+                                  onClick: () => handleCancel(item.id!),
+                                  tone: 'warning',
+                                  hidden: item.status !== 'PENDING',
+                                  className: 'rounded-full bg-amber-50/90 px-2.5 ring-1 ring-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
+                                },
+                                {
+                                  label: '删除',
+                                  title: '删除草稿申请',
+                                  icon: <Trash2 size={14} />,
+                                  onClick: () => handleDelete([item.id!]),
+                                  tone: 'danger',
+                                  hidden: item.status !== 'DRAFT',
+                                  className: 'rounded-full bg-rose-50/90 px-2.5 ring-1 ring-rose-100 text-rose-600 hover:bg-rose-100 hover:text-rose-700',
+                                },
+                              ]}
+                            />
+                            <span className="text-[10px] font-medium text-slate-400">{getActionHint(item.status)}</span>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -350,12 +625,12 @@ export const BusinessTripPage: React.FC = () => {
                 </table>
               </div>
 
-              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4">
+              <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
                 <span className="text-sm text-slate-600">共 {total} 条</span>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setSearchParams(prev => ({ ...prev, pageNum: Math.max(1, prev.pageNum - 1) }))} disabled={searchParams.pageNum === 1} className="rounded-xl">上一页</Button>
-                  <span className="px-3 py-2 text-sm text-slate-600">第 {searchParams.pageNum} 页</span>
-                  <Button variant="outline" onClick={() => setSearchParams(prev => ({ ...prev, pageNum: prev.pageNum + 1 }))} disabled={searchParams.pageNum * searchParams.pageSize >= total} className="rounded-xl">下一页</Button>
+                  <Button variant="outline" onClick={() => setSearchParams(prev => ({ ...prev, pageNum: Math.max(1, prev.pageNum - 1) }))} disabled={searchParams.pageNum === 1} className="h-9 rounded-2xl border-white/80 bg-white/76 px-3 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white">上一页</Button>
+                  <span className="rounded-full bg-white/76 px-3 py-2 text-sm text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">第 {searchParams.pageNum} 页</span>
+                  <Button variant="outline" onClick={() => setSearchParams(prev => ({ ...prev, pageNum: prev.pageNum + 1 }))} disabled={searchParams.pageNum * searchParams.pageSize >= total} className="h-9 rounded-2xl border-white/80 bg-white/76 px-3 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white">下一页</Button>
                 </div>
               </div>
             </div>
@@ -363,120 +638,300 @@ export const BusinessTripPage: React.FC = () => {
         </Card>
 
         {showDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[32px] border border-white/80 bg-white/95 shadow-[0_28px_72px_rgba(15,23,42,0.18)] backdrop-blur-xl">
-              <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-6 pb-5 pt-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
+            <div className={`${glassModalShellClass} max-w-3xl`}>
+              <div className={glassModalHeaderClass}>
                 <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-amber-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-pink-100">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       <Plane size={14} />
                       出差申请表单
                     </div>
                     <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{current ? '编辑出差申请' : '新增出差申请'}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-500">填写出发地、目的地、日期、交通住宿、费用和联系人信息，形成完整的出差申请单。</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setShowDialog(false)} className="rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                  <Button variant="ghost" size="icon" onClick={() => setShowDialog(false)} className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700">
                     <X size={18} />
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-4 p-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">出发地 <span className="text-red-500">*</span></label>
-                    <Input className="h-12 rounded-2xl" type="text" value={formData.departure || ''} onChange={e => setFormData({ ...formData, departure: e.target.value })} placeholder="如：北京" />
+                {/* 将长表单拆成多块玻璃分组，降低一次性阅读整屏字段的压力。 */}
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础行程</div>
+                    <div className="mt-1 text-sm text-slate-500">先填写出发地、目的地与时间区间，系统会自动计算出差天数。</div>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">目的地 <span className="text-red-500">*</span></label>
-                    <Input className="h-12 rounded-2xl" type="text" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} placeholder="如：上海" />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={glassModalLabelClass}>出发地 <span className="text-red-500">*</span></label>
+                      <Input className={glassModalInputClass} type="text" value={formData.departure || ''} onChange={e => setFormData({ ...formData, departure: e.target.value })} placeholder="如：北京" />
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>目的地 <span className="text-red-500">*</span></label>
+                      <Input className={glassModalInputClass} type="text" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} placeholder="如：上海" />
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>开始日期 <span className="text-red-500">*</span></label>
+                      <DatePicker variant="glass" className={glassModalInputClass} type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>结束日期 <span className="text-red-500">*</span></label>
+                      <DatePicker variant="glass" className={glassModalInputClass} type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
+                    </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">开始日期 <span className="text-red-500">*</span></label>
-                    <DatePicker type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">交通与预算</div>
+                    <div className="mt-1 text-sm text-slate-500">补充交通方式、住宿安排、预算和关联项目，方便审批时快速判断成本与目的。</div>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">结束日期 <span className="text-red-500">*</span></label>
-                    <DatePicker type="date" value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={glassModalLabelClass}>交通方式</label>
+                      <Select value={formData.transportType || 'TRAIN'} onValueChange={value => setFormData({ ...formData, transportType: value })}>
+                        <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择" /></SelectTrigger>
+                        <SelectContent className="rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.78))] p-1 shadow-[0_18px_36px_rgba(15,23,42,0.12),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-2xl">
+                          <SelectItem className="rounded-[16px]" value="PLANE">飞机</SelectItem>
+                          <SelectItem className="rounded-[16px]" value="TRAIN">火车</SelectItem>
+                          <SelectItem className="rounded-[16px]" value="CAR">自驾</SelectItem>
+                          <SelectItem className="rounded-[16px]" value="OTHER">其他</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>住宿安排</label>
+                      <Select value={formData.accommodation || 'SELF'} onValueChange={value => setFormData({ ...formData, accommodation: value })}>
+                        <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择" /></SelectTrigger>
+                        <SelectContent className="rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.78))] p-1 shadow-[0_18px_36px_rgba(15,23,42,0.12),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-2xl">
+                          <SelectItem className="rounded-[16px]" value="SELF">自行安排</SelectItem>
+                          <SelectItem className="rounded-[16px]" value="COMPANY">公司安排</SelectItem>
+                          <SelectItem className="rounded-[16px]" value="NONE">无需住宿</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>预计费用(元)</label>
+                      <Input className={glassModalInputClass} type="number" value={formData.estimatedCost || ''} onChange={e => setFormData({ ...formData, estimatedCost: parseFloat(e.target.value) || 0 })} placeholder="0.00" step="0.01" min="0" />
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>关联项目</label>
+                      <Input className={glassModalInputClass} type="text" value={formData.projectName || ''} onChange={e => setFormData({ ...formData, projectName: e.target.value })} placeholder="如：华东客户拜访、驻场实施支持" />
+                    </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">交通方式</label>
-                    <Select value={formData.transportType || 'TRAIN'} onValueChange={value => setFormData({ ...formData, transportType: value })}>
-                      <SelectTrigger className="h-12 rounded-2xl"><SelectValue placeholder="请选择" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PLANE">飞机</SelectItem>
-                        <SelectItem value="TRAIN">火车</SelectItem>
-                        <SelectItem value="CAR">自驾</SelectItem>
-                        <SelectItem value="OTHER">其他</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">联系与协作</div>
+                    <div className="mt-1 text-sm text-slate-500">确保审批通过后，出差期间联系人与同行信息可以被快速检索。</div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className={glassModalLabelClass}>出差期间联系电话</label>
+                      <Input className={glassModalInputClass} type="tel" value={formData.contactPhone || ''} onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} placeholder="出差期间可直接联系到你的手机号" />
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>紧急联系人</label>
+                      <Input className={glassModalInputClass} type="text" value={formData.emergencyContact || ''} onChange={e => setFormData({ ...formData, emergencyContact: e.target.value })} placeholder="姓名" />
+                    </div>
+                    <div>
+                      <label className={glassModalLabelClass}>紧急联系人电话</label>
+                      <Input className={glassModalInputClass} type="tel" value={formData.emergencyPhone || ''} onChange={e => setFormData({ ...formData, emergencyPhone: e.target.value })} placeholder="电话" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={glassModalLabelClass}>同行人员</label>
+                      <Input className={glassModalInputClass} type="text" value={formData.companions || ''} onChange={e => setFormData({ ...formData, companions: e.target.value })} placeholder="如：销售张三、实施李四" />
+                    </div>
+                  </div>
+                </section>
+
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">申请说明</div>
+                    <div className="mt-1 text-sm text-slate-500">用一段简洁说明交代出差背景、目标和现场任务。</div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">住宿安排</label>
-                    <Select value={formData.accommodation || 'SELF'} onValueChange={value => setFormData({ ...formData, accommodation: value })}>
-                      <SelectTrigger className="h-12 rounded-2xl"><SelectValue placeholder="请选择" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SELF">自行安排</SelectItem>
-                        <SelectItem value="COMPANY">公司安排</SelectItem>
-                        <SelectItem value="NONE">无需住宿</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <label className={glassModalLabelClass}>出差事由 <span className="text-red-500">*</span></label>
+                    <Textarea className={glassModalTextareaClass} value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="例如：赴上海客户现场演示、参加杭州交付培训、驻场处理上线问题" />
                   </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-2 gap-4">
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">附件材料</div>
+                    <div className="mt-1 text-sm text-slate-500">可附上邀请函、会议通知、行程单或酒店预订单，帮助审批人快速核实背景。</div>
+                  </div>
+                  <FileUpload variant="glass" value={formData.attachmentUrl || ''} onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })} maxCount={5} hint="可上传邀请函、会议通知、行程单、酒店预订单等，最多 5 个文件" />
+                </section>
+              </div>
+
+              <div className={glassModalFooterClass}>
+                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">取消</Button>
+                <Button onClick={handleSave} className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_14px_24px_rgba(236,72,153,0.22)] hover:bg-pink-600">保存</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {detailTrip && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.22)] p-4 backdrop-blur-md" onClick={() => !detailLoading && setDetailTrip(null)}>
+            <div
+              className={`flex max-h-[90vh] max-w-5xl flex-col ${glassModalShellClass}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={glassModalHeaderClass}>
+                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-emerald-100/30 blur-3xl" />
+                <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">预计费用(元)</label>
-                    <Input className="h-12 rounded-2xl" type="number" value={formData.estimatedCost || ''} onChange={e => setFormData({ ...formData, estimatedCost: parseFloat(e.target.value) || 0 })} placeholder="0.00" step="0.01" min="0" />
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                      <Eye size={14} />
+                      申请详情
+                    </div>
+                    <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{detailTrip.tripNo || '出差申请'}</h3>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                      <span>{detailTrip.departure ? `${detailTrip.departure} → ` : ''}{detailTrip.destination || '-'}</span>
+                      {getStatusBadge(detailTrip.status || 'DRAFT')}
+                    </div>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">关联项目</label>
-                    <Input className="h-12 rounded-2xl" type="text" value={formData.projectName || ''} onChange={e => setFormData({ ...formData, projectName: e.target.value })} placeholder="如：华东客户拜访、驻场实施支持" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">出差期间联系电话</label>
-                  <Input className="h-12 rounded-2xl" type="tel" value={formData.contactPhone || ''} onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} placeholder="出差期间可直接联系到你的手机号" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">紧急联系人</label>
-                    <Input className="h-12 rounded-2xl" type="text" value={formData.emergencyContact || ''} onChange={e => setFormData({ ...formData, emergencyContact: e.target.value })} placeholder="姓名" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">紧急联系人电话</label>
-                    <Input className="h-12 rounded-2xl" type="tel" value={formData.emergencyPhone || ''} onChange={e => setFormData({ ...formData, emergencyPhone: e.target.value })} placeholder="电话" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">同行人员</label>
-                  <Input className="h-12 rounded-2xl" type="text" value={formData.companions || ''} onChange={e => setFormData({ ...formData, companions: e.target.value })} placeholder="如：销售张三、实施李四" />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">出差事由 <span className="text-red-500">*</span></label>
-                  <Textarea className="h-24 rounded-2xl" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} placeholder="例如：赴上海客户现场演示、参加杭州交付培训、驻场处理上线问题" />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">附件</label>
-                  <FileUpload value={formData.attachmentUrl || ''} onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })} maxCount={5} hint="可上传邀请函、会议通知、行程单、酒店预订单等，最多 5 个文件" />
+                  <Button variant="ghost" size="icon" onClick={() => setDetailTrip(null)} className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700">
+                    <X size={18} />
+                  </Button>
                 </div>
               </div>
 
-              <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-5">
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl">取消</Button>
-                <Button onClick={handleSave} className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600">保存</Button>
+              <div className="flex-1 space-y-6 overflow-y-auto p-6">
+                {detailLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">出发地</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailTrip.departure)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">目的地</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailTrip.destination)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">出差日期</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailTrip.startDate)} ~ {renderDetailValue(detailTrip.endDate)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">出差天数</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">
+                          {detailTrip.tripDays ? `${detailTrip.tripDays} 天` : '-'}
+                        </div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">交通方式</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{transportMap[detailTrip.transportType || ''] || '-'}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">住宿安排</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{accommodationMap[detailTrip.accommodation || ''] || '-'}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">预计费用</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{formatAmount(detailTrip.estimatedCost)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">关联项目</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailTrip.projectName)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">申请人</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailTrip.userName)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">联系电话</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailTrip.contactPhone)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">紧急联系人</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">
+                          {detailTrip.emergencyContact || detailTrip.emergencyPhone
+                            ? `${detailTrip.emergencyContact || '-'} / ${detailTrip.emergencyPhone || '-'}`
+                            : '-'}
+                        </div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">同行人员</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailTrip.companions)}</div>
+                      </div>
+                    </div>
+
+                    <div className={glassModalSectionClass}>
+                      <div className="text-sm font-semibold text-slate-900">出差事由</div>
+                      <div className="mt-3 whitespace-pre-wrap rounded-[22px] border border-white/70 bg-white/72 p-4 text-sm leading-7 text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                        {detailTrip.reason || '-'}
+                      </div>
+                    </div>
+
+                    <div className={glassModalSectionClass}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-slate-900">附件</div>
+                        <div className="text-xs text-slate-400">支持直接打开已上传文件</div>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {getAttachmentList(detailTrip.attachmentUrl).length > 0 ? (
+                          getAttachmentList(detailTrip.attachmentUrl).map((url) => {
+                            const label = url.split('/').pop() || '附件';
+                            return (
+                              <a
+                                key={url}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 rounded-[22px] border border-white/75 bg-white/76 px-4 py-3 text-sm text-slate-700 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:border-pink-100 hover:bg-white hover:text-pink-600"
+                              >
+                                <Paperclip size={14} />
+                                <span className="truncate">{label}</span>
+                              </a>
+                            );
+                          })
+                        ) : (
+                          <div className="rounded-[22px] border border-white/70 bg-white/72 px-4 py-3 text-sm text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">暂无附件</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={glassModalSectionClass}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-slate-900">流程轨迹</div>
+                        <div className="text-xs text-slate-400">
+                          {detailTrip.instanceId ? `实例号：${detailTrip.instanceId}` : '草稿或未发起流程时暂无轨迹'}
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        {detailTrip.instanceId ? (
+                          <ProcessTrace instanceId={detailTrip.instanceId} variant="glass" />
+                        ) : (
+                          <div className="rounded-[22px] border border-white/70 bg-white/72 px-4 py-6 text-center text-sm text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                            当前记录还没有流程实例，提交审批后这里会显示完整轨迹。
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className={glassModalFooterClass}>
+                {detailTrip.status === 'PENDING' ? (
+                  <Button variant="outline" onClick={() => detailTrip.id && void handleCancel(detailTrip.id)} className="rounded-2xl border-amber-100 bg-white/76 text-amber-600 shadow-[0_10px_20px_rgba(245,158,11,0.06)] hover:bg-white hover:text-amber-700">
+                    取消申请
+                  </Button>
+                ) : null}
+                <Button variant="outline" onClick={() => setDetailTrip(null)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">关闭</Button>
               </div>
             </div>
           </div>

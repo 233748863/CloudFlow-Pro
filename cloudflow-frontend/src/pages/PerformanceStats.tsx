@@ -19,6 +19,8 @@ import {
   getPerformanceStats,
   PerformanceStats as PerformanceStatsType
 } from '@/services/api/monitor';
+import { toast } from 'sonner';
+import { downloadBlob } from '@/utils/download';
 
 /**
  * 性能统计主组件
@@ -93,10 +95,13 @@ const PerformanceStats: React.FC = () => {
     ].join('\n');
 
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `performance_stats_${dateRange.startDate}_${dateRange.endDate}.csv`;
-    link.click();
+    const fileName = downloadBlob(blob, `performance_stats_${dateRange.startDate}_${dateRange.endDate}.csv`);
+
+    toast.success(
+      stats.length > 0
+        ? `已导出 ${stats.length} 条性能统计，下载文件：${fileName}`
+        : `已导出空结果，下载文件：${fileName}`,
+    );
   };
 
   /**

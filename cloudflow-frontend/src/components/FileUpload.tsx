@@ -24,6 +24,8 @@ interface FileUploadProps {
   disabled?: boolean;
   /** 提示文字 */
   hint?: string;
+  /** 视觉风格 */
+  variant?: 'default' | 'glass';
 }
 
 /**
@@ -37,6 +39,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   accept,
   disabled = false,
   hint,
+  variant = 'default',
 }) => {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +52,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const resolvedAccept = accept ?? allowedTypes.split(',').map(t => `.${t.trim()}`).join(',');
   // 如果外部未传入 hint，则根据配置动态生成
   const resolvedHint = hint ?? `支持 ${allowedTypes} 格式，单文件不超过 ${maxFileSizeMB}MB`;
+  const isGlass = variant === 'glass';
 
   // 解析当前已上传的文件列表
   const fileList: UploadedFile[] = value
@@ -110,14 +114,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {/* 已上传文件列表 */}
       {fileList.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {fileList.map((file, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200 group"
+              className={[
+                'group flex items-center gap-2 rounded-lg border p-2 transition',
+                isGlass
+                  ? 'border-white/75 bg-white/76 shadow-[0_10px_20px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-md rounded-[20px]'
+                  : 'border-slate-200 bg-slate-50',
+              ].join(' ')}
             >
               {/* 文件图标 */}
               {isImage(file.url) ? (
@@ -134,7 +143,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 <button
                   type="button"
                   onClick={() => handleRemove(index)}
-                  className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  className={[
+                    'flex-shrink-0 text-slate-400 transition-opacity hover:text-red-500',
+                    isGlass ? 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100',
+                  ].join(' ')}
                   title="删除"
                 >
                   <X size={14} />
@@ -148,11 +160,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       {/* 上传按钮 */}
       {!disabled && fileList.length < maxCount && (
         <label
-          className={`
-            flex items-center gap-2 px-3 py-2 border-2 border-dashed border-slate-300 rounded-lg
-            cursor-pointer hover:border-pink-300 hover:bg-pink-50/50 transition-colors
-            ${uploading ? 'opacity-60 cursor-not-allowed' : ''}
-          `}
+          className={[
+            'flex cursor-pointer items-center gap-2 border-2 border-dashed px-3 py-2 transition-colors',
+            isGlass
+              ? 'rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(248,250,252,0.68))] shadow-[0_12px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md hover:border-pink-100 hover:bg-white'
+              : 'rounded-lg border-slate-300 hover:border-pink-300 hover:bg-pink-50/50',
+            uploading ? 'cursor-not-allowed opacity-60' : '',
+          ].join(' ')}
         >
           <input
             ref={inputRef}
@@ -171,7 +185,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           <span className="text-sm text-slate-500">
             {uploading ? '上传中...' : '点击上传附件'}
           </span>
-          <span className="text-xs text-slate-400 ml-auto">
+          <span className="ml-auto text-xs text-slate-400">
             {fileList.length}/{maxCount}
           </span>
         </label>
@@ -179,7 +193,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* 提示文字 */}
       {resolvedHint && (
-        <p className="text-xs text-slate-400">{resolvedHint}</p>
+        <p className={`text-xs ${isGlass ? 'text-slate-500' : 'text-slate-400'}`}>{resolvedHint}</p>
       )}
     </div>
   );

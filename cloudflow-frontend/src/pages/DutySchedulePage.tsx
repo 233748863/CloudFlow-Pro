@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Search, RotateCcw, X, LogIn, LogOut, RefreshCw } from 'lucide-react';
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
@@ -24,7 +25,7 @@ export const DutySchedulePage: React.FC = () => {
     try {
       const res = await dutyScheduleApi.list(searchParams);
       if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
-    } catch { toast.error('获取列表失败'); } finally { setLoading(false); }
+    } catch (error) { toast.error(getErrorMessage(error, '获取列表失败')); } finally { setLoading(false); }
   };
 
   const handleAdd = () => {
@@ -38,15 +39,15 @@ export const DutySchedulePage: React.FC = () => {
       await dutyScheduleApi.add(formData);
       toast.success('排班成功');
       setShowDialog(false); fetchList();
-    } catch { toast.error('保存失败'); }
+    } catch (error) { toast.error(getErrorMessage(error, '保存失败')); }
   };
 
   const handleCheckIn = async (id: number) => {
-    try { await dutyScheduleApi.checkIn(id); toast.success('签到成功'); fetchList(); } catch { toast.error('签到失败'); }
+    try { await dutyScheduleApi.checkIn(id); toast.success('签到成功'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '签到失败')); }
   };
 
   const handleCheckOut = async (id: number) => {
-    try { await dutyScheduleApi.checkOut(id); toast.success('签退成功'); fetchList(); } catch { toast.error('签退失败'); }
+    try { await dutyScheduleApi.checkOut(id); toast.success('签退成功'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '签退失败')); }
   };
 
   const openSwapDialog = (id: number) => {
@@ -61,7 +62,7 @@ export const DutySchedulePage: React.FC = () => {
       await dutyScheduleApi.swap(swapId, swapData);
       toast.success('换班成功');
       setShowSwapDialog(false); fetchList();
-    } catch { toast.error('换班失败'); }
+    } catch (error) { toast.error(getErrorMessage(error, '换班失败')); }
   };
 
   const statusMap: Record<string, string> = { SCHEDULED: '已排班', CHECKED_IN: '已签到', COMPLETED: '已完成', SWAPPED: '已换班', CANCELLED: '已取消' };

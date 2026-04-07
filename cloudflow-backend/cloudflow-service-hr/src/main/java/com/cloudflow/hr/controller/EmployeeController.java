@@ -60,6 +60,17 @@ public class EmployeeController {
         employeeService.updateEmployee(id, dto);
         return R.ok();
     }
+
+    /**
+     * 查询当前登录员工详情
+     */
+    @GetMapping("/current")
+    @Operation(summary = "查询当前登录员工档案")
+    public R<EmployeeVO> getCurrentEmployee() {
+        log.info("接收查询当前登录员工档案请求");
+        EmployeeVO vo = employeeService.getCurrentEmployee();
+        return R.ok(vo);
+    }
     
     /**
      * 查询员工详情

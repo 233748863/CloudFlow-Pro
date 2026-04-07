@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/hrAttendance';
+import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { useMount } from '@/hooks/useMount';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DatePicker, Input, Label, Switch, Textarea } from '@/components/ui';
 import { toast } from 'sonner';
@@ -29,7 +29,7 @@ const AttendanceRulePage: React.FC = () => {
     setLoading(true);
     getAttendanceRule()
       .then(res => {
-        const data = (res as any).data || res;
+        const data = res || null;
         if (data) {
           setRule(data as AttendanceRule);
           if (data.workDays) {

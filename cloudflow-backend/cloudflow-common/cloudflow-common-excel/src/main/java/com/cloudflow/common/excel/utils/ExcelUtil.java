@@ -8,6 +8,7 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import com.cloudflow.common.excel.convert.ExcelBigNumberConvert;
 import com.cloudflow.common.excel.core.*;
 
@@ -29,6 +30,7 @@ import java.util.List;
  *
  * @author CloudFlow
  */
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ExcelUtil {
 
@@ -86,8 +88,10 @@ public class ExcelUtil {
             resetResponse(sheetName, response);
             ServletOutputStream os = response.getOutputStream();
             exportExcel(list, sheetName, clazz, os);
-        } catch (IOException e) {
-            throw new RuntimeException("导出Excel异常", e);
+            os.flush();
+            response.flushBuffer();
+        } catch (Exception e) {
+            handleExportException(response, "导出Excel异常", e);
         }
     }
 
@@ -100,6 +104,7 @@ public class ExcelUtil {
      * @param os        输出流
      */
     public static <T> void exportExcel(List<T> list, String sheetName, Class<T> clazz, OutputStream os) {
+        List<T> dataList = CollUtil.isEmpty(list) ? List.of() : list;
         FastExcel.write(os, clazz)
                 .autoCloseStream(false)
                 // 自动适配列宽
@@ -107,7 +112,7 @@ public class ExcelUtil {
                 // 大数值自动转换，防止精度丢失
                 .registerConverter(new ExcelBigNumberConvert())
                 .sheet(sheetName)
-                .doWrite(list);
+                .doWrite(dataList);
     }
 
     /**
@@ -127,8 +132,10 @@ public class ExcelUtil {
                     .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
                     .sheet(sheetName)
                     .doWrite(List.of());
-        } catch (IOException e) {
-            throw new RuntimeException("导出Excel模板异常", e);
+            os.flush();
+            response.flushBuffer();
+        } catch (Exception e) {
+            handleExportException(response, "导出Excel模板异常", e);
         }
     }
 
@@ -141,14 +148,38 @@ public class ExcelUtil {
      */
     private static void resetResponse(String sheetName, HttpServletResponse response) {
         String filename = encodingFilename(sheetName);
+        response.reset();
         // 设置 Content-Type 为 Excel 格式
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8");
-        response.setCharacterEncoding("UTF-8");
-        // 设置 Content-Disposition，支持中文文件名
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        // 同时设置 filename 和 filename*，兼容不同浏览器的中文文件名解析
         String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
-        response.setHeader("Content-Disposition", "attachment;filename=" + encodedFilename);
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename);
         // 允许前端获取 Content-Disposition 头
         response.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+    }
+
+    /**
+     * 导出失败时返回明确的 500 JSON，避免前端把错误响应误存成损坏的 Excel。
+     */
+    private static void handleExportException(HttpServletResponse response, String message, Exception e) {
+        log.error(message, e);
+        if (response.isCommitted()) {
+            throw new RuntimeException(message, e);
+        }
+
+        try {
+            response.reset();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.setContentType("application/json;charset=UTF-8");
+            byte[] body = "{\"code\":500,\"msg\":\"导出失败，请稍后重试\"}".getBytes(StandardCharsets.UTF_8);
+            response.getOutputStream().write(body);
+            response.flushBuffer();
+        } catch (IOException ioException) {
+            throw new RuntimeException(message, e);
+        }
     }
 
     /**

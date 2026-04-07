@@ -15,6 +15,7 @@ import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 interface ProcessTraceProps {
   instanceId: string;
   onClose?: () => void;
+  variant?: 'default' | 'glass';
 }
 
 interface HistoryDetail {
@@ -128,7 +129,7 @@ const isDefaultEdge = (edge: { isDefault?: unknown }) => {
   return false;
 };
 
-export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
+export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: ProcessTraceProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [trace, setTrace] = useState<TraceData>({ finished: [], active: [] });
@@ -140,6 +141,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   const [subTab, setSubTab] = useState<'timeline' | 'diagram'>('timeline');
   // 流程图展开/折叠
   const [diagramExpanded, setDiagramExpanded] = useState(false);
+  const isGlass = variant === 'glass';
 
   const fetchData = useCallback(async () => {
     try {
@@ -335,7 +337,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
     // 如果没有任何数据
     if (historyItems.length === 0 && activeItems.length === 0) {
       return (
-        <div className="text-center py-8 text-slate-400 text-sm">
+        <div className={`py-8 text-center text-sm ${isGlass ? 'text-slate-500' : 'text-slate-400'}`}>
           暂无审批记录
         </div>
       );
@@ -358,33 +360,35 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
               
               {/* 内容 */}
               <div className="flex-1 pb-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-slate-800">{item.nodeName}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${actionStyle.bgColor} ${actionStyle.color}`}>
-                    {actionStyle.label}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500 space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <User size={11} className="text-pink-400" />
-                    <span>{item.operatorName || '系统'}</span>
-                    <span className="text-slate-300">·</span>
-                    <span>{formatTime(item.completeTime || item.createTime)}</span>
+                <div className={isGlass ? 'rounded-[20px] border border-white/75 bg-white/76 px-3.5 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md' : ''}>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-800">{item.nodeName}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${actionStyle.bgColor} ${actionStyle.color}`}>
+                      {actionStyle.label}
+                    </span>
                   </div>
-                  {item.comment && (
-                    <div className="flex items-start gap-2 mt-1">
-                      <MessageSquare size={11} className="text-slate-400 mt-0.5 flex-shrink-0" />
-                      <span className="text-slate-600 bg-slate-50 px-2 py-1 rounded text-[11px] leading-relaxed">
-                        {item.comment}
-                      </span>
-                    </div>
-                  )}
-                  {item.duration && (
+                  <div className="space-y-0.5 text-xs text-slate-500">
                     <div className="flex items-center gap-2">
-                      <Clock size={11} className="text-pink-400" />
-                      <span className="text-slate-400">耗时 {item.duration}</span>
+                      <User size={11} className="text-pink-400" />
+                      <span>{item.operatorName || '系统'}</span>
+                      <span className="text-slate-300">·</span>
+                      <span>{formatTime(item.completeTime || item.createTime)}</span>
                     </div>
-                  )}
+                    {item.comment && (
+                      <div className="mt-1 flex items-start gap-2">
+                        <MessageSquare size={11} className="mt-0.5 flex-shrink-0 text-slate-400" />
+                        <span className={`rounded px-2 py-1 text-[11px] leading-relaxed ${isGlass ? 'bg-white/74 text-slate-600 ring-1 ring-white/75' : 'bg-slate-50 text-slate-600'}`}>
+                          {item.comment}
+                        </span>
+                      </div>
+                    )}
+                    {item.duration && (
+                      <div className="flex items-center gap-2">
+                        <Clock size={11} className="text-pink-400" />
+                        <span className="text-slate-400">耗时 {item.duration}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -402,21 +406,23 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             </div>
             
             <div className="flex-1 pb-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-semibold text-pink-600">{item.nodeName}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-pink-50 text-pink-500 animate-pulse">
-                  处理中
-                </span>
-              </div>
-              <div className="text-xs text-slate-500 flex items-center gap-2">
-                <User size={11} className="text-pink-300" />
-                <span>待处理: {item.assigneeName || (item.assigneeId ? String(item.assigneeId) : '待认领')}</span>
-                {item.createTime && (
-                  <>
-                    <span className="text-slate-300">·</span>
-                    <span>到达: {formatTime(item.createTime)}</span>
-                  </>
-                )}
+              <div className={isGlass ? 'rounded-[20px] border border-pink-100/80 bg-[linear-gradient(180deg,rgba(253,242,248,0.85),rgba(255,255,255,0.76))] px-3.5 py-3 shadow-[0_10px_20px_rgba(236,72,153,0.05),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-md' : ''}>
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-sm font-semibold text-pink-600">{item.nodeName}</span>
+                  <span className="animate-pulse rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-medium text-pink-500">
+                    处理中
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <User size={11} className="text-pink-300" />
+                  <span>待处理: {item.assigneeName || (item.assigneeId ? String(item.assigneeId) : '待认领')}</span>
+                  {item.createTime && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span>到达: {formatTime(item.createTime)}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -427,7 +433,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
 
   if (loading) {
     return (
-      <div className="p-10 flex flex-col items-center justify-center gap-3">
+      <div className={`flex flex-col items-center justify-center gap-3 p-10 ${isGlass ? 'rounded-[22px] border border-white/75 bg-white/72 shadow-[0_10px_20px_rgba(15,23,42,0.04)]' : ''}`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
         <p className="text-sm text-slate-500">加载流程轨迹中...</p>
       </div>
@@ -436,7 +442,7 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   
   if (error) {
     return (
-      <div className="p-10 text-center flex flex-col items-center gap-3">
+      <div className={`flex flex-col items-center gap-3 p-10 text-center ${isGlass ? 'rounded-[22px] border border-white/75 bg-white/72 shadow-[0_10px_20px_rgba(15,23,42,0.04)]' : ''}`}>
         <AlertCircle className="text-red-500" size={32} />
         <p className="text-red-500 font-medium">{error}</p>
         <button 
@@ -454,17 +460,19 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
   return (
     <div className="space-y-4">
       {/* 审批记录时间线 - 默认展示 */}
-      <div className="bg-white rounded-xl p-4">
+      <div className={isGlass ? 'rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] p-4 shadow-[0_12px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl' : 'bg-white rounded-xl p-4'}>
         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">审批记录</h4>
         {renderTimeline()}
       </div>
 
       {/* 流程图 - 可折叠 */}
       {graphModel && rootNodeId && (
-        <div className="border border-slate-100 rounded-xl overflow-hidden">
+        <div className={isGlass ? 'overflow-hidden rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] shadow-[0_12px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl' : 'border border-slate-100 rounded-xl overflow-hidden'}>
           <button
             onClick={() => setDiagramExpanded(!diagramExpanded)}
-            className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-medium text-slate-500"
+            className={isGlass
+              ? 'w-full flex items-center justify-between px-4 py-3 bg-[linear-gradient(180deg,rgba(248,250,252,0.78),rgba(255,255,255,0.68))] hover:bg-white transition-colors text-xs font-medium text-slate-500'
+              : 'w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-medium text-slate-500'}
           >
             <span className="flex items-center gap-1.5">
               <GitMerge size={13} />
@@ -473,7 +481,9 @@ export const ProcessTrace = ({ instanceId, onClose }: ProcessTraceProps) => {
             {diagramExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {diagramExpanded && (
-            <div className="bg-slate-50 p-6 overflow-auto max-h-[400px] flex justify-center">
+            <div className={isGlass
+              ? 'max-h-[400px] overflow-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.7),rgba(255,255,255,0.62))] p-6 flex justify-center'
+              : 'bg-slate-50 p-6 overflow-auto max-h-[400px] flex justify-center'}>
               {renderNode(rootNodeId)}
             </div>
           )}

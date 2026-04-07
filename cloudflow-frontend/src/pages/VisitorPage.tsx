@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserCheck, Plus, Search, RotateCcw, X, LogIn, LogOut, CheckCircle, XCircle } from 'lucide-react';
 import { visitorApi, Visitor } from '../services/api/visitor';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
@@ -21,7 +22,7 @@ export const VisitorPage: React.FC = () => {
     try {
       const res = await visitorApi.list(searchParams);
       if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
-    } catch { toast.error('获取列表失败'); } finally { setLoading(false); }
+    } catch (error) { toast.error(getErrorMessage(error, '获取列表失败')); } finally { setLoading(false); }
   };
 
   const handleAdd = () => {
@@ -35,21 +36,21 @@ export const VisitorPage: React.FC = () => {
       await visitorApi.add(formData);
       toast.success('预约成功');
       setShowDialog(false); fetchList();
-    } catch { toast.error('保存失败'); }
+    } catch (error) { toast.error(getErrorMessage(error, '保存失败')); }
   };
 
   const handleConfirm = async (id: number) => {
-    try { await visitorApi.confirm(id); toast.success('已确认'); fetchList(); } catch { toast.error('操作失败'); }
+    try { await visitorApi.confirm(id); toast.success('已确认'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '操作失败')); }
   };
   const handleCheckIn = async (id: number) => {
-    try { await visitorApi.checkIn(id); toast.success('已签到'); fetchList(); } catch { toast.error('操作失败'); }
+    try { await visitorApi.checkIn(id); toast.success('已签到'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '操作失败')); }
   };
   const handleCheckOut = async (id: number) => {
-    try { await visitorApi.checkOut(id); toast.success('已签退'); fetchList(); } catch { toast.error('操作失败'); }
+    try { await visitorApi.checkOut(id); toast.success('已签退'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '操作失败')); }
   };
   const handleCancel = async (id: number) => {
     if (!confirm('确定取消？')) return;
-    try { await visitorApi.cancel(id); toast.success('已取消'); fetchList(); } catch { toast.error('操作失败'); }
+    try { await visitorApi.cancel(id); toast.success('已取消'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '操作失败')); }
   };
 
   const statusMap: Record<string, string> = { PENDING: '待确认', CONFIRMED: '已确认', ARRIVED: '已到访', COMPLETED: '已离开', CANCELLED: '已取消' };

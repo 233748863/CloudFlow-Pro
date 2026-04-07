@@ -118,8 +118,8 @@ export const MobileDashboard: React.FC = () => {
 
   const quickActions = [
     { label: '用车申请', path: '/vehicle/booking', color: 'bg-pink-50 text-pink-500' },
-    { label: '请假', path: '/hr/leave/request', color: 'bg-green-100 text-green-600' },
-    { label: '报销', path: '/reimburse', color: 'bg-orange-100 text-orange-600' },
+    { label: '请假', path: '/hr/leave/application', color: 'bg-green-100 text-green-600' },
+    { label: '报销', path: '/reimbursement/request', color: 'bg-orange-100 text-orange-600' },
     { label: '会议室', path: '/meeting-room', color: 'bg-purple-100 text-purple-600' },
   ];
 

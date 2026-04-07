@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookUser, Search, RotateCcw, Phone, Mail, Building2, User } from 'lucide-react';
 import { contactApi, Contact, DeptNode } from '../services/api/contact';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 /** 通讯录/企业黄页页面 */
 export const ContactPage: React.FC = () => {
@@ -29,14 +30,14 @@ export const ContactPage: React.FC = () => {
     try {
       const res = await contactApi.list({ keyword, deptId: selectedDeptId, pageNum, pageSize: 20 });
       if (res) { setContacts(res.records || res.rows || []); setTotal(res.total || 0); }
-    } catch { toast.error('获取通讯录失败'); } finally { setLoading(false); }
+    } catch (error) { toast.error(getErrorMessage(error, '获取通讯录失败')); } finally { setLoading(false); }
   };
 
   const handleViewUser = async (userId: number) => {
     try {
       const res = await contactApi.getUserDetail(userId);
       if (res) setSelectedUser(res);
-    } catch { toast.error('获取用户详情失败'); }
+    } catch (error) { toast.error(getErrorMessage(error, '获取用户详情失败')); }
   };
 
   // 构建部门树（简单的一级展示）

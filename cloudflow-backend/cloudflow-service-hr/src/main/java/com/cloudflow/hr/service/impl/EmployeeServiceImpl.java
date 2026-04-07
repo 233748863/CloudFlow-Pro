@@ -197,44 +197,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employee == null) {
             throw HrBusinessException.employeeNotFound(id);
         }
-        
-        // 2. 转换为VO
-        EmployeeVO vo = new EmployeeVO();
-        BeanUtils.copyProperties(employee, vo);
-        
-        // 3. 查询部门名称
-        if (employee.getDeptId() != null) {
-            try {
-                R<DeptVO> deptResult = authServiceClient.getDeptById(employee.getDeptId());
-                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
-                    vo.setDeptName(deptResult.getData().getDeptName());
-                }
-            } catch (Exception e) {
-                log.error("查询部门信息失败，部门ID：{}", employee.getDeptId(), e);
-            }
-        }
-        
-        // 4. 查询岗位名称
-        if (employee.getPostId() != null) {
-            try {
-                R<PostVO> postResult = authServiceClient.getPostById(employee.getPostId());
-                if (postResult != null && postResult.isSuccess() && postResult.getData() != null) {
-                    vo.setPostName(postResult.getData().getPostName());
-                }
-            } catch (Exception e) {
-                log.error("查询岗位信息失败，岗位ID：{}", employee.getPostId(), e);
-            }
-        }
-        
-        // 5. 查询职位名称
-        if (employee.getPositionId() != null) {
-            Position position = positionMapper.selectById(employee.getPositionId());
-            if (position != null) {
-                vo.setPositionName(position.getPositionName());
-            }
-        }
-        
-        return vo;
+
+        return toEmployeeVO(employee);
+    }
+
+    @Override
+    public EmployeeVO getCurrentEmployee() {
+        log.info("查询当前登录员工档案");
+        return toEmployeeVO(getCurrentEmployeeEntity());
     }
     
     @Override
@@ -280,42 +250,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         // 3. 转换为VO列表
         List<EmployeeVO> voList = new ArrayList<>();
         for (Employee employee : employees) {
-            EmployeeVO vo = new EmployeeVO();
-            BeanUtils.copyProperties(employee, vo);
-            
-            // 查询部门名称
-            if (employee.getDeptId() != null) {
-                try {
-                    R<DeptVO> deptResult = authServiceClient.getDeptById(employee.getDeptId());
-                    if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
-                        vo.setDeptName(deptResult.getData().getDeptName());
-                    }
-                } catch (Exception e) {
-                    log.error("查询部门信息失败，部门ID：{}", employee.getDeptId(), e);
-                }
-            }
-            
-            // 查询岗位名称
-            if (employee.getPostId() != null) {
-                try {
-                    R<PostVO> postResult = authServiceClient.getPostById(employee.getPostId());
-                    if (postResult != null && postResult.isSuccess() && postResult.getData() != null) {
-                        vo.setPostName(postResult.getData().getPostName());
-                    }
-                } catch (Exception e) {
-                    log.error("查询岗位信息失败，岗位ID：{}", employee.getPostId(), e);
-                }
-            }
-            
-            // 查询职位名称
-            if (employee.getPositionId() != null) {
-                Position position = positionMapper.selectById(employee.getPositionId());
-                if (position != null) {
-                    vo.setPositionName(position.getPositionName());
-                }
-            }
-            
-            voList.add(vo);
+            voList.add(toEmployeeVO(employee));
         }
         
         return voList;
@@ -448,6 +383,61 @@ public class EmployeeServiceImpl implements EmployeeService {
         wrapper.eq(employeeIdGetter, employeeId);
         Long count = mapper.selectCount(wrapper);
         return count == null ? 0L : count;
+    }
+
+    private Employee getCurrentEmployeeEntity() {
+        Long tenantId = SecurityUtils.getTenantId();
+        Long userId = SecurityUtils.getUserId();
+        if (userId == null) {
+            throw new HrBusinessException("未找到当前登录用户，无法定位员工档案");
+        }
+
+        LambdaQueryWrapper<Employee> wrapper = Wrappers.lambdaQuery(Employee.class);
+        wrapper.eq(Employee::getTenantId, tenantId)
+                .eq(Employee::getUserId, userId)
+                .last("LIMIT 1");
+        Employee employee = employeeMapper.selectOne(wrapper);
+        if (employee == null) {
+            throw new HrBusinessException("当前登录用户未关联 HR 员工档案");
+        }
+        return employee;
+    }
+
+    private EmployeeVO toEmployeeVO(Employee employee) {
+        EmployeeVO vo = new EmployeeVO();
+        BeanUtils.copyProperties(employee, vo);
+
+        // 补齐展示所需的部门、岗位、职位名称，避免前端再次额外请求。
+        if (employee.getDeptId() != null) {
+            try {
+                R<DeptVO> deptResult = authServiceClient.getDeptById(employee.getDeptId());
+                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
+                    vo.setDeptName(deptResult.getData().getDeptName());
+                }
+            } catch (Exception e) {
+                log.error("查询部门信息失败，部门ID：{}", employee.getDeptId(), e);
+            }
+        }
+
+        if (employee.getPostId() != null) {
+            try {
+                R<PostVO> postResult = authServiceClient.getPostById(employee.getPostId());
+                if (postResult != null && postResult.isSuccess() && postResult.getData() != null) {
+                    vo.setPostName(postResult.getData().getPostName());
+                }
+            } catch (Exception e) {
+                log.error("查询岗位信息失败，岗位ID：{}", employee.getPostId(), e);
+            }
+        }
+
+        if (employee.getPositionId() != null) {
+            Position position = positionMapper.selectById(employee.getPositionId());
+            if (position != null) {
+                vo.setPositionName(position.getPositionName());
+            }
+        }
+
+        return vo;
     }
     
     /**

@@ -80,6 +80,7 @@ import {
 } from "../services/api/workflow";
 import { getRoleList, getUserList, getDeptTree } from "../services/api/auth";
 import { toast } from "sonner";
+import { downloadBlob } from "../utils/download";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import {
   Select,
@@ -4436,16 +4437,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     try {
       // 统一走 request 客户端，确保携带认证信息与统一错误处理
       const blob = await exportWorkflow(workflow.id, false);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `workflow_${workflowName}_${workflow.version || "1.0.0"}_${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const fileName = downloadBlob(
+        blob,
+        `workflow_${workflowName}_${workflow.version || "1.0.0"}_${new Date().toISOString().split("T")[0]}.json`,
+      );
 
-      toast.success("流程导出成功");
+      toast.success(`流程已导出，下载文件：${fileName}`);
     } catch (error) {
       console.error("导出失败:", error);
       toast.error("导出失败，请重试");

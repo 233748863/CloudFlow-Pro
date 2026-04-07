@@ -1,10 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, Download } from 'lucide-react';
-import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
+import React, { useEffect, useMemo, useState } from 'react';
+import { DollarSign, Download, Edit, Eye, Plus, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
-import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader } from '@/components/ui';
+import { getErrorMessage } from '@/utils/errorMessage';
+import {
+  DatePicker,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableActionHead,
+  TableHead,
+  TableHeader,
+} from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+
+const PAYMENT_TYPE_OPTIONS = [
+  { value: 'PURCHASE', label: '采购' },
+  { value: 'SERVICE', label: '服务' },
+  { value: 'RENT', label: '租金' },
+  { value: 'OTHER', label: '其他' },
+] as const;
+
+const PAYMENT_TYPE_LABELS = Object.fromEntries(
+  PAYMENT_TYPE_OPTIONS.map(option => [option.value, option.label]),
+) as Record<(typeof PAYMENT_TYPE_OPTIONS)[number]['value'], string>;
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  PENDING: '审批中',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+  PAID: '已付款',
+};
+
+const createDefaultForm = (): PaymentRequest => ({
+  payeeName: '',
+  payeeAccount: '',
+  payeeBank: '',
+  amount: 0,
+  paymentType: 'PURCHASE',
+  reason: '',
+  expectedDate: '',
+  attachmentUrl: '',
+});
+
+const formatAmount = (amount?: number) =>
+  Number(amount || 0).toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const getPaymentTypeLabel = (paymentType?: string) =>
+  PAYMENT_TYPE_LABELS[paymentType as keyof typeof PAYMENT_TYPE_LABELS] || paymentType || '-';
 
 export const PaymentRequestPage: React.FC = () => {
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
@@ -20,28 +70,20 @@ export const PaymentRequestPage: React.FC = () => {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [currentPayment, setCurrentPayment] = useState<PaymentRequest | null>(null);
   const [viewPayment, setViewPayment] = useState<PaymentRequest | null>(null);
-  const [formData, setFormData] = useState<PaymentRequest>({
-    payeeName: '',
-    amount: 0,
-    paymentType: 'TRANSFER',
-    reason: '',
-  });
+  const [formData, setFormData] = useState<PaymentRequest>(createDefaultForm());
 
   useEffect(() => {
-    fetchPayments();
+    void fetchPayments();
   }, [searchParams]);
 
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const res = await paymentRequestApi.list(searchParams);
-      if (res) {
-        // PageResult 兼容 records 和 rows 两种字段
-        setPayments(res.records || res.rows || []);
-        setTotal(res.total || 0);
-      }
+      const result = await paymentRequestApi.list(searchParams);
+      setPayments(result.records || result.rows || []);
+      setTotal(result.total || 0);
     } catch (error) {
-      toast.error('获取付款申请列表失败');
+      toast.error(getErrorMessage(error, '获取付款申请列表失败'));
     } finally {
       setLoading(false);
     }
@@ -49,70 +91,70 @@ export const PaymentRequestPage: React.FC = () => {
 
   const handleAdd = () => {
     setCurrentPayment(null);
-    setFormData({
-      payeeName: '',
-      amount: 0,
-      paymentType: 'TRANSFER',
-      reason: '',
-    });
+    setFormData(createDefaultForm());
     setShowDialog(true);
   };
 
   const handleView = async (id: number) => {
     try {
-      const res = await paymentRequestApi.getInfo(id);
-      if (res) {
-        setViewPayment(res);
-        setShowDetailDialog(true);
-      }
+      const result = await paymentRequestApi.getInfo(id);
+      setViewPayment(result);
+      setShowDetailDialog(true);
     } catch (error) {
-      toast.error('获取付款申请详情失败');
+      toast.error(getErrorMessage(error, '获取付款申请详情失败'));
     }
   };
 
   const handleEdit = async (id: number) => {
     try {
-      const res = await paymentRequestApi.getInfo(id);
-      if (res) {
-        setCurrentPayment(res);
-        setFormData(res);
-        setShowDialog(true);
-      }
+      const result = await paymentRequestApi.getInfo(id);
+      setCurrentPayment(result);
+      setFormData({
+        ...createDefaultForm(),
+        ...result,
+      });
+      setShowDialog(true);
     } catch (error) {
-      toast.error('获取付款申请详情失败');
+      toast.error(getErrorMessage(error, '获取付款申请详情失败'));
     }
   };
 
   const handleDelete = async (ids: number[]) => {
-    if (!confirm('确定要删除选中的付款申请吗？')) return;
+    if (!confirm('确定要删除选中的付款申请吗？')) {
+      return;
+    }
+
     try {
       await paymentRequestApi.remove(ids);
       toast.success('删除成功');
-      fetchPayments();
+      await fetchPayments();
     } catch (error) {
-      toast.error('删除失败');
+      toast.error(getErrorMessage(error, '删除失败'));
     }
   };
 
   const handleSubmit = async (id: number) => {
-    if (!confirm('确定要提交该付款申请吗？提交后将进入审批流程。')) return;
+    if (!confirm('确定要提交该付款申请吗？提交后将进入审批流程。')) {
+      return;
+    }
+
     try {
       await paymentRequestApi.submit(id);
       toast.success('提交成功');
-      fetchPayments();
+      await fetchPayments();
     } catch (error) {
-      toast.error('提交失败');
+      toast.error(getErrorMessage(error, '提交失败'));
     }
   };
 
   const handleSave = async () => {
-    if (!formData.payeeName || !formData.amount || !formData.reason) {
+    if (!formData.payeeName.trim() || !formData.reason.trim()) {
       toast.error('请填写完整信息');
       return;
     }
 
     if (formData.amount <= 0) {
-      toast.error('付款金额必须大于0');
+      toast.error('付款金额必须大于 0');
       return;
     }
 
@@ -125,17 +167,18 @@ export const PaymentRequestPage: React.FC = () => {
         toast.success('创建成功');
       }
       setShowDialog(false);
-      fetchPayments();
+      setCurrentPayment(null);
+      setFormData(createDefaultForm());
+      await fetchPayments();
     } catch (error) {
-      toast.error('保存失败');
+      toast.error(getErrorMessage(error, '保存失败'));
     }
   };
 
   const handleSearch = () => {
-    setSearchParams({ ...searchParams, pageNum: 1 });
+    setSearchParams(prev => ({ ...prev, pageNum: 1 }));
   };
 
-  
   const handleReset = () => {
     setSearchParams({
       status: '',
@@ -144,30 +187,25 @@ export const PaymentRequestPage: React.FC = () => {
       pageSize: 10,
     });
   };
+
   const handleExport = async () => {
     try {
       const blob = await paymentRequestApi.export(searchParams);
-      downloadBlob(blob, buildExcelFileName('付款申请'));
-      toast.success('导出成功');
-    } catch {
-      toast.error('导出失败');
+      const fileName = downloadBlob(blob, buildExcelFileName('付款申请'));
+      toast.success(
+        total > 0
+          ? `已导出 ${total} 条付款申请，下载文件：${fileName}`
+          : `已导出空结果，下载文件：${fileName}`,
+      );
+    } catch (error) {
+      toast.error(getErrorMessage(error, '导出失败'));
     }
   };
 
-  const statusMap: Record<string, string> = {
-    DRAFT: '草稿',
-    PENDING: '审批中',
-    APPROVED: '已通过',
-    REJECTED: '已驳回',
-    PAID: '已打款',
-  };
-
-  const paymentTypeMap: Record<string, string> = {
-    TRANSFER: '转账',
-    CASH: '现金',
-    CHECK: '支票',
-    OTHER: '其他',
-  };
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(total / searchParams.pageSize)),
+    [searchParams.pageSize, total],
+  );
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string }> = {
@@ -175,34 +213,34 @@ export const PaymentRequestPage: React.FC = () => {
       PENDING: { bg: 'bg-pink-50', text: 'text-pink-500' },
       APPROVED: { bg: 'bg-green-100', text: 'text-green-600' },
       REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
-      PAID: { bg: 'bg-purple-100', text: 'text-purple-600' },
+      PAID: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
     };
     const config = statusConfig[status] || statusConfig.DRAFT;
     return (
-      <span className={`text-xs px-2 py-0.5 rounded ${config.bg} ${config.text}`}>
-        {statusMap[status] || status}
+      <span className={`rounded px-2 py-0.5 text-xs ${config.bg} ${config.text}`}>
+        {STATUS_LABELS[status] || status}
       </span>
     );
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
           <DollarSign className="text-green-600" />
           付款申请
         </h2>
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}
-            className="bg-white text-green-600 border border-green-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-50 transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-green-200 bg-white px-4 py-2 text-green-600 transition-colors hover:bg-green-50"
           >
             <Download size={18} />
             导出 Excel
           </button>
           <button
             onClick={handleAdd}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
           >
             <Plus size={18} />
             新增付款申请
@@ -210,46 +248,47 @@ export const PaymentRequestPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
-        <div className="p-4 border-b border-slate-200 bg-slate-50">
+      <div className="flex min-h-[500px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-slate-50 p-4">
           <div className="flex gap-3">
-            <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">全部状态</SelectItem>
-                      <SelectItem value="DRAFT">草稿</SelectItem>
-                      <SelectItem value="PENDING">审批中</SelectItem>
-                      <SelectItem value="APPROVED">已通过</SelectItem>
-                      <SelectItem value="REJECTED">已驳回</SelectItem>
-                      <SelectItem value="PAID">已打款</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <Select value={searchParams.status} onValueChange={value => setSearchParams(prev => ({ ...prev, status: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">全部状态</SelectItem>
+                <SelectItem value="DRAFT">草稿</SelectItem>
+                <SelectItem value="PENDING">审批中</SelectItem>
+                <SelectItem value="APPROVED">已通过</SelectItem>
+                <SelectItem value="REJECTED">已驳回</SelectItem>
+                <SelectItem value="PAID">已付款</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <Select value={searchParams.paymentType} onValueChange={v => setSearchParams({...searchParams, paymentType: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">全部类型</SelectItem>
-                      <SelectItem value="TRANSFER">转账</SelectItem>
-                      <SelectItem value="CASH">现金</SelectItem>
-                      <SelectItem value="CHECK">支票</SelectItem>
-                      <SelectItem value="OTHER">其他</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <Select value={searchParams.paymentType} onValueChange={value => setSearchParams(prev => ({ ...prev, paymentType: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">全部类型</SelectItem>
+                {PAYMENT_TYPE_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <button
               onClick={handleSearch}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 text-sm"
+              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
             >
               <Search size={16} />
               搜索
             </button>
             <button
               onClick={handleReset}
-              className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"
+              className="flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-300"
             >
               <RotateCcw size={16} />
               重置
@@ -262,10 +301,10 @@ export const PaymentRequestPage: React.FC = () => {
             <TableHeader className="sticky top-0 z-10">
               <tr>
                 <TableHead>付款单号</TableHead>
-                <TableHead>收款人</TableHead>
+                <TableHead>收款方</TableHead>
                 <TableHead>金额</TableHead>
-                <TableHead>付款方式</TableHead>
-                <TableHead>原因</TableHead>
+                <TableHead>付款类型</TableHead>
+                <TableHead>付款事由</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>创建时间</TableHead>
                 <TableActionHead className="w-64">操作</TableActionHead>
@@ -276,7 +315,7 @@ export const PaymentRequestPage: React.FC = () => {
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+                      <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-green-600" />
                       <span className="ml-2">加载中...</span>
                     </div>
                   </td>
@@ -289,22 +328,16 @@ export const PaymentRequestPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                payments.map((item) => (
+                payments.map(item => (
                   <tr key={item.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm text-slate-900">{item.paymentNo}</td>
                     <td className="px-4 py-3 text-sm text-slate-900">{item.payeeName}</td>
-                    <td className="px-4 py-3 text-sm text-slate-900 font-medium">
-                      ¥{item.amount?.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {paymentTypeMap[item.paymentType] || item.paymentType}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">
-                      {item.reason}
-                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900">￥{formatAmount(item.amount)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{getPaymentTypeLabel(item.paymentType)}</td>
+                    <td className="max-w-xs truncate px-4 py-3 text-sm text-slate-600">{item.reason}</td>
                     <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{item.createTime}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <td className="px-4 py-3 text-xs text-slate-500">{item.createTime || '-'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       <TableRowActions
                         align="end"
                         actions={[
@@ -345,21 +378,21 @@ export const PaymentRequestPage: React.FC = () => {
           </table>
         </div>
 
-        <div className="p-4 border-t border-slate-200 flex justify-between items-center">
+        <div className="flex items-center justify-between border-t border-slate-200 p-4">
           <span className="text-sm text-slate-600">共 {total} 条</span>
           <div className="flex gap-2">
             <button
-              onClick={() => setSearchParams((p) => ({ ...p, pageNum: Math.max(1, p.pageNum - 1) }))}
+              onClick={() => setSearchParams(prev => ({ ...prev, pageNum: Math.max(1, prev.pageNum - 1) }))}
               disabled={searchParams.pageNum === 1}
-              className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50"
+              className="rounded border border-slate-300 px-3 py-1 text-sm disabled:opacity-50"
             >
               上一页
             </button>
-            <span className="px-3 py-1 text-sm">第 {searchParams.pageNum} 页</span>
+            <span className="px-3 py-1 text-sm">第 {searchParams.pageNum} / {totalPages} 页</span>
             <button
-              onClick={() => setSearchParams((p) => ({ ...p, pageNum: p.pageNum + 1 }))}
+              onClick={() => setSearchParams(prev => ({ ...prev, pageNum: prev.pageNum + 1 }))}
               disabled={searchParams.pageNum * searchParams.pageSize >= total}
-              className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50"
+              className="rounded border border-slate-300 px-3 py-1 text-sm disabled:opacity-50"
             >
               下一页
             </button>
@@ -367,34 +400,34 @@ export const PaymentRequestPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 新增/编辑对话框 */}
       {showDialog && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+            <div className="border-b border-slate-100 p-6">
               <h3 className="text-lg font-bold text-slate-800">
                 {currentPayment ? '编辑付款申请' : '新增付款申请'}
               </h3>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto">
+
+            <div className="space-y-4 overflow-y-auto p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">收款人姓名</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">收款方名称</label>
                   <input
                     type="text"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                     value={formData.payeeName}
-                    onChange={(e) => setFormData({ ...formData, payeeName: e.target.value })}
-                    placeholder="请输入收款人姓名"
+                    onChange={event => setFormData(prev => ({ ...prev, payeeName: event.target.value }))}
+                    placeholder="请输入收款方名称"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">付款金额（元）</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">付款金额（元）</label>
                   <input
                     type="number"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                     value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                    onChange={event => setFormData(prev => ({ ...prev, amount: parseFloat(event.target.value) || 0 }))}
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -404,22 +437,22 @@ export const PaymentRequestPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">收款账号</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">收款账号</label>
                   <input
                     type="text"
-                    className="w-full border border-slate-300 rounded-lg p-2"
+                    className="w-full rounded-lg border border-slate-300 p-2"
                     value={formData.payeeAccount || ''}
-                    onChange={(e) => setFormData({ ...formData, payeeAccount: e.target.value })}
+                    onChange={event => setFormData(prev => ({ ...prev, payeeAccount: event.target.value }))}
                     placeholder="请输入收款账号"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">开户银行</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">开户银行</label>
                   <input
                     type="text"
-                    className="w-full border border-slate-300 rounded-lg p-2"
+                    className="w-full rounded-lg border border-slate-300 p-2"
                     value={formData.payeeBank || ''}
-                    onChange={(e) => setFormData({ ...formData, payeeBank: e.target.value })}
+                    onChange={event => setFormData(prev => ({ ...prev, payeeBank: event.target.value }))}
                     placeholder="请输入开户银行"
                   />
                 </div>
@@ -427,60 +460,65 @@ export const PaymentRequestPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">付款方式</label>
-                  <Select value={formData.paymentType} onValueChange={v => setFormData({...formData, paymentType: v})}>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">付款类型</label>
+                  <Select
+                    value={formData.paymentType}
+                    onValueChange={value => setFormData(prev => ({ ...prev, paymentType: value }))}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
+                      <SelectValue placeholder="请选择付款类型" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="TRANSFER">转账</SelectItem>
-                      <SelectItem value="CASH">现金</SelectItem>
-                      <SelectItem value="CHECK">支票</SelectItem>
-                      <SelectItem value="OTHER">其他</SelectItem>
+                      {PAYMENT_TYPE_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">期望付款日期</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">期望付款日期</label>
                   <DatePicker
                     type="date"
                     value={formData.expectedDate || ''}
-                    onChange={(e) => setFormData({ ...formData, expectedDate: e.target.value })}
+                    onChange={event => setFormData(prev => ({ ...prev, expectedDate: event.target.value }))}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">付款原因</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">付款事由</label>
                 <textarea
-                  className="w-full border border-slate-300 rounded-lg p-2 h-24 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                  className="h-24 w-full rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  placeholder="请输入付款原因"
+                  onChange={event => setFormData(prev => ({ ...prev, reason: event.target.value }))}
+                  placeholder="请输入付款事由"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">附件URL（可选）</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">附件 URL（可选）</label>
                 <input
                   type="text"
-                  className="w-full border border-slate-300 rounded-lg p-2"
+                  className="w-full rounded-lg border border-slate-300 p-2"
                   value={formData.attachmentUrl || ''}
-                  onChange={(e) => setFormData({ ...formData, attachmentUrl: e.target.value })}
-                  placeholder="请输入附件URL"
+                  onChange={event => setFormData(prev => ({ ...prev, attachmentUrl: event.target.value }))}
+                  placeholder="请输入附件 URL"
                 />
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
+
+            <div className="flex justify-end gap-2 rounded-b-xl border-t border-slate-100 bg-slate-50 p-4">
               <button
                 onClick={() => setShowDialog(false)}
-                className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300"
+                className="rounded-lg bg-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-300"
               >
                 取消
               </button>
               <button
                 onClick={handleSave}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"
+                className="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
               >
                 保存
               </button>
@@ -489,91 +527,86 @@ export const PaymentRequestPage: React.FC = () => {
         </div>
       )}
 
-      {/* 详情查看对话框 */}
       {showDetailDialog && viewPayment && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-start">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+            <div className="flex items-start justify-between border-b border-slate-100 p-6">
               <div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">付款申请详情</h3>
+                <h3 className="mb-2 text-xl font-bold text-slate-800">付款申请详情</h3>
                 <div className="flex items-center gap-3 text-sm text-slate-600">
-                  <span>单号: {viewPayment.paymentNo}</span>
+                  <span>单号：{viewPayment.paymentNo || '-'}</span>
                   <span>•</span>
                   <span>{getStatusBadge(viewPayment.status || 'DRAFT')}</span>
                 </div>
               </div>
               <button
                 onClick={() => setShowDetailDialog(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-2xl text-slate-400 hover:text-slate-600"
               >
-                <span className="text-2xl">&times;</span>
+                ×
               </button>
             </div>
-            <div className="p-6 overflow-y-auto space-y-4">
+
+            <div className="space-y-4 overflow-y-auto p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">收款人</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">收款方</label>
                   <div className="text-sm text-slate-900">{viewPayment.payeeName}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">付款金额</label>
-                  <div className="text-sm text-slate-900 font-medium">
-                    ¥{viewPayment.amount?.toFixed(2)}
-                  </div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">付款金额</label>
+                  <div className="text-sm font-medium text-slate-900">￥{formatAmount(viewPayment.amount)}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">收款账号</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">收款账号</label>
                   <div className="text-sm text-slate-900">{viewPayment.payeeAccount || '-'}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">开户银行</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">开户银行</label>
                   <div className="text-sm text-slate-900">{viewPayment.payeeBank || '-'}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">付款方式</label>
-                  <div className="text-sm text-slate-900">
-                    {paymentTypeMap[viewPayment.paymentType] || viewPayment.paymentType}
-                  </div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">付款类型</label>
+                  <div className="text-sm text-slate-900">{getPaymentTypeLabel(viewPayment.paymentType)}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">期望付款日期</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">期望付款日期</label>
                   <div className="text-sm text-slate-900">{viewPayment.expectedDate || '-'}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">申请人</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">申请人</label>
                   <div className="text-sm text-slate-900">{viewPayment.userName || '-'}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">创建时间</label>
-                  <div className="text-sm text-slate-900">{viewPayment.createTime}</div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">创建时间</label>
+                  <div className="text-sm text-slate-900">{viewPayment.createTime || '-'}</div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">付款原因</label>
-                <div className="text-sm text-slate-900 bg-slate-50 p-3 rounded">
-                  {viewPayment.reason}
-                </div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">付款事由</label>
+                <div className="rounded bg-slate-50 p-3 text-sm text-slate-900">{viewPayment.reason}</div>
               </div>
 
               {viewPayment.attachmentUrl && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">附件</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">附件</label>
                   <a
                     href={viewPayment.attachmentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-pink-500 hover:text-pink-700 underline"
+                    className="text-sm text-pink-500 underline hover:text-pink-700"
                   >
                     查看附件
                   </a>
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
+
+            <div className="flex justify-end border-t border-slate-100 bg-slate-50 p-4">
               <button
                 onClick={() => setShowDetailDialog(false)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"
+                className="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
               >
                 关闭
               </button>

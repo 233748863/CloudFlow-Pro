@@ -3,6 +3,7 @@ import { Receipt, Plus, Edit, Trash2, Send, Search, RotateCcw, Eye, FileText, Do
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '../services/api/expense';
 import { toast } from 'sonner';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 
@@ -40,7 +41,7 @@ export const ExpenseClaimPage: React.FC = () => {
         setTotal(res.total || 0);
       }
     } catch (error) {
-      toast.error('获取报销申请列表失败');
+      toast.error(getErrorMessage(error, '获取报销申请列表失败'));
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,7 @@ export const ExpenseClaimPage: React.FC = () => {
         setShowDetailDialog(true);
       }
     } catch (error) {
-      toast.error('获取报销申请详情失败');
+      toast.error(getErrorMessage(error, '获取报销申请详情失败'));
     }
   };
 
@@ -77,7 +78,7 @@ export const ExpenseClaimPage: React.FC = () => {
         setShowDialog(true);
       }
     } catch (error) {
-      toast.error('获取报销申请详情失败');
+      toast.error(getErrorMessage(error, '获取报销申请详情失败'));
     }
   };
 
@@ -88,7 +89,7 @@ export const ExpenseClaimPage: React.FC = () => {
       toast.success('删除成功');
       fetchClaims();
     } catch (error) {
-      toast.error('删除失败');
+      toast.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -99,7 +100,7 @@ export const ExpenseClaimPage: React.FC = () => {
       toast.success('提交成功');
       fetchClaims();
     } catch (error) {
-      toast.error('提交失败');
+      toast.error(getErrorMessage(error, '提交失败'));
     }
   };
 
@@ -140,7 +141,7 @@ export const ExpenseClaimPage: React.FC = () => {
       setShowDialog(false);
       fetchClaims();
     } catch (error) {
-      toast.error('保存失败');
+      toast.error(getErrorMessage(error, '保存失败'));
     }
   };
 
@@ -182,10 +183,14 @@ export const ExpenseClaimPage: React.FC = () => {
   const handleExport = async () => {
     try {
       const blob = await expenseClaimApi.export(searchParams);
-      downloadBlob(blob, buildExcelFileName('报销申请'));
-      toast.success('导出成功');
-    } catch {
-      toast.error('导出失败');
+      const fileName = downloadBlob(blob, buildExcelFileName('报销申请'));
+      toast.success(
+        total > 0
+          ? `已导出 ${total} 条报销申请，下载文件：${fileName}`
+          : `已导出空结果，下载文件：${fileName}`,
+      );
+    } catch (error) {
+      toast.error(getErrorMessage(error, '导出失败'));
     }
   };
 

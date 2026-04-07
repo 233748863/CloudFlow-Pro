@@ -8,6 +8,8 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- 说明：本文件仅保留表结构与约束，初始化/演示种子数据已统一迁移至 06.cloudflow-business-seed.sql。
+
 -- =========================================================
 -- 一、组织架构管理模块
 -- =========================================================
@@ -113,45 +115,7 @@ CREATE TABLE hr_reporting_line (
   KEY idx_report_to_id (report_to_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='汇报关系表';
 
--- =========================================================
--- 初始化数据 - 职位族
--- =========================================================
-
-INSERT INTO hr_position_family (tenant_id, family_code, family_name, description, sort_order, status) VALUES
-(100000, 'TECH', '技术族', '技术研发相关职位', 1, 1),
-(100000, 'PRODUCT', '产品族', '产品设计与管理相关职位', 2, 1),
-(100000, 'OPERATION', '运营族', '运营推广相关职位', 3, 1),
-(100000, 'SALES', '销售族', '销售与客户服务相关职位', 4, 1),
-(100000, 'SUPPORT', '支持族', '行政、人力、财务等支持职位', 5, 1);
-
--- =========================================================
--- 初始化数据 - 职级（专业序列）
--- =========================================================
-
-INSERT INTO hr_job_level (tenant_id, level_code, level_name, level_series, level_rank, description, status) VALUES
-(100000, 'P1', '初级工程师', 'P', 1, '专业序列一级', 1),
-(100000, 'P2', '工程师', 'P', 2, '专业序列二级', 1),
-(100000, 'P3', '高级工程师', 'P', 3, '专业序列三级', 1),
-(100000, 'P4', '资深工程师', 'P', 4, '专业序列四级', 1),
-(100000, 'P5', '专家工程师', 'P', 5, '专业序列五级', 1),
-(100000, 'P6', '高级专家', 'P', 6, '专业序列六级', 1),
-(100000, 'P7', '资深专家', 'P', 7, '专业序列七级', 1),
-(100000, 'P8', '首席专家', 'P', 8, '专业序列八级', 1);
-
--- =========================================================
--- 初始化数据 - 职级（管理序列）
--- =========================================================
-
-INSERT INTO hr_job_level (tenant_id, level_code, level_name, level_series, level_rank, description, status) VALUES
-(100000, 'M1', '主管', 'M', 1, '管理序列一级', 1),
-(100000, 'M2', '经理', 'M', 2, '管理序列二级', 1),
-(100000, 'M3', '高级经理', 'M', 3, '管理序列三级', 1),
-(100000, 'M4', '总监', 'M', 4, '管理序列四级', 1),
-(100000, 'M5', '副总裁', 'M', 5, '管理序列五级', 1),
-(100000, 'M6', '高级副总裁', 'M', 6, '管理序列六级', 1);
-
 SET FOREIGN_KEY_CHECKS = 1;
-
 
 -- =========================================================
 -- 员工档案管理表
@@ -441,7 +405,6 @@ CREATE TABLE hr_resignation_handover (
     KEY idx_handover_to_id (handover_to_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='离职交接表';
 
-
 -- =========================================================
 -- 五、考勤管理模块
 -- =========================================================
@@ -548,21 +511,7 @@ CREATE TABLE hr_attendance_record (
   KEY idx_tenant_employee_date (tenant_id, employee_id, attendance_date)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='打卡记录表';
 
--- 插入示例班次数据
-INSERT INTO hr_shift (tenant_id, shift_code, shift_name, start_time, end_time, break_minutes, late_threshold, early_threshold, work_minutes, color, status) VALUES
-(100000, 'MORNING', '早班', '08:00:00', '17:00:00', 60, 15, 15, 480, '#1890ff', 1),
-(100000, 'AFTERNOON', '中班', '13:00:00', '22:00:00', 60, 15, 15, 480, '#52c41a', 1),
-(100000, 'NIGHT', '晚班', '22:00:00', '07:00:00', 60, 15, 15, 480, '#722ed1', 1),
-(100000, 'STANDARD', '标准班', '09:00:00', '18:00:00', 60, 15, 15, 480, '#1890ff', 1);
-
--- 插入示例排班规则数据
-INSERT INTO hr_schedule_rule (tenant_id, rule_name, rule_type, rule_config, description, status) VALUES
-(100000, '固定早班制', 'FIXED', '{"shiftId": 100}', '每天固定早班，适用于行政人员', 1),
-(100000, '三班轮换制', 'ROTATION', '{"cycle": 7, "shifts": [100, 101, 102]}', '早中晚三班轮换，适用于生产线', 1),
-(100000, '弹性工作制', 'FLEXIBLE', '{"coreTime": {"start": "10:00", "end": "16:00"}, "dailyHours": 8}', '核心时间段必须在岗，其他时间灵活安排', 1);
-
 SET FOREIGN_KEY_CHECKS = 1;
-
 
 -- =========================================================
 -- 假期管理表
@@ -650,17 +599,6 @@ CREATE TABLE hr_leave_application (
   KEY idx_end_time (end_time)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='请假申请表';
 
--- 插入示例假期类型数据
-INSERT INTO hr_leave_type (tenant_id, leave_code, leave_name, need_quota, is_paid, unit, quota_rule, expiry_rule, status) VALUES
-(100000, 'ANNUAL', '年假', 1, 1, 'DAY', '{"baseQuota": 5, "incrementPerYear": 1, "maxQuota": 15}', '{"expiryType": "YEAR_END", "carryOver": false}', 1),
-(100000, 'SICK', '病假', 0, 1, 'DAY', NULL, NULL, 1),
-(100000, 'PERSONAL', '事假', 0, 0, 'DAY', NULL, NULL, 1),
-(100000, 'MARRIAGE', '婚假', 0, 1, 'DAY', '{"quota": 3}', NULL, 1),
-(100000, 'MATERNITY', '产假', 0, 1, 'DAY', '{"quota": 98}', NULL, 1),
-(100000, 'PATERNITY', '陪产假', 0, 1, 'DAY', '{"quota": 15}', NULL, 1),
-(100000, 'BEREAVEMENT', '丧假', 0, 1, 'DAY', '{"quota": 3}', NULL, 1),
-(100000, 'COMPENSATORY', '调休', 1, 1, 'HOUR', NULL, '{"expiryType": "FIXED_DAYS", "days": 90}', 1);
-
 -- =========================================================
 -- 加班管理表
 -- =========================================================
@@ -731,114 +669,6 @@ CREATE TABLE hr_attendance_monthly (
   KEY idx_year_month (year, month),
   KEY idx_status (status)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='考勤月报表';
-
--- =========================================================
--- 四、薪酬管理模块
--- =========================================================
-
--- 1. 薪资项目表
--- =========================================================
--- HR 假勤演示数据（从 OA 迁移）
--- =========================================================
-
-UPDATE hr_schedule_rule
-SET rule_name = '标准考勤制',
-    rule_config = '{"shiftId": 103, "workDays": [1,2,3,4,5], "overtimeEnabled": true, "overtimeMinMinutes": 30, "lateToleranceCount": 0, "severeLateMinutes": 60, "absentMinutes": 240, "photoRequired": false, "radius": 200}',
-    description = '标准工作日考勤规则，供 HR 假勤演示数据使用'
-WHERE tenant_id = 100000
-  AND rule_type = 'FIXED';
-
-INSERT INTO hr_schedule_plan (
-  id, tenant_id, plan_name, target_type, target_id, shift_id, schedule_date, status,
-  create_time, update_time, create_by, update_by
-) VALUES
-(11001, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11002, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11003, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11004, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11005, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11006, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11007, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11008, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11009, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1);
-
-INSERT INTO hr_attendance_record (
-  id, tenant_id, employee_id, attendance_date, shift_id, check_type, check_time, check_method,
-  location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9301, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE, 'GPS',
- '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常上班打卡', NOW(), NOW(), 1, 1, 0),
-(9302, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 12 MINUTE, 'GPS',
- '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常下班打卡', NOW(), NOW(), 1, 1, 0),
-(9303, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 35 MINUTE, 'GPS',
- '上海市黄浦区总部园区A座', 'NORMAL', NULL, '项目联调后下班', NOW(), NOW(), 1, 1, 0),
-(9304, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 56 MINUTE, 'WIFI',
- 'CloudFlow-Office', 'NORMAL', NULL, '会议前提前到岗', NOW(), NOW(), 1, 1, 0),
-(9305, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 6 MINUTE, 'WIFI',
- 'CloudFlow-Office', 'NORMAL', NULL, '正常签退', NOW(), NOW(), 1, 1, 0),
-(9306, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR, 'GPS',
- '浦东新区客户现场机房', 'NORMAL', NULL, '客户现场支持后签退', NOW(), NOW(), 1, 1, 0),
-(9001, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE, 'SUPPLEMENT',
- '上海市黄浦区总部园区A座', 'APPROVING', 'demo_inst_007', '因地铁故障导致漏打卡，实际已于 09:03 到达公司。', DATE_SUB(NOW(), INTERVAL 9 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR), 5, 5, 0),
-(9002, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 42 MINUTE, 'SUPPLEMENT',
- '浦东新区客户现场机房', 'SUPPLEMENT', 'demo_inst_008', '客户现场部署支持，未在公司网络范围内打卡。', DATE_SUB(NOW(), INTERVAL 30 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), 9, 9, 0);
-
-INSERT INTO hr_leave_quota (
-  id, tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota,
-  expiry_date, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1101, 100000, 1005, 100, YEAR(CURDATE()), 10.00, 0.00, 5.00, 5.00,
- STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1102, 100000, 1002, 100, YEAR(CURDATE()), 5.00, 0.00, 0.00, 5.00,
- STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1103, 100000, 1002, 107, YEAR(CURDATE()), 16.00, 4.00, 3.50, 8.50,
- DATE_ADD(CURDATE(), INTERVAL 90 DAY), NOW(), NOW(), 'admin', 'admin', 0);
-
-INSERT INTO hr_leave_application (
-  id, tenant_id, application_no, employee_id, leave_type_id, start_time, end_time, duration, unit, reason,
-  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9001, 100000, 'QJ202603110001', 1005, 100,
- DATE_ADD(CURDATE(), INTERVAL 7 DAY) + INTERVAL 9 HOUR,
- DATE_ADD(CURDATE(), INTERVAL 11 DAY) + INTERVAL 18 HOUR,
- 5.00, 'DAY', '清明假期前后返乡探亲，已完成当前迭代开发任务交接。',
- 'demo_inst_001', 'APPROVING', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR), 'zhang', 'zhang', 0),
-(9002, 100000, 'QJ202603110002', 1001, 101,
- DATE_SUB(CURDATE(), INTERVAL 6 DAY) + INTERVAL 9 HOUR,
- DATE_SUB(CURDATE(), INTERVAL 4 DAY) + INTERVAL 18 HOUR,
- 2.00, 'DAY', '因流感发烧请假休息，并已提供就诊证明。',
- 'demo_inst_002', 'APPROVED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO hr_overtime_application (
-  id, tenant_id, application_no, employee_id, start_time, end_time, duration, overtime_type, reason,
-  compensation_type, compensation_hours, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9001, 100000, 'JB202603110001', 1002,
- CURDATE() + INTERVAL 19 HOUR,
- CURDATE() + INTERVAL 22 HOUR + INTERVAL 30 MINUTE,
- 3.50, 'WORKDAY', '为客户演示修复流程详情页附件预览兼容性问题。',
- 'TIME_OFF', 3.50, 'demo_inst_009', 'APPROVING', DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 7 HOUR), 'test_fe', 'test_fe', 0),
-(9002, 100000, 'JB202603110002', 1003,
- DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 10 HOUR,
- DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 18 HOUR,
- 8.00, 'WEEKEND', '周末配合客户进行灰度发布与数据迁移。',
- 'PAYMENT', 8.00, 'demo_inst_010', 'APPROVED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), 'test_be', 'test_be', 0);
-
-INSERT INTO hr_attendance_monthly (
-  id, tenant_id, employee_id, year, month, work_days, actual_days, late_times, early_times, absent_days,
-  missing_times, leave_days, overtime_hours, attendance_rate, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(12001, 100000, 1005, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 1, 5.00, 0.00, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12002, 100000, 1002, YEAR(CURDATE()), MONTH(CURDATE()), 23, 21, 0, 0, 0, 0, 0.00, 3.50, 91.30, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12003, 100000, 1003, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 0, 0.00, 8.00, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0);
 
 DROP TABLE IF EXISTS hr_salary_item;
 CREATE TABLE hr_salary_item (
@@ -922,39 +752,6 @@ CREATE TABLE hr_salary_grade (
   KEY idx_level_id (level_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='薪资等级表';
 
--- 插入示例薪资项目数据
-INSERT INTO hr_salary_item (tenant_id, item_code, item_name, item_type, category, is_taxable, sort_order, status) VALUES
-(100000, 'BASIC_SALARY', '基本工资', 'FIXED', 'BASIC', 1, 1, 1),
-(100000, 'POSITION_ALLOWANCE', '岗位津贴', 'FIXED', 'ALLOWANCE', 1, 2, 1),
-(100000, 'MEAL_ALLOWANCE', '餐补', 'FIXED', 'ALLOWANCE', 0, 3, 1),
-(100000, 'TRANSPORT_ALLOWANCE', '交通补贴', 'FIXED', 'ALLOWANCE', 0, 4, 1),
-(100000, 'PERFORMANCE_BONUS', '绩效奖金', 'VARIABLE', 'BONUS', 1, 5, 1),
-(100000, 'YEAR_END_BONUS', '年终奖', 'VARIABLE', 'BONUS', 1, 6, 1),
-(100000, 'LATE_DEDUCTION', '迟到扣款', 'VARIABLE', 'DEDUCTION', 0, 7, 1),
-(100000, 'ABSENT_DEDUCTION', '旷工扣款', 'VARIABLE', 'DEDUCTION', 0, 8, 1);
-
--- 插入示例薪资结构数据
-INSERT INTO hr_salary_structure (tenant_id, structure_code, structure_name, description, status) VALUES
-(100000, 'STANDARD', '标准薪资结构', '适用于大部分员工的标准薪资结构', 1),
-(100000, 'EXECUTIVE', '高管薪资结构', '适用于高级管理人员的薪资结构', 1),
-(100000, 'SALES', '销售薪资结构', '适用于销售人员的薪资结构', 1);
-
--- 插入薪资结构项目关联数据（标准薪资结构）
-INSERT INTO hr_salary_structure_item (tenant_id, structure_id, item_id, sort_order) VALUES
-(100000, 100, 100, 1),  -- 基本工资
-(100000, 100, 101, 2),  -- 岗位津贴
-(100000, 100, 102, 3),  -- 餐补
-(100000, 100, 103, 4),  -- 交通补贴
-(100000, 100, 104, 5);  -- 绩效奖金
-
--- 插入示例薪资等级数据
-INSERT INTO hr_salary_grade (
-  id, tenant_id, level_id, min_salary, max_salary, mid_salary, currency,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 101, 9000.00, 15000.00, 12000.00, 'CNY',
- '2026-03-20 09:30:00', '2026-03-20 09:30:00', 'admin', 'admin', 0);
-
 -- 5. 员工薪资表
 DROP TABLE IF EXISTS hr_employee_salary;
 CREATE TABLE hr_employee_salary (
@@ -978,16 +775,6 @@ CREATE TABLE hr_employee_salary (
   KEY idx_status (status),
   KEY idx_effective_date (effective_date)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='员工薪资表';
-
--- 插入示例员工薪资数据
-INSERT INTO hr_employee_salary (
-  id, tenant_id, employee_id, structure_id, salary_data, total_salary, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 1002, 100, '{"100":8000,"101":1200,"102":300,"103":300,"104":800}', 10600.00, '2026-03-24', 'EXPIRED',
- '2026-03-24 09:00:00', '2026-03-24 12:20:00', 'admin', 'admin', 0),
-(101, 100000, 1002, 100, '{"100":8000,"101":1200,"102":300,"103":300,"104":1200}', 11000.00, '2026-03-24', 'ACTIVE',
- '2026-03-24 12:21:00', '2026-03-24 12:21:00', 'admin', 'admin', 0);
 
 -- 6. 调薪申请表
 DROP TABLE IF EXISTS hr_salary_adjustment;
@@ -1020,17 +807,6 @@ CREATE TABLE hr_salary_adjustment (
   KEY idx_effective_date (effective_date),
   KEY idx_process_instance_id (process_instance_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='调薪申请表';
-
--- 插入示例调薪申请数据
-INSERT INTO hr_salary_adjustment (
-  id, tenant_id, application_no, employee_id, adjustment_type, adjustment_reason,
-  before_salary_data, after_salary_data, before_total, after_total, adjustment_amount, adjustment_rate,
-  effective_date, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 'SA202603240001', 1002, 'PERFORMANCE', '桌面端薪酬页真实联调样本：提高绩效奖金',
- '{"100":8000,"101":1200,"102":300,"103":300,"104":800}', '{"100":8000,"101":1200,"102":300,"103":300,"104":1200}',
- 10600.00, 11000.00, 400.00, 3.77, '2026-03-24', '788a3482-22d2-4c2b-87f1-4d57b3175046', 'EFFECTIVE',
- '2026-03-24 11:30:00', '2026-03-24 12:22:00', 'admin', 'admin', 0);
 
 -- 7. 五险一金方案表
 DROP TABLE IF EXISTS hr_insurance_scheme;
@@ -1088,44 +864,6 @@ CREATE TABLE hr_employee_insurance (
   KEY idx_status (status),
   KEY idx_effective_date (effective_date)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='员工五险一金表';
-
--- 插入示例五险一金方案数据（北京地区）
-INSERT INTO hr_insurance_scheme (
-  tenant_id, scheme_name, city,
-  pension_company_rate, pension_personal_rate,
-  medical_company_rate, medical_personal_rate,
-  unemployment_company_rate, unemployment_personal_rate,
-  injury_company_rate, maternity_company_rate,
-  housing_fund_company_rate, housing_fund_personal_rate,
-  base_min, base_max, base_rule, effective_date, status
-) VALUES (
-  100000, '北京标准方案', '北京',
-  16.00, 8.00,  -- 养老保险
-  9.80, 2.00,   -- 医疗保险
-  0.50, 0.50,   -- 失业保险
-  0.40, 0.80,   -- 工伤保险、生育保险
-  12.00, 12.00, -- 公积金
-  5869.00, 33891.00, '按上年度月平均工资计算', '2026-01-01', 1
-);
-
--- 插入示例五险一金方案数据（上海地区）
-INSERT INTO hr_insurance_scheme (
-  tenant_id, scheme_name, city,
-  pension_company_rate, pension_personal_rate,
-  medical_company_rate, medical_personal_rate,
-  unemployment_company_rate, unemployment_personal_rate,
-  injury_company_rate, maternity_company_rate,
-  housing_fund_company_rate, housing_fund_personal_rate,
-  base_min, base_max, base_rule, effective_date, status
-) VALUES (
-  100000, '上海标准方案', '上海',
-  16.00, 8.00,  -- 养老保险
-  10.00, 2.00,  -- 医疗保险
-  0.50, 0.50,   -- 失业保险
-  0.26, 1.00,   -- 工伤保险、生育保险
-  7.00, 7.00,   -- 公积金
-  6520.00, 36549.00, '按上年度月平均工资计算', '2026-01-01', 1
-);
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -1307,233 +1045,6 @@ CREATE TABLE hr_employee_tax_deduction (
   KEY idx_start_date (start_date),
   KEY idx_end_date (end_date)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='员工专项扣除表';
-
--- 插入示例个税配置数据（2026年标准）
-INSERT INTO hr_tax_config (
-  tenant_id, threshold, tax_brackets, deduction_items, effective_date, status, create_by, update_by
-) VALUES (
-  100000, 5000.00,
-  '[{"min":0,"max":36000,"rate":0.03,"deduction":0},{"min":36000,"max":144000,"rate":0.10,"deduction":2520},{"min":144000,"max":300000,"rate":0.20,"deduction":16920},{"min":300000,"max":420000,"rate":0.25,"deduction":31920},{"min":420000,"max":660000,"rate":0.30,"deduction":52920},{"min":660000,"max":960000,"rate":0.35,"deduction":85920},{"min":960000,"rate":0.45,"deduction":181920}]',
-  '{"CHILD_EDU":1000,"CONTINUING_EDU":400,"MEDICAL":0,"HOUSING_LOAN":1000,"HOUSING_RENT":0,"ELDERLY_CARE":2000}',
-  '2026-01-01', 1, NULL, NULL
-);
-
--- 员工专项扣除依赖员工档案，初始化脚本不预置员工级数据，避免产生孤儿记录
-
--- =========================================================
--- 七、HR桌面端联调示例数据
--- 目的：为员工、招聘、入职、转正、调岗、离职页面提供一套可直接联调的基础样本
--- =========================================================
-
--- 1. 职位示例数据
-INSERT INTO hr_position (
-  id, tenant_id, position_code, position_name, family_id, level_id, post_id,
-  job_description, requirements, work_content, status, create_time, update_time
-) VALUES
-(101, 100000, 'FE_P3', '前端开发工程师', 100, 102, 4,
- '负责桌面端与流程页面交付', '熟悉 React、TypeScript、接口联调', '负责 HR 与 OA 前端功能开发', 1, '2026-03-20 09:00:00', '2026-03-20 09:00:00'),
-(102, 100000, 'BE_P3', 'Java开发工程师', 100, 102, 4,
- '负责微服务与业务接口开发', '熟悉 Spring Boot、MyBatis Plus、消息队列', '负责 HR、Workflow 后端开发', 1, '2026-03-20 09:05:00', '2026-03-20 09:05:00'),
-(103, 100000, 'FIN_P2', '财务专员', 104, 101, 4,
- '负责报销、核算与财务归档', '熟悉财务制度与基础报表能力', '负责日常财务支持工作', 1, '2026-03-20 09:10:00', '2026-03-20 09:10:00'),
-(104, 100000, 'HRBP_M2', 'HRBP', 104, 109, 2,
- '负责招聘、组织与员工关系', '熟悉招聘、员工生命周期与制度执行', '负责 HR 全流程业务推进', 1, '2026-03-20 09:15:00', '2026-03-20 09:15:00'),
-(105, 100000, 'HR_RECRUITER_P2', '招聘专员', 104, 101, 4,
- '负责人才寻访与候选人推进', '熟悉招聘渠道与面试安排', '负责招聘需求执行与候选人跟进', 1, '2026-03-20 09:20:00', '2026-03-20 09:20:00'),
-(106, 100000, 'TECH_MANAGER_M2', '技术经理', 100, 109, 2,
- '负责研发团队管理与项目交付', '具备研发管理与跨团队协同能力', '负责团队管理、资源调配与项目交付', 1, '2026-03-20 09:25:00', '2026-03-20 09:25:00');
-
--- 2. 员工档案示例数据
-INSERT INTO hr_employee (
-  id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id,
-  employee_type, employee_status, hire_date, regular_date, resign_date, user_id,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1001, 100000, 'CF20230001', '赵HR', 'FEMALE', '1990-06-12', '13800010001', 'zhao.hr@cloudflow.com', 103, 2, 104,
- 'FULL_TIME', 'REGULAR', '2023-04-10', '2023-10-10', NULL, 4, '2026-03-20 10:00:00', '2026-03-20 10:00:00', 'admin', 'admin', 0),
-(1002, 100000, 'CF20260001', '前端测试', 'FEMALE', '1998-03-08', '13800010002', 'test.fe@cloudflow.com', 106, 4, 101,
- 'FULL_TIME', 'PROBATION', '2026-02-10', NULL, NULL, 8, '2026-03-20 10:05:00', '2026-03-20 10:05:00', 'admin', 'admin', 0),
-(1003, 100000, 'CF20240008', '后端测试', 'MALE', '1996-11-21', '13800010003', 'test.be@cloudflow.com', 107, 4, 102,
- 'FULL_TIME', 'REGULAR', '2024-08-15', '2025-02-15', NULL, 9, '2026-03-20 10:10:00', '2026-03-20 10:10:00', 'admin', 'admin', 0),
-(1004, 100000, 'CF20230015', '王财务', 'FEMALE', '1992-05-16', '13800010004', 'wang.finance@cloudflow.com', 102, 4, 103,
- 'FULL_TIME', 'RESIGNED', '2023-03-01', '2023-09-01', '2026-03-21', 3, '2026-03-20 10:15:00', '2026-03-20 10:15:00', 'admin', 'admin', 0),
-(1005, 100000, 'CF20240002', '张三', 'MALE', '1995-01-19', '13800010005', 'zhang@cloudflow.com', 105, 4, 102,
- 'FULL_TIME', 'REGULAR', '2024-04-18', '2024-10-18', NULL, 5, '2026-03-20 10:20:00', '2026-03-20 10:20:00', 'admin', 'admin', 0),
-(1006, 100000, 'CF20260002', '李若彤', 'FEMALE', '1999-09-09', '13800010006', 'li.ruotong@cloudflow.com', 101, 4, 101,
- 'FULL_TIME', 'REGULAR', '2026-03-01', '2026-09-01', NULL, NULL, '2026-03-20 10:25:00', '2026-03-20 10:25:00', 'admin', 'admin', 0),
-(1007, 100000, 'CF20250009', '周宁', 'MALE', '1997-07-14', '13800010007', 'zhou.ning@cloudflow.com', 103, 4, 105,
- 'FULL_TIME', 'PROBATION', '2025-11-01', NULL, NULL, NULL, '2026-03-20 10:30:00', '2026-03-20 10:30:00', 'admin', 'admin', 0),
-(1008, 100000, 'CF20240012', '陈凯', 'MALE', '1994-12-03', '13800010008', 'chen.kai@cloudflow.com', 101, 4, 101,
- 'FULL_TIME', 'REGULAR', '2024-06-01', '2024-12-01', NULL, NULL, '2026-03-20 10:35:00', '2026-03-20 10:35:00', 'admin', 'admin', 0);
-
--- 3. 员工社保与个税联调示例数据
-INSERT INTO hr_employee_insurance (
-  id, tenant_id, employee_id, scheme_id, base, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 1002, 100, 10600.00, '2026-03-24', 'ACTIVE',
- '2026-03-24 10:40:00', '2026-03-24 10:40:00', 'admin', 'admin', 0);
-
-INSERT INTO hr_employee_tax_deduction (
-  id, tenant_id, employee_id, deduction_type, amount, start_date, end_date, status, remark,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 1002, 'HOUSING_RENT', 1500.00, '2026-03-01', NULL, 'ACTIVE', '桌面端薪酬联调用住房租金扣除样本',
- '2026-03-24 10:45:00', '2026-03-24 10:45:00', NULL, NULL, 0),
-(101, 100000, 1002, 'CONTINUING_EDU', 400.00, '2026-03-01', NULL, 'ACTIVE', '桌面端薪酬联调用继续教育扣除样本',
- '2026-03-24 10:46:00', '2026-03-24 10:46:00', NULL, NULL, 0);
-
--- 4. 招聘需求示例数据
-INSERT INTO hr_recruitment_request (
-  id, tenant_id, request_no, dept_id, position_id, headcount, job_requirements,
-  salary_min, salary_max, expected_date, process_instance_id, status, hired_count,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(2001, 100000, 'HRRQ202603230001', 101, 102, 2, '熟悉 Spring Boot、MySQL、消息驱动架构，能独立完成接口联调。',
- 18000.00, 28000.00, '2026-04-15', 'wf_hr_recruit_2001', 'RECRUITING', 1, '2026-03-21 09:00:00', '2026-03-22 18:30:00', 'zhao', 'zhao', 0),
-(2002, 100000, 'HRRQ202603230002', 103, 105, 1, '有招聘渠道运营经验，熟悉校园招聘与社会招聘协同推进。',
- 12000.00, 18000.00, '2026-04-08', 'wf_hr_recruit_2002', 'APPROVING', 0, '2026-03-22 09:30:00', '2026-03-22 11:30:00', 'zhao', 'zhao', 0),
-(2003, 100000, 'HRRQ202603150001', 106, 101, 1, '熟悉 React、组件化设计和企业应用前端开发。',
- 15000.00, 22000.00, '2026-03-28', 'wf_hr_recruit_2003', 'COMPLETED', 1, '2026-03-15 10:00:00', '2026-03-20 17:00:00', 'zhao', 'zhao', 0);
-
--- 4. 候选人示例数据
-INSERT INTO hr_candidate (
-  id, tenant_id, request_id, name, gender, phone, email, resume_url, source, status, reject_reason,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'https://example.com/resume/chenhaitao.pdf', 'HEADHUNTER', 'HIRED', NULL,
- '2026-03-21 10:00:00', '2026-03-24 12:31:14', 'admin', 'admin', 0),
-(3002, 100000, 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 'https://example.com/resume/sunxiaoyu.pdf', 'REFERRAL', 'OFFER', NULL,
- '2026-03-21 10:30:00', '2026-03-23 09:10:00', 'zhao', 'zhao', 0),
-(3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', 'https://example.com/resume/linjiaqi.pdf', 'WEBSITE', 'SCREENING', NULL,
- '2026-03-22 13:00:00', '2026-03-22 13:30:00', 'zhao', 'zhao', 0),
-(3004, 100000, 2003, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 'https://example.com/resume/liruotong.pdf', 'REFERRAL', 'HIRED', NULL,
- '2026-03-15 14:00:00', '2026-03-20 18:10:00', 'zhao', 'zhao', 0),
-(3005, 100000, 2001, '吴嘉豪', 'MALE', '13900011006', 'wu.jiahao@example.com', 'https://example.com/resume/wujiahao.pdf', 'WEBSITE', 'INTERVIEW', NULL,
- '2026-03-24 12:40:00', '2026-03-24 12:40:00', 'admin', 'admin', 0);
-
--- 5. 面试示例数据
-INSERT INTO hr_interview (
-  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, location, interviewers,
-  evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(4001, 100000, 3001, 'FIRST', 'VIDEO', '2026-03-24 15:00:00', 'Teams 会议链接', '[2,9]',
- NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 15:05:00', '2026-03-22 15:05:00', 'zhao', 'zhao', 0),
-(4002, 100000, 3002, 'FINAL', 'ONSITE', '2026-03-22 10:00:00', '上海总部 5F 面试室A', '[2,4]',
- '综合表现稳定，技术深度与协作意识符合岗位要求。', 88, 'PASS', 'COMPLETED', '2026-03-21 16:00:00', '2026-03-22 12:00:00', 'zhao', 'zhao', 0),
-(4003, 100000, 3003, 'FIRST', 'PHONE', '2026-03-24 11:00:00', '电话面试', '[4]',
- NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 14:20:00', '2026-03-22 14:20:00', 'zhao', 'zhao', 0),
-(4004, 100000, 3005, 'FIRST', 'VIDEO', '2026-03-25 14:30:00', '腾讯会议 研发一组频道', '[2,5]',
- NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-24 12:45:00', '2026-03-24 12:45:00', 'admin', 'admin', 0);
-
--- 6. Offer 示例数据
-INSERT INTO hr_offer (
-  id, tenant_id, offer_no, candidate_id, dept_id, position_id, salary, expected_date, expiry_date,
-  offer_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 'OFFER20260324000001', 3001, 101, 102, 22000.00, '2026-04-15', '2026-04-22',
- '候选人：陈海涛\n拟录用部门：研发部\n拟录用岗位：后端开发工程师\n建议薪资：¥22,000\n预计入职日期：2026-04-15\nOffer 有效期至：2026-04-22\n\n该 Offer 已完成真实联调，后续可继续转入入职办理。',
- 'a5cf659a-ab61-44a2-9a8d-5da799a304db', 'ACCEPTED', '2026-03-24 12:31:14', '2026-03-24 12:31:14', 'admin', 'admin', 0);
-
--- 7. 入职申请与任务示例数据
--- 5001：审批中，可直接测试“审批通过”
--- 5002：已审批，已生成任务，可测试“完成任务 / 确认入职”
--- 5003：已入职完成态，用于查看最终结果
--- 5004：由已接受 Offer 转入的入职草稿，可继续提交入职流程
-INSERT INTO hr_onboarding_application (
-  id, tenant_id, application_no, candidate_id, name, gender, phone, email, dept_id, post_id, position_id,
-  expected_date, process_instance_id, status, employee_id, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(5001, 100000, 'HRON202603230001', 3002, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 101, 4, 101,
- '2026-03-25', 'wf_hr_onboarding_5001', 'APPROVING', NULL, '2026-03-23 09:20:00', '2026-03-23 09:20:00', 'zhao', 'zhao', 0),
-(5002, 100000, 'HRON202603220002', NULL, '王晨', 'MALE', '13900011005', 'wang.chen@example.com', 107, 4, 102,
- '2026-03-24', 'wf_hr_onboarding_5002', 'APPROVED', NULL, '2026-03-22 14:00:00', '2026-03-23 16:20:00', 'zhao', 'zhao', 0),
-(5003, 100000, 'HRON202603010001', 3004, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 101, 4, 101,
- '2026-03-01', 'wf_hr_onboarding_5003', 'ONBOARDED', 1006, '2026-03-01 09:00:00', '2026-03-01 18:00:00', 'zhao', 'zhao', 0),
-(5004, 100000, 'OB202603246303', 3001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 101, 4, 102,
- '2026-04-15', NULL, 'DRAFT', NULL, '2026-03-24 12:31:14', '2026-03-24 12:31:14', 'admin', 'admin', 0);
-
-INSERT INTO hr_onboarding_task (
-  id, tenant_id, application_id, task_name, task_type, task_description, assignee_id, status,
-  completed_time, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(5101, 100000, 5002, '收集身份证与学历资料', 'DOCUMENT', '核验身份证、学历证书和银行卡信息。', 1001, 'COMPLETED',
- '2026-03-23 10:30:00', '身份证及学历材料已归档。', '2026-03-22 14:05:00', '2026-03-23 10:30:00', 'zhao', 'zhao', 0),
-(5102, 100000, 5002, '开通账号与权限', 'ACCOUNT', '为新员工开通系统账号和基础权限。', 1001, 'PENDING',
- NULL, NULL, '2026-03-22 14:06:00', '2026-03-22 14:06:00', 'zhao', 'zhao', 0),
-(5103, 100000, 5002, '准备办公设备', 'EQUIPMENT', '准备笔记本电脑、门禁与办公用品。', 1008, 'IN_PROGRESS',
- NULL, '电脑已分配，等待门禁卡。', '2026-03-22 14:07:00', '2026-03-23 11:00:00', 'zhao', 'zhao', 0),
-(5104, 100000, 5002, '新人培训', 'TRAINING', '完成入职培训、制度宣导与导师对接。', 1001, 'PENDING',
- NULL, NULL, '2026-03-22 14:08:00', '2026-03-22 14:08:00', 'zhao', 'zhao', 0),
-(5105, 100000, 5003, '收集身份证与学历资料', 'DOCUMENT', '核验身份证、学历证书和银行卡信息。', 1001, 'COMPLETED',
- '2026-03-01 10:00:00', '资料已归档。', '2026-03-01 09:10:00', '2026-03-01 10:00:00', 'zhao', 'zhao', 0),
-(5106, 100000, 5003, '开通账号与权限', 'ACCOUNT', '为新员工开通系统账号和基础权限。', 1001, 'COMPLETED',
- '2026-03-01 11:00:00', '账号已开通并完成初始授权。', '2026-03-01 09:11:00', '2026-03-01 11:00:00', 'zhao', 'zhao', 0),
-(5107, 100000, 5003, '准备办公设备', 'EQUIPMENT', '准备笔记本电脑、门禁与办公用品。', 1008, 'COMPLETED',
- '2026-03-01 13:30:00', '设备与门禁卡已发放。', '2026-03-01 09:12:00', '2026-03-01 13:30:00', 'zhao', 'zhao', 0),
-(5108, 100000, 5003, '新人培训', 'TRAINING', '完成入职培训、制度宣导与导师对接。', 1001, 'COMPLETED',
- '2026-03-01 15:00:00', '培训已完成并签收资料。', '2026-03-01 09:13:00', '2026-03-01 15:00:00', 'zhao', 'zhao', 0);
-
--- 7. 转正申请示例数据
--- 说明：编号顺延，前一节已扩展到 Offer 与入职草稿联调样本。
-INSERT INTO hr_probation_confirmation (
-  id, tenant_id, application_no, employee_id, probation_start_date, probation_end_date, expected_regular_date,
-  self_evaluation, manager_evaluation, process_instance_id, status, reject_reason, extension_days,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(6001, 100000, 'HRPB202603230001', 1002, '2026-02-10', '2026-08-09', '2026-08-10',
- '已完成 HR 桌面端核心页面开发与日常需求支持，能独立完成接口联调。', '业务推进稳定，建议按计划进入审批流。', 'wf_hr_probation_6001',
- 'APPROVING', NULL, NULL, '2026-03-23 10:00:00', '2026-03-23 10:00:00', 'zhao', 'zhao', 0),
-(6002, 100000, 'HRPB202603010001', 1006, '2026-03-01', '2026-08-31', '2026-09-01',
- '快速适应团队节奏，交付质量稳定。', '转正建议通过，已具备独立承担任务能力。', 'wf_hr_probation_6002',
- 'APPROVED', NULL, NULL, '2026-03-18 09:00:00', '2026-03-22 18:00:00', 'zhao', 'zhao', 0),
-(6003, 100000, 'HRPB202602010001', 1007, '2025-11-01', '2026-05-30', '2026-05-30',
- '招聘协同推进正常，但数据复盘能力还需加强。', '建议延长试用期一个月，重点提升渠道复盘能力。', 'wf_hr_probation_6003',
- 'EXTENDED', '阶段性目标完成度不足，需延长试用观察。', 30, '2026-02-15 14:00:00', '2026-03-20 16:00:00', 'zhao', 'zhao', 0);
-
--- 8. 调岗申请示例数据
-INSERT INTO hr_transfer_application (
-  id, tenant_id, application_no, employee_id, from_dept_id, from_post_id, from_position_id,
-  to_dept_id, to_post_id, to_position_id, transfer_type, reason, effective_date, salary_change,
-  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(7001, 100000, 'HRTR202603200001', 1008, 101, 4, 101,
- 101, 2, 106, 'PROMOTION', '项目推进稳定，拟提升为技术经理负责小组交付。', '2026-04-01', 1,
- 'wf_hr_transfer_7001', 'APPROVING', '2026-03-20 11:00:00', '2026-03-22 09:00:00', 'zhao', 'zhao', 0),
-(7002, 100000, 'HRTR202603010001', 1005, 101, 4, 102,
- 105, 4, 102, 'DEPT', '支援 IT 平台建设，承担内部工具服务端开发。', '2026-03-15', 0,
- 'wf_hr_transfer_7002', 'EFFECTIVE', '2026-03-01 10:00:00', '2026-03-15 18:00:00', 'zhao', 'zhao', 0);
-
--- 9. 离职申请与交接示例数据
--- 8001：已完成，用于查看离职闭环结果
--- 8002：已审批，带交接清单，可测试“完成交接 / 确认离职”
--- 8003：审批中，可直接测试“审批通过”
-INSERT INTO hr_resignation_application (
-  id, tenant_id, application_no, employee_id, resignation_type, resignation_reason, expected_date, actual_date,
-  interview_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(8001, 100000, 'HRRE202603220001', 1004, 'VOLUNTARY', '家庭原因需要返回老家发展。', '2026-03-20', '2026-03-21',
- '已完成离职面谈，确认薪资与社保结算计划。', 'wf_hr_resignation_8001', 'COMPLETED',
- '2026-03-18 09:00:00', '2026-03-21 18:00:00', 'zhao', 'zhao', 0),
-(8002, 100000, 'HRRE202603230001', 1003, 'VOLUNTARY', '计划返回家乡发展，申请按流程办理交接。', '2026-04-10', NULL,
- '已完成首次离职面谈，待资产与账号交接结束后确认离职。', 'wf_hr_resignation_8002', 'APPROVED',
- '2026-03-23 11:30:00', '2026-03-23 11:30:00', 'zhao', 'zhao', 0),
-(8003, 100000, 'HRRE202603210001', 1008, 'VOLUNTARY', '计划接受外部新机会，先提交流程等待审批。', '2026-04-15', NULL,
- NULL, 'wf_hr_resignation_8003', 'APPROVING',
- '2026-03-21 16:00:00', '2026-03-22 09:30:00', 'zhao', 'zhao', 0);
-
-INSERT INTO hr_resignation_handover (
-  id, tenant_id, application_id, handover_item, handover_type, handover_to_id, status,
-  completed_time, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9001, 100000, 8002, '代码仓库与发布权限移交', 'ACCOUNT', 1001, 'PENDING',
- NULL, NULL, '2026-03-23 11:40:00', '2026-03-23 11:40:00', 'zhao', 'zhao', 0),
-(9002, 100000, 8002, '在建项目文档交接', 'DOCUMENT', 1005, 'COMPLETED',
- '2026-03-23 17:30:00', '接口文档与排期已转交张三。', '2026-03-23 11:41:00', '2026-03-23 17:30:00', 'zhao', 'zhao', 0),
-(9003, 100000, 8002, '办公电脑归还', 'ASSET', 1001, 'PENDING',
- NULL, NULL, '2026-03-23 11:42:00', '2026-03-23 11:42:00', 'zhao', 'zhao', 0),
-(9004, 100000, 8001, '财务资料归档', 'WORK', 1001, 'COMPLETED',
- '2026-03-21 15:00:00', '已完成票据、账号与预算资料归档。', '2026-03-18 10:00:00', '2026-03-21 15:00:00', 'zhao', 'zhao', 0);
 
 -- =========================================================
 -- 八、审计日志模块

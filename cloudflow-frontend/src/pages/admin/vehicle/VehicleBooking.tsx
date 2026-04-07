@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { FileUpload } from '@/components/FileUpload';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 /** 车辆卡片组件 */
 const VehicleCard: React.FC<{
@@ -182,8 +183,8 @@ export const VehicleBooking: React.FC = () => {
       });
       toast.success('用车申请已提交，请等待审批');
       navigate('/admin/vehicle/usage');
-    } catch {
-      toast.error('提交失败，该时段可能已被预约');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '提交失败，该时段可能已被预约'));
     } finally {
       setSubmitting(false);
     }

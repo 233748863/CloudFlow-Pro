@@ -47,6 +47,13 @@ public interface EmployeeService {
      * @return 员工VO
      */
     EmployeeVO getEmployee(Long id);
+
+    /**
+     * 查询当前登录用户关联的员工档案
+     *
+     * @return 当前员工VO
+     */
+    EmployeeVO getCurrentEmployee();
     
     /**
      * 查询员工列表（支持数据权限过滤）

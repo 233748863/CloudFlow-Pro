@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { parseWorkflowGraphDefinition } from '../../utils/workflowGraph';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 import { WORKFLOW_CATEGORY_OPTIONS, getWorkflowCategoryLabel, normalizeWorkflowCategory } from '../../utils/workflowCategory';
+import { downloadBlob } from '../../utils/download';
 
 // 扩展 WorkflowDefinition 类型，tags 解析为数组
 interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
@@ -545,17 +546,13 @@ export const ProcessManagement = () => {
         fileName = `workflows_batch_${new Date().toISOString().split('T')[0]}.json`;
       }
 
-      // 创建下载链接并触发下载
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const downloadedFileName = downloadBlob(blob, fileName);
 
-      toast.success(exportType === 'single' ? '流程导出成功' : `成功导出 ${selectedIds.length} 个流程`);
+      toast.success(
+        exportType === 'single'
+          ? `流程已导出，下载文件：${downloadedFileName}`
+          : `已导出 ${selectedIds.length} 个流程，下载文件：${downloadedFileName}`,
+      );
       setShowExportModal(false);
       
       // 批量导出后清空选择

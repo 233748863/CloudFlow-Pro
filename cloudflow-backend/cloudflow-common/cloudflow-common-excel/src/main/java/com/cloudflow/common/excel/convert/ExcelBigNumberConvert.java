@@ -43,11 +43,15 @@ public class ExcelBigNumberConvert implements Converter<Long> {
     @Override
     public WriteCellData<?> convertToExcelData(WriteConverterContext<Long> context) {
         Long value = context.getValue();
+        if (value == null) {
+            // 空值导出为空单元格，避免 null 转 BigDecimal 时抛异常
+            return new WriteCellData<>("");
+        }
         if (value != null && (value > MAX_SAFE_INTEGER || value < MIN_SAFE_INTEGER)) {
             // 超出安全范围，转为字符串
             return new WriteCellData<>(value.toString());
         }
         // 安全范围内，正常写入数值
-        return new WriteCellData<>(new BigDecimal(value));
+        return new WriteCellData<>(BigDecimal.valueOf(value));
     }
 }

@@ -59,6 +59,8 @@ import {
 import AssetForm from "./AssetForm";
 import { useMount } from "@/hooks/useMount";
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 // 状态映射
 const STATUS_MAP: Record<
@@ -131,8 +133,7 @@ const AssetList: React.FC = () => {
           category: filterCategory || undefined,
           status: filterStatus || undefined,
         };
-        const res: any = await getAssetList(params);
-        const data = res.data || res;
+        const data = await getAssetList(params) as any;
         // 兼容分页和非分页返回
         if (data.records) {
           setAssets(data.records);
@@ -143,6 +144,7 @@ const AssetList: React.FC = () => {
         }
       } catch (error) {
         console.error("加载资产列表失败", error);
+        toast.error(getErrorMessage(error, "加载资产列表失败"));
       }
     },
     [pageNum, pageSize, searchName, searchCode, filterCategory, filterStatus],
@@ -151,20 +153,22 @@ const AssetList: React.FC = () => {
   // 加载统计数据
   const loadStats = async () => {
     try {
-      const res: any = await getAssetStatistics();
-      setStats(res.data || res);
+      const res = await getAssetStatistics() as any;
+      setStats(res);
     } catch (error) {
       console.error("加载统计失败", error);
+      toast.error(getErrorMessage(error, "加载资产统计失败"));
     }
   };
 
   // 加载分类列表
   const loadCategories = async () => {
     try {
-      const res: any = await getAssetCategories();
-      setCategories(res.data || res || []);
+      const res = await getAssetCategories() as any;
+      setCategories(res || []);
     } catch (error) {
       console.error("加载分类失败", error);
+      toast.error(getErrorMessage(error, "加载资产分类失败"));
     }
   };
 
@@ -224,10 +228,12 @@ const AssetList: React.FC = () => {
     if (!window.confirm(`确定要删除资产「${asset.name}」吗？`)) return;
     try {
       await deleteAsset(asset.assetId);
+      toast.success("删除成功");
       loadData();
       loadStats();
     } catch (error) {
       console.error("删除失败", error);
+      toast.error(getErrorMessage(error, "删除失败"));
     }
   };
 
@@ -241,10 +247,12 @@ const AssetList: React.FC = () => {
     if (isNaN(userId)) return;
     try {
       await borrowAsset(asset.assetId, userId);
+      toast.success("领用成功");
       loadData();
       loadStats();
     } catch (error) {
       console.error("领用失败", error);
+      toast.error(getErrorMessage(error, "领用失败"));
     }
   };
 
@@ -254,10 +262,12 @@ const AssetList: React.FC = () => {
     if (!window.confirm(`确定归还资产「${asset.name}」吗？`)) return;
     try {
       await returnAsset(asset.assetId);
+      toast.success("归还成功");
       loadData();
       loadStats();
     } catch (error) {
       console.error("归还失败", error);
+      toast.error(getErrorMessage(error, "归还失败"));
     }
   };
 
@@ -274,14 +284,17 @@ const AssetList: React.FC = () => {
     try {
       if (remarkAction === "repair") {
         await repairAsset(remarkAssetId, remarkText);
+        toast.success("送修成功");
       } else {
         await scrapAsset(remarkAssetId, remarkText);
+        toast.success("报废成功");
       }
       setIsRemarkOpen(false);
       loadData();
       loadStats();
     } catch (error) {
       console.error("操作失败", error);
+      toast.error(getErrorMessage(error, "操作失败"));
     }
   };
 
@@ -315,10 +328,11 @@ const AssetList: React.FC = () => {
     if (!asset.assetId) return;
     setSelectedAsset(asset);
     try {
-      const res: any = await getAssetLogs(asset.assetId);
-      setAssetLogs(res.data || res || []);
+      const res = await getAssetLogs(asset.assetId) as any;
+      setAssetLogs(res || []);
     } catch (error) {
       console.error("加载日志失败", error);
+      toast.error(getErrorMessage(error, "加载资产日志失败"));
       setAssetLogs([]);
     }
     setIsLogOpen(true);

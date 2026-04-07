@@ -126,7 +126,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             expenseAction.setName("报销申请");
             expenseAction.setIcon("dollar");
             expenseAction.setColor("orange");
-            expenseAction.setPath("/expense/apply");
+            expenseAction.setPath("/expense/claim");
             quickActions.add(expenseAction);
             
             WorkplaceSummaryDTO.QuickAction meetingAction = new WorkplaceSummaryDTO.QuickAction();
@@ -134,7 +134,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             meetingAction.setName("会议室预订");
             meetingAction.setIcon("users");
             meetingAction.setColor("purple");
-            meetingAction.setPath("/meeting/booking");
+            meetingAction.setPath("/meeting-room");
             quickActions.add(meetingAction);
             
             summary.setQuickActions(quickActions);

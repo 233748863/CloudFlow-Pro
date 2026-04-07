@@ -310,9 +310,23 @@ export const Dashboard = () => {
     { label: '出差申请', icon: <Briefcase size={20} />, path: '/office/business-trip', tone: 'bg-rose-50 text-rose-600' },
     { label: '用车申请', icon: <Car size={20} />, path: '/admin/vehicle/booking', tone: 'bg-slate-100 text-slate-600' },
     { label: '考勤打卡', icon: <UserCheck size={20} />, path: '/hr/attendance/checkin', tone: 'bg-pink-50 text-pink-600' },
-    { label: '加班申请', icon: <Timer size={20} />, path: '/hr/overtime', tone: 'bg-amber-50 text-amber-600' },
+    { label: '加班申请', icon: <Timer size={20} />, path: '/hr/overtime/applications', tone: 'bg-amber-50 text-amber-600' },
     { label: '通讯录', icon: <Building2 size={20} />, path: '/office/contact', tone: 'bg-slate-100 text-slate-600' },
   ];
+
+  // 迁移后的正式入口补齐到桌面工作台，避免只存在路由而没有可见入口。
+  shortcuts.splice(6, 0, {
+    label: '付款申请',
+    icon: <FileText size={20} />,
+    path: '/payment/request',
+    tone: 'bg-emerald-50 text-emerald-600',
+  });
+  shortcuts.splice(10, 0, {
+    label: '请假申请',
+    icon: <Calendar size={20} />,
+    path: '/hr/leave/application',
+    tone: 'bg-emerald-50 text-emerald-600',
+  });
 
   const focusItems = [
     pendingCount > 0

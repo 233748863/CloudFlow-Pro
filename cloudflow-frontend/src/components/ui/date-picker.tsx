@@ -30,6 +30,8 @@ interface DatePickerProps {
   id?: string;
   /** input 的 name */
   name?: string;
+  /** 视觉风格 */
+  variant?: 'default' | 'glass';
 }
 
 // ==================== 工具函数 ====================
@@ -96,14 +98,18 @@ interface CalendarPanelProps {
   onSelectDate: (year: number, month: number, day: number) => void;
   onChangeMonth: (year: number, month: number) => void;
   onQuickDate?: (kind: QuickDateKind) => void;
+  variant?: 'default' | 'glass';
 }
 
-function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth, onQuickDate }: CalendarPanelProps) {
+function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth, onQuickDate, variant = 'default' }: CalendarPanelProps) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
   const today = new Date();
   const todayStr = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
-  const quickDateButtonClass = "px-2 py-1 text-xs text-pink-600 bg-pink-50 hover:bg-pink-100 rounded-md font-medium transition-colors shrink-0";
+  const isGlass = variant === 'glass';
+  const quickDateButtonClass = isGlass
+    ? "px-2 py-1 text-xs text-pink-600 bg-white/80 hover:bg-white rounded-md font-medium transition-colors shrink-0 ring-1 ring-white/80 shadow-[0_8px_14px_rgba(15,23,42,0.04)]"
+    : "px-2 py-1 text-xs text-pink-600 bg-pink-50 hover:bg-pink-100 rounded-md font-medium transition-colors shrink-0";
 
   // 上个月的尾部天数
   const prevMonthDays = getDaysInMonth(year, month - 1 < 0 ? 11 : month - 1);
@@ -146,13 +152,13 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
   };
 
   return (
-    <div className="p-3">
+    <div className={isGlass ? 'p-3 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(248,250,252,0.56))]' : 'p-3'}>
       {/* 月份导航 */}
       <div className="flex items-center justify-between mb-2.5">
         <button
           type="button"
           onClick={goToPrevMonth}
-          className="h-7 w-7 grid place-items-center rounded-lg hover:bg-pink-50 text-slate-500 hover:text-pink-600 transition-colors"
+          className={isGlass ? 'h-7 w-7 grid place-items-center rounded-lg bg-white/72 text-slate-500 ring-1 ring-white/80 hover:bg-white hover:text-pink-600 transition-colors' : 'h-7 w-7 grid place-items-center rounded-lg hover:bg-pink-50 text-slate-500 hover:text-pink-600 transition-colors'}
         >
           <ChevronLeft size={16} />
         </button>
@@ -162,7 +168,7 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
         <button
           type="button"
           onClick={goToNextMonth}
-          className="h-7 w-7 grid place-items-center rounded-lg hover:bg-pink-50 text-slate-500 hover:text-pink-600 transition-colors"
+          className={isGlass ? 'h-7 w-7 grid place-items-center rounded-lg bg-white/72 text-slate-500 ring-1 ring-white/80 hover:bg-white hover:text-pink-600 transition-colors' : 'h-7 w-7 grid place-items-center rounded-lg hover:bg-pink-50 text-slate-500 hover:text-pink-600 transition-colors'}
         >
           <ChevronRight size={16} />
         </button>
@@ -189,7 +195,7 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
               else onSelectDate(year, month - 1, day);
               goToPrevMonth();
             }}
-            className="h-8 rounded-lg text-[11px] text-slate-300 hover:bg-slate-50 hover:text-slate-400 transition-colors"
+            className={isGlass ? 'h-8 rounded-lg text-[11px] text-slate-300 hover:bg-white/70 hover:text-slate-400 transition-colors' : 'h-8 rounded-lg text-[11px] text-slate-300 hover:bg-slate-50 hover:text-slate-400 transition-colors'}
           >
             {day}
           </button>
@@ -234,7 +240,7 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
               else onSelectDate(year, month + 1, day);
               goToNextMonth();
             }}
-            className="h-8 rounded-lg text-[11px] text-slate-300 hover:bg-slate-50 hover:text-slate-400 transition-colors"
+            className={isGlass ? 'h-8 rounded-lg text-[11px] text-slate-300 hover:bg-white/70 hover:text-slate-400 transition-colors' : 'h-8 rounded-lg text-[11px] text-slate-300 hover:bg-slate-50 hover:text-slate-400 transition-colors'}
           >
             {day}
           </button>
@@ -242,7 +248,7 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
       </div>
 
       {/* 底部快捷日期（同一行展示） */}
-      <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+      <div className={`mt-2.5 pt-2.5 ${isGlass ? 'border-t border-white/75' : 'border-t border-slate-100'}`}>
         <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto hide-scrollbar">
           <button
             type="button"
@@ -296,9 +302,10 @@ interface TimePanelProps {
   minute: number;
   onChangeTime: (hour: number, minute: number) => void;
   layout?: 'row' | 'col';
+  variant?: 'default' | 'glass';
 }
 
-function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProps) {
+function TimePanel({ hour, minute, onChangeTime, layout = 'col', variant = 'default' }: TimePanelProps) {
   const hourRef = useRef<HTMLDivElement>(null);
   const minuteRef = useRef<HTMLDivElement>(null);
 
@@ -315,12 +322,13 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
   }, [hour, minute]);
 
   const isRow = layout === 'row';
+  const isGlass = variant === 'glass';
 
   return (
-    <div className={`flex ${isRow ? 'flex-row h-64' : 'flex-col h-52 md:h-[300px] border-t border-slate-100 md:border-t-0 md:border-l'} w-full bg-white`}>
+    <div className={`flex ${isRow ? 'flex-row h-64' : `flex-col h-52 md:h-[300px] ${isGlass ? 'border-t border-white/75 md:border-t-0 md:border-l' : 'border-t border-slate-100 md:border-t-0 md:border-l'}`} w-full ${isGlass ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(248,250,252,0.56))]' : 'bg-white'}`}>
       {/* 小时列 */}
-      <div className={`flex-1 flex flex-col ${isRow ? 'border-r border-slate-100' : 'border-b border-slate-100'} min-h-0`}>
-        <div className="text-center text-[11px] font-semibold text-slate-500 py-2 bg-slate-50/80 shrink-0">
+      <div className={`flex-1 flex flex-col ${isRow ? (isGlass ? 'border-r border-white/75' : 'border-r border-slate-100') : (isGlass ? 'border-b border-white/75' : 'border-b border-slate-100')} min-h-0`}>
+        <div className={`shrink-0 py-2 text-center text-[11px] font-semibold text-slate-500 ${isGlass ? 'bg-white/62' : 'bg-slate-50/80'}`}>
           时
         </div>
         <div ref={hourRef} className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar">
@@ -334,7 +342,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
                 w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
                 ${i === hour
                   ? 'bg-pink-500 text-white font-semibold shadow-sm shadow-pink-200'
-                  : 'text-slate-600 hover:bg-pink-50 hover:text-pink-600'
+                  : isGlass ? 'text-slate-600 hover:bg-white/78 hover:text-pink-600' : 'text-slate-600 hover:bg-pink-50 hover:text-pink-600'
                 }
               `}
             >
@@ -346,7 +354,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
 
       {/* 分钟列 */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="text-center text-[11px] font-semibold text-slate-500 py-2 bg-slate-50/80 shrink-0">
+        <div className={`shrink-0 py-2 text-center text-[11px] font-semibold text-slate-500 ${isGlass ? 'bg-white/62' : 'bg-slate-50/80'}`}>
           分
         </div>
         <div ref={minuteRef} className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar">
@@ -360,7 +368,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
                 w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
                 ${i === minute
                   ? 'bg-pink-500 text-white font-semibold shadow-sm shadow-pink-200'
-                  : 'text-slate-600 hover:bg-pink-50 hover:text-pink-600'
+                  : isGlass ? 'text-slate-600 hover:bg-white/78 hover:text-pink-600' : 'text-slate-600 hover:bg-pink-50 hover:text-pink-600'
                 }
               `}
             >
@@ -376,7 +384,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
 // ==================== 主组件 ====================
 
 export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
-  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', min, max, id, name, required }, ref) => {
+  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', min, max, id, name, required, variant = 'default' }, ref) => {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -573,10 +581,13 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
 
     /** 默认占位文本 */
     const defaultPlaceholder = type === 'date' ? '选择日期' : type === 'time' ? '选择时间' : '选择日期和时间';
-    const quickTimeButtonClass = "px-2.5 py-1 text-[11px] rounded-md bg-white border border-slate-200 text-slate-600 hover:text-pink-600 hover:border-pink-200 hover:bg-pink-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    const isGlass = variant === 'glass';
+    const quickTimeButtonClass = isGlass
+      ? "px-2.5 py-1 text-[11px] rounded-md bg-white/80 border border-white/80 text-slate-600 hover:text-pink-600 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_8px_14px_rgba(15,23,42,0.04)]"
+      : "px-2.5 py-1 text-[11px] rounded-md bg-white border border-slate-200 text-slate-600 hover:text-pink-600 hover:border-pink-200 hover:bg-pink-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
     return (
-      <div ref={containerRef} className={`relative ${className}`}>
+      <div ref={containerRef} className={`relative ${open ? 'z-[120]' : 'z-0'} ${className}`}>
         {/* 隐藏的原生 input，用于表单提交 */}
         <input type="hidden" id={id} name={name} value={value} required={required} />
 
@@ -587,8 +598,10 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           onClick={() => !disabled && setOpen(!open)}
           className={`
             group w-full h-11 flex items-center gap-2 px-3 text-sm text-left
-            border border-slate-200 rounded-xl bg-white shadow-sm
-            hover:border-pink-300 hover:shadow transition-all
+            border rounded-xl transition-all
+            ${isGlass
+              ? 'border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.68))] shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md hover:border-pink-100 hover:bg-white'
+              : 'border-slate-200 bg-white shadow-sm hover:border-pink-300 hover:shadow'}
             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300 focus-visible:ring-offset-1 focus-visible:ring-offset-white
             disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:shadow-none
             ${open ? 'ring-2 ring-pink-300 border-pink-200 shadow-md' : ''}
@@ -625,7 +638,10 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             ref={dropdownRef}
             className={`
-              absolute z-[100] bg-white rounded-2xl shadow-2xl border border-slate-100 ring-1 ring-black/5 overflow-hidden flex flex-col
+              absolute z-[130] rounded-2xl overflow-hidden flex flex-col
+              ${isGlass
+                ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.78))] shadow-[0_22px_46px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.72)] border border-white/80 backdrop-blur-2xl'
+                : 'bg-white shadow-2xl border border-slate-100 ring-1 ring-black/5'}
               w-full ${type === 'time' ? 'min-w-[12rem]' : 'min-w-[18rem]'}
               ${dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}
               left-0 animate-in fade-in-0 zoom-in-95 duration-150
@@ -642,6 +658,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                     onSelectDate={handleSelectDate}
                     onChangeMonth={(y, m) => { setViewYear(y); setViewMonth(m); }}
                     onQuickDate={applyQuickDate}
+                    variant={variant}
                   />
                 </div>
               )}
@@ -654,6 +671,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                     minute={tempMinute}
                     onChangeTime={handleChangeTime}
                     layout={type === 'time' ? 'row' : 'col'}
+                    variant={variant}
                   />
                 </div>
               )}
@@ -661,7 +679,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
 
             {/* datetime-local 模式的确认按钮 */}
             {type === 'datetime-local' && (
-              <div className="p-2.5 border-t border-slate-100 bg-slate-50/80 w-full">
+              <div className={`w-full p-2.5 ${isGlass ? 'border-t border-white/75 bg-[linear-gradient(180deg,rgba(248,250,252,0.74),rgba(255,255,255,0.66))]' : 'border-t border-slate-100 bg-slate-50/80'}`}>
                 {/* 快捷时间按钮：恢复为文字按钮 */}
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
@@ -713,7 +731,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
-                    className="px-3 py-1.5 text-xs bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors font-medium shadow-sm shadow-pink-200"
+                    className={`px-3 py-1.5 text-xs text-white rounded-lg transition-colors font-medium ${isGlass ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] shadow-[0_10px_18px_rgba(236,72,153,0.22)] hover:bg-pink-600' : 'bg-pink-500 shadow-sm shadow-pink-200 hover:bg-pink-600'}`}
                   >
                     确定
                   </button>

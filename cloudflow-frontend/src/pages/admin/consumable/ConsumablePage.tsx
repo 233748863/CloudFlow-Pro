@@ -4,6 +4,7 @@ import { consumableApi, Consumable } from '@/services/api/consumable';
 import { toast } from 'sonner';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { TableHead, TableHeader, TableActionHead } from '@/components/ui';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 
 /** 耗材管理页面 */
@@ -39,16 +40,15 @@ const ConsumablePage: React.FC = () => {
   const fetchList = useCallback(async () => {
     setLoading(true);
     try {
-      const res: any = await consumableApi.list({
+      const data: any = await consumableApi.list({
         pageNum,
         pageSize,
         name: searchName || undefined,
       });
-      const data = res?.data || res;
       setList(data?.records || []);
       setTotal(data?.total || 0);
-    } catch (err: any) {
-      toast.error('加载耗材列表失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '加载耗材列表失败'));
     } finally {
       setLoading(false);
     }
@@ -95,8 +95,8 @@ const ConsumablePage: React.FC = () => {
       }
       setShowForm(false);
       fetchList();
-    } catch (err: any) {
-      toast.error(err.message || '保存失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '保存失败'));
     } finally {
       setSubmitting(false);
     }
@@ -110,8 +110,8 @@ const ConsumablePage: React.FC = () => {
       await consumableApi.remove([item.consumableId]);
       toast.success('删除成功');
       fetchList();
-    } catch (err: any) {
-      toast.error('删除失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -137,8 +137,8 @@ const ConsumablePage: React.FC = () => {
       }
       setShowStockModal(false);
       fetchList();
-    } catch (err: any) {
-      toast.error(err.message || (stockAction === 'add' ? '入库失败' : '出库失败，可能库存不足'));
+    } catch (error) {
+      toast.error(getErrorMessage(error, stockAction === 'add' ? '入库失败' : '出库失败，可能库存不足'));
     } finally {
       setSubmitting(false);
     }

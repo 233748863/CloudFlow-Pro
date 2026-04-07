@@ -8,6 +8,12 @@ import { mapBackendUserToFrontend } from '../utils/mappers';
 import { ProcessTrace } from './ProcessTrace';
 import { SignatureModal } from './SignatureModal';
 import { toast } from 'sonner';
+import {
+  formatWorkflowFieldValue,
+  getWorkflowFieldLabel,
+  getWorkflowSummaryParts,
+  isWorkflowHiddenField,
+} from '../utils/workflowFormDisplay';
 
 export const TaskHandleModal = ({ 
   task, 
@@ -480,52 +486,7 @@ export const TaskHandleModal = ({
                         {(() => {
                             if (!task.formData || Object.keys(task.formData).length === 0) return null;
                             const fd = task.formData as Record<string, any>;
-                            // 定义摘要优先提取的字段（按优先级排列，跳过 ID 类和系统字段）
-                            const summaryKeys = [
-                                'reason', 'description', 'destination', 'payeeName',
-                                // 补卡/外勤
-                                'appealType', 'appealDate', 'checkType', 'address',
-                                // 请假
-                                'leaveType', 'leaveDays',
-                                // 加班
-                                'overtimeType', 'compensateType', 'workLocation', 'overtimeHours',
-                                // 出差
-                                'departure', 'transportType', 'tripDays', 'estimatedCost', 'accommodation',
-                                // 用车
-                                'vehiclePlate', 'isRoundTrip', 'passengerCount',
-                                // 报销/付款
-                                'category', 'startTime', 'startDate', 'totalAmount', 'amount',
-                            ];
-                            const skipKeys = new Set(['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'userId', 'appealId', 'leaveId', 'overtimeId', 'tripId', 'claimId', 'paymentId', 'delFlag', 'createBy', 'updateBy', 'createTime', 'updateTime', 'status', 'attachmentUrl', 'id', 'vehicleId', 'applicantId', 'driverId']);
-                            // 枚举翻译（复用）
-                            const enumQuick: Record<string, Record<string, string>> = {
-                                appealType: { MAKEUP: '补卡', FIELD: '外勤' },
-                                checkType: { '1': '签到', '2': '签退' },
-                                leaveType: { ANNUAL: '年假', SICK: '病假', PERSONAL: '事假', MATERNITY: '产假', MARRIAGE: '婚假', BEREAVEMENT: '丧假', OTHER: '其他' },
-                                overtimeType: { WORKDAY: '工作日', WEEKEND: '周末', HOLIDAY: '节假日' },
-                                compensateType: { SALARY: '加班费', LEAVE: '调休' },
-                                workLocation: { OFFICE: '办公室', HOME: '居家', OTHER: '其他' },
-                                transportType: { PLANE: '飞机', TRAIN: '火车', CAR: '自驾', OTHER: '其他' },
-                                accommodation: { SELF: '自行安排', COMPANY: '公司安排', NONE: '无需住宿' },
-                                isRoundTrip: { '0': '单程', '1': '往返' },
-                                category: { TRANSPORT: '交通', MEAL: '餐饮', HOTEL: '住宿', OFFICE: '办公', OTHER: '其他' },
-                            };
-                            const parts: string[] = [];
-                            for (const key of summaryKeys) {
-                                if (parts.length >= 3) break;
-                                const val = fd[key];
-                                if (val === null || val === undefined || val === '') continue;
-                                const translated = enumQuick[key]?.[String(val)] || String(val);
-                                parts.push(translated);
-                            }
-                            // 如果优先字段没提取到，回退到非系统字段
-                            if (parts.length === 0) {
-                                for (const [k, v] of Object.entries(fd)) {
-                                    if (parts.length >= 3) break;
-                                    if (skipKeys.has(k) || v === null || v === undefined || v === '') continue;
-                                    parts.push(String(v));
-                                }
-                            }
+                            const parts = getWorkflowSummaryParts(fd, 3);
                             return parts.length > 0 ? (
                                 <div className="text-xs text-slate-600 bg-white/60 p-2 rounded border border-pink-50/50">
                                     <span className="text-slate-400">业务摘要: </span>{parts.join(' / ')}
@@ -636,126 +597,15 @@ export const TaskHandleModal = ({
                             <div className="grid grid-cols-2 gap-3">
                                 {Object.entries(task.formData)
                                     .filter(([key]) => {
-                                        // 过滤掉系统内部字段和附件字段（附件单独渲染），只展示业务字段
-                                        const systemKeys = ['formId', 'processDefKey', 'startUserId', 'tenantId', 'instanceId', 'attachmentUrl'];
-                                        return !systemKeys.includes(key);
+                                        return !isWorkflowHiddenField(
+                                          key,
+                                          task.formData as Record<string, unknown>,
+                                        );
                                     })
                                     .map(([key, value]) => {
-                                        // 字段名中文映射（常见业务字段）
-                                        // OA 全模块业务字段中文映射
-                                        const labelMap: Record<string, string> = {
-                                            // 通用字段
-                                            userName: '申请人',
-                                            deptName: '部门',
-                                            reason: '申请事由',
-                                            description: '说明',
-                                            remark: '备注',
-                                            title: '标题',
-                                            category: '类别',
-                                            // 补卡/外勤
-                                            appealNo: '申请单号',
-                                            appealType: '申请类型',
-                                            appealDate: '补卡日期',
-                                            appealTime: '补卡时间',
-                                            checkType: '打卡类型',
-                                            originalRecordId: '原始考勤记录',
-                                            originalStatus: '原始打卡状态',
-                                            witnessName: '证明人',
-                                            location: '外勤经纬度',
-                                            address: '外勤地址',
-                                            // 请假
-                                            leaveNo: '请假单号',
-                                            leaveType: '请假类型',
-                                            leaveDays: '请假天数',
-                                            startTime: '开始时间',
-                                            endTime: '结束时间',
-                                            startDate: '开始日期',
-                                            endDate: '结束日期',
-                                            // 加班
-                                            overtimeNo: '加班单号',
-                                            overtimeType: '加班类型',
-                                            overtimeHours: '加班时长(小时)',
-                                            compensateType: '补偿方式',
-                                            workContent: '加班工作内容',
-                                            expectedOutput: '预计产出/成果',
-                                            needMeal: '是否需要用餐',
-                                            workLocation: '加班地点',
-                                            // 出差
-                                            tripNo: '出差单号',
-                                            departure: '出发地',
-                                            destination: '目的地',
-                                            tripDays: '出差天数',
-                                            estimatedCost: '预计费用',
-                                            transportType: '交通方式',
-                                            accommodation: '住宿安排',
-                                            contactPhone: '联系电话',
-                                            emergencyContact: '紧急联系人',
-                                            emergencyPhone: '紧急联系人电话',
-                                            companions: '同行人员',
-                                            itinerary: '行程安排',
-                                            // 用车
-                                            vehiclePlate: '车牌号',
-                                            applicantName: '申请人',
-                                            driverName: '驾驶员',
-                                            returnLocation: '还车地点',
-                                            isRoundTrip: '是否往返',
-                                            passengerCount: '乘客人数',
-                                            passengers: '乘客',
-                                            startMileage: '出发里程',
-                                            endMileage: '返回里程',
-                                            actualStartTime: '实际出发时间',
-                                            actualEndTime: '实际返回时间',
-                                            // 报销
-                                            claimNo: '报销单号',
-                                            totalAmount: '总金额',
-                                            expenseType: '费用类型',
-                                            invoiceCount: '发票数量',
-                                            // 付款
-                                            paymentNo: '付款单号',
-                                            paymentType: '付款类型',
-                                            payeeName: '收款方名称',
-                                            payeeAccount: '收款账号',
-                                            payeeBank: '开户行',
-                                            amount: '付款金额',
-                                            contractNo: '合同编号',
-                                            // 其他
-                                            urgency: '紧急程度',
-                                            projectName: '项目名称',
-                                            days: '天数',
-                                            department: '部门',
-                                        };
-                                        const label = labelMap[key] || key;
-
-                                        // 枚举值中文翻译映射
-                                        const enumMap: Record<string, Record<string, string>> = {
-                                            appealType: { MAKEUP: '补卡', FIELD: '外勤' },
-                                            checkType: { '1': '签到', '2': '签退' },
-                                            originalStatus: { LATE: '迟到', EARLY: '早退', ABSENT: '缺卡', ABNORMAL: '异常' },
-                                            leaveType: { ANNUAL: '年假', SICK: '病假', PERSONAL: '事假', MATERNITY: '产假', MARRIAGE: '婚假', BEREAVEMENT: '丧假', OTHER: '其他' },
-                                            overtimeType: { WORKDAY: '工作日', WEEKEND: '周末', HOLIDAY: '节假日' },
-                                            compensateType: { SALARY: '加班费', LEAVE: '调休' },
-                                            needMeal: { '0': '否', '1': '是' },
-                                            workLocation: { OFFICE: '办公室', HOME: '居家', OTHER: '其他' },
-                                            transportType: { PLANE: '飞机', TRAIN: '火车', CAR: '自驾', OTHER: '其他' },
-                                            accommodation: { SELF: '自行安排', COMPANY: '公司安排', NONE: '无需住宿' },
-                                            isRoundTrip: { '0': '单程', '1': '往返' },
-                                            paymentType: { TRANSFER: '转账', CHECK: '支票', CASH: '现金' },
-                                            category: { TRANSPORT: '交通', MEAL: '餐饮', HOTEL: '住宿', OFFICE: '办公', OTHER: '其他' },
-                                        };
-
-                                        // 格式化显示值（优先翻译枚举）
-                                        let displayValue: string;
-                                        if (value === null || value === undefined) {
-                                            displayValue = '-';
-                                        } else if (enumMap[key] && enumMap[key][String(value)]) {
-                                            displayValue = enumMap[key][String(value)];
-                                        } else if (typeof value === 'number') {
-                                            displayValue = value.toLocaleString();
-                                        } else if (typeof value === 'boolean') {
-                                            displayValue = value ? '是' : '否';
-                                        } else {
-                                            displayValue = String(value) || '-';
-                                        }
+                                        const formData = task.formData as Record<string, unknown>;
+                                        const label = getWorkflowFieldLabel(key);
+                                        const displayValue = formatWorkflowFieldValue(key, value, formData);
                                         
                                         return (
                                             <div key={key} className="bg-white p-2.5 rounded-lg border border-slate-100">

@@ -43,13 +43,19 @@ export const WorkspaceEmptyPanel = ({
   icon,
   title,
   description,
+  variant = 'default',
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
+  variant?: 'default' | 'glass';
 }) => (
-  <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center">
-    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm">
+  <div className={`flex flex-col items-center justify-center rounded-[28px] px-6 py-16 text-center ${variant === 'glass'
+    ? 'border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(248,250,252,0.72))] shadow-[0_14px_28px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl'
+    : 'border border-dashed border-slate-200 bg-slate-50/80'}`}>
+    <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-slate-300 ${variant === 'glass'
+      ? 'bg-white/78 shadow-[0_10px_20px_rgba(15,23,42,0.04)] ring-1 ring-white/80'
+      : 'bg-white shadow-sm'}`}>
       {icon}
     </div>
     <div className="text-sm font-semibold text-slate-700">{title}</div>

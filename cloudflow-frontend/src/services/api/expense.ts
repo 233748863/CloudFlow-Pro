@@ -1,5 +1,6 @@
 import request from './request';
 import { PageResult } from '@/types';
+import { toBackendDateString } from '@/utils/dateFormat';
 
 export interface ExpenseItem {
   id?: number;
@@ -52,6 +53,38 @@ export interface PaymentRequest {
   updateTime?: string;
 }
 
+const normalizePaymentExpectedDateForDisplay = (value?: string) =>
+  value ? String(value).slice(0, 10) : undefined;
+
+const normalizePaymentExpectedDateForSubmit = (value?: string) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return `${trimmed} 00:00:00`;
+  }
+
+  return toBackendDateString(trimmed);
+};
+
+const normalizePaymentRequest = (item: PaymentRequest): PaymentRequest => ({
+  ...item,
+  expectedDate: normalizePaymentExpectedDateForDisplay(item.expectedDate),
+});
+
+const normalizePaymentRequestPage = (page: PageResult<PaymentRequest>) => ({
+  ...page,
+  records: Array.isArray(page.records) ? page.records.map(normalizePaymentRequest) : page.records,
+  rows: Array.isArray(page.rows) ? page.rows.map(normalizePaymentRequest) : page.rows,
+});
+
+const normalizePaymentRequestPayload = (data: PaymentRequest): PaymentRequest => ({
+  ...data,
+  expectedDate: normalizePaymentExpectedDateForSubmit(data.expectedDate),
+});
+
 // 报销申请相关 API
 export const expenseClaimApi = {
   // 分页查询报销申请列表
@@ -103,13 +136,16 @@ export const expenseClaimApi = {
 // 付款申请相关 API
 export const paymentRequestApi = {
   // 分页查询付款申请列表
-  list: (params: {
+  list: async (params: {
     pageNum?: number;
     pageSize?: number;
     status?: string;
     paymentType?: string;
     userId?: number;
-  }) => request.get('/oa/payment/request/list', { params }) as Promise<PageResult<PaymentRequest>>,
+  }) => {
+    const response = await request.get('/oa/payment/request/list', { params }) as PageResult<PaymentRequest>;
+    return normalizePaymentRequestPage(response);
+  },
 
   // 导出付款申请
   export: (params: {
@@ -121,13 +157,16 @@ export const paymentRequestApi = {
   }) => request.get('/oa/payment/request/export', { params, responseType: 'blob' }) as Promise<Blob>,
 
   // 查询付款申请详情
-  getInfo: (id: number) => request.get(`/oa/payment/request/${id}`) as Promise<PaymentRequest>,
+  getInfo: async (id: number) => {
+    const response = await request.get(`/oa/payment/request/${id}`) as PaymentRequest;
+    return normalizePaymentRequest(response);
+  },
 
   // 新增付款申请
-  add: (data: PaymentRequest) => request.post('/oa/payment/request', data),
+  add: (data: PaymentRequest) => request.post('/oa/payment/request', normalizePaymentRequestPayload(data)),
 
   // 修改付款申请
-  edit: (data: PaymentRequest) => request.put('/oa/payment/request', data),
+  edit: (data: PaymentRequest) => request.put('/oa/payment/request', normalizePaymentRequestPayload(data)),
 
   // 删除付款申请
   remove: (ids: number[]) => request.delete(`/oa/payment/request/${ids.join(',')}`),

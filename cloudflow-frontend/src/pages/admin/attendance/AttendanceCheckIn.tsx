@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowRight, Calendar, CheckCircle2, CircleDot, Clock3, MapPin, RefreshCw, ShieldCheck, Sparkles, Timer, Wifi } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
-import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/hrAttendance';
+import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { useAuth } from '@/context/AuthContext';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
 import { useMount } from '@/hooks/useMount';
@@ -37,6 +37,7 @@ const AttendanceCheckIn: React.FC = () => {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [rule, setRule] = useState<AttendanceRule | null>(null);
+  const [ruleLoading, setRuleLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; msg: string } | null>(null);
   const [autoLocationRequested, setAutoLocationRequested] = useState(false);
@@ -52,12 +53,16 @@ const AttendanceCheckIn: React.FC = () => {
   }, []);
 
   useMount(() => {
-    getAttendanceRule().then(response => {
-      // 兼容不同返回结构
-      // 例：有的接口直接返回规则对象，有的会包装在 data 字段中
-      // @ts-ignore
-      setRule(response.data || response);
-    });
+    void getAttendanceRule()
+      .then((response) => {
+        setRule(response || null);
+      })
+      .catch(() => {
+        setRule(null);
+      })
+      .finally(() => {
+        setRuleLoading(false);
+      });
   });
 
   const getLocation = () => {
@@ -145,11 +150,19 @@ const AttendanceCheckIn: React.FC = () => {
   const secondLabel = currentTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
   const phaseInfo = useMemo(() => {
-    if (!rule) {
+    if (ruleLoading) {
       return {
         title: '规则加载中',
         hint: '正在同步今日考勤规则',
         tone: 'bg-slate-100 text-slate-600',
+      };
+    }
+
+    if (!rule) {
+      return {
+        title: '未配置考勤规则',
+        hint: '当前未读取到有效考勤规则，请联系 HR 检查班次与规则配置',
+        tone: 'bg-amber-50 text-amber-700',
       };
     }
 
@@ -176,7 +189,7 @@ const AttendanceCheckIn: React.FC = () => {
       hint: `当前已过下班时间 ${rule.checkOutTime}，请确认是否需要签退`,
       tone: 'bg-pink-50 text-pink-700',
     };
-  }, [currentTime, rule]);
+  }, [currentTime, rule, ruleLoading]);
 
   const locationStatus = location
     ? {

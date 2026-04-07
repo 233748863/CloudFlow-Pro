@@ -64,7 +64,7 @@ export const Select = ({
 
   return (
     <SelectContext.Provider value={{ value, onValueChange, disabled, open, setOpen, labels, registerLabel }}>
-      <div className="relative" ref={containerRef}>{children}</div>
+      <div className={`relative ${open ? 'z-[120]' : 'z-0'}`} ref={containerRef}>{children}</div>
     </SelectContext.Provider>
   );
 };
@@ -120,7 +120,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
   const { open } = React.useContext(SelectContext);
   return (
     <div
-      className={`absolute z-50 min-w-[8rem] max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg ${className} top-full mt-1 w-full ${
+      className={`absolute z-[130] min-w-[8rem] max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg ${className} top-full mt-1 w-full ${
         open ? '' : 'invisible pointer-events-none h-0 overflow-hidden border-0 p-0 m-0'
       }`}
       style={open ? undefined : { position: 'absolute', width: 0, height: 0, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}

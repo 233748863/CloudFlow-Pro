@@ -163,10 +163,10 @@ export const MobileReimbursement: React.FC = () => {
         })),
       };
       // 1. 先创建报销单（草稿）
-      const createRes: any = await expenseClaimApi.add(claimData as any);
+      const createRes = await expenseClaimApi.add(claimData as any);
 
       // 2. 提交审批（启动工作流）
-      const claimId = createRes?.data?.id || createRes?.id;
+      const claimId = createRes?.id;
       if (claimId) {
         await expenseClaimApi.submit(claimId);
       }
