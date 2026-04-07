@@ -13,24 +13,10 @@
     <description>CloudFlow Seata 分布式事务模块（预留，暂不启用）</description>
 
     <dependencies>
-        <!-- Seata Spring Boot Starter（通过 Spring Cloud Alibaba 管理版本） -->
-        <dependency>
-            <groupId>com.alibaba.cloud</groupId>
-            <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
-            <!-- 排除默认的 seata-all，使用 Spring Cloud Alibaba 管理的版本 -->
-            <exclusions>
-                <exclusion>
-                    <groupId>io.seata</groupId>
-                    <artifactId>seata-all</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- Spring Web（用于拦截器） -->
+        <!-- 当前模块仅提供自动配置入口，真正启用 Seata 时再由业务服务显式引入 starter -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-            <scope>provided</scope>
+            <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
     </dependencies>
 

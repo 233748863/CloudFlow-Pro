@@ -14,6 +14,7 @@ import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.mapper.SysAssetMapper;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.service.IAssetService;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
             
         QrConfig config = new QrConfig(300, 300);
         config.setMargin(2);
+        config.setErrorCorrection(ErrorCorrectionLevel.M);
         QrCodeUtil.generate(content, config, "png", outputStream);
     }
 

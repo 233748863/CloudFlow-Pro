@@ -22,17 +22,20 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <spring-boot.version>3.2.4</spring-boot.version>
+        <spring-boot.version>3.2.6</spring-boot.version>
         <spring-cloud.version>2023.0.1</spring-cloud.version>
         <spring-cloud-alibaba.version>2023.0.1.0</spring-cloud-alibaba.version>
 
         <!-- 第三方依赖版本统一管理 -->
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <hutool.version>5.8.26</hutool.version>
-        <lombok.version>1.18.30</lombok.version>
+        <lombok.version>1.18.32</lombok.version>
         <knife4j.version>4.5.0</knife4j.version>
         <mysql.version>8.0.33</mysql.version>
+        <aws.sdk.version>2.25.16</aws.sdk.version>
+        <jackson.version>2.16.1</jackson.version>
         <redisson.version>3.27.0</redisson.version>
+        <aspectj.version>1.9.22.1</aspectj.version>
         <sa-token.version>1.45.0</sa-token.version>
         <ttl.version>2.14.5</ttl.version>
         <zxing.version>3.5.3</zxing.version>
@@ -40,7 +43,13 @@
         <httpclient5.version>5.2.1</httpclient5.version>
         <dynamic-ds.version>4.3.1</dynamic-ds.version>
         <javers.version>7.6.2</javers.version>
-        <easyexcel.version>3.3.4</easyexcel.version>
+        <gson.version>2.11.0</gson.version>
+        <jsqlparser.version>4.9</jsqlparser.version>
+        <fastexcel.version>1.0.0</fastexcel.version>
+        <poi.version>5.2.5</poi.version>
+        <commons-io.version>2.16.1</commons-io.version>
+        <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
+        <maven.dependency.plugin.version>3.7.0</maven.dependency.plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -67,6 +76,22 @@
                 <groupId>com.alibaba.cloud</groupId>
                 <artifactId>spring-cloud-alibaba-dependencies</artifactId>
                 <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Jackson BOM：统一收敛 Redisson、Spring Boot、Swagger 的 Jackson 版本 -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- AWS SDK BOM -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -162,6 +187,61 @@
                 <version>${hutool.version}</version>
             </dependency>
 
+            <!-- Jackson：显式锁定关键组件，避免被 Spring Boot BOM 回落到较低版本 -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <!-- Gson：收敛 Javers 等库带来的版本漂移 -->
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${gson.version}</version>
+            </dependency>
+
+            <!-- AspectJ：收敛 Spring Aspects 与 Spring AOP 之间的细粒度版本差异 -->
+            <dependency>
+                <groupId>org.aspectj</groupId>
+                <artifactId>aspectjweaver</artifactId>
+                <version>${aspectj.version}</version>
+            </dependency>
+
+            <!-- MyBatis-Plus 解析器 -->
+            <dependency>
+                <groupId>com.github.jsqlparser</groupId>
+                <artifactId>jsqlparser</artifactId>
+                <version>${jsqlparser.version}</version>
+            </dependency>
+
+            <!-- Lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+
             <!-- MyBatis-Plus -->
             <dependency>
                 <groupId>com.baomidou</groupId>
@@ -171,8 +251,8 @@
 
             <!-- MySQL 驱动 -->
             <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
                 <version>${mysql.version}</version>
             </dependency>
 
@@ -180,6 +260,11 @@
             <dependency>
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson</artifactId>
                 <version>${redisson.version}</version>
             </dependency>
 
@@ -227,6 +312,11 @@
             <!-- Groovy 脚本引擎 -->
             <dependency>
                 <groupId>org.codehaus.groovy</groupId>
+                <artifactId>groovy</artifactId>
+                <version>${groovy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.codehaus.groovy</groupId>
                 <artifactId>groovy-all</artifactId>
                 <version>${groovy.version}</version>
                 <type>pom</type>
@@ -253,11 +343,33 @@
                 <version>${javers.version}</version>
             </dependency>
 
-            <!-- EasyExcel -->
+            <!-- Excel 导入导出：统一在根 POM 控制版本 -->
             <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>easyexcel</artifactId>
-                <version>${easyexcel.version}</version>
+                <groupId>cn.idev.excel</groupId>
+                <artifactId>fastexcel</artifactId>
+                <version>${fastexcel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.idev.excel</groupId>
+                <artifactId>fastexcel-core</artifactId>
+                <version>${fastexcel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+
+            <!-- 固定 commons-io 版本，避免被其他间接依赖降级后导致 POI 缺少 builder() 方法 -->
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -271,7 +383,23 @@
                     <version>${spring-boot.version}</version>
                     <configuration>
                         <jvmArguments>-Dfile.encoding=UTF-8</jvmArguments>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven.enforcer.plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>${maven.dependency.plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -294,6 +422,86 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <parameters>true</parameters>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-dependency-governance</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <!-- 防止同一个依赖在 POM 中被重复声明 -->
+                                <banDuplicatePomDependencyVersions/>
+                                <!-- 确保多模块工程中的内部模块版本始终一致 -->
+                                <reactorModuleConvergence/>
+                                <!-- 防止被较低版本的传递依赖悄悄覆盖 -->
+                                <requireUpperBoundDeps/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>analyze-direct-dependencies</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                        <configuration>
+                            <failOnWarning>true</failOnWarning>
+                            <ignoredUsedUndeclaredDependencies>
+                                <!-- Spring / Jakarta / MyBatis 等 starter 体系允许通过直接声明的 starter 间接提供 -->
+                                <ignoredUsedUndeclaredDependency>org.springframework:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>org.springframework.boot:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>org.springframework.cloud:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>jakarta.annotation:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>jakarta.servlet:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>jakarta.validation:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>org.apache.tomcat.embed:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>com.baomidou:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>org.mybatis:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>cn.dev33:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>io.swagger.core.v3:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>com.fasterxml.jackson.core:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>com.fasterxml.jackson.dataformat:*</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>org.aspectj:aspectjweaver</ignoredUsedUndeclaredDependency>
+                                <ignoredUsedUndeclaredDependency>org.slf4j:slf4j-api</ignoredUsedUndeclaredDependency>
+                            </ignoredUsedUndeclaredDependencies>
+                            <ignoredUnusedDeclaredDependencies>
+                                <!-- starter / bundle 型依赖本身通常不被源码直接 import，但必须保留为直接声明 -->
+                                <!-- JUnit Engine 仅用于测试运行时发现，不会被源码直接引用 -->
+                                <ignoredUnusedDeclaredDependency>org.junit.jupiter:junit-jupiter-engine</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>org.projectlombok:lombok</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>org.springframework.boot:spring-boot-starter</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>org.springframework.boot:spring-boot-starter-*</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>org.springframework.cloud:spring-cloud-starter-*</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>com.alibaba.cloud:spring-cloud-starter-*</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>cn.dev33:sa-token-*</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>com.baomidou:mybatis-plus-spring-boot3-starter</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>com.baomidou:dynamic-datasource-spring-boot3-starter</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>org.redisson:redisson-spring-boot-starter</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>com.github.xiaoymin:knife4j-openapi3-jakarta-spring-boot-starter</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>io.micrometer:micrometer-registry-prometheus</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>com.mysql:mysql-connector-j</ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>com.cloudflow:cloudflow-common-*</ignoredUnusedDeclaredDependency>
+                            </ignoredUnusedDeclaredDependencies>
+                            <ignoredNonTestScopedDependencies>
+                                <!-- FastExcel 传递带入的 POI 在当前项目里主要用于测试校验导出结果 -->
+                                <ignoredNonTestScopedDependency>org.apache.poi:poi</ignoredNonTestScopedDependency>
+                                <ignoredNonTestScopedDependency>org.apache.poi:poi-ooxml</ignoredNonTestScopedDependency>
+                            </ignoredNonTestScopedDependencies>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

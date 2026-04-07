@@ -11,23 +11,20 @@
 
     <artifactId>cloudflow-service-hr</artifactId>
     <name>CloudFlow HR Service</name>
-    <description>CloudFlow Pro HR人力资源管理微服务</description>
+    <description>CloudFlow Pro HR 人力资源管理微服务</description>
 
     <dependencies>
-        <!-- ==================== Spring Cloud 核心依赖 ==================== -->
-        <!-- Nacos 服务发现 -->
+        <!-- 注册与配置中心 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
-        
-        <!-- Nacos 配置中心 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
-        
-        <!-- Spring Boot Web -->
+
+        <!-- Web 与安全 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -36,130 +33,122 @@
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot3-starter</artifactId>
         </dependency>
-        
-        <!-- OpenFeign 服务调用 -->
+
+        <!-- 远程调用 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
-        
-        <!-- Spring Cloud LoadBalancer 负载均衡 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-core</artifactId>
+        </dependency>
 
-        <!-- ==================== CloudFlow 公共模块 ==================== -->
-        <!-- 公共安全模块（Sa-Token、TokenService、SecurityUtils） -->
-        <!-- 传递依赖：common-security -> common-redis -> common-core -->
+        <!-- CloudFlow 公共模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-security</artifactId>
         </dependency>
-
-        <!-- 公共多数据源模块（包含 MyBatis-Plus、MySQL 驱动、dynamic-datasource） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-redis</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-datasource</artifactId>
         </dependency>
-
-        <!-- 操作日志模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-log</artifactId>
         </dependency>
-
-        <!-- 审计日志模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-audit</artifactId>
         </dependency>
-
-        <!-- 数据权限模块 -->
-        <dependency>
-            <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-data</artifactId>
-        </dependency>
-
-        <!-- 敏感信息脱敏模块 -->
-        <dependency>
-            <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-sensitive</artifactId>
-        </dependency>
-
-        <!-- Excel 导入导出模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-excel</artifactId>
         </dependency>
-
-        <!-- 文件存储模块（本地存储/MinIO/阿里云 OSS） -->
+        <dependency>
+            <groupId>cn.idev.excel</groupId>
+            <artifactId>fastexcel-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-oss</artifactId>
         </dependency>
-
-        <!-- 幂等性模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-idempotent</artifactId>
         </dependency>
-
-        <!-- 限流模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-ratelimiter</artifactId>
         </dependency>
 
-        <!-- ==================== 消息队列 ==================== -->
-        <!-- RabbitMQ（用于数据同步） -->
-        <!-- ==================== 定时任务 ==================== -->
-        <!-- Spring Boot Starter Quartz -->
+        <!-- HR 模块直接使用的第三方库 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-quartz</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+        </dependency>
 
-        <!-- ==================== 监控和健康检查 ==================== -->
-        <!-- Spring Boot Actuator -->
+        <!-- 监控与运维 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
-        <!-- Prometheus 指标导出 -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
-        <!-- ==================== 开发工具 ==================== -->
-        <!-- Lombok -->
+        <!-- 开发辅助 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
 
-        <!-- Spring Boot Configuration Processor -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- ==================== 测试依赖 ==================== -->
-        <!-- Spring Boot Test -->
+        <!-- 测试 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -169,14 +158,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
         </plugins>
     </build>

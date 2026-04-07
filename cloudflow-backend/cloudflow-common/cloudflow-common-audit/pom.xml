@@ -46,10 +46,17 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Hutool：默认审计处理器里直接使用了 SpringUtil -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

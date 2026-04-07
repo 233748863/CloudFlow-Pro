@@ -13,6 +13,12 @@
     <description>CloudFlow 防重复提交模块 - 基于 Redis + AOP 注解式防重复提交</description>
 
     <dependencies>
+        <!-- 直接使用了 UserContext 等核心上下文类型 -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-core</artifactId>
+        </dependency>
+
         <!-- 依赖 Redis 模块（RedisCache、Redisson） -->
         <dependency>
             <groupId>com.cloudflow</groupId>
@@ -30,6 +36,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- 直接使用了 StringRedisTemplate -->
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
         </dependency>
 
         <!-- Hutool 工具 -->

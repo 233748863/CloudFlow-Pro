@@ -40,6 +40,18 @@
             <artifactId>cloudflow-common-security</artifactId>
         </dependency>
 
+        <!-- Auth 源码里直接使用了 common-core 的响应体、上下文与工具类 -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-core</artifactId>
+        </dependency>
+
+        <!-- Auth 源码里直接使用了 Redis 相关公共工具 -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-redis</artifactId>
+        </dependency>
+
         <!-- 公共多数据源模块（包含 MyBatis-Plus、MySQL 驱动、dynamic-datasource） -->
         <!-- 通过 @DS("数据源名") 注解在 Mapper 层切换数据源 -->
         <dependency>
@@ -53,21 +65,34 @@
             <artifactId>cloudflow-common-log</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-sensitive</artifactId>
-        </dependency>
-
         <!-- 审计日志模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-audit</artifactId>
         </dependency>
 
-        <!-- ????????????/MinIO/??? OSS ?????? -->
+        <!-- 文件存储模块（本地存储/MinIO/阿里云 OSS） -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-oss</artifactId>
+        </dependency>
+
+        <!-- Auth 代码里直接使用了 Hutool、Redis API、JavaTimeModule 和 commons-lang3 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
         </dependency>
 
         <!-- Prometheus 指标导出 -->
@@ -76,10 +101,28 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- Spring Boot Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- 单元测试 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

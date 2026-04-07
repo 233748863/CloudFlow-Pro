@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>cloudflow-common-excel</artifactId>
-    <description>CloudFlow Excel 导入导出模块（基于 FastExcel/EasyExcel）</description>
+    <description>CloudFlow Excel 导入导出模块（基于 FastExcel）</description>
 
     <dependencies>
         <!-- CloudFlow 核心模块 -->
@@ -19,11 +19,16 @@
             <artifactId>cloudflow-common-core</artifactId>
         </dependency>
 
-        <!-- FastExcel（EasyExcel 升级版） -->
+        <!-- FastExcel Core：当前模块直接使用了读取/写入/转换相关核心 API -->
         <dependency>
             <groupId>cn.idev.excel</groupId>
-            <artifactId>fastexcel</artifactId>
-            <version>1.0.0</version>
+            <artifactId>fastexcel-core</artifactId>
+        </dependency>
+
+        <!-- Hutool：Excel 工具类里直接使用了集合和 ID 工具 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
         </dependency>
 
         <!-- Jakarta Servlet API -->
@@ -40,10 +45,27 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- 单元测试 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -52,10 +52,17 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Hutool：日志工具类里直接使用了 StrUtil、MapUtil、ServletUtil 等 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

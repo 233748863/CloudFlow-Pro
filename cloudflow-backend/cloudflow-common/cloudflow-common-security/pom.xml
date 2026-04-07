@@ -13,6 +13,12 @@
     <description>CloudFlow 公共安全模块 - Sa-Token、TokenService、@Inner 注解、SecurityUtils</description>
 
     <dependencies>
+        <!-- 直接使用了 common-core 里的常量、上下文和响应对象 -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-core</artifactId>
+        </dependency>
+
         <!-- 依赖 redis 模块（TokenService 需要 RedisCache） -->
         <dependency>
             <groupId>com.cloudflow</groupId>
@@ -37,6 +43,13 @@
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-redis-jackson</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
