@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  CheckCircle2,
   Clock,
   Download,
   Edit,
@@ -40,7 +41,6 @@ import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   WorkspaceBackdrop,
   WorkspaceEmptyPanel,
-  WorkspaceSectionHeader,
 } from '@/components/workspace/WorkspacePrimitives';
 
 const emptyForm = (): OvertimeApplicationForm => ({
@@ -263,239 +263,353 @@ export const OvertimeApplicationPage: React.FC = () => {
   const pendingCount = list.filter((item) => item.status === 'APPROVING').length;
   const approvedCount = list.filter((item) => item.status === 'APPROVED').length;
   const totalHours = list.reduce((sum, item) => sum + Number(item.duration || 0), 0);
+  const currentStatusLabel = searchParams.status ? (statusMap[searchParams.status] || searchParams.status) : '全部状态';
+  const currentTypeLabel = searchParams.overtimeType ? (overtimeTypeMap[searchParams.overtimeType] || searchParams.overtimeType) : '全部类型';
+  const hasActiveFilters = Boolean(searchParams.status || searchParams.overtimeType);
 
-  const focusItems = useMemo(
-    () => [
-      {
-        label: '待提交草稿',
-        value: `${draftCount} 条`,
-        hint: '还未提交审批的加班申请',
-        tone: 'bg-slate-100 text-slate-600',
-      },
-      {
-        label: '审批中',
-        value: `${pendingCount} 条`,
-        hint: '等待主管确认的加班申请',
-        tone: 'bg-pink-50 text-pink-600',
-      },
-      {
-        label: '累计时长',
-        value: `${totalHours.toFixed(1)} h`,
-        hint: '当前筛选结果下的加班总时长',
-        tone: 'bg-amber-50 text-amber-600',
-      },
-    ],
-    [draftCount, pendingCount, totalHours],
-  );
+  const statusQuickFilters = [
+    { label: '全部', value: '' },
+    { label: '草稿', value: 'DRAFT' },
+    { label: '审批中', value: 'APPROVING' },
+    { label: '已通过', value: 'APPROVED' },
+    { label: '已驳回', value: 'REJECTED' },
+    { label: '已取消', value: 'CANCELLED' },
+  ];
+
+  const heroMetrics = useMemo(() => ([
+    {
+      label: '当前结果',
+      value: `${total}`,
+      hint: hasActiveFilters ? `${currentStatusLabel} · ${currentTypeLabel}` : '默认视图下全部加班申请',
+      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
+      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-500',
+      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
+      icon: <Timer size={17} />,
+    },
+    {
+      label: '待提交草稿',
+      value: `${draftCount}`,
+      hint: draftCount > 0 ? '建议优先补齐时间段和事由后提交' : '当前没有待提交草稿',
+      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
+      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
+      icon: <Edit size={17} />,
+    },
+    {
+      label: '审批中',
+      value: `${pendingCount}`,
+      hint: pendingCount > 0 ? '可继续查看流程进度和审批节点' : '当前没有审批中的申请',
+      panelClassName: 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
+      icon: <Clock size={17} />,
+    },
+    {
+      label: '累计加班时长',
+      value: `${totalHours.toFixed(1)} h`,
+      hint: approvedCount > 0 ? `已通过 ${approvedCount} 条，便于快速估算投入` : '用于快速判断当前加班总量',
+      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
+      icon: <CheckCircle2 size={17} />,
+    },
+  ]), [approvedCount, currentStatusLabel, currentTypeLabel, draftCount, hasActiveFilters, pendingCount, total, totalHours]);
+
+  const workspaceOverviewItems = [
+    {
+      label: '记录数',
+      value: `${total} 条`,
+      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+    {
+      label: '状态',
+      value: currentStatusLabel,
+      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+    {
+      label: '类型',
+      value: currentTypeLabel,
+      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+    {
+      label: '视图',
+      value: hasActiveFilters ? '筛选结果' : '默认视图',
+      toneClassName: hasActiveFilters
+        ? 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.9),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06),inset_0_1px_0_rgba(255,255,255,0.75)]'
+        : 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
+    },
+  ];
+
+  const applyStatusFilter = (status: string) => {
+    setSearchParams(prev => ({ ...prev, status, pageNum: 1 }));
+  };
+
+  const handleResetFilters = () => {
+    setSearchParams({ status: '', overtimeType: '', pageNum: 1, pageSize: 10 });
+  };
 
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-            <div className="relative p-7 sm:p-8">
-              <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_55%)]" />
-              <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
-              <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
+      <div className="relative z-10 space-y-3">
+        <Card className="overflow-hidden rounded-[30px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="relative p-4 sm:p-5">
+            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%)]" />
+            <div className="absolute -right-14 top-4 h-32 w-32 rounded-full bg-pink-200/25 blur-3xl" />
+            <div className="absolute bottom-0 left-1/3 h-16 w-16 rounded-full bg-amber-100/50 blur-2xl" />
 
-              <div className="relative">
-                <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
-                    <Clock size={14} />
-                    {todayLabel}
-                  </span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
-                    {timeLabel}
-                  </span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
-                    加班申请
-                  </span>
+            <div className="relative space-y-3">
+              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                      <Clock size={14} />
+                      {todayLabel}
+                    </span>
+                    <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+                  </div>
+                  <h1 className="mt-3 text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">加班申请</h1>
                 </div>
 
-                <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="max-w-2xl">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
-                      <Timer size={14} />
-                      Overtime Application
+                <div className="flex flex-wrap gap-2 xl:justify-end">
+                  <Button
+                    className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600"
+                    onClick={handleAdd}
+                    disabled={selfServiceLocked}
+                  >
+                    <Plus size={15} className="mr-2" />
+                    新建申请
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-xl bg-white/85 px-4"
+                    onClick={handleExport}
+                  >
+                    <Download size={15} className="mr-2 text-pink-500" />
+                    导出结果
+                  </Button>
+                </div>
+              </div>
+
+              {restrictionMessage && (
+                <div
+                  data-testid="hr-self-service-restriction"
+                  className="rounded-[24px] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,247,237,0.88))] px-4 py-4 text-amber-900 shadow-[0_12px_26px_rgba(245,158,11,0.08)]"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+                      <AlertCircle size={18} />
                     </div>
-                    <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-950 sm:text-[2.85rem]">
-                      加班申请
-                    </h1>
-                    <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
-                      当前页面已经切到 HR 加班模块的正式字段集合，只保留加班类型、时间区间、补偿方式和事由，不再写入兼容期的扩展元数据。
-                    </p>
+                    <div>
+                      <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助流程</div>
+                      <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {heroMetrics.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
+                  >
+                    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
+                    <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
+                    <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
+                          <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
+                        </div>
+                        <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
+                          {item.icon}
+                        </div>
+                      </div>
+
+                      <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-3">
+            <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
+              <div className="relative px-4 py-4">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.09),transparent_60%)]" />
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">记录</div>
+                      <div className="mt-2 text-[1.65rem] font-bold tracking-tight text-slate-950">申请列表</div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                        {hasActiveFilters ? '已应用筛选' : '默认视图'}
+                      </span>
+                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                        共 {total} 条
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
+                    {workspaceOverviewItems.map((item) => (
+                      <div
+                        key={item.label}
+                        className={`rounded-[18px] border px-3.5 py-2.5 shadow-sm ${item.toneClassName}`}
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</div>
+                        <div className="mt-1.5 text-sm font-semibold tracking-tight">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-4 backdrop-blur-xl">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="inline-flex flex-wrap items-center gap-1 rounded-[20px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-md">
+                      {statusQuickFilters.map((item) => {
+                        const active = searchParams.status === item.value;
+                        return (
+                          <button
+                            key={item.value || 'ALL'}
+                            type="button"
+                            onClick={() => applyStatusFilter(item.value)}
+                            className={[
+                              'rounded-[16px] px-3 py-1.5 text-[11px] font-medium transition',
+                              active
+                                ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]'
+                                : 'text-slate-600 hover:bg-white/88 hover:text-pink-600',
+                            ].join(' ')}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {hasActiveFilters ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetFilters}
+                        className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                      >
+                        <RotateCcw size={15} className="mr-2" />
+                        清空所有条件
+                      </Button>
+                    ) : (
+                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                        当前未应用额外筛选
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+                    <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+                      <Select
+                        value={searchParams.status}
+                        onValueChange={(value) =>
+                          setSearchParams({ ...searchParams, status: value, pageNum: 1 })
+                        }
+                      >
+                        <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                          <SelectValue placeholder="请选择状态" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">全部状态</SelectItem>
+                          <SelectItem value="DRAFT">草稿</SelectItem>
+                          <SelectItem value="APPROVING">审批中</SelectItem>
+                          <SelectItem value="APPROVED">已通过</SelectItem>
+                          <SelectItem value="REJECTED">已驳回</SelectItem>
+                          <SelectItem value="CANCELLED">已取消</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={searchParams.overtimeType}
+                        onValueChange={(value) =>
+                          setSearchParams({ ...searchParams, overtimeType: value, pageNum: 1 })
+                        }
+                      >
+                        <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                          <SelectValue placeholder="请选择加班类型" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">全部类型</SelectItem>
+                          <SelectItem value="WORKDAY">工作日</SelectItem>
+                          <SelectItem value="WEEKEND">周末</SelectItem>
+                          <SelectItem value="HOLIDAY">节假日</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <Button
-                      className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600"
-                      onClick={handleAdd}
-                      disabled={selfServiceLocked}
+                      size="sm"
+                      onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })}
+                      className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
                     >
-                      <Plus size={16} className="mr-2" />
-                      新建申请
+                      <Search size={15} className="mr-2" />
+                      应用筛选
                     </Button>
+
                     <Button
                       variant="outline"
-                      className="h-12 rounded-2xl bg-white/85 px-6"
-                      onClick={handleExport}
+                      size="sm"
+                      onClick={handleResetFilters}
+                      className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
                     >
-                      <Download size={16} className="mr-2 text-pink-500" />
-                      导出 Excel
+                      <RotateCcw size={15} className="mr-2" />
+                      清空条件
                     </Button>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {restrictionMessage && (
-                  <div
-                    data-testid="hr-self-service-restriction"
-                    className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/90 px-4 py-4 text-amber-900"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
-                        <AlertCircle size={18} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助流程</div>
-                        <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">申请总数</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{total}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">当前筛选条件下的加班申请数</div>
-                  </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">审批中</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{pendingCount}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">等待审批流处理的申请</div>
-                  </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">累计时长</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{totalHours.toFixed(1)} h</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">筛选结果中的加班时长合计</div>
-                  </div>
+            <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.68))] px-4 py-3 backdrop-blur-xl">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">当前结果</div>
+                  <div className="mt-1 text-[11px] text-slate-400">轻玻璃视图下展示加班申请记录与当前操作</div>
                 </div>
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {total} 条</span>
               </div>
-            </div>
-          </Card>
-
-          <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-            <WorkspaceSectionHeader eyebrow="今日焦点" title="先看这些" />
-            <div className="mt-5 space-y-3">
-              {focusItems.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4"
-                >
-                  <div className={`rounded-2xl p-3 ${item.tone}`}>
-                    <Clock size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                      <div className="text-xs font-semibold text-slate-400">{item.value}</div>
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">{item.hint}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="flex flex-col gap-5">
-            <div className="rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
-              <WorkspaceSectionHeader eyebrow="申请工作区" title="加班申请记录" />
-              <div className="mt-2 text-sm leading-6 text-slate-500">
-                先按状态和加班类型筛选，再处理待提交草稿。
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-slate-100 bg-white/85 p-4 shadow-sm">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                <Select
-                  value={searchParams.status}
-                  onValueChange={(value) =>
-                    setSearchParams({ ...searchParams, status: value, pageNum: 1 })
-                  }
-                >
-                  <SelectTrigger className="h-12 rounded-2xl">
-                    <SelectValue placeholder="请选择状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">全部状态</SelectItem>
-                    <SelectItem value="DRAFT">草稿</SelectItem>
-                    <SelectItem value="APPROVING">审批中</SelectItem>
-                    <SelectItem value="APPROVED">已通过</SelectItem>
-                    <SelectItem value="REJECTED">已驳回</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={searchParams.overtimeType}
-                  onValueChange={(value) =>
-                    setSearchParams({ ...searchParams, overtimeType: value, pageNum: 1 })
-                  }
-                >
-                  <SelectTrigger className="h-12 rounded-2xl">
-                    <SelectValue placeholder="请选择加班类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">全部类型</SelectItem>
-                    <SelectItem value="WORKDAY">工作日</SelectItem>
-                    <SelectItem value="WEEKEND">周末</SelectItem>
-                    <SelectItem value="HOLIDAY">节假日</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })}
-                  className="h-12 rounded-2xl bg-pink-500 text-white hover:bg-pink-600"
-                >
-                  <Search size={16} className="mr-2" />
-                  搜索
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setSearchParams({ status: '', overtimeType: '', pageNum: 1, pageSize: 10 })
-                  }
-                  className="h-12 rounded-2xl"
-                >
-                  <RotateCcw size={16} className="mr-2" />
-                  重置
-                </Button>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <TableHeader className="sticky top-0 z-10">
+                  <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
                     <tr>
-                      <TableHead>申请单号</TableHead>
-                      <TableHead>加班类型</TableHead>
-                      <TableHead>开始时间</TableHead>
-                      <TableHead>结束时间</TableHead>
-                      <TableHead>时长(h)</TableHead>
-                      <TableHead>补偿方式</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableActionHead className="w-56">操作</TableActionHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">申请单号</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">加班类型</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">开始时间</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">结束时间</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">时长(h)</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">补偿方式</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
+                      <TableActionHead className="w-56 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-white/70">
                     {loading ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                        <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                           <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500" />
                         </td>
                       </tr>
@@ -503,29 +617,30 @@ export const OvertimeApplicationPage: React.FC = () => {
                       <tr>
                         <td colSpan={8} className="px-0 py-0">
                           <WorkspaceEmptyPanel
+                            variant="glass"
                             icon={<Timer size={26} />}
-                            title="暂无加班申请"
-                            description="创建新的加班记录后，这里会展示时段、时长、补偿方式和审批状态。"
+                            title={hasActiveFilters ? '当前条件下暂无记录' : '暂无加班申请'}
+                            description={hasActiveFilters ? '试试切换状态、清空类型条件，或者直接新建一条加班申请。' : '创建新的加班记录后，这里会展示时段、时长、补偿方式和审批状态。'}
                           />
                         </td>
                       </tr>
                     ) : (
                       list.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50/80">
-                          <td className="px-4 py-3 text-sm text-slate-900">{item.applicationNo}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">
+                        <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
+                          <td className="px-4 py-2.5 text-sm text-slate-900">{item.applicationNo}</td>
+                          <td className="px-4 py-2.5 text-sm text-slate-600">
                             {overtimeTypeMap[item.overtimeType] || item.overtimeType}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{item.startTime}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{item.endTime}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                          <td className="px-4 py-2.5 text-sm text-slate-600">{item.startTime}</td>
+                          <td className="px-4 py-2.5 text-sm text-slate-600">{item.endTime}</td>
+                          <td className="px-4 py-2.5 text-sm font-medium text-slate-900">
                             {item.duration ?? '-'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">
+                          <td className="px-4 py-2.5 text-sm text-slate-600">
                             {compensationTypeMap[item.compensationType] || item.compensationType}
                           </td>
-                          <td className="px-4 py-3">{getStatusBadge(item.status || 'DRAFT')}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-right">
                             <TableRowActions
                               align="end"
                               actions={[

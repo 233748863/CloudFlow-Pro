@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo } from 'react';
 import {
-  Car, Loader2, MapPin, Users, Calendar, FileText,
+  Car, Loader2, MapPin, Users, Calendar, FileText, Clock,
   CheckCircle, AlertCircle, ChevronRight, Search, ArrowLeftRight
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { FileUpload } from '@/components/FileUpload';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
 
 /** 车辆卡片组件 */
 const VehicleCard: React.FC<{
@@ -21,12 +22,15 @@ const VehicleCard: React.FC<{
 }> = ({ vehicle, selected, onSelect }) => (
   <div
     onClick={onSelect}
-    className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
+    className={`group relative cursor-pointer overflow-hidden rounded-[22px] border p-4 backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 ${
       selected
-        ? 'border-pink-400 bg-pink-50/50 shadow-md ring-1 ring-pink-100'
-        : 'border-gray-200 hover:border-gray-300 bg-white'
+        ? 'border-pink-200 bg-[linear-gradient(135deg,rgba(253,242,248,0.94),rgba(255,255,255,0.84),rgba(255,241,242,0.82))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]'
+        : 'border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.82))] shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] hover:border-slate-200/80'
     }`}
   >
+    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${selected ? 'from-pink-100/90 via-rose-50/45 to-transparent' : 'from-slate-100/95 via-slate-50/40 to-transparent'}`} />
+    <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
+    <div className="relative">
     {/* 选中标记 */}
     {selected && (
       <div className="absolute top-2 right-2">
@@ -34,33 +38,34 @@ const VehicleCard: React.FC<{
       </div>
     )}
     {/* 车辆图标 */}
-    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
-      selected ? 'bg-pink-50' : 'bg-gray-100'
+    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-[14px] ${
+      selected ? 'bg-white/88 text-pink-500 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]' : 'bg-white/88 text-slate-500 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]'
     }`}>
-      <Car size={20} className={selected ? 'text-pink-500' : 'text-gray-500'} />
+      <Car size={20} />
     </div>
     {/* 车牌号 */}
-    <p className="font-mono font-bold text-base">{vehicle.licensePlate}</p>
+    <p className="font-mono text-base font-bold text-slate-900">{vehicle.licensePlate}</p>
     {/* 品牌型号 */}
-    <p className="text-sm text-gray-500 mt-0.5">{vehicle.brand} {vehicle.model}</p>
+    <p className="mt-0.5 text-sm text-slate-500">{vehicle.brand} {vehicle.model}</p>
     {/* 信息标签 */}
     <div className="flex flex-wrap gap-1.5 mt-3">
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-xs text-gray-600">
+      <span className="inline-flex items-center gap-1 rounded-md bg-white/82 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-white/80">
         <Users size={10} />
         {vehicle.capacity}座
       </span>
       {vehicle.color && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-1 rounded-md bg-white/82 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-white/80">
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: vehicle.color.toLowerCase() }} />
           {vehicle.color}
         </span>
       )}
       {vehicle.location && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-1 rounded-md bg-white/82 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-white/80">
           <MapPin size={10} />
           {vehicle.location}
         </span>
       )}
+    </div>
     </div>
   </div>
 );
@@ -71,24 +76,29 @@ const StepIndicator: React.FC<{ current: number; steps: string[]; align?: 'left'
     {steps.map((step, i) => (
       <React.Fragment key={i}>
         <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-            i < current ? 'bg-pink-400 text-white' :
-            i === current ? 'bg-pink-400 text-white ring-4 ring-pink-50' :
-            'bg-gray-200 text-gray-500'
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${
+            i < current ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.22)]' :
+            i === current ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white ring-4 ring-pink-50/80 shadow-[0_10px_20px_rgba(236,72,153,0.22)]' :
+            'bg-white/82 text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]'
           }`}>
             {i < current ? <CheckCircle size={16} /> : i + 1}
           </div>
-          <span className={`text-sm hidden sm:inline ${i === current ? 'font-medium text-gray-900' : 'text-gray-400'}`}>
+          <span className={`hidden text-sm sm:inline ${i === current ? 'font-medium text-slate-900' : 'text-slate-400'}`}>
             {step}
           </span>
         </div>
         {i < steps.length - 1 && (
-          <ChevronRight size={16} className="text-gray-300 mx-1" />
+          <ChevronRight size={16} className="mx-1 text-slate-300" />
         )}
       </React.Fragment>
     ))}
   </div>
 );
+
+const formatDateCN = (date: Date) => {
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+};
 
 export const VehicleBooking: React.FC = () => {
   const { user } = useAuth();
@@ -244,37 +254,124 @@ export const VehicleBooking: React.FC = () => {
     1: '请确认时间与目的地信息准确无误。',
     2: '提交后进入审批流程，可在用车记录中查看进度。',
   };
+  const todayLabel = formatDateCN(new Date());
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const attachmentCount = formData.attachmentUrl
+    ? formData.attachmentUrl.split(',').filter(Boolean).length
+    : 0;
+  const heroMetrics = [
+    {
+      label: '可用车辆',
+      value: `${vehicles.length}`,
+      hint: filteredVehicles.length === vehicles.length ? '当前全部可预约车辆' : `当前筛出 ${filteredVehicles.length} 辆`,
+      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
+      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
+      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
+      icon: <Car size={17} />,
+    },
+    {
+      label: '当前步骤',
+      value: `${step + 1}/3`,
+      hint: steps[step],
+      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
+      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
+      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
+      icon: <Clock size={17} />,
+    },
+    {
+      label: '已选车辆',
+      value: selectedVehicle ? selectedVehicle.licensePlate : '--',
+      hint: selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : '选择车辆后继续填写信息',
+      panelClassName: 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
+      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
+      icon: <CheckCircle size={17} />,
+    },
+    {
+      label: '附件数量',
+      value: `${attachmentCount}`,
+      hint: attachmentCount > 0 ? '已附加行程单或审批文件' : '可按需上传佐证材料',
+      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
+      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
+      icon: <FileText size={17} />,
+    },
+  ];
+
+  const glassCardClass = 'rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.76))] shadow-[0_18px_44px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl';
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* 页面标题 */}
-        <div className="rounded-2xl border border-pink-100/70 bg-gradient-to-r from-pink-50 via-white to-amber-50 p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">公务车预约申请</h1>
-              <p className="text-sm text-gray-500 mt-1">选择车辆并填写用车信息，提交后等待审批</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-              <span className="px-3 py-1 rounded-full bg-white/80 border border-pink-100">可用车辆 {vehicles.length} 辆</span>
-              <span className="px-3 py-1 rounded-full bg-white/80 border border-pink-100">当前步骤 {step + 1}/3</span>
-            </div>
-          </div>
-          <div className="mt-4">
-            <StepIndicator current={step} steps={steps} align="left" />
-          </div>
-        </div>
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
+      <div className="relative z-10 space-y-3 px-4 py-4 md:px-6">
+        <Card className="overflow-hidden rounded-[30px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="relative p-4 sm:p-5">
+            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%)]" />
+            <div className="absolute -right-14 top-4 h-32 w-32 rounded-full bg-pink-200/25 blur-3xl" />
+            <div className="absolute bottom-0 left-1/3 h-16 w-16 rounded-full bg-amber-100/50 blur-2xl" />
 
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
-          <div className="space-y-6">
+            <div className="relative space-y-3">
+              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                      <Calendar size={14} />
+                      {todayLabel}
+                    </span>
+                    <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+                  </div>
+                  <h1 className="mt-3 text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">公务车预约申请</h1>
+                </div>
+
+                <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  审批通过后方可使用车辆
+                </div>
+              </div>
+
+              <div className="rounded-[20px] border border-white/72 bg-white/66 px-3.5 py-3 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md">
+                <StepIndicator current={step} steps={steps} align="left" />
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {heroMetrics.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
+                  >
+                    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
+                    <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
+                    <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
+                          <div className="mt-1 text-[1.32rem] font-bold tracking-tight text-slate-950">{item.value}</div>
+                        </div>
+                        <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
+                          {item.icon}
+                        </div>
+                      </div>
+                      <div className="max-w-full truncate text-[10px] leading-4 text-slate-600">{item.hint}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-3">
             {/* 步骤1：选择车辆 */}
             {step === 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
+              <Card className={glassCardClass}>
+                <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
                     <Car size={20} />
                     选择车辆
-                    <span className="text-sm font-normal text-gray-400 ml-2">
+                    <span className="ml-2 text-sm font-normal text-slate-400">
                       共 {vehicles.length} 辆可用
                     </span>
                   </CardTitle>
@@ -288,11 +385,11 @@ export const VehicleBooking: React.FC = () => {
                         placeholder="搜索车牌号、品牌、型号..."
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
-                        className="pl-9"
+                        className="h-11 rounded-2xl border-white/85 bg-white/78 pl-9 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
                       />
                     </div>
                     <Select value={capacityFilter} onValueChange={setCapacityFilter}>
-                      <SelectTrigger className="w-full sm:w-32">
+                      <SelectTrigger className="h-11 w-full rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md sm:w-32">
                         <SelectValue placeholder="座位数" />
                       </SelectTrigger>
                       <SelectContent>
@@ -306,10 +403,12 @@ export const VehicleBooking: React.FC = () => {
 
                   {/* 车辆网格 */}
                   {filteredVehicles.length === 0 ? (
-                    <div className="text-center py-10 text-gray-400">
-                      <Car size={32} className="mx-auto mb-2" strokeWidth={1} />
-                      <p>没有匹配的车辆</p>
-                    </div>
+                    <WorkspaceEmptyPanel
+                      variant="glass"
+                      icon={<Car size={26} />}
+                      title="没有匹配的车辆"
+                      description="试试调整搜索关键词或座位筛选范围。"
+                    />
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
                       {filteredVehicles.map((v) => (
@@ -328,7 +427,7 @@ export const VehicleBooking: React.FC = () => {
                     <Button
                       onClick={() => setStep(1)}
                       disabled={!canProceedToStep2}
-                      className="gap-1"
+                      className="gap-1 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
                     >
                       下一步
                       <ChevronRight size={16} />
@@ -340,9 +439,9 @@ export const VehicleBooking: React.FC = () => {
 
             {/* 步骤2：填写信息 */}
             {step === 1 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
+              <Card className={glassCardClass}>
+                <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
                     <FileText size={20} />
                     填写用车信息
                   </CardTitle>
@@ -350,14 +449,14 @@ export const VehicleBooking: React.FC = () => {
                 <CardContent className="space-y-5">
                   {/* 已选车辆提示 */}
                   {selectedVehicle && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-pink-50 border border-pink-100">
+                    <div className="flex items-center gap-3 rounded-[18px] border border-pink-100 bg-[linear-gradient(135deg,rgba(253,242,248,0.92),rgba(255,255,255,0.82))] p-3 shadow-[0_10px_24px_rgba(236,72,153,0.06)]">
                       <Car size={18} className="text-pink-500" />
                       <span className="text-sm">
                         已选车辆：
                         <span className="font-mono font-bold ml-1">{selectedVehicle.licensePlate}</span>
-                        <span className="text-gray-500 ml-2">{selectedVehicle.brand} {selectedVehicle.model}</span>
+                        <span className="ml-2 text-slate-500">{selectedVehicle.brand} {selectedVehicle.model}</span>
                       </span>
-                      <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => setStep(0)}>
+                      <Button variant="ghost" size="sm" className="ml-auto rounded-xl text-xs text-pink-600 hover:bg-white/80" onClick={() => setStep(0)}>
                         更换
                       </Button>
                     </div>
@@ -371,6 +470,7 @@ export const VehicleBooking: React.FC = () => {
                         开始时间 <span className="text-red-500">*</span>
                       </Label>
                       <DatePicker
+                        variant="glass"
                         type="datetime-local"
                         value={formData.startTime}
                         onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
@@ -382,6 +482,7 @@ export const VehicleBooking: React.FC = () => {
                         结束时间 <span className="text-red-500">*</span>
                       </Label>
                       <DatePicker
+                        variant="glass"
                         type="datetime-local"
                         value={formData.endTime}
                         onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
@@ -407,6 +508,7 @@ export const VehicleBooking: React.FC = () => {
                         required
                         value={formData.destination}
                         onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+                        className="h-11 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -418,6 +520,7 @@ export const VehicleBooking: React.FC = () => {
                         placeholder="默认原地还车"
                         value={formData.returnLocation}
                         onChange={(e) => setFormData({ ...formData, returnLocation: e.target.value })}
+                        className="h-11 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
                       />
                     </div>
                   </div>
@@ -429,11 +532,11 @@ export const VehicleBooking: React.FC = () => {
                       行程类型
                     </Label>
                     <div className="flex gap-4">
-                      <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 0 ? 'border-pink-400 bg-pink-50 text-pink-600' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <label className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-4 py-2 transition-colors ${formData.isRoundTrip === 0 ? 'border-pink-200 bg-[linear-gradient(135deg,rgba(253,242,248,0.92),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06)]' : 'border-white/80 bg-white/78 text-slate-600 shadow-[0_10px_22px_rgba(15,23,42,0.04)] hover:border-slate-200/80'}`}>
                         <input type="radio" name="roundTrip" className="hidden" checked={formData.isRoundTrip === 0} onChange={() => setFormData({ ...formData, isRoundTrip: 0 })} />
                         <span className="text-sm font-medium">单程</span>
                       </label>
-                      <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${formData.isRoundTrip === 1 ? 'border-pink-400 bg-pink-50 text-pink-600' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <label className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-4 py-2 transition-colors ${formData.isRoundTrip === 1 ? 'border-pink-200 bg-[linear-gradient(135deg,rgba(253,242,248,0.92),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06)]' : 'border-white/80 bg-white/78 text-slate-600 shadow-[0_10px_22px_rgba(15,23,42,0.04)] hover:border-slate-200/80'}`}>
                         <input type="radio" name="roundTrip" className="hidden" checked={formData.isRoundTrip === 1} onChange={() => setFormData({ ...formData, isRoundTrip: 1 })} />
                         <span className="text-sm font-medium">往返</span>
                       </label>
@@ -446,7 +549,7 @@ export const VehicleBooking: React.FC = () => {
                       用车事由 <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
-                      className="min-h-[80px] resize-none"
+                      className="min-h-[96px] resize-none rounded-[22px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
                       placeholder="请详细描述用车事由..."
                       required
                       value={formData.reason}
@@ -458,6 +561,7 @@ export const VehicleBooking: React.FC = () => {
                   <div className="space-y-1.5">
                     <Label>附件</Label>
                     <FileUpload
+                      variant="glass"
                       value={formData.attachmentUrl}
                       onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })}
                       maxCount={3}
@@ -478,6 +582,7 @@ export const VehicleBooking: React.FC = () => {
                         max={selectedVehicle?.capacity || 50}
                         value={formData.passengerCount}
                         onChange={(e) => setFormData({ ...formData, passengerCount: parseInt(e.target.value) || 1 })}
+                        className="h-11 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
                       />
                       {selectedVehicle && formData.passengerCount > selectedVehicle.capacity && (
                         <p className="text-amber-500 text-xs">超出车辆座位数 ({selectedVehicle.capacity}座)</p>
@@ -489,17 +594,18 @@ export const VehicleBooking: React.FC = () => {
                         placeholder="如：张三, 李四"
                         value={formData.passengers}
                         onChange={(e) => setFormData({ ...formData, passengers: e.target.value })}
+                        className="h-11 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
                       />
                     </div>
                   </div>
 
                   {/* 操作按钮 */}
                   <div className="flex justify-between pt-2">
-                    <Button variant="outline" onClick={() => setStep(0)}>上一步</Button>
+                    <Button variant="outline" onClick={() => setStep(0)} className="rounded-2xl border-white/85 bg-white/76 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">上一步</Button>
                     <Button
                       onClick={() => setStep(2)}
                       disabled={!canProceedToStep3 || !!timeError}
-                      className="gap-1"
+                      className="gap-1 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
                     >
                       下一步
                       <ChevronRight size={16} />
@@ -511,64 +617,64 @@ export const VehicleBooking: React.FC = () => {
 
             {/* 步骤3：确认提交 */}
             {step === 2 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
+              <Card className={glassCardClass}>
+                <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
                     <CheckCircle size={20} />
                     确认申请信息
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   {/* 信息汇总 */}
-                  <div className="rounded-lg border divide-y">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
+                  <div className="divide-y overflow-hidden rounded-[22px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] shadow-[0_12px_26px_rgba(15,23,42,0.04)]">
+                    <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
                       <div>
-                        <span className="text-xs text-gray-400">车辆</span>
-                        <p className="font-mono font-bold">{selectedVehicle?.licensePlate}</p>
-                        <p className="text-xs text-gray-500">{selectedVehicle?.brand} {selectedVehicle?.model}</p>
+                        <span className="text-xs text-slate-400">车辆</span>
+                        <p className="font-mono font-bold text-slate-900">{selectedVehicle?.licensePlate}</p>
+                        <p className="text-xs text-slate-500">{selectedVehicle?.brand} {selectedVehicle?.model}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-400">目的地</span>
-                        <p className="font-medium">{formData.destination}</p>
-                        {formData.returnLocation && <p className="text-xs text-gray-500">还车: {formData.returnLocation}</p>}
+                        <span className="text-xs text-slate-400">目的地</span>
+                        <p className="font-medium text-slate-900">{formData.destination}</p>
+                        {formData.returnLocation && <p className="text-xs text-slate-500">还车: {formData.returnLocation}</p>}
                       </div>
                       <div>
-                        <span className="text-xs text-gray-400">行程 / 人数</span>
-                        <p className="font-medium">{roundTripLabel} · {formData.passengerCount}人</p>
+                        <span className="text-xs text-slate-400">行程 / 人数</span>
+                        <p className="font-medium text-slate-900">{roundTripLabel} · {formData.passengerCount}人</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+                    <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
                       <div>
-                        <span className="text-xs text-gray-400">开始时间</span>
-                        <p className="font-medium text-sm">{formData.startTime.replace('T', ' ')}</p>
+                        <span className="text-xs text-slate-400">开始时间</span>
+                        <p className="text-sm font-medium text-slate-900">{formData.startTime.replace('T', ' ')}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-400">结束时间</span>
-                        <p className="font-medium text-sm">{formData.endTime.replace('T', ' ')}</p>
+                        <span className="text-xs text-slate-400">结束时间</span>
+                        <p className="text-sm font-medium text-slate-900">{formData.endTime.replace('T', ' ')}</p>
                       </div>
                     </div>
                     <div className="p-4">
-                      <span className="text-xs text-gray-400">用车事由</span>
-                      <p className="font-medium text-sm mt-1">{formData.reason}</p>
+                      <span className="text-xs text-slate-400">用车事由</span>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{formData.reason}</p>
                     </div>
                     {formData.passengers && (
                       <div className="p-4">
-                        <span className="text-xs text-gray-400">随行人员</span>
-                        <p className="font-medium text-sm mt-1">{formData.passengers}</p>
+                        <span className="text-xs text-slate-400">随行人员</span>
+                        <p className="mt-1 text-sm font-medium text-slate-900">{formData.passengers}</p>
                       </div>
                     )}
                   </div>
 
                   {/* 提示 */}
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
+                  <div className="flex items-start gap-2 rounded-[18px] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.95),rgba(255,247,237,0.88))] p-3 text-sm text-amber-700 shadow-[0_10px_24px_rgba(245,158,11,0.06)]">
                     <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
                     <span>提交后将进入审批流程，审批通过后方可使用车辆。如需取消请在审批前操作。</span>
                   </div>
 
                   {/* 操作按钮 */}
                   <div className="flex justify-between pt-2">
-                    <Button variant="outline" onClick={() => setStep(1)}>上一步</Button>
-                    <Button onClick={handleSubmit} disabled={submitting} className="gap-2 min-w-[120px]">
+                    <Button variant="outline" onClick={() => setStep(1)} className="rounded-2xl border-white/85 bg-white/76 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">上一步</Button>
+                    <Button onClick={handleSubmit} disabled={submitting} className="min-w-[120px] gap-2 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600">
                       {submitting ? (
                         <>
                           <Loader2 className="animate-spin" size={16} />
@@ -589,18 +695,18 @@ export const VehicleBooking: React.FC = () => {
 
           {/* 右侧摘要栏 */}
           <div className="space-y-4 lg:sticky lg:top-24 h-fit">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">申请摘要</CardTitle>
+            <Card className={glassCardClass}>
+              <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
+                <CardTitle className="text-base text-slate-900">申请摘要</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <div className="text-xs text-gray-400 mb-2">当前步骤</div>
+                  <div className="mb-2 text-xs text-slate-400">当前步骤</div>
                   <div className="space-y-2">
                     {steps.map((s, i) => (
-                      <div key={s} className={`flex items-center gap-2 text-sm ${i === step ? 'text-pink-600 font-medium' : i < step ? 'text-gray-700' : 'text-gray-400'}`}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                          i < step ? 'bg-pink-500 text-white' : i === step ? 'bg-pink-50 text-pink-600 border border-pink-200' : 'bg-gray-100 text-gray-400'
+                      <div key={s} className={`flex items-center gap-2 text-sm ${i === step ? 'font-medium text-pink-600' : i < step ? 'text-slate-700' : 'text-slate-400'}`}>
+                        <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
+                          i < step ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white' : i === step ? 'border border-pink-200 bg-pink-50 text-pink-600' : 'bg-white/82 text-slate-400 ring-1 ring-white/80'
                         }`}>
                           {i < step ? <CheckCircle size={12} /> : i + 1}
                         </div>
@@ -610,39 +716,39 @@ export const VehicleBooking: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="border-t pt-3">
-                  <div className="text-xs text-gray-400 mb-2">已选车辆</div>
+                <div className="border-t border-white/70 pt-3">
+                  <div className="mb-2 text-xs text-slate-400">已选车辆</div>
                   {selectedVehicle ? (
                     <div className="text-sm">
-                      <div className="font-mono font-semibold">{selectedVehicle.licensePlate}</div>
-                      <div className="text-gray-500">{selectedVehicle.brand} {selectedVehicle.model}</div>
-                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-gray-600">
-                        <span className="px-2 py-0.5 rounded-md bg-gray-100">{selectedVehicle.capacity}座</span>
+                      <div className="font-mono font-semibold text-slate-900">{selectedVehicle.licensePlate}</div>
+                      <div className="text-slate-500">{selectedVehicle.brand} {selectedVehicle.model}</div>
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-slate-600">
+                        <span className="rounded-md bg-white/82 px-2 py-0.5 ring-1 ring-white/80">{selectedVehicle.capacity}座</span>
                         {selectedVehicle.color && (
-                          <span className="px-2 py-0.5 rounded-md bg-gray-100">{selectedVehicle.color}</span>
+                          <span className="rounded-md bg-white/82 px-2 py-0.5 ring-1 ring-white/80">{selectedVehicle.color}</span>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-400">尚未选择车辆</div>
+                    <div className="text-sm text-slate-400">尚未选择车辆</div>
                   )}
                 </div>
 
-                <div className="border-t pt-3">
-                  <div className="text-xs text-gray-400 mb-2">行程信息</div>
+                <div className="border-t border-white/70 pt-3">
+                  <div className="mb-2 text-xs text-slate-400">行程信息</div>
                   {step >= 1 ? (
                     <div className="space-y-1 text-sm">
-                      <div className="text-gray-700">{formData.destination || '未填写目的地'}</div>
-                      <div className="text-xs text-gray-500">{formData.startTime ? formData.startTime.replace('T', ' ') : '开始时间未填写'}</div>
-                      <div className="text-xs text-gray-500">{formData.endTime ? formData.endTime.replace('T', ' ') : '结束时间未填写'}</div>
+                      <div className="text-slate-700">{formData.destination || '未填写目的地'}</div>
+                      <div className="text-xs text-slate-500">{formData.startTime ? formData.startTime.replace('T', ' ') : '开始时间未填写'}</div>
+                      <div className="text-xs text-slate-500">{formData.endTime ? formData.endTime.replace('T', ' ') : '结束时间未填写'}</div>
                       {timeError && <div className="text-xs text-red-500">{timeError}</div>}
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-400">填写信息后显示</div>
+                    <div className="text-sm text-slate-400">填写信息后显示</div>
                   )}
                 </div>
 
-                <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-gray-600">
+                <div className="rounded-[18px] border border-white/80 bg-white/72 p-3 text-xs text-slate-600 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
                   {stepTips[step]}
                 </div>
               </CardContent>
