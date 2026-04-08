@@ -17,8 +17,9 @@ import java.util.Map;
 /**
  * OA 工作流事件监听器。
  *
- * <p>统一维护 OA 业务单据的流程实例 ID 和审批状态，
- * 避免流程已完成但业务表仍停留在 PENDING 的状态脱节问题。</p>
+ * <p>当前仅保留流程启动、撤回、作废的兜底同步。
+ * 审批通过/驳回已迁移到 OA 自己消费 Redis Stream 回调，
+ * 避免 workflow 服务继续直接跨库改写 OA 业务表。</p>
  */
 @Component
 public class OaWorkflowEventListener {
@@ -45,18 +46,6 @@ public class OaWorkflowEventListener {
     @Async("workflowEventExecutor")
     public void onProcessStarted(ProcessStartedEvent event) {
         syncByBusinessKey(event.getProcessDefKey(), event.getBusinessKey(), event.getInstanceId(), null, "流程启动");
-    }
-
-    @EventListener
-    @Async("workflowEventExecutor")
-    public void onProcessCompleted(ProcessCompletedEvent event) {
-        syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.APPROVED, "流程完成");
-    }
-
-    @EventListener
-    @Async("workflowEventExecutor")
-    public void onProcessRejected(ProcessRejectedEvent event) {
-        syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.REJECTED, "流程驳回");
     }
 
     @EventListener

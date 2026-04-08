@@ -8,6 +8,7 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BusinessTrip;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
 import com.cloudflow.oa.service.IBusinessTripService;
@@ -121,6 +122,13 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             variables.put("transportType", trip.getTransportType());
             variables.put("reason", trip.getReason());
             variables.put("deptName", trip.getDeptName());
+            // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
+            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+                    variables,
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_BUSINESS_TRIP,
+                    trip.getId(),
+                    trip.getTripNo()
+            );
             req.put("variables", variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);

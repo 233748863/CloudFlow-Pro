@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.service.IPaymentRequestService;
@@ -83,6 +84,13 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
             variables.put("payeeBank", payment.getPayeeBank());
             variables.put("reason", payment.getReason());
             variables.put("deptName", payment.getDeptName());
+            // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
+            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+                    variables,
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                    payment.getId(),
+                    payment.getPaymentNo()
+            );
             req.put("variables", variables);
             
             R<?> result = remoteWorkflowService.startProcess(req);

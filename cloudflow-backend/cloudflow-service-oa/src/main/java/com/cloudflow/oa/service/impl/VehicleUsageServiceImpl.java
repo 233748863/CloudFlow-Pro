@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.VehicleUsage;
 import com.cloudflow.oa.mapper.VehicleUsageMapper;
 import com.cloudflow.oa.service.IVehicleUsageService;
@@ -54,6 +55,13 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
         Map<String, Object> variables = new HashMap<>();
         variables.put("initiator", usage.getApplicantId());
         variables.put("vehicleInfo", usage.getReason());
+        // 用车流程同样走 OA 专属回调流，审批结果由 OA 本地异步回写。
+        WorkflowCallbackStreamConstants.applyCallbackMetadata(
+                variables,
+                WorkflowCallbackStreamConstants.BUSINESS_TYPE_VEHICLE_APPROVAL,
+                usage.getUsageId(),
+                String.valueOf(usage.getUsageId())
+        );
 
         R<?> wfResult = workflowService.startProcess("vehicle_approval", usage.getUsageId().toString(), variables);
         if (wfResult.getCode() != 200) {
