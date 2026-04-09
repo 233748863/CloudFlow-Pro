@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users } from 'lucide-react';
+import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users, Wallet } from 'lucide-react';
 import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import { WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
@@ -157,6 +157,13 @@ export const HrDashboardPage: React.FC = () => {
       tone: 'bg-amber-50 text-amber-600',
     },
     {
+      title: '假期额度',
+      description: '统一查看员工年度额度、调休额度桶和手工调整入口，适合做跨年调休和余额校准。',
+      path: '/hr/leave/quota',
+      icon: <Wallet size={18} />,
+      tone: 'bg-emerald-50 text-emerald-600',
+    },
+    {
       title: 'Offer 管理',
       description: '创建 Offer、推进审批和发送，并在候选人接受后转入入职流程',
       path: '/hr/offer',
@@ -227,6 +234,10 @@ export const HrDashboardPage: React.FC = () => {
             <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/salary')}>
               <Landmark size={18} className="mr-2" />
               薪酬管理
+            </Button>
+            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/leave/quota')}>
+              <Wallet size={18} className="mr-2" />
+              假期额度
             </Button>
           </div>
         </div>

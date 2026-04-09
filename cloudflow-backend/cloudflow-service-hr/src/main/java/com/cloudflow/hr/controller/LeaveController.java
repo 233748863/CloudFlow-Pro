@@ -103,6 +103,14 @@ public class LeaveController {
     /**
      * 获取员工假期额度列表
      */
+    @GetMapping("/quota/buckets")
+    public R<List<LeaveQuotaVO>> listLeaveQuotaBuckets(@RequestParam Long employeeId,
+                                                       @RequestParam Long leaveTypeId,
+                                                       @RequestParam Integer year) {
+        List<LeaveQuotaVO> list = leaveService.listLeaveQuotaBuckets(employeeId, leaveTypeId, year);
+        return R.ok(list);
+    }
+
     @GetMapping("/quota/list")
     public R<List<LeaveQuotaVO>> listLeaveQuotas(@RequestParam Long employeeId,
                                                   @RequestParam Integer year) {

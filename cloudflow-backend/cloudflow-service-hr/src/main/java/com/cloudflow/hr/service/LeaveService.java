@@ -72,6 +72,16 @@ public interface LeaveService {
      * @return 假期额度VO
      */
     LeaveQuotaVO getLeaveQuota(Long employeeId, Long leaveTypeId, Integer year);
+
+    /**
+     * 获取员工假期额度桶明细
+     *
+     * @param employeeId 员工ID
+     * @param leaveTypeId 假期类型ID
+     * @param year 年度
+     * @return 假期额度桶明细列表
+     */
+    List<LeaveQuotaVO> listLeaveQuotaBuckets(Long employeeId, Long leaveTypeId, Integer year);
     
     /**
      * 获取员工假期额度列表

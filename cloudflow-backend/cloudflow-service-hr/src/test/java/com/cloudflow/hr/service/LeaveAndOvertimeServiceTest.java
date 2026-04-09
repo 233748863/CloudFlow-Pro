@@ -19,6 +19,7 @@ import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.LeaveApplicationMapper;
 import com.cloudflow.hr.mapper.LeaveQuotaMapper;
 import com.cloudflow.hr.mapper.LeaveTypeMapper;
+import com.cloudflow.hr.domain.vo.LeaveQuotaVO;
 import com.cloudflow.hr.mapper.OvertimeApplicationMapper;
 import com.cloudflow.hr.service.impl.LeaveServiceImpl;
 import com.cloudflow.hr.service.impl.OvertimeServiceImpl;
@@ -34,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -455,6 +457,150 @@ class LeaveAndOvertimeServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("可用额度不足"));
+    }
+
+    @Test
+    void testGetLeaveQuotaAggregatesCompensatoryCarryOverBucketsForRequestedYear() {
+        LeaveQuota carryOverBucket = buildLeaveQuotaForYear(2025, new BigDecimal("2.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        carryOverBucket.setId(806L);
+        carryOverBucket.setLeaveTypeId(401L);
+        carryOverBucket.setExpiryDate(LocalDate.of(2026, 2, 15));
+
+        LeaveQuota currentBucket = buildLeaveQuotaForYear(2026, new BigDecimal("4.00"), new BigDecimal("1.00"), BigDecimal.ZERO);
+        currentBucket.setId(807L);
+        currentBucket.setLeaveTypeId(401L);
+        currentBucket.setExpiryDate(LocalDate.of(2026, 4, 30));
+        currentBucket.setAvailableQuota(new BigDecimal("3.00"));
+
+        LeaveQuota expiredBucket = buildLeaveQuotaForYear(2025, new BigDecimal("6.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        expiredBucket.setId(808L);
+        expiredBucket.setLeaveTypeId(401L);
+        expiredBucket.setExpiryDate(LocalDate.of(2025, 12, 31));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(List.of(carryOverBucket, currentBucket, expiredBucket));
+
+        LeaveQuotaVO quota = leaveService.getLeaveQuota(1L, 401L, 2026);
+
+        assertEquals(2026, quota.getYear());
+        assertEquals(new BigDecimal("6.00"), quota.getTotalQuota());
+        assertEquals(new BigDecimal("1.00"), quota.getUsedQuota());
+        assertEquals(new BigDecimal("5.00"), quota.getAvailableQuota());
+        assertEquals(LocalDate.of(2026, 2, 15), quota.getExpiryDate());
+    }
+
+    @Test
+    void testListLeaveQuotasAggregatesCompensatoryCarryOverBucketsForRequestedYear() {
+        LeaveQuotaVO annualQuota = new LeaveQuotaVO();
+        annualQuota.setId(901L);
+        annualQuota.setEmployeeId(1L);
+        annualQuota.setEmployeeName("测试员工");
+        annualQuota.setLeaveTypeId(301L);
+        annualQuota.setLeaveTypeName("年假");
+        annualQuota.setYear(2026);
+        annualQuota.setTotalQuota(new BigDecimal("5.00"));
+        annualQuota.setUsedQuota(new BigDecimal("1.00"));
+        annualQuota.setFrozenQuota(BigDecimal.ZERO);
+        annualQuota.setAvailableQuota(new BigDecimal("4.00"));
+        annualQuota.setExpiryDate(LocalDate.of(2026, 12, 31));
+
+        LeaveQuotaVO rawCompQuota = new LeaveQuotaVO();
+        rawCompQuota.setId(902L);
+        rawCompQuota.setEmployeeId(1L);
+        rawCompQuota.setEmployeeName("测试员工");
+        rawCompQuota.setLeaveTypeId(401L);
+        rawCompQuota.setLeaveTypeName("调休");
+        rawCompQuota.setYear(2026);
+        rawCompQuota.setTotalQuota(new BigDecimal("4.00"));
+        rawCompQuota.setUsedQuota(new BigDecimal("1.00"));
+        rawCompQuota.setFrozenQuota(BigDecimal.ZERO);
+        rawCompQuota.setAvailableQuota(new BigDecimal("3.00"));
+        rawCompQuota.setExpiryDate(LocalDate.of(2026, 4, 30));
+
+        LeaveQuota carryOverBucket = buildLeaveQuotaForYear(2025, new BigDecimal("2.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        carryOverBucket.setId(806L);
+        carryOverBucket.setLeaveTypeId(401L);
+        carryOverBucket.setExpiryDate(LocalDate.of(2026, 2, 15));
+
+        LeaveQuota currentBucket = buildLeaveQuotaForYear(2026, new BigDecimal("4.00"), new BigDecimal("1.00"), BigDecimal.ZERO);
+        currentBucket.setId(807L);
+        currentBucket.setLeaveTypeId(401L);
+        currentBucket.setExpiryDate(LocalDate.of(2026, 4, 30));
+        currentBucket.setAvailableQuota(new BigDecimal("3.00"));
+
+        when(leaveQuotaMapper.selectLeaveQuotaList(2001L, 1L, 2026)).thenReturn(List.of(annualQuota, rawCompQuota));
+        when(leaveTypeMapper.selectOne(any())).thenReturn(buildCompensatoryLeaveType());
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(List.of(carryOverBucket, currentBucket));
+
+        List<LeaveQuotaVO> quotaList = leaveService.listLeaveQuotas(1L, 2026);
+
+        assertEquals(2, quotaList.size());
+        LeaveQuotaVO compensatoryQuota = quotaList.stream()
+                .filter(item -> Long.valueOf(401L).equals(item.getLeaveTypeId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(2026, compensatoryQuota.getYear());
+        assertEquals(new BigDecimal("6.00"), compensatoryQuota.getTotalQuota());
+        assertEquals(new BigDecimal("1.00"), compensatoryQuota.getUsedQuota());
+        assertEquals(new BigDecimal("5.00"), compensatoryQuota.getAvailableQuota());
+        assertEquals(LocalDate.of(2026, 2, 15), compensatoryQuota.getExpiryDate());
+    }
+
+    @Test
+    void testListLeaveQuotaBucketsReturnsCompensatoryCarryOverBucketsForRequestedYear() {
+        LeaveQuota carryOverBucket = buildLeaveQuotaForYear(2025, new BigDecimal("2.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        carryOverBucket.setId(806L);
+        carryOverBucket.setLeaveTypeId(401L);
+        carryOverBucket.setExpiryDate(LocalDate.of(2026, 2, 15));
+
+        LeaveQuota currentBucket = buildLeaveQuotaForYear(2026, new BigDecimal("4.00"), new BigDecimal("1.00"), BigDecimal.ZERO);
+        currentBucket.setId(807L);
+        currentBucket.setLeaveTypeId(401L);
+        currentBucket.setExpiryDate(LocalDate.of(2026, 4, 30));
+        currentBucket.setAvailableQuota(new BigDecimal("3.00"));
+
+        LeaveQuota expiredBucket = buildLeaveQuotaForYear(2025, new BigDecimal("6.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        expiredBucket.setId(808L);
+        expiredBucket.setLeaveTypeId(401L);
+        expiredBucket.setExpiryDate(LocalDate.of(2025, 12, 31));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(List.of(carryOverBucket, currentBucket, expiredBucket));
+
+        List<LeaveQuotaVO> bucketList = leaveService.listLeaveQuotaBuckets(1L, 401L, 2026);
+
+        assertEquals(2, bucketList.size());
+        assertEquals(Long.valueOf(806L), bucketList.get(0).getId());
+        assertEquals(Long.valueOf(807L), bucketList.get(1).getId());
+        assertEquals(2025, bucketList.get(0).getYear());
+        assertEquals(2026, bucketList.get(1).getYear());
+        assertEquals(new BigDecimal("2.00"), bucketList.get(0).getAvailableQuota());
+        assertEquals(new BigDecimal("3.00"), bucketList.get(1).getAvailableQuota());
+    }
+
+    @Test
+    void testListLeaveQuotaBucketsReturnsEmptyListWhenCompensatoryBucketsNotGeneratedYet() {
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(List.of());
+
+        List<LeaveQuotaVO> bucketList = leaveService.listLeaveQuotaBuckets(1L, 401L, 2026);
+
+        assertTrue(bucketList.isEmpty());
+    }
+
+    @Test
+    void testListLeaveQuotaBucketsReturnsEmptyListWhenAnnualQuotaNotInitializedYet() {
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(301L)).thenReturn(buildAnnualLeaveType());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(List.of());
+
+        List<LeaveQuotaVO> bucketList = leaveService.listLeaveQuotaBuckets(1L, 301L, 2026);
+
+        assertTrue(bucketList.isEmpty());
     }
 
     @Test

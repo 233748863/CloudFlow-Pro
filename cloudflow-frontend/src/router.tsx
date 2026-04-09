@@ -295,6 +295,11 @@ const HrSalaryPage = React.lazy(() =>
     default: module.default,
   })),
 );
+const HrLeaveQuotaPage = React.lazy(() =>
+  import("./pages/hr/HrLeaveQuotaPage").then((module) => ({
+    default: module.default,
+  })),
+);
 const HrOnboardingPage = React.lazy(() =>
   import("./pages/hr/HrOnboardingPage").then((module) => ({
     default: module.default,
@@ -906,6 +911,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <HrSalaryPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/leave/quota",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrLeaveQuotaPage />
               </Suspense>
             ),
           },

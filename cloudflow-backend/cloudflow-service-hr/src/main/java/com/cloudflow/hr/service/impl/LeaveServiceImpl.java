@@ -570,19 +570,7 @@ public class LeaveServiceImpl implements LeaveService {
                     .ge(LeaveQuota::getExpiryDate, baseDate));
         }
 
-        List<LeaveQuota> quotaList = new ArrayList<>(leaveQuotaMapper.selectList(quotaQueryWrapper));
-        if (excludeExpired) {
-            LocalDate baseDate = referenceDate != null ? referenceDate : LocalDate.now();
-            quotaList = quotaList.stream()
-                    .filter(leaveQuota -> leaveQuota.getExpiryDate() == null || !leaveQuota.getExpiryDate().isBefore(baseDate))
-                    .collect(Collectors.toList());
-        }
-        // MySQL 中 NULL 会在升序时排到前面，这里显式把“长期有效”桶放到最后，
-        // 保证真正快到期的额度优先被消费。
-        quotaList.sort(Comparator
-                .comparing(LeaveQuota::getExpiryDate, Comparator.nullsLast(LocalDate::compareTo))
-                .thenComparing(LeaveQuota::getYear, Comparator.nullsLast(Integer::compareTo))
-                .thenComparing(LeaveQuota::getId, Comparator.nullsLast(Long::compareTo)));
+        List<LeaveQuota> quotaList = queryAndSortCompensatoryQuotaBuckets(quotaQueryWrapper, excludeExpired, referenceDate);
         BigDecimal remaining = normalizeQuota(requestedDuration);
         LinkedHashMap<Long, BigDecimal> allocation = new LinkedHashMap<>();
         for (LeaveQuota leaveQuota : quotaList) {
@@ -982,6 +970,95 @@ public class LeaveServiceImpl implements LeaveService {
         log.info("调休额度桶减少成功，employeeId: {}, leaveTypeId: {}, year: {}, expiryDate: {}, adjustmentAmount: {}",
                 dto.getEmployeeId(), dto.getLeaveTypeId(), dto.getYear(), dto.getExpiryDate(), adjustmentAmount);
     }
+
+    private List<LeaveQuota> queryCompensatoryQuotaBucketsForYear(Long tenantId,
+                                                                  Long employeeId,
+                                                                  Long leaveTypeId,
+                                                                  Integer year) {
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LambdaQueryWrapper<LeaveQuota> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(LeaveQuota::getTenantId, tenantId)
+                .eq(LeaveQuota::getEmployeeId, employeeId)
+                .eq(LeaveQuota::getLeaveTypeId, leaveTypeId)
+                .le(LeaveQuota::getYear, year)
+                .and(wrapper -> wrapper.isNull(LeaveQuota::getExpiryDate)
+                        .or()
+                        .ge(LeaveQuota::getExpiryDate, yearStart));
+        return queryAndSortCompensatoryQuotaBuckets(queryWrapper, true, yearStart);
+    }
+
+    private List<LeaveQuota> queryAndSortCompensatoryQuotaBuckets(LambdaQueryWrapper<LeaveQuota> queryWrapper,
+                                                                  boolean excludeExpired,
+                                                                  LocalDate referenceDate) {
+        List<LeaveQuota> quotaList = new ArrayList<>(leaveQuotaMapper.selectList(queryWrapper));
+        if (excludeExpired) {
+            LocalDate baseDate = referenceDate != null ? referenceDate : LocalDate.now();
+            quotaList = quotaList.stream()
+                    .filter(leaveQuota -> leaveQuota.getExpiryDate() == null || !leaveQuota.getExpiryDate().isBefore(baseDate))
+                    .collect(Collectors.toList());
+        }
+        sortCompensatoryQuotaBuckets(quotaList);
+        return quotaList;
+    }
+
+    private void sortCompensatoryQuotaBuckets(List<LeaveQuota> quotaList) {
+        // MySQL 中 NULL 会在升序时排到前面，这里显式把“长期有效”桶放到最后，
+        // 保证真正快到期的额度优先被消费。
+        quotaList.sort(Comparator
+                .comparing(LeaveQuota::getExpiryDate, Comparator.nullsLast(LocalDate::compareTo))
+                .thenComparing(LeaveQuota::getYear, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(LeaveQuota::getId, Comparator.nullsLast(Long::compareTo)));
+    }
+
+    private LeaveType getCompensatoryLeaveType(Long tenantId) {
+        LambdaQueryWrapper<LeaveType> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(LeaveType::getTenantId, tenantId)
+                .eq(LeaveType::getLeaveCode, LEAVE_CODE_COMPENSATORY);
+        return leaveTypeMapper.selectOne(queryWrapper);
+    }
+
+    private LeaveQuotaVO buildLeaveQuotaSummaryVO(List<LeaveQuota> quotaList,
+                                                  Employee employee,
+                                                  LeaveType leaveType,
+                                                  Integer requestedYear) {
+        LeaveQuotaVO vo = new LeaveQuotaVO();
+        BeanUtils.copyProperties(quotaList.get(0), vo);
+        vo.setYear(requestedYear);
+        vo.setTotalQuota(quotaList.stream().map(LeaveQuota::getTotalQuota).map(this::normalizeQuota)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        vo.setUsedQuota(quotaList.stream().map(LeaveQuota::getUsedQuota).map(this::normalizeQuota)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        vo.setFrozenQuota(quotaList.stream().map(LeaveQuota::getFrozenQuota).map(this::normalizeQuota)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        vo.setAvailableQuota(quotaList.stream().map(LeaveQuota::getAvailableQuota).map(this::normalizeQuota)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        vo.setExpiryDate(quotaList.stream()
+                .map(LeaveQuota::getExpiryDate)
+                .filter(date -> date != null)
+                .min(LocalDate::compareTo)
+                .orElse(null));
+        if (employee != null) {
+            vo.setEmployeeName(employee.getName());
+        }
+        if (leaveType != null) {
+            vo.setLeaveTypeName(leaveType.getLeaveName());
+        }
+        return vo;
+    }
+
+    private LeaveQuotaVO buildLeaveQuotaBucketVO(LeaveQuota leaveQuota,
+                                                 Employee employee,
+                                                 LeaveType leaveType) {
+        LeaveQuotaVO vo = new LeaveQuotaVO();
+        BeanUtils.copyProperties(leaveQuota, vo);
+        if (employee != null) {
+            vo.setEmployeeName(employee.getName());
+        }
+        if (leaveType != null) {
+            vo.setLeaveTypeName(leaveType.getLeaveName());
+        }
+        return vo;
+    }
     
     /**
      * 获取员工假期额度
@@ -993,54 +1070,70 @@ public class LeaveServiceImpl implements LeaveService {
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
         
-        // 查询假期额度
+        Employee employee = employeeMapper.selectById(employeeId);
+        LeaveType leaveType = leaveTypeMapper.selectById(leaveTypeId);
+        if (leaveType == null || !tenantId.equals(leaveType.getTenantId())) {
+            throw new HrBusinessException("假期类型不存在");
+        }
+        if (isCompensatoryLeave(leaveType)) {
+            List<LeaveQuota> quotaList = queryCompensatoryQuotaBucketsForYear(tenantId, employeeId, leaveTypeId, year);
+            if (quotaList.isEmpty()) {
+                throw new HrBusinessException("假期额度不存在");
+            }
+            return buildLeaveQuotaSummaryVO(quotaList, employee, leaveType, year);
+        }
+
         LambdaQueryWrapper<LeaveQuota> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(LeaveQuota::getTenantId, tenantId)
-                    .eq(LeaveQuota::getEmployeeId, employeeId)
-                    .eq(LeaveQuota::getLeaveTypeId, leaveTypeId)
-                    .eq(LeaveQuota::getYear, year)
-                    .orderByAsc(LeaveQuota::getExpiryDate, LeaveQuota::getId);
+                .eq(LeaveQuota::getEmployeeId, employeeId)
+                .eq(LeaveQuota::getLeaveTypeId, leaveTypeId)
+                .eq(LeaveQuota::getYear, year)
+                .orderByAsc(LeaveQuota::getExpiryDate, LeaveQuota::getId);
 
         List<LeaveQuota> quotaList = leaveQuotaMapper.selectList(queryWrapper);
         if (quotaList.isEmpty()) {
             throw new HrBusinessException("假期额度不存在");
         }
-        
-        // 查询员工和假期类型信息
-        Employee employee = employeeMapper.selectById(employeeId);
-        LeaveType leaveType = leaveTypeMapper.selectById(leaveTypeId);
-        
-        // 转换为VO
-        LeaveQuotaVO vo = new LeaveQuotaVO();
-        BeanUtils.copyProperties(quotaList.get(0), vo);
-        if (quotaList.size() > 1) {
-            vo.setTotalQuota(quotaList.stream().map(LeaveQuota::getTotalQuota).map(this::normalizeQuota)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add));
-            vo.setUsedQuota(quotaList.stream().map(LeaveQuota::getUsedQuota).map(this::normalizeQuota)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add));
-            vo.setFrozenQuota(quotaList.stream().map(LeaveQuota::getFrozenQuota).map(this::normalizeQuota)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add));
-            vo.setAvailableQuota(quotaList.stream().map(LeaveQuota::getAvailableQuota).map(this::normalizeQuota)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add));
-            vo.setExpiryDate(quotaList.stream()
-                    .map(LeaveQuota::getExpiryDate)
-                    .filter(date -> date != null)
-                    .min(LocalDate::compareTo)
-                    .orElse(null));
-        }
-        if (employee != null) {
-            vo.setEmployeeName(employee.getName());
-        }
-        if (leaveType != null) {
-            vo.setLeaveTypeName(leaveType.getLeaveName());
-        }
-        
-        return vo;
+        return buildLeaveQuotaSummaryVO(quotaList, employee, leaveType, year);
     }
     
     /**
      * 获取员工假期额度列表
      */
+    @Override
+    public List<LeaveQuotaVO> listLeaveQuotaBuckets(Long employeeId, Long leaveTypeId, Integer year) {
+        log.info("获取员工假期额度桶明细，employeeId: {}, leaveTypeId: {}, year: {}", employeeId, leaveTypeId, year);
+
+        Long tenantId = SecurityUtils.getTenantId();
+        Employee employee = employeeMapper.selectById(employeeId);
+        LeaveType leaveType = leaveTypeMapper.selectById(leaveTypeId);
+        if (leaveType == null || !tenantId.equals(leaveType.getTenantId())) {
+            throw new HrBusinessException("假期类型不存在");
+        }
+
+        List<LeaveQuota> quotaList;
+        if (isCompensatoryLeave(leaveType)) {
+            // 调休桶明细需要带出“跨年仍有效”的额度，便于 HR 判断快过期余额。
+            quotaList = queryCompensatoryQuotaBucketsForYear(tenantId, employeeId, leaveTypeId, year);
+        } else {
+            LambdaQueryWrapper<LeaveQuota> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(LeaveQuota::getTenantId, tenantId)
+                    .eq(LeaveQuota::getEmployeeId, employeeId)
+                    .eq(LeaveQuota::getLeaveTypeId, leaveTypeId)
+                    .eq(LeaveQuota::getYear, year)
+                    .orderByAsc(LeaveQuota::getExpiryDate, LeaveQuota::getId);
+            quotaList = leaveQuotaMapper.selectList(queryWrapper);
+        }
+
+        // 查询型接口在“没有额度桶”时返回空列表，避免前端把正常空态误判成接口异常。
+        if (quotaList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return quotaList.stream()
+                .map(quota -> buildLeaveQuotaBucketVO(quota, employee, leaveType))
+                .collect(Collectors.toList());
+    }
+
     @Override
     public List<LeaveQuotaVO> listLeaveQuotas(Long employeeId, Integer year) {
         log.info("获取员工假期额度列表，employeeId: {}, year: {}", employeeId, year);
@@ -1048,8 +1141,30 @@ public class LeaveServiceImpl implements LeaveService {
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
         
-        // 查询假期额度列表（包含关联信息）
-        return leaveQuotaMapper.selectLeaveQuotaList(tenantId, employeeId, year);
+        List<LeaveQuotaVO> quotaList = new ArrayList<>(leaveQuotaMapper.selectLeaveQuotaList(tenantId, employeeId, year));
+        LeaveType compensatoryType = getCompensatoryLeaveType(tenantId);
+        if (compensatoryType == null) {
+            return quotaList;
+        }
+
+        quotaList.removeIf(vo -> compensatoryType.getId().equals(vo.getLeaveTypeId()));
+        List<LeaveQuota> compensatoryBuckets = queryCompensatoryQuotaBucketsForYear(
+                tenantId,
+                employeeId,
+                compensatoryType.getId(),
+                year
+        );
+        if (!compensatoryBuckets.isEmpty()) {
+            Employee employee = employeeMapper.selectById(employeeId);
+            quotaList.add(buildLeaveQuotaSummaryVO(compensatoryBuckets, employee, compensatoryType, year));
+        }
+
+        quotaList.sort(Comparator
+                .comparing(LeaveQuotaVO::getLeaveTypeId, Comparator.nullsLast(Long::compareTo))
+                .thenComparing(LeaveQuotaVO::getYear, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(LeaveQuotaVO::getExpiryDate, Comparator.nullsLast(LocalDate::compareTo))
+                .thenComparing(LeaveQuotaVO::getId, Comparator.nullsLast(Long::compareTo)));
+        return quotaList;
     }
 
     
