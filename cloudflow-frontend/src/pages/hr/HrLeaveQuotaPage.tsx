@@ -30,6 +30,7 @@ import {
 } from '@/components/workspace/WorkspacePrimitives';
 import {
   HrEmployee,
+  HrLeaveQuotaInitResult,
   HrLeaveQuotaVO,
   HrLeaveTypeOption,
   adjustHrLeaveQuota,
@@ -133,6 +134,30 @@ const bucketStatusLabel = (bucket: HrLeaveQuotaVO) => {
   return '正常';
 };
 
+const initActionToneClassName = (action?: string | null) => {
+  switch (String(action || '').toUpperCase()) {
+    case 'CREATED':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+    case 'REFRESHED':
+      return 'bg-sky-50 text-sky-700 border-sky-100';
+    case 'SKIPPED':
+    default:
+      return 'bg-amber-50 text-amber-700 border-amber-100';
+  }
+};
+
+const initActionLabel = (action?: string | null) => {
+  switch (String(action || '').toUpperCase()) {
+    case 'CREATED':
+      return '新建';
+    case 'REFRESHED':
+      return '刷新';
+    case 'SKIPPED':
+    default:
+      return '跳过';
+  }
+};
+
 export const HrLeaveQuotaPage: React.FC = () => {
   const currentYear = getCurrentYear();
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
@@ -148,6 +173,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
   const [bucketLoading, setBucketLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [lastInitResult, setLastInitResult] = useState<HrLeaveQuotaInitResult | null>(null);
   const [bulkInitDialogOpen, setBulkInitDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState<AdjustFormState>(createDefaultAdjustForm(String(currentYear)));
@@ -398,6 +424,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
     setSelectedLeaveTypeId(String(quotaEnabledLeaveTypes[0]?.id || ''));
   }, [quotaEnabledLeaveTypes, quotaSummary, selectedLeaveTypeId]);
 
+  useEffect(() => {
+    setLastInitResult(null);
+  }, [selectedEmployeeId, selectedYear]);
+
   const handleRefresh = () => {
     setReloadToken(value => value + 1);
   };
@@ -416,8 +446,14 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
     setActionLoading(true);
     try {
-      await initHrLeaveQuota({ employeeId, year, leaveTypeId: Number(selectedLeaveTypeId) });
-      toast.success(`${selectedLeaveType.leaveName} ${year} 年度额度已补齐`);
+      const result = await initHrLeaveQuota({ employeeId, year, leaveTypeId: Number(selectedLeaveTypeId) });
+      setLastInitResult(result);
+      const item = result.items[0];
+      toast.success(
+        item
+          ? `${item.leaveTypeName || selectedLeaveType.leaveName} ${year} 年度处理完成：${initActionLabel(item.action)}`
+          : `${selectedLeaveType.leaveName} ${year} 年度处理完成`,
+      );
       setReloadToken(value => value + 1);
     } catch (error) {
       console.error(error);
@@ -441,8 +477,11 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
     setActionLoading(true);
     try {
-      await initHrLeaveQuota({ employeeId, year });
-      toast.success(`${year} 年度已批量补齐 ${pendingAnnualQuotaSummaries.length} 类待初始化假种额度`);
+      const result = await initHrLeaveQuota({ employeeId, year });
+      setLastInitResult(result);
+      toast.success(
+        `${year} 年度处理完成：新建 ${result.createdCount}，刷新 ${result.refreshedCount}，跳过 ${result.skippedCount}`,
+      );
       setBulkInitDialogOpen(false);
       setReloadToken(value => value + 1);
     } catch (error) {
@@ -722,6 +761,67 @@ export const HrLeaveQuotaPage: React.FC = () => {
           />
         ))}
       </div>
+
+      {lastInitResult ? (
+        <WorkspaceSectionCard
+          title="最近一次补齐结果"
+          description={`${lastInitResult.employeeName || selectedEmployee?.name || '--'} / ${lastInitResult.year} 年 / ${lastInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'}`}
+          eyebrow="Init Result"
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+              <div className="text-xs text-slate-400">纳入处理</div>
+              <div className="mt-2 text-xl font-semibold text-slate-900">{lastInitResult.requestedCount}</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3">
+              <div className="text-xs text-emerald-700">新建</div>
+              <div className="mt-2 text-xl font-semibold text-emerald-900">{lastInitResult.createdCount}</div>
+            </div>
+            <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-3">
+              <div className="text-xs text-sky-700">刷新</div>
+              <div className="mt-2 text-xl font-semibold text-sky-900">{lastInitResult.refreshedCount}</div>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+              <div className="text-xs text-amber-700">跳过</div>
+              <div className="mt-2 text-xl font-semibold text-amber-900">{lastInitResult.skippedCount}</div>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>假种</TableHead>
+                  <TableHead>处理结果</TableHead>
+                  <TableHead>处理后总额</TableHead>
+                  <TableHead>过期日期</TableHead>
+                  <TableHead>说明</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lastInitResult.items.map(item => {
+                  const leaveType = leaveTypeMap.get(item.leaveTypeId);
+                  return (
+                    <TableRow key={`init-result-${item.leaveTypeId}-${item.action}`}>
+                      <TableCell className="font-medium text-slate-900">
+                        {item.leaveTypeName || leaveType?.leaveName || `假种#${item.leaveTypeId}`}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${initActionToneClassName(item.action)}`}>
+                          {initActionLabel(item.action)}
+                        </span>
+                      </TableCell>
+                      <TableCell>{formatQuotaValue(item.totalQuota, leaveType?.unit)}</TableCell>
+                      <TableCell>{toDateInputValue(item.expiryDate) || '长期有效'}</TableCell>
+                      <TableCell className="text-slate-600">{item.message || '-'}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </WorkspaceSectionCard>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
         <WorkspaceSectionCard

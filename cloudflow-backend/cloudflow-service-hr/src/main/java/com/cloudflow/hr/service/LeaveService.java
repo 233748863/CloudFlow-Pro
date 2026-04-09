@@ -3,6 +3,7 @@ package com.cloudflow.hr.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.hr.domain.dto.*;
 import com.cloudflow.hr.domain.vo.LeaveApplicationVO;
+import com.cloudflow.hr.domain.vo.LeaveQuotaInitResultVO;
 import com.cloudflow.hr.domain.vo.LeaveQuotaVO;
 import com.cloudflow.hr.domain.vo.LeaveTypeVO;
 
@@ -54,7 +55,7 @@ public interface LeaveService {
      * @param employeeId 员工ID
      * @param year 年度
      */
-    void initLeaveQuota(Long employeeId, Integer year, Long leaveTypeId);
+    LeaveQuotaInitResultVO initLeaveQuota(Long employeeId, Integer year, Long leaveTypeId);
     
     /**
      * 调整假期额度

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.domain.dto.*;
 import com.cloudflow.hr.domain.vo.LeaveApplicationVO;
+import com.cloudflow.hr.domain.vo.LeaveQuotaInitResultVO;
 import com.cloudflow.hr.domain.vo.LeaveQuotaVO;
 import com.cloudflow.hr.domain.vo.LeaveTypeVO;
 import com.cloudflow.hr.service.LeaveService;
@@ -74,11 +75,11 @@ public class LeaveController {
      * 初始化员工年度假期额度
      */
     @PostMapping("/quota/init")
-    public R<Void> initLeaveQuota(@RequestParam Long employeeId, 
-                                   @RequestParam Integer year,
-                                   @RequestParam(required = false) Long leaveTypeId) {
-        leaveService.initLeaveQuota(employeeId, year, leaveTypeId);
-        return R.ok();
+    public R<LeaveQuotaInitResultVO> initLeaveQuota(@RequestParam Long employeeId,
+                                                    @RequestParam Integer year,
+                                                    @RequestParam(required = false) Long leaveTypeId) {
+        LeaveQuotaInitResultVO result = leaveService.initLeaveQuota(employeeId, year, leaveTypeId);
+        return R.ok(result);
     }
     
     /**

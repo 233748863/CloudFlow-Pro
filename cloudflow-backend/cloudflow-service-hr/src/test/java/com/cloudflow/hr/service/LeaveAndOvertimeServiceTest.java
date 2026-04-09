@@ -19,6 +19,7 @@ import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.LeaveApplicationMapper;
 import com.cloudflow.hr.mapper.LeaveQuotaMapper;
 import com.cloudflow.hr.mapper.LeaveTypeMapper;
+import com.cloudflow.hr.domain.vo.LeaveQuotaInitResultVO;
 import com.cloudflow.hr.domain.vo.LeaveQuotaVO;
 import com.cloudflow.hr.mapper.OvertimeApplicationMapper;
 import com.cloudflow.hr.service.impl.LeaveServiceImpl;
@@ -505,12 +506,17 @@ class LeaveAndOvertimeServiceTest {
             return 1;
         });
 
-        leaveService.initLeaveQuota(1L, 2026, 302L);
+        LeaveQuotaInitResultVO result = leaveService.initLeaveQuota(1L, 2026, 302L);
 
         assertNotNull(stored.get());
         assertEquals(Long.valueOf(302L), stored.get().getLeaveTypeId());
         assertEquals(new BigDecimal("3.00"), stored.get().getTotalQuota());
         assertEquals(LocalDate.of(2026, 12, 31), stored.get().getExpiryDate());
+        assertEquals("SINGLE", result.getMode());
+        assertEquals(1, result.getRequestedCount());
+        assertEquals(1, result.getCreatedCount());
+        assertEquals(0, result.getRefreshedCount());
+        assertEquals(0, result.getSkippedCount());
         verify(leaveTypeMapper, times(1)).selectById(302L);
         verify(leaveTypeMapper, times(0)).selectList(any());
         verify(leaveQuotaMapper, times(1)).insert(any(LeaveQuota.class));
@@ -531,11 +537,16 @@ class LeaveAndOvertimeServiceTest {
             return 1;
         });
 
-        leaveService.initLeaveQuota(1L, 2026, null);
+        LeaveQuotaInitResultVO result = leaveService.initLeaveQuota(1L, 2026, null);
 
         assertNotNull(stored.get());
         assertEquals(Long.valueOf(302L), stored.get().getLeaveTypeId());
         assertEquals(new BigDecimal("5.00"), stored.get().getTotalQuota());
+        assertEquals("BATCH", result.getMode());
+        assertEquals(1, result.getRequestedCount());
+        assertEquals(1, result.getCreatedCount());
+        assertEquals(0, result.getRefreshedCount());
+        assertEquals(0, result.getSkippedCount());
         verify(leaveTypeMapper, times(1)).selectList(any());
         verify(leaveQuotaMapper, times(1)).insert(any(LeaveQuota.class));
     }
@@ -551,6 +562,26 @@ class LeaveAndOvertimeServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("不支持补齐年度额度"));
+    }
+
+    @Test
+    void testInitLeaveQuotaMarksSkippedWhenExistingQuotaCannotRefresh() {
+        LeaveType marriageLeaveType = buildMarriageLeaveType();
+        marriageLeaveType.setQuotaRule("{\"quota\":3}");
+        LeaveQuota existingQuota = buildLeaveQuota(new BigDecimal("5.00"), new BigDecimal("1.00"), BigDecimal.ZERO);
+        existingQuota.setLeaveTypeId(302L);
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(302L)).thenReturn(marriageLeaveType);
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(existingQuota);
+
+        LeaveQuotaInitResultVO result = leaveService.initLeaveQuota(1L, 2026, 302L);
+
+        assertEquals(0, result.getCreatedCount());
+        assertEquals(0, result.getRefreshedCount());
+        assertEquals(1, result.getSkippedCount());
+        assertEquals("SKIPPED", result.getItems().get(0).getAction());
+        assertTrue(result.getItems().get(0).getMessage().contains("已有使用或冻结记录"));
     }
 
     @Test

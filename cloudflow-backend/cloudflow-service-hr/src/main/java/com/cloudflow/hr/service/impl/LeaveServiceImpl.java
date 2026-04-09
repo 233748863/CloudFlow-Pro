@@ -14,6 +14,8 @@ import com.cloudflow.hr.domain.entity.LeaveApplication;
 import com.cloudflow.hr.domain.entity.LeaveQuota;
 import com.cloudflow.hr.domain.entity.LeaveType;
 import com.cloudflow.hr.domain.vo.LeaveApplicationVO;
+import com.cloudflow.hr.domain.vo.LeaveQuotaInitItemVO;
+import com.cloudflow.hr.domain.vo.LeaveQuotaInitResultVO;
 import com.cloudflow.hr.domain.vo.LeaveQuotaVO;
 import com.cloudflow.hr.domain.vo.LeaveTypeVO;
 import com.cloudflow.hr.exception.HrBusinessException;
@@ -194,7 +196,7 @@ public class LeaveServiceImpl implements LeaveService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void initLeaveQuota(Long employeeId, Integer year, Long leaveTypeId) {
+    public LeaveQuotaInitResultVO initLeaveQuota(Long employeeId, Integer year, Long leaveTypeId) {
         log.info("初始化员工假期额度，employeeId: {}, year: {}, leaveTypeId: {}", employeeId, year, leaveTypeId);
         
         // 获取当前租户ID
@@ -208,13 +210,10 @@ public class LeaveServiceImpl implements LeaveService {
         validateLeaveEligibleEmployee(employee, "初始化假期额度");
         
         List<LeaveType> leaveTypes = resolveQuotaInitLeaveTypes(tenantId, leaveTypeId);
+        LeaveQuotaInitResultVO result = buildLeaveQuotaInitResult(employee, year, leaveTypeId, leaveTypes);
         
         // 为每种假期类型初始化额度
         for (LeaveType leaveType : leaveTypes) {
-            if (LEAVE_CODE_COMPENSATORY.equals(leaveType.getLeaveCode())) {
-                log.info("调休额度改为按过期日分桶生成，跳过年度初始化，leaveTypeId: {}", leaveType.getId());
-                continue;
-            }
             BigDecimal totalQuota = calculateInitialQuota(employee, leaveType, year);
             LocalDate expiryDate = LocalDate.of(year, 12, 31);
 
@@ -236,9 +235,21 @@ public class LeaveServiceImpl implements LeaveService {
                     leaveQuotaMapper.updateById(existingQuota);
                     log.info("员工假期额度已刷新，employeeId: {}, leaveTypeId: {}, totalQuota: {}",
                             employeeId, leaveType.getId(), totalQuota);
+                    appendLeaveQuotaInitItem(result, leaveType, "REFRESHED", "已按最新规则刷新年度额度", totalQuota, expiryDate);
                 } else {
+                    String message = (!isZero(existingQuota.getUsedQuota()) || !isZero(existingQuota.getFrozenQuota()))
+                            ? "已有使用或冻结记录，保留当前额度"
+                            : "当前额度记录已是最新，无需重复补齐";
                     log.info("员工假期额度已存在且已使用，跳过初始化，employeeId: {}, leaveTypeId: {}, year: {}",
                             employeeId, leaveType.getId(), year);
+                    appendLeaveQuotaInitItem(
+                            result,
+                            leaveType,
+                            "SKIPPED",
+                            message,
+                            normalizeQuota(existingQuota.getTotalQuota()),
+                            existingQuota.getExpiryDate()
+                    );
                 }
                 continue;
             }
@@ -261,6 +272,47 @@ public class LeaveServiceImpl implements LeaveService {
             
             log.info("员工假期额度初始化成功，employeeId: {}, leaveTypeId: {}, totalQuota: {}", 
                     employeeId, leaveType.getId(), totalQuota);
+            appendLeaveQuotaInitItem(result, leaveType, "CREATED", "已创建年度额度记录", totalQuota, expiryDate);
+        }
+        return result;
+    }
+
+    private LeaveQuotaInitResultVO buildLeaveQuotaInitResult(Employee employee,
+                                                             Integer year,
+                                                             Long leaveTypeId,
+                                                             List<LeaveType> leaveTypes) {
+        LeaveQuotaInitResultVO result = new LeaveQuotaInitResultVO();
+        result.setEmployeeId(employee.getId());
+        result.setEmployeeName(employee.getName());
+        result.setYear(year);
+        result.setMode(leaveTypeId == null ? "BATCH" : "SINGLE");
+        result.setRequestedCount(leaveTypes.size());
+        result.setCreatedCount(0);
+        result.setRefreshedCount(0);
+        result.setSkippedCount(0);
+        return result;
+    }
+
+    private void appendLeaveQuotaInitItem(LeaveQuotaInitResultVO result,
+                                          LeaveType leaveType,
+                                          String action,
+                                          String message,
+                                          BigDecimal totalQuota,
+                                          LocalDate expiryDate) {
+        LeaveQuotaInitItemVO item = new LeaveQuotaInitItemVO();
+        item.setLeaveTypeId(leaveType.getId());
+        item.setLeaveTypeName(leaveType.getLeaveName());
+        item.setAction(action);
+        item.setMessage(message);
+        item.setTotalQuota(normalizeQuota(totalQuota));
+        item.setExpiryDate(expiryDate);
+        result.getItems().add(item);
+
+        switch (action) {
+            case "CREATED" -> result.setCreatedCount(result.getCreatedCount() + 1);
+            case "REFRESHED" -> result.setRefreshedCount(result.getRefreshedCount() + 1);
+            case "SKIPPED" -> result.setSkippedCount(result.getSkippedCount() + 1);
+            default -> log.warn("未知的假期额度补齐结果动作，action: {}", action);
         }
     }
 
@@ -1199,7 +1251,9 @@ public class LeaveServiceImpl implements LeaveService {
      */
     private List<LeaveType> resolveQuotaInitLeaveTypes(Long tenantId, Long leaveTypeId) {
         if (leaveTypeId == null) {
-            return listQuotaEnabledLeaveTypes(tenantId);
+            return listQuotaEnabledLeaveTypes(tenantId).stream()
+                    .filter(leaveType -> !isCompensatoryLeave(leaveType))
+                    .collect(Collectors.toList());
         }
 
         LeaveType leaveType = leaveTypeMapper.selectById(leaveTypeId);
