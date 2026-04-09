@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Download,
+  Eye,
   Edit,
   Plus,
   RotateCcw,
@@ -38,7 +39,14 @@ import {
   TableHeader,
   Textarea,
 } from '@/components/ui';
+import { ProcessTrace } from '@/components/ProcessTrace';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import {
+  WorkspaceHeroCard,
+  WorkspacePaginationBar,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
 import {
   WorkspaceBackdrop,
   WorkspaceEmptyPanel,
@@ -163,6 +171,9 @@ export const LeaveApplicationPage: React.FC = () => {
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailRecord, setDetailRecord] = useState<LeaveApplication | null>(null);
   const [searchParams, setSearchParams] = useState({
     status: '',
     leaveTypeId: '',
@@ -208,6 +219,40 @@ export const LeaveApplicationPage: React.FC = () => {
     ? (leaveTypes.find((item) => String(item.id) === searchParams.leaveTypeId)?.leaveName || '指定类型')
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.leaveTypeId);
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
+  const glassModalShellClass = 'w-full rounded-[36px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] shadow-[0_30px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-2xl';
+  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] px-6 pb-5 pt-6 backdrop-blur-2xl';
+  const glassModalSectionClass = 'rounded-[28px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.76))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.7)]';
+  const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const glassModalInputClass = 'h-12 rounded-[20px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
+  const glassModalTextareaClass = 'min-h-[112px] rounded-[22px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
+  const glassModalFooterClass = 'sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-white/75 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.74))] px-6 py-5 backdrop-blur-2xl';
+  const glassModalSelectContentClass = 'rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.78))] p-1 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-2xl';
+  const glassDetailCardClass = 'rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_12px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]';
+
+  const renderDetailValue = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+    return String(value);
+  };
+
+  const getActionHint = (status?: string) => {
+    switch (status) {
+      case 'DRAFT':
+        return '草稿可继续补充时间区间后提交';
+      case 'APPROVING':
+        return '审批进行中，可查看流程进度';
+      case 'APPROVED':
+        return '审批完成，请留意交接与排班';
+      case 'REJECTED':
+        return '可调整时间或原因后重新发起';
+      case 'CANCELLED':
+        return '申请已撤销，可重新创建';
+      default:
+        return '当前记录可用于回看请假状态';
+    }
+  };
 
   const statusQuickFilters = [
     { label: '全部', value: '' },
@@ -361,6 +406,20 @@ export const LeaveApplicationPage: React.FC = () => {
     const firstType = leaveTypes[0];
     setFormData(buildEmptyForm(firstType));
     setShowDialog(true);
+  };
+
+  const handleView = async (id: number) => {
+    setShowDetail(true);
+    setDetailLoading(true);
+    try {
+      const detail = await leaveApplicationApi.getInfo(id);
+      setDetailRecord(detail);
+    } catch (error) {
+      setShowDetail(false);
+      toast.error(getErrorMessage(error, '获取请假详情失败'));
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleLeaveTypeChange = (value: string) => {
@@ -554,239 +613,175 @@ export const LeaveApplicationPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
       <div className="relative z-10 space-y-3 px-4 py-4 md:px-6">
-        <Card className="overflow-hidden rounded-[30px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,251,0.82))] shadow-[0_22px_60px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
-          <div className="relative space-y-3 p-4 sm:p-5">
-            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%)]" />
-            <div className="absolute -right-14 top-4 h-32 w-32 rounded-full bg-pink-200/25 blur-3xl" />
-            <div className="absolute bottom-0 left-1/3 h-16 w-16 rounded-full bg-amber-100/50 blur-2xl" />
-
-            <div className="relative space-y-3">
-              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
-                      <Calendar size={14} />
-                      {todayLabel}
-                    </span>
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  </div>
-                  <h1 className="mt-3 text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">请假申请</h1>
-                </div>
-
-                <div className="flex flex-wrap gap-2 xl:justify-end">
-                  <Button
-                    onClick={openCreateDialog}
-                    disabled={loadingTypes || eligibilityLoading || !canStartSelfService}
-                    className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600"
-                  >
-                    <Plus size={15} className="mr-2" />
-                    新建申请
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleExport}
-                    className="h-9 rounded-xl bg-white/85 px-4"
-                  >
-                    <Download size={15} className="mr-2 text-pink-500" />
-                    导出结果
-                  </Button>
-                </div>
-              </div>
-
-              {restrictionMessage ? (
-                <div
-                  data-testid="hr-self-service-restriction"
-                  className="rounded-[24px] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,247,237,0.88))] px-4 py-4 text-amber-900 shadow-[0_12px_26px_rgba(245,158,11,0.08)]"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
-                      <AlertCircle size={18} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助流程</div>
-                      <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {heroMetrics.map((item) => (
-                  <div
-                    key={item.label}
-                    className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
-                  >
-                    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                    <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
-                    <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                          <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
-                        </div>
-                        <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
-                          {item.icon}
-                        </div>
-                      </div>
-
-                      <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              </div>
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <Calendar size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
             </div>
-        </Card>
+          )}
+          title="请假申请"
+          actions={(
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              <Button
+                onClick={openCreateDialog}
+                disabled={loadingTypes || eligibilityLoading || !canStartSelfService}
+                className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600"
+              >
+                <Plus size={15} className="mr-2" />
+                新建申请
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                className="h-9 rounded-xl bg-white/85 px-4"
+              >
+                <Download size={15} className="mr-2 text-pink-500" />
+                导出结果
+              </Button>
+            </div>
+          )}
+          contentClassName="p-4 sm:p-5"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
+        >
+          <>
+            {restrictionMessage ? (
+              <div
+                data-testid="hr-self-service-restriction"
+                className="rounded-[24px] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,247,237,0.88))] px-4 py-4 text-amber-900 shadow-[0_12px_26px_rgba(245,158,11,0.08)]"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助流程</div>
+                    <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {heroMetrics.map((item) => (
+                <div
+                  key={item.label}
+                  className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
+                >
+                  <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
+                  <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
+                  <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
+                        <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
+                      </div>
+                      <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
+                        {item.icon}
+                      </div>
+                    </div>
+
+                    <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        </WorkspaceHeroCard>
 
         <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
           <div className="flex flex-col gap-3">
-            <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
-              <div className="relative px-4 py-4">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.09),transparent_60%)]" />
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">记录</div>
-                      <div className="mt-2 text-[1.65rem] font-bold tracking-tight text-slate-950">申请列表</div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                        {hasActiveFilters ? '已应用筛选' : '默认视图'}
-                      </span>
-                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                        共 {total} 条
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
-                    {workspaceOverviewItems.map((item) => (
-                      <div
-                        key={item.label}
-                        className={`rounded-[18px] border px-3.5 py-2.5 shadow-sm ${item.toneClassName}`}
-                      >
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</div>
-                        <div className="mt-1.5 text-sm font-semibold tracking-tight">{item.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-4 backdrop-blur-xl">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="inline-flex flex-wrap items-center gap-1 rounded-[20px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-md">
-                      {statusQuickFilters.map((item) => {
-                        const active = searchParams.status === item.value;
-                        return (
-                          <button
-                            key={item.value || 'ALL'}
-                            type="button"
-                            onClick={() => applyStatusFilter(item.value)}
-                            className={[
-                              'rounded-[16px] px-3 py-1.5 text-[11px] font-medium transition',
-                              active
-                                ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]'
-                                : 'text-slate-600 hover:bg-white/88 hover:text-pink-600',
-                            ].join(' ')}
-                          >
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {hasActiveFilters ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleResetFilters}
-                        className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
-                      >
-                        <RotateCcw size={15} className="mr-2" />
-                        清空所有条件
-                      </Button>
-                    ) : (
-                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                        当前未应用额外筛选
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
-                    <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-                      <Select
-                        value={searchParams.status}
-                        onValueChange={(value) =>
-                          setSearchParams((prev) => ({ ...prev, status: value, pageNum: 1 }))
-                        }
-                      >
-                        <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
-                          <SelectValue placeholder="请选择状态" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">全部状态</SelectItem>
-                          <SelectItem value="DRAFT">草稿</SelectItem>
-                          <SelectItem value="APPROVING">审批中</SelectItem>
-                          <SelectItem value="APPROVED">已通过</SelectItem>
-                          <SelectItem value="REJECTED">已拒绝</SelectItem>
-                          <SelectItem value="CANCELLED">已撤销</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Select
-                        value={searchParams.leaveTypeId}
-                        onValueChange={(value) =>
-                          setSearchParams((prev) => ({ ...prev, leaveTypeId: value, pageNum: 1 }))
-                        }
-                      >
-                        <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
-                          <SelectValue placeholder="请选择请假类型" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">全部类型</SelectItem>
-                          {leaveTypes.map((item) => (
-                            <SelectItem key={item.id} value={String(item.id)}>
-                              {item.leaveName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      onClick={() => setSearchParams((prev) => ({ ...prev, pageNum: 1 }))}
-                      className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
+            <WorkspaceWorkbenchCard
+              title="申请列表"
+              total={total}
+              hasActiveFilters={hasActiveFilters}
+              overviewItems={workspaceOverviewItems}
+              quickFilters={statusQuickFilters}
+              activeQuickFilter={searchParams.status}
+              onQuickFilterChange={applyStatusFilter}
+              quickFilterAside={hasActiveFilters ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetFilters}
+                  className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                >
+                  <RotateCcw size={15} className="mr-2" />
+                  清空所有条件
+                </Button>
+              ) : (
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  当前未应用额外筛选
+                </span>
+              )}
+              filterBar={(
+                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+                  <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+                    <Select
+                      value={searchParams.status}
+                      onValueChange={(value) =>
+                        setSearchParams(prev => ({ ...prev, status: value, pageNum: 1 }))
+                      }
                     >
-                      <Search size={15} className="mr-2" />
-                      应用筛选
-                    </Button>
+                      <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                        <SelectValue placeholder="请选择状态" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">全部状态</SelectItem>
+                        <SelectItem value="DRAFT">草稿</SelectItem>
+                        <SelectItem value="APPROVING">审批中</SelectItem>
+                        <SelectItem value="APPROVED">已通过</SelectItem>
+                        <SelectItem value="REJECTED">已拒绝</SelectItem>
+                        <SelectItem value="CANCELLED">已撤销</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleResetFilters}
-                      className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                    <Select
+                      value={searchParams.leaveTypeId}
+                      onValueChange={(value) =>
+                        setSearchParams(prev => ({ ...prev, leaveTypeId: value, pageNum: 1 }))
+                      }
                     >
-                      <RotateCcw size={15} className="mr-2" />
-                      清空条件
-                    </Button>
+                      <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                        <SelectValue placeholder="请选择请假类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">全部类型</SelectItem>
+                        {leaveTypes.map((item) => (
+                          <SelectItem key={item.id} value={String(item.id)}>
+                            {item.leaveName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            <div className="overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.68))] px-4 py-3 backdrop-blur-xl">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">当前结果</div>
-                  <div className="mt-1 text-[11px] text-slate-400">轻玻璃视图下展示请假申请记录与当前操作</div>
+                  <Button
+                    size="sm"
+                    onClick={() => setSearchParams(prev => ({ ...prev, pageNum: 1 }))}
+                    className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
+                  >
+                    <Search size={15} className="mr-2" />
+                    应用筛选
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetFilters}
+                    className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                  >
+                    <RotateCcw size={15} className="mr-2" />
+                    清空条件
+                  </Button>
                 </div>
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {total} 条</span>
-              </div>
+              )}
+            />
+
+            <WorkspaceResultCard total={total} description="轻玻璃视图下展示请假申请记录与当前操作">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
@@ -831,25 +826,38 @@ export const LeaveApplicationPage: React.FC = () => {
                           <td className="max-w-sm truncate px-4 py-2.5 text-sm text-slate-600">{item.reason}</td>
                           <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
                           <td className="px-4 py-2.5 whitespace-nowrap text-right">
-                            <TableRowActions
-                              align="end"
-                              actions={[
-                                {
-                                  label: '提交',
-                                  icon: <Send size={14} />,
-                                  onClick: () => handleSubmitDraft(item.id!),
-                                  hidden: item.status !== 'DRAFT',
-                                  tone: 'primary',
-                                },
-                                {
-                                  label: '撤销',
-                                  icon: <RotateCcw size={14} />,
-                                  onClick: () => handleCancel(item.id!),
-                                  hidden: item.status !== 'APPROVING' && item.status !== 'APPROVED',
-                                  tone: 'warning',
-                                },
-                              ]}
-                            />
+                            <div className="flex flex-col items-end gap-1">
+                              <TableRowActions
+                                align="end"
+                                className="gap-1"
+                                actions={[
+                                  {
+                                    label: '详情',
+                                    icon: <Eye size={14} />,
+                                    onClick: () => void handleView(item.id!),
+                                    tone: 'neutral',
+                                    className: 'rounded-full bg-slate-50/90 px-2.5 ring-1 ring-slate-200/80 hover:bg-slate-100',
+                                  },
+                                  {
+                                    label: '提交',
+                                    icon: <Send size={14} />,
+                                    onClick: () => handleSubmitDraft(item.id!),
+                                    hidden: item.status !== 'DRAFT',
+                                    tone: 'primary',
+                                    className: 'rounded-full bg-pink-50/90 px-2.5 ring-1 ring-pink-100',
+                                  },
+                                  {
+                                    label: '撤销',
+                                    icon: <RotateCcw size={14} />,
+                                    onClick: () => handleCancel(item.id!),
+                                    hidden: item.status !== 'APPROVING' && item.status !== 'APPROVED',
+                                    tone: 'warning',
+                                    className: 'rounded-full bg-amber-50/90 px-2.5 ring-1 ring-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
+                                  },
+                                ]}
+                              />
+                              <span className="text-[10px] font-medium text-slate-400">{getActionHint(item.status)}</span>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -858,50 +866,38 @@ export const LeaveApplicationPage: React.FC = () => {
                 </table>
               </div>
 
-              <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.78),rgba(255,255,255,0.72))] px-4 py-4">
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {total} 条</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      setSearchParams((prev) => ({
-                        ...prev,
-                        pageNum: Math.max(1, prev.pageNum - 1),
-                      }))
-                    }
-                    disabled={searchParams.pageNum === 1}
-                    className="rounded-xl border-white/85 bg-white/78 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
-                  >
-                    上一页
-                  </Button>
-                  <span className="px-3 py-2 text-sm text-slate-600">第 {searchParams.pageNum} 页</span>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      setSearchParams((prev) => ({
-                        ...prev,
-                        pageNum: prev.pageNum + 1,
-                      }))
-                    }
-                    disabled={searchParams.pageNum * searchParams.pageSize >= total}
-                    className="rounded-xl border-white/85 bg-white/78 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
-                  >
-                    下一页
-                  </Button>
-                </div>
-              </div>
-            </div>
+              <WorkspacePaginationBar
+                total={total}
+                pageNum={searchParams.pageNum}
+                totalPages={totalPages}
+                onPrev={() =>
+                  setSearchParams(prev => ({
+                    ...prev,
+                    pageNum: Math.max(1, prev.pageNum - 1),
+                  }))
+                }
+                onNext={() =>
+                  setSearchParams(prev => ({
+                    ...prev,
+                    pageNum: prev.pageNum + 1,
+                  }))
+                }
+                prevDisabled={searchParams.pageNum === 1}
+                nextDisabled={searchParams.pageNum * searchParams.pageSize >= total}
+              />
+            </WorkspaceResultCard>
           </div>
         </Card>
 
         {showDialog ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
-            <div className="w-full max-w-2xl rounded-[36px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] shadow-[0_30px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-2xl">
-              <div className="sticky top-0 z-10 border-b border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] px-6 pb-5 pt-6 backdrop-blur-2xl">
+            <div className={`${glassModalShellClass} max-w-2xl`}>
+              <div className={glassModalHeaderClass}>
                 <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-emerald-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-pink-100">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       <Calendar size={14} />
                       请假申请表单
                     </div>
@@ -914,7 +910,7 @@ export const LeaveApplicationPage: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowDialog(false)}
-                    className="rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700"
                   >
                     <X size={18} />
                   </Button>
@@ -922,89 +918,109 @@ export const LeaveApplicationPage: React.FC = () => {
               </div>
 
               <div className="space-y-4 p-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      请假类型 <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      value={formData.leaveTypeId ? String(formData.leaveTypeId) : ''}
-                      onValueChange={handleLeaveTypeChange}
-                    >
-                      <SelectTrigger className="h-12 rounded-[20px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
-                        <SelectValue placeholder="请选择请假类型" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.78))] p-1 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-2xl">
-                        {leaveTypes.map((item) => (
-                          <SelectItem key={item.id} value={String(item.id)}>
-                            {item.leaveName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">请假类型</div>
+                    <div className="mt-1 text-sm text-slate-500">先确认假种，系统会根据配置自动计算时长并判断是否占用额度。</div>
                   </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={glassModalLabelClass}>
+                        请假类型 <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        value={formData.leaveTypeId ? String(formData.leaveTypeId) : ''}
+                        onValueChange={handleLeaveTypeChange}
+                      >
+                        <SelectTrigger className={glassModalInputClass}>
+                          <SelectValue placeholder="请选择请假类型" />
+                        </SelectTrigger>
+                        <SelectContent className={glassModalSelectContentClass}>
+                          {leaveTypes.map((item) => (
+                            <SelectItem key={item.id} className="rounded-[16px]" value={String(item.id)}>
+                              {item.leaveName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  <div className="rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_12px_22px_rgba(15,23,42,0.04)]">
-                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                      Duration
-                    </div>
-                    <div className="mt-2 text-2xl font-bold text-slate-900">
-                      {duration > 0 ? `${duration}${unitMap[selectedType?.unit || ''] || ''}` : '--'}
-                    </div>
-                    <div className="mt-2 text-xs leading-5 text-slate-400">
-                      {selectedType?.needQuota ? '该假种会占用对应假期额度。' : '该假种不校验假期额度。'}
+                    <div className="rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_12px_22px_rgba(15,23,42,0.04)]">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        Duration
+                      </div>
+                      <div className="mt-2 text-2xl font-bold text-slate-900">
+                        {duration > 0 ? `${duration}${unitMap[selectedType?.unit || ''] || ''}` : '--'}
+                      </div>
+                      <div className="mt-2 text-xs leading-5 text-slate-400">
+                        {selectedType?.needQuota ? '该假种会占用对应假期额度。' : '该假种不校验假期额度。'}
+                      </div>
                     </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">时间安排</div>
+                    <div className="mt-1 text-sm text-slate-500">填写起止时间区间，系统会按天或按小时自动换算本次请假时长。</div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={glassModalLabelClass}>
+                        {selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <DatePicker
+                        variant="glass"
+                        className={glassModalInputClass}
+                        type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
+                        value={formData.startValue}
+                        onChange={(event) =>
+                          setFormData((prev) => ({ ...prev, startValue: event.target.value }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className={glassModalLabelClass}>
+                        {selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <DatePicker
+                        variant="glass"
+                        className={glassModalInputClass}
+                        type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
+                        value={formData.endValue}
+                        onChange={(event) =>
+                          setFormData((prev) => ({ ...prev, endValue: event.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className={glassModalSectionClass}>
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">申请说明</div>
+                    <div className="mt-1 text-sm text-slate-500">说明请假原因、工作交接和其他需要审批人了解的信息。</div>
+                  </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      {selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}
-                      <span className="text-red-500">*</span>
+                    <label className={glassModalLabelClass}>
+                      请假原因 <span className="text-red-500">*</span>
                     </label>
-                    <DatePicker
-                      variant="glass"
-                      type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
-                      value={formData.startValue}
+                    <Textarea
+                      className={glassModalTextareaClass}
+                      value={formData.reason}
                       onChange={(event) =>
-                        setFormData((prev) => ({ ...prev, startValue: event.target.value }))
+                        setFormData((prev) => ({ ...prev, reason: event.target.value }))
                       }
+                      placeholder="请说明本次请假的原因、交接情况或其他需要审批人了解的信息。"
                     />
                   </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      {selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <DatePicker
-                      variant="glass"
-                      type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
-                      value={formData.endValue}
-                      onChange={(event) =>
-                        setFormData((prev) => ({ ...prev, endValue: event.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    请假原因 <span className="text-red-500">*</span>
-                  </label>
-                  <Textarea
-                    className="h-28 rounded-[22px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
-                    value={formData.reason}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, reason: event.target.value }))
-                    }
-                    placeholder="请说明本次请假的原因、交接情况或其他需要审批人了解的信息。"
-                  />
-                </div>
+                </section>
               </div>
 
-              <div className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-white/75 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.74))] px-6 py-5 backdrop-blur-2xl">
+              <div className={glassModalFooterClass}>
                 <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">
                   取消
                 </Button>
@@ -1023,6 +1039,121 @@ export const LeaveApplicationPage: React.FC = () => {
                 >
                   <Send size={16} className="mr-2" />
                   直接提交
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showDetail ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.22)] p-4 backdrop-blur-md" onClick={() => !detailLoading && setShowDetail(false)}>
+            <div
+              className={`flex max-h-[90vh] max-w-4xl flex-col ${glassModalShellClass}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className={glassModalHeaderClass}>
+                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-emerald-100/30 blur-3xl" />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                      <Eye size={14} />
+                      申请详情
+                    </div>
+                    <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{detailRecord?.applicationNo || '请假申请'}</h3>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                      <span>{detailRecord?.leaveTypeName || '加载中'}</span>
+                      {detailRecord ? getStatusBadge(detailRecord.status || 'DRAFT') : null}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowDetail(false)}
+                    className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700"
+                  >
+                    <X size={18} />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-6 overflow-y-auto p-6">
+                {detailLoading || !detailRecord ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">申请单号</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailRecord.applicationNo)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">申请人</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailRecord.employeeName)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">请假类型</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailRecord.leaveTypeName)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">开始时间</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailRecord.startTime)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">结束时间</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailRecord.endTime)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">请假时长</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{formatDuration(detailRecord)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">状态</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{statusMap[detailRecord.status || 'DRAFT'] || detailRecord.status || '-'}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">创建时间</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailRecord.createTime)}</div>
+                      </div>
+                      <div className={glassDetailCardClass}>
+                        <div className="text-xs font-medium text-slate-400">更新时间</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailRecord.updateTime)}</div>
+                      </div>
+                    </div>
+
+                    <div className={glassModalSectionClass}>
+                      <div className="text-sm font-semibold text-slate-900">请假原因</div>
+                      <div className="mt-3 whitespace-pre-wrap rounded-[22px] border border-white/70 bg-white/72 p-4 text-sm leading-7 text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                        {detailRecord.reason || '-'}
+                      </div>
+                    </div>
+
+                    <div className={glassModalSectionClass}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-slate-900">流程轨迹</div>
+                        <div className="text-xs text-slate-400">
+                          {detailRecord.processInstanceId ? `实例号：${detailRecord.processInstanceId}` : '草稿或未发起流程时暂无轨迹'}
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        {detailRecord.processInstanceId ? (
+                          <ProcessTrace instanceId={detailRecord.processInstanceId} variant="glass" />
+                        ) : (
+                          <div className="rounded-[22px] border border-white/70 bg-white/72 px-4 py-6 text-center text-sm text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                            当前记录还没有流程实例，提交审批后这里会显示完整轨迹。
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className={glassModalFooterClass}>
+                <Button variant="outline" onClick={() => setShowDetail(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">
+                  关闭
                 </Button>
               </div>
             </div>

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BriefcaseBusiness, CalendarRange, Plus, Search, UserRoundSearch } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
 import { Candidate, CandidatePayload, DeptTreeNode, Interview, InterviewSchedulePayload, PositionOption, RecruitmentRequest, RecruitmentRequestPayload, listRecruitmentRequests, createRecruitmentRequest, listCandidates, createCandidate, updateCandidateStatus, listInterviews, scheduleInterview, getDeptTreeOptions, getPositionOptions, submitRecruitmentRequest, approveRecruitmentRequest, completeRecruitmentRequest, cancelRecruitmentRequest } from '@/services/api/hr';
+import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 
 const normalizeRows = <T,>(data: any): T[] => {
   if (!data) return [];
@@ -292,17 +293,17 @@ export const HrRecruitmentPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
-              <BriefcaseBusiness size={14} />
-              Recruitment Hub
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">招聘与候选人中心</h1>
-            <p className="mt-2 text-sm text-slate-500">把招聘需求、候选人推进和面试安排放在一个桌面工作区。</p>
+      <WorkspaceHeroCard
+        badge={(
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+            <BriefcaseBusiness size={14} />
+            Recruitment Hub
           </div>
-          <div className="flex flex-wrap gap-3">
+        )}
+        title="招聘与候选人中心"
+        description="把招聘需求、候选人推进和面试安排放在一个桌面工作区。"
+        actions={(
+          <>
             <Button className="rounded-2xl" onClick={() => setRequestDialog(true)}>
               <Plus size={16} className="mr-2" />
               新建招聘需求
@@ -315,16 +316,20 @@ export const HrRecruitmentPage: React.FC = () => {
               <CalendarRange size={16} className="mr-2" />
               安排面试
             </Button>
-          </div>
-        </div>
-      </Card>
+          </>
+        )}
+      />
 
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-5 backdrop-blur-xl">
+      <WorkspaceSectionCard
+        title="搜索与检索"
+        description="按需求编号、岗位、候选人、邮箱或状态快速过滤当前招聘工作台。"
+        bodyClassName="mt-0"
+      >
         <div className="relative">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input className="pl-10" placeholder="搜索需求编号、岗位、候选人、邮箱或状态" value={keyword} onChange={event => setKeyword(event.target.value)} />
         </div>
-      </Card>
+      </WorkspaceSectionCard>
 
       <Tabs defaultValue="request">
         <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-white/70 p-1 backdrop-blur-xl">
@@ -334,7 +339,12 @@ export const HrRecruitmentPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="request" className="mt-4">
-          <Card className="rounded-3xl border-white/80 bg-white/70 p-2 backdrop-blur-xl">
+          <WorkspaceSectionCard
+            title="招聘需求"
+            description="创建、提交、审批和关闭招聘需求都在这一组主表里推进。"
+            headerAside={<span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {filteredRequests.length} 条</span>}
+            bodyClassName="mt-0"
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -386,11 +396,16 @@ export const HrRecruitmentPage: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </Card>
+          </WorkspaceSectionCard>
         </TabsContent>
 
         <TabsContent value="candidate" className="mt-4">
-          <Card className="rounded-3xl border-white/80 bg-white/70 p-2 backdrop-blur-xl">
+          <WorkspaceSectionCard
+            title="候选人"
+            description="候选人状态只在招聘链路内推进，到 Offer 或入职阶段后转由后续模块继续处理。"
+            headerAside={<span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {filteredCandidates.length} 条</span>}
+            bodyClassName="mt-0"
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -442,11 +457,16 @@ export const HrRecruitmentPage: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </Card>
+          </WorkspaceSectionCard>
         </TabsContent>
 
         <TabsContent value="interview" className="mt-4">
-          <Card className="rounded-3xl border-white/80 bg-white/70 p-2 backdrop-blur-xl">
+          <WorkspaceSectionCard
+            title="面试安排"
+            description="所有已排期面试统一在这里复核时间、地点和当前状态。"
+            headerAside={<span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {interviews.length} 条</span>}
+            bodyClassName="mt-0"
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -476,17 +496,17 @@ export const HrRecruitmentPage: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </Card>
+          </WorkspaceSectionCard>
         </TabsContent>
       </Tabs>
 
       {requestDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">新建招聘需求</h2>
-              <Button variant="ghost" onClick={() => setRequestDialog(false)}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="新建招聘需求"
+          description="先明确部门、职位和招聘人数，后续候选人和面试都会挂在这条需求下。"
+          onClose={() => setRequestDialog(false)}
+          maxWidthClassName="max-w-2xl"
+        >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label>部门</Label>
@@ -512,17 +532,16 @@ export const HrRecruitmentPage: React.FC = () => {
               <Button variant="outline" onClick={() => setRequestDialog(false)}>取消</Button>
               <Button onClick={handleCreateRequest}>创建需求</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {candidateDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">录入候选人</h2>
-              <Button variant="ghost" onClick={() => setCandidateDialog(false)}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="录入候选人"
+          description="候选人会绑定到招聘需求，后续面试、Offer 和入职会沿用这条候选人主线。"
+          onClose={() => setCandidateDialog(false)}
+          maxWidthClassName="max-w-2xl"
+        >
             {!recruitingRequests.length && (
               <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 当前没有“招聘中”的需求。请先在需求列表完成提交和审批通过，再录入候选人。
@@ -564,17 +583,16 @@ export const HrRecruitmentPage: React.FC = () => {
               <Button variant="outline" onClick={() => setCandidateDialog(false)}>取消</Button>
               <Button disabled={!recruitingRequests.length || !candidateForm.requestId} onClick={handleCreateCandidate}>录入候选人</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {interviewDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">安排面试</h2>
-              <Button variant="ghost" onClick={() => setInterviewDialog(false)}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="安排面试"
+          description="只对当前可推进的候选人开放排期，时间和地点会直接进入面试记录。"
+          onClose={() => setInterviewDialog(false)}
+          maxWidthClassName="max-w-2xl"
+        >
             {!interviewableCandidates.length && (
               <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 当前没有可安排面试的候选人。只有“招聘中”需求下且状态为新简历、筛选中、面试中的候选人才能继续安排面试。
@@ -609,28 +627,19 @@ export const HrRecruitmentPage: React.FC = () => {
               <Button variant="outline" onClick={() => setInterviewDialog(false)}>取消</Button>
               <Button disabled={!interviewableCandidates.length || !interviewForm.candidateId || !interviewForm.interviewTime} onClick={handleScheduleInterview}>安排面试</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {rejectCandidateId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">填写拒绝原因</h2>
-                <p className="mt-1 text-sm text-slate-500">候选人标记为“已拒绝”时，后端要求必须填写原因。</p>
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setRejectCandidateId(null);
-                  setRejectReason('');
-                }}
-              >
-                关闭
-              </Button>
-            </div>
+        <WorkspaceDialogShell
+          title="填写拒绝原因"
+          description="候选人标记为“已拒绝”时，后端要求必须填写原因。"
+          onClose={() => {
+            setRejectCandidateId(null);
+            setRejectReason('');
+          }}
+          maxWidthClassName="max-w-xl"
+        >
             <div>
               <Label>拒绝原因</Label>
               <Textarea
@@ -653,8 +662,7 @@ export const HrRecruitmentPage: React.FC = () => {
               </Button>
               <Button onClick={() => void handleRejectCandidate()}>确认拒绝</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
     </div>
   );

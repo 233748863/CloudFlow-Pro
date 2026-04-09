@@ -3,7 +3,6 @@ import { BriefcaseBusiness, FilePlus2, Search, Send, ShieldCheck, UserRoundPlus 
 import { toast } from 'sonner';
 import {
   Button,
-  Card,
   Input,
   Label,
   Select,
@@ -13,6 +12,7 @@ import {
   SelectValue,
   Textarea,
 } from '@/components/ui';
+import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import {
   Candidate,
   Offer,
@@ -488,19 +488,17 @@ export const HrOfferPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-              <ShieldCheck size={14} />
-              Offer Flow
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Offer 管理中心</h1>
-            <p className="mt-2 text-sm text-slate-500">
-              直接按真实后端状态机推进 Offer 的创建、审批、发送、接受和转入职，不绕工作流回调壳子。
-            </p>
+      <WorkspaceHeroCard
+        badge={(
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <ShieldCheck size={14} />
+            Offer Flow
           </div>
-          <div className="flex flex-wrap gap-3">
+        )}
+        title="Offer 管理中心"
+        description="直接按真实后端状态机推进 Offer 的创建、审批、发送、接受和转入职，不绕工作流回调壳子。"
+        actions={(
+          <>
             <Button className="rounded-2xl" onClick={() => setCreateDialogOpen(true)}>
               <FilePlus2 size={16} className="mr-2" />
               新建 Offer
@@ -519,19 +517,18 @@ export const HrOfferPage: React.FC = () => {
             >
               刷新列表
             </Button>
-          </div>
-        </div>
-      </Card>
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {offerMetrics.map(metric => (
-          <Card key={metric.label} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm font-medium text-slate-500">{metric.label}</div>
-                <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : metric.value}</div>
-                <div className="mt-2 text-xs text-slate-400">{metric.hint}</div>
-              </div>
+          <WorkspaceMetricCard
+            key={metric.label}
+            label={metric.label}
+            value={loading ? '--' : metric.value}
+            hint={metric.hint}
+            aside={(
               <div className={`rounded-2xl p-3 ${
                 metric.tone === 'pink'
                   ? 'bg-pink-50 text-pink-500'
@@ -543,18 +540,17 @@ export const HrOfferPage: React.FC = () => {
               }`}>
                 {metric.icon}
               </div>
-            </div>
-          </Card>
+            )}
+          />
         ))}
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Offer 列表</h2>
-            <p className="mt-1 text-sm text-slate-500">按候选人、状态和关键词筛选后，直接点选进入详情联调。</p>
-          </div>
-
+        <WorkspaceSectionCard
+          title="Offer 列表"
+          description="按候选人、状态和关键词筛选后，直接点选进入详情联调。"
+          bodyClassName="mt-0"
+        >
           <div className="space-y-4">
             <div className="relative">
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -637,56 +633,52 @@ export const HrOfferPage: React.FC = () => {
               )}
             </div>
           </div>
-        </Card>
+        </WorkspaceSectionCard>
 
         <div className="space-y-6">
-          <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Offer 详情</h2>
-                <p className="mt-1 text-sm text-slate-500">详情与动作都走真实接口，适合直接验证状态流转和入职衔接。</p>
+          <WorkspaceSectionCard
+            title="Offer 详情"
+            description="详情与动作都走真实接口，适合直接验证状态流转和入职衔接。"
+            headerAside={currentOffer ? (
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" disabled={!canSubmit || actionLoading} onClick={() => void runOfferAction(() => submitOffer(currentOffer.id), 'Offer 已提交审批')}>
+                  提交审批
+                </Button>
+                <Button variant="outline" disabled={!canApprove || actionLoading} onClick={() => void runOfferAction(() => approveOffer(currentOffer.id), 'Offer 已审批通过')}>
+                  审批通过
+                </Button>
+                <Button variant="outline" disabled={!canSend || actionLoading} onClick={() => void runOfferAction(() => sendOffer(currentOffer.id), 'Offer 已发送给候选人')}>
+                  发送 Offer
+                </Button>
+                <Button variant="outline" disabled={!canAccept || actionLoading} onClick={() => void runOfferAction(() => acceptOffer(currentOffer.id), '候选人已接受 Offer')}>
+                  接受 Offer
+                </Button>
+                <Button variant="outline" disabled={!canReject || actionLoading} onClick={() => void runOfferAction(() => rejectOffer(currentOffer.id), 'Offer 已拒绝')}>
+                  拒绝 Offer
+                </Button>
+                <Button
+                  disabled={!canConvert || actionLoading}
+                  onClick={() => void runOfferAction(
+                    () => convertOfferToOnboarding(currentOffer.id),
+                    '已转入入职流程',
+                    result => {
+                      if (typeof result === 'number') {
+                        toast.info(`入职申请 ID：${result}`);
+                      }
+                    },
+                  )}
+                >
+                  {offerAlreadyConverted ? '已转入职' : '转入职'}
+                </Button>
               </div>
-
-              {currentOffer && (
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" disabled={!canSubmit || actionLoading} onClick={() => void runOfferAction(() => submitOffer(currentOffer.id), 'Offer 已提交审批')}>
-                    提交审批
-                  </Button>
-                  <Button variant="outline" disabled={!canApprove || actionLoading} onClick={() => void runOfferAction(() => approveOffer(currentOffer.id), 'Offer 已审批通过')}>
-                    审批通过
-                  </Button>
-                  <Button variant="outline" disabled={!canSend || actionLoading} onClick={() => void runOfferAction(() => sendOffer(currentOffer.id), 'Offer 已发送给候选人')}>
-                    发送 Offer
-                  </Button>
-                  <Button variant="outline" disabled={!canAccept || actionLoading} onClick={() => void runOfferAction(() => acceptOffer(currentOffer.id), '候选人已接受 Offer')}>
-                    接受 Offer
-                  </Button>
-                  <Button variant="outline" disabled={!canReject || actionLoading} onClick={() => void runOfferAction(() => rejectOffer(currentOffer.id), 'Offer 已拒绝')}>
-                    拒绝 Offer
-                  </Button>
-                  <Button
-                    disabled={!canConvert || actionLoading}
-                    onClick={() => void runOfferAction(
-                      () => convertOfferToOnboarding(currentOffer.id),
-                      '已转入入职流程',
-                      result => {
-                        if (typeof result === 'number') {
-                          toast.info(`入职申请 ID：${result}`);
-                        }
-                      },
-                    )}
-                  >
-                    {offerAlreadyConverted ? '已转入职' : '转入职'}
-                  </Button>
-                </div>
-              )}
-
-              {currentOffer && offerAlreadyConverted && selectedOnboarding && (
-                <div className="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
-                  该 Offer 已生成入职申请 #{selectedOnboarding.id}，页面已锁定重复转入职操作。
-                </div>
-              )}
-            </div>
+            ) : null}
+            bodyClassName="mt-0"
+          >
+            {currentOffer && offerAlreadyConverted && selectedOnboarding && (
+              <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
+                该 Offer 已生成入职申请 #{selectedOnboarding.id}，页面已锁定重复转入职操作。
+              </div>
+            )}
 
             {!currentOffer && !detailLoading && (
               <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
@@ -757,13 +749,13 @@ export const HrOfferPage: React.FC = () => {
             {detailLoading && (
               <div className="mt-4 text-sm text-slate-400">正在加载 Offer 详情...</div>
             )}
-          </Card>
+          </WorkspaceSectionCard>
 
-          <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">联调提示</h2>
-              <p className="mt-1 text-sm text-slate-500">这页的动作顺序严格贴合后端状态机，点不动通常就意味着后端状态不允许。</p>
-            </div>
+          <WorkspaceSectionCard
+            title="联调提示"
+            description="这页的动作顺序严格贴合后端状态机，点不动通常就意味着后端状态不允许。"
+            bodyClassName="mt-0"
+          >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
                 建议链路：创建 Offer → 提交审批 → 审批通过 → 发送 → 接受 → 转入职。
@@ -775,20 +767,17 @@ export const HrOfferPage: React.FC = () => {
                 如果右侧已经出现入职申请编号，说明这条 Offer 已完成转入职，页面会自动禁止再次建单。
               </div>
             </div>
-          </Card>
+          </WorkspaceSectionCard>
         </div>
       </div>
 
       {createDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">新建 Offer</h2>
-                <p className="mt-1 text-sm text-slate-500">优先从可用候选人自动回填，页面会自动排除已有 Offer 或入职申请的候选人。</p>
-              </div>
-              <Button variant="ghost" onClick={resetCreateDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="新建 Offer"
+          description="优先从可用候选人自动回填，页面会自动排除已有 Offer 或入职申请的候选人。"
+          onClose={resetCreateDialog}
+          maxWidthClassName="max-w-4xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -898,8 +887,7 @@ export const HrOfferPage: React.FC = () => {
               <Button variant="outline" onClick={resetCreateDialog}>取消</Button>
               <Button onClick={() => void handleCreateOffer()}>创建 Offer</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
     </div>
   );

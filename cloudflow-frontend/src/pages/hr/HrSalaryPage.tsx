@@ -23,6 +23,7 @@ import {
   TabsTrigger,
   Textarea,
 } from '@/components/ui';
+import { WorkspaceDialogShell, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import {
   EmployeeInsurance,
   EmployeeSalary,
@@ -8923,46 +8924,43 @@ export const HrSalaryPage: React.FC = () => {
                   )}
                 </Card>
 
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">社保台账</h2>
-                      <p className="mt-1 text-sm text-slate-500">按员工维度查看当前与历史社保分配记录，便于核对生效链路和历史基数。</p>
-                    </div>
-                    {currentEmployeeRecord && (
-                      <div className="flex flex-wrap gap-3">
-                        <Select
-                          value={insuranceLedgerStatusFilter}
-                          onValueChange={value => {
-                            setInsuranceLedgerStatusFilter(value);
-                            setInsuranceLedgerPageNum(1);
-                          }}
-                        >
-                          <SelectTrigger className="w-[168px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {insuranceLedgerStatusOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="outline"
-                          onClick={() => void loadEmployeeInsuranceLedger(
-                            currentEmployeeRecord.employeeId,
-                            insuranceLedgerStatusFilter,
-                            insuranceLedgerPageNum,
-                          )}
-                        >
-                          <RefreshCcw size={14} className="mr-2" />
-                          刷新台账
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                <WorkspaceSectionCard
+                  title="社保台账"
+                  description="按员工维度查看当前与历史社保分配记录，便于核对生效链路和历史基数。"
+                  headerAside={currentEmployeeRecord ? (
+                    <>
+                      <Select
+                        value={insuranceLedgerStatusFilter}
+                        onValueChange={value => {
+                          setInsuranceLedgerStatusFilter(value);
+                          setInsuranceLedgerPageNum(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-[168px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {insuranceLedgerStatusOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        onClick={() => void loadEmployeeInsuranceLedger(
+                          currentEmployeeRecord.employeeId,
+                          insuranceLedgerStatusFilter,
+                          insuranceLedgerPageNum,
+                        )}
+                      >
+                        <RefreshCcw size={14} className="mr-2" />
+                        刷新台账
+                      </Button>
+                    </>
+                  ) : undefined}
+                >
 
                   {!currentEmployeeRecord && !employeeInsuranceListLoading && (
                     <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
@@ -9175,13 +9173,12 @@ export const HrSalaryPage: React.FC = () => {
                   {employeeInsuranceListLoading && (
                     <div className="mt-4 text-sm text-slate-400">正在加载员工社保台账...</div>
                   )}
-                </Card>
+                </WorkspaceSectionCard>
 
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                  <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-slate-900">联调提示</h2>
-                    <p className="mt-1 text-sm text-slate-500">建议先给一名正式员工分配标准薪资结构，再发起调薪，可以最快看清整条链路。</p>
-                  </div>
+                <WorkspaceSectionCard
+                  title="联调提示"
+                  description="建议先给一名正式员工分配标准薪资结构，再发起调薪，可以最快看清整条链路。"
+                >
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
                       如果左侧为空，优先点击“分配薪资”，后端会把旧记录自动置为 EXPIRED，并新建 ACTIVE 档案。
@@ -9190,21 +9187,18 @@ export const HrSalaryPage: React.FC = () => {
                       薪资详情里的项目金额来自员工薪资 JSON 展开，不是前端本地计算出来的临时值。
                     </div>
                   </div>
-                </Card>
+                </WorkspaceSectionCard>
 
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">调薪履历</h2>
-                      <p className="mt-1 text-sm text-slate-500">直接读取员工调薪历史，点任意一条可切到“调薪申请”继续查看单据详情。草稿、审批中单据以右侧“调薪申请”列表为准。</p>
-                    </div>
-                    {currentEmployeeRecord && (
-                      <Button variant="outline" onClick={() => void loadEmployeeAdjustmentHistory(currentEmployeeRecord.employeeId)}>
-                        <RefreshCcw size={14} className="mr-2" />
-                        刷新履历
-                      </Button>
-                    )}
-                  </div>
+                <WorkspaceSectionCard
+                  title="调薪履历"
+                  description="直接读取员工调薪历史，点任意一条可切到“调薪申请”继续查看单据详情。草稿、审批中单据以右侧“调薪申请”列表为准。"
+                  headerAside={currentEmployeeRecord ? (
+                    <Button variant="outline" onClick={() => void loadEmployeeAdjustmentHistory(currentEmployeeRecord.employeeId)}>
+                      <RefreshCcw size={14} className="mr-2" />
+                      刷新履历
+                    </Button>
+                  ) : undefined}
+                >
 
                   {!currentEmployeeRecord && !employeeAdjustmentHistoryLoading && (
                     <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
@@ -9399,17 +9393,16 @@ export const HrSalaryPage: React.FC = () => {
                   {employeeAdjustmentHistoryLoading && (
                     <div className="mt-4 text-sm text-slate-400">正在加载调薪履历...</div>
                   )}
-                </Card>
+                </WorkspaceSectionCard>
               </div>
             </div>
           </TabsContent>
           <TabsContent value="adjustments" className="space-y-6">
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-              <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">调薪申请列表</h2>
-                  <p className="mt-1 text-sm text-slate-500">状态、类型、员工和生效日期区间先走服务端过滤，关键词再做前端补筛，适合开发联调场景。</p>
-                </div>
+              <WorkspaceSectionCard
+                title="调薪申请列表"
+                description="状态、类型、员工和生效日期区间先走服务端过滤，关键词再做前端补筛，适合开发联调场景。"
+              >
 
                 <div className="space-y-4">
                   <div className="relative">
@@ -9656,40 +9649,37 @@ export const HrSalaryPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </Card>
+              </WorkspaceSectionCard>
 
               <div className="space-y-6">
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">调薪详情</h2>
-                      <p className="mt-1 text-sm text-slate-500">这里直接展示前后薪资 JSON 的差异，并允许推进真实状态流转。</p>
-                    </div>
-                    {adjustmentDetail && (
-                      <div className="flex flex-wrap gap-3">
-                        <Button
-                          variant="outline"
-                          disabled={!canSubmitAdjustment || actionLoading}
-                          onClick={() => void runAdjustmentAction(() => submitSalaryAdjustment(adjustmentDetail.id), '调薪申请已提交审批', '提交审批')}
-                        >
-                          提交审批
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={!canApproveAdjustment || actionLoading}
-                          onClick={() => void runAdjustmentAction(() => approveSalaryAdjustment(adjustmentDetail.id), '调薪申请已审批通过', '审批通过')}
-                        >
-                          审批通过
-                        </Button>
-                        <Button
-                          disabled={!canEffectiveAdjustment || actionLoading}
-                          onClick={() => void runAdjustmentAction(() => effectiveSalaryAdjustment(adjustmentDetail.id), '调薪已生效', '执行生效')}
-                        >
-                          执行生效
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                <WorkspaceSectionCard
+                  title="调薪详情"
+                  description="这里直接展示前后薪资 JSON 的差异，并允许推进真实状态流转。"
+                  headerAside={adjustmentDetail ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        disabled={!canSubmitAdjustment || actionLoading}
+                        onClick={() => void runAdjustmentAction(() => submitSalaryAdjustment(adjustmentDetail.id), '调薪申请已提交审批', '提交审批')}
+                      >
+                        提交审批
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={!canApproveAdjustment || actionLoading}
+                        onClick={() => void runAdjustmentAction(() => approveSalaryAdjustment(adjustmentDetail.id), '调薪申请已审批通过', '审批通过')}
+                      >
+                        审批通过
+                      </Button>
+                      <Button
+                        disabled={!canEffectiveAdjustment || actionLoading}
+                        onClick={() => void runAdjustmentAction(() => effectiveSalaryAdjustment(adjustmentDetail.id), '调薪已生效', '执行生效')}
+                      >
+                        执行生效
+                      </Button>
+                    </>
+                  ) : undefined}
+                >
 
                   {!adjustmentDetail && !adjustmentDetailLoading && (
                     <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
@@ -9944,13 +9934,12 @@ export const HrSalaryPage: React.FC = () => {
                   {adjustmentDetailLoading && (
                     <div className="mt-4 text-sm text-slate-400">正在加载调薪详情...</div>
                   )}
-                </Card>
+                </WorkspaceSectionCard>
 
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                  <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-slate-900">联调提示</h2>
-                    <p className="mt-1 text-sm text-slate-500">推荐使用今天或更早的生效日，这样审批通过后更容易观察是否自动生效。</p>
-                  </div>
+                <WorkspaceSectionCard
+                  title="联调提示"
+                  description="推荐使用今天或更早的生效日，这样审批通过后更容易观察是否自动生效。"
+                >
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
                       调薪后明细的金额之和必须等于 `afterTotal`，页面会按明细自动求和，避免手工算错。
@@ -9959,23 +9948,22 @@ export const HrSalaryPage: React.FC = () => {
                       调薪生效后，会生成新的员工薪资记录并把旧的 ACTIVE 记录置为 EXPIRED。
                     </div>
                   </div>
-                </Card>
+                </WorkspaceSectionCard>
               </div>
             </div>
           </TabsContent>
           <TabsContent value="foundation" className="space-y-6">
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_minmax(0,1fr)]">
-              <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">薪资项目</h2>
-                    <p className="mt-1 text-sm text-slate-500">项目列表直接来自真实库，这里继续把结构引用和现薪命中一起摊开，方便做真实联调。</p>
-                  </div>
+              <WorkspaceSectionCard
+                title="薪资项目"
+                description="项目列表直接来自真实库，这里继续把结构引用和现薪命中一起摊开，方便做真实联调。"
+                headerAside={(
                   <Button variant="outline" onClick={openItemDialog}>
                     <FilePlus2 size={14} className="mr-2" />
                     新建项目
                   </Button>
-                </div>
+                )}
+              >
 
                 <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
@@ -10137,19 +10125,18 @@ export const HrSalaryPage: React.FC = () => {
                     </TableBody>
                   </Table>
                 </div>
-              </Card>
+              </WorkspaceSectionCard>
 
-              <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">薪资结构</h2>
-                    <p className="mt-1 text-sm text-slate-500">结构详情会展开关联项目，适合核对结构与员工薪资明细是否对齐。</p>
-                  </div>
+              <WorkspaceSectionCard
+                title="薪资结构"
+                description="结构详情会展开关联项目，适合核对结构与员工薪资明细是否对齐。"
+                headerAside={(
                   <Button variant="outline" onClick={openStructureDialog}>
                     <FilePlus2 size={14} className="mr-2" />
                     新建结构
                   </Button>
-                </div>
+                )}
+              >
 
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
                   <div className="space-y-3">
@@ -10440,20 +10427,19 @@ export const HrSalaryPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </Card>
+              </WorkspaceSectionCard>
             </div>
 
-            <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">薪资等级</h2>
-                  <p className="mt-1 text-sm text-slate-500">薪级区间基于职级维护，现在把覆盖率、待配置职级和已配置清单放到同一区域，方便真实联调。</p>
-                </div>
+            <WorkspaceSectionCard
+              title="薪资等级"
+              description="薪级区间基于职级维护，现在把覆盖率、待配置职级和已配置清单放到同一区域，方便真实联调。"
+              headerAside={(
                 <Button variant="outline" onClick={() => openGradeDialog()}>
                   <Landmark size={14} className="mr-2" />
                   设置薪级
                 </Button>
-              </div>
+              )}
+            >
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
@@ -10686,19 +10672,18 @@ export const HrSalaryPage: React.FC = () => {
                   </TableBody>
                 </Table>
               </div>
-            </Card>
+            </WorkspaceSectionCard>
 
-            <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">社保方案</h2>
-                  <p className="mt-1 text-sm text-slate-500">方案配置会直接影响员工社保测算与分配可选项，这里统一维护启用和禁用状态，并补齐联调筛选。</p>
-                </div>
+            <WorkspaceSectionCard
+              title="社保方案"
+              description="方案配置会直接影响员工社保测算与分配可选项，这里统一维护启用和禁用状态，并补齐联调筛选。"
+              headerAside={(
                 <Button variant="outline" onClick={openInsuranceSchemeDialog}>
                   <ShieldCheck size={14} className="mr-2" />
                   新建方案
                 </Button>
-              </div>
+              )}
+            >
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
@@ -10988,21 +10973,18 @@ export const HrSalaryPage: React.FC = () => {
                   </TableBody>
                 </Table>
               </div>
-            </Card>
+            </WorkspaceSectionCard>
           </TabsContent>
         </Tabs>
       </div>
 
       {itemDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{editingItemId ? '编辑薪资项目' : '新建薪资项目'}</h2>
-                <p className="mt-1 text-sm text-slate-500">先补项目，再配置结构和员工薪资。</p>
-              </div>
-              <Button variant="ghost" onClick={closeItemDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title={editingItemId ? '编辑薪资项目' : '新建薪资项目'}
+          description="先补项目，再配置结构和员工薪资。"
+          onClose={closeItemDialog}
+          maxWidthClassName="max-w-2xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -11143,20 +11125,15 @@ export const HrSalaryPage: React.FC = () => {
                 {editingItemId ? '保存修改' : '创建项目'}
               </Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {structureDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{editingStructureId ? '编辑薪资结构' : '新建薪资结构'}</h2>
-                <p className="mt-1 text-sm text-slate-500">至少勾选一个薪资项目，后续员工分配会按结构中的项目录入金额。</p>
-              </div>
-              <Button variant="ghost" onClick={closeStructureDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title={editingStructureId ? '编辑薪资结构' : '新建薪资结构'}
+          description="至少勾选一个薪资项目，后续员工分配会按结构中的项目录入金额。"
+          onClose={closeStructureDialog}
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -11294,20 +11271,16 @@ export const HrSalaryPage: React.FC = () => {
                 {editingStructureId ? '保存修改' : '创建结构'}
               </Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {gradeDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{editingGradeLevelId ? '编辑薪资等级' : '设置薪资等级'}</h2>
-                <p className="mt-1 text-sm text-slate-500">按职级维护薪资区间，已存在则覆盖。</p>
-              </div>
-              <Button variant="ghost" onClick={closeGradeDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title={editingGradeLevelId ? '编辑薪资等级' : '设置薪资等级'}
+          description="按职级维护薪资区间，已存在则覆盖。"
+          onClose={closeGradeDialog}
+          maxWidthClassName="max-w-2xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -11466,20 +11439,16 @@ export const HrSalaryPage: React.FC = () => {
                 {editingGradeLevelId ? '保存修改' : '保存薪级'}
               </Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {insuranceSchemeDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{editingInsuranceSchemeId ? '编辑社保方案' : '新建社保方案'}</h2>
-                <p className="mt-1 text-sm text-slate-500">维护方案比例、基数范围和启停状态，员工分配时只会展示启用方案。</p>
-              </div>
-              <Button variant="ghost" onClick={closeInsuranceSchemeDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title={editingInsuranceSchemeId ? '编辑社保方案' : '新建社保方案'}
+          description="维护方案比例、基数范围和启停状态，员工分配时只会展示启用方案。"
+          onClose={closeInsuranceSchemeDialog}
+          maxWidthClassName="max-w-5xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -11661,20 +11630,16 @@ export const HrSalaryPage: React.FC = () => {
                 {editingInsuranceSchemeId ? '保存方案' : '创建方案'}
               </Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {taxConfigDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{taxConfigForm.id ? '维护当前个税配置' : '新建个税配置'}</h2>
-                <p className="mt-1 text-sm text-slate-500">当前页面只维护今天及以前生效的个税配置，保存后会立即刷新个税测算摘要。</p>
-              </div>
-              <Button variant="ghost" onClick={closeTaxConfigDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title={taxConfigForm.id ? '维护当前个税配置' : '新建个税配置'}
+          description="当前页面只维护今天及以前生效的个税配置，保存后会立即刷新个税测算摘要。"
+          onClose={closeTaxConfigDialog}
+          maxWidthClassName="max-w-6xl"
+        >
 
             {taxConfigDialogLoading ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
@@ -11993,40 +11958,36 @@ export const HrSalaryPage: React.FC = () => {
                 {taxConfigForm.id ? '保存配置' : '创建配置'}
               </Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {taxDeductionDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">管理员工专项扣除</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  当前个税测算按 {taxReferencePeriod} 读取 ACTIVE 记录。新增时默认回填到当月 1 号，保存后会立即刷新右侧测算结果。
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {employeeTaxDeductionDiagnostics.missingReferenceEntries.length > 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => applyTaxDeductionReferenceTemplate(
-                      employeeTaxDeductionDiagnostics.missingReferenceEntries[0].type,
-                      employeeTaxDeductionDiagnostics.missingReferenceEntries[0].referenceAmount,
-                    )}
-                  >
-                    优先回填一条
-                  </Button>
-                )}
-                {editingTaxDeductionId && (
-                  <Button variant="outline" onClick={() => resetTaxDeductionForm(currentEmployeeRecord?.employeeId)}>
-                    新建一条
-                  </Button>
-                )}
-                <Button variant="ghost" onClick={closeTaxDeductionDialog}>关闭</Button>
-              </div>
-            </div>
+        <WorkspaceDialogShell
+          title="管理员工专项扣除"
+          description={`当前个税测算按 ${taxReferencePeriod} 读取 ACTIVE 记录。新增时默认回填到当月 1 号，保存后会立即刷新右侧测算结果。`}
+          onClose={closeTaxDeductionDialog}
+          maxWidthClassName="max-w-6xl"
+          headerAside={(
+            <>
+              {employeeTaxDeductionDiagnostics.missingReferenceEntries.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => applyTaxDeductionReferenceTemplate(
+                    employeeTaxDeductionDiagnostics.missingReferenceEntries[0].type,
+                    employeeTaxDeductionDiagnostics.missingReferenceEntries[0].referenceAmount,
+                  )}
+                >
+                  优先回填一条
+                </Button>
+              )}
+              {editingTaxDeductionId && (
+                <Button variant="outline" onClick={() => resetTaxDeductionForm(currentEmployeeRecord?.employeeId)}>
+                  新建一条
+                </Button>
+              )}
+            </>
+          )}
+        >
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
@@ -12571,20 +12532,16 @@ export const HrSalaryPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {insuranceDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">分配社保公积金方案</h2>
-                <p className="mt-1 text-sm text-slate-500">当前页面只支持今天及以前生效，保存后会直接切换到当前生效中的社保方案。</p>
-              </div>
-              <Button variant="ghost" onClick={closeInsuranceDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="分配社保公积金方案"
+          description="当前页面只支持今天及以前生效，保存后会直接切换到当前生效中的社保方案。"
+          onClose={closeInsuranceDialog}
+          maxWidthClassName="max-w-3xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -12756,20 +12713,16 @@ export const HrSalaryPage: React.FC = () => {
               <Button variant="outline" onClick={closeInsuranceDialog}>取消</Button>
               <Button disabled={actionLoading} onClick={() => void handleAssignInsurance()}>确认分配</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {assignDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">分配员工薪资</h2>
-                <p className="mt-1 text-sm text-slate-500">首次分配只支持今天及以前生效，保存后会直接生成当前生效的薪资档案。</p>
-              </div>
-              <Button variant="ghost" onClick={() => setAssignDialogOpen(false)}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="分配员工薪资"
+          description="首次分配只支持今天及以前生效，保存后会直接生成当前生效的薪资档案。"
+          onClose={() => setAssignDialogOpen(false)}
+          maxWidthClassName="max-w-5xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
@@ -12930,20 +12883,16 @@ export const HrSalaryPage: React.FC = () => {
               <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>取消</Button>
               <Button disabled={actionLoading} onClick={() => void handleAssignSalary()}>确认分配</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
 
       {adjustDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">发起调薪</h2>
-                <p className="mt-1 text-sm text-slate-500">先读取员工现薪，再按项目修改调薪后金额。</p>
-              </div>
-              <Button variant="ghost" onClick={() => setAdjustDialogOpen(false)}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="发起调薪"
+          description="先读取员工现薪，再按项目修改调薪后金额。"
+          onClose={() => setAdjustDialogOpen(false)}
+          maxWidthClassName="max-w-5xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="xl:col-span-2">
@@ -13092,8 +13041,7 @@ export const HrSalaryPage: React.FC = () => {
               <Button variant="outline" onClick={() => setAdjustDialogOpen(false)}>取消</Button>
               <Button disabled={actionLoading} onClick={() => void handleCreateAdjustment()}>创建调薪申请</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
     </>
   );

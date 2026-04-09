@@ -7,6 +7,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceHeroCard, WorkspacePaginationBar, WorkspaceResultCard, WorkspaceWorkbenchCard } from '@/components/workspace/WorkspacePanels';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -289,6 +290,7 @@ export const ExpenseClaimPage: React.FC = () => {
   const todayLabel = formatDateCN(new Date());
   const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   const hasActiveFilters = Boolean(searchParams.status || searchParams.category);
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const currentStatusLabel = searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态';
   const currentCategoryLabel = searchParams.category ? categoryMap[searchParams.category] || searchParams.category : '全部类别';
   const draftCount = claims.filter(item => item.status === 'DRAFT').length;
@@ -357,122 +359,78 @@ export const ExpenseClaimPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
       <div className="relative z-10 space-y-3">
-        <Card className="overflow-hidden rounded-[30px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="relative p-4 sm:p-5">
-            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.14),transparent_55%)]" />
-            <div className="absolute -right-14 top-4 h-32 w-32 rounded-full bg-amber-200/25 blur-3xl" />
-            <div className="absolute bottom-0 left-1/3 h-16 w-16 rounded-full bg-pink-100/45 blur-2xl" />
-            <div className="relative space-y-3">
-              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-amber-600 ring-1 ring-amber-100"><Receipt size={14} />{todayLabel}</span>
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  </div>
-                  <h1 className="mt-3 text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">报销申请</h1>
-                </div>
-                <div className="flex flex-wrap gap-2 xl:justify-end">
-                  <Button className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600" onClick={handleAdd}><Plus size={15} className="mr-2" />新建申请</Button>
-                  <Button variant="outline" className="h-9 rounded-xl bg-white/85 px-4" onClick={handleExport}><Download size={15} className="mr-2 text-pink-500" />导出结果</Button>
-                </div>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {heroMetrics.map(item => (
-                  <div key={item.label} className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}>
-                    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                    <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                          <div className="mt-1 text-[1.32rem] font-bold tracking-tight text-slate-950">{item.value}</div>
-                        </div>
-                        <div className={`rounded-[14px] p-2 shadow-[0_10px_22px_rgba(15,23,42,0.06)] backdrop-blur-md ${item.iconWrapClassName}`}>{item.icon}</div>
-                      </div>
-                      <div className="max-w-full truncate text-[10px] leading-4 text-slate-600">{item.hint}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-amber-600 ring-1 ring-amber-100"><Receipt size={14} />{todayLabel}</span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
             </div>
+          )}
+          title="报销申请"
+          actions={(
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              <Button className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600" onClick={handleAdd}><Plus size={15} className="mr-2" />新建申请</Button>
+              <Button variant="outline" className="h-9 rounded-xl bg-white/85 px-4" onClick={handleExport}><Download size={15} className="mr-2 text-pink-500" />导出结果</Button>
+            </div>
+          )}
+          contentClassName="p-4 sm:p-5"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(244,114,182,0.12),transparent_48%)]"
+        >
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {heroMetrics.map(item => (
+              <div key={item.label} className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}>
+                <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
+                <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
+                      <div className="mt-1 text-[1.32rem] font-bold tracking-tight text-slate-950">{item.value}</div>
+                    </div>
+                    <div className={`rounded-[14px] p-2 shadow-[0_10px_22px_rgba(15,23,42,0.06)] backdrop-blur-md ${item.iconWrapClassName}`}>{item.icon}</div>
+                  </div>
+                  <div className="max-w-full truncate text-[10px] leading-4 text-slate-600">{item.hint}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        </Card>
+        </WorkspaceHeroCard>
 
         <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
           <div className="flex flex-col gap-3">
-            <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-              <div className="relative px-4 py-4">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.09),transparent_60%)]" />
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">记录</div>
-                      <div className="mt-2 text-[1.65rem] font-bold tracking-tight text-slate-950">申请列表</div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">{hasActiveFilters ? '已应用筛选' : '默认视图'}</span>
-                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {total} 条</span>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
-                    {workspaceOverviewItems.map(item => (
-                      <div key={item.label} className="rounded-[18px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] px-3.5 py-2.5 text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</div>
-                        <div className="mt-1.5 text-sm font-semibold tracking-tight">{item.value}</div>
-                      </div>
-                    ))}
-                  </div>
+            <WorkspaceWorkbenchCard
+              title="申请列表"
+              total={total}
+              hasActiveFilters={hasActiveFilters}
+              overviewItems={workspaceOverviewItems}
+              quickFilters={statusQuickFilters}
+              activeQuickFilter={searchParams.status}
+              onQuickFilterChange={applyStatusFilter}
+              glowClassName="bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.09),transparent_60%)]"
+              quickFilterAside={hasActiveFilters ? (
+                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
+              ) : (
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">当前未应用额外筛选</span>
+              )}
+              filterBar={(
+                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+                  <Select value={categoryInput} onValueChange={setCategoryInput}>
+                    <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 px-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md"><SelectValue placeholder="按报销类别筛选" /></SelectTrigger>
+                    <SelectContent className={glassSelectContentClass}>
+                      <SelectItem className="rounded-[16px]" value="">全部类别</SelectItem>
+                      <SelectItem className="rounded-[16px]" value="TRAVEL">差旅</SelectItem>
+                      <SelectItem className="rounded-[16px]" value="OFFICE">办公</SelectItem>
+                      <SelectItem className="rounded-[16px]" value="ENTERTAINMENT">招待</SelectItem>
+                      <SelectItem className="rounded-[16px]" value="TRANSPORT">交通</SelectItem>
+                      <SelectItem className="rounded-[16px]" value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={applySearch} className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"><Search size={15} className="mr-2" />应用筛选</Button>
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空条件</Button>
                 </div>
-              </div>
+              )}
+            />
 
-              <div className="border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-4 backdrop-blur-xl">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="inline-flex flex-wrap items-center gap-1 rounded-[20px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-md">
-                      {statusQuickFilters.map(item => {
-                        const active = searchParams.status === item.value;
-                        return (
-                          <button key={item.value || 'ALL'} type="button" onClick={() => applyStatusFilter(item.value)} className={active ? 'rounded-[16px] bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-3 py-1.5 text-[11px] font-medium text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]' : 'rounded-[16px] px-3 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-white/88 hover:text-pink-600'}>
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {hasActiveFilters ? (
-                      <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
-                    ) : (
-                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">当前未应用额外筛选</span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
-                    <Select value={categoryInput} onValueChange={setCategoryInput}>
-                      <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 px-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md"><SelectValue placeholder="按报销类别筛选" /></SelectTrigger>
-                      <SelectContent className={glassSelectContentClass}>
-                        <SelectItem className="rounded-[16px]" value="">全部类别</SelectItem>
-                        <SelectItem className="rounded-[16px]" value="TRAVEL">差旅</SelectItem>
-                        <SelectItem className="rounded-[16px]" value="OFFICE">办公</SelectItem>
-                        <SelectItem className="rounded-[16px]" value="ENTERTAINMENT">招待</SelectItem>
-                        <SelectItem className="rounded-[16px]" value="TRANSPORT">交通</SelectItem>
-                        <SelectItem className="rounded-[16px]" value="OTHER">其他</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" onClick={applySearch} className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"><Search size={15} className="mr-2" />应用筛选</Button>
-                    <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空条件</Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.68))] px-4 py-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">当前结果</div>
-                  <div className="mt-1 text-[11px] text-slate-400">统一展示报销单、金额、说明和当前审批动作</div>
-                </div>
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {total} 条</span>
-              </div>
+            <WorkspaceResultCard total={total} description="统一展示报销单、金额、说明和当前审批动作">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
@@ -517,15 +475,16 @@ export const ExpenseClaimPage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
-                <span className="text-sm text-slate-600">共 {total} 条</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setSearchParams(prev => ({ ...prev, pageNum: Math.max(1, prev.pageNum - 1) }))} disabled={searchParams.pageNum === 1} className="h-9 rounded-2xl border-white/80 bg-white/76 px-3 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white">上一页</Button>
-                  <span className="rounded-full bg-white/76 px-3 py-2 text-sm text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">第 {searchParams.pageNum} 页</span>
-                  <Button variant="outline" onClick={() => setSearchParams(prev => ({ ...prev, pageNum: prev.pageNum + 1 }))} disabled={searchParams.pageNum * searchParams.pageSize >= total} className="h-9 rounded-2xl border-white/80 bg-white/76 px-3 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white">下一页</Button>
-                </div>
-              </div>
-            </div>
+              <WorkspacePaginationBar
+                total={total}
+                pageNum={searchParams.pageNum}
+                totalPages={totalPages}
+                onPrev={() => setSearchParams(prev => ({ ...prev, pageNum: Math.max(1, prev.pageNum - 1) }))}
+                onNext={() => setSearchParams(prev => ({ ...prev, pageNum: prev.pageNum + 1 }))}
+                prevDisabled={searchParams.pageNum === 1}
+                nextDisabled={searchParams.pageNum * searchParams.pageSize >= total}
+              />
+            </WorkspaceResultCard>
           </div>
         </Card>
 

@@ -3,7 +3,6 @@ import { BarChart3, BriefcaseBusiness, Building2, FilePlus2, Layers3, RefreshCcw
 import { toast } from 'sonner';
 import {
   Button,
-  Card,
   Input,
   Label,
   Select,
@@ -31,6 +30,7 @@ import {
   setHeadcount,
   updateHeadcountActualCount,
 } from '@/services/api/hr';
+import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import { flattenDeptTree, normalizeRows, toDateInputValue } from './hrShared';
 
 const ALL_TARGETS = '__all__';
@@ -338,17 +338,17 @@ export const HrHeadcountPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
-              <Layers3 size={14} />
-              Headcount Control
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">编制管理中心</h1>
-            <p className="mt-2 text-sm text-slate-500">围绕部门和岗位维护核定编制、实际在职与空缺情况，直接联调 HR 编制接口。</p>
+      <WorkspaceHeroCard
+        badge={(
+          <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+            <Layers3 size={14} />
+            Headcount Control
           </div>
-          <div className="flex flex-wrap gap-3">
+        )}
+        title="编制管理中心"
+        description="围绕部门和岗位维护核定编制、实际在职与空缺情况，直接联调 HR 编制接口。"
+        actions={(
+          <>
             <Button className="rounded-2xl" onClick={handleOpenCreate}>
               <FilePlus2 size={16} className="mr-2" />
               新增编制
@@ -363,28 +363,27 @@ export const HrHeadcountPage: React.FC = () => {
               <RefreshCcw size={16} className="mr-2" />
               刷新列表
             </Button>
-          </div>
-        </div>
-      </Card>
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map(metric => (
-          <Card key={metric.label} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm font-medium text-slate-500">{metric.label}</div>
-                <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : metric.value}</div>
-                <div className="mt-2 text-xs text-slate-400">{metric.hint}</div>
-              </div>
-              <div className={`rounded-2xl p-3 ${metric.tone}`}>
-                {metric.icon}
-              </div>
-            </div>
-          </Card>
+          <WorkspaceMetricCard
+            key={metric.label}
+            label={metric.label}
+            value={loading ? '--' : metric.value}
+            hint={metric.hint}
+            aside={<div className={`rounded-2xl p-3 ${metric.tone}`}>{metric.icon}</div>}
+          />
         ))}
       </div>
 
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-5 backdrop-blur-xl">
+      <WorkspaceSectionCard
+        title="筛选与检索"
+        description="按目标类型、有效范围和关键词定位当前要维护的编制记录。"
+        bodyClassName="mt-0"
+      >
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.1fr_180px_180px_auto]">
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -425,10 +424,15 @@ export const HrHeadcountPage: React.FC = () => {
             重置
           </Button>
         </div>
-      </Card>
+      </WorkspaceSectionCard>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_420px]">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-2 backdrop-blur-xl">
+        <WorkspaceSectionCard
+          title="编制列表"
+          description="左侧先锁定一条编制记录，右侧再查看统计和维护在职人数。"
+          bodyClassName="mt-0"
+          className="p-0"
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -490,23 +494,20 @@ export const HrHeadcountPage: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </Card>
+        </WorkspaceSectionCard>
 
         <div className="space-y-6">
-          <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">编制统计</h2>
-                <p className="mt-1 text-sm text-slate-500">按真实统计接口查看使用率、空缺和超编情况。</p>
-              </div>
-              {selectedHeadcount && (
-                <Button variant="outline" onClick={() => void loadStatistics(selectedHeadcount.targetType, selectedHeadcount.targetId)}>
-                  <RefreshCcw size={14} className="mr-2" />
-                  刷新统计
-                </Button>
-              )}
-            </div>
-
+          <WorkspaceSectionCard
+            title="编制统计"
+            description="按真实统计接口查看使用率、空缺和超编情况。"
+            headerAside={selectedHeadcount ? (
+              <Button variant="outline" onClick={() => void loadStatistics(selectedHeadcount.targetType, selectedHeadcount.targetId)}>
+                <RefreshCcw size={14} className="mr-2" />
+                刷新统计
+              </Button>
+            ) : null}
+            bodyClassName="mt-0"
+          >
             {!selectedHeadcount && (
               <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
                 从左侧选择一条编制记录查看详情和统计。
@@ -560,14 +561,13 @@ export const HrHeadcountPage: React.FC = () => {
             )}
 
             {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载统计数据...</div>}
-          </Card>
+          </WorkspaceSectionCard>
 
-          <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">维护实际在职人数</h2>
-              <p className="mt-1 text-sm text-slate-500">更新后端 `actualCount` 后，会自动重算空缺人数。</p>
-            </div>
-
+          <WorkspaceSectionCard
+            title="维护实际在职人数"
+            description="更新后端 `actualCount` 后，会自动重算空缺人数。"
+            bodyClassName="mt-0"
+          >
             {!selectedHeadcount && (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
                 先从左侧选择一条编制记录，再维护实际在职人数。
@@ -595,24 +595,21 @@ export const HrHeadcountPage: React.FC = () => {
                 </Button>
               </div>
             )}
-          </Card>
+          </WorkspaceSectionCard>
         </div>
       </div>
 
       {createDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">{isEditMode ? '编辑编制' : '新增编制'}</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {isEditMode
-                    ? '编辑模式会预填当前编制，目标类型和目标不可修改，到期日留空表示长期有效。'
-                    : '若当前目标已有有效编制，后端会直接更新该记录。'}
-                </p>
-              </div>
-              <Button variant="ghost" onClick={resetCreateDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title={isEditMode ? '编辑编制' : '新增编制'}
+          description={
+            isEditMode
+              ? '编辑模式会预填当前编制，目标类型和目标不可修改，到期日留空表示长期有效。'
+              : '若当前目标已有有效编制，后端会直接更新该记录。'
+          }
+          onClose={resetCreateDialog}
+          maxWidthClassName="max-w-3xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -694,8 +691,7 @@ export const HrHeadcountPage: React.FC = () => {
                 {isEditMode ? '保存修改' : '保存编制'}
               </Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
     </div>
   );

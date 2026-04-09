@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users } from 'lucide-react';
 import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
+import { WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import { useAuth } from '@/context/AuthContext';
 import { HrEmployee, RecruitmentRequest, Candidate, Interview, Offer, OnboardingApplication, listEmployees, listRecruitmentRequests, listCandidates, listInterviews, listOffers, listOnboardingApplications } from '@/services/api/hr';
 
@@ -232,13 +233,12 @@ export const HrDashboardPage: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metrics.map(metric => (
-          <Card key={metric.label} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm font-medium text-slate-500">{metric.label}</div>
-                <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : metric.value}</div>
-                <div className="mt-2 text-xs text-slate-400">{metric.hint}</div>
-              </div>
+          <WorkspaceMetricCard
+            key={metric.label}
+            label={metric.label}
+            value={loading ? '--' : metric.value}
+            hint={metric.hint}
+            aside={(
               <div className={`rounded-2xl p-3 ${
                 metric.tone === 'pink'
                   ? 'bg-pink-50 text-pink-500'
@@ -250,8 +250,8 @@ export const HrDashboardPage: React.FC = () => {
               }`}>
                 {metric.icon}
               </div>
-            </div>
-          </Card>
+            )}
+          />
         ))}
       </div>
 
@@ -273,14 +273,11 @@ export const HrDashboardPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">最新员工变更</h2>
-              <p className="text-sm text-slate-500">当前员工状态一眼可见</p>
-            </div>
-            <Button variant="outline" onClick={() => navigate('/hr/employees')}>查看员工</Button>
-          </div>
+        <WorkspaceSectionCard
+          title="最新员工变更"
+          description="当前员工状态一眼可见"
+          headerAside={<Button variant="outline" onClick={() => navigate('/hr/employees')}>查看员工</Button>}
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -306,16 +303,13 @@ export const HrDashboardPage: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </Card>
+        </WorkspaceSectionCard>
 
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">招聘推进看板</h2>
-              <p className="text-sm text-slate-500">需求和候选人推进节奏</p>
-            </div>
-            <Button variant="outline" onClick={() => navigate('/hr/recruitment')}>查看招聘</Button>
-          </div>
+        <WorkspaceSectionCard
+          title="招聘推进看板"
+          description="需求和候选人推进节奏"
+          headerAside={<Button variant="outline" onClick={() => navigate('/hr/recruitment')}>查看招聘</Button>}
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -341,7 +335,7 @@ export const HrDashboardPage: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </Card>
+        </WorkspaceSectionCard>
       </div>
     </div>
   );

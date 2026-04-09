@@ -3,7 +3,6 @@ import { FilePlus2, LogOut, RefreshCcw, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
-  Card,
   Input,
   Label,
   Select,
@@ -19,6 +18,7 @@ import {
   TableRow,
   Textarea,
 } from '@/components/ui';
+import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import {
   approveResignation,
   HrEmployee,
@@ -415,17 +415,17 @@ export const HrResignationPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-              <LogOut size={14} />
-              Resignation Flow
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">离职办理中心</h1>
-            <p className="mt-2 text-sm text-slate-500">支持离职申请、离职面谈、交接清单和最终确认离职的桌面端闭环。</p>
+      <WorkspaceHeroCard
+        badge={(
+          <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+            <LogOut size={14} />
+            Resignation Flow
           </div>
-          <div className="flex flex-wrap gap-3">
+        )}
+        title="离职办理中心"
+        description="支持离职申请、离职面谈、交接清单和最终确认离职的桌面端闭环。"
+        actions={(
+          <>
             <Button className="rounded-2xl" onClick={handleOpenCreate} disabled={!creatableEmployees.length}>
               <FilePlus2 size={16} className="mr-2" />
               新建离职申请
@@ -434,35 +434,33 @@ export const HrResignationPage: React.FC = () => {
               <RefreshCcw size={16} className="mr-2" />
               刷新当前数据
             </Button>
-          </div>
-        </div>
-      </Card>
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">命中员工</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : filteredEmployees.length}</div>
-          <div className="mt-2 text-xs text-slate-400">当前关键词筛出的员工数量</div>
-        </Card>
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">当前员工申请</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{selectedEmployee ? applications.length : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">{selectedEmployee ? `${selectedEmployee.name} 的离职记录` : '先从左侧选择员工'}</div>
-        </Card>
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">待推进申请</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{selectedEmployee ? actionableCount : '--'}</div>
-          <div className="mt-2 text-xs text-slate-400">{detail ? `当前单据还有 ${pendingHandoverCount} 项交接待完成` : '等待选择员工'}</div>
-        </Card>
+        <WorkspaceMetricCard
+          label="命中员工"
+          value={loading ? '--' : filteredEmployees.length}
+          hint="当前关键词筛出的员工数量"
+        />
+        <WorkspaceMetricCard
+          label="当前员工申请"
+          value={selectedEmployee ? applications.length : '--'}
+          hint={selectedEmployee ? `${selectedEmployee.name} 的离职记录` : '先从左侧选择员工'}
+        />
+        <WorkspaceMetricCard
+          label="待推进申请"
+          value={selectedEmployee ? actionableCount : '--'}
+          hint={detail ? `当前单据还有 ${pendingHandoverCount} 项交接待完成` : '等待选择员工'}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_360px_minmax(0,1fr)]">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">员工列表</h2>
-            <p className="mt-1 text-sm text-slate-500">先定位员工，再连续处理该员工的离职申请、面谈和交接。</p>
-          </div>
-
+        <WorkspaceSectionCard
+          title="员工列表"
+          description="先定位员工，再连续处理该员工的离职申请、面谈和交接。"
+        >
           <div className="space-y-4">
             <div className="relative">
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -519,19 +517,18 @@ export const HrResignationPage: React.FC = () => {
               )}
             </div>
           </div>
-        </Card>
+        </WorkspaceSectionCard>
 
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">申请列表</h2>
-              <p className="mt-1 text-sm text-slate-500">优先定位还能推进的离职单据，减少在员工维度下的来回切换。</p>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+        <WorkspaceSectionCard
+          title="申请列表"
+          description="优先定位还能推进的离职单据，减少在员工维度下的来回切换。"
+          headerAside={(
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
               <Users size={14} />
               {selectedEmployee ? `${applications.length} 条记录` : '等待选择员工'}
             </div>
-          </div>
+          )}
+        >
 
           {selectedEmployee && (
             <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -615,25 +612,22 @@ export const HrResignationPage: React.FC = () => {
               </div>
             )}
           </div>
-        </Card>
+        </WorkspaceSectionCard>
 
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">申请详情与面谈</h2>
-              <p className="mt-1 text-sm text-slate-500">在详情面板里完成提交、离职面谈和确认离职动作。</p>
-            </div>
-            {detail && (
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" disabled={!canSubmitDetail} onClick={() => void handleSubmit(detail.id)}>提交当前申请</Button>
-                <Button variant="outline" disabled={!canApproveDetail} onClick={() => void handleApprove(detail.id)}>审批通过</Button>
-                <div className="flex gap-2">
-                  <Input type="date" value={confirmDate} onChange={event => setConfirmDate(event.target.value)} />
-                  <Button disabled={!canConfirmDetail} onClick={() => void handleConfirm()}>确认离职</Button>
-                </div>
+        <WorkspaceSectionCard
+          title="申请详情与面谈"
+          description="在详情面板里完成提交、离职面谈和确认离职动作。"
+          headerAside={detail ? (
+            <>
+              <Button variant="outline" disabled={!canSubmitDetail} onClick={() => void handleSubmit(detail.id)}>提交当前申请</Button>
+              <Button variant="outline" disabled={!canApproveDetail} onClick={() => void handleApprove(detail.id)}>审批通过</Button>
+              <div className="flex gap-2">
+                <Input type="date" value={confirmDate} onChange={event => setConfirmDate(event.target.value)} />
+                <Button disabled={!canConfirmDetail} onClick={() => void handleConfirm()}>确认离职</Button>
               </div>
-            )}
-          </div>
+            </>
+          ) : undefined}
+        >
 
           {!detail && (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
@@ -702,19 +696,18 @@ export const HrResignationPage: React.FC = () => {
               当前申请已满足确认离职条件。真实联调确认，点击“确认离职”后会同步写回员工离职状态、离职日期，并停用已绑定的系统账号。
             </div>
           )}
-        </Card>
+        </WorkspaceSectionCard>
       </div>
 
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">交接清单</h2>
-            <p className="mt-1 text-sm text-slate-500">交接事项完成后会实时刷新，方便核对离职闭环是否完成。</p>
-          </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+      <WorkspaceSectionCard
+        title="交接清单"
+        description="交接事项完成后会实时刷新，方便核对离职闭环是否完成。"
+        headerAside={(
+          <div className="rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
             {detail ? `${handovers.length} 项交接` : '等待加载申请'}
           </div>
-        </div>
+        )}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -767,18 +760,15 @@ export const HrResignationPage: React.FC = () => {
             )}
           </TableBody>
         </Table>
-      </Card>
+      </WorkspaceSectionCard>
 
       {createDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">新建离职申请</h2>
-                <p className="mt-1 text-sm text-slate-500">直接按后端 DTO 提交离职类型、原因和预计离职日期。</p>
-              </div>
-              <Button variant="ghost" onClick={resetCreateDialog}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="新建离职申请"
+          description="直接按后端 DTO 提交离职类型、原因和预计离职日期。"
+          onClose={resetCreateDialog}
+          maxWidthClassName="max-w-3xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -824,8 +814,7 @@ export const HrResignationPage: React.FC = () => {
               <Button variant="outline" onClick={resetCreateDialog}>取消</Button>
               <Button onClick={() => void handleCreate()}>创建申请</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
     </div>
   );

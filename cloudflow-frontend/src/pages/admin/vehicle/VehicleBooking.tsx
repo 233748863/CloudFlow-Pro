@@ -13,6 +13,7 @@ import { useAsyncData } from '@/hooks/useAsyncData';
 import { FileUpload } from '@/components/FileUpload';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceHeroCard } from '@/components/workspace/WorkspacePanels';
 
 /** 车辆卡片组件 */
 const VehicleCard: React.FC<{
@@ -307,60 +308,55 @@ export const VehicleBooking: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
       <div className="relative z-10 space-y-3 px-4 py-4 md:px-6">
-        <Card className="overflow-hidden rounded-[30px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="relative p-4 sm:p-5">
-            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%)]" />
-            <div className="absolute -right-14 top-4 h-32 w-32 rounded-full bg-pink-200/25 blur-3xl" />
-            <div className="absolute bottom-0 left-1/3 h-16 w-16 rounded-full bg-amber-100/50 blur-2xl" />
-
-            <div className="relative space-y-3">
-              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
-                      <Calendar size={14} />
-                      {todayLabel}
-                    </span>
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  </div>
-                  <h1 className="mt-3 text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">公务车预约申请</h1>
-                </div>
-
-                <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                  审批通过后方可使用车辆
-                </div>
-              </div>
-
-              <div className="rounded-[20px] border border-white/72 bg-white/66 px-3.5 py-3 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md">
-                <StepIndicator current={step} steps={steps} align="left" />
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {heroMetrics.map((item) => (
-                  <div
-                    key={item.label}
-                    className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
-                  >
-                    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                    <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
-                    <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                          <div className="mt-1 text-[1.32rem] font-bold tracking-tight text-slate-950">{item.value}</div>
-                        </div>
-                        <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
-                          {item.icon}
-                        </div>
-                      </div>
-                      <div className="max-w-full truncate text-[10px] leading-4 text-slate-600">{item.hint}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <Calendar size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
             </div>
-          </div>
-        </Card>
+          )}
+          title="公务车预约申请"
+          actions={(
+            <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              审批通过后方可使用车辆
+            </div>
+          )}
+          contentClassName="p-4 sm:p-5"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
+        >
+          <>
+            <div className="rounded-[20px] border border-white/72 bg-white/66 px-3.5 py-3 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md">
+              <StepIndicator current={step} steps={steps} align="left" />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {heroMetrics.map((item) => (
+                <div
+                  key={item.label}
+                  className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
+                >
+                  <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
+                  <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
+                  <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
+                        <div className="mt-1 text-[1.32rem] font-bold tracking-tight text-slate-950">{item.value}</div>
+                      </div>
+                      <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
+                        {item.icon}
+                      </div>
+                    </div>
+                    <div className="max-w-full truncate text-[10px] leading-4 text-slate-600">{item.hint}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        </WorkspaceHeroCard>
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-3">

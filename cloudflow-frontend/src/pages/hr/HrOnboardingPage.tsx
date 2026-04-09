@@ -3,7 +3,6 @@ import { ClipboardList, FilePlus2, RefreshCcw, Search, UserRoundPlus } from 'luc
 import { toast } from 'sonner';
 import {
   Button,
-  Card,
   Input,
   Label,
   Select,
@@ -18,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui';
+import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import {
   approveOnboarding,
   Candidate,
@@ -438,17 +438,17 @@ export const HrOnboardingPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
-              <UserRoundPlus size={14} />
-              Onboarding Flow
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">入职办理中心</h1>
-            <p className="mt-2 text-sm text-slate-500">按后端真实能力完成入职申请、任务办理和确认入职，不依赖移动端入口。</p>
+      <WorkspaceHeroCard
+        badge={(
+          <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+            <UserRoundPlus size={14} />
+            Onboarding Flow
           </div>
-          <div className="flex flex-wrap gap-3">
+        )}
+        title="入职办理中心"
+        description="按后端真实能力完成入职申请、任务办理和确认入职，不依赖移动端入口。"
+        actions={(
+          <>
             <Button className="rounded-2xl" onClick={handleOpenCreateDialog}>
               <FilePlus2 size={16} className="mr-2" />
               新建入职申请
@@ -465,34 +465,33 @@ export const HrOnboardingPage: React.FC = () => {
               <RefreshCcw size={16} className="mr-2" />
               刷新当前数据
             </Button>
-          </div>
-        </div>
-      </Card>
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">候选人来源</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : availableCandidates.length}</div>
-          <div className="mt-2 text-xs text-slate-400">可直接带入入职申请的候选人数</div>
-        </Card>
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">申请列表</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{listLoading ? '--' : applications.length}</div>
-          <div className="mt-2 text-xs text-slate-400">当前筛选条件下的入职申请数</div>
-        </Card>
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="text-sm font-medium text-slate-500">待推进申请</div>
-          <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{listLoading ? '--' : actionableApplicationCount}</div>
-          <div className="mt-2 text-xs text-slate-400">{currentApplication ? `当前申请剩余 ${pendingTaskCount} 项任务` : '先从左侧列表选择一条申请'}</div>
-        </Card>
+        <WorkspaceMetricCard
+          label="候选人来源"
+          value={loading ? '--' : availableCandidates.length}
+          hint="可直接带入入职申请的候选人数"
+        />
+        <WorkspaceMetricCard
+          label="申请列表"
+          value={listLoading ? '--' : applications.length}
+          hint="当前筛选条件下的入职申请数"
+        />
+        <WorkspaceMetricCard
+          label="待推进申请"
+          value={listLoading ? '--' : actionableApplicationCount}
+          hint={currentApplication ? `当前申请剩余 ${pendingTaskCount} 项任务` : '先从左侧列表选择一条申请'}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">申请列表</h2>
-            <p className="mt-1 text-sm text-slate-500">左侧按真实接口筛选与切换申请，右侧持续办理当前单据。</p>
-          </div>
+        <WorkspaceSectionCard
+          title="申请列表"
+          description="左侧按真实接口筛选与切换申请，右侧持续办理当前单据。"
+        >
           <div className="space-y-4">
             <div>
               <Label>关键词</Label>
@@ -584,26 +583,23 @@ export const HrOnboardingPage: React.FC = () => {
               )}
             </div>
           </div>
-        </Card>
+        </WorkspaceSectionCard>
 
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">申请详情</h2>
-              <p className="mt-1 text-sm text-slate-500">查看当前申请的状态、组织归属和入职结果。</p>
-            </div>
-            {currentApplication && (
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" disabled={!canSubmitApplication} onClick={handleSubmitApplication}>提交申请</Button>
-                <Button variant="outline" disabled={!canApproveApplication} onClick={handleApproveApplication}>审批通过</Button>
-                <Button variant="outline" disabled={!canRejectApplication} onClick={handleRejectApplication}>驳回申请</Button>
-                <div className="flex gap-2">
-                  <Input type="date" value={confirmDate} onChange={event => setConfirmDate(event.target.value)} />
-                  <Button disabled={!canConfirmApplication} onClick={handleConfirmApplication}>确认入职</Button>
-                </div>
+        <WorkspaceSectionCard
+          title="申请详情"
+          description="查看当前申请的状态、组织归属和入职结果。"
+          headerAside={currentApplication ? (
+            <>
+              <Button variant="outline" disabled={!canSubmitApplication} onClick={handleSubmitApplication}>提交申请</Button>
+              <Button variant="outline" disabled={!canApproveApplication} onClick={handleApproveApplication}>审批通过</Button>
+              <Button variant="outline" disabled={!canRejectApplication} onClick={handleRejectApplication}>驳回申请</Button>
+              <div className="flex gap-2">
+                <Input type="date" value={confirmDate} onChange={event => setConfirmDate(event.target.value)} />
+                <Button disabled={!canConfirmApplication} onClick={handleConfirmApplication}>确认入职</Button>
               </div>
-            )}
-          </div>
+            </>
+          ) : undefined}
+        >
 
           {!currentApplication && (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
@@ -668,20 +664,19 @@ export const HrOnboardingPage: React.FC = () => {
               当前申请还有 {pendingTaskCount} 项入职任务未完成，暂不能确认入职。
             </div>
           )}
-        </Card>
+        </WorkspaceSectionCard>
       </div>
 
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">入职任务</h2>
-            <p className="mt-1 text-sm text-slate-500">任务列表直接取后端入职任务接口，完成后立即刷新状态。</p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+      <WorkspaceSectionCard
+        title="入职任务"
+        description="任务列表直接取后端入职任务接口，完成后立即刷新状态。"
+        headerAside={(
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
             <ClipboardList size={14} />
             {currentApplication ? `${tasks.length} 项任务` : '等待加载申请'}
           </div>
-        </div>
+        )}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -736,18 +731,15 @@ export const HrOnboardingPage: React.FC = () => {
             )}
           </TableBody>
         </Table>
-      </Card>
+      </WorkspaceSectionCard>
 
       {createDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/80 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">新建入职申请</h2>
-                <p className="mt-1 text-sm text-slate-500">支持手工创建，也支持从招聘候选人带入基础信息。</p>
-              </div>
-              <Button variant="ghost" onClick={resetCreateForm}>关闭</Button>
-            </div>
+        <WorkspaceDialogShell
+          title="新建入职申请"
+          description="支持手工创建，也支持从招聘候选人带入基础信息。"
+          onClose={resetCreateForm}
+          maxWidthClassName="max-w-4xl"
+        >
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -872,8 +864,7 @@ export const HrOnboardingPage: React.FC = () => {
               <Button variant="outline" onClick={resetCreateForm}>取消</Button>
               <Button onClick={() => void handleCreateApplication()}>创建申请</Button>
             </div>
-          </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
     </div>
   );

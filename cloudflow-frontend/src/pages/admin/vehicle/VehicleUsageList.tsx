@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   Car, Clock, CheckCircle, XCircle, Eye, DollarSign,
-  RotateCcw, ChevronLeft, ChevronRight, Loader2,
+  RotateCcw, Loader2,
   MapPin, ArrowLeftRight, Ban, CornerDownLeft,
   Fuel, ParkingCircle, Wrench, Shield, MoreHorizontal,
   Calendar, Plus
@@ -38,6 +38,12 @@ import {
   Textarea
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import {
+  WorkspaceHeroCard,
+  WorkspacePaginationBar,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
 import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
 import {
   getUsageList,
@@ -462,110 +468,85 @@ const VehicleUsageList: React.FC = () => {
       <WorkspaceBackdrop />
 
       <div className="relative z-10 space-y-3 px-4 py-4 md:px-6">
-        <Card className="overflow-hidden rounded-[30px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="relative p-4 sm:p-5">
-            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%)]" />
-            <div className="absolute -right-14 top-4 h-32 w-32 rounded-full bg-pink-200/25 blur-3xl" />
-            <div className="absolute bottom-0 left-1/3 h-16 w-16 rounded-full bg-amber-100/50 blur-2xl" />
-
-            <div className="relative space-y-3">
-              <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
-                      <Calendar size={14} />
-                      {todayLabel}
-                    </span>
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  </div>
-                  <h1 className="mt-3 text-[1.9rem] font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">用车记录与费用</h1>
-                </div>
-
-                <div className="flex flex-wrap gap-2 xl:justify-end">
-                  <Button
-                    className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600"
-                    onClick={() => navigate('/admin/vehicle/booking')}
-                  >
-                    <Plus size={15} className="mr-2" />
-                    新建申请
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-9 rounded-xl border-white/80 bg-white/85 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)]"
-                    onClick={handleRefreshCurrentTab}
-                  >
-                    <RotateCcw size={15} className="mr-2 text-pink-500" />
-                    刷新数据
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {heroMetrics.map((item) => (
-                  <div
-                    key={item.label}
-                    className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
-                  >
-                    <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                    <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
-                    <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                          <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
-                        </div>
-                        <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
-                          {item.icon}
-                        </div>
-                      </div>
-
-                      <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <Calendar size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+            </div>
+          )}
+          title="用车记录与费用"
+          actions={(
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              <Button
+                className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600"
+                onClick={() => navigate('/admin/vehicle/booking')}
+              >
+                <Plus size={15} className="mr-2" />
+                新建申请
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 rounded-xl border-white/80 bg-white/85 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)]"
+                onClick={handleRefreshCurrentTab}
+              >
+                <RotateCcw size={15} className="mr-2 text-pink-500" />
+                刷新数据
+              </Button>
+            </div>
+          )}
+          contentClassName="p-4 sm:p-5"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
+        >
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {heroMetrics.map((item) => (
+              <div
+                key={item.label}
+                className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
+              >
+                <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
+                <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
+                <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
+                      <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
+                    </div>
+                    <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
+                      {item.icon}
                     </div>
                   </div>
-                ))}
+
+                  <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-        </Card>
+        </WorkspaceHeroCard>
 
         <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'usage' | 'expense')}>
             <div className="flex flex-col gap-3">
-              <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
-                <div className="relative px-4 py-4">
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.09),transparent_60%)]" />
-                  <div className="flex flex-col gap-5">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{activeTab === 'usage' ? '记录' : '费用'}</div>
-                        <div className="mt-2 text-[1.65rem] font-bold tracking-tight text-slate-950">{workspaceTitle}</div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                        <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                          {activeTab === 'usage' ? (hasUsageFilters ? '已应用筛选' : '默认视图') : '费用追踪'}
-                        </span>
-                        <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                          共 {activeTab === 'usage' ? usageTotal : expenseTotal} 条
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
-                      {workspaceOverviewItems.map((item) => (
-                        <div
-                          key={item.label}
-                          className={`rounded-[18px] border px-3.5 py-2.5 shadow-sm ${item.toneClassName}`}
-                        >
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</div>
-                          <div className="mt-1.5 text-sm font-semibold tracking-tight">{item.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-4 backdrop-blur-xl">
+              <WorkspaceWorkbenchCard
+                eyebrow={activeTab === 'usage' ? '记录' : '费用'}
+                title={workspaceTitle}
+                total={activeTab === 'usage' ? usageTotal : expenseTotal}
+                hasActiveFilters={activeTab === 'usage' ? hasUsageFilters : false}
+                overviewItems={workspaceOverviewItems}
+                headerBadges={(
+                  <>
+                    <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                      {activeTab === 'usage' ? (hasUsageFilters ? '已应用筛选' : '默认视图') : '费用追踪'}
+                    </span>
+                    <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                      共 {activeTab === 'usage' ? usageTotal : expenseTotal} 条
+                    </span>
+                  </>
+                )}
+                filterBar={(
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                       <TabsList className="inline-flex h-auto flex-wrap items-center gap-1 rounded-[20px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-md">
@@ -648,21 +629,10 @@ const VehicleUsageList: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-
+                )}
+              />
               <TabsContent value="usage" className="mt-0">
-                <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.68))] px-4 py-3 backdrop-blur-xl">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">当前结果</div>
-                      <div className="mt-1 text-[11px] text-slate-400">展示车辆使用记录、审批状态与当前可执行操作</div>
-                    </div>
-                    <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                      共 {usageTotal} 条
-                    </span>
-                  </div>
-
+                <WorkspaceResultCard total={usageTotal} description="展示车辆使用记录、审批状态与当前可执行操作">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader className="bg-white/72 backdrop-blur-xl">
@@ -773,48 +743,22 @@ const VehicleUsageList: React.FC = () => {
                       </Table>
                     </div>
 
-                    {usageTotal > 0 && (
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-3 backdrop-blur-xl">
-                        <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                          第 {usageQuery.pageNum} / {usageTotalPages} 页
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={usageQuery.pageNum <= 1}
-                            onClick={() => setUsageQuery({ ...usageQuery, pageNum: usageQuery.pageNum - 1 })}
-                            className="h-9 w-9 rounded-xl border-white/80 bg-white/82 p-0 shadow-[0_10px_18px_rgba(15,23,42,0.04)]"
-                          >
-                            <ChevronLeft size={15} />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={usageQuery.pageNum >= usageTotalPages}
-                            onClick={() => setUsageQuery({ ...usageQuery, pageNum: usageQuery.pageNum + 1 })}
-                            className="h-9 w-9 rounded-xl border-white/80 bg-white/82 p-0 shadow-[0_10px_18px_rgba(15,23,42,0.04)]"
-                          >
-                            <ChevronRight size={15} />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
+                    {usageTotal > 0 ? (
+                      <WorkspacePaginationBar
+                        total={usageTotal}
+                        pageNum={usageQuery.pageNum}
+                        totalPages={usageTotalPages}
+                        onPrev={() => setUsageQuery({ ...usageQuery, pageNum: usageQuery.pageNum - 1 })}
+                        onNext={() => setUsageQuery({ ...usageQuery, pageNum: usageQuery.pageNum + 1 })}
+                        prevDisabled={usageQuery.pageNum <= 1}
+                        nextDisabled={usageQuery.pageNum >= usageTotalPages}
+                      />
+                    ) : null}
+                </WorkspaceResultCard>
+              </TabsContent>
 
               <TabsContent value="expense" className="mt-0">
-                <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.68))] px-4 py-3 backdrop-blur-xl">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">费用记录</div>
-                      <div className="mt-1 text-[11px] text-slate-400">展示每笔车辆费用的类型、金额、日期与录入说明</div>
-                    </div>
-                    <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                      共 {expenseTotal} 条
-                    </span>
-                  </div>
-
+                <WorkspaceResultCard total={expenseTotal} title="费用记录" description="展示每笔车辆费用的类型、金额、日期与录入说明">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader className="bg-white/72 backdrop-blur-xl">
@@ -888,34 +832,18 @@ const VehicleUsageList: React.FC = () => {
                     </Table>
                   </div>
 
-                  {expenseTotal > 0 && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-3 backdrop-blur-xl">
-                      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                        第 {expenseQuery.pageNum} / {expenseTotalPages} 页
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={expenseQuery.pageNum <= 1}
-                          onClick={() => setExpenseQuery({ ...expenseQuery, pageNum: expenseQuery.pageNum - 1 })}
-                          className="h-9 w-9 rounded-xl border-white/80 bg-white/82 p-0 shadow-[0_10px_18px_rgba(15,23,42,0.04)]"
-                        >
-                          <ChevronLeft size={15} />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={expenseQuery.pageNum >= expenseTotalPages}
-                          onClick={() => setExpenseQuery({ ...expenseQuery, pageNum: expenseQuery.pageNum + 1 })}
-                          className="h-9 w-9 rounded-xl border-white/80 bg-white/82 p-0 shadow-[0_10px_18px_rgba(15,23,42,0.04)]"
-                        >
-                          <ChevronRight size={15} />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  {expenseTotal > 0 ? (
+                    <WorkspacePaginationBar
+                      total={expenseTotal}
+                      pageNum={expenseQuery.pageNum}
+                      totalPages={expenseTotalPages}
+                      onPrev={() => setExpenseQuery({ ...expenseQuery, pageNum: expenseQuery.pageNum - 1 })}
+                      onNext={() => setExpenseQuery({ ...expenseQuery, pageNum: expenseQuery.pageNum + 1 })}
+                      prevDisabled={expenseQuery.pageNum <= 1}
+                      nextDisabled={expenseQuery.pageNum >= expenseTotalPages}
+                    />
+                  ) : null}
+                </WorkspaceResultCard>
               </TabsContent>
             </div>
           </Tabs>
@@ -1262,3 +1190,4 @@ const VehicleUsageList: React.FC = () => {
 };
 
 export default VehicleUsageList;
+

@@ -22,6 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui';
+import { WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import {
   EmployeeContract,
   EmployeeDocument,
@@ -530,25 +531,18 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   }
 
   return (
-    <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            <FileText size={14} />
-            Employee Workspace
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
-            {employeeDetail?.name || currentEmployee?.name || `员工 #${selectedEmployeeId}`}
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            {detailLoading
-              ? '正在同步员工主档详情...'
-              : ([employeeDetail?.employeeNo || currentEmployee?.employeeNo, employeeDetail?.deptName || currentEmployee?.deptName, employeeDetail?.positionName || currentEmployee?.positionName]
-                  .filter(Boolean)
-                  .join(' / ') || '当前员工暂无完整组织信息')}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
+    <WorkspaceSectionCard
+      title={employeeDetail?.name || currentEmployee?.name || `员工 #${selectedEmployeeId}`}
+      description={
+        detailLoading
+          ? '正在同步员工主档详情...'
+          : ([employeeDetail?.employeeNo || currentEmployee?.employeeNo, employeeDetail?.deptName || currentEmployee?.deptName, employeeDetail?.positionName || currentEmployee?.positionName]
+              .filter(Boolean)
+              .join(' / ') || '当前员工暂无完整组织信息')
+      }
+      eyebrow="Employee Workspace"
+      headerAside={(
+        <>
           <Button variant="outline" onClick={() => void refreshWorkspace(selectedEmployeeId)}>
             <RefreshCcw size={14} className="mr-2" />
             刷新工作区
@@ -557,35 +551,39 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             <Edit3 size={14} className="mr-2" />
             编辑主档
           </Button>
-        </div>
-      </div>
-
+        </>
+      )}
+    >
       <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-          <div className="text-xs text-slate-400">员工状态</div>
-          <div className="mt-2 text-lg font-semibold text-slate-900">
-            {employeeStatusLabel[employeeDetail?.employeeStatus || currentEmployee?.employeeStatus || ''] || textValue(employeeDetail?.employeeStatus || currentEmployee?.employeeStatus)}
-          </div>
-          <div className="mt-1 text-sm text-slate-500">
-            {employeeTypeLabel[employeeDetail?.employeeType || currentEmployee?.employeeType || ''] || textValue(employeeDetail?.employeeType || currentEmployee?.employeeType)}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-          <div className="text-xs text-slate-400">入转离时间</div>
-          <div className="mt-2 text-sm font-medium text-slate-900">入职 {toDateInputValue(employeeDetail?.hireDate || currentEmployee?.hireDate) || '-'}</div>
-          <div className="mt-1 text-sm text-slate-500">转正 {toDateInputValue(employeeDetail?.regularDate) || '-'}</div>
-          <div className="mt-1 text-sm text-slate-500">离职 {toDateInputValue(employeeDetail?.resignDate) || '-'}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-          <div className="text-xs text-slate-400">联系方式</div>
-          <div className="mt-2 text-sm font-medium text-slate-900">{textValue(employeeDetail?.phone || currentEmployee?.phone)}</div>
-          <div className="mt-1 text-sm text-slate-500">{textValue(employeeDetail?.email || currentEmployee?.email)}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-          <div className="text-xs text-slate-400">附属档案</div>
-          <div className="mt-2 text-sm font-medium text-slate-900">{contracts.length} 份合同 / {documents.length} 份证件</div>
-          <div className="mt-1 text-sm text-slate-500">{contacts.length} 位紧急联系人</div>
-        </div>
+        <WorkspaceMetricCard
+          label="员工状态"
+          value={employeeStatusLabel[employeeDetail?.employeeStatus || currentEmployee?.employeeStatus || ''] || textValue(employeeDetail?.employeeStatus || currentEmployee?.employeeStatus)}
+          hint={employeeTypeLabel[employeeDetail?.employeeType || currentEmployee?.employeeType || ''] || textValue(employeeDetail?.employeeType || currentEmployee?.employeeType)}
+          valueClassName="text-lg"
+        />
+        <WorkspaceMetricCard
+          label="入转离时间"
+          value={<div className="text-sm font-medium text-slate-900">入职 {toDateInputValue(employeeDetail?.hireDate || currentEmployee?.hireDate) || '-'}</div>}
+          hint={
+            <div className="space-y-1">
+              <div>转正 {toDateInputValue(employeeDetail?.regularDate) || '-'}</div>
+              <div>离职 {toDateInputValue(employeeDetail?.resignDate) || '-'}</div>
+            </div>
+          }
+          valueClassName="text-sm"
+        />
+        <WorkspaceMetricCard
+          label="联系方式"
+          value={<div className="text-sm font-medium text-slate-900">{textValue(employeeDetail?.phone || currentEmployee?.phone)}</div>}
+          hint={textValue(employeeDetail?.email || currentEmployee?.email)}
+          valueClassName="text-sm"
+        />
+        <WorkspaceMetricCard
+          label="附属档案"
+          value={<div className="text-sm font-medium text-slate-900">{contracts.length} 份合同 / {documents.length} 份证件</div>}
+          hint={`${contacts.length} 位紧急联系人`}
+          valueClassName="text-sm"
+        />
       </div>
 
       <Tabs value={tab} onValueChange={value => setTab(value as WorkspaceTab)} className="space-y-4">
@@ -597,13 +595,11 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
         <TabsContent value="contracts" className="space-y-6">
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-            <Card className="rounded-3xl border-white/80 bg-white/80 p-5">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  {contractEditingId ? '编辑员工合同' : '新增员工合同'}
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">直接写入合同档案，适合真实联调合同新增、续签和状态维护。</p>
-              </div>
+            <WorkspaceSectionCard
+              title={contractEditingId ? '编辑员工合同' : '新增员工合同'}
+              description="直接写入合同档案，适合真实联调合同新增、续签和状态维护。"
+              className="border-white/80 bg-white/88"
+            >
 
               <div className="space-y-4">
                 <div>
@@ -661,18 +657,18 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 <Button variant="outline" onClick={resetContractForm}>重置</Button>
                 <Button onClick={() => void handleSubmitContract()}>{contractEditingId ? '保存合同' : '新增合同'}</Button>
               </div>
-            </Card>
+            </WorkspaceSectionCard>
 
-            <Card className="rounded-3xl border-white/80 bg-white/80 p-5">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">合同列表</h3>
-                  <p className="mt-1 text-sm text-slate-500">当前员工已有 {contracts.length} 份合同。仅草稿合同允许删除，生效中合同请走续签或终止流程。</p>
-                </div>
+            <WorkspaceSectionCard
+              title="合同列表"
+              description={`当前员工已有 ${contracts.length} 份合同。仅草稿合同允许删除，生效中合同请走续签或终止流程。`}
+              className="border-white/80 bg-white/88"
+              headerAside={(
                 <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                   {contractsLoading ? '同步中' : `${contracts.length} 条记录`}
                 </span>
-              </div>
+              )}
+            >
 
               <Table>
                 <TableHeader>
@@ -731,22 +727,18 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   )}
                 </TableBody>
               </Table>
-            </Card>
+            </WorkspaceSectionCard>
           </div>
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-6">
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-            <Card className="rounded-3xl border-white/80 bg-white/80 p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <ShieldCheck size={18} className="text-slate-500" />
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {documentEditingId ? '编辑员工证件' : '新增员工证件'}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">优先覆盖身份证、护照、学历与学位证书这几类真实业务证件。</p>
-                </div>
-              </div>
+            <WorkspaceSectionCard
+              title={documentEditingId ? '编辑员工证件' : '新增员工证件'}
+              description="优先覆盖身份证、护照、学历与学位证书这几类真实业务证件。"
+              className="border-white/80 bg-white/88"
+              headerAside={<ShieldCheck size={18} className="text-slate-500" />}
+            >
 
               <div className="space-y-4">
                 <div>
@@ -785,18 +777,18 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 <Button variant="outline" onClick={resetDocumentForm}>重置</Button>
                 <Button onClick={() => void handleSubmitDocument()}>{documentEditingId ? '保存证件' : '新增证件'}</Button>
               </div>
-            </Card>
+            </WorkspaceSectionCard>
 
-            <Card className="rounded-3xl border-white/80 bg-white/80 p-5">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">证件列表</h3>
-                  <p className="mt-1 text-sm text-slate-500">适合联调证件详情接口和删除回收流程。</p>
-                </div>
+            <WorkspaceSectionCard
+              title="证件列表"
+              description="适合联调证件详情接口和删除回收流程。"
+              className="border-white/80 bg-white/88"
+              headerAside={(
                 <span className="inline-flex rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
                   {documentsLoading ? '同步中' : `${documents.length} 条记录`}
                 </span>
-              </div>
+              )}
+            >
 
               <Table>
                 <TableHeader>
@@ -849,22 +841,18 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   )}
                 </TableBody>
               </Table>
-            </Card>
+            </WorkspaceSectionCard>
           </div>
         </TabsContent>
 
         <TabsContent value="contacts" className="space-y-6">
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-            <Card className="rounded-3xl border-white/80 bg-white/80 p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <Phone size={18} className="text-slate-500" />
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {contactEditingId ? '编辑紧急联系人' : '新增紧急联系人'}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">建议至少维护 1 位主联系人，真实联调时也能覆盖优先级字段。</p>
-                </div>
-              </div>
+            <WorkspaceSectionCard
+              title={contactEditingId ? '编辑紧急联系人' : '新增紧急联系人'}
+              description="建议至少维护 1 位主联系人，真实联调时也能覆盖优先级字段。"
+              className="border-white/80 bg-white/88"
+              headerAside={<Phone size={18} className="text-slate-500" />}
+            >
 
               <div className="space-y-4">
                 <div>
@@ -908,18 +896,18 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 <Button variant="outline" onClick={resetContactForm}>重置</Button>
                 <Button onClick={() => void handleSubmitContact()}>{contactEditingId ? '保存联系人' : '新增联系人'}</Button>
               </div>
-            </Card>
+            </WorkspaceSectionCard>
 
-            <Card className="rounded-3xl border-white/80 bg-white/80 p-5">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">紧急联系人列表</h3>
-                  <p className="mt-1 text-sm text-slate-500">覆盖联系人详情、编辑和删除接口，确保员工联络信息可维护。</p>
-                </div>
+            <WorkspaceSectionCard
+              title="紧急联系人列表"
+              description="覆盖联系人详情、编辑和删除接口，确保员工联络信息可维护。"
+              className="border-white/80 bg-white/88"
+              headerAside={(
                 <span className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
                   {contactsLoading ? '同步中' : `${contacts.length} 条记录`}
                 </span>
-              </div>
+              )}
+            >
 
               <Table>
                 <TableHeader>
@@ -966,11 +954,11 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                   )}
                 </TableBody>
               </Table>
-            </Card>
+            </WorkspaceSectionCard>
           </div>
         </TabsContent>
       </Tabs>
-    </Card>
+    </WorkspaceSectionCard>
   );
 };
 
