@@ -940,17 +940,22 @@ public class LeaveServiceImpl implements LeaveService {
         }
         
         // 调整总额度
-        BigDecimal newTotalQuota = leaveQuota.getTotalQuota().add(dto.getAdjustmentAmount());
+        BigDecimal newTotalQuota = normalizeQuota(normalizeQuota(leaveQuota.getTotalQuota()).add(dto.getAdjustmentAmount()));
         if (newTotalQuota.compareTo(BigDecimal.ZERO) < 0) {
             throw new HrBusinessException("调整后的总额度不能为负数");
         }
-        
-        leaveQuota.setTotalQuota(newTotalQuota);
-        
+
         // 重新计算可用额度
-        BigDecimal newAvailableQuota = newTotalQuota
-                .subtract(leaveQuota.getUsedQuota())
-                .subtract(leaveQuota.getFrozenQuota());
+        BigDecimal rawAvailableQuota = newTotalQuota
+                .subtract(normalizeQuota(leaveQuota.getUsedQuota()))
+                .subtract(normalizeQuota(leaveQuota.getFrozenQuota()));
+        // 普通假种减少额度时，不能把“已使用/已冻结”部分挤压成负的可用余额。
+        if (dto.getAdjustmentAmount().compareTo(BigDecimal.ZERO) < 0 && rawAvailableQuota.compareTo(BigDecimal.ZERO) < 0) {
+            throw new HrBusinessException("假期额度可用额度不足，无法减少指定额度");
+        }
+        BigDecimal newAvailableQuota = normalizeQuota(rawAvailableQuota);
+
+        leaveQuota.setTotalQuota(newTotalQuota);
         leaveQuota.setAvailableQuota(newAvailableQuota);
         
         // 更新数据库

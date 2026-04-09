@@ -526,6 +526,49 @@ class LeaveAndOvertimeServiceTest {
     }
 
     @Test
+    void testAdjustAnnualLeaveQuotaUpdatesAvailableBalance() {
+        LeaveQuotaAdjustDTO dto = new LeaveQuotaAdjustDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(301L);
+        dto.setYear(2026);
+        dto.setAdjustmentAmount(new BigDecimal("-2.00"));
+
+        LeaveQuota quota = buildLeaveQuota(new BigDecimal("10.00"), new BigDecimal("3.00"), new BigDecimal("1.00"));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(301L)).thenReturn(buildAnnualLeaveType());
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(quota);
+
+        leaveService.adjustLeaveQuota(dto);
+
+        assertEquals(new BigDecimal("8.00"), quota.getTotalQuota());
+        assertEquals(new BigDecimal("4.00"), quota.getAvailableQuota());
+    }
+
+    @Test
+    void testAdjustAnnualLeaveQuotaRejectsReduceBeyondAvailable() {
+        LeaveQuotaAdjustDTO dto = new LeaveQuotaAdjustDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(301L);
+        dto.setYear(2026);
+        dto.setAdjustmentAmount(new BigDecimal("-3.00"));
+
+        LeaveQuota quota = buildLeaveQuota(new BigDecimal("10.00"), new BigDecimal("6.00"), new BigDecimal("2.00"));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(301L)).thenReturn(buildAnnualLeaveType());
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(quota);
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.adjustLeaveQuota(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("可用额度不足"));
+        verify(leaveQuotaMapper, times(0)).updateById(any(LeaveQuota.class));
+    }
+
+    @Test
     void testGetLeaveQuotaAggregatesCompensatoryCarryOverBucketsForRequestedYear() {
         LeaveQuota carryOverBucket = buildLeaveQuotaForYear(2025, new BigDecimal("2.00"), BigDecimal.ZERO, BigDecimal.ZERO);
         carryOverBucket.setId(806L);
