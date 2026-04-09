@@ -56,6 +56,11 @@ type AdjustFormState = {
 };
 
 const getCurrentYear = () => new Date().getFullYear();
+const getCurrentDateInputValue = () => {
+  const now = new Date();
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+};
 
 const buildYearOptions = (anchorYear: number) =>
   Array.from({ length: 5 }, (_, index) => anchorYear - 2 + index);
@@ -189,6 +194,7 @@ const initActionLabel = (action?: string | null) => {
 
 export const HrLeaveQuotaPage: React.FC = () => {
   const currentYear = getCurrentYear();
+  const todayDateInputValue = getCurrentDateInputValue();
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<HrLeaveTypeOption[]>([]);
   const [quotaSummary, setQuotaSummary] = useState<HrLeaveQuotaVO[]>([]);
@@ -266,6 +272,13 @@ export const HrLeaveQuotaPage: React.FC = () => {
     () => quotaBuckets.find(item => String(item.id) === adjustForm.bucketId) || null,
     [adjustForm.bucketId, quotaBuckets],
   );
+  const newBucketMinExpiryDate = useMemo(() => {
+    const bucketYear = Number(adjustForm.bucketYear);
+    const yearStart = Number.isInteger(bucketYear) && bucketYear > 0
+      ? `${bucketYear}-01-01`
+      : todayDateInputValue;
+    return yearStart > todayDateInputValue ? yearStart : todayDateInputValue;
+  }, [adjustForm.bucketYear, todayDateInputValue]);
 
   useEffect(() => {
     writeSessionStorageRecord(INIT_RESULT_HISTORY_STORAGE_KEY, initResultHistory as Record<string, unknown>);
@@ -657,6 +670,17 @@ export const HrLeaveQuotaPage: React.FC = () => {
       if (!expiryDate) {
         toast.error('调休额度必须指定过期日期');
         return;
+      }
+      if (isNewBucket) {
+        const bucketYearStart = `${year}-01-01`;
+        if (expiryDate < bucketYearStart) {
+          toast.error('调休额度过期日期不能早于归属年度开始日期');
+          return;
+        }
+        if (adjustmentAmount > 0 && expiryDate < todayDateInputValue) {
+          toast.error('不能新增已过期的调休额度桶');
+          return;
+        }
       }
     }
 
@@ -1244,6 +1268,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
                     <Input
                       className="mt-2"
                       type="date"
+                      min={adjustForm.bucketId === NEW_BUCKET_VALUE ? newBucketMinExpiryDate : undefined}
                       value={adjustForm.expiryDate}
                       disabled={adjustForm.bucketId !== NEW_BUCKET_VALUE}
                       onChange={event => setAdjustForm(prev => ({ ...prev, expiryDate: event.target.value }))}

@@ -420,6 +420,7 @@ class LeaveAndOvertimeServiceTest {
         dto.setAdjustmentAmount(new BigDecimal("3.50"));
         dto.setExpiryDate(LocalDate.of(2026, 7, 31));
 
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
         when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
         when(leaveQuotaMapper.selectOne(any())).thenReturn(null);
         when(leaveQuotaMapper.insert(any(LeaveQuota.class))).thenAnswer(invocation -> {
@@ -449,6 +450,7 @@ class LeaveAndOvertimeServiceTest {
         bucket.setExpiryDate(LocalDate.of(2026, 7, 31));
         bucket.setAvailableQuota(new BigDecimal("3.00"));
 
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
         when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
         when(leaveQuotaMapper.selectOne(any())).thenReturn(bucket);
 
@@ -458,6 +460,69 @@ class LeaveAndOvertimeServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("可用额度不足"));
+    }
+
+    @Test
+    void testAdjustCompensatoryLeaveQuotaRejectsEmployeeOutsideTenant() {
+        LeaveQuotaAdjustDTO dto = new LeaveQuotaAdjustDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(401L);
+        dto.setYear(2026);
+        dto.setAdjustmentAmount(new BigDecimal("3.50"));
+        dto.setExpiryDate(LocalDate.of(2026, 7, 31));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployeeWithTenant(3001L));
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.adjustLeaveQuota(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("员工不存在"));
+        verify(leaveQuotaMapper, times(0)).insert(any(LeaveQuota.class));
+    }
+
+    @Test
+    void testAdjustCompensatoryLeaveQuotaRejectsExpiredBucketCreation() {
+        LeaveQuotaAdjustDTO dto = new LeaveQuotaAdjustDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(401L);
+        dto.setYear(LocalDate.now().getYear());
+        dto.setAdjustmentAmount(new BigDecimal("1.50"));
+        dto.setExpiryDate(LocalDate.now().minusDays(1));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.adjustLeaveQuota(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("已过期"));
+        verify(leaveQuotaMapper, times(0)).insert(any(LeaveQuota.class));
+    }
+
+    @Test
+    void testAdjustCompensatoryLeaveQuotaRejectsExpiryBeforeQuotaYearStart() {
+        int nextYear = LocalDate.now().getYear() + 1;
+        LeaveQuotaAdjustDTO dto = new LeaveQuotaAdjustDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(401L);
+        dto.setYear(nextYear);
+        dto.setAdjustmentAmount(new BigDecimal("1.50"));
+        dto.setExpiryDate(LocalDate.of(nextYear - 1, 12, 31));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.adjustLeaveQuota(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("归属年度开始日期"));
+        verify(leaveQuotaMapper, times(0)).insert(any(LeaveQuota.class));
     }
 
     @Test
@@ -601,6 +666,19 @@ class LeaveAndOvertimeServiceTest {
     }
 
     @Test
+    void testGetLeaveQuotaRejectsEmployeeOutsideTenant() {
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployeeWithTenant(3001L));
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.getLeaveQuota(1L, 302L, 2026)
+        );
+
+        assertTrue(exception.getMessage().contains("员工不存在"));
+        verify(leaveTypeMapper, times(0)).selectById(302L);
+    }
+
+    @Test
     void testListLeaveQuotasAggregatesCompensatoryCarryOverBucketsForRequestedYear() {
         LeaveQuotaVO annualQuota = new LeaveQuotaVO();
         annualQuota.setId(901L);
@@ -695,6 +773,19 @@ class LeaveAndOvertimeServiceTest {
         assertEquals(new BigDecimal("0.00"), pendingQuota.getAvailableQuota());
         assertEquals("测试员工", pendingQuota.getEmployeeName());
         assertEquals(null, pendingQuota.getId());
+    }
+
+    @Test
+    void testListLeaveQuotasRejectsEmployeeOutsideTenant() {
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployeeWithTenant(3001L));
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.listLeaveQuotas(1L, 2026)
+        );
+
+        assertTrue(exception.getMessage().contains("员工不存在"));
+        verify(leaveQuotaMapper, times(0)).selectLeaveQuotaList(any(), any(), any());
     }
 
     @Test
@@ -940,6 +1031,12 @@ class LeaveAndOvertimeServiceTest {
         employee.setName("测试员工");
         employee.setEmployeeNo("EMP001");
         employee.setEmployeeStatus("REGULAR");
+        return employee;
+    }
+
+    private Employee buildEmployeeWithTenant(Long tenantId) {
+        Employee employee = buildEmployee();
+        employee.setTenantId(tenantId);
         return employee;
     }
 

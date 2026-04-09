@@ -203,10 +203,7 @@ public class LeaveServiceImpl implements LeaveService {
         Long tenantId = SecurityUtils.getTenantId();
         
         // 查询员工信息
-        Employee employee = employeeMapper.selectById(employeeId);
-        if (employee == null || !employee.getTenantId().equals(tenantId)) {
-            throw new HrBusinessException("员工不存在");
-        }
+        Employee employee = getTenantEmployeeOrThrow(employeeId, tenantId);
         validateLeaveEligibleEmployee(employee, "初始化假期额度");
         
         List<LeaveType> leaveTypes = resolveQuotaInitLeaveTypes(tenantId, leaveTypeId);
@@ -919,6 +916,7 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
+        getTenantEmployeeOrThrow(dto.getEmployeeId(), tenantId);
 
         LeaveType leaveType = leaveTypeMapper.selectById(dto.getLeaveTypeId());
         if (leaveType == null || !tenantId.equals(leaveType.getTenantId())) {
@@ -969,6 +967,9 @@ public class LeaveServiceImpl implements LeaveService {
         if (adjustmentAmount.compareTo(BigDecimal.ZERO) == 0) {
             throw new HrBusinessException("调整额度不能为0");
         }
+        if (dto.getAdjustmentAmount().compareTo(BigDecimal.ZERO) > 0) {
+            validateCompensatoryQuotaAdjustmentWindow(dto.getYear(), dto.getExpiryDate());
+        }
 
         LambdaQueryWrapper<LeaveQuota> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(LeaveQuota::getTenantId, tenantId)
@@ -1015,6 +1016,20 @@ public class LeaveServiceImpl implements LeaveService {
 
         log.info("调休额度桶减少成功，employeeId: {}, leaveTypeId: {}, year: {}, expiryDate: {}, adjustmentAmount: {}",
                 dto.getEmployeeId(), dto.getLeaveTypeId(), dto.getYear(), dto.getExpiryDate(), adjustmentAmount);
+    }
+
+    /**
+     * 手工新增或补加调休额度时，至少要保证这个额度桶还没过期，
+     * 且过期日不能早于它的归属年度起点，避免造出逻辑上无效的桶。
+     */
+    private void validateCompensatoryQuotaAdjustmentWindow(Integer year, LocalDate expiryDate) {
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        if (expiryDate.isBefore(yearStart)) {
+            throw new HrBusinessException("调休额度过期日期不能早于归属年度开始日期");
+        }
+        if (expiryDate.isBefore(LocalDate.now())) {
+            throw new HrBusinessException("不能新增已过期的调休额度桶");
+        }
     }
 
     private List<LeaveQuota> queryCompensatoryQuotaBucketsForYear(Long tenantId,
@@ -1116,7 +1131,7 @@ public class LeaveServiceImpl implements LeaveService {
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
         
-        Employee employee = employeeMapper.selectById(employeeId);
+        Employee employee = getTenantEmployeeOrThrow(employeeId, tenantId);
         LeaveType leaveType = leaveTypeMapper.selectById(leaveTypeId);
         if (leaveType == null || !tenantId.equals(leaveType.getTenantId())) {
             throw new HrBusinessException("假期类型不存在");
@@ -1155,7 +1170,7 @@ public class LeaveServiceImpl implements LeaveService {
         log.info("获取员工假期额度桶明细，employeeId: {}, leaveTypeId: {}, year: {}", employeeId, leaveTypeId, year);
 
         Long tenantId = SecurityUtils.getTenantId();
-        Employee employee = employeeMapper.selectById(employeeId);
+        Employee employee = getTenantEmployeeOrThrow(employeeId, tenantId);
         LeaveType leaveType = leaveTypeMapper.selectById(leaveTypeId);
         if (leaveType == null || !tenantId.equals(leaveType.getTenantId())) {
             throw new HrBusinessException("假期类型不存在");
@@ -1190,7 +1205,7 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
-        Employee employee = employeeMapper.selectById(employeeId);
+        Employee employee = getTenantEmployeeOrThrow(employeeId, tenantId);
         
         List<LeaveQuotaVO> quotaList = new ArrayList<>(leaveQuotaMapper.selectLeaveQuotaList(tenantId, employeeId, year));
         LeaveType compensatoryType = getCompensatoryLeaveType(tenantId);
@@ -1247,6 +1262,18 @@ public class LeaveServiceImpl implements LeaveService {
     }
 
     /**
+     * 额度查询和调整都必须先确认 employeeId 属于当前租户，
+     * 避免把占位额度、调休额度桶等数据误挂到错误员工名下。
+     */
+    private Employee getTenantEmployeeOrThrow(Long employeeId, Long tenantId) {
+        Employee employee = employeeMapper.selectById(employeeId);
+        if (employee == null || !tenantId.equals(employee.getTenantId())) {
+            throw new HrBusinessException("员工不存在");
+        }
+        return employee;
+    }
+
+    /**
      * 年度额度补齐既支持整年批量处理，也支持在额度页按当前假种单独补齐。
      */
     private List<LeaveType> resolveQuotaInitLeaveTypes(Long tenantId, Long leaveTypeId) {
@@ -1300,10 +1327,7 @@ public class LeaveServiceImpl implements LeaveService {
         Long tenantId = SecurityUtils.getTenantId();
         
         // 验证员工是否存在
-        Employee employee = employeeMapper.selectById(dto.getEmployeeId());
-        if (employee == null || !employee.getTenantId().equals(tenantId)) {
-            throw new HrBusinessException("员工不存在");
-        }
+        Employee employee = getTenantEmployeeOrThrow(dto.getEmployeeId(), tenantId);
         validateLeaveEligibleEmployee(employee, "请假申请");
         
         // 验证假期类型是否存在
