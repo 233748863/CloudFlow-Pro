@@ -194,8 +194,8 @@ public class LeaveServiceImpl implements LeaveService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void initLeaveQuota(Long employeeId, Integer year) {
-        log.info("初始化员工假期额度，employeeId: {}, year: {}", employeeId, year);
+    public void initLeaveQuota(Long employeeId, Integer year, Long leaveTypeId) {
+        log.info("初始化员工假期额度，employeeId: {}, year: {}, leaveTypeId: {}", employeeId, year, leaveTypeId);
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
@@ -207,13 +207,7 @@ public class LeaveServiceImpl implements LeaveService {
         }
         validateLeaveEligibleEmployee(employee, "初始化假期额度");
         
-        // 查询所有需要额度的假期类型
-        LambdaQueryWrapper<LeaveType> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(LeaveType::getTenantId, tenantId)
-                    .eq(LeaveType::getNeedQuota, true)
-                    .eq(LeaveType::getStatus, 1);
-        
-        List<LeaveType> leaveTypes = leaveTypeMapper.selectList(queryWrapper);
+        List<LeaveType> leaveTypes = resolveQuotaInitLeaveTypes(tenantId, leaveTypeId);
         
         // 为每种假期类型初始化额度
         for (LeaveType leaveType : leaveTypes) {
@@ -1092,6 +1086,10 @@ public class LeaveServiceImpl implements LeaveService {
 
         List<LeaveQuota> quotaList = leaveQuotaMapper.selectList(queryWrapper);
         if (quotaList.isEmpty()) {
+            // 普通按年度管控的假种，在未初始化时也返回占位额度，和列表接口保持一致。
+            if (Boolean.TRUE.equals(leaveType.getNeedQuota())) {
+                return buildPendingLeaveQuotaSummaryVO(employee, leaveType, year);
+            }
             throw new HrBusinessException("假期额度不存在");
         }
         return buildLeaveQuotaSummaryVO(quotaList, employee, leaveType, year);
@@ -1194,6 +1192,26 @@ public class LeaveServiceImpl implements LeaveService {
             }
             quotaList.add(buildPendingLeaveQuotaSummaryVO(employee, leaveType, year));
         }
+    }
+
+    /**
+     * 年度额度补齐既支持整年批量处理，也支持在额度页按当前假种单独补齐。
+     */
+    private List<LeaveType> resolveQuotaInitLeaveTypes(Long tenantId, Long leaveTypeId) {
+        if (leaveTypeId == null) {
+            return listQuotaEnabledLeaveTypes(tenantId);
+        }
+
+        LeaveType leaveType = leaveTypeMapper.selectById(leaveTypeId);
+        if (leaveType == null || !tenantId.equals(leaveType.getTenantId())) {
+            throw new HrBusinessException("假期类型不存在");
+        }
+        if (!Boolean.TRUE.equals(leaveType.getNeedQuota())
+                || !Integer.valueOf(1).equals(leaveType.getStatus())
+                || isCompensatoryLeave(leaveType)) {
+            throw new HrBusinessException("当前假种不支持补齐年度额度");
+        }
+        return List.of(leaveType);
     }
 
     private LeaveQuotaVO buildPendingLeaveQuotaSummaryVO(Employee employee, LeaveType leaveType, Integer year) {

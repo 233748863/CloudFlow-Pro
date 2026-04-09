@@ -148,6 +148,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
   const [bucketLoading, setBucketLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [bulkInitDialogOpen, setBulkInitDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState<AdjustFormState>(createDefaultAdjustForm(String(currentYear)));
 
@@ -192,13 +193,34 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
   const isCompensatorySelected = isCompensatoryLeaveType(selectedLeaveType);
   const selectedQuotaInitialized = selectedQuotaSummary?.id != null;
-  const canInitAnnualQuota = Boolean(
+  const selectedQuotaPendingInit = Boolean(selectedQuotaSummary && !selectedQuotaInitialized && !isCompensatorySelected);
+  const initializedQuotaCount = useMemo(
+    () => quotaSummary.filter(item => item.id != null).length,
+    [quotaSummary],
+  );
+  const pendingQuotaCount = useMemo(
+    () => quotaSummary.filter(item => {
+      const leaveType = leaveTypeMap.get(item.leaveTypeId);
+      return item.id == null && !isCompensatoryLeaveType(leaveType);
+    }).length,
+    [leaveTypeMap, quotaSummary],
+  );
+  const pendingAnnualQuotaSummaries = useMemo(
+    () => quotaSummary.filter(item => {
+      const leaveType = leaveTypeMap.get(item.leaveTypeId);
+      return item.id == null && !isCompensatoryLeaveType(leaveType);
+    }),
+    [leaveTypeMap, quotaSummary],
+  );
+  const canInitCurrentAnnualQuota = Boolean(
     selectedEmployeeId
     && selectedYear
     && selectedLeaveType
     && !isCompensatorySelected
     && !selectedQuotaInitialized,
   );
+  const canInitAllAnnualQuota = Boolean(selectedEmployeeId && selectedYear && pendingQuotaCount > 0);
+  const showBulkInitButton = canInitAllAnnualQuota && (pendingQuotaCount > 1 || !canInitCurrentAnnualQuota);
 
   const metrics = useMemo(() => {
     const unit = selectedLeaveType?.unit;
@@ -217,21 +239,27 @@ export const HrLeaveQuotaPage: React.FC = () => {
       {
         label: '可管理假种',
         value: quotaSummary.length,
-        hint: `员工 ${selectedEmployee?.name || '--'} 在 ${selectedYear} 年已有 ${quotaSummary.length} 类额度记录`,
+        hint: pendingQuotaCount
+          ? `员工 ${selectedEmployee?.name || '--'} 在 ${selectedYear} 年共有 ${quotaSummary.length} 类可管理假种，已初始化 ${initializedQuotaCount} 类，待初始化 ${pendingQuotaCount} 类`
+          : `员工 ${selectedEmployee?.name || '--'} 在 ${selectedYear} 年已有 ${initializedQuotaCount} 类额度记录`,
         iconTone: 'bg-slate-100 text-slate-600',
         icon: <Wallet size={18} />,
       },
       {
         label: '当前假种总额',
-        value: selectedQuotaSummary ? formatQuotaValue(selectedQuotaSummary.totalQuota, unit) : '--',
-        hint: selectedLeaveType ? `${selectedLeaveType.leaveName} 当前累计总额` : '先从右侧选择一个假种',
+        value: selectedQuotaPendingInit ? '待初始化' : selectedQuotaSummary ? formatQuotaValue(selectedQuotaSummary.totalQuota, unit) : '--',
+        hint: selectedQuotaPendingInit
+          ? `${selectedLeaveType?.leaveName || '当前假种'} 还没有年度额度记录，可先初始化再进行调整`
+          : selectedLeaveType ? `${selectedLeaveType.leaveName} 当前累计总额` : '先从右侧选择一个假种',
         iconTone: 'bg-sky-50 text-sky-600',
         icon: <Coins size={18} />,
       },
       {
         label: '当前可用额度',
         value: selectedQuotaSummary ? formatQuotaValue(selectedQuotaSummary.availableQuota, unit) : '--',
-        hint: selectedQuotaSummary
+        hint: selectedQuotaPendingInit
+          ? '初始化完成后，系统才会生成可用额度和冻结额度口径'
+          : selectedQuotaSummary
           ? `已用 ${formatQuotaValue(selectedQuotaSummary.usedQuota, unit)}，冻结 ${formatQuotaValue(selectedQuotaSummary.frozenQuota, unit)}`
           : '当前假种暂无额度汇总记录',
         iconTone: 'bg-emerald-50 text-emerald-600',
@@ -250,7 +278,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
         icon: <Hourglass size={18} />,
       },
     ];
-  }, [quotaBuckets, quotaSummary.length, selectedEmployee?.name, selectedLeaveType, selectedQuotaSummary, selectedYear]);
+  }, [initializedQuotaCount, pendingQuotaCount, quotaBuckets, quotaSummary.length, selectedEmployee?.name, selectedLeaveType, selectedQuotaPendingInit, selectedQuotaSummary, selectedYear]);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -382,21 +410,55 @@ export const HrLeaveQuotaPage: React.FC = () => {
       return;
     }
     if (!selectedLeaveType || isCompensatorySelected) {
-      toast.error('当前假种不支持年度额度初始化');
+      toast.error('当前选中假种不支持从这里补齐年度额度');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await initHrLeaveQuota({ employeeId, year, leaveTypeId: Number(selectedLeaveTypeId) });
+      toast.success(`${selectedLeaveType.leaveName} ${year} 年度额度已补齐`);
+      setReloadToken(value => value + 1);
+    } catch (error) {
+      console.error(error);
+      toast.error((error as Error)?.message || '补齐当前假种年度额度失败');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleInitAllAnnualQuota = async () => {
+    const employeeId = Number(selectedEmployeeId);
+    const year = Number(selectedYear);
+    if (!employeeId || !year) {
+      toast.error('请先选择员工和年度');
+      return;
+    }
+    if (!pendingAnnualQuotaSummaries.length) {
+      toast.error('当前没有待补齐的年度额度');
       return;
     }
 
     setActionLoading(true);
     try {
       await initHrLeaveQuota({ employeeId, year });
-      toast.success(`${year} 年度额度已初始化`);
+      toast.success(`${year} 年度已批量补齐 ${pendingAnnualQuotaSummaries.length} 类待初始化假种额度`);
+      setBulkInitDialogOpen(false);
       setReloadToken(value => value + 1);
     } catch (error) {
       console.error(error);
-      toast.error((error as Error)?.message || '年度额度初始化失败');
+      toast.error((error as Error)?.message || '批量补齐年度额度失败');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleOpenBulkInitDialog = () => {
+    if (!pendingAnnualQuotaSummaries.length) {
+      toast.error('当前没有待补齐的年度额度');
+      return;
+    }
+    setBulkInitDialogOpen(true);
   };
 
   const handleOpenAdjustDialog = () => {
@@ -546,7 +608,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
               <RefreshCcw size={16} className="mr-2" />
               刷新额度
             </Button>
-            {canInitAnnualQuota ? (
+            {canInitCurrentAnnualQuota ? (
               <Button
                 variant="outline"
                 className="rounded-2xl"
@@ -554,7 +616,18 @@ export const HrLeaveQuotaPage: React.FC = () => {
                 disabled={actionLoading}
               >
                 <CalendarRange size={16} className="mr-2" />
-                初始化年度额度
+                补齐当前假种额度
+              </Button>
+            ) : null}
+            {showBulkInitButton ? (
+              <Button
+                variant="outline"
+                className="rounded-2xl"
+                onClick={handleOpenBulkInitDialog}
+                disabled={actionLoading}
+              >
+                <CalendarRange size={16} className="mr-2" />
+                批量补齐待初始化
               </Button>
             ) : null}
             <Button className="rounded-2xl" onClick={handleOpenAdjustDialog} disabled={!selectedLeaveTypeId}>
@@ -704,7 +777,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
                 <WorkspaceTableStateRow
                   colSpan={6}
                   title="当前年度没有额度记录"
-                  description="如果是普通假种，先初始化年度额度；如果是调休，等加班审批入账或手工新增额度桶后，这里就会出现记录。"
+                  description="如果是普通假种，先补齐当前假种的本年度额度；如果是调休，等加班审批入账或手工新增额度桶后，这里就会出现记录。"
                 />
               )}
             </TableBody>
@@ -731,9 +804,14 @@ export const HrLeaveQuotaPage: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
-              {canInitAnnualQuota ? (
+              {canInitCurrentAnnualQuota ? (
                 <Button variant="outline" onClick={() => void handleInitAnnualQuota()} disabled={actionLoading}>
-                  初始化年度额度
+                  补齐当前假种额度
+                </Button>
+              ) : null}
+              {showBulkInitButton ? (
+                <Button variant="outline" onClick={handleOpenBulkInitDialog} disabled={actionLoading}>
+                  批量补齐待初始化
                 </Button>
               ) : null}
               <Button variant="outline" onClick={handleOpenAdjustDialog} disabled={!selectedLeaveTypeId}>
@@ -750,17 +828,30 @@ export const HrLeaveQuotaPage: React.FC = () => {
           )}
           {selectedLeaveType && (
             <div className="space-y-4">
-              {canInitAnnualQuota ? (
+              {canInitCurrentAnnualQuota || showBulkInitButton ? (
                 <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="font-medium">当前年度还没有初始化普通假种额度</div>
+                    <div className="font-medium">
+                      {canInitCurrentAnnualQuota ? '当前假种还没有年度额度记录' : '当前员工还有待初始化年度额度'}
+                    </div>
                     <div className="mt-1 text-xs leading-6 text-amber-800">
-                      初始化后会为该员工补齐 {selectedYear} 年所有需要额度控制的普通假种年度记录，调休额度不会受影响。
+                      {canInitCurrentAnnualQuota
+                        ? `可以先补齐 ${selectedLeaveType?.leaveName || '当前假种'} 在 ${selectedYear} 年的年度额度，再继续做人工调整或核对。`
+                        : `当前员工在 ${selectedYear} 年还有 ${pendingQuotaCount} 类普通假种待初始化，可直接批量补齐，调休额度不会受影响。`}
                     </div>
                   </div>
-                  <Button variant="outline" className="border-amber-200 bg-white/80" onClick={() => void handleInitAnnualQuota()} disabled={actionLoading}>
-                    初始化年度额度
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    {canInitCurrentAnnualQuota ? (
+                      <Button variant="outline" className="border-amber-200 bg-white/80" onClick={() => void handleInitAnnualQuota()} disabled={actionLoading}>
+                        补齐当前假种额度
+                      </Button>
+                    ) : null}
+                    {showBulkInitButton ? (
+                      <Button variant="outline" className="border-amber-200 bg-white/80" onClick={handleOpenBulkInitDialog} disabled={actionLoading}>
+                        批量补齐待初始化
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
 
@@ -814,6 +905,67 @@ export const HrLeaveQuotaPage: React.FC = () => {
           )}
         </WorkspaceSectionCard>
       </div>
+
+      {bulkInitDialogOpen && (
+        <WorkspaceDialogShell
+          title={`批量补齐 ${selectedYear} 年度额度`}
+          description="执行后会一次性为当前员工补齐所有待初始化的普通假种年度额度，调休等按额度桶管理的假种不会受影响。"
+          onClose={() => setBulkInitDialogOpen(false)}
+          maxWidthClassName="max-w-3xl"
+        >
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <div className="text-xs text-slate-400">当前员工</div>
+                <div className="mt-2 font-semibold text-slate-900">{selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <div className="text-xs text-slate-400">年度口径</div>
+                <div className="mt-2 font-semibold text-slate-900">{selectedYear} 年</div>
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+                <div className="text-xs text-amber-700">待补齐假种</div>
+                <div className="mt-2 font-semibold text-amber-900">{pendingAnnualQuotaSummaries.length} 类</div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="text-sm font-medium text-slate-900">本次会补齐以下普通假种</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {pendingAnnualQuotaSummaries.map(item => {
+                  const leaveType = leaveTypeMap.get(item.leaveTypeId);
+                  const isCurrentSelection = String(item.leaveTypeId) === selectedLeaveTypeId;
+                  return (
+                    <div
+                      key={`bulk-init-${item.leaveTypeId}`}
+                      className={isCurrentSelection
+                        ? 'rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-sm text-pink-700'
+                        : 'rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700'}
+                    >
+                      {item.leaveTypeName || leaveType?.leaveName || `假种#${item.leaveTypeId}`}
+                      {leaveType?.unit ? ` / ${getUnitLabel(leaveType.unit)}` : ''}
+                      {isCurrentSelection ? ' / 当前选中' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-600">
+              批量补齐只会创建或刷新普通按年控额假种的年度额度记录，不会改动调休额度桶，也不会自动触发请假申请或加班申请的状态变化。
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setBulkInitDialogOpen(false)} disabled={actionLoading}>
+                取消
+              </Button>
+              <Button onClick={() => void handleInitAllAnnualQuota()} disabled={actionLoading}>
+                {actionLoading ? '补齐中...' : `确认补齐 ${pendingAnnualQuotaSummaries.length} 类假种`}
+              </Button>
+            </div>
+          </div>
+        </WorkspaceDialogShell>
+      )}
 
       {adjustDialogOpen && selectedLeaveType && (
         <WorkspaceDialogShell

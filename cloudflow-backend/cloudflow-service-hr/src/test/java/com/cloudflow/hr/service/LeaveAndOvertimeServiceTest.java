@@ -491,6 +491,85 @@ class LeaveAndOvertimeServiceTest {
     }
 
     @Test
+    void testInitLeaveQuotaSupportsSpecificLeaveType() {
+        AtomicReference<LeaveQuota> stored = new AtomicReference<>();
+        LeaveType marriageLeaveType = buildMarriageLeaveType();
+        marriageLeaveType.setQuotaRule("{\"quota\":3}");
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(302L)).thenReturn(marriageLeaveType);
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(null);
+        when(leaveQuotaMapper.insert(any(LeaveQuota.class))).thenAnswer(invocation -> {
+            LeaveQuota leaveQuota = invocation.getArgument(0);
+            stored.set(leaveQuota);
+            return 1;
+        });
+
+        leaveService.initLeaveQuota(1L, 2026, 302L);
+
+        assertNotNull(stored.get());
+        assertEquals(Long.valueOf(302L), stored.get().getLeaveTypeId());
+        assertEquals(new BigDecimal("3.00"), stored.get().getTotalQuota());
+        assertEquals(LocalDate.of(2026, 12, 31), stored.get().getExpiryDate());
+        verify(leaveTypeMapper, times(1)).selectById(302L);
+        verify(leaveTypeMapper, times(0)).selectList(any());
+        verify(leaveQuotaMapper, times(1)).insert(any(LeaveQuota.class));
+    }
+
+    @Test
+    void testInitLeaveQuotaKeepsBatchBehaviorWhenLeaveTypeIdMissing() {
+        AtomicReference<LeaveQuota> stored = new AtomicReference<>();
+        LeaveType marriageLeaveType = buildMarriageLeaveType();
+        marriageLeaveType.setQuotaRule("{\"quota\":5}");
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectList(any())).thenReturn(List.of(marriageLeaveType, buildCompensatoryLeaveType()));
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(null);
+        when(leaveQuotaMapper.insert(any(LeaveQuota.class))).thenAnswer(invocation -> {
+            LeaveQuota leaveQuota = invocation.getArgument(0);
+            stored.set(leaveQuota);
+            return 1;
+        });
+
+        leaveService.initLeaveQuota(1L, 2026, null);
+
+        assertNotNull(stored.get());
+        assertEquals(Long.valueOf(302L), stored.get().getLeaveTypeId());
+        assertEquals(new BigDecimal("5.00"), stored.get().getTotalQuota());
+        verify(leaveTypeMapper, times(1)).selectList(any());
+        verify(leaveQuotaMapper, times(1)).insert(any(LeaveQuota.class));
+    }
+
+    @Test
+    void testInitLeaveQuotaRejectsSpecificCompensatoryType() {
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.initLeaveQuota(1L, 2026, 401L)
+        );
+
+        assertTrue(exception.getMessage().contains("不支持补齐年度额度"));
+    }
+
+    @Test
+    void testGetLeaveQuotaReturnsPendingSummaryForNonCompensatoryTypeWithoutInitialization() {
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(302L)).thenReturn(buildMarriageLeaveType());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(List.of());
+
+        LeaveQuotaVO quota = leaveService.getLeaveQuota(1L, 302L, 2026);
+
+        assertEquals("婚假", quota.getLeaveTypeName());
+        assertEquals("测试员工", quota.getEmployeeName());
+        assertEquals(2026, quota.getYear());
+        assertEquals(new BigDecimal("0.00"), quota.getTotalQuota());
+        assertEquals(new BigDecimal("0.00"), quota.getAvailableQuota());
+        assertEquals(null, quota.getId());
+    }
+
+    @Test
     void testListLeaveQuotasAggregatesCompensatoryCarryOverBucketsForRequestedYear() {
         LeaveQuotaVO annualQuota = new LeaveQuotaVO();
         annualQuota.setId(901L);

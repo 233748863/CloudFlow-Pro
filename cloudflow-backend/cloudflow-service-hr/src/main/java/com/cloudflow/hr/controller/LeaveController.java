@@ -75,8 +75,9 @@ public class LeaveController {
      */
     @PostMapping("/quota/init")
     public R<Void> initLeaveQuota(@RequestParam Long employeeId, 
-                                   @RequestParam Integer year) {
-        leaveService.initLeaveQuota(employeeId, year);
+                                   @RequestParam Integer year,
+                                   @RequestParam(required = false) Long leaveTypeId) {
+        leaveService.initLeaveQuota(employeeId, year, leaveTypeId);
         return R.ok();
     }
     

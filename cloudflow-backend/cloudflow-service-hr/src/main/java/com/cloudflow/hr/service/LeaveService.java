@@ -54,7 +54,7 @@ public interface LeaveService {
      * @param employeeId 员工ID
      * @param year 年度
      */
-    void initLeaveQuota(Long employeeId, Integer year);
+    void initLeaveQuota(Long employeeId, Integer year, Long leaveTypeId);
     
     /**
      * 调整假期额度
