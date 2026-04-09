@@ -39,8 +39,10 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -213,6 +215,10 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 为每种假期类型初始化额度
         for (LeaveType leaveType : leaveTypes) {
+            if (LEAVE_CODE_COMPENSATORY.equals(leaveType.getLeaveCode())) {
+                log.info("调休额度改为按过期日分桶生成，跳过年度初始化，leaveTypeId: {}", leaveType.getId());
+                continue;
+            }
             BigDecimal totalQuota = calculateInitialQuota(employee, leaveType, year);
             LocalDate expiryDate = LocalDate.of(year, 12, 31);
 
@@ -419,6 +425,407 @@ public class LeaveServiceImpl implements LeaveService {
     }
 
     /**
+     * 跨年请假需要按年度拆分额度，避免整单都落到开始年份。
+     */
+    private Map<Integer, BigDecimal> splitQuotaUsageByYear(LocalDateTime startTime,
+                                                           LocalDateTime endTime,
+                                                           BigDecimal duration,
+                                                           String unit) {
+        if (startTime == null || endTime == null) {
+            return Map.of();
+        }
+        if (endTime.isBefore(startTime)) {
+            throw new HrBusinessException("结束时间不能早于开始时间");
+        }
+
+        BigDecimal normalizedDuration = normalizeQuota(duration);
+        LinkedHashMap<Integer, BigDecimal> weightByYear = new LinkedHashMap<>();
+        BigDecimal totalWeight = BigDecimal.ZERO;
+        for (int year = startTime.getYear(); year <= endTime.getYear(); year++) {
+            BigDecimal weight = calculateYearOverlapWeight(startTime, endTime, unit, year);
+            if (weight.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            weightByYear.put(year, weight);
+            totalWeight = totalWeight.add(weight);
+        }
+
+        if (weightByYear.isEmpty()) {
+            return Map.of();
+        }
+        if (weightByYear.size() == 1) {
+            return Map.of(weightByYear.keySet().iterator().next(), normalizedDuration);
+        }
+
+        LinkedHashMap<Integer, BigDecimal> splitUsage = new LinkedHashMap<>();
+        BigDecimal allocated = BigDecimal.ZERO;
+        int index = 0;
+        int size = weightByYear.size();
+        for (Map.Entry<Integer, BigDecimal> entry : weightByYear.entrySet()) {
+            BigDecimal amount;
+            if (index == size - 1) {
+                amount = normalizedDuration.subtract(allocated);
+            } else {
+                amount = normalizedDuration.multiply(entry.getValue())
+                        .divide(totalWeight, 2, RoundingMode.HALF_UP);
+            }
+            if (amount.compareTo(BigDecimal.ZERO) < 0) {
+                amount = BigDecimal.ZERO;
+            }
+            amount = normalizeQuota(amount);
+            if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                splitUsage.put(entry.getKey(), amount);
+            }
+            allocated = allocated.add(amount);
+            index++;
+        }
+        return splitUsage;
+    }
+
+    private BigDecimal calculateYearOverlapWeight(LocalDateTime startTime,
+                                                  LocalDateTime endTime,
+                                                  String unit,
+                                                  int year) {
+        if ("HOUR".equalsIgnoreCase(unit)) {
+            LocalDateTime yearStart = LocalDate.of(year, 1, 1).atStartOfDay();
+            LocalDateTime yearEndExclusive = LocalDate.of(year + 1, 1, 1).atStartOfDay();
+            LocalDateTime overlapStart = startTime.isAfter(yearStart) ? startTime : yearStart;
+            LocalDateTime overlapEnd = endTime.isBefore(yearEndExclusive) ? endTime : yearEndExclusive;
+            if (!overlapEnd.isAfter(overlapStart)) {
+                return BigDecimal.ZERO;
+            }
+            return BigDecimal.valueOf(ChronoUnit.MINUTES.between(overlapStart, overlapEnd));
+        }
+
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        LocalDate overlapStart = startTime.toLocalDate().isAfter(yearStart) ? startTime.toLocalDate() : yearStart;
+        LocalDate overlapEnd = endTime.toLocalDate().isBefore(yearEnd) ? endTime.toLocalDate() : yearEnd;
+        if (overlapEnd.isBefore(overlapStart)) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1);
+    }
+
+    private LeaveQuota getRequiredLeaveQuota(Long tenantId, Long employeeId, Long leaveTypeId, Integer year) {
+        LambdaQueryWrapper<LeaveQuota> quotaQueryWrapper = new LambdaQueryWrapper<>();
+        quotaQueryWrapper.eq(LeaveQuota::getTenantId, tenantId)
+                .eq(LeaveQuota::getEmployeeId, employeeId)
+                .eq(LeaveQuota::getLeaveTypeId, leaveTypeId)
+                .eq(LeaveQuota::getYear, year);
+
+        LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(quotaQueryWrapper);
+        if (leaveQuota == null) {
+            throw new HrBusinessException("假期额度不存在，请先初始化 " + year + " 年假期额度");
+        }
+        return leaveQuota;
+    }
+
+    private LeaveQuota getRequiredLeaveQuotaById(Long tenantId, Long quotaId) {
+        LeaveQuota leaveQuota = leaveQuotaMapper.selectById(quotaId);
+        if (leaveQuota == null || !tenantId.equals(leaveQuota.getTenantId())) {
+            throw new HrBusinessException("假期额度不存在");
+        }
+        return leaveQuota;
+    }
+
+    private boolean isCompensatoryLeave(LeaveType leaveType) {
+        return leaveType != null && LEAVE_CODE_COMPENSATORY.equals(leaveType.getLeaveCode());
+    }
+
+    private LocalDate resolveCompensatoryReferenceDate(LocalDateTime startTime, LocalDateTime endTime) {
+        if (startTime != null) {
+            return startTime.toLocalDate();
+        }
+        if (endTime != null) {
+            return endTime.toLocalDate();
+        }
+        return LocalDate.now();
+    }
+
+    /**
+     * 调休额度按照“最早到期优先”的规则分配，避免快过期额度长期滞留。
+     */
+    private LinkedHashMap<Long, BigDecimal> buildCompensatoryQuotaAllocation(Long tenantId,
+                                                                             Long employeeId,
+                                                                             Long leaveTypeId,
+                                                                             BigDecimal requestedDuration,
+                                                                             LocalDate referenceDate,
+                                                                             Function<LeaveQuota, BigDecimal> balanceResolver,
+                                                                             boolean excludeExpired,
+                                                                             boolean insufficientAsQuotaError,
+                                                                             String insufficientMessage) {
+        LambdaQueryWrapper<LeaveQuota> quotaQueryWrapper = new LambdaQueryWrapper<>();
+        quotaQueryWrapper.eq(LeaveQuota::getTenantId, tenantId)
+                .eq(LeaveQuota::getEmployeeId, employeeId)
+                .eq(LeaveQuota::getLeaveTypeId, leaveTypeId)
+                .orderByAsc(LeaveQuota::getExpiryDate, LeaveQuota::getYear, LeaveQuota::getId);
+        if (excludeExpired) {
+            LocalDate baseDate = referenceDate != null ? referenceDate : LocalDate.now();
+            quotaQueryWrapper.and(query -> query.isNull(LeaveQuota::getExpiryDate)
+                    .or()
+                    .ge(LeaveQuota::getExpiryDate, baseDate));
+        }
+
+        List<LeaveQuota> quotaList = leaveQuotaMapper.selectList(quotaQueryWrapper);
+        BigDecimal remaining = normalizeQuota(requestedDuration);
+        LinkedHashMap<Long, BigDecimal> allocation = new LinkedHashMap<>();
+        for (LeaveQuota leaveQuota : quotaList) {
+            BigDecimal balance = normalizeQuota(balanceResolver.apply(leaveQuota));
+            if (balance.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            BigDecimal allocatedAmount = balance.min(remaining);
+            if (allocatedAmount.compareTo(BigDecimal.ZERO) > 0) {
+                allocation.put(leaveQuota.getId(), normalizeQuota(allocatedAmount));
+                remaining = normalizeQuota(remaining.subtract(allocatedAmount));
+            }
+            if (remaining.compareTo(BigDecimal.ZERO) == 0) {
+                break;
+            }
+        }
+
+        if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+            if (insufficientAsQuotaError) {
+                throw new InsufficientQuotaException(insufficientMessage);
+            }
+            throw new HrBusinessException(insufficientMessage);
+        }
+        return allocation;
+    }
+
+    private void validateCompensatoryQuotaAvailability(Long tenantId,
+                                                       Long employeeId,
+                                                       LeaveType leaveType,
+                                                       BigDecimal requestedDuration,
+                                                       LocalDate referenceDate) {
+        buildCompensatoryQuotaAllocation(
+                tenantId,
+                employeeId,
+                leaveType.getId(),
+                requestedDuration,
+                referenceDate,
+                LeaveQuota::getAvailableQuota,
+                true,
+                true,
+                String.format("%s额度不足或已过期，可用额度无法覆盖申请时长 %s %s",
+                        leaveType.getLeaveName(),
+                        normalizeQuota(requestedDuration),
+                        leaveType.getUnit())
+        );
+    }
+
+    private void freezeCompensatoryQuotaUsage(Long tenantId, Map<Long, BigDecimal> quotaAllocation) {
+        for (Map.Entry<Long, BigDecimal> entry : quotaAllocation.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuotaById(tenantId, entry.getKey());
+            BigDecimal availableQuota = normalizeQuota(leaveQuota.getAvailableQuota());
+            if (availableQuota.compareTo(entry.getValue()) < 0) {
+                throw new InsufficientQuotaException("调休额度不足");
+            }
+            leaveQuota.setFrozenQuota(normalizeQuota(normalizeQuota(leaveQuota.getFrozenQuota()).add(entry.getValue())));
+            leaveQuota.setAvailableQuota(normalizeQuota(availableQuota.subtract(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    private void consumeCompensatoryFrozenQuota(Long tenantId, Map<Long, BigDecimal> quotaAllocation) {
+        for (Map.Entry<Long, BigDecimal> entry : quotaAllocation.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuotaById(tenantId, entry.getKey());
+            BigDecimal frozenQuota = normalizeQuota(leaveQuota.getFrozenQuota());
+            if (frozenQuota.compareTo(entry.getValue()) < 0) {
+                throw new HrBusinessException("调休额度状态异常，无法扣减冻结额度");
+            }
+            leaveQuota.setFrozenQuota(normalizeQuota(frozenQuota.subtract(entry.getValue())));
+            leaveQuota.setUsedQuota(normalizeQuota(normalizeQuota(leaveQuota.getUsedQuota()).add(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    private void releaseCompensatoryFrozenQuota(Long tenantId, Map<Long, BigDecimal> quotaAllocation) {
+        for (Map.Entry<Long, BigDecimal> entry : quotaAllocation.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuotaById(tenantId, entry.getKey());
+            BigDecimal frozenQuota = normalizeQuota(leaveQuota.getFrozenQuota());
+            if (frozenQuota.compareTo(entry.getValue()) < 0) {
+                throw new HrBusinessException("调休额度状态异常，无法释放冻结额度");
+            }
+            leaveQuota.setFrozenQuota(normalizeQuota(frozenQuota.subtract(entry.getValue())));
+            leaveQuota.setAvailableQuota(normalizeQuota(normalizeQuota(leaveQuota.getAvailableQuota()).add(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    private void restoreCompensatoryUsedQuota(Long tenantId, Map<Long, BigDecimal> quotaAllocation) {
+        for (Map.Entry<Long, BigDecimal> entry : quotaAllocation.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuotaById(tenantId, entry.getKey());
+            BigDecimal usedQuota = normalizeQuota(leaveQuota.getUsedQuota());
+            if (usedQuota.compareTo(entry.getValue()) < 0) {
+                throw new HrBusinessException("调休额度状态异常，无法恢复已使用额度");
+            }
+            leaveQuota.setUsedQuota(normalizeQuota(usedQuota.subtract(entry.getValue())));
+            leaveQuota.setAvailableQuota(normalizeQuota(normalizeQuota(leaveQuota.getAvailableQuota()).add(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    private String serializeQuotaAllocation(Map<Long, BigDecimal> quotaAllocation) {
+        if (quotaAllocation == null || quotaAllocation.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(quotaAllocation);
+        } catch (Exception e) {
+            throw new HrBusinessException("INVALID_LEAVE_QUOTA_ALLOCATION", "额度分配明细序列化失败", e);
+        }
+    }
+
+    private LinkedHashMap<Long, BigDecimal> parseQuotaAllocation(String quotaAllocation) {
+        if (quotaAllocation == null || quotaAllocation.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            LinkedHashMap<Long, BigDecimal> allocation = objectMapper.readValue(
+                    quotaAllocation,
+                    new TypeReference<LinkedHashMap<Long, BigDecimal>>() {
+                    }
+            );
+            LinkedHashMap<Long, BigDecimal> normalizedAllocation = new LinkedHashMap<>();
+            for (Map.Entry<Long, BigDecimal> entry : allocation.entrySet()) {
+                BigDecimal amount = normalizeQuota(entry.getValue());
+                if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                    normalizedAllocation.put(entry.getKey(), amount);
+                }
+            }
+            return normalizedAllocation;
+        } catch (Exception e) {
+            throw new HrBusinessException("INVALID_LEAVE_QUOTA_ALLOCATION", "额度分配明细解析失败", e);
+        }
+    }
+
+    private LinkedHashMap<Long, BigDecimal> resolveCompensatoryQuotaAllocationForApproving(LeaveApplication leaveApplication,
+                                                                                            Long tenantId) {
+        LinkedHashMap<Long, BigDecimal> storedAllocation = parseQuotaAllocation(leaveApplication.getQuotaAllocation());
+        if (!storedAllocation.isEmpty()) {
+            return storedAllocation;
+        }
+        return buildCompensatoryQuotaAllocation(
+                tenantId,
+                leaveApplication.getEmployeeId(),
+                leaveApplication.getLeaveTypeId(),
+                leaveApplication.getDuration(),
+                null,
+                LeaveQuota::getFrozenQuota,
+                false,
+                false,
+                "调休额度状态异常，无法解析冻结额度分配"
+        );
+    }
+
+    private LinkedHashMap<Long, BigDecimal> resolveCompensatoryQuotaAllocationForApproved(LeaveApplication leaveApplication,
+                                                                                           Long tenantId) {
+        LinkedHashMap<Long, BigDecimal> storedAllocation = parseQuotaAllocation(leaveApplication.getQuotaAllocation());
+        if (!storedAllocation.isEmpty()) {
+            return storedAllocation;
+        }
+        return buildCompensatoryQuotaAllocation(
+                tenantId,
+                leaveApplication.getEmployeeId(),
+                leaveApplication.getLeaveTypeId(),
+                leaveApplication.getDuration(),
+                null,
+                LeaveQuota::getUsedQuota,
+                false,
+                false,
+                "调休额度状态异常，无法解析已使用额度分配"
+        );
+    }
+
+    private void validateQuotaAvailability(Long tenantId,
+                                           Long employeeId,
+                                           LeaveType leaveType,
+                                           String unit,
+                                           Map<Integer, BigDecimal> usageByYear) {
+        for (Map.Entry<Integer, BigDecimal> entry : usageByYear.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuota(tenantId, employeeId, leaveType.getId(), entry.getKey());
+            BigDecimal availableQuota = normalizeQuota(leaveQuota.getAvailableQuota());
+            if (availableQuota.compareTo(entry.getValue()) < 0) {
+                throw new InsufficientQuotaException(
+                        String.format("%d 年 %s 额度不足，可用额度: %s %s，申请额度: %s %s",
+                                entry.getKey(),
+                                leaveType.getLeaveName(),
+                                availableQuota,
+                                unit,
+                                entry.getValue(),
+                                unit)
+                );
+            }
+        }
+    }
+
+    private void freezeQuotaUsage(Long tenantId,
+                                  Long employeeId,
+                                  Long leaveTypeId,
+                                  Map<Integer, BigDecimal> usageByYear) {
+        for (Map.Entry<Integer, BigDecimal> entry : usageByYear.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuota(tenantId, employeeId, leaveTypeId, entry.getKey());
+            BigDecimal availableQuota = normalizeQuota(leaveQuota.getAvailableQuota());
+            if (availableQuota.compareTo(entry.getValue()) < 0) {
+                throw new InsufficientQuotaException("假期额度不足");
+            }
+            leaveQuota.setFrozenQuota(normalizeQuota(normalizeQuota(leaveQuota.getFrozenQuota()).add(entry.getValue())));
+            leaveQuota.setAvailableQuota(normalizeQuota(availableQuota.subtract(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    private void consumeFrozenQuota(Long tenantId,
+                                    Long employeeId,
+                                    Long leaveTypeId,
+                                    Map<Integer, BigDecimal> usageByYear) {
+        for (Map.Entry<Integer, BigDecimal> entry : usageByYear.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuota(tenantId, employeeId, leaveTypeId, entry.getKey());
+            BigDecimal frozenQuota = normalizeQuota(leaveQuota.getFrozenQuota());
+            if (frozenQuota.compareTo(entry.getValue()) < 0) {
+                throw new HrBusinessException("假期额度状态异常，无法扣减冻结额度");
+            }
+            leaveQuota.setFrozenQuota(normalizeQuota(frozenQuota.subtract(entry.getValue())));
+            leaveQuota.setUsedQuota(normalizeQuota(normalizeQuota(leaveQuota.getUsedQuota()).add(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    private void releaseFrozenQuota(Long tenantId,
+                                    Long employeeId,
+                                    Long leaveTypeId,
+                                    Map<Integer, BigDecimal> usageByYear) {
+        for (Map.Entry<Integer, BigDecimal> entry : usageByYear.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuota(tenantId, employeeId, leaveTypeId, entry.getKey());
+            BigDecimal frozenQuota = normalizeQuota(leaveQuota.getFrozenQuota());
+            if (frozenQuota.compareTo(entry.getValue()) < 0) {
+                throw new HrBusinessException("假期额度状态异常，无法释放冻结额度");
+            }
+            leaveQuota.setFrozenQuota(normalizeQuota(frozenQuota.subtract(entry.getValue())));
+            leaveQuota.setAvailableQuota(normalizeQuota(normalizeQuota(leaveQuota.getAvailableQuota()).add(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    private void restoreUsedQuota(Long tenantId,
+                                  Long employeeId,
+                                  Long leaveTypeId,
+                                  Map<Integer, BigDecimal> usageByYear) {
+        for (Map.Entry<Integer, BigDecimal> entry : usageByYear.entrySet()) {
+            LeaveQuota leaveQuota = getRequiredLeaveQuota(tenantId, employeeId, leaveTypeId, entry.getKey());
+            BigDecimal usedQuota = normalizeQuota(leaveQuota.getUsedQuota());
+            if (usedQuota.compareTo(entry.getValue()) < 0) {
+                throw new HrBusinessException("假期额度状态异常，无法恢复已使用额度");
+            }
+            leaveQuota.setUsedQuota(normalizeQuota(usedQuota.subtract(entry.getValue())));
+            leaveQuota.setAvailableQuota(normalizeQuota(normalizeQuota(leaveQuota.getAvailableQuota()).add(entry.getValue())));
+            leaveQuotaMapper.updateById(leaveQuota);
+        }
+    }
+
+    /**
      * 仅在额度尚未被消费或冻结时，允许按最新规则刷新旧记录。
      */
     private boolean shouldRefreshQuota(LeaveQuota existingQuota, BigDecimal totalQuota, LocalDate expiryDate) {
@@ -463,6 +870,14 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
+
+        LeaveType leaveType = leaveTypeMapper.selectById(dto.getLeaveTypeId());
+        if (leaveType == null || !tenantId.equals(leaveType.getTenantId())) {
+            throw new HrBusinessException("假期类型不存在");
+        }
+        if (isCompensatoryLeave(leaveType)) {
+            throw new HrBusinessException("调休额度已按有效期分桶，请通过加班审批生成或补充按额度桶调整能力");
+        }
         
         // 查询假期额度
         LambdaQueryWrapper<LeaveQuota> queryWrapper = new LambdaQueryWrapper<>();
@@ -511,10 +926,11 @@ public class LeaveServiceImpl implements LeaveService {
         queryWrapper.eq(LeaveQuota::getTenantId, tenantId)
                     .eq(LeaveQuota::getEmployeeId, employeeId)
                     .eq(LeaveQuota::getLeaveTypeId, leaveTypeId)
-                    .eq(LeaveQuota::getYear, year);
-        
-        LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(queryWrapper);
-        if (leaveQuota == null) {
+                    .eq(LeaveQuota::getYear, year)
+                    .orderByAsc(LeaveQuota::getExpiryDate, LeaveQuota::getId);
+
+        List<LeaveQuota> quotaList = leaveQuotaMapper.selectList(queryWrapper);
+        if (quotaList.isEmpty()) {
             throw new HrBusinessException("假期额度不存在");
         }
         
@@ -524,7 +940,22 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 转换为VO
         LeaveQuotaVO vo = new LeaveQuotaVO();
-        BeanUtils.copyProperties(leaveQuota, vo);
+        BeanUtils.copyProperties(quotaList.get(0), vo);
+        if (quotaList.size() > 1) {
+            vo.setTotalQuota(quotaList.stream().map(LeaveQuota::getTotalQuota).map(this::normalizeQuota)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            vo.setUsedQuota(quotaList.stream().map(LeaveQuota::getUsedQuota).map(this::normalizeQuota)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            vo.setFrozenQuota(quotaList.stream().map(LeaveQuota::getFrozenQuota).map(this::normalizeQuota)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            vo.setAvailableQuota(quotaList.stream().map(LeaveQuota::getAvailableQuota).map(this::normalizeQuota)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            vo.setExpiryDate(quotaList.stream()
+                    .map(LeaveQuota::getExpiryDate)
+                    .filter(date -> date != null)
+                    .min(LocalDate::compareTo)
+                    .orElse(null));
+        }
         if (employee != null) {
             vo.setEmployeeName(employee.getName());
         }
@@ -579,25 +1010,22 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 如果假期类型需要额度，验证额度是否充足
         if (leaveType.getNeedQuota()) {
-            Integer year = dto.getStartTime().getYear();
-            LambdaQueryWrapper<LeaveQuota> quotaQueryWrapper = new LambdaQueryWrapper<>();
-            quotaQueryWrapper.eq(LeaveQuota::getTenantId, tenantId)
-                            .eq(LeaveQuota::getEmployeeId, dto.getEmployeeId())
-                            .eq(LeaveQuota::getLeaveTypeId, dto.getLeaveTypeId())
-                            .eq(LeaveQuota::getYear, year);
-            
-            LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(quotaQueryWrapper);
-            if (leaveQuota == null) {
-                throw new HrBusinessException("假期额度不存在，请先初始化假期额度");
-            }
-            
-            // 验证可用额度是否充足
-            if (leaveQuota.getAvailableQuota().compareTo(dto.getDuration()) < 0) {
-                throw new InsufficientQuotaException(
-                    String.format("假期额度不足，可用额度: %s %s，申请时长: %s %s",
-                        leaveQuota.getAvailableQuota(), dto.getUnit(),
-                        dto.getDuration(), dto.getUnit())
+            if (isCompensatoryLeave(leaveType)) {
+                validateCompensatoryQuotaAvailability(
+                        tenantId,
+                        dto.getEmployeeId(),
+                        leaveType,
+                        dto.getDuration(),
+                        resolveCompensatoryReferenceDate(dto.getStartTime(), dto.getEndTime())
                 );
+            } else {
+                Map<Integer, BigDecimal> usageByYear = splitQuotaUsageByYear(
+                        dto.getStartTime(),
+                        dto.getEndTime(),
+                        dto.getDuration(),
+                        dto.getUnit()
+                );
+                validateQuotaAvailability(tenantId, dto.getEmployeeId(), leaveType, dto.getUnit(), usageByYear);
             }
         }
         
@@ -677,27 +1105,33 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 如果需要额度，冻结额度
         if (leaveType.getNeedQuota()) {
-            Integer year = leaveApplication.getStartTime().getYear();
-            LambdaQueryWrapper<LeaveQuota> quotaQueryWrapper = new LambdaQueryWrapper<>();
-            quotaQueryWrapper.eq(LeaveQuota::getTenantId, tenantId)
-                            .eq(LeaveQuota::getEmployeeId, leaveApplication.getEmployeeId())
-                            .eq(LeaveQuota::getLeaveTypeId, leaveApplication.getLeaveTypeId())
-                            .eq(LeaveQuota::getYear, year);
-            
-            LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(quotaQueryWrapper);
-            if (leaveQuota == null) {
-                throw new HrBusinessException("假期额度不存在");
+            if (isCompensatoryLeave(leaveType)) {
+                LinkedHashMap<Long, BigDecimal> quotaAllocation = buildCompensatoryQuotaAllocation(
+                        tenantId,
+                        leaveApplication.getEmployeeId(),
+                        leaveApplication.getLeaveTypeId(),
+                        leaveApplication.getDuration(),
+                        resolveCompensatoryReferenceDate(leaveApplication.getStartTime(), leaveApplication.getEndTime()),
+                        LeaveQuota::getAvailableQuota,
+                        true,
+                        true,
+                        String.format("%s额度不足或已过期，可用额度无法覆盖申请时长 %s %s",
+                                leaveType.getLeaveName(),
+                                normalizeQuota(leaveApplication.getDuration()),
+                                leaveApplication.getUnit())
+                );
+                freezeCompensatoryQuotaUsage(tenantId, quotaAllocation);
+                leaveApplication.setQuotaAllocation(serializeQuotaAllocation(quotaAllocation));
+            } else {
+                Map<Integer, BigDecimal> usageByYear = splitQuotaUsageByYear(
+                        leaveApplication.getStartTime(),
+                        leaveApplication.getEndTime(),
+                        leaveApplication.getDuration(),
+                        leaveApplication.getUnit()
+                );
+                validateQuotaAvailability(tenantId, leaveApplication.getEmployeeId(), leaveType, leaveApplication.getUnit(), usageByYear);
+                freezeQuotaUsage(tenantId, leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), usageByYear);
             }
-            
-            // 再次验证可用额度
-            if (leaveQuota.getAvailableQuota().compareTo(leaveApplication.getDuration()) < 0) {
-                throw new InsufficientQuotaException("假期额度不足");
-            }
-            
-            // 冻结额度
-            leaveQuota.setFrozenQuota(leaveQuota.getFrozenQuota().add(leaveApplication.getDuration()));
-            leaveQuota.setAvailableQuota(leaveQuota.getAvailableQuota().subtract(leaveApplication.getDuration()));
-            leaveQuotaMapper.updateById(leaveQuota);
             
             log.info("冻结假期额度成功，employeeId: {}, leaveTypeId: {}, frozenAmount: {}", 
                     leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
@@ -773,22 +1207,17 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 如果需要额度，扣减额度
         if (leaveType.getNeedQuota()) {
-            Integer year = leaveApplication.getStartTime().getYear();
-            LambdaQueryWrapper<LeaveQuota> quotaQueryWrapper = new LambdaQueryWrapper<>();
-            quotaQueryWrapper.eq(LeaveQuota::getTenantId, tenantId)
-                            .eq(LeaveQuota::getEmployeeId, leaveApplication.getEmployeeId())
-                            .eq(LeaveQuota::getLeaveTypeId, leaveApplication.getLeaveTypeId())
-                            .eq(LeaveQuota::getYear, year);
-            
-            LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(quotaQueryWrapper);
-            if (leaveQuota == null) {
-                throw new HrBusinessException("假期额度不存在");
+            if (isCompensatoryLeave(leaveType)) {
+                consumeCompensatoryFrozenQuota(tenantId, resolveCompensatoryQuotaAllocationForApproving(leaveApplication, tenantId));
+            } else {
+                Map<Integer, BigDecimal> usageByYear = splitQuotaUsageByYear(
+                        leaveApplication.getStartTime(),
+                        leaveApplication.getEndTime(),
+                        leaveApplication.getDuration(),
+                        leaveApplication.getUnit()
+                );
+                consumeFrozenQuota(tenantId, leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), usageByYear);
             }
-            
-            // 扣减额度：冻结额度转为已使用额度
-            leaveQuota.setFrozenQuota(leaveQuota.getFrozenQuota().subtract(leaveApplication.getDuration()));
-            leaveQuota.setUsedQuota(leaveQuota.getUsedQuota().add(leaveApplication.getDuration()));
-            leaveQuotaMapper.updateById(leaveQuota);
             
             log.info("扣减假期额度成功，employeeId: {}, leaveTypeId: {}, usedAmount: {}", 
                     leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
@@ -829,23 +1258,20 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 如果需要额度，释放冻结额度
         if (leaveType.getNeedQuota()) {
-            Integer year = leaveApplication.getStartTime().getYear();
-            LambdaQueryWrapper<LeaveQuota> quotaQueryWrapper = new LambdaQueryWrapper<>();
-            quotaQueryWrapper.eq(LeaveQuota::getTenantId, tenantId)
-                            .eq(LeaveQuota::getEmployeeId, leaveApplication.getEmployeeId())
-                            .eq(LeaveQuota::getLeaveTypeId, leaveApplication.getLeaveTypeId())
-                            .eq(LeaveQuota::getYear, year);
-            
-            LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(quotaQueryWrapper);
-            if (leaveQuota != null) {
-                // 释放冻结额度
-                leaveQuota.setFrozenQuota(leaveQuota.getFrozenQuota().subtract(leaveApplication.getDuration()));
-                leaveQuota.setAvailableQuota(leaveQuota.getAvailableQuota().add(leaveApplication.getDuration()));
-                leaveQuotaMapper.updateById(leaveQuota);
-                
-                log.info("释放冻结额度成功，employeeId: {}, leaveTypeId: {}, releasedAmount: {}", 
-                        leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
+            if (isCompensatoryLeave(leaveType)) {
+                releaseCompensatoryFrozenQuota(tenantId, resolveCompensatoryQuotaAllocationForApproving(leaveApplication, tenantId));
+            } else {
+                Map<Integer, BigDecimal> usageByYear = splitQuotaUsageByYear(
+                        leaveApplication.getStartTime(),
+                        leaveApplication.getEndTime(),
+                        leaveApplication.getDuration(),
+                        leaveApplication.getUnit()
+                );
+                releaseFrozenQuota(tenantId, leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), usageByYear);
             }
+            
+            log.info("释放冻结额度成功，employeeId: {}, leaveTypeId: {}, releasedAmount: {}", 
+                    leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
         }
         
         // 更新申请状态为已拒绝
@@ -883,29 +1309,28 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 如果需要额度，恢复额度
         if (leaveType.getNeedQuota()) {
-            Integer year = leaveApplication.getStartTime().getYear();
-            LambdaQueryWrapper<LeaveQuota> quotaQueryWrapper = new LambdaQueryWrapper<>();
-            quotaQueryWrapper.eq(LeaveQuota::getTenantId, tenantId)
-                            .eq(LeaveQuota::getEmployeeId, leaveApplication.getEmployeeId())
-                            .eq(LeaveQuota::getLeaveTypeId, leaveApplication.getLeaveTypeId())
-                            .eq(LeaveQuota::getYear, year);
-            
-            LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(quotaQueryWrapper);
-            if (leaveQuota != null) {
+            if (isCompensatoryLeave(leaveType)) {
                 if ("APPROVING".equals(leaveApplication.getStatus())) {
-                    // 如果是审批中状态，释放冻结额度
-                    leaveQuota.setFrozenQuota(leaveQuota.getFrozenQuota().subtract(leaveApplication.getDuration()));
-                    leaveQuota.setAvailableQuota(leaveQuota.getAvailableQuota().add(leaveApplication.getDuration()));
+                    releaseCompensatoryFrozenQuota(tenantId, resolveCompensatoryQuotaAllocationForApproving(leaveApplication, tenantId));
                 } else if ("APPROVED".equals(leaveApplication.getStatus())) {
-                    // 如果是已通过状态，恢复已使用额度
-                    leaveQuota.setUsedQuota(leaveQuota.getUsedQuota().subtract(leaveApplication.getDuration()));
-                    leaveQuota.setAvailableQuota(leaveQuota.getAvailableQuota().add(leaveApplication.getDuration()));
+                    restoreCompensatoryUsedQuota(tenantId, resolveCompensatoryQuotaAllocationForApproved(leaveApplication, tenantId));
                 }
-                leaveQuotaMapper.updateById(leaveQuota);
-                
-                log.info("恢复假期额度成功，employeeId: {}, leaveTypeId: {}, restoredAmount: {}", 
-                        leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
+            } else {
+                Map<Integer, BigDecimal> usageByYear = splitQuotaUsageByYear(
+                        leaveApplication.getStartTime(),
+                        leaveApplication.getEndTime(),
+                        leaveApplication.getDuration(),
+                        leaveApplication.getUnit()
+                );
+                if ("APPROVING".equals(leaveApplication.getStatus())) {
+                    releaseFrozenQuota(tenantId, leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), usageByYear);
+                } else if ("APPROVED".equals(leaveApplication.getStatus())) {
+                    restoreUsedQuota(tenantId, leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), usageByYear);
+                }
             }
+            
+            log.info("恢复假期额度成功，employeeId: {}, leaveTypeId: {}, restoredAmount: {}", 
+                    leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
         }
         
         // 更新申请状态为已撤销

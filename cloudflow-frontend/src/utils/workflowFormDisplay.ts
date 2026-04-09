@@ -131,8 +131,9 @@ const WORKFLOW_ENUMS: Record<string, Record<string, string>> = {
   originalStatus: {
     LATE: '迟到',
     EARLY: '早退',
-    ABSENT: '缺卡',
     ABNORMAL: '异常',
+    MISSING: '缺卡',
+    ABSENT: '旷工',
   },
   unit: {
     DAY: '天',

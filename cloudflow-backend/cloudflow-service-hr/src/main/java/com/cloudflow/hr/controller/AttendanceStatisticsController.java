@@ -1,5 +1,6 @@
 package com.cloudflow.hr.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.domain.dto.AttendanceAnomalyQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceMonthlyQueryDTO;
@@ -80,10 +81,10 @@ public class AttendanceStatisticsController {
      * 查询异常考勤统计
      */
     @GetMapping("/anomalies")
-    public R<List<AttendanceAnomalyVO>> listAttendanceAnomalies(@Valid AttendanceAnomalyQueryDTO query) {
+    public R<IPage<AttendanceAnomalyVO>> listAttendanceAnomalies(@Valid AttendanceAnomalyQueryDTO query) {
         log.info("查询异常考勤统计");
-        List<AttendanceAnomalyVO> list = attendanceStatisticsService.listAttendanceAnomalies(query);
-        return R.ok(list);
+        IPage<AttendanceAnomalyVO> page = attendanceStatisticsService.listAttendanceAnomalies(query);
+        return R.ok(page);
     }
 
     /**

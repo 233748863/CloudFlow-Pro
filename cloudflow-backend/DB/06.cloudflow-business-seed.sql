@@ -4189,6 +4189,8 @@ INSERT INTO hr_employee (
   employee_type, employee_status, hire_date, regular_date, resign_date, user_id,
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
+(1, 100000, 'CF20230000', 'Admin', 'MALE', '1988-01-01', '15888888888', 'admin@cloudflow.com', 100, 1, NULL,
+ 'FULL_TIME', 'REGULAR', '2023-01-01', '2023-07-01', NULL, 1, '2026-03-20 09:55:00', '2026-03-20 09:55:00', 'admin', 'admin', 0),
 (1001, 100000, 'CF20230001', '赵HR', 'FEMALE', '1990-06-12', '13800010001', 'zhao.hr@cloudflow.com', 103, 2, 104,
  'FULL_TIME', 'REGULAR', '2023-04-10', '2023-10-10', NULL, 4, '2026-03-20 10:00:00', '2026-03-20 10:00:00', 'admin', 'admin', 0),
 (1002, 100000, 'CF20260001', '前端测试', 'FEMALE', '1998-03-08', '13800010002', 'test.fe@cloudflow.com', 106, 4, 101,

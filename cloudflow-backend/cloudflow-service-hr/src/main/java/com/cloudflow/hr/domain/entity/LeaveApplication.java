@@ -69,6 +69,11 @@ public class LeaveApplication {
      * 流程实例ID（工作流服务）
      */
     private String processInstanceId;
+
+    /**
+     * 额度分配明细（JSON）
+     */
+    private String quotaAllocation;
     
     /**
      * 状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 CANCELLED-已撤销

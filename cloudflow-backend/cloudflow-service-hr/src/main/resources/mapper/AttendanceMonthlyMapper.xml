@@ -24,7 +24,7 @@
         FROM hr_attendance_record ar
         INNER JOIN hr_employee e ON ar.employee_id = e.id
         WHERE ar.tenant_id = #{tenantId}
-          AND ar.status IN ('LATE', 'EARLY', 'MISSING')
+          AND ar.status IN ('LATE', 'EARLY')
           AND ar.deleted = 0
           AND e.deleted = 0
           <if test="employeeId != null">

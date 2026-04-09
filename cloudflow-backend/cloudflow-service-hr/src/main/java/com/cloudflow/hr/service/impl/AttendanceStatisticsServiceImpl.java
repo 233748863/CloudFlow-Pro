@@ -1,6 +1,8 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.config.CloudFlowConfig;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
@@ -29,11 +31,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -56,11 +62,17 @@ import java.nio.file.Paths;
 @RequiredArgsConstructor
 public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsService {
 
+    private static final String TARGET_EMPLOYEE = "EMPLOYEE";
+    private static final String TARGET_DEPT = "DEPT";
+    private static final String PLAN_STATUS_PUBLISHED = "PUBLISHED";
+    private static final int DEFAULT_WORKDAY_MINUTES = 480;
+
     private final AttendanceMonthlyMapper attendanceMonthlyMapper;
     private final AttendanceRecordMapper attendanceRecordMapper;
     private final EmployeeMapper employeeMapper;
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final OvertimeApplicationMapper overtimeApplicationMapper;
+    private final SchedulePlanMapper schedulePlanMapper;
     private final ShiftMapper shiftMapper;
     private final AuthServiceClient authServiceClient;
 
@@ -118,24 +130,34 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
-        // 计算应出勤天数（排除周末，实际应根据排班计划计算）
-        int workDays = calculateWorkDays(startDate, endDate);
+        // 按生效排班计算应出勤天数，避免把无排班工作日误统计为应出勤。
+        Set<LocalDate> scheduledDates = resolveScheduledDates(employee, startDate, endDate);
+        int workDays = scheduledDates.size();
+        Map<LocalDate, SchedulePlan> effectiveSchedulePlans = resolveEffectiveSchedulePlans(employee, startDate, endDate);
 
         // 统计打卡记录
-        List<LeaveApplication> approvedLeaves = listApprovedLeaves(tenantId, employeeId, startDate, endDate);
-        Map<String, Integer> attendanceStats = calculateAttendanceStats(tenantId, employeeId, startDate, endDate, approvedLeaves);
+        List<LeaveApplication> approvedLeaves = listApprovedLeavesForCoverage(tenantId, employeeId, startDate, endDate);
+        Set<LocalDate> leaveDates = buildLeaveDateSet(approvedLeaves, startDate, endDate);
+        Map<String, Integer> attendanceStats = calculateAttendanceStats(
+                tenantId,
+                employeeId,
+                startDate,
+                endDate,
+                leaveDates,
+                scheduledDates
+        );
 
         // 统计请假天数
-        BigDecimal leaveDays = calculateLeaveDays(approvedLeaves);
+        BigDecimal leaveDays = calculateLeaveDays(approvedLeaves, startDate, endDate, effectiveSchedulePlans);
 
         // 统计加班时长
         BigDecimal overtimeHours = calculateOvertimeHours(tenantId, employeeId, year, month);
 
         // 计算实际出勤天数
-        int actualDays = attendanceStats.get("normalDays");
+        int actualDays = attendanceStats.get("actualDays");
 
-        // 计算出勤率
-        BigDecimal attendanceRate = calculateAttendanceRate(actualDays, workDays);
+        // 出勤率仅按排班日内的实际到岗计算，避免临时加班把出勤率抬高到 100% 以上。
+        BigDecimal attendanceRate = calculateAttendanceRate(attendanceStats.get("scheduledActualDays"), workDays);
 
         // 查询或创建月度考勤记录
         LambdaQueryWrapper<AttendanceMonthly> queryWrapper = new LambdaQueryWrapper<>();
@@ -255,26 +277,44 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
      * 查询异常考勤统计
      */
     @Override
-    public List<AttendanceAnomalyVO> listAttendanceAnomalies(AttendanceAnomalyQueryDTO query) {
+    public IPage<AttendanceAnomalyVO> listAttendanceAnomalies(AttendanceAnomalyQueryDTO query) {
         log.info("查询异常考勤统计，查询条件: {}", query);
 
-        // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
+        LocalDate startDate = resolveAnomalyStartDate(query);
+        LocalDate endDate = resolveAnomalyEndDate(query);
 
-        // 调用Mapper查询异常记录
-        String startDate = query.getStartDate() != null ? query.getStartDate().toString() : null;
-        String endDate = query.getEndDate() != null ? query.getEndDate().toString() : null;
+        if (startDate.isAfter(endDate)) {
+            throw new HrBusinessException("异常考勤查询开始日期不能晚于结束日期");
+        }
 
-        List<Map<String, Object>> anomalies = attendanceMonthlyMapper.listAttendanceAnomalies(
-                tenantId, query.getEmployeeId(), query.getDeptId(), 
-                query.getAnomalyType(), startDate, endDate);
-
-        // 转换为VO
         Map<Long, String> deptNameCache = new HashMap<>();
         Map<Long, Shift> shiftCache = new HashMap<>();
-        return anomalies.stream()
-                .map(map -> convertToAnomalyVO(map, deptNameCache, shiftCache))
-                .collect(Collectors.toList());
+        List<AttendanceAnomalyVO> results = new ArrayList<>();
+
+        if (shouldQueryRecordAnomalies(query.getAnomalyType())) {
+            List<Map<String, Object>> anomalies = attendanceMonthlyMapper.listAttendanceAnomalies(
+                    tenantId,
+                    query.getEmployeeId(),
+                    query.getDeptId(),
+                    query.getAnomalyType(),
+                    startDate.toString(),
+                    endDate.toString()
+            );
+            results.addAll(anomalies.stream()
+                    .map(map -> convertToAnomalyVO(map, deptNameCache, shiftCache))
+                    .collect(Collectors.toList()));
+        }
+
+        if (shouldBuildDerivedAnomalies(query.getAnomalyType())) {
+            results.addAll(buildDerivedAnomalies(tenantId, query, startDate, endDate, deptNameCache, shiftCache));
+        }
+
+        results.sort(Comparator
+                .comparing(AttendanceAnomalyVO::getAttendanceDate, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(AttendanceAnomalyVO::getCheckTime, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(AttendanceAnomalyVO::getEmployeeId, Comparator.nullsLast(Comparator.naturalOrder())));
+        return paginateAnomalies(results, query);
     }
 
     /**
@@ -438,17 +478,21 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
      */
     private Map<String, Integer> calculateAttendanceStats(Long tenantId, Long employeeId,
                                                            LocalDate startDate, LocalDate endDate,
-                                                           List<LeaveApplication> approvedLeaves) {
+                                                           Set<LocalDate> leaveDates,
+                                                           Set<LocalDate> scheduledDates) {
         // 查询打卡记录
         LambdaQueryWrapper<AttendanceRecord> recordQuery = new LambdaQueryWrapper<>();
         recordQuery.eq(AttendanceRecord::getTenantId, tenantId)
                    .eq(AttendanceRecord::getEmployeeId, employeeId)
                    .ge(AttendanceRecord::getAttendanceDate, startDate)
                    .le(AttendanceRecord::getAttendanceDate, endDate);
-        List<AttendanceRecord> records = attendanceRecordMapper.selectList(recordQuery);
+        List<AttendanceRecord> records = attendanceRecordMapper.selectList(recordQuery).stream()
+                .filter(this::isEffectiveAttendanceRecord)
+                .collect(Collectors.toList());
 
         // 统计各类型数量
-        int normalDays = 0;
+        int actualDays = 0;
+        int scheduledActualDays = 0;
         int lateTimes = 0;
         int earlyTimes = 0;
         int missingTimes = 0;
@@ -457,24 +501,23 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
         // 按日期分组统计
         Map<LocalDate, List<AttendanceRecord>> recordsByDate = records.stream()
                 .collect(Collectors.groupingBy(AttendanceRecord::getAttendanceDate));
-        Set<LocalDate> leaveDates = buildLeaveDateSet(approvedLeaves);
 
         for (Map.Entry<LocalDate, List<AttendanceRecord>> entry : recordsByDate.entrySet()) {
+            LocalDate attendanceDate = entry.getKey();
             List<AttendanceRecord> dayRecords = entry.getValue();
-            
+
             boolean hasCheckIn = dayRecords.stream().anyMatch(r -> "CHECK_IN".equals(r.getCheckType()));
             boolean hasCheckOut = dayRecords.stream().anyMatch(r -> "CHECK_OUT".equals(r.getCheckType()));
-            
+
             if (!hasCheckIn || !hasCheckOut) {
                 missingTimes++;
             }
-            
-            if (!hasCheckIn && !hasCheckOut) {
-                absentDays++;
-            } else {
-                normalDays++;
+
+            actualDays++;
+            if (scheduledDates.contains(attendanceDate)) {
+                scheduledActualDays++;
             }
-            
+
             // 统计迟到早退
             for (AttendanceRecord record : dayRecords) {
                 if ("LATE".equals(record.getStatus())) {
@@ -486,18 +529,15 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
             }
         }
 
-        LocalDate current = startDate;
-        while (!current.isAfter(endDate)) {
-            if (current.getDayOfWeek().getValue() < 6
-                    && !recordsByDate.containsKey(current)
-                    && !leaveDates.contains(current)) {
+        for (LocalDate scheduledDate : scheduledDates) {
+            if (!recordsByDate.containsKey(scheduledDate) && !leaveDates.contains(scheduledDate)) {
                 absentDays++;
             }
-            current = current.plusDays(1);
         }
 
         return Map.of(
-                "normalDays", normalDays,
+                "actualDays", actualDays,
+                "scheduledActualDays", scheduledActualDays,
                 "lateTimes", lateTimes,
                 "earlyTimes", earlyTimes,
                 "missingTimes", missingTimes,
@@ -508,35 +548,193 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     /**
      * 统计请假天数
      */
-    private BigDecimal calculateLeaveDays(List<LeaveApplication> leaves) {
-        return leaves.stream()
-                .map(LeaveApplication::getDuration)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    private BigDecimal calculateLeaveDays(List<LeaveApplication> leaves,
+                                          LocalDate startDate,
+                                          LocalDate endDate,
+                                          Map<LocalDate, SchedulePlan> effectiveSchedulePlans) {
+        if (leaves == null || leaves.isEmpty()) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        BigDecimal totalLeaveDays = BigDecimal.ZERO;
+        Map<Long, Integer> shiftWorkMinutesCache = new HashMap<>();
+        for (LeaveApplication leave : leaves) {
+            totalLeaveDays = totalLeaveDays.add(calculateLeaveDaysWithinRange(
+                    leave,
+                    startDate,
+                    endDate,
+                    effectiveSchedulePlans,
+                    shiftWorkMinutesCache
+            ));
+        }
+        return totalLeaveDays.setScale(2, RoundingMode.HALF_UP);
     }
 
-    private List<LeaveApplication> listApprovedLeaves(Long tenantId, Long employeeId,
-                                                      LocalDate startDate, LocalDate endDate) {
+    private BigDecimal calculateLeaveDaysWithinRange(LeaveApplication leave,
+                                                     LocalDate startDate,
+                                                     LocalDate endDate,
+                                                     Map<LocalDate, SchedulePlan> effectiveSchedulePlans,
+                                                     Map<Long, Integer> shiftWorkMinutesCache) {
+        if (leave == null || leave.getStartTime() == null || leave.getEndTime() == null) {
+            return BigDecimal.ZERO;
+        }
+
+        LocalDateTime rangeStart = startDate.atStartOfDay();
+        LocalDateTime rangeEndExclusive = endDate.plusDays(1).atStartOfDay();
+        LocalDateTime overlapStart = leave.getStartTime().isAfter(rangeStart) ? leave.getStartTime() : rangeStart;
+        LocalDateTime overlapEndExclusive = leave.getEndTime().isBefore(rangeEndExclusive) ? leave.getEndTime() : rangeEndExclusive;
+
+        if (!overlapEndExclusive.isAfter(overlapStart)) {
+            return BigDecimal.ZERO;
+        }
+
+        if ("HOUR".equalsIgnoreCase(leave.getUnit())) {
+            return calculateHourlyLeaveDays(
+                    overlapStart,
+                    overlapEndExclusive,
+                    effectiveSchedulePlans,
+                    shiftWorkMinutesCache
+            );
+        }
+
+        long overlapDays = ChronoUnit.DAYS.between(
+                overlapStart.toLocalDate(),
+                overlapEndExclusive.minusNanos(1).toLocalDate()
+        ) + 1;
+        return BigDecimal.valueOf(overlapDays);
+    }
+
+    private List<LeaveApplication> listApprovedLeavesForCoverage(Long tenantId, Long employeeId,
+                                                                 LocalDate startDate, LocalDate endDate) {
         LambdaQueryWrapper<LeaveApplication> leaveQuery = new LambdaQueryWrapper<>();
         leaveQuery.eq(LeaveApplication::getTenantId, tenantId)
-                  .eq(LeaveApplication::getEmployeeId, employeeId)
-                  .eq(LeaveApplication::getStatus, "APPROVED")
-                  .ge(LeaveApplication::getStartTime, startDate.atStartOfDay())
-                  .le(LeaveApplication::getEndTime, endDate.atTime(23, 59, 59));
+                .eq(LeaveApplication::getEmployeeId, employeeId)
+                .eq(LeaveApplication::getStatus, "APPROVED")
+                .le(LeaveApplication::getStartTime, endDate.atTime(23, 59, 59))
+                .ge(LeaveApplication::getEndTime, startDate.atStartOfDay());
 
         return leaveApplicationMapper.selectList(leaveQuery);
     }
 
-    private Set<LocalDate> buildLeaveDateSet(List<LeaveApplication> approvedLeaves) {
+    private Set<LocalDate> buildLeaveDateSet(List<LeaveApplication> approvedLeaves,
+                                             LocalDate startDate,
+                                             LocalDate endDate) {
         Set<LocalDate> leaveDates = new HashSet<>();
         for (LeaveApplication leave : approvedLeaves) {
             LocalDate current = leave.getStartTime().toLocalDate();
             LocalDate end = leave.getEndTime().toLocalDate();
+            if (current.isBefore(startDate)) {
+                current = startDate;
+            }
+            if (end.isAfter(endDate)) {
+                end = endDate;
+            }
             while (!current.isAfter(end)) {
                 leaveDates.add(current);
                 current = current.plusDays(1);
             }
         }
         return leaveDates;
+    }
+
+    private BigDecimal calculateHourlyLeaveDays(LocalDateTime overlapStart,
+                                                LocalDateTime overlapEndExclusive,
+                                                Map<LocalDate, SchedulePlan> effectiveSchedulePlans,
+                                                Map<Long, Integer> shiftWorkMinutesCache) {
+        BigDecimal leaveDays = BigDecimal.ZERO;
+        LocalDateTime current = overlapStart;
+        while (current.isBefore(overlapEndExclusive)) {
+            LocalDate currentDate = current.toLocalDate();
+            LocalDateTime dayEndExclusive = currentDate.plusDays(1).atStartOfDay();
+            LocalDateTime segmentEnd = overlapEndExclusive.isBefore(dayEndExclusive)
+                    ? overlapEndExclusive
+                    : dayEndExclusive;
+            long leaveMinutes = Duration.between(current, segmentEnd).toMinutes();
+            if (leaveMinutes > 0) {
+                int workMinutes = resolveWorkMinutes(currentDate, effectiveSchedulePlans, shiftWorkMinutesCache);
+                leaveDays = leaveDays.add(
+                        BigDecimal.valueOf(leaveMinutes)
+                                .divide(BigDecimal.valueOf(workMinutes), 4, RoundingMode.HALF_UP)
+                );
+            }
+            current = segmentEnd;
+        }
+        return leaveDays;
+    }
+
+    private int resolveWorkMinutes(LocalDate attendanceDate,
+                                   Map<LocalDate, SchedulePlan> effectiveSchedulePlans,
+                                   Map<Long, Integer> shiftWorkMinutesCache) {
+        SchedulePlan schedulePlan = effectiveSchedulePlans.get(attendanceDate);
+        if (schedulePlan == null || schedulePlan.getShiftId() == null) {
+            return DEFAULT_WORKDAY_MINUTES;
+        }
+        return shiftWorkMinutesCache.computeIfAbsent(schedulePlan.getShiftId(), this::loadShiftWorkMinutes);
+    }
+
+    private Integer loadShiftWorkMinutes(Long shiftId) {
+        if (shiftId == null) {
+            return DEFAULT_WORKDAY_MINUTES;
+        }
+        Shift shift = shiftMapper.selectById(shiftId);
+        if (shift == null || shift.getWorkMinutes() == null || shift.getWorkMinutes() <= 0) {
+            return DEFAULT_WORKDAY_MINUTES;
+        }
+        return shift.getWorkMinutes();
+    }
+
+    private Set<LocalDate> resolveScheduledDates(Employee employee, LocalDate startDate, LocalDate endDate) {
+        return resolveEffectiveSchedulePlans(employee, startDate, endDate).keySet();
+    }
+
+    private Map<LocalDate, SchedulePlan> resolveEffectiveSchedulePlans(Employee employee,
+                                                                       LocalDate startDate,
+                                                                       LocalDate endDate) {
+        Map<LocalDate, SchedulePlan> effectivePlans = new HashMap<>();
+
+        if (employee.getDeptId() != null) {
+            mergePublishedPlans(
+                    effectivePlans,
+                    schedulePlanMapper.selectByDateRange(employee.getTenantId(), TARGET_DEPT, employee.getDeptId(), startDate, endDate)
+            );
+        }
+
+        mergePublishedPlans(
+                effectivePlans,
+                schedulePlanMapper.selectByDateRange(employee.getTenantId(), TARGET_EMPLOYEE, employee.getId(), startDate, endDate)
+        );
+
+        effectivePlans.entrySet().removeIf(entry -> entry.getValue() == null
+                || entry.getValue().getScheduleDate() == null
+                || entry.getValue().getShiftId() == null);
+        return effectivePlans;
+    }
+
+    private void mergePublishedPlans(Map<LocalDate, SchedulePlan> effectivePlans, List<SchedulePlan> plans) {
+        if (plans == null || plans.isEmpty()) {
+            return;
+        }
+        for (SchedulePlan plan : plans) {
+            if (plan == null || !PLAN_STATUS_PUBLISHED.equals(plan.getStatus()) || plan.getScheduleDate() == null) {
+                continue;
+            }
+            effectivePlans.put(plan.getScheduleDate(), plan);
+        }
+    }
+
+    private boolean isEffectiveAttendanceRecord(AttendanceRecord record) {
+        if (record == null || record.getStatus() == null) {
+            return false;
+        }
+        switch (record.getStatus()) {
+            case "NORMAL":
+            case "LATE":
+            case "EARLY":
+            case "SUPPLEMENT":
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -559,6 +757,195 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
         return new BigDecimal(actualDays)
                 .multiply(new BigDecimal("100"))
                 .divide(new BigDecimal(workDays), 2, RoundingMode.HALF_UP);
+    }
+
+    private LocalDate resolveAnomalyStartDate(AttendanceAnomalyQueryDTO query) {
+        if (query.getStartDate() != null) {
+            return query.getStartDate();
+        }
+        if (query.getEndDate() != null) {
+            return query.getEndDate();
+        }
+        return LocalDate.now().withDayOfMonth(1);
+    }
+
+    private LocalDate resolveAnomalyEndDate(AttendanceAnomalyQueryDTO query) {
+        if (query.getEndDate() != null) {
+            return query.getEndDate();
+        }
+        if (query.getStartDate() != null) {
+            return query.getStartDate();
+        }
+        return LocalDate.now();
+    }
+
+    private boolean shouldQueryRecordAnomalies(String anomalyType) {
+        return anomalyType == null || "LATE".equals(anomalyType) || "EARLY".equals(anomalyType);
+    }
+
+    private boolean shouldBuildDerivedAnomalies(String anomalyType) {
+        return anomalyType == null || "MISSING".equals(anomalyType) || "ABSENT".equals(anomalyType);
+    }
+
+    private List<AttendanceAnomalyVO> buildDerivedAnomalies(Long tenantId,
+                                                            AttendanceAnomalyQueryDTO query,
+                                                            LocalDate startDate,
+                                                            LocalDate endDate,
+                                                            Map<Long, String> deptNameCache,
+                                                            Map<Long, Shift> shiftCache) {
+        boolean includeMissing = query.getAnomalyType() == null || "MISSING".equals(query.getAnomalyType());
+        boolean includeAbsent = query.getAnomalyType() == null || "ABSENT".equals(query.getAnomalyType());
+        List<Employee> employees = listAnomalyEmployees(tenantId, query);
+        if (employees.isEmpty()) {
+            return List.of();
+        }
+
+        List<AttendanceAnomalyVO> derivedAnomalies = new ArrayList<>();
+        for (Employee employee : employees) {
+            Map<LocalDate, SchedulePlan> scheduledPlans = resolveEffectiveSchedulePlans(employee, startDate, endDate);
+            Map<LocalDate, List<AttendanceRecord>> recordsByDate = listEffectiveAttendanceRecordsByDate(
+                    tenantId,
+                    employee.getId(),
+                    startDate,
+                    endDate
+            );
+
+            if (includeMissing) {
+                for (Map.Entry<LocalDate, List<AttendanceRecord>> entry : recordsByDate.entrySet()) {
+                    String missingCheckType = resolveMissingCheckType(entry.getValue());
+                    if (missingCheckType == null) {
+                        continue;
+                    }
+                    derivedAnomalies.add(buildMissingAnomalyVO(
+                            employee,
+                            entry.getKey(),
+                            scheduledPlans.get(entry.getKey()),
+                            missingCheckType,
+                            deptNameCache,
+                            shiftCache
+                    ));
+                }
+            }
+
+            if (includeAbsent && !scheduledPlans.isEmpty()) {
+                Set<LocalDate> leaveDates = buildLeaveDateSet(
+                        listApprovedLeavesForCoverage(tenantId, employee.getId(), startDate, endDate),
+                        startDate,
+                        endDate
+                );
+                for (Map.Entry<LocalDate, SchedulePlan> entry : scheduledPlans.entrySet()) {
+                    LocalDate attendanceDate = entry.getKey();
+                    if (leaveDates.contains(attendanceDate) || recordsByDate.containsKey(attendanceDate)) {
+                        continue;
+                    }
+                    derivedAnomalies.add(buildAbsentAnomalyVO(employee, entry.getValue(), deptNameCache, shiftCache));
+                }
+            }
+        }
+        return derivedAnomalies;
+    }
+
+    private List<Employee> listAnomalyEmployees(Long tenantId, AttendanceAnomalyQueryDTO query) {
+        LambdaQueryWrapper<Employee> employeeQuery = new LambdaQueryWrapper<>();
+        employeeQuery.eq(Employee::getTenantId, tenantId)
+                .eq(query.getEmployeeId() != null, Employee::getId, query.getEmployeeId())
+                .eq(query.getDeptId() != null, Employee::getDeptId, query.getDeptId());
+        return employeeMapper.selectList(employeeQuery);
+    }
+
+    private Map<LocalDate, List<AttendanceRecord>> listEffectiveAttendanceRecordsByDate(Long tenantId,
+                                                                                        Long employeeId,
+                                                                                        LocalDate startDate,
+                                                                                        LocalDate endDate) {
+        LambdaQueryWrapper<AttendanceRecord> recordQuery = new LambdaQueryWrapper<>();
+        recordQuery.eq(AttendanceRecord::getTenantId, tenantId)
+                .eq(AttendanceRecord::getEmployeeId, employeeId)
+                .ge(AttendanceRecord::getAttendanceDate, startDate)
+                .le(AttendanceRecord::getAttendanceDate, endDate);
+        return attendanceRecordMapper.selectList(recordQuery).stream()
+                .filter(this::isEffectiveAttendanceRecord)
+                .collect(Collectors.groupingBy(AttendanceRecord::getAttendanceDate));
+    }
+
+    private String resolveMissingCheckType(List<AttendanceRecord> dayRecords) {
+        boolean hasCheckIn = dayRecords.stream().anyMatch(record -> "CHECK_IN".equals(record.getCheckType()));
+        boolean hasCheckOut = dayRecords.stream().anyMatch(record -> "CHECK_OUT".equals(record.getCheckType()));
+        if (!hasCheckIn && hasCheckOut) {
+            return "CHECK_IN";
+        }
+        if (hasCheckIn && !hasCheckOut) {
+            return "CHECK_OUT";
+        }
+        return null;
+    }
+
+    private AttendanceAnomalyVO buildMissingAnomalyVO(Employee employee,
+                                                      LocalDate attendanceDate,
+                                                      SchedulePlan schedulePlan,
+                                                      String missingCheckType,
+                                                      Map<Long, String> deptNameCache,
+                                                      Map<Long, Shift> shiftCache) {
+        AttendanceAnomalyVO vo = new AttendanceAnomalyVO();
+        vo.setEmployeeId(employee.getId());
+        vo.setEmployeeName(employee.getName());
+        vo.setEmployeeNo(employee.getEmployeeNo());
+        vo.setDeptName(resolveDeptName(employee.getDeptId(), deptNameCache));
+        vo.setAttendanceDate(attendanceDate);
+        vo.setAnomalyType("MISSING");
+        vo.setAnomalyTypeName("缺卡");
+
+        if (schedulePlan != null && schedulePlan.getShiftId() != null) {
+            Shift shift = shiftCache.computeIfAbsent(schedulePlan.getShiftId(), shiftMapper::selectById);
+            if (shift != null) {
+                if ("CHECK_IN".equals(missingCheckType) && shift.getStartTime() != null) {
+                    vo.setExpectedTime(attendanceDate.atTime(shift.getStartTime()));
+                }
+                if ("CHECK_OUT".equals(missingCheckType) && shift.getEndTime() != null) {
+                    vo.setExpectedTime(attendanceDate.atTime(shift.getEndTime()));
+                }
+            }
+        }
+
+        vo.setDescription(buildAnomalyDescription(vo, missingCheckType, null));
+        return vo;
+    }
+
+    private AttendanceAnomalyVO buildAbsentAnomalyVO(Employee employee,
+                                                     SchedulePlan schedulePlan,
+                                                     Map<Long, String> deptNameCache,
+                                                     Map<Long, Shift> shiftCache) {
+        AttendanceAnomalyVO vo = new AttendanceAnomalyVO();
+        vo.setEmployeeId(employee.getId());
+        vo.setEmployeeName(employee.getName());
+        vo.setEmployeeNo(employee.getEmployeeNo());
+        vo.setDeptName(resolveDeptName(employee.getDeptId(), deptNameCache));
+        vo.setAttendanceDate(schedulePlan.getScheduleDate());
+        vo.setAnomalyType("ABSENT");
+        vo.setAnomalyTypeName("旷工");
+
+        if (schedulePlan.getShiftId() != null) {
+            Shift shift = shiftCache.computeIfAbsent(schedulePlan.getShiftId(), shiftMapper::selectById);
+            if (shift != null && shift.getStartTime() != null) {
+                vo.setExpectedTime(schedulePlan.getScheduleDate().atTime(shift.getStartTime()));
+            }
+        }
+
+        vo.setDescription(buildAnomalyDescription(vo, null, null));
+        return vo;
+    }
+
+    private IPage<AttendanceAnomalyVO> paginateAnomalies(List<AttendanceAnomalyVO> results,
+                                                         AttendanceAnomalyQueryDTO query) {
+        long pageNum = query.getPageNum() == null || query.getPageNum() < 1 ? 1L : query.getPageNum();
+        long pageSize = query.getPageSize() == null || query.getPageSize() < 1 ? 10L : query.getPageSize();
+
+        Page<AttendanceAnomalyVO> page = new Page<>(pageNum, pageSize);
+        page.setTotal(results.size());
+
+        int fromIndex = (int) Math.min((pageNum - 1) * pageSize, results.size());
+        int toIndex = (int) Math.min(fromIndex + pageSize, results.size());
+        page.setRecords(fromIndex >= toIndex ? List.of() : results.subList(fromIndex, toIndex));
+        return page;
     }
 
     /**

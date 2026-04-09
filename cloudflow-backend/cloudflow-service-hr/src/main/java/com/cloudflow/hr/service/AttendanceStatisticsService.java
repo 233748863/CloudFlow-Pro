@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.hr.domain.dto.AttendanceAnomalyQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceMonthlyQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceReportExportDTO;
@@ -58,7 +59,7 @@ public interface AttendanceStatisticsService {
      * @param query 查询条件
      * @return 异常考勤列表
      */
-    List<AttendanceAnomalyVO> listAttendanceAnomalies(AttendanceAnomalyQueryDTO query);
+    IPage<AttendanceAnomalyVO> listAttendanceAnomalies(AttendanceAnomalyQueryDTO query);
 
     /**
      * 获取部门出勤率分析

@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -99,6 +100,27 @@ class AttendanceSupplementServiceTest {
         assertEquals("MISSING", stored.get().getStatus());
         assertEquals("SUPPLEMENT", stored.get().getCheckMethod());
         assertEquals("补卡说明", stored.get().getRemark());
+    }
+
+    @Test
+    void testCreateSupplementApplicationWithoutScheduleStillSuccess() {
+        AtomicReference<AttendanceRecord> stored = new AtomicReference<>();
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(attendanceRecordMapper.selectByEmployeeAndDate(any(), any(), any())).thenReturn(null);
+        when(schedulePlanMapper.selectOne(any())).thenReturn(null);
+        when(attendanceRecordMapper.insert(any(AttendanceRecord.class))).thenAnswer(invocation -> {
+            AttendanceRecord record = invocation.getArgument(0);
+            record.setId(32L);
+            stored.set(record);
+            return 1;
+        });
+
+        Long recordId = attendanceService.createSupplementApplication(buildSupplementDto());
+
+        assertEquals(32L, recordId);
+        assertNotNull(stored.get());
+        assertNull(stored.get().getShiftId());
+        assertEquals("MISSING", stored.get().getStatus());
     }
 
     @Test

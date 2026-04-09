@@ -21,6 +21,8 @@ import com.cloudflow.hr.mapper.LeaveQuotaMapper;
 import com.cloudflow.hr.mapper.LeaveTypeMapper;
 import com.cloudflow.hr.mapper.OvertimeApplicationMapper;
 import com.cloudflow.hr.service.OvertimeService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -30,10 +32,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -56,6 +61,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     private final LeaveQuotaMapper leaveQuotaMapper;
     private final WorkflowServiceClient workflowServiceClient;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
+    private final ObjectMapper objectMapper;
 
     // 加班转换比例配置
     private static final BigDecimal WORKDAY_RATIO = new BigDecimal("1.0");   // 工作日加班：1:1转调休
@@ -255,7 +261,6 @@ public class OvertimeServiceImpl implements OvertimeService {
         // 查询加班申请
         OvertimeApplication application = overtimeApplicationMapper.selectById(id);
         tenantId = application != null ? application.getTenantId() : tenantId;
-        tenantId = application != null ? application.getTenantId() : tenantId;
         if (application == null || !application.getTenantId().equals(tenantId)) {
             throw new HrBusinessException("加班申请不存在");
         }
@@ -306,6 +311,43 @@ public class OvertimeServiceImpl implements OvertimeService {
         overtimeApplicationMapper.updateById(application);
 
         log.info("加班申请审批拒绝，申请编号: {}", application.getApplicationNo());
+    }
+
+    /**
+     * 撤销加班申请
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelOvertimeApplication(Long id) {
+        log.info("撤销加班申请，ID: {}", id);
+
+        Long tenantId = SecurityUtils.getTenantId();
+        OvertimeApplication application = overtimeApplicationMapper.selectById(id);
+        if (application == null || !application.getTenantId().equals(tenantId)) {
+            throw new HrBusinessException("加班申请不存在");
+        }
+
+        if (!"APPROVING".equals(application.getStatus()) && !"APPROVED".equals(application.getStatus())) {
+            throw new HrBusinessException("只有审批中或已通过的申请才能撤销");
+        }
+
+        if ("APPROVING".equals(application.getStatus()) && application.getProcessInstanceId() != null
+                && !application.getProcessInstanceId().isBlank()) {
+            R<Void> result = workflowServiceClient.cancelProcess(application.getProcessInstanceId());
+            if (result == null || !result.isSuccess()) {
+                throw new HrSystemException("WORKFLOW_CANCEL_FAILED",
+                        "撤销审批流程失败：" + (result != null ? result.getMsg() : "Workflow 服务无响应"));
+            }
+        }
+
+        if ("APPROVED".equals(application.getStatus()) && "TIME_OFF".equals(application.getCompensationType())) {
+            removeTimeOffQuota(application);
+        }
+
+        application.setStatus("CANCELLED");
+        overtimeApplicationMapper.updateById(application);
+
+        log.info("加班申请撤销成功，申请编号: {}", application.getApplicationNo());
     }
 
     /**
@@ -440,58 +482,253 @@ public class OvertimeServiceImpl implements OvertimeService {
      * @param application 加班申请
      */
     private void addTimeOffQuota(OvertimeApplication application) {
-        log.info("增加调休额度，员工ID: {}, 补偿时长: {}小时", 
+        log.info("增加调休额度，员工ID: {}, 补偿时长: {}小时",
                 application.getEmployeeId(), application.getCompensationHours());
 
-        // 获取调休假期类型
-        LambdaQueryWrapper<LeaveType> leaveTypeQuery = new LambdaQueryWrapper<>();
-        leaveTypeQuery.eq(LeaveType::getTenantId, application.getTenantId())
-                      .eq(LeaveType::getLeaveCode, "COMPENSATORY");
-        LeaveType leaveType = leaveTypeMapper.selectOne(leaveTypeQuery);
+        LeaveType leaveType = getRequiredCompensatoryLeaveType(application.getTenantId());
 
-        if (leaveType == null) {
-            throw new HrBusinessException("调休假期类型未配置");
+        // 跨年加班需要按年度拆分调休额度，避免整笔额度都落到开始年份。
+        Map<Integer, BigDecimal> quotaByYear = splitTimeOffQuotaByYear(application);
+        for (Map.Entry<Integer, BigDecimal> entry : quotaByYear.entrySet()) {
+            Integer year = entry.getKey();
+            BigDecimal quotaAmount = entry.getValue();
+            LocalDate expiryDate = resolveTimeOffQuotaExpiryDate(leaveType, application, year);
+
+            LambdaQueryWrapper<LeaveQuota> quotaQuery = new LambdaQueryWrapper<>();
+            quotaQuery.eq(LeaveQuota::getTenantId, application.getTenantId())
+                    .eq(LeaveQuota::getEmployeeId, application.getEmployeeId())
+                    .eq(LeaveQuota::getLeaveTypeId, leaveType.getId())
+                    .eq(LeaveQuota::getYear, year);
+            if (expiryDate == null) {
+                quotaQuery.isNull(LeaveQuota::getExpiryDate);
+            } else {
+                quotaQuery.eq(LeaveQuota::getExpiryDate, expiryDate);
+            }
+            LeaveQuota quota = leaveQuotaMapper.selectOne(quotaQuery);
+
+            if (quota == null) {
+                quota = new LeaveQuota();
+                quota.setTenantId(application.getTenantId());
+                quota.setEmployeeId(application.getEmployeeId());
+                quota.setLeaveTypeId(leaveType.getId());
+                quota.setYear(year);
+                quota.setTotalQuota(quotaAmount);
+                quota.setUsedQuota(BigDecimal.ZERO);
+                quota.setFrozenQuota(BigDecimal.ZERO);
+                quota.setAvailableQuota(quotaAmount);
+                quota.setExpiryDate(expiryDate);
+                leaveQuotaMapper.insert(quota);
+            } else {
+                quota.setTotalQuota(normalizeQuotaAmount(quota.getTotalQuota()).add(quotaAmount));
+                quota.setAvailableQuota(normalizeQuotaAmount(quota.getAvailableQuota()).add(quotaAmount));
+                leaveQuotaMapper.updateById(quota);
+            }
         }
 
-        // 获取当前年度
-        int year = LocalDateTime.now().getYear();
+        log.info("调休额度增加成功，员工ID: {}, 增加时长: {}小时",
+                application.getEmployeeId(), application.getCompensationHours());
+    }
 
-        // 查询或创建调休额度记录
-        LambdaQueryWrapper<LeaveQuota> quotaQuery = new LambdaQueryWrapper<>();
-        quotaQuery.eq(LeaveQuota::getTenantId, application.getTenantId())
-                  .eq(LeaveQuota::getEmployeeId, application.getEmployeeId())
-                  .eq(LeaveQuota::getLeaveTypeId, leaveType.getId())
-                  .eq(LeaveQuota::getYear, year);
-        LeaveQuota quota = leaveQuotaMapper.selectOne(quotaQuery);
+    /**
+     * 撤销已通过的调休额度；如果额度已被请假冻结或使用，则不允许撤销。
+     */
+    private void removeTimeOffQuota(OvertimeApplication application) {
+        log.info("回滚调休额度，员工ID: {}, 补偿时长: {}小时",
+                application.getEmployeeId(), application.getCompensationHours());
 
-        if (quota == null) {
-            // 创建新的额度记录
-            quota = new LeaveQuota();
-            quota.setTenantId(application.getTenantId());
-            quota.setEmployeeId(application.getEmployeeId());
-            quota.setLeaveTypeId(leaveType.getId());
-            quota.setYear(year);
-            quota.setTotalQuota(application.getCompensationHours());
-            quota.setUsedQuota(BigDecimal.ZERO);
-            quota.setFrozenQuota(BigDecimal.ZERO);
-            quota.setAvailableQuota(application.getCompensationHours());
-            leaveQuotaMapper.insert(quota);
-        } else {
-            // 更新现有额度记录
-            quota.setTotalQuota(quota.getTotalQuota().add(application.getCompensationHours()));
-            quota.setAvailableQuota(quota.getAvailableQuota().add(application.getCompensationHours()));
+        LeaveType leaveType = getRequiredCompensatoryLeaveType(application.getTenantId());
+        Map<Integer, BigDecimal> quotaByYear = splitTimeOffQuotaByYear(application);
+        for (Map.Entry<Integer, BigDecimal> entry : quotaByYear.entrySet()) {
+            Integer year = entry.getKey();
+            BigDecimal quotaAmount = entry.getValue();
+            LocalDate expiryDate = resolveTimeOffQuotaExpiryDate(leaveType, application, year);
+
+            LambdaQueryWrapper<LeaveQuota> quotaQuery = new LambdaQueryWrapper<>();
+            quotaQuery.eq(LeaveQuota::getTenantId, application.getTenantId())
+                    .eq(LeaveQuota::getEmployeeId, application.getEmployeeId())
+                    .eq(LeaveQuota::getLeaveTypeId, leaveType.getId())
+                    .eq(LeaveQuota::getYear, year);
+            if (expiryDate == null) {
+                quotaQuery.isNull(LeaveQuota::getExpiryDate);
+            } else {
+                quotaQuery.eq(LeaveQuota::getExpiryDate, expiryDate);
+            }
+            LeaveQuota quota = leaveQuotaMapper.selectOne(quotaQuery);
+
+            if (quota == null) {
+                throw new HrBusinessException("调休额度不存在，无法撤销已通过的加班申请");
+            }
+
+            BigDecimal totalQuota = normalizeQuotaAmount(quota.getTotalQuota());
+            BigDecimal availableQuota = normalizeQuotaAmount(quota.getAvailableQuota());
+            if (availableQuota.compareTo(quotaAmount) < 0) {
+                throw new HrBusinessException(year + " 年调休额度已被占用，无法撤销该加班申请");
+            }
+            if (totalQuota.compareTo(quotaAmount) < 0) {
+                throw new HrBusinessException(year + " 年调休额度状态异常，无法回滚该加班申请");
+            }
+
+            quota.setTotalQuota(normalizeQuotaAmount(totalQuota.subtract(quotaAmount)));
+            quota.setAvailableQuota(normalizeQuotaAmount(availableQuota.subtract(quotaAmount)));
             leaveQuotaMapper.updateById(quota);
         }
 
-        log.info("调休额度增加成功，员工ID: {}, 增加时长: {}小时, 当前总额度: {}小时", 
-                application.getEmployeeId(), application.getCompensationHours(), quota.getTotalQuota());
+        log.info("调休额度回滚成功，员工ID: {}, 回滚时长: {}小时",
+                application.getEmployeeId(), application.getCompensationHours());
     }
+
+    private LeaveType getRequiredCompensatoryLeaveType(Long tenantId) {
+        LambdaQueryWrapper<LeaveType> leaveTypeQuery = new LambdaQueryWrapper<>();
+        leaveTypeQuery.eq(LeaveType::getTenantId, tenantId)
+                .eq(LeaveType::getLeaveCode, "COMPENSATORY");
+        LeaveType leaveType = leaveTypeMapper.selectOne(leaveTypeQuery);
+        if (leaveType == null) {
+            throw new HrBusinessException("调休假期类型未配置");
+        }
+        return leaveType;
+    }
+
+    private Map<String, Object> parseExpiryRule(LeaveType leaveType) {
+        if (leaveType.getExpiryRule() == null || leaveType.getExpiryRule().isBlank()) {
+            return Collections.emptyMap();
+        }
+        try {
+            return objectMapper.readValue(leaveType.getExpiryRule(), new TypeReference<Map<String, Object>>() {
+            });
+        } catch (Exception e) {
+            throw new HrBusinessException("INVALID_LEAVE_EXPIRY_RULE",
+                    "假期类型[" + leaveType.getLeaveName() + "]过期规则不是合法 JSON", e);
+        }
+    }
+
+    private LocalDate resolveTimeOffQuotaExpiryDate(LeaveType leaveType, OvertimeApplication application, int quotaYear) {
+        Map<String, Object> expiryRule = parseExpiryRule(leaveType);
+        String expiryType = expiryRule.get("expiryType") != null ? expiryRule.get("expiryType").toString() : "";
+        if (expiryType.isBlank() || "YEAR_END".equalsIgnoreCase(expiryType)) {
+            return LocalDate.of(quotaYear, 12, 31);
+        }
+        if ("FIXED_DAYS".equalsIgnoreCase(expiryType)) {
+            Object daysValue = expiryRule.get("days");
+            if (daysValue == null) {
+                throw new HrBusinessException("假期类型[" + leaveType.getLeaveName() + "]过期规则缺少 days 配置");
+            }
+            int days;
+            try {
+                days = Integer.parseInt(daysValue.toString());
+            } catch (NumberFormatException e) {
+                throw new HrBusinessException("INVALID_LEAVE_EXPIRY_RULE",
+                        "假期类型[" + leaveType.getLeaveName() + "]过期规则 days 必须为整数", e);
+            }
+            if (days < 0) {
+                throw new HrBusinessException("假期类型[" + leaveType.getLeaveName() + "]过期规则 days 不能为负数");
+            }
+            return resolveTimeOffQuotaBaseDate(application).plusDays(days);
+        }
+        throw new HrBusinessException("假期类型[" + leaveType.getLeaveName() + "]暂不支持过期规则：" + expiryType);
+    }
+
+    private LocalDate resolveTimeOffQuotaBaseDate(OvertimeApplication application) {
+        if (application.getEndTime() != null) {
+            return application.getEndTime().toLocalDate();
+        }
+        if (application.getStartTime() != null) {
+            return application.getStartTime().toLocalDate();
+        }
+        return LocalDate.now();
+    }
+
 
     /**
      * 生成申请编号
      * 
      * @return 申请编号
      */
+    /**
+     * 先按加班发生时间确定默认年度；时间脏数据时再回退到可用的年份。
+     */
+    private int resolveTimeOffQuotaYear(OvertimeApplication application) {
+        if (application.getStartTime() != null) {
+            return application.getStartTime().getYear();
+        }
+        if (application.getEndTime() != null) {
+            return application.getEndTime().getYear();
+        }
+        return LocalDateTime.now().getYear();
+    }
+
+    /**
+     * 跨年加班按分钟占比拆分调休额度，保证各年度分摊后总额不变。
+     */
+    private Map<Integer, BigDecimal> splitTimeOffQuotaByYear(OvertimeApplication application) {
+        BigDecimal totalQuota = normalizeQuotaAmount(application.getCompensationHours());
+        if (totalQuota.compareTo(BigDecimal.ZERO) <= 0) {
+            return Map.of();
+        }
+
+        LocalDateTime startTime = application.getStartTime();
+        LocalDateTime endTime = application.getEndTime();
+        if (startTime == null || endTime == null || !endTime.isAfter(startTime)) {
+            return Map.of(resolveTimeOffQuotaYear(application), totalQuota);
+        }
+
+        LinkedHashMap<Integer, BigDecimal> weightByYear = new LinkedHashMap<>();
+        BigDecimal totalWeight = BigDecimal.ZERO;
+        for (int year = startTime.getYear(); year <= endTime.getYear(); year++) {
+            BigDecimal weight = calculateYearOverlapMinutes(startTime, endTime, year);
+            if (weight.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            weightByYear.put(year, weight);
+            totalWeight = totalWeight.add(weight);
+        }
+
+        if (weightByYear.isEmpty()) {
+            return Map.of(resolveTimeOffQuotaYear(application), totalQuota);
+        }
+        if (weightByYear.size() == 1) {
+            return Map.of(weightByYear.keySet().iterator().next(), totalQuota);
+        }
+
+        LinkedHashMap<Integer, BigDecimal> splitQuota = new LinkedHashMap<>();
+        BigDecimal allocated = BigDecimal.ZERO;
+        int index = 0;
+        int size = weightByYear.size();
+        for (Map.Entry<Integer, BigDecimal> entry : weightByYear.entrySet()) {
+            BigDecimal quotaAmount;
+            if (index == size - 1) {
+                quotaAmount = totalQuota.subtract(allocated);
+            } else {
+                quotaAmount = totalQuota.multiply(entry.getValue())
+                        .divide(totalWeight, 2, RoundingMode.HALF_UP);
+            }
+            quotaAmount = normalizeQuotaAmount(quotaAmount);
+            if (quotaAmount.compareTo(BigDecimal.ZERO) > 0) {
+                splitQuota.put(entry.getKey(), quotaAmount);
+                allocated = allocated.add(quotaAmount);
+            }
+            index++;
+        }
+        return splitQuota;
+    }
+
+    private BigDecimal calculateYearOverlapMinutes(LocalDateTime startTime, LocalDateTime endTime, int year) {
+        LocalDateTime yearStart = LocalDate.of(year, 1, 1).atStartOfDay();
+        LocalDateTime yearEndExclusive = LocalDate.of(year + 1, 1, 1).atStartOfDay();
+        LocalDateTime overlapStart = startTime.isAfter(yearStart) ? startTime : yearStart;
+        LocalDateTime overlapEnd = endTime.isBefore(yearEndExclusive) ? endTime : yearEndExclusive;
+        if (!overlapEnd.isAfter(overlapStart)) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(ChronoUnit.MINUTES.between(overlapStart, overlapEnd));
+    }
+
+    private BigDecimal normalizeQuotaAmount(BigDecimal quotaAmount) {
+        if (quotaAmount == null) {
+            return BigDecimal.ZERO;
+        }
+        return quotaAmount.setScale(2, RoundingMode.HALF_UP);
+    }
+
     private String generateApplicationNo() {
         return "OT" + System.currentTimeMillis();
     }
@@ -578,6 +815,8 @@ public class OvertimeServiceImpl implements OvertimeService {
                 return "已通过";
             case "REJECTED":
                 return "已拒绝";
+            case "CANCELLED":
+                return "已撤销";
             default:
                 return status;
         }

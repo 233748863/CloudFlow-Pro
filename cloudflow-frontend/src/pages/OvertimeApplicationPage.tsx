@@ -265,6 +265,22 @@ export const OvertimeApplicationPage: React.FC = () => {
     }
   };
 
+  const handleCancel = async (id: number) => {
+    if (!ensureCanOperate()) {
+      return;
+    }
+    if (!confirm('确定撤销这条加班申请吗？')) {
+      return;
+    }
+    try {
+      await overtimeApplicationApi.cancel(id);
+      toast.success('撤销成功');
+      await fetchList();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '撤销失败'));
+    }
+  };
+
   const handleExport = async () => {
     try {
       const blob = await overtimeApplicationApi.export(searchParams);
@@ -671,6 +687,14 @@ export const OvertimeApplicationPage: React.FC = () => {
                                     tone: 'danger',
                                     hidden: item.status !== 'DRAFT' || selfServiceLocked,
                                     className: 'rounded-full bg-rose-50/90 px-2.5 ring-1 ring-rose-100 text-rose-600 hover:bg-rose-100 hover:text-rose-700',
+                                  },
+                                  {
+                                    label: '撤销',
+                                    icon: <RotateCcw size={14} />,
+                                    onClick: () => handleCancel(item.id!),
+                                    tone: 'warning',
+                                    hidden: !item.status || !['APPROVING', 'APPROVED'].includes(item.status) || selfServiceLocked,
+                                    className: 'rounded-full bg-amber-50/90 px-2.5 ring-1 ring-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
                                   },
                                 ]}
                               />

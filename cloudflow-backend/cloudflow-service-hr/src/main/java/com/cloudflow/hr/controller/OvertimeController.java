@@ -86,6 +86,16 @@ public class OvertimeController {
     }
 
     /**
+     * 撤销加班申请
+     */
+    @PostMapping("/applications/{id}/cancel")
+    public R<Void> cancelOvertimeApplication(@PathVariable Long id) {
+        log.info("撤销加班申请，ID: {}", id);
+        overtimeService.cancelOvertimeApplication(id);
+        return R.ok();
+    }
+
+    /**
      * 查询加班申请列表
      */
     @GetMapping("/applications")

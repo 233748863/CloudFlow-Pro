@@ -95,13 +95,14 @@ public class AttendanceServiceImpl implements AttendanceService {
         validateAttendanceEligibleEmployee(employee, "补卡申请");
         validateSupplementConflict(employee.getId(), dto.getAttendanceDate(), dto.getCheckType(), null);
 
-        SchedulePlan schedulePlan = requireSchedulePlan(employee, dto.getAttendanceDate());
+        SchedulePlan schedulePlan = getSchedulePlan(employee, dto.getAttendanceDate());
 
         AttendanceRecord record = new AttendanceRecord();
         record.setTenantId(employee.getTenantId());
         record.setEmployeeId(employee.getId());
         record.setAttendanceDate(dto.getAttendanceDate());
-        record.setShiftId(schedulePlan.getShiftId());
+        // 无排班时也允许补卡，兼容临时加班、临时到岗等非计划性出勤。
+        record.setShiftId(schedulePlan != null ? schedulePlan.getShiftId() : null);
         record.setCheckType(dto.getCheckType());
         record.setCheckTime(dto.getCheckTime());
         record.setCheckMethod(CHECK_METHOD_SUPPLEMENT);
@@ -139,12 +140,13 @@ public class AttendanceServiceImpl implements AttendanceService {
         validateAttendanceEligibleEmployee(employee, "补卡申请编辑");
         validateSupplementConflict(employee.getId(), dto.getAttendanceDate(), dto.getCheckType(), id);
 
-        SchedulePlan schedulePlan = requireSchedulePlan(employee, dto.getAttendanceDate());
+        SchedulePlan schedulePlan = getSchedulePlan(employee, dto.getAttendanceDate());
 
         record.setTenantId(employee.getTenantId());
         record.setEmployeeId(employee.getId());
         record.setAttendanceDate(dto.getAttendanceDate());
-        record.setShiftId(schedulePlan.getShiftId());
+        // 编辑补卡时保持与新增一致：无排班也允许提交业务单据。
+        record.setShiftId(schedulePlan != null ? schedulePlan.getShiftId() : null);
         record.setCheckType(dto.getCheckType());
         record.setCheckTime(dto.getCheckTime());
         record.setCheckMethod(CHECK_METHOD_SUPPLEMENT);
@@ -264,7 +266,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         vo.setCheckInRecord(checkInVO);
         vo.setCheckOutRecord(checkOutVO);
-        calculateAttendanceStatus(vo, checkInVO, checkOutVO);
+        calculateAttendanceStatus(vo, checkInVO, checkOutVO, schedulePlan != null);
         return vo;
     }
 
@@ -282,10 +284,13 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new HrBusinessException("今天已经打过" + label + "，请勿重复打卡");
         }
 
-        SchedulePlan schedulePlan = requireSchedulePlan(employee, today);
-        Shift shift = shiftMapper.selectById(schedulePlan.getShiftId());
-        if (shift == null || !employee.getTenantId().equals(shift.getTenantId())) {
-            throw new HrBusinessException("班次信息不存在");
+        SchedulePlan schedulePlan = getSchedulePlan(employee, today);
+        Shift shift = null;
+        if (schedulePlan != null) {
+            shift = shiftMapper.selectById(schedulePlan.getShiftId());
+            if (shift == null || !employee.getTenantId().equals(shift.getTenantId())) {
+                throw new HrBusinessException("班次信息不存在");
+            }
         }
 
         validateCheckMethod(dto);
@@ -295,7 +300,8 @@ public class AttendanceServiceImpl implements AttendanceService {
         record.setTenantId(employee.getTenantId());
         record.setEmployeeId(employee.getId());
         record.setAttendanceDate(today);
-        record.setShiftId(shift.getId());
+        // 无排班时也允许打卡，兼容临时加班、外勤返岗等高频场景。
+        record.setShiftId(shift != null ? shift.getId() : null);
         record.setCheckType(dto.getCheckType());
         record.setCheckTime(now);
         record.setCheckMethod(dto.getCheckMethod());
@@ -360,6 +366,11 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private String determineAttendanceStatus(String checkType, LocalTime checkTime, Shift shift) {
+        // 无排班时无法判断迟到或早退，默认按正常打卡处理。
+        if (shift == null) {
+            return STATUS_NORMAL;
+        }
+
         if (CHECK_TYPE_IN.equals(checkType)) {
             LocalTime startTime = shift.getStartTime();
             int lateThreshold = shift.getLateThreshold() == null ? 0 : shift.getLateThreshold();
@@ -377,14 +388,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         return STATUS_NORMAL;
-    }
-
-    private SchedulePlan requireSchedulePlan(Employee employee, LocalDate date) {
-        SchedulePlan schedulePlan = getSchedulePlan(employee, date);
-        if (schedulePlan == null) {
-            throw new HrBusinessException("当天没有排班，无法执行当前操作");
-        }
-        return schedulePlan;
     }
 
     private SchedulePlan getSchedulePlan(Employee employee, LocalDate date) {
@@ -535,9 +538,11 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private void calculateAttendanceStatus(AttendanceDailyVO vo,
                                            AttendanceRecordVO checkInVO,
-                                           AttendanceRecordVO checkOutVO) {
+                                           AttendanceRecordVO checkOutVO,
+                                           boolean hasSchedule) {
         if (checkInVO == null && checkOutVO == null) {
-            vo.setAttendanceStatus("ABSENT");
+            // 无排班且无打卡记录时，不应误判为旷工。
+            vo.setAttendanceStatus(hasSchedule ? "ABSENT" : STATUS_NORMAL);
             return;
         }
 

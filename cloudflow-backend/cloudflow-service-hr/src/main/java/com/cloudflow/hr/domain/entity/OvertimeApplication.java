@@ -78,7 +78,7 @@ public class OvertimeApplication {
     private String processInstanceId;
 
     /**
-     * 状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝
+     * 状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 CANCELLED-已撤销
      */
     private String status;
 

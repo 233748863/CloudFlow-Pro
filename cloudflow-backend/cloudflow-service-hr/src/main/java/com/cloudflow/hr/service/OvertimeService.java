@@ -61,6 +61,13 @@ public interface OvertimeService {
     void rejectOvertimeApplication(Long id);
 
     /**
+     * 撤销加班申请
+     *
+     * @param id 申请ID
+     */
+    void cancelOvertimeApplication(Long id);
+
+    /**
      * 查询加班申请列表
      * 
      * @param query 查询条件

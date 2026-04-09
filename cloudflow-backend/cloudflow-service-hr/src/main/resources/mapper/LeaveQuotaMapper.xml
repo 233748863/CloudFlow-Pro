@@ -29,7 +29,7 @@
         <if test="year != null">
             AND lq.year = #{year}
         </if>
-        ORDER BY lq.leave_type_id, lq.year DESC
+        ORDER BY lq.leave_type_id, lq.year DESC, lq.expiry_date ASC, lq.id ASC
     </select>
 
 </mapper>

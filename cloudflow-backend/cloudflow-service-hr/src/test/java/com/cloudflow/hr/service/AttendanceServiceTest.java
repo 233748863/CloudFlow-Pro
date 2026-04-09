@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.AttendanceCheckDTO;
 import com.cloudflow.hr.domain.dto.AttendanceRecordQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceSupplementDTO;
@@ -15,9 +16,11 @@ import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.SchedulePlanMapper;
 import com.cloudflow.hr.mapper.ShiftMapper;
 import com.cloudflow.hr.service.impl.AttendanceServiceImpl;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -62,6 +65,10 @@ class AttendanceServiceTest {
     
     @BeforeEach
     void setUp() {
+        UserContext.setUserId(1001L);
+        UserContext.setUserName("tester");
+        UserContext.setTenantId(1L);
+
         // 准备测试数据
         testEmployee = new Employee();
         testEmployee.setId(1L);
@@ -72,6 +79,7 @@ class AttendanceServiceTest {
         
         testShift = new Shift();
         testShift.setId(1L);
+        testShift.setTenantId(1L);
         testShift.setShiftCode("STANDARD");
         testShift.setShiftName("标准班");
         testShift.setStartTime(LocalTime.of(9, 0));
@@ -87,6 +95,11 @@ class AttendanceServiceTest {
         testSchedulePlan.setShiftId(1L);
         testSchedulePlan.setScheduleDate(LocalDate.now());
         testSchedulePlan.setStatus("PUBLISHED");
+    }
+
+    @AfterEach
+    void tearDown() {
+        UserContext.clear();
     }
     
     /**
@@ -139,7 +152,7 @@ class AttendanceServiceTest {
         HrBusinessException exception = assertThrows(HrBusinessException.class, 
                 () -> attendanceService.checkIn(dto));
         
-        assertTrue(exception.getMessage().contains("GPS定位超出允许范围"));
+        assertTrue(exception.getMessage().contains("超出允许范围"));
         
         // 验证没有插入打卡记录
         verify(attendanceRecordMapper, never()).insert(any(AttendanceRecord.class));
@@ -193,7 +206,8 @@ class AttendanceServiceTest {
         HrBusinessException exception = assertThrows(HrBusinessException.class, 
                 () -> attendanceService.checkIn(dto));
         
-        assertTrue(exception.getMessage().contains("WiFi SSID不在白名单中"));
+        assertTrue(exception.getMessage().contains("WiFi SSID"));
+        assertTrue(exception.getMessage().contains("白名单"));
         
         // 验证没有插入打卡记录
         verify(attendanceRecordMapper, never()).insert(any(AttendanceRecord.class));
@@ -235,7 +249,7 @@ class AttendanceServiceTest {
      * 测试没有排班时打卡
      */
     @Test
-    void testCheckIn_NoSchedulePlan_ThrowsException() {
+    void testCheckIn_NoSchedulePlan_AllowsTemporaryCheckIn() {
         // 准备测试数据
         AttendanceCheckDTO dto = new AttendanceCheckDTO();
         dto.setEmployeeId(1L);
@@ -248,14 +262,17 @@ class AttendanceServiceTest {
         when(attendanceRecordMapper.selectByEmployeeAndDate(any(), any(), any())).thenReturn(null);
         when(schedulePlanMapper.selectOne(any())).thenReturn(null); // 没有排班
         
-        // 执行测试并验证异常
-        HrBusinessException exception = assertThrows(HrBusinessException.class, 
-                () -> attendanceService.checkIn(dto));
-        
-        assertTrue(exception.getMessage().contains("没有排班"));
-        
-        // 验证没有插入打卡记录
-        verify(attendanceRecordMapper, never()).insert(any(AttendanceRecord.class));
+        when(attendanceRecordMapper.insert(any(AttendanceRecord.class))).thenReturn(1);
+
+        // 执行测试
+        assertDoesNotThrow(() -> attendanceService.checkIn(dto));
+
+        // 验证：没有排班时也允许按正常打卡入库
+        ArgumentCaptor<AttendanceRecord> captor = ArgumentCaptor.forClass(AttendanceRecord.class);
+        verify(attendanceRecordMapper, times(1)).insert(captor.capture());
+        AttendanceRecord savedRecord = captor.getValue();
+        assertEquals("NORMAL", savedRecord.getStatus());
+        assertNull(savedRecord.getShiftId());
     }
     
     /**
@@ -334,5 +351,23 @@ class AttendanceServiceTest {
         assertEquals("NORMAL", result.getAttendanceStatus());
         assertNotNull(result.getCheckInRecord());
         assertNotNull(result.getCheckOutRecord());
+    }
+
+    /**
+     * 测试无排班且无打卡记录时的每日考勤状态
+     */
+    @Test
+    void testGetDailyAttendance_NoScheduleAndNoRecords_NotAbsent() {
+        when(employeeMapper.selectById(1L)).thenReturn(testEmployee);
+        when(attendanceRecordMapper.selectByEmployeeAndDateAll(any(), any())).thenReturn(new ArrayList<>());
+        when(schedulePlanMapper.selectOne(any())).thenReturn(null);
+
+        AttendanceDailyVO result = attendanceService.getDailyAttendance(1L, LocalDate.now());
+
+        assertNotNull(result);
+        assertEquals("NORMAL", result.getAttendanceStatus());
+        assertNull(result.getShiftId());
+        assertNull(result.getCheckInRecord());
+        assertNull(result.getCheckOutRecord());
     }
 }
