@@ -6,6 +6,7 @@ import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.LeaveApplicationCreateDTO;
+import com.cloudflow.hr.domain.dto.LeaveQuotaAdjustDTO;
 import com.cloudflow.hr.domain.dto.OvertimeApplicationCreateDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.LeaveApplication;
@@ -328,6 +329,55 @@ class LeaveAndOvertimeServiceTest {
     }
 
     @Test
+    void testSubmitCompensatoryLeaveApplicationPrefersExpiringBucketBeforeNonExpiringBucket() {
+        LeaveApplication application = buildCompensatoryLeaveApplication("DRAFT");
+        LeaveQuota permanentBucket = buildLeaveQuotaForYear(2026, new BigDecimal("5.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        permanentBucket.setId(803L);
+        permanentBucket.setLeaveTypeId(401L);
+        permanentBucket.setExpiryDate(null);
+
+        LeaveQuota expiringBucket = buildLeaveQuotaForYear(2025, new BigDecimal("2.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        expiringBucket.setId(804L);
+        expiringBucket.setLeaveTypeId(401L);
+        expiringBucket.setExpiryDate(LocalDate.of(2026, 4, 15));
+
+        when(leaveApplicationMapper.selectById(11L)).thenReturn(application);
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(java.util.List.of(permanentBucket, expiringBucket));
+        when(leaveQuotaMapper.selectById(803L)).thenReturn(permanentBucket);
+        when(leaveQuotaMapper.selectById(804L)).thenReturn(expiringBucket);
+        when(workflowProcessKeyProperties.getLeave()).thenReturn("leave_request");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok("proc-comp-leave-002"));
+
+        leaveService.submitLeaveApplication(11L);
+
+        assertEquals(new BigDecimal("2.00"), expiringBucket.getFrozenQuota());
+        assertEquals(BigDecimal.ZERO.setScale(2), expiringBucket.getAvailableQuota().setScale(2));
+        assertEquals(new BigDecimal("1.00"), permanentBucket.getFrozenQuota());
+        assertEquals(new BigDecimal("4.00"), permanentBucket.getAvailableQuota());
+    }
+
+    @Test
+    void testCreateCompensatoryLeaveApplicationRejectsQuotaExpiringBeforeLeaveEnds() {
+        LeaveQuota expiringBucket = buildLeaveQuotaForYear(2026, new BigDecimal("4.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+        expiringBucket.setId(805L);
+        expiringBucket.setLeaveTypeId(401L);
+        expiringBucket.setExpiryDate(LocalDate.of(2026, 4, 10));
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(java.util.List.of(expiringBucket));
+
+        InsufficientQuotaException exception = assertThrows(
+                InsufficientQuotaException.class,
+                () -> leaveService.createLeaveApplication(buildCrossExpiryCompensatoryLeaveCreateDto())
+        );
+
+        assertNotNull(exception);
+        verify(leaveApplicationMapper, times(0)).insert(any(LeaveApplication.class));
+    }
+
+    @Test
     void testApproveCompensatoryLeaveApplicationConsumesStoredQuotaAllocation() {
         LeaveApplication application = buildCompensatoryLeaveApplication("APPROVING");
         application.setQuotaAllocation("{\"801\":2.00,\"802\":1.00}");
@@ -355,6 +405,56 @@ class LeaveAndOvertimeServiceTest {
         assertEquals(new BigDecimal("2.00"), firstBucket.getUsedQuota());
         assertEquals(BigDecimal.ZERO.setScale(2), secondBucket.getFrozenQuota().setScale(2));
         assertEquals(new BigDecimal("1.00"), secondBucket.getUsedQuota());
+    }
+
+    @Test
+    void testAdjustCompensatoryLeaveQuotaCreatesBucket() {
+        AtomicReference<LeaveQuota> stored = new AtomicReference<>();
+        LeaveQuotaAdjustDTO dto = new LeaveQuotaAdjustDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(401L);
+        dto.setYear(2026);
+        dto.setAdjustmentAmount(new BigDecimal("3.50"));
+        dto.setExpiryDate(LocalDate.of(2026, 7, 31));
+
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(null);
+        when(leaveQuotaMapper.insert(any(LeaveQuota.class))).thenAnswer(invocation -> {
+            LeaveQuota quota = invocation.getArgument(0);
+            stored.set(quota);
+            return 1;
+        });
+
+        leaveService.adjustLeaveQuota(dto);
+
+        assertEquals(new BigDecimal("3.50"), stored.get().getTotalQuota());
+        assertEquals(new BigDecimal("3.50"), stored.get().getAvailableQuota());
+        assertEquals(LocalDate.of(2026, 7, 31), stored.get().getExpiryDate());
+    }
+
+    @Test
+    void testAdjustCompensatoryLeaveQuotaRejectsReduceBeyondAvailable() {
+        LeaveQuotaAdjustDTO dto = new LeaveQuotaAdjustDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(401L);
+        dto.setYear(2026);
+        dto.setAdjustmentAmount(new BigDecimal("-3.50"));
+        dto.setExpiryDate(LocalDate.of(2026, 7, 31));
+
+        LeaveQuota bucket = buildLeaveQuotaForYear(2026, new BigDecimal("5.00"), new BigDecimal("2.00"), BigDecimal.ZERO);
+        bucket.setLeaveTypeId(401L);
+        bucket.setExpiryDate(LocalDate.of(2026, 7, 31));
+        bucket.setAvailableQuota(new BigDecimal("3.00"));
+
+        when(leaveTypeMapper.selectById(401L)).thenReturn(buildCompensatoryLeaveType());
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(bucket);
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> leaveService.adjustLeaveQuota(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("可用额度不足"));
     }
 
     @Test
@@ -629,6 +729,18 @@ class LeaveAndOvertimeServiceTest {
         dto.setDuration(new BigDecimal("3.00"));
         dto.setUnit("HOUR");
         dto.setReason("补休");
+        return dto;
+    }
+
+    private LeaveApplicationCreateDTO buildCrossExpiryCompensatoryLeaveCreateDto() {
+        LeaveApplicationCreateDTO dto = new LeaveApplicationCreateDTO();
+        dto.setEmployeeId(1L);
+        dto.setLeaveTypeId(401L);
+        dto.setStartTime(LocalDateTime.of(2026, 4, 10, 22, 0));
+        dto.setEndTime(LocalDateTime.of(2026, 4, 11, 2, 0));
+        dto.setDuration(new BigDecimal("4.00"));
+        dto.setUnit("HOUR");
+        dto.setReason("璺ㄨ繃棰濆害杩囨湡鏃ョ殑璋冧紤");
         return dto;
     }
 

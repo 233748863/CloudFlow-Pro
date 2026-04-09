@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Search, X, Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { toast } from 'sonner';
 import { getUserList, addUser, updateUser, deleteUser, getRoleList, getDeptTree } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
@@ -257,15 +258,9 @@ export const UserList = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
-                    <Loader2 className="animate-spin inline mr-2" size={18} />加载中...
-                  </td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载用户数据..." />
               ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">暂无数据</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={8} title="暂无用户数据" />
               ) : (
                 users.map((user) => (
                   <tr key={user.userId} className="hover:bg-slate-50">

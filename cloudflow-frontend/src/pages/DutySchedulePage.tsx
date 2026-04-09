@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 /** 值班排班页面 */
 export const DutySchedulePage: React.FC = () => {
@@ -132,9 +133,9 @@ export const DutySchedulePage: React.FC = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div></td></tr>
+                <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载排班记录..." />
               ) : list.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">暂无排班记录</td></tr>
+                <WorkspaceTableStateRow colSpan={9} title="暂无排班记录" />
               ) : list.map(item => (
                 <tr key={item.scheduleId} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm text-slate-900 font-medium">{item.title}</td>

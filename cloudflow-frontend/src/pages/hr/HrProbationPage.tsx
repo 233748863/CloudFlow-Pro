@@ -13,6 +13,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import {
   HrEmployee,
   ProbationConfirmation,
@@ -457,14 +458,10 @@ export const HrProbationPage: React.FC = () => {
                 );
               })}
               {!loading && !filteredEmployees.length && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                  当前搜索条件下没有匹配员工
-                </div>
+                <WorkspaceInlineState title="当前搜索条件下没有匹配员工" />
               )}
               {loading && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                  正在加载员工列表...
-                </div>
+                <WorkspaceInlineState type="loading" title="正在加载员工列表..." />
               )}
             </div>
           </div>
@@ -558,14 +555,10 @@ export const HrProbationPage: React.FC = () => {
             })}
 
             {!applications.length && !listLoading && (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                {selectedEmployee ? '该员工暂无转正申请' : '先从左侧选择员工'}
-              </div>
+              <WorkspaceInlineState title={selectedEmployee ? '该员工暂无转正申请' : '先从左侧选择员工'} />
             )}
             {listLoading && (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                正在加载转正申请...
-              </div>
+              <WorkspaceInlineState type="loading" title="正在加载转正申请..." />
             )}
           </div>
         </WorkspaceSectionCard>
@@ -699,7 +692,7 @@ export const HrProbationPage: React.FC = () => {
             </div>
           )}
 
-          {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载申请详情...</div>}
+          {detailLoading && <WorkspaceInlineState type="loading" title="正在加载申请详情..." className="mt-4 py-4" />}
         </WorkspaceSectionCard>
       </div>
 

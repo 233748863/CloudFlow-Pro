@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPostList, addPost, updatePost, deletePost, type SysPost } from '../../services/api/system';
 import { Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 export const PostList = () => {
   const [posts, setPosts] = useState<SysPost[]>([]);
@@ -114,9 +115,9 @@ export const PostList = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2" size={18} />加载中...</td></tr>
+                <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载岗位数据..." />
               ) : posts.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500">暂无数据</td></tr>
+                <WorkspaceTableStateRow colSpan={7} title="暂无岗位数据" />
               ) : posts.map(post => (
                 <tr key={post.postId} className="hover:bg-slate-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{post.postId}</td>

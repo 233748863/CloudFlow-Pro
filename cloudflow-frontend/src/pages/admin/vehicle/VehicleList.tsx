@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import { Button, Card, CardContent, DatePicker, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableActionHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceEmptyPanel, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   getVehicleList, addVehicle, updateVehicle, deleteVehicle,
   getVehicleStats, SysVehicle, VehicleStats
@@ -381,21 +382,20 @@ const VehicleList: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center h-32">
-                      <div className="flex items-center justify-center gap-2 text-gray-400">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-pink-400" />
-                        加载中...
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <WorkspaceTableStateRow colSpan={10} type="loading" title="正在加载车辆数据..." />
                 ) : vehicles.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} className="text-center h-32">
-                      <div className="flex flex-col items-center gap-2 text-gray-400">
-                        <Car size={40} strokeWidth={1} />
-                        <span>暂无车辆数据</span>
-                        <Button variant="outline" size="sm" onClick={handleAdd}>添加第一辆车</Button>
+                      <div className="mx-auto max-w-md py-6">
+                        <WorkspaceEmptyPanel
+                          variant="glass"
+                          icon={<Car size={26} strokeWidth={1.6} />}
+                          title="暂无车辆数据"
+                          description="新增第一辆车辆后，这里会展示车辆状态、里程、保险到期和停放位置。"
+                        />
+                        <div className="mt-4">
+                          <Button variant="outline" size="sm" onClick={handleAdd}>添加第一辆车</Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>

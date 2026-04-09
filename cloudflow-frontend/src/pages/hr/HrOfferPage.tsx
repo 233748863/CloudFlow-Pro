@@ -13,6 +13,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import {
   Candidate,
   Offer,
@@ -621,15 +622,18 @@ export const HrOfferPage: React.FC = () => {
               })}
 
               {!filteredOffers.length && !listLoading && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
-                  当前筛选条件下没有 Offer 记录。
-                </div>
+                <WorkspaceInlineState
+                  title="当前筛选条件下没有 Offer 记录。"
+                  className="py-12"
+                />
               )}
 
               {(loading || listLoading) && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
-                  正在加载 Offer 列表...
-                </div>
+                <WorkspaceInlineState
+                  type="loading"
+                  title="正在加载 Offer 列表..."
+                  className="py-12"
+                />
               )}
             </div>
           </div>
@@ -746,9 +750,7 @@ export const HrOfferPage: React.FC = () => {
               </div>
             )}
 
-            {detailLoading && (
-              <div className="mt-4 text-sm text-slate-400">正在加载 Offer 详情...</div>
-            )}
+            {detailLoading && <WorkspaceInlineState type="loading" title="正在加载 Offer 详情..." className="mt-4 py-4" />}
           </WorkspaceSectionCard>
 
           <WorkspaceSectionCard

@@ -4,6 +4,7 @@ import lombok.Data;
 
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * 假期额度调整DTO
@@ -34,6 +35,12 @@ public class LeaveQuotaAdjustDTO {
      */
     @NotNull(message = "调整额度不能为空")
     private BigDecimal adjustmentAmount;
+
+    /**
+     * 额度桶过期日期
+     * 调休按过期日分桶时必须传入
+     */
+    private LocalDate expiryDate;
     
     /**
      * 调整原因

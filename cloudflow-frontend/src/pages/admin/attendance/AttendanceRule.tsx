@@ -2,6 +2,7 @@
 import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { useMount } from '@/hooks/useMount';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DatePicker, Input, Label, Switch, Textarea } from '@/components/ui';
+import { WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
 import { toast } from 'sonner';
 
 const WEEKDAYS = [
@@ -96,7 +97,9 @@ const AttendanceRulePage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">加载中...</div>
+        <div className="w-full max-w-3xl px-6">
+          <WorkspaceStatusPanel title="正在加载考勤规则..." icon={null} className="py-12" iconWrapClassName="hidden" />
+        </div>
       </div>
     );
   }
@@ -106,29 +109,37 @@ const AttendanceRulePage: React.FC = () => {
       <div className="p-6">
         <Card className="max-w-3xl mx-auto">
           <CardContent className="text-center py-10">
-            <p className="text-gray-500 mb-4">暂无考勤规则</p>
-            <Button onClick={() => {
-              setRule({
-                ruleName: '默认考勤组',
-                checkInTime: '09:00:00',
-                checkOutTime: '18:00:00',
-                elasticMinutes: 30,
-                workDays: '[1,2,3,4,5]',
-                lunchBreakStart: '12:00:00',
-                lunchBreakEnd: '13:00:00',
-                overtimeEnabled: 0,
-                overtimeMinMinutes: 30,
-                lateToleranceCount: 3,
-                severeLateMinutes: 60,
-                absentMinutes: 240,
-                photoRequired: 0,
-                enabled: 1,
-                radius: 200
-              });
-              setEditing(true);
-            }}>
-              创建考勤规则
-            </Button>
+            <WorkspaceStatusPanel
+              title="暂无考勤规则"
+              description="创建第一套考勤规则后，这里会统一维护上下班时间、工作日、加班与迟到口径。"
+              icon={null}
+              className="py-12"
+              iconWrapClassName="hidden"
+              actions={(
+                <Button onClick={() => {
+                  setRule({
+                    ruleName: '默认考勤组',
+                    checkInTime: '09:00:00',
+                    checkOutTime: '18:00:00',
+                    elasticMinutes: 30,
+                    workDays: '[1,2,3,4,5]',
+                    lunchBreakStart: '12:00:00',
+                    lunchBreakEnd: '13:00:00',
+                    overtimeEnabled: 0,
+                    overtimeMinMinutes: 30,
+                    lateToleranceCount: 3,
+                    severeLateMinutes: 60,
+                    absentMinutes: 240,
+                    photoRequired: 0,
+                    enabled: 1,
+                    radius: 200
+                  });
+                  setEditing(true);
+                }}>
+                  创建考勤规则
+                </Button>
+              )}
+            />
           </CardContent>
         </Card>
       </div>

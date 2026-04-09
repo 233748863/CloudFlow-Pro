@@ -4,6 +4,7 @@ import { dictTypeApi, dictDataApi, SysDictType, SysDictData } from '../../servic
 import { toast } from 'sonner';
 import { Button, Card, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 /** 字典管理页面 */
 export const DictPage: React.FC = () => {
@@ -182,11 +183,9 @@ export const DictPage: React.FC = () => {
           {/* 类型列表 */}
           <div className="max-h-[600px] overflow-y-auto">
             {typeLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500"></div>
-              </div>
+              <WorkspaceInlineState type="loading" title="正在加载字典类型..." className="py-10" />
             ) : filteredTypes.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-sm">暂无字典类型</div>
+              <WorkspaceInlineState icon={<BookOpen size={22} />} title="暂无字典类型" className="py-10" />
             ) : (
               filteredTypes.map(item => (
                 <div
@@ -245,19 +244,11 @@ export const DictPage: React.FC = () => {
 
           {/* 数据内容区 */}
           {!selectedType ? (
-            <div className="text-center py-20 text-slate-400">
-              <Tag size={48} className="mx-auto mb-3 opacity-20" />
-              <p className="text-sm">请在左侧选择一个字典类型</p>
-            </div>
+            <WorkspaceInlineState icon={<Tag size={28} />} title="请先选择一个字典类型" className="py-20" />
           ) : dataLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-            </div>
+            <WorkspaceInlineState type="loading" title="正在加载字典数据..." className="py-16" />
           ) : dictDataList.length === 0 ? (
-            <div className="text-center py-16 text-slate-400">
-              <Tag size={40} className="mx-auto mb-2 opacity-20" />
-              <p className="text-sm">暂无字典数据</p>
-            </div>
+            <WorkspaceInlineState icon={<Tag size={26} />} title="暂无字典数据" className="py-16" />
           ) : (
             <table className="w-full">
               <TableHeader>

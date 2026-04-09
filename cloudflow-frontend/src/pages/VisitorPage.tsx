@@ -43,7 +43,7 @@ import {
   WorkspaceResultCard,
   WorkspaceWorkbenchCard,
 } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 const STATUS_MAP: Record<string, string> = {
   PENDING: '待确认',
@@ -479,25 +479,18 @@ export const VisitorPage: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow className="border-white/60 hover:bg-transparent">
-                        <TableCell colSpan={8} className="px-4 py-16">
-                          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-pink-200 border-b-pink-500" />
-                            正在加载访客记录...
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <WorkspaceTableStateRow
+                        type="loading"
+                        colSpan={8}
+                        title="正在加载访客记录..."
+                      />
                     ) : list.length === 0 ? (
-                      <TableRow className="border-white/60 hover:bg-transparent">
-                        <TableCell colSpan={8} className="px-4 py-6">
-                          <WorkspaceEmptyPanel
-                            variant="glass"
-                            icon={<UserCheck size={26} />}
-                            title="暂无访客记录"
-                            description="新增预约后，这里会展示被访人、通行证、签到签退和取消动作。"
-                          />
-                        </TableCell>
-                      </TableRow>
+                      <WorkspaceTableStateRow
+                        colSpan={8}
+                        icon={<UserCheck size={26} />}
+                        title="暂无访客记录"
+                        description="新增预约后，这里会展示被访人、通行证、签到签退和取消动作。"
+                      />
                     ) : (
                       list.map((item) => {
                         const tone = getStatusTone(item.status || 'PENDING');

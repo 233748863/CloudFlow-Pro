@@ -7,6 +7,7 @@ import {
 } from '@/services/api/log';
 import { DatePicker, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 /**
  * 审计日志页面
@@ -286,13 +287,9 @@ export const AuditLogPage: React.FC = () => {
             </TableHeader>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400">加载中...</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载审计日志..." />
               ) : records.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400">暂无数据</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={9} title="暂无审计日志" />
               ) : (
                 records.map((log, idx) => (
                   <tr key={log.auditId} className="border-t border-slate-50 hover:bg-slate-50/50 transition">

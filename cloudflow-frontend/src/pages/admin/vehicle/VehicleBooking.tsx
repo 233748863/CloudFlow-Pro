@@ -4,7 +4,7 @@ import {
   CheckCircle, AlertCircle, ChevronRight, Search, ArrowLeftRight
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card, CardContent, CardHeader, CardTitle, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
 import { toBackendDateString } from '@/utils/dateFormat';
 import { useAuth } from '@/context/AuthContext';
@@ -12,8 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { FileUpload } from '@/components/FileUpload';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
-import { WorkspaceHeroCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceBackdrop, WorkspaceEmptyPanel, WorkspaceStatusPage } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceHeroCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 
 /** 车辆卡片组件 */
 const VehicleCard: React.FC<{
@@ -204,49 +204,53 @@ export const VehicleBooking: React.FC = () => {
   // 加载状态
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-16">
-        <div className="text-center space-y-3">
-          <Loader2 className="animate-spin mx-auto text-pink-400" size={32} />
-          <p className="text-gray-500">正在加载可用车辆...</p>
-        </div>
-      </div>
+      <WorkspaceStatusPage
+        icon={<Loader2 className="animate-spin text-pink-400" size={32} />}
+        title="正在加载可用车辆"
+        description="正在同步当前时段可预约的车辆资源，请稍候。"
+        iconWrapClassName="text-pink-500"
+      />
     );
   }
 
   // 错误状态
   if (error) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center space-y-3">
-              <AlertCircle size={40} className="mx-auto text-red-400" />
-              <p className="text-red-500">加载失败: {error.message}</p>
-              <Button variant="outline" onClick={() => window.location.reload()}>重试</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <WorkspaceStatusPage
+        icon={<AlertCircle size={34} className="text-rose-500" />}
+        title="加载车辆失败"
+        description={`当前无法读取可用车辆信息：${error.message}`}
+        iconWrapClassName="text-rose-500"
+        actions={(
+          <Button
+            variant="outline"
+            className="rounded-2xl border-white/85 bg-white/80 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white"
+            onClick={() => window.location.reload()}
+          >
+            重试
+          </Button>
+        )}
+      />
     );
   }
 
   // 无可用车辆
   if (!vehicles || vehicles.length === 0) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <Card>
-          <CardContent className="pt-8 pb-8">
-            <div className="text-center space-y-3">
-              <Car size={48} className="mx-auto text-gray-300" strokeWidth={1} />
-              <p className="text-gray-500 text-lg">暂无可用车辆</p>
-              <p className="text-gray-400 text-sm">所有车辆当前均已被预约或不可用</p>
-              <Button variant="outline" onClick={() => navigate('/admin/vehicle')}>
-                查看车辆列表
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <WorkspaceStatusPage
+        icon={<Car size={34} className="text-slate-400" strokeWidth={1.8} />}
+        title="暂无可用车辆"
+        description="所有车辆当前均已被预约或暂不可用，你也可以先前往车辆列表查看库存状态。"
+        actions={(
+          <Button
+            variant="outline"
+            className="rounded-2xl border-white/85 bg-white/80 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white"
+            onClick={() => navigate('/admin/vehicle')}
+          >
+            查看车辆列表
+          </Button>
+        )}
+      />
     );
   }
 
@@ -301,8 +305,6 @@ export const VehicleBooking: React.FC = () => {
       icon: <FileText size={17} />,
     },
   ];
-
-  const glassCardClass = 'rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.76))] shadow-[0_18px_44px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl';
 
   return (
     <div className="relative min-h-screen pb-6">
@@ -362,17 +364,17 @@ export const VehicleBooking: React.FC = () => {
           <div className="space-y-3">
             {/* 步骤1：选择车辆 */}
             {step === 0 && (
-              <Card className={glassCardClass}>
-                <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                    <Car size={20} />
-                    选择车辆
-                    <span className="ml-2 text-sm font-normal text-slate-400">
-                      共 {vehicles.length} 辆可用
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <WorkspaceSectionCard
+                title="选择车辆"
+                description="先挑选合适的公务车，再继续填写用车信息。"
+                headerAside={(
+                  <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    共 {vehicles.length} 辆可用
+                  </div>
+                )}
+                glowClassName="bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.09),transparent_58%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.08),transparent_52%)]"
+                bodyClassName="space-y-4"
+              >
                   {/* 搜索和筛选 */}
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1 relative">
@@ -429,20 +431,17 @@ export const VehicleBooking: React.FC = () => {
                       <ChevronRight size={16} />
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+              </WorkspaceSectionCard>
             )}
 
             {/* 步骤2：填写信息 */}
             {step === 1 && (
-              <Card className={glassCardClass}>
-                <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                    <FileText size={20} />
-                    填写用车信息
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-5">
+              <WorkspaceSectionCard
+                title="填写用车信息"
+                description="补充时间、目的地、乘车人数和申请说明。"
+                glowClassName="bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.08),transparent_58%),radial-gradient(circle_at_top_right,rgba(251,191,36,0.08),transparent_52%)]"
+                bodyClassName="space-y-5"
+              >
                   {/* 已选车辆提示 */}
                   {selectedVehicle && (
                     <div className="flex items-center gap-3 rounded-[18px] border border-pink-100 bg-[linear-gradient(135deg,rgba(253,242,248,0.92),rgba(255,255,255,0.82))] p-3 shadow-[0_10px_24px_rgba(236,72,153,0.06)]">
@@ -607,20 +606,17 @@ export const VehicleBooking: React.FC = () => {
                       <ChevronRight size={16} />
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+              </WorkspaceSectionCard>
             )}
 
             {/* 步骤3：确认提交 */}
             {step === 2 && (
-              <Card className={glassCardClass}>
-                <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                    <CheckCircle size={20} />
-                    确认申请信息
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-5">
+              <WorkspaceSectionCard
+                title="确认申请信息"
+                description="提交前最后确认车辆、时间和申请内容。"
+                glowClassName="bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.08),transparent_58%),radial-gradient(circle_at_top_right,rgba(244,114,182,0.08),transparent_52%)]"
+                bodyClassName="space-y-5"
+              >
                   {/* 信息汇总 */}
                   <div className="divide-y overflow-hidden rounded-[22px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] shadow-[0_12px_26px_rgba(15,23,42,0.04)]">
                     <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
@@ -684,18 +680,19 @@ export const VehicleBooking: React.FC = () => {
                       )}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+              </WorkspaceSectionCard>
             )}
           </div>
 
           {/* 右侧摘要栏 */}
           <div className="space-y-4 lg:sticky lg:top-24 h-fit">
-            <Card className={glassCardClass}>
-              <CardHeader className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] pb-3">
-                <CardTitle className="text-base text-slate-900">申请摘要</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <WorkspaceSectionCard
+              title="申请摘要"
+              description="跟随步骤查看当前已填写内容和提醒。"
+              eyebrow="Summary"
+              glowClassName="bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.08),transparent_60%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.08),transparent_52%)]"
+              bodyClassName="space-y-4"
+            >
                 <div>
                   <div className="mb-2 text-xs text-slate-400">当前步骤</div>
                   <div className="space-y-2">
@@ -747,8 +744,7 @@ export const VehicleBooking: React.FC = () => {
                 <div className="rounded-[18px] border border-white/80 bg-white/72 p-3 text-xs text-slate-600 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
                   {stepTips[step]}
                 </div>
-              </CardContent>
-            </Card>
+            </WorkspaceSectionCard>
           </div>
         </div>
       </div>

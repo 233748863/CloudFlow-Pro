@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Shield, ChevronRight, ChevronDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { toast } from 'sonner';
 import { getRoleList, addRole, updateRole, deleteRole, getMenuList, getDeptTree } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
@@ -308,13 +309,9 @@ export const RoleList = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">加载中...</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载角色数据..." />
               ) : roles.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">暂无数据</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={7} title="暂无角色数据" />
               ) : (
                 roles.map((role) => (
                   <tr key={role.roleId} className="hover:bg-slate-50">

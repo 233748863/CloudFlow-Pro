@@ -4,6 +4,7 @@ import { consumableApi, Consumable } from '@/services/api/consumable';
 import { toast } from 'sonner';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { TableHead, TableHeader, TableActionHead } from '@/components/ui';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 
@@ -196,17 +197,7 @@ const ConsumablePage: React.FC = () => {
 
       {/* 列表 */}
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-pink-500" />
-          </div>
-        ) : list.length === 0 ? (
-          <div className="text-center py-20 text-slate-400">
-            <Package size={48} className="mx-auto mb-3 opacity-50" />
-            <p>暂无耗材数据</p>
-          </div>
-        ) : (
-          <table className="w-full">
+        <table className="w-full">
             <TableHeader>
               <tr>
                 <TableHead className="text-left px-4 py-3">名称</TableHead>
@@ -219,7 +210,11 @@ const ConsumablePage: React.FC = () => {
               </tr>
             </TableHeader>
             <tbody>
-              {list.map(item => (
+              {loading ? (
+                <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载耗材数据..." />
+              ) : list.length === 0 ? (
+                <WorkspaceTableStateRow colSpan={7} title="暂无耗材数据" icon={<Package size={24} />} />
+              ) : list.map(item => (
                 <tr key={item.consumableId} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm text-slate-900 font-medium">{item.name}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{item.model || '-'}</td>
@@ -277,7 +272,6 @@ const ConsumablePage: React.FC = () => {
               ))}
             </tbody>
           </table>
-        )}
 
         {/* 分页 */}
         {total > pageSize && (

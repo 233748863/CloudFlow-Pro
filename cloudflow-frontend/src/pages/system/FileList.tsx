@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import { deleteFile, getFileList, getFileStorageSummary, refreshFileStorageSummary, uploadFile } from '../../services/api/file';
@@ -320,17 +321,9 @@ export const FileList = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                    加载中...
-                  </td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载文件数据..." />
               ) : data.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                    暂无文件数据
-                  </td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={6} title="暂无文件数据" />
               ) : (
                 data.map((file) => (
                   <tr key={file.fileId} className="hover:bg-slate-50/50 transition-colors group">

@@ -3,6 +3,7 @@ import { RefreshCw, Server, Database, Activity, Key, Loader2, ChevronRight, Chev
 import { toast } from 'sonner';
 import { getCacheInfo, getCacheKeys, getCacheKeyValue, deleteCacheKey, deleteCacheByPrefix, CacheKeyDetail } from '../../services/api/system';
 import { Input, TableHead, TableHeader } from '@/components/ui';
+import { WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 // ==================== 类型定义 ====================
 
@@ -374,9 +375,7 @@ export const CacheMonitor = () => {
       {activeTab === 'overview' && (
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex-1 flex items-center justify-center py-20">
-              <Loader2 className="animate-spin text-pink-500" size={32} />
-            </div>
+            <WorkspaceInlineState type="loading" title="正在加载缓存概览..." className="py-20" />
           ) : (
             <>
               {/* 概览卡片 */}
@@ -423,7 +422,7 @@ export const CacheMonitor = () => {
                   </div>
                   <div className="p-4">
                     {commandStats.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-8">暂无命令统计数据</p>
+                      <WorkspaceInlineState title="暂无命令统计数据" className="py-8" />
                     ) : (
                       <div className="space-y-3">
                         {commandStats.slice(0, 10).map((cmd) => {
@@ -463,7 +462,7 @@ export const CacheMonitor = () => {
                     </TableHeader>
                     <tbody className="divide-y divide-slate-200">
                       {keyGroups.length === 0 ? (
-                        <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400 text-sm">暂无 Key 数据</td></tr>
+                        <WorkspaceTableStateRow colSpan={3} title="暂无 Key 数据" variant="default" />
                       ) : keyGroups.map(group => {
                         const pct = dbSize > 0 ? ((group.count / dbSize) * 100).toFixed(1) : '0';
                         return (
@@ -521,13 +520,9 @@ export const CacheMonitor = () => {
             {/* Key 树列表 */}
             <div className="flex-1 overflow-y-auto p-1">
               {keysLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="animate-spin text-pink-400" size={20} />
-                </div>
+                <WorkspaceInlineState type="loading" title="正在加载 Key 列表..." className="py-12" />
               ) : keyTree.length === 0 ? (
-                <div className="text-center py-12 text-sm text-slate-400">
-                  暂无 Key 数据
-                </div>
+                <WorkspaceInlineState title="暂无 Key 数据" className="py-12" />
               ) : (
                 keyTree.map((node, idx) => (
                   <KeyTreeNode
@@ -546,14 +541,9 @@ export const CacheMonitor = () => {
           {/* 右侧：Key 详情 */}
           <div className="flex-1 bg-white rounded-lg shadow-sm flex flex-col overflow-hidden">
             {!selectedKey ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-                <Eye size={48} className="mb-3 opacity-30" />
-                <p className="text-sm">选择左侧的 Key 查看详情</p>
-              </div>
+              <WorkspaceInlineState icon={<Eye size={28} />} title="选择左侧的 Key 查看详情" className="m-6 flex-1" />
             ) : detailLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="animate-spin text-pink-400" size={24} />
-              </div>
+              <WorkspaceInlineState type="loading" title="正在加载 Key 详情..." className="m-6 flex-1" />
             ) : keyDetail ? (
               <>
                 {/* 详情头部 */}

@@ -3,6 +3,7 @@ import { Laptop, LogOut, RefreshCw, RotateCcw, Search, ShieldAlert } from 'lucid
 import { toast } from 'sonner';
 import { Button, Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   forceLogoutOnlineUsers,
   getOnlineUserPage,
@@ -256,13 +257,9 @@ export const OnlineUserPage: React.FC = () => {
             </TableHeader>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">正在加载在线用户...</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载在线用户..." />
               ) : !records.length ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">暂无在线用户数据</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={9} title="暂无在线用户数据" />
               ) : records.map((item) => (
                 <tr key={item.token} className="border-t border-slate-100 hover:bg-slate-50/60">
                   <td className="px-4 py-3 align-top">

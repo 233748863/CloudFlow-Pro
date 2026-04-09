@@ -24,6 +24,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import { WorkspaceDialogShell, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   EmployeeInsurance,
   EmployeeSalary,
@@ -8252,15 +8253,18 @@ export const HrSalaryPage: React.FC = () => {
                     })}
 
                     {!filteredEmployeeSalaries.length && !employeeSalaryListLoading && (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
-                        当前筛选条件下没有命中在岗薪资记录。
-                      </div>
+                      <WorkspaceInlineState
+                        title="当前筛选条件下没有命中在岗薪资记录。"
+                        className="py-12"
+                      />
                     )}
 
                     {(loading || employeeSalaryListLoading) && (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
-                        正在加载员工薪资...
-                      </div>
+                      <WorkspaceInlineState
+                        type="loading"
+                        title="正在加载员工薪资..."
+                        className="py-12"
+                      />
                     )}
                   </div>
                 </div>
@@ -8425,11 +8429,7 @@ export const HrSalaryPage: React.FC = () => {
                               </TableRow>
                             ))}
                             {!employeeSalaryDetail?.items?.length && !employeeSalaryDetailLoading && (
-                              <TableRow>
-                                <TableCell colSpan={4} className="py-10 text-center text-slate-400">
-                                  当前员工薪资没有可展示的项目明细。
-                                </TableCell>
-                              </TableRow>
+                              <WorkspaceTableStateRow colSpan={4} title="当前员工薪资没有可展示的项目明细。" />
                             )}
                           </TableBody>
                         </Table>
@@ -8438,7 +8438,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
 
                   {employeeSalaryDetailLoading && (
-                    <div className="mt-4 text-sm text-slate-400">正在加载员工薪资详情...</div>
+                    <WorkspaceInlineState type="loading" title="正在加载员工薪资详情..." className="mt-4 py-4" />
                   )}
                 </Card>
 
@@ -8561,11 +8561,7 @@ export const HrSalaryPage: React.FC = () => {
                               </TableRow>
                             ))}
                             {!sortedEmployeeSalaryHistory.length && !employeeSalaryHistoryLoading && (
-                              <TableRow>
-                                <TableCell colSpan={4} className="py-10 text-center text-slate-400">
-                                  当前筛选条件下没有薪资档案记录。
-                                </TableCell>
-                              </TableRow>
+                              <WorkspaceTableStateRow colSpan={4} title="当前筛选条件下没有薪资档案记录。" />
                             )}
                           </TableBody>
                         </Table>
@@ -8574,7 +8570,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
 
                   {employeeSalaryHistoryLoading && (
-                    <div className="mt-4 text-sm text-slate-400">正在加载薪资档案历史...</div>
+                    <WorkspaceInlineState type="loading" title="正在加载薪资档案历史..." className="mt-4 py-4" />
                   )}
                 </Card>
 
@@ -8815,11 +8811,7 @@ export const HrSalaryPage: React.FC = () => {
                                   );
                                 })}
                                 {!hasInsuranceProfile && !employeeCompensationLoading && (
-                                  <TableRow>
-                                    <TableCell colSpan={4} className="py-10 text-center text-slate-400">
-                                      当前没有可展示的社保公积金拆分数据。
-                                    </TableCell>
-                                  </TableRow>
+                                  <WorkspaceTableStateRow colSpan={4} title="当前没有可展示的社保公积金拆分数据。" />
                                 )}
                               </TableBody>
                             </Table>
@@ -8904,11 +8896,7 @@ export const HrSalaryPage: React.FC = () => {
                                     </TableRow>
                                   ))}
                                   {!sortedEmployeeTaxDeductions.length && !employeeCompensationLoading && (
-                                    <TableRow>
-                                      <TableCell colSpan={3} className="py-10 text-center text-slate-400">
-                                        当前员工没有 ACTIVE 状态的专项扣除数据。
-                                      </TableCell>
-                                    </TableRow>
+                                    <WorkspaceTableStateRow colSpan={3} title="当前员工没有 ACTIVE 状态的专项扣除数据。" />
                                   )}
                                 </TableBody>
                               </Table>
@@ -8920,7 +8908,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
 
                   {employeeCompensationLoading && (
-                    <div className="mt-4 text-sm text-slate-400">正在加载五险一金与个税测算...</div>
+                    <WorkspaceInlineState type="loading" title="正在加载五险一金与个税测算..." className="mt-4 py-4" />
                   )}
                 </Card>
 
@@ -9133,11 +9121,7 @@ export const HrSalaryPage: React.FC = () => {
                               );
                             })}
                             {!employeeInsuranceLedgerRecords.length && !employeeInsuranceListLoading && (
-                              <TableRow>
-                                <TableCell colSpan={6} className="py-10 text-center text-slate-400">
-                                  当前筛选条件下没有社保台账记录。
-                                </TableCell>
-                              </TableRow>
+                              <WorkspaceTableStateRow colSpan={6} title="当前筛选条件下没有社保台账记录。" />
                             )}
                           </TableBody>
                         </Table>
@@ -9171,7 +9155,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
 
                   {employeeInsuranceListLoading && (
-                    <div className="mt-4 text-sm text-slate-400">正在加载员工社保台账...</div>
+                    <WorkspaceInlineState type="loading" title="正在加载员工社保台账..." className="mt-4 py-4" />
                   )}
                 </WorkspaceSectionCard>
 
@@ -9232,7 +9216,7 @@ export const HrSalaryPage: React.FC = () => {
                               <div className="mt-1 text-xs text-slate-400">{adjustmentTypeLabel(latestEmployeeAdjustment.adjustmentType)}</div>
                             </>
                           ) : (
-                            <div className="mt-2 text-sm text-slate-500">暂无调薪记录</div>
+                            <WorkspaceInlineState title="暂无调薪记录" className="mt-2 py-3" />
                           )}
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
@@ -9378,11 +9362,7 @@ export const HrSalaryPage: React.FC = () => {
                               );
                             })}
                             {!sortedEmployeeAdjustmentHistory.length && !employeeAdjustmentHistoryLoading && (
-                              <TableRow>
-                                <TableCell colSpan={6} className="py-10 text-center text-slate-400">
-                                  当前员工还没有调薪记录。
-                                </TableCell>
-                              </TableRow>
+                              <WorkspaceTableStateRow colSpan={6} title="当前员工还没有调薪记录。" />
                             )}
                           </TableBody>
                         </Table>
@@ -9391,7 +9371,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
 
                   {employeeAdjustmentHistoryLoading && (
-                    <div className="mt-4 text-sm text-slate-400">正在加载调薪履历...</div>
+                    <WorkspaceInlineState type="loading" title="正在加载调薪履历..." className="mt-4 py-4" />
                   )}
                 </WorkspaceSectionCard>
               </div>
@@ -9637,15 +9617,18 @@ export const HrSalaryPage: React.FC = () => {
                     })}
 
                     {!filteredAdjustments.length && !adjustmentListLoading && (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
-                        当前筛选条件下没有调薪记录。
-                      </div>
+                      <WorkspaceInlineState
+                        title="当前筛选条件下没有调薪记录。"
+                        className="py-12"
+                      />
                     )}
 
                     {(adjustmentListLoading || loading) && (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
-                        正在加载调薪申请...
-                      </div>
+                      <WorkspaceInlineState
+                        type="loading"
+                        title="正在加载调薪申请..."
+                        className="py-12"
+                      />
                     )}
                   </div>
                 </div>
@@ -9932,7 +9915,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
 
                   {adjustmentDetailLoading && (
-                    <div className="mt-4 text-sm text-slate-400">正在加载调薪详情...</div>
+                    <WorkspaceInlineState type="loading" title="正在加载调薪详情..." className="mt-4 py-4" />
                   )}
                 </WorkspaceSectionCard>
 
@@ -10115,13 +10098,7 @@ export const HrSalaryPage: React.FC = () => {
                           </TableCell>
                         </TableRow>
                       )})}
-                      {!salaryItems.length && !foundationLoading && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center text-slate-400">
-                            当前没有薪资项目数据。
-                          </TableCell>
-                        </TableRow>
-                      )}
+                      {!salaryItems.length && !foundationLoading && <WorkspaceTableStateRow colSpan={6} title="当前没有薪资项目数据。" />}
                     </TableBody>
                   </Table>
                 </div>
@@ -10372,13 +10349,7 @@ export const HrSalaryPage: React.FC = () => {
                                   </TableCell>
                                 </TableRow>
                               ))}
-                              {!structureLinkedEmployeeRows.length && (
-                                <TableRow>
-                                  <TableCell colSpan={5} className="py-10 text-center text-slate-400">
-                                    当前结构还没有在岗现薪样本。
-                                  </TableCell>
-                                </TableRow>
-                              )}
+                              {!structureLinkedEmployeeRows.length && <WorkspaceTableStateRow colSpan={5} title="当前结构还没有在岗现薪样本。" />}
                             </TableBody>
                           </Table>
                         </div>
@@ -10423,7 +10394,7 @@ export const HrSalaryPage: React.FC = () => {
                     )}
 
                     {structureDetailLoading && (
-                      <div className="text-sm text-slate-400">正在加载薪资结构详情...</div>
+                      <WorkspaceInlineState type="loading" title="正在加载薪资结构详情..." className="py-4" />
                     )}
                   </div>
                 </div>
@@ -10663,11 +10634,7 @@ export const HrSalaryPage: React.FC = () => {
                       );
                     })}
                     {!salaryGrades.length && !foundationLoading && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="py-10 text-center text-slate-400">
-                          当前还没有薪资等级数据，可以直接设置一条用于联调。
-                        </TableCell>
-                      </TableRow>
+                      <WorkspaceTableStateRow colSpan={7} title="当前还没有薪资等级数据，可以直接设置一条用于联调。" />
                     )}
                   </TableBody>
                 </Table>
@@ -10964,11 +10931,7 @@ export const HrSalaryPage: React.FC = () => {
                       );
                     })}
                     {!filteredInsuranceSchemes.length && !foundationLoading && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="py-10 text-center text-slate-400">
-                          当前筛选条件下没有社保方案数据。
-                        </TableCell>
-                      </TableRow>
+                      <WorkspaceTableStateRow colSpan={7} title="当前筛选条件下没有社保方案数据。" />
                     )}
                   </TableBody>
                 </Table>
@@ -11642,9 +11605,11 @@ export const HrSalaryPage: React.FC = () => {
         >
 
             {taxConfigDialogLoading ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
-                正在加载当前个税配置...
-              </div>
+              <WorkspaceInlineState
+                type="loading"
+                title="正在加载当前个税配置..."
+                className="px-6 py-16"
+              />
             ) : (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
@@ -12514,18 +12479,16 @@ export const HrSalaryPage: React.FC = () => {
                         );
                       })}
                       {!filteredEmployeeAllTaxDeductions.length && !taxDeductionListLoading && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center text-slate-400">
-                            当前筛选条件下没有专项扣除记录。
-                          </TableCell>
-                        </TableRow>
+                        <WorkspaceTableStateRow colSpan={6} title="当前筛选条件下没有专项扣除记录。" />
                       )}
                       {taxDeductionListLoading && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center text-slate-400">
-                            正在加载专项扣除记录...
-                          </TableCell>
-                        </TableRow>
+                        <WorkspaceTableStateRow
+                          type="loading"
+                          colSpan={6}
+                          title="正在加载专项扣除记录..."
+                          rowClassName="border-white/60 hover:bg-transparent"
+                          cellClassName="px-4 py-10"
+                        />
                       )}
                     </TableBody>
                   </Table>

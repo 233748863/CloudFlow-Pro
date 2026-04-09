@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
 import { PermissionGuard } from '@/components/ui';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 /**
  * 归档流程数据接口
@@ -419,13 +420,11 @@ export const ArchivedWorkflows: React.FC = () => {
       {/* 归档流程列表 */}
       {loading ? (
         <div className="bg-white rounded-xl p-12 shadow-sm text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-pink-500 border-t-transparent"></div>
-          <p className="text-slate-500 mt-4">加载中...</p>
+          <WorkspaceInlineState type="loading" title="正在加载归档流程..." className="py-12" />
         </div>
       ) : workflows.length === 0 ? (
         <div className="bg-white rounded-xl p-12 shadow-sm text-center">
-          <FileText size={48} className="mx-auto text-slate-300 mb-4" />
-          <p className="text-slate-500">暂无归档流程</p>
+          <WorkspaceInlineState icon={<FileText size={28} />} title="暂无归档流程" className="py-12" />
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">

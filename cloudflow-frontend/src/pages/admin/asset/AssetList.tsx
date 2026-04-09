@@ -59,6 +59,7 @@ import {
 import AssetForm from "./AssetForm";
 import { useMount } from "@/hooks/useMount";
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 
@@ -92,6 +93,7 @@ const STATUS_MAP: Record<
 const AssetList: React.FC = () => {
   // 资产列表数据
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [pageNum, setPageNum] = useState(1);
   const [pageSize] = useState(10);
@@ -124,6 +126,7 @@ const AssetList: React.FC = () => {
   // 加载资产列表
   const loadData = useCallback(
     async (page?: number) => {
+      setLoading(true);
       try {
         const params: AssetQueryParams = {
           pageNum: page || pageNum,
@@ -145,6 +148,8 @@ const AssetList: React.FC = () => {
       } catch (error) {
         console.error("加载资产列表失败", error);
         toast.error(getErrorMessage(error, "加载资产列表失败"));
+      } finally {
+        setLoading(false);
       }
     },
     [pageNum, pageSize, searchName, searchCode, filterCategory, filterStatus],
@@ -531,15 +536,10 @@ const AssetList: React.FC = () => {
               </tr>
             </TableHeader>
             <tbody className="divide-y divide-slate-200">
-              {assets.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-12 text-center text-slate-500"
-                  >
-                    暂无资产数据
-                  </td>
-                </tr>
+              {loading ? (
+                <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载资产数据..." />
+              ) : assets.length === 0 ? (
+                <WorkspaceTableStateRow colSpan={8} title="暂无资产数据" />
               ) : (
                 assets.map((asset) => (
                   <tr key={asset.assetId} className="hover:bg-slate-50">
@@ -746,9 +746,7 @@ const AssetList: React.FC = () => {
           </DialogHeader>
           <div className="space-y-3">
             {assetLogs.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                暂无变动记录
-              </p>
+              <WorkspaceInlineState title="暂无变动记录" className="py-8" />
             ) : (
               assetLogs.map((log, index) => (
                 <div

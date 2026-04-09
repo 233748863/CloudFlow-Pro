@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui';
 import { Candidate, CandidatePayload, DeptTreeNode, Interview, InterviewSchedulePayload, PositionOption, RecruitmentRequest, RecruitmentRequestPayload, listRecruitmentRequests, createRecruitmentRequest, listCandidates, createCandidate, updateCandidateStatus, listInterviews, scheduleInterview, getDeptTreeOptions, getPositionOptions, submitRecruitmentRequest, approveRecruitmentRequest, completeRecruitmentRequest, cancelRecruitmentRequest } from '@/services/api/hr';
 import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 const normalizeRows = <T,>(data: any): T[] => {
   if (!data) return [];
@@ -389,11 +390,8 @@ export const HrRecruitmentPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {!filteredRequests.length && !loading && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center text-slate-400">暂无招聘需求</TableCell>
-                  </TableRow>
-                )}
+                {loading && <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载招聘需求..." />}
+                {!filteredRequests.length && !loading && <WorkspaceTableStateRow colSpan={7} title="暂无招聘需求" />}
               </TableBody>
             </Table>
           </WorkspaceSectionCard>
@@ -450,11 +448,8 @@ export const HrRecruitmentPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {!filteredCandidates.length && !loading && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-slate-400">暂无候选人记录</TableCell>
-                  </TableRow>
-                )}
+                {loading && <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载候选人记录..." />}
+                {!filteredCandidates.length && !loading && <WorkspaceTableStateRow colSpan={6} title="暂无候选人记录" />}
               </TableBody>
             </Table>
           </WorkspaceSectionCard>
@@ -489,11 +484,8 @@ export const HrRecruitmentPage: React.FC = () => {
                     <TableCell><span className={`rounded-full px-2 py-1 text-xs font-medium ${interviewStatusTone[item.status] || interviewStatusTone.SCHEDULED}`}>{item.statusName || item.status}</span></TableCell>
                   </TableRow>
                 ))}
-                {!interviews.length && !loading && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-slate-400">暂无面试安排</TableCell>
-                  </TableRow>
-                )}
+                {loading && <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载面试安排..." />}
+                {!interviews.length && !loading && <WorkspaceTableStateRow colSpan={6} title="暂无面试安排" />}
               </TableBody>
             </Table>
           </WorkspaceSectionCard>

@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui';
+import { WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   Headcount,
   HeadcountPayload,
@@ -479,18 +480,21 @@ export const HrHeadcountPage: React.FC = () => {
                 );
               })}
               {!filteredHeadcounts.length && !listLoading && (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-12 text-center text-slate-400">
-                    当前筛选条件下没有编制记录
-                  </TableCell>
-                </TableRow>
+                <WorkspaceTableStateRow
+                  colSpan={8}
+                  title="当前筛选条件下没有编制记录"
+                  rowClassName="border-white/60 hover:bg-transparent"
+                  cellClassName="px-4 py-6"
+                />
               )}
               {(loading || listLoading) && (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-12 text-center text-slate-400">
-                    正在加载编制列表...
-                  </TableCell>
-                </TableRow>
+                <WorkspaceTableStateRow
+                  type="loading"
+                  colSpan={8}
+                  title="正在加载编制列表..."
+                  rowClassName="border-white/60 hover:bg-transparent"
+                  cellClassName="px-4 py-16"
+                />
               )}
             </TableBody>
           </Table>
@@ -560,7 +564,7 @@ export const HrHeadcountPage: React.FC = () => {
               </div>
             )}
 
-            {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载统计数据...</div>}
+            {detailLoading && <WorkspaceInlineState type="loading" title="正在加载统计数据..." className="mt-4 py-4" />}
           </WorkspaceSectionCard>
 
           <WorkspaceSectionCard

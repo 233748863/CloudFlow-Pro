@@ -6,6 +6,7 @@ import {
   Layers, Briefcase, Users, DollarSign, Building2, FolderKanban
 } from 'lucide-react';
 import { Button, Card, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 /** 图标映射 */
 const iconMap: Record<string, React.ReactNode> = {
@@ -270,7 +271,7 @@ const ProcessCategoryPage: React.FC = () => {
         <Card className="w-[480px] p-4">
           <h2 className="text-sm font-medium text-gray-500 mb-3">分类结构</h2>
           {treeData.length === 0 ? (
-            <div className="text-center text-slate-400 py-12 text-sm">暂无分类数据</div>
+            <WorkspaceInlineState icon={<FolderTree className="w-5 h-5" />} title="暂无分类数据" className="py-10" />
           ) : (
             <div className="space-y-0.5">
               {treeData.map(node => renderTreeNode(node))}

@@ -37,6 +37,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -534,11 +536,12 @@ public class LeaveServiceImpl implements LeaveService {
     }
 
     private LocalDate resolveCompensatoryReferenceDate(LocalDateTime startTime, LocalDateTime endTime) {
-        if (startTime != null) {
-            return startTime.toLocalDate();
-        }
+        // 调休额度至少要覆盖到请假结束日，避免跨过过期日后仍误用已过期额度。
         if (endTime != null) {
             return endTime.toLocalDate();
+        }
+        if (startTime != null) {
+            return startTime.toLocalDate();
         }
         return LocalDate.now();
     }
@@ -567,7 +570,19 @@ public class LeaveServiceImpl implements LeaveService {
                     .ge(LeaveQuota::getExpiryDate, baseDate));
         }
 
-        List<LeaveQuota> quotaList = leaveQuotaMapper.selectList(quotaQueryWrapper);
+        List<LeaveQuota> quotaList = new ArrayList<>(leaveQuotaMapper.selectList(quotaQueryWrapper));
+        if (excludeExpired) {
+            LocalDate baseDate = referenceDate != null ? referenceDate : LocalDate.now();
+            quotaList = quotaList.stream()
+                    .filter(leaveQuota -> leaveQuota.getExpiryDate() == null || !leaveQuota.getExpiryDate().isBefore(baseDate))
+                    .collect(Collectors.toList());
+        }
+        // MySQL 中 NULL 会在升序时排到前面，这里显式把“长期有效”桶放到最后，
+        // 保证真正快到期的额度优先被消费。
+        quotaList.sort(Comparator
+                .comparing(LeaveQuota::getExpiryDate, Comparator.nullsLast(LocalDate::compareTo))
+                .thenComparing(LeaveQuota::getYear, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(LeaveQuota::getId, Comparator.nullsLast(Long::compareTo)));
         BigDecimal remaining = normalizeQuota(requestedDuration);
         LinkedHashMap<Long, BigDecimal> allocation = new LinkedHashMap<>();
         for (LeaveQuota leaveQuota : quotaList) {
@@ -876,7 +891,8 @@ public class LeaveServiceImpl implements LeaveService {
             throw new HrBusinessException("假期类型不存在");
         }
         if (isCompensatoryLeave(leaveType)) {
-            throw new HrBusinessException("调休额度已按有效期分桶，请通过加班审批生成或补充按额度桶调整能力");
+            adjustCompensatoryLeaveQuota(tenantId, dto);
+            return;
         }
         
         // 查询假期额度
@@ -909,6 +925,62 @@ public class LeaveServiceImpl implements LeaveService {
         leaveQuotaMapper.updateById(leaveQuota);
         
         log.info("假期额度调整成功，新总额度: {}, 新可用额度: {}", newTotalQuota, newAvailableQuota);
+    }
+
+    private void adjustCompensatoryLeaveQuota(Long tenantId, LeaveQuotaAdjustDTO dto) {
+        if (dto.getExpiryDate() == null) {
+            throw new HrBusinessException("调休额度调整必须指定过期日期");
+        }
+        BigDecimal adjustmentAmount = normalizeQuota(dto.getAdjustmentAmount().abs());
+        if (adjustmentAmount.compareTo(BigDecimal.ZERO) == 0) {
+            throw new HrBusinessException("调整额度不能为0");
+        }
+
+        LambdaQueryWrapper<LeaveQuota> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(LeaveQuota::getTenantId, tenantId)
+                .eq(LeaveQuota::getEmployeeId, dto.getEmployeeId())
+                .eq(LeaveQuota::getLeaveTypeId, dto.getLeaveTypeId())
+                .eq(LeaveQuota::getYear, dto.getYear())
+                .eq(LeaveQuota::getExpiryDate, dto.getExpiryDate());
+
+        LeaveQuota leaveQuota = leaveQuotaMapper.selectOne(queryWrapper);
+        if (dto.getAdjustmentAmount().compareTo(BigDecimal.ZERO) > 0) {
+            if (leaveQuota == null) {
+                leaveQuota = new LeaveQuota();
+                leaveQuota.setTenantId(tenantId);
+                leaveQuota.setEmployeeId(dto.getEmployeeId());
+                leaveQuota.setLeaveTypeId(dto.getLeaveTypeId());
+                leaveQuota.setYear(dto.getYear());
+                leaveQuota.setTotalQuota(adjustmentAmount);
+                leaveQuota.setUsedQuota(BigDecimal.ZERO);
+                leaveQuota.setFrozenQuota(BigDecimal.ZERO);
+                leaveQuota.setAvailableQuota(adjustmentAmount);
+                leaveQuota.setExpiryDate(dto.getExpiryDate());
+                leaveQuotaMapper.insert(leaveQuota);
+            } else {
+                leaveQuota.setTotalQuota(normalizeQuota(leaveQuota.getTotalQuota()).add(adjustmentAmount));
+                leaveQuota.setAvailableQuota(normalizeQuota(leaveQuota.getAvailableQuota()).add(adjustmentAmount));
+                leaveQuotaMapper.updateById(leaveQuota);
+            }
+            log.info("调休额度桶增加成功，employeeId: {}, leaveTypeId: {}, year: {}, expiryDate: {}, adjustmentAmount: {}",
+                    dto.getEmployeeId(), dto.getLeaveTypeId(), dto.getYear(), dto.getExpiryDate(), adjustmentAmount);
+            return;
+        }
+
+        if (leaveQuota == null) {
+            throw new HrBusinessException("指定的调休额度桶不存在，无法减少额度");
+        }
+
+        BigDecimal availableQuota = normalizeQuota(leaveQuota.getAvailableQuota());
+        if (availableQuota.compareTo(adjustmentAmount) < 0) {
+            throw new HrBusinessException("调休额度桶可用额度不足，无法减少指定额度");
+        }
+        leaveQuota.setTotalQuota(normalizeQuota(normalizeQuota(leaveQuota.getTotalQuota()).subtract(adjustmentAmount)));
+        leaveQuota.setAvailableQuota(normalizeQuota(availableQuota.subtract(adjustmentAmount)));
+        leaveQuotaMapper.updateById(leaveQuota);
+
+        log.info("调休额度桶减少成功，employeeId: {}, leaveTypeId: {}, year: {}, expiryDate: {}, adjustmentAmount: {}",
+                dto.getEmployeeId(), dto.getLeaveTypeId(), dto.getYear(), dto.getExpiryDate(), adjustmentAmount);
     }
     
     /**

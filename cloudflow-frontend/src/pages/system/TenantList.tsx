@@ -33,6 +33,7 @@ import {
 import { useMount } from '../../hooks/useMount';
 import { DatePicker, Input, Textarea, Button, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
@@ -420,15 +421,9 @@ export const TenantList: React.FC = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                    <Loader2 className="animate-spin inline mr-2" size={18} />加载中...
-                  </td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载租户数据..." />
               ) : tenants.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">暂无数据</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={7} title="暂无租户数据" />
               ) : (
                 tenants.map((tenant) => {
                   const userPercent = calcPercent(tenant.userCount, tenant.userLimit);

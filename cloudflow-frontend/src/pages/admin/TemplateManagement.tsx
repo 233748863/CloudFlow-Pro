@@ -13,6 +13,7 @@ import request from '../../services/api/request';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 import { PermissionGuard, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 interface TemplateItem {
   id: string;
@@ -502,9 +503,9 @@ export const TemplateManagement = () => {
       </div>
 
       {loading ? (
-        <div className="text-center py-12">加载中...</div>
+        <WorkspaceInlineState type="loading" title="正在加载模板..." className="py-12" />
       ) : templates.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">暂无模板</div>
+        <WorkspaceInlineState icon={<FolderPlus size={24} />} title="暂无模板" className="py-12" />
       ) : (
         <div className="bg-white rounded-lg border">
           <table className="w-full">

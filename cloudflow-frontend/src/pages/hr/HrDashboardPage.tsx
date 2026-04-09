@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users } from 'lucide-react';
 import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import { WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { useAuth } from '@/context/AuthContext';
 import { HrEmployee, RecruitmentRequest, Candidate, Interview, Offer, OnboardingApplication, listEmployees, listRecruitmentRequests, listCandidates, listInterviews, listOffers, listOnboardingApplications } from '@/services/api/hr';
 
@@ -296,11 +297,8 @@ export const HrDashboardPage: React.FC = () => {
                   <TableCell>{statusPill(item.employeeStatus || 'UNKNOWN', employeeStatusTone(item.employeeStatus) as any)}</TableCell>
                 </TableRow>
               ))}
-              {!employees.length && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-slate-400">暂无员工数据</TableCell>
-                </TableRow>
-              )}
+              {loading && <WorkspaceTableStateRow colSpan={4} type="loading" title="正在加载员工数据..." />}
+              {!employees.length && !loading && <WorkspaceTableStateRow colSpan={4} title="暂无员工数据" />}
             </TableBody>
           </Table>
         </WorkspaceSectionCard>
@@ -328,11 +326,8 @@ export const HrDashboardPage: React.FC = () => {
                   <TableCell>{statusPill(item.statusDesc || item.status, requestStatusTone(item.status) as any)}</TableCell>
                 </TableRow>
               ))}
-              {!requests.length && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-slate-400">暂无招聘需求</TableCell>
-                </TableRow>
-              )}
+              {loading && <WorkspaceTableStateRow colSpan={4} type="loading" title="正在加载招聘需求..." />}
+              {!requests.length && !loading && <WorkspaceTableStateRow colSpan={4} title="暂无招聘需求" />}
             </TableBody>
           </Table>
         </WorkspaceSectionCard>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Button, Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';
 import { 
   getProcessDefinitions, 
@@ -850,20 +851,9 @@ export const ProcessManagement = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-200">
             {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                  <div className="flex items-center justify-center gap-2">
-                    <RefreshCw size={16} className="animate-spin" />
-                    加载中...
-                  </div>
-                </td>
-              </tr>
+              <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载流程数据..." />
             ) : filteredWorkflows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                  暂无流程数据
-                </td>
-              </tr>
+              <WorkspaceTableStateRow colSpan={7} title="暂无流程数据" />
             ) : (
               filteredWorkflows.map(wf => (
                 <tr key={wf.id} className="hover:bg-slate-50 transition-colors">

@@ -44,7 +44,7 @@ import {
   WorkspaceResultCard,
   WorkspaceWorkbenchCard,
 } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   getUsageList,
   getExpenseList,
@@ -648,25 +648,19 @@ const VehicleUsageList: React.FC = () => {
                       </TableHeader>
                         <TableBody>
                           {loading ? (
-                            <TableRow className="border-white/60 hover:bg-transparent">
-                              <TableCell colSpan={7} className="px-4 py-16">
-                                <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-                                  <Loader2 className="animate-spin" size={18} />
-                                  正在加载用车记录...
-                                </div>
-                              </TableCell>
-                            </TableRow>
+                            <WorkspaceTableStateRow
+                              type="loading"
+                              colSpan={7}
+                              title="正在加载用车记录..."
+                              icon={<Loader2 className="animate-spin" size={18} />}
+                            />
                           ) : usages.length === 0 ? (
-                            <TableRow className="border-white/60 hover:bg-transparent">
-                              <TableCell colSpan={7} className="px-4 py-6">
-                                <WorkspaceEmptyPanel
-                                  variant="glass"
-                                  icon={<Car size={26} />}
-                                  title="暂无用车记录"
-                                  description="新建用车申请后，这里会显示审批状态、归还动作和费用录入入口。"
-                                />
-                              </TableCell>
-                            </TableRow>
+                            <WorkspaceTableStateRow
+                              colSpan={7}
+                              icon={<Car size={26} />}
+                              title="暂无用车记录"
+                              description="新建用车申请后，这里会显示审批状态、归还动作和费用录入入口。"
+                            />
                           ) : (
                             usages.map((usage) => (
                               <TableRow key={usage.usageId} className="border-white/60 transition hover:bg-white/55">
@@ -773,25 +767,19 @@ const VehicleUsageList: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {expenseLoading ? (
-                          <TableRow className="border-white/60 hover:bg-transparent">
-                            <TableCell colSpan={6} className="px-4 py-16">
-                              <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-                                <Loader2 className="animate-spin" size={18} />
-                                正在加载费用明细...
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                          <WorkspaceTableStateRow
+                            type="loading"
+                            colSpan={6}
+                            title="正在加载费用明细..."
+                            icon={<Loader2 className="animate-spin" size={18} />}
+                          />
                         ) : expenses.length === 0 ? (
-                          <TableRow className="border-white/60 hover:bg-transparent">
-                            <TableCell colSpan={6} className="px-4 py-6">
-                              <WorkspaceEmptyPanel
-                                variant="glass"
-                                icon={<DollarSign size={26} />}
-                                title="暂无费用记录"
-                                description="在用车完成或进行中录入费用后，这里会按轻玻璃表格自动汇总展示。"
-                              />
-                            </TableCell>
-                          </TableRow>
+                          <WorkspaceTableStateRow
+                            colSpan={6}
+                            icon={<DollarSign size={26} />}
+                            title="暂无费用记录"
+                            description="在用车完成或进行中录入费用后，这里会按轻玻璃表格自动汇总展示。"
+                          />
                         ) : (
                           expenses.map((expense) => {
                             const typeConfig = EXPENSE_TYPES[expense.expenseType] || {

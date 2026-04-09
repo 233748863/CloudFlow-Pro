@@ -3,6 +3,7 @@ import { Edit3, Plus, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/ui';
 import { WorkspaceDialogShell, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { HrEmployee, HrEmployeePayload, PostOption, PositionOption, listEmployees, getEmployeeDetail, createEmployee, updateEmployee, getDeptTreeOptions, getPostOptions, getPositionOptions } from '@/services/api/hr';
 import { flattenDeptTree, normalizeRows, toDateInputValue } from './hrShared';
 import HrEmployeeWorkspace from './HrEmployeeWorkspace';
@@ -327,14 +328,23 @@ export const HrEmployeePage: React.FC = () => {
               </TableRow>
             ))}
             {!filteredEmployees.length && !loading && (
-              <TableRow>
-                <TableCell colSpan={9} className="py-12 text-center text-slate-400">暂无符合条件的员工数据</TableCell>
-              </TableRow>
+              <WorkspaceTableStateRow
+                colSpan={9}
+                icon={<Users size={24} />}
+                title="暂无符合条件的员工数据"
+                description="试试调整筛选条件，或新增员工档案后再回来查看。"
+                rowClassName="border-white/60 hover:bg-transparent"
+                cellClassName="px-4 py-6"
+              />
             )}
             {loading && (
-              <TableRow>
-                <TableCell colSpan={9} className="py-12 text-center text-slate-400">正在加载员工档案...</TableCell>
-              </TableRow>
+              <WorkspaceTableStateRow
+                type="loading"
+                colSpan={9}
+                title="正在加载员工档案..."
+                rowClassName="border-white/60 hover:bg-transparent"
+                cellClassName="px-4 py-16"
+              />
             )}
           </TableBody>
         </Table>

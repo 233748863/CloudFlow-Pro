@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from '@/components/ui';
 import { WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   EmployeeContract,
   EmployeeDocument,
@@ -715,16 +716,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!contracts.length && !contractsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-12 text-center text-slate-400">当前员工还没有合同档案</TableCell>
-                    </TableRow>
-                  )}
-                  {contractsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-12 text-center text-slate-400">正在加载员工合同...</TableCell>
-                    </TableRow>
-                  )}
+                  {contractsLoading && <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载员工合同..." />}
+                  {!contracts.length && !contractsLoading && <WorkspaceTableStateRow colSpan={7} title="当前员工还没有合同档案" />}
                 </TableBody>
               </Table>
             </WorkspaceSectionCard>
@@ -829,16 +822,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!documents.length && !documentsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-12 text-center text-slate-400">当前员工还没有证件档案</TableCell>
-                    </TableRow>
-                  )}
-                  {documentsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-12 text-center text-slate-400">正在加载员工证件...</TableCell>
-                    </TableRow>
-                  )}
+                  {documentsLoading && <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载员工证件..." />}
+                  {!documents.length && !documentsLoading && <WorkspaceTableStateRow colSpan={6} title="当前员工还没有证件档案" />}
                 </TableBody>
               </Table>
             </WorkspaceSectionCard>
@@ -942,16 +927,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!contacts.length && !contactsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-12 text-center text-slate-400">当前员工还没有紧急联系人</TableCell>
-                    </TableRow>
-                  )}
-                  {contactsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-12 text-center text-slate-400">正在加载紧急联系人...</TableCell>
-                    </TableRow>
-                  )}
+                  {contactsLoading && <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载紧急联系人..." />}
+                  {!contacts.length && !contactsLoading && <WorkspaceTableStateRow colSpan={6} title="当前员工还没有紧急联系人" />}
                 </TableBody>
               </Table>
             </WorkspaceSectionCard>

@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui';
 import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   approveOnboarding,
   Candidate,
@@ -572,14 +573,10 @@ export const HrOnboardingPage: React.FC = () => {
                 );
               })}
               {listLoading && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                  正在加载入职申请列表...
-                </div>
+                <WorkspaceInlineState type="loading" title="正在加载入职申请列表..." />
               )}
               {!listLoading && !applications.length && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                  当前筛选条件下暂无入职申请
-                </div>
+                <WorkspaceInlineState title="当前筛选条件下暂无入职申请" />
               )}
             </div>
           </div>
@@ -650,9 +647,7 @@ export const HrOnboardingPage: React.FC = () => {
             </div>
           )}
 
-          {detailLoading && (
-            <div className="mt-4 text-sm text-slate-400">正在加载申请详情...</div>
-          )}
+          {detailLoading && <WorkspaceInlineState type="loading" title="正在加载申请详情..." className="mt-4 py-4" />}
           {currentApplication && (
             <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-800">
               审批通过后后端会自动生成 4 项入职任务；任务全部完成后才能确认入职。
@@ -722,13 +717,7 @@ export const HrOnboardingPage: React.FC = () => {
                 </TableRow>
               );
             })}
-            {!tasks.length && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-12 text-center text-slate-400">
-                  {currentApplication ? '当前申请暂无任务' : '先加载申请，再查看对应入职任务'}
-                </TableCell>
-              </TableRow>
-            )}
+            {!tasks.length && <WorkspaceTableStateRow colSpan={6} title={currentApplication ? '当前申请暂无任务' : '先加载申请，再查看对应入职任务'} />}
           </TableBody>
         </Table>
       </WorkspaceSectionCard>

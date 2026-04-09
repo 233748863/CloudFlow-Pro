@@ -19,6 +19,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   approveResignation,
   HrEmployee,
@@ -506,14 +507,10 @@ export const HrResignationPage: React.FC = () => {
                 );
               })}
               {!loading && !filteredEmployees.length && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                  当前搜索条件下没有匹配员工
-                </div>
+                <WorkspaceInlineState title="当前搜索条件下没有匹配员工" />
               )}
               {loading && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                  正在加载员工列表...
-                </div>
+                <WorkspaceInlineState type="loading" title="正在加载员工列表..." />
               )}
             </div>
           </div>
@@ -602,14 +599,10 @@ export const HrResignationPage: React.FC = () => {
             })}
 
             {!applications.length && !listLoading && (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                {selectedEmployee ? '该员工暂无离职申请' : '先从左侧选择员工'}
-              </div>
+              <WorkspaceInlineState title={selectedEmployee ? '该员工暂无离职申请' : '先从左侧选择员工'} />
             )}
             {listLoading && (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-400">
-                正在加载离职申请...
-              </div>
+              <WorkspaceInlineState type="loading" title="正在加载离职申请..." />
             )}
           </div>
         </WorkspaceSectionCard>
@@ -685,7 +678,7 @@ export const HrResignationPage: React.FC = () => {
             </div>
           )}
 
-          {detailLoading && <div className="mt-4 text-sm text-slate-400">正在加载离职详情...</div>}
+          {detailLoading && <WorkspaceInlineState type="loading" title="正在加载离职详情..." className="mt-4 py-4" />}
           {detail && hasWorkflowStatus(detail.status, 'APPROVED') && pendingHandoverCount > 0 && (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
               当前申请还有 {pendingHandoverCount} 项交接未完成，暂不能确认离职。
@@ -751,13 +744,7 @@ export const HrResignationPage: React.FC = () => {
                 </TableRow>
               );
             })}
-            {!handovers.length && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-slate-400">
-                  {detail ? '当前申请暂无交接事项' : '先加载离职申请，再查看交接清单'}
-                </TableCell>
-              </TableRow>
-            )}
+            {!handovers.length && <WorkspaceTableStateRow colSpan={7} title={detail ? '当前申请暂无交接事项' : '先加载离职申请，再查看交接清单'} />}
           </TableBody>
         </Table>
       </WorkspaceSectionCard>

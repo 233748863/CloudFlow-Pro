@@ -7,6 +7,7 @@ import {
   SysLog, SysLogQuery, LogTrendItem
 } from '@/services/api/log';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 /**
  * 操作日志页面
@@ -353,13 +354,9 @@ export const OperationLogPage: React.FC = () => {
             </TableHeader>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={10} className="text-center py-12 text-slate-400">加载中...</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={10} type="loading" title="正在加载操作日志..." />
               ) : records.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="text-center py-12 text-slate-400">暂无数据</td>
-                </tr>
+                <WorkspaceTableStateRow colSpan={10} title="暂无操作日志" />
               ) : (
                 records.map((log, idx) => (
                   <tr key={log.logId} className="border-t border-slate-50 hover:bg-slate-50/50 transition">

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X, Loader2, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { getConfigList, addConfig, updateConfig, deleteConfig, type SysConfig } from '../../services/api/system';
 import { clearConfigCache } from '../../hooks/useSystemConfig';
 import { Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 
 export const ConfigList = () => {
   const [configs, setConfigs] = useState<SysConfig[]>([]);
@@ -168,9 +169,9 @@ export const ConfigList = () => {
             </TableHeader>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2" size={18} />加载中...</td></tr>
+                <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载参数配置..." />
               ) : configs.length === 0 ? (
-                <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500">暂无数据</td></tr>
+                <WorkspaceTableStateRow colSpan={8} title="暂无参数配置" />
               ) : configs.map(config => (
                 <tr key={config.configId} className="hover:bg-slate-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{config.configId}</td>
