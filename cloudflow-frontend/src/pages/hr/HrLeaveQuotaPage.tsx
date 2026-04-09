@@ -44,6 +44,8 @@ import { buildEmployeeLabel, matchEmployeeKeyword, normalizeRows, toDateInputVal
 
 const NEW_BUCKET_VALUE = '__new__';
 const COMPENSATORY_CODE = 'COMPENSATORY';
+const INIT_RESULT_HISTORY_STORAGE_KEY = 'hr-leave-quota-init-result-history';
+const DISMISSED_INIT_RESULT_STORAGE_KEY = 'hr-leave-quota-dismissed-result-keys';
 
 type AdjustFormState = {
   adjustmentAmount: string;
@@ -87,6 +89,33 @@ const createDefaultAdjustForm = (year: string): AdjustFormState => ({
   bucketYear: year,
   expiryDate: '',
 });
+
+const readSessionStorageRecord = <T,>(storageKey: string): Record<string, T> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const rawValue = window.sessionStorage.getItem(storageKey);
+    if (!rawValue) return {};
+    const parsedValue = JSON.parse(rawValue);
+    return parsedValue && typeof parsedValue === 'object'
+      ? parsedValue as Record<string, T>
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeSessionStorageRecord = (storageKey: string, value: Record<string, unknown>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!Object.keys(value).length) {
+      window.sessionStorage.removeItem(storageKey);
+      return;
+    }
+    window.sessionStorage.setItem(storageKey, JSON.stringify(value));
+  } catch {
+    // 会话缓存写入失败时不影响主流程，只回退为当前页内状态。
+  }
+};
 
 const bucketStatusToneClassName = (bucket: HrLeaveQuotaVO) => {
   const expiryDate = toDateInputValue(bucket.expiryDate);
@@ -173,7 +202,12 @@ export const HrLeaveQuotaPage: React.FC = () => {
   const [bucketLoading, setBucketLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
-  const [lastInitResult, setLastInitResult] = useState<HrLeaveQuotaInitResult | null>(null);
+  const [initResultHistory, setInitResultHistory] = useState<Record<string, HrLeaveQuotaInitResult>>(
+    () => readSessionStorageRecord<HrLeaveQuotaInitResult>(INIT_RESULT_HISTORY_STORAGE_KEY),
+  );
+  const [dismissedInitResultKeys, setDismissedInitResultKeys] = useState<Record<string, boolean>>(
+    () => readSessionStorageRecord<boolean>(DISMISSED_INIT_RESULT_STORAGE_KEY),
+  );
   const [bulkInitDialogOpen, setBulkInitDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState<AdjustFormState>(createDefaultAdjustForm(String(currentYear)));
@@ -193,6 +227,22 @@ export const HrLeaveQuotaPage: React.FC = () => {
   const selectedEmployee = useMemo(
     () => employees.find(item => String(item.id) === selectedEmployeeId) || null,
     [employees, selectedEmployeeId],
+  );
+  const currentInitResultKey = useMemo(
+    () => (selectedEmployeeId && selectedYear ? `${selectedEmployeeId}-${selectedYear}` : ''),
+    [selectedEmployeeId, selectedYear],
+  );
+  const visibleInitResult = useMemo(
+    () => (currentInitResultKey && !dismissedInitResultKeys[currentInitResultKey]
+      ? initResultHistory[currentInitResultKey] || null
+      : null),
+    [currentInitResultKey, dismissedInitResultKeys, initResultHistory],
+  );
+  const hiddenInitResult = useMemo(
+    () => (currentInitResultKey && dismissedInitResultKeys[currentInitResultKey]
+      ? initResultHistory[currentInitResultKey] || null
+      : null),
+    [currentInitResultKey, dismissedInitResultKeys, initResultHistory],
   );
 
   const filteredEmployees = useMemo(() => {
@@ -216,6 +266,14 @@ export const HrLeaveQuotaPage: React.FC = () => {
     () => quotaBuckets.find(item => String(item.id) === adjustForm.bucketId) || null,
     [adjustForm.bucketId, quotaBuckets],
   );
+
+  useEffect(() => {
+    writeSessionStorageRecord(INIT_RESULT_HISTORY_STORAGE_KEY, initResultHistory as Record<string, unknown>);
+  }, [initResultHistory]);
+
+  useEffect(() => {
+    writeSessionStorageRecord(DISMISSED_INIT_RESULT_STORAGE_KEY, dismissedInitResultKeys as Record<string, unknown>);
+  }, [dismissedInitResultKeys]);
 
   const isCompensatorySelected = isCompensatoryLeaveType(selectedLeaveType);
   const selectedQuotaInitialized = selectedQuotaSummary?.id != null;
@@ -424,12 +482,34 @@ export const HrLeaveQuotaPage: React.FC = () => {
     setSelectedLeaveTypeId(String(quotaEnabledLeaveTypes[0]?.id || ''));
   }, [quotaEnabledLeaveTypes, quotaSummary, selectedLeaveTypeId]);
 
-  useEffect(() => {
-    setLastInitResult(null);
-  }, [selectedEmployeeId, selectedYear]);
-
   const handleRefresh = () => {
     setReloadToken(value => value + 1);
+  };
+
+  const persistInitResult = (result: HrLeaveQuotaInitResult) => {
+    const resultKey = `${result.employeeId}-${result.year}`;
+    setInitResultHistory(prev => ({ ...prev, [resultKey]: result }));
+    setDismissedInitResultKeys(prev => {
+      if (!prev[resultKey]) return prev;
+      const next = { ...prev };
+      delete next[resultKey];
+      return next;
+    });
+  };
+
+  const dismissVisibleInitResult = () => {
+    if (!currentInitResultKey) return;
+    setDismissedInitResultKeys(prev => ({ ...prev, [currentInitResultKey]: true }));
+  };
+
+  const restoreVisibleInitResult = () => {
+    if (!currentInitResultKey) return;
+    setDismissedInitResultKeys(prev => {
+      if (!prev[currentInitResultKey]) return prev;
+      const next = { ...prev };
+      delete next[currentInitResultKey];
+      return next;
+    });
   };
 
   const handleInitAnnualQuota = async () => {
@@ -447,7 +527,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
     setActionLoading(true);
     try {
       const result = await initHrLeaveQuota({ employeeId, year, leaveTypeId: Number(selectedLeaveTypeId) });
-      setLastInitResult(result);
+      persistInitResult(result);
       const item = result.items[0];
       toast.success(
         item
@@ -478,7 +558,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
     setActionLoading(true);
     try {
       const result = await initHrLeaveQuota({ employeeId, year });
-      setLastInitResult(result);
+      persistInitResult(result);
       toast.success(
         `${year} 年度处理完成：新建 ${result.createdCount}，刷新 ${result.refreshedCount}，跳过 ${result.skippedCount}`,
       );
@@ -762,28 +842,47 @@ export const HrLeaveQuotaPage: React.FC = () => {
         ))}
       </div>
 
-      {lastInitResult ? (
+      {!visibleInitResult && hiddenInitResult ? (
+        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50/80 px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-sm font-medium text-slate-900">最近一次补齐结果已隐藏</div>
+            <div className="mt-1 text-xs leading-6 text-slate-500">
+              {`${hiddenInitResult.employeeName || selectedEmployee?.name || '--'} / ${hiddenInitResult.year} 年 / ${hiddenInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'} / 共处理 ${hiddenInitResult.requestedCount} 类假种`}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="w-full md:w-auto" onClick={restoreVisibleInitResult}>
+            重新显示
+          </Button>
+        </div>
+      ) : null}
+
+      {visibleInitResult ? (
         <WorkspaceSectionCard
           title="最近一次补齐结果"
-          description={`${lastInitResult.employeeName || selectedEmployee?.name || '--'} / ${lastInitResult.year} 年 / ${lastInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'}`}
+          description={`${visibleInitResult.employeeName || selectedEmployee?.name || '--'} / ${visibleInitResult.year} 年 / ${visibleInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'}`}
           eyebrow="Init Result"
+          headerAside={(
+            <Button variant="outline" size="sm" onClick={dismissVisibleInitResult}>
+              关闭结果
+            </Button>
+          )}
         >
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
               <div className="text-xs text-slate-400">纳入处理</div>
-              <div className="mt-2 text-xl font-semibold text-slate-900">{lastInitResult.requestedCount}</div>
+              <div className="mt-2 text-xl font-semibold text-slate-900">{visibleInitResult.requestedCount}</div>
             </div>
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3">
               <div className="text-xs text-emerald-700">新建</div>
-              <div className="mt-2 text-xl font-semibold text-emerald-900">{lastInitResult.createdCount}</div>
+              <div className="mt-2 text-xl font-semibold text-emerald-900">{visibleInitResult.createdCount}</div>
             </div>
             <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-3">
               <div className="text-xs text-sky-700">刷新</div>
-              <div className="mt-2 text-xl font-semibold text-sky-900">{lastInitResult.refreshedCount}</div>
+              <div className="mt-2 text-xl font-semibold text-sky-900">{visibleInitResult.refreshedCount}</div>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
               <div className="text-xs text-amber-700">跳过</div>
-              <div className="mt-2 text-xl font-semibold text-amber-900">{lastInitResult.skippedCount}</div>
+              <div className="mt-2 text-xl font-semibold text-amber-900">{visibleInitResult.skippedCount}</div>
             </div>
           </div>
 
@@ -799,7 +898,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lastInitResult.items.map(item => {
+                {visibleInitResult.items.map(item => {
                   const leaveType = leaveTypeMap.get(item.leaveTypeId);
                   return (
                     <TableRow key={`init-result-${item.leaveTypeId}-${item.action}`}>
