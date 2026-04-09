@@ -531,6 +531,7 @@ class LeaveAndOvertimeServiceTest {
 
         when(leaveQuotaMapper.selectLeaveQuotaList(2001L, 1L, 2026)).thenReturn(List.of(annualQuota, rawCompQuota));
         when(leaveTypeMapper.selectOne(any())).thenReturn(buildCompensatoryLeaveType());
+        when(leaveTypeMapper.selectList(any())).thenReturn(List.of(buildAnnualLeaveType(), buildCompensatoryLeaveType()));
         when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
         when(leaveQuotaMapper.selectList(any())).thenReturn(List.of(carryOverBucket, currentBucket));
 
@@ -546,6 +547,44 @@ class LeaveAndOvertimeServiceTest {
         assertEquals(new BigDecimal("1.00"), compensatoryQuota.getUsedQuota());
         assertEquals(new BigDecimal("5.00"), compensatoryQuota.getAvailableQuota());
         assertEquals(LocalDate.of(2026, 2, 15), compensatoryQuota.getExpiryDate());
+    }
+
+    @Test
+    void testListLeaveQuotasIncludesPendingNonCompensatoryTypesWithoutInitializedQuota() {
+        LeaveQuotaVO annualQuota = new LeaveQuotaVO();
+        annualQuota.setId(901L);
+        annualQuota.setEmployeeId(1L);
+        annualQuota.setEmployeeName("测试员工");
+        annualQuota.setLeaveTypeId(301L);
+        annualQuota.setLeaveTypeName("年假");
+        annualQuota.setYear(2026);
+        annualQuota.setTotalQuota(new BigDecimal("5.00"));
+        annualQuota.setUsedQuota(new BigDecimal("1.00"));
+        annualQuota.setFrozenQuota(BigDecimal.ZERO);
+        annualQuota.setAvailableQuota(new BigDecimal("4.00"));
+        annualQuota.setExpiryDate(LocalDate.of(2026, 12, 31));
+
+        LeaveType marriageLeaveType = buildMarriageLeaveType();
+
+        when(leaveQuotaMapper.selectLeaveQuotaList(2001L, 1L, 2026)).thenReturn(List.of(annualQuota));
+        when(leaveTypeMapper.selectOne(any())).thenReturn(buildCompensatoryLeaveType());
+        when(leaveTypeMapper.selectList(any())).thenReturn(List.of(buildAnnualLeaveType(), buildCompensatoryLeaveType(), marriageLeaveType));
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(leaveQuotaMapper.selectList(any())).thenReturn(List.of());
+
+        List<LeaveQuotaVO> quotaList = leaveService.listLeaveQuotas(1L, 2026);
+
+        assertEquals(2, quotaList.size());
+        LeaveQuotaVO pendingQuota = quotaList.stream()
+                .filter(item -> Long.valueOf(302L).equals(item.getLeaveTypeId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("婚假", pendingQuota.getLeaveTypeName());
+        assertEquals(2026, pendingQuota.getYear());
+        assertEquals(new BigDecimal("0.00"), pendingQuota.getTotalQuota());
+        assertEquals(new BigDecimal("0.00"), pendingQuota.getAvailableQuota());
+        assertEquals("测试员工", pendingQuota.getEmployeeName());
+        assertEquals(null, pendingQuota.getId());
     }
 
     @Test
@@ -801,6 +840,19 @@ class LeaveAndOvertimeServiceTest {
         leaveType.setLeaveCode("ANNUAL");
         leaveType.setLeaveName("年假");
         leaveType.setNeedQuota(true);
+        leaveType.setStatus(1);
+        return leaveType;
+    }
+
+    private LeaveType buildMarriageLeaveType() {
+        LeaveType leaveType = new LeaveType();
+        leaveType.setId(302L);
+        leaveType.setTenantId(2001L);
+        leaveType.setLeaveCode("MARRIAGE");
+        leaveType.setLeaveName("婚假");
+        leaveType.setNeedQuota(true);
+        leaveType.setUnit("DAY");
+        leaveType.setStatus(1);
         return leaveType;
     }
 
@@ -813,6 +865,7 @@ class LeaveAndOvertimeServiceTest {
         leaveType.setNeedQuota(true);
         leaveType.setUnit("HOUR");
         leaveType.setExpiryRule("{\"expiryType\":\"FIXED_DAYS\",\"days\":90}");
+        leaveType.setStatus(1);
         return leaveType;
     }
 

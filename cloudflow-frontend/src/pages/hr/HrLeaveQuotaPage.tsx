@@ -191,12 +191,13 @@ export const HrLeaveQuotaPage: React.FC = () => {
   );
 
   const isCompensatorySelected = isCompensatoryLeaveType(selectedLeaveType);
+  const selectedQuotaInitialized = selectedQuotaSummary?.id != null;
   const canInitAnnualQuota = Boolean(
     selectedEmployeeId
     && selectedYear
     && selectedLeaveType
     && !isCompensatorySelected
-    && !selectedQuotaSummary,
+    && !selectedQuotaInitialized,
   );
 
   const metrics = useMemo(() => {
@@ -403,7 +404,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
       toast.error('请先选择员工和假种');
       return;
     }
-    if (!isCompensatorySelected && !selectedQuotaSummary) {
+    if (!isCompensatorySelected && !selectedQuotaInitialized) {
       toast.error('当前假种还没有年度额度记录，暂时无法直接调整');
       return;
     }
@@ -670,14 +671,21 @@ export const HrLeaveQuotaPage: React.FC = () => {
               {quotaSummary.map(item => {
                 const leaveType = leaveTypeMap.get(item.leaveTypeId);
                 const selected = String(item.leaveTypeId) === selectedLeaveTypeId;
+                const pendingInit = !isCompensatoryLeaveType(leaveType) && item.id == null;
                 return (
                   <TableRow
                     key={`${item.leaveTypeId}-${item.year}`}
-                    className={selected ? 'bg-pink-50/70 cursor-pointer' : 'cursor-pointer'}
+                    className={selected
+                      ? pendingInit
+                        ? 'bg-amber-50/80 cursor-pointer'
+                        : 'bg-pink-50/70 cursor-pointer'
+                      : pendingInit
+                        ? 'bg-amber-50/30 cursor-pointer'
+                        : 'cursor-pointer'}
                     onClick={() => setSelectedLeaveTypeId(String(item.leaveTypeId))}
                   >
                     <TableCell className="font-medium text-slate-900">{item.leaveTypeName || leaveType?.leaveName || '-'}</TableCell>
-                    <TableCell>{isCompensatoryLeaveType(leaveType) ? '按过期桶' : '按年度'}</TableCell>
+                    <TableCell>{pendingInit ? '按年度 / 待初始化' : isCompensatoryLeaveType(leaveType) ? '按过期桶' : '按年度'}</TableCell>
                     <TableCell>{formatQuotaValue(item.totalQuota, leaveType?.unit)}</TableCell>
                     <TableCell>{formatQuotaValue(item.usedQuota, leaveType?.unit)}</TableCell>
                     <TableCell>{formatQuotaValue(item.frozenQuota, leaveType?.unit)}</TableCell>

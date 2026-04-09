@@ -1140,24 +1140,24 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
+        Employee employee = employeeMapper.selectById(employeeId);
         
         List<LeaveQuotaVO> quotaList = new ArrayList<>(leaveQuotaMapper.selectLeaveQuotaList(tenantId, employeeId, year));
         LeaveType compensatoryType = getCompensatoryLeaveType(tenantId);
-        if (compensatoryType == null) {
-            return quotaList;
+        if (compensatoryType != null) {
+            quotaList.removeIf(vo -> compensatoryType.getId().equals(vo.getLeaveTypeId()));
+            List<LeaveQuota> compensatoryBuckets = queryCompensatoryQuotaBucketsForYear(
+                    tenantId,
+                    employeeId,
+                    compensatoryType.getId(),
+                    year
+            );
+            if (!compensatoryBuckets.isEmpty()) {
+                quotaList.add(buildLeaveQuotaSummaryVO(compensatoryBuckets, employee, compensatoryType, year));
+            }
         }
 
-        quotaList.removeIf(vo -> compensatoryType.getId().equals(vo.getLeaveTypeId()));
-        List<LeaveQuota> compensatoryBuckets = queryCompensatoryQuotaBucketsForYear(
-                tenantId,
-                employeeId,
-                compensatoryType.getId(),
-                year
-        );
-        if (!compensatoryBuckets.isEmpty()) {
-            Employee employee = employeeMapper.selectById(employeeId);
-            quotaList.add(buildLeaveQuotaSummaryVO(compensatoryBuckets, employee, compensatoryType, year));
-        }
+        appendPendingQuotaSummaries(quotaList, employee, listQuotaEnabledLeaveTypes(tenantId), year);
 
         quotaList.sort(Comparator
                 .comparing(LeaveQuotaVO::getLeaveTypeId, Comparator.nullsLast(Long::compareTo))
@@ -1165,6 +1165,51 @@ public class LeaveServiceImpl implements LeaveService {
                 .thenComparing(LeaveQuotaVO::getExpiryDate, Comparator.nullsLast(LocalDate::compareTo))
                 .thenComparing(LeaveQuotaVO::getId, Comparator.nullsLast(Long::compareTo)));
         return quotaList;
+    }
+
+    private List<LeaveType> listQuotaEnabledLeaveTypes(Long tenantId) {
+        LambdaQueryWrapper<LeaveType> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(LeaveType::getTenantId, tenantId)
+                .eq(LeaveType::getNeedQuota, true)
+                .eq(LeaveType::getStatus, 1)
+                .orderByAsc(LeaveType::getId);
+        return leaveTypeMapper.selectList(queryWrapper);
+    }
+
+    private void appendPendingQuotaSummaries(List<LeaveQuotaVO> quotaList,
+                                             Employee employee,
+                                             List<LeaveType> leaveTypes,
+                                             Integer year) {
+        if (leaveTypes == null || leaveTypes.isEmpty()) {
+            return;
+        }
+
+        Map<Long, LeaveQuotaVO> existingQuotaMap = quotaList.stream()
+                .filter(item -> item.getLeaveTypeId() != null)
+                .collect(Collectors.toMap(LeaveQuotaVO::getLeaveTypeId, Function.identity(), (left, right) -> left));
+
+        for (LeaveType leaveType : leaveTypes) {
+            if (leaveType == null || isCompensatoryLeave(leaveType) || existingQuotaMap.containsKey(leaveType.getId())) {
+                continue;
+            }
+            quotaList.add(buildPendingLeaveQuotaSummaryVO(employee, leaveType, year));
+        }
+    }
+
+    private LeaveQuotaVO buildPendingLeaveQuotaSummaryVO(Employee employee, LeaveType leaveType, Integer year) {
+        LeaveQuotaVO vo = new LeaveQuotaVO();
+        if (employee != null) {
+            vo.setEmployeeId(employee.getId());
+            vo.setEmployeeName(employee.getName());
+        }
+        vo.setLeaveTypeId(leaveType.getId());
+        vo.setLeaveTypeName(leaveType.getLeaveName());
+        vo.setYear(year);
+        vo.setTotalQuota(normalizeQuota(BigDecimal.ZERO));
+        vo.setUsedQuota(normalizeQuota(BigDecimal.ZERO));
+        vo.setFrozenQuota(normalizeQuota(BigDecimal.ZERO));
+        vo.setAvailableQuota(normalizeQuota(BigDecimal.ZERO));
+        return vo;
     }
 
     
