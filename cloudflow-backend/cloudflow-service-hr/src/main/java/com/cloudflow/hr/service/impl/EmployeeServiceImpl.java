@@ -446,7 +446,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     private void validateDeptId(Long deptId) {
         try {
             R<DeptVO> result = authServiceClient.getDeptById(deptId);
-            if (result == null || !result.isSuccess() || result.getData() == null) {
+            DeptVO dept = result == null ? null : result.getData();
+            if (result == null || !result.isSuccess() || dept == null
+                    || dept.getDeptId() == null || !deptId.equals(dept.getDeptId())) {
                 throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
             }
         } catch (Exception e) {
@@ -461,7 +463,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     private void validatePostId(Long postId) {
         try {
             R<PostVO> result = authServiceClient.getPostById(postId);
-            if (result == null || !result.isSuccess() || result.getData() == null) {
+            PostVO post = result == null ? null : result.getData();
+            if (result == null || !result.isSuccess() || post == null
+                    || post.getPostId() == null || !postId.equals(post.getPostId())) {
                 throw HrBusinessException.invalidDeptOrPost("POST", postId);
             }
         } catch (Exception e) {

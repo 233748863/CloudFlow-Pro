@@ -298,7 +298,9 @@ public class PositionServiceImpl implements PositionService {
     private void validatePost(Long postId) {
         try {
             R<PostVO> postResult = authServiceClient.getPostById(postId);
-            if (postResult == null || !postResult.isSuccess() || postResult.getData() == null) {
+            PostVO post = postResult == null ? null : postResult.getData();
+            if (postResult == null || !postResult.isSuccess() || post == null
+                    || post.getPostId() == null || !postId.equals(post.getPostId())) {
                 throw HrBusinessException.invalidDeptOrPost("POST", postId);
             }
         } catch (HrBusinessException e) {

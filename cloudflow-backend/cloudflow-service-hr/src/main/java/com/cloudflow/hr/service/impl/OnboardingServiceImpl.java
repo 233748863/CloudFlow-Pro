@@ -314,7 +314,8 @@ public class OnboardingServiceImpl implements OnboardingService {
             if (result == null) {
                 throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败：Auth 服务无响应");
             }
-            if (!result.isSuccess() || result.getData() == null) {
+            DeptVO dept = result.getData();
+            if (!result.isSuccess() || dept == null || dept.getDeptId() == null || !deptId.equals(dept.getDeptId())) {
                 throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
             }
         } catch (HrBusinessException e) {
@@ -331,7 +332,8 @@ public class OnboardingServiceImpl implements OnboardingService {
             if (result == null) {
                 throw new HrSystemException("VALIDATE_POST_FAILED", "校验岗位ID失败：Auth 服务无响应");
             }
-            if (!result.isSuccess() || result.getData() == null) {
+            PostVO post = result.getData();
+            if (!result.isSuccess() || post == null || post.getPostId() == null || !postId.equals(post.getPostId())) {
                 throw HrBusinessException.invalidDeptOrPost("POST", postId);
             }
         } catch (HrBusinessException e) {
@@ -491,6 +493,9 @@ public class OnboardingServiceImpl implements OnboardingService {
             }
             if (!result.isSuccess()) {
                 throw new HrSystemException("QUERY_USER_FAILED", "查询用户账号失败：" + result.getMsg());
+            }
+            if (result.getData() != null && result.getData().getUserId() == null) {
+                throw new HrSystemException("QUERY_USER_FAILED", "查询用户账号失败：Auth 返回用户缺少用户ID");
             }
             return result.getData();
         } catch (HrBusinessException | HrSystemException e) {

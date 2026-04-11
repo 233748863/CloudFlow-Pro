@@ -361,7 +361,8 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
             if (result == null) {
                 throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败：Auth 服务无响应");
             }
-            if (!result.isSuccess() || result.getData() == null) {
+            DeptVO dept = result.getData();
+            if (!result.isSuccess() || dept == null || dept.getDeptId() == null || !deptId.equals(dept.getDeptId())) {
                 throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
             }
         } catch (Exception e) {

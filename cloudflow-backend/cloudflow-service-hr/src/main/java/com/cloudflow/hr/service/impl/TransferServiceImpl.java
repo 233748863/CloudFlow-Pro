@@ -369,7 +369,8 @@ public class TransferServiceImpl implements TransferService {
             if (result == null) {
                 throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败：Auth 服务无响应");
             }
-            if (!result.isSuccess() || result.getData() == null) {
+            DeptVO dept = result.getData();
+            if (!result.isSuccess() || dept == null || dept.getDeptId() == null || !deptId.equals(dept.getDeptId())) {
                 throw new HrBusinessException("INVALID_DEPT", "目标部门不存在或无效");
             }
         } catch (HrBusinessException | HrSystemException e) {
@@ -389,7 +390,8 @@ public class TransferServiceImpl implements TransferService {
             if (result == null) {
                 throw new HrSystemException("VALIDATE_POST_FAILED", "校验岗位ID失败：Auth 服务无响应");
             }
-            if (!result.isSuccess() || result.getData() == null) {
+            PostVO post = result.getData();
+            if (!result.isSuccess() || post == null || post.getPostId() == null || !postId.equals(post.getPostId())) {
                 throw new HrBusinessException("INVALID_POST", "目标岗位不存在或无效");
             }
         } catch (HrBusinessException | HrSystemException e) {

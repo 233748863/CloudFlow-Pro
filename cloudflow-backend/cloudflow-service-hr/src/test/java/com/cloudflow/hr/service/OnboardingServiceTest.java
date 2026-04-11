@@ -15,6 +15,7 @@ import com.cloudflow.hr.domain.dto.OnboardingTaskCompleteDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.OnboardingApplication;
 import com.cloudflow.hr.domain.entity.OnboardingTask;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.EmployeeMapper;
@@ -123,6 +124,31 @@ class OnboardingServiceTest {
         assertEquals("FEMALE", saved.getGender());
         assertEquals("DRAFT", saved.getStatus());
         assertTrue(saved.getApplicationNo().startsWith("OB"));
+    }
+
+    @Test
+    void testCreateOnboardingApplicationRejectsWhenDeptPayloadMissesDeptId() {
+        OnboardingApplicationCreateDTO dto = new OnboardingApplicationCreateDTO();
+        dto.setName("张三");
+        dto.setGender("female");
+        dto.setPhone("13800000000");
+        dto.setEmail("zhangsan@test.com");
+        dto.setDeptId(101L);
+        dto.setPostId(201L);
+        dto.setExpectedDate(LocalDate.of(2026, 4, 1));
+
+        DeptVO invalidDept = new DeptVO();
+        invalidDept.setDeptName("技术部");
+
+        when(authServiceClient.getDeptById(101L)).thenReturn(R.ok(invalidDept));
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> onboardingService.createOnboardingApplication(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("部门"));
+        verify(onboardingApplicationMapper, never()).insert(any(OnboardingApplication.class));
     }
 
     /**
@@ -257,6 +283,32 @@ class OnboardingServiceTest {
     /**
      * 验证确认入职后会创建员工档案并回写申请单状态。
      */
+    @Test
+    void testConfirmOnboardingRejectsWhenExistingUserPayloadMissesUserId() {
+        OnboardingApplication application = buildApplication();
+        application.setStatus("APPROVED");
+
+        UserVO invalidUser = new UserVO();
+        invalidUser.setUserName("13800000000");
+        invalidUser.setNickName("张三");
+
+        when(onboardingApplicationMapper.selectById(11L)).thenReturn(application);
+        when(authServiceClient.getUserByUserName("13800000000")).thenReturn(R.ok(invalidUser));
+
+        OnboardingConfirmDTO dto = new OnboardingConfirmDTO();
+        dto.setApplicationId(11L);
+        dto.setActualDate(LocalDate.of(2026, 4, 7));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> onboardingService.confirmOnboarding(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("缺少用户ID"));
+        verify(employeeMapper, never()).insert(any(Employee.class));
+        verify(authServiceClient, never()).createUser(any(UserCreateDTO.class));
+    }
+
     @Test
     void testConfirmOnboardingCreatesEmployee() {
         OnboardingApplication application = buildApplication();

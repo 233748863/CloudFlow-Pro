@@ -13,6 +13,7 @@ import com.cloudflow.hr.domain.entity.Candidate;
 import com.cloudflow.hr.domain.entity.Offer;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.RecruitmentRequest;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.OnboardingApplicationMapper;
@@ -136,6 +137,29 @@ class RecruitmentAndOfferServiceTest {
         assertEquals(Integer.valueOf(0), stored.get().getHiredCount());
         assertTrue(stored.get().getRequestNo().startsWith("RR"));
         assertTrue(stored.get().getRequestNo().length() > 18);
+    }
+
+    @Test
+    void testCreateRecruitmentRequestRejectsWhenDeptPayloadMissesDeptId() {
+        DeptVO invalidDept = new DeptVO();
+        invalidDept.setDeptName("技术部");
+        when(authServiceClient.getDeptById(101L)).thenReturn(R.ok(invalidDept));
+
+        RecruitmentRequestCreateDTO dto = new RecruitmentRequestCreateDTO();
+        dto.setDeptId(101L);
+        dto.setPositionId(301L);
+        dto.setHeadcount(3);
+        dto.setJobRequirements("3年以上Java经验");
+        dto.setSalaryMin(new BigDecimal("15000"));
+        dto.setSalaryMax(new BigDecimal("25000"));
+        dto.setExpectedDate(LocalDate.of(2026, 5, 1));
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> recruitmentRequestService.createRecruitmentRequest(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("部门"));
     }
 
     @Test

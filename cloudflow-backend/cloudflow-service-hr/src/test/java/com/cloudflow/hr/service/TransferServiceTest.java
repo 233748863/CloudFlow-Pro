@@ -12,6 +12,7 @@ import com.cloudflow.hr.domain.dto.TransferApplicationCreateDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.TransferApplication;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.PositionMapper;
@@ -114,6 +115,34 @@ class TransferServiceTest {
         assertEquals(301L, saved.getFromPositionId());
         assertEquals("DRAFT", saved.getStatus());
         assertTrue(saved.getApplicationNo().startsWith("TR"));
+    }
+
+    @Test
+    void testCreateTransferApplicationRejectsWhenPostPayloadMissesPostId() {
+        TransferApplicationCreateDTO dto = new TransferApplicationCreateDTO();
+        dto.setEmployeeId(1L);
+        dto.setToDeptId(102L);
+        dto.setToPostId(202L);
+        dto.setToPositionId(302L);
+        dto.setTransferType("PROMOTION");
+        dto.setReason("组织调整");
+        dto.setEffectiveDate(LocalDate.of(2026, 4, 1));
+        dto.setSalaryChange(Boolean.TRUE);
+
+        PostVO invalidPost = new PostVO();
+        invalidPost.setPostName("产品经理");
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(authServiceClient.getDeptById(102L)).thenReturn(R.ok(buildDept(102L, "产品部")));
+        when(authServiceClient.getPostById(202L)).thenReturn(R.ok(invalidPost));
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> transferService.createTransferApplication(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("岗位"));
+        verify(transferApplicationMapper, never()).insert(any(TransferApplication.class));
     }
 
     /**
