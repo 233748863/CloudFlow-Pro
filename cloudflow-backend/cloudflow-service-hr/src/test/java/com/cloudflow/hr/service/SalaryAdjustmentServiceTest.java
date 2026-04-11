@@ -102,6 +102,26 @@ class SalaryAdjustmentServiceTest {
     }
 
     @Test
+    void testCreateSalaryAdjustmentFallsBackToSnowflakeApplicationNo() {
+        AtomicReference<SalaryAdjustment> stored = new AtomicReference<>();
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(employeeSalaryMapper.selectOne(any())).thenReturn(buildCurrentSalary());
+        when(salaryAdjustmentMapper.generateApplicationNo()).thenReturn(null);
+        when(salaryAdjustmentMapper.insert(any(SalaryAdjustment.class))).thenAnswer(invocation -> {
+            SalaryAdjustment adjustment = invocation.getArgument(0);
+            adjustment.setId(32L);
+            stored.set(adjustment);
+            return 1;
+        });
+
+        Long adjustmentId = salaryAdjustmentService.createSalaryAdjustment(buildCreateDto());
+
+        assertEquals(32L, adjustmentId);
+        assertTrue(stored.get().getApplicationNo().startsWith("SA"));
+        assertTrue(stored.get().getApplicationNo().length() > 10);
+    }
+
+    @Test
     void testSubmitSalaryAdjustmentSuccess() {
         SalaryAdjustment adjustment = buildAdjustment("DRAFT", LocalDate.of(2026, 4, 1));
         when(salaryAdjustmentMapper.selectById(31L)).thenReturn(adjustment);

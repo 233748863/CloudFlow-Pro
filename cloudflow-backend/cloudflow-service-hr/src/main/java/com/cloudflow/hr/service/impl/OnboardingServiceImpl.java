@@ -48,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -134,6 +133,9 @@ public class OnboardingServiceImpl implements OnboardingService {
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动入职审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动入职审批流程失败：" + result.getMsg());
             }
@@ -306,6 +308,9 @@ public class OnboardingServiceImpl implements OnboardingService {
     private void validateDeptId(Long deptId) {
         try {
             R<DeptVO> result = authServiceClient.getDeptById(deptId);
+            if (result == null) {
+                throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败：Auth 服务无响应");
+            }
             if (!result.isSuccess() || result.getData() == null) {
                 throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
             }
@@ -320,6 +325,9 @@ public class OnboardingServiceImpl implements OnboardingService {
     private void validatePostId(Long postId) {
         try {
             R<PostVO> result = authServiceClient.getPostById(postId);
+            if (result == null) {
+                throw new HrSystemException("VALIDATE_POST_FAILED", "校验岗位ID失败：Auth 服务无响应");
+            }
             if (!result.isSuccess() || result.getData() == null) {
                 throw HrBusinessException.invalidDeptOrPost("POST", postId);
             }
@@ -417,6 +425,9 @@ public class OnboardingServiceImpl implements OnboardingService {
 
         try {
             R<Long> result = authServiceClient.createUser(userCreateDTO);
+            if (result == null) {
+                throw new HrSystemException("CREATE_USER_FAILED", "创建用户账号失败：Auth 服务无响应");
+            }
             if (!result.isSuccess()) {
                 UserVO retriedUser = findUserByUserName(application.getPhone());
                 if (retriedUser != null && retriedUser.getUserId() != null) {
@@ -466,6 +477,10 @@ public class OnboardingServiceImpl implements OnboardingService {
 
         try {
             R<UserVO> result = authServiceClient.getUserByUserName(userName);
+            if (result == null) {
+                log.warn("按用户名查询用户返回空响应，按未查询到用户处理，userName: {}", userName);
+                return null;
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("QUERY_USER_FAILED", "查询用户账号失败：" + result.getMsg());
             }
@@ -489,6 +504,9 @@ public class OnboardingServiceImpl implements OnboardingService {
 
         try {
             R<Void> result = authServiceClient.updateUser(userId, userUpdateDTO);
+            if (result == null) {
+                throw new HrSystemException("UPDATE_USER_FAILED", "同步已有用户账号失败：Auth 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("UPDATE_USER_FAILED", "同步已有用户账号失败：" + result.getMsg());
             }
@@ -534,16 +552,16 @@ public class OnboardingServiceImpl implements OnboardingService {
     }
 
     private String generateEmployeeNo() {
+        // 保留日期前缀便于人工识别，同时拼接雪花 ID 避免同日批量入职时撞工号。
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String random = String.format("%04d", new Random().nextInt(10000));
-        return "EMP" + date + random;
+        return "EMP" + date + IdUtils.snowflakeIdStr();
     }
 
     private void fillDeptAndPostName(OnboardingApplicationVO vo) {
         if (vo.getDeptId() != null) {
             try {
                 R<DeptVO> deptResult = authServiceClient.getDeptById(vo.getDeptId());
-                if (deptResult.isSuccess() && deptResult.getData() != null) {
+                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
                     vo.setDeptName(deptResult.getData().getDeptName());
                 }
             } catch (Exception e) {
@@ -554,7 +572,7 @@ public class OnboardingServiceImpl implements OnboardingService {
         if (vo.getPostId() != null) {
             try {
                 R<PostVO> postResult = authServiceClient.getPostById(vo.getPostId());
-                if (postResult.isSuccess() && postResult.getData() != null) {
+                if (postResult != null && postResult.isSuccess() && postResult.getData() != null) {
                     vo.setPostName(postResult.getData().getPostName());
                 }
             } catch (Exception e) {

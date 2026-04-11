@@ -192,6 +192,7 @@ class OnboardingServiceTest {
 
         when(onboardingTaskMapper.selectById(21L)).thenReturn(task);
         when(onboardingApplicationMapper.selectById(11L)).thenReturn(application);
+        when(authServiceClient.getUserByUserName("13800000000")).thenReturn(null);
         when(authServiceClient.createUser(any(UserCreateDTO.class))).thenReturn(R.ok(5001L));
 
         OnboardingTaskCompleteDTO dto = new OnboardingTaskCompleteDTO();
@@ -221,6 +222,8 @@ class OnboardingServiceTest {
         application.setStatus("APPROVED");
 
         when(onboardingApplicationMapper.selectById(11L)).thenReturn(application);
+        when(authServiceClient.getUserByUserName("13800000000")).thenReturn(null);
+        when(authServiceClient.createUser(any(UserCreateDTO.class))).thenReturn(R.ok(5001L));
         when(employeeMapper.insert(any(Employee.class))).thenAnswer(invocation -> {
             Employee employee = invocation.getArgument(0);
             employee.setId(88L);
@@ -242,6 +245,7 @@ class OnboardingServiceTest {
         assertEquals("PROBATION", created.getEmployeeStatus());
         assertEquals(LocalDate.of(2026, 4, 7), created.getHireDate());
         assertTrue(created.getEmployeeNo().startsWith("EMP"));
+        assertTrue(created.getEmployeeNo().length() > 20);
 
         assertEquals("ONBOARDED", application.getStatus());
         assertEquals(88L, application.getEmployeeId());

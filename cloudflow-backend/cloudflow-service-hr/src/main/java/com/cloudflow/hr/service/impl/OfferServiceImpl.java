@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
@@ -17,6 +18,7 @@ import com.cloudflow.hr.domain.entity.OnboardingApplication;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.vo.OfferVO;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.OnboardingApplicationMapper;
 import com.cloudflow.hr.mapper.OfferMapper;
@@ -145,14 +147,19 @@ public class OfferServiceImpl implements OfferService {
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动 Offer 审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
-                throw new RuntimeException(result.getMsg());
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动 Offer 审批流程失败：" + result.getMsg());
             }
 
             offer.setStatus("APPROVING");
             offer.setProcessInstanceId(result.getData());
             offerMapper.updateById(offer);
             log.info("Offer 审批流程启动成功，流程实例ID：{}", result.getData());
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("启动 Offer 审批流程失败，offerId：{}", id, e);
             throw new RuntimeException("启动审批流程失败：" + e.getMessage(), e);
@@ -376,28 +383,9 @@ public class OfferServiceImpl implements OfferService {
     }
 
     private String generateOfferNo() {
+        // 保留日期前缀便于人工识别，同时拼接雪花 ID 避免并发创建 Offer 时撞唯一索引。
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String prefix = "OFFER" + dateStr;
-
-        LambdaQueryWrapper<Offer> wrapper = new LambdaQueryWrapper<>();
-        wrapper.likeRight(Offer::getOfferNo, prefix)
-                .orderByDesc(Offer::getOfferNo)
-                .last("LIMIT 1");
-
-        Offer lastOffer = offerMapper.selectOne(wrapper);
-        int sequence = 1;
-        if (lastOffer != null && lastOffer.getOfferNo() != null) {
-            String lastNo = lastOffer.getOfferNo();
-            if (lastNo.length() >= prefix.length() + 6) {
-                try {
-                    sequence = Integer.parseInt(lastNo.substring(prefix.length())) + 1;
-                } catch (NumberFormatException e) {
-                    log.warn("解析 Offer 编号失败：{}", lastNo, e);
-                }
-            }
-        }
-
-        return prefix + String.format("%06d", sequence);
+        return "OFFER" + dateStr + IdUtils.snowflakeIdStr();
     }
 
     private OfferVO convertToVO(Offer offer) {
@@ -413,7 +401,7 @@ public class OfferServiceImpl implements OfferService {
         if (offer.getDeptId() != null) {
             try {
                 R<DeptVO> deptResult = authServiceClient.getDeptById(offer.getDeptId());
-                if (deptResult.isSuccess() && deptResult.getData() != null) {
+                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
                     vo.setDeptName(deptResult.getData().getDeptName());
                 }
             } catch (Exception e) {

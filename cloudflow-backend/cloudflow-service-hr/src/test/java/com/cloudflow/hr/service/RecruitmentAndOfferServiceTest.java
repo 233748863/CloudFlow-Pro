@@ -13,6 +13,7 @@ import com.cloudflow.hr.domain.entity.Candidate;
 import com.cloudflow.hr.domain.entity.Offer;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.RecruitmentRequest;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.OnboardingApplicationMapper;
 import com.cloudflow.hr.mapper.OfferMapper;
@@ -33,6 +34,7 @@ import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -133,6 +135,7 @@ class RecruitmentAndOfferServiceTest {
         assertEquals("DRAFT", stored.get().getStatus());
         assertEquals(Integer.valueOf(0), stored.get().getHiredCount());
         assertTrue(stored.get().getRequestNo().startsWith("RR"));
+        assertTrue(stored.get().getRequestNo().length() > 18);
     }
 
     @Test
@@ -152,11 +155,26 @@ class RecruitmentAndOfferServiceTest {
     }
 
     @Test
+    void testSubmitRecruitmentRequestRejectsWhenWorkflowServiceReturnsNull() {
+        RecruitmentRequest request = buildRecruitmentRequest("DRAFT");
+        when(recruitmentRequestMapper.selectById(11L)).thenReturn(request);
+        when(positionMapper.selectById(301L)).thenReturn(buildPosition(301L, 201L, "Java寮€鍙戝伐绋嬪笀"));
+        when(workflowProcessKeyProperties.getRecruitmentRequest()).thenReturn("biz_recruit");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> recruitmentRequestService.submitRecruitmentRequest(11L)
+        );
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+    }
+
+    @Test
     void testCreateOfferSuccess() {
         AtomicReference<Offer> stored = new AtomicReference<>();
         when(candidateMapper.selectById(501L)).thenReturn(buildCandidate());
         when(positionMapper.selectById(301L)).thenReturn(buildPosition(301L, 201L, "Java开发工程师"));
-        when(offerMapper.selectOne(any())).thenReturn(null);
         when(offerMapper.insert(any(Offer.class))).thenAnswer(invocation -> {
             Offer offer = invocation.getArgument(0);
             offer.setId(21L);
@@ -179,6 +197,7 @@ class RecruitmentAndOfferServiceTest {
         assertEquals("DRAFT", stored.get().getStatus());
         assertEquals(2001L, stored.get().getTenantId());
         assertTrue(stored.get().getOfferNo().startsWith("OFFER"));
+        assertTrue(stored.get().getOfferNo().length() > 20);
     }
 
     @Test
@@ -212,6 +231,21 @@ class RecruitmentAndOfferServiceTest {
         assertEquals(77L, onboardingId);
         assertEquals("HIRED", candidate.getStatus());
         verify(onboardingService, times(1)).createOnboardingApplication(any());
+    }
+
+    @Test
+    void testSubmitOfferRejectsWhenWorkflowServiceReturnsNull() {
+        Offer offer = buildOffer("DRAFT");
+        when(offerMapper.selectById(21L)).thenReturn(offer);
+        when(workflowProcessKeyProperties.getOffer()).thenReturn("offer_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> offerService.submitOffer(21L)
+        );
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
     }
 
     @Test

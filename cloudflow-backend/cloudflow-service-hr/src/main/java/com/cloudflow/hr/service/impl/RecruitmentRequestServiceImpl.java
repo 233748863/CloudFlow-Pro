@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
@@ -28,11 +29,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
 /**
  * 招聘需求服务实现类
@@ -142,6 +140,9 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
             }
@@ -345,9 +346,7 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
      * 生成需求编号
      */
     private String generateRequestNo() {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String random = String.format("%04d", new Random().nextInt(10000));
-        return "RR" + date + random;
+        return "RR" + IdUtils.snowflakeIdStr();
     }
 
     /**
@@ -356,6 +355,9 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
     private void validateDeptId(Long deptId) {
         try {
             R<DeptVO> result = authServiceClient.getDeptById(deptId);
+            if (result == null) {
+                throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败：Auth 服务无响应");
+            }
             if (!result.isSuccess() || result.getData() == null) {
                 throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
             }
@@ -372,7 +374,7 @@ public class RecruitmentRequestServiceImpl implements RecruitmentRequestService 
         if (vo.getDeptId() != null) {
             try {
                 R<DeptVO> deptResult = authServiceClient.getDeptById(vo.getDeptId());
-                if (deptResult.isSuccess() && deptResult.getData() != null) {
+                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
                     vo.setDeptName(deptResult.getData().getDeptName());
                 }
             } catch (Exception e) {
