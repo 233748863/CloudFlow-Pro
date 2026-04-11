@@ -233,13 +233,21 @@ public class OvertimeServiceImpl implements OvertimeService {
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
+            }
+            if (result.getData() == null || result.getData().isBlank()) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 未返回流程实例ID");
             }
 
             application.setStatus("APPROVING");
             application.setProcessInstanceId(result.getData());
             overtimeApplicationMapper.updateById(application);
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("启动加班审批流程失败", e);
             throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + e.getMessage(), e);

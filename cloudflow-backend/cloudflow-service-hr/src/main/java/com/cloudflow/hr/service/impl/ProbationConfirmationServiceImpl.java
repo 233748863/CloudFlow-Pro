@@ -136,8 +136,14 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
+            }
+            if (result.getData() == null || result.getData().isBlank()) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 未返回流程实例ID");
             }
 
             String processInstanceId = result.getData();
@@ -149,6 +155,8 @@ public class ProbationConfirmationServiceImpl implements ProbationConfirmationSe
             probationConfirmationMapper.updateById(confirmation);
 
             log.info("转正申请提交成功，申请ID：{}", id);
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("启动审批流程失败", e);
             throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + e.getMessage(), e);

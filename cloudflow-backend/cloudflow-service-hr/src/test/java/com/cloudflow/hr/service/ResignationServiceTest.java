@@ -12,6 +12,7 @@ import com.cloudflow.hr.domain.dto.ResignationConfirmDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.ResignationApplication;
 import com.cloudflow.hr.domain.entity.ResignationHandover;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.ResignationApplicationMapper;
 import com.cloudflow.hr.mapper.ResignationHandoverMapper;
@@ -31,6 +32,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -142,9 +144,41 @@ class ResignationServiceTest {
         verify(resignationApplicationMapper, times(1)).updateById(application);
     }
 
+    @Test
+    void testSubmitResignationApplicationRejectsWhenWorkflowServiceReturnsNull() {
+        ResignationApplication application = buildApplication();
+        when(resignationApplicationMapper.selectById(41L)).thenReturn(application);
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(workflowProcessKeyProperties.getResignation()).thenReturn("resignation_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> resignationService.submitResignationApplication(41L)
+        );
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+    }
+
     /**
      * 验证离职审批通过后会生成标准交接清单。
      */
+    @Test
+    void testSubmitResignationApplicationRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        ResignationApplication application = buildApplication();
+        when(resignationApplicationMapper.selectById(41L)).thenReturn(application);
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(workflowProcessKeyProperties.getResignation()).thenReturn("resignation_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> resignationService.submitResignationApplication(41L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+    }
+
     @Test
     void testApproveResignationGeneratesHandovers() {
         ResignationApplication application = buildApplication();
@@ -209,6 +243,30 @@ class ResignationServiceTest {
         assertEquals(LocalDate.of(2026, 4, 30), application.getActualDate());
         verify(resignationApplicationMapper, times(1)).updateById(application);
         verify(authServiceClient, times(1)).disableUser(9001L);
+    }
+
+    @Test
+    void testConfirmResignationRejectsWhenDisableUserServiceReturnsNull() {
+        ResignationApplication application = buildApplication();
+        application.setStatus("APPROVED");
+        Employee employee = buildEmployee();
+        employee.setUserId(9001L);
+
+        when(resignationApplicationMapper.selectById(41L)).thenReturn(application);
+        when(resignationHandoverMapper.selectCount(any())).thenReturn(0L);
+        when(employeeMapper.selectById(1L)).thenReturn(employee);
+        when(authServiceClient.disableUser(9001L)).thenReturn(null);
+
+        ResignationConfirmDTO dto = new ResignationConfirmDTO();
+        dto.setApplicationId(41L);
+        dto.setActualDate(LocalDate.of(2026, 4, 30));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> resignationService.confirmResignation(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("Auth 服务无响应"));
     }
 
     private Employee buildEmployee() {

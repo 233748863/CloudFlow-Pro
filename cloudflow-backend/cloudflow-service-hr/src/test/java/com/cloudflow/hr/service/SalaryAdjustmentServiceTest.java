@@ -152,6 +152,20 @@ class SalaryAdjustmentServiceTest {
     }
 
     @Test
+    void testSubmitSalaryAdjustmentRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        SalaryAdjustment adjustment = buildAdjustment("DRAFT", LocalDate.of(2026, 4, 1));
+        when(salaryAdjustmentMapper.selectById(31L)).thenReturn(adjustment);
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(workflowProcessKeyProperties.getSalaryAdjustment()).thenReturn("salary_adjustment_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(HrSystemException.class,
+                () -> salaryAdjustmentService.submitSalaryAdjustment(31L));
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+    }
+
+    @Test
     void testApproveSalaryAdjustmentEffectiveImmediately() {
         SalaryAdjustment adjustment = buildAdjustment("APPROVING", LocalDate.now());
         EmployeeSalary currentSalary = buildCurrentSalary();

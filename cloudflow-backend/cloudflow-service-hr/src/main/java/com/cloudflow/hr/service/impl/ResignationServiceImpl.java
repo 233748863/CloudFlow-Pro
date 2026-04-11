@@ -113,7 +113,7 @@ public class ResignationServiceImpl implements ResignationService {
             throw new HrBusinessException("RESIGNATION_APPLICATION_NOT_FOUND", "离职申请不存在");
         }
 
-        // 2. 验证状态
+        // 2. 校验状态
         if (!"DRAFT".equals(application.getStatus())) {
             throw new HrBusinessException("INVALID_STATUS", "只有草稿状态的申请才能提交");
         }
@@ -124,7 +124,7 @@ public class ResignationServiceImpl implements ResignationService {
             throw new HrBusinessException("EMPLOYEE_NOT_FOUND", "员工不存在");
         }
 
-        // 4. 调用工作流服务启动审批流程
+        // 4. 启动审批流程
         ProcessStartDTO processStartDTO = new ProcessStartDTO();
         processStartDTO.setTenantId(application.getTenantId());
         processStartDTO.setProcessDefinitionKey(workflowProcessKeyProperties.getResignation());
@@ -134,7 +134,6 @@ public class ResignationServiceImpl implements ResignationService {
         processStartDTO.setProcessTitle("离职申请-" + employee.getName());
         processStartDTO.setStartUserId(SecurityUtils.getUserId());
 
-        // 设置流程变量
         Map<String, Object> variables = new HashMap<>();
         variables.put("employeeName", employee.getName());
         variables.put("employeeNo", employee.getEmployeeNo());
@@ -144,8 +143,14 @@ public class ResignationServiceImpl implements ResignationService {
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
+            }
+            if (result.getData() == null || result.getData().isBlank()) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 未返回流程实例ID");
             }
 
             String processInstanceId = result.getData();
@@ -157,12 +162,13 @@ public class ResignationServiceImpl implements ResignationService {
             resignationApplicationMapper.updateById(application);
 
             log.info("离职申请提交成功，申请ID：{}", id);
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("启动审批流程失败", e);
             throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + e.getMessage(), e);
         }
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approveResignation(Long id) {
@@ -472,21 +478,22 @@ public class ResignationServiceImpl implements ResignationService {
 
         try {
             R<Void> result = authServiceClient.disableUser(userId);
+            if (result == null) {
+                throw new HrSystemException("DISABLE_USER_FAILED", "注销用户账号失败：Auth 服务无响应");
+            }
             if (!result.isSuccess()) {
                 log.error("注销用户账号失败：{}", result.getMsg());
                 throw new HrSystemException("DISABLE_USER_FAILED", "注销用户账号失败：" + result.getMsg());
             }
 
             log.info("用户账号注销成功，用户ID：{}", userId);
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("注销用户账号失败", e);
             throw new HrSystemException("DISABLE_USER_FAILED", "注销用户账号失败：" + e.getMessage(), e);
         }
     }
-
-    /**
-     * 获取状态描述
-     */
     private String getStatusDesc(String status) {
         switch (status) {
             case "DRAFT":

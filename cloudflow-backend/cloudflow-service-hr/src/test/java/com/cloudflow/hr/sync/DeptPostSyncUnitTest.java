@@ -339,6 +339,17 @@ class DeptPostSyncUnitTest {
         assertFalse(isValid, "Auth 空响应时不应把岗位误判为有效");
     }
 
+    @Test
+    @Order(8)
+    @DisplayName("娴嬭瘯8锛欰uth 鎴愬姛浣嗘湭杩斿洖閮ㄩ棬鏁版嵁鏃讹紝鍚屾鍗曚釜閮ㄩ棬浼氭槑纭け璐?")
+    void testSyncDepartmentRejectsWhenAuthReturnsNullDeptPayload() {
+        when(authServiceClient.getDeptById(TEST_DEPT_ID)).thenReturn(R.ok((DeptVO) null));
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> deptPostSyncService.syncDepartment(TEST_DEPT_ID));
+
+        assertTrue(exception.getMessage().contains("未返回部门数据"));
+    }
+
     private List<DeptTreeVO> createMockDeptTree() {
         List<DeptTreeVO> tree = new ArrayList<>();
 

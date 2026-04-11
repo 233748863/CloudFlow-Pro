@@ -161,6 +161,44 @@ class LeaveAndOvertimeServiceTest {
     }
 
     @Test
+    void testSubmitLeaveApplicationRejectsWhenWorkflowServiceReturnsNull() {
+        LeaveApplication application = buildLeaveApplication("DRAFT");
+        LeaveQuota quota = buildLeaveQuota(new BigDecimal("10.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+
+        when(leaveApplicationMapper.selectById(11L)).thenReturn(application);
+        when(leaveTypeMapper.selectById(301L)).thenReturn(buildAnnualLeaveType());
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(quota);
+        when(workflowProcessKeyProperties.getLeave()).thenReturn("leave_request");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> leaveService.submitLeaveApplication(11L)
+        );
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+    }
+
+    @Test
+    void testSubmitLeaveApplicationRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        LeaveApplication application = buildLeaveApplication("DRAFT");
+        LeaveQuota quota = buildLeaveQuota(new BigDecimal("10.00"), BigDecimal.ZERO, BigDecimal.ZERO);
+
+        when(leaveApplicationMapper.selectById(11L)).thenReturn(application);
+        when(leaveTypeMapper.selectById(301L)).thenReturn(buildAnnualLeaveType());
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(quota);
+        when(workflowProcessKeyProperties.getLeave()).thenReturn("leave_request");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> leaveService.submitLeaveApplication(11L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+    }
+
+    @Test
     void testApproveLeaveApplicationConsumesFrozenQuota() {
         LeaveApplication application = buildLeaveApplication("APPROVING");
         LeaveQuota quota = buildLeaveQuota(new BigDecimal("10.00"), BigDecimal.ZERO, new BigDecimal("2.00"));
@@ -957,6 +995,36 @@ class LeaveAndOvertimeServiceTest {
         assertEquals("APPROVING", application.getStatus());
         assertEquals("proc-overtime-001", application.getProcessInstanceId());
         verify(workflowServiceClient, times(1)).startProcess(any(ProcessStartDTO.class));
+    }
+
+    @Test
+    void testSubmitOvertimeApplicationRejectsWhenWorkflowServiceReturnsNull() {
+        OvertimeApplication application = buildOvertimeApplication("DRAFT");
+        when(overtimeApplicationMapper.selectById(21L)).thenReturn(application);
+        when(workflowProcessKeyProperties.getOvertime()).thenReturn("overtime_request");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> overtimeService.submitOvertimeApplication(21L)
+        );
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+    }
+
+    @Test
+    void testSubmitOvertimeApplicationRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        OvertimeApplication application = buildOvertimeApplication("DRAFT");
+        when(overtimeApplicationMapper.selectById(21L)).thenReturn(application);
+        when(workflowProcessKeyProperties.getOvertime()).thenReturn("overtime_request");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> overtimeService.submitOvertimeApplication(21L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
     }
 
     @Test

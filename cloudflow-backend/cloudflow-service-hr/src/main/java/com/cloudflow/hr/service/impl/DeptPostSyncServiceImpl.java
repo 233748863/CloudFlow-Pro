@@ -353,6 +353,9 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         if (!result.isSuccess()) {
             throw new RuntimeException("同步部门数据失败：" + result.getMsg());
         }
+        if (result.getData() == null) {
+            throw new RuntimeException("同步部门数据失败：Auth 未返回部门树数据");
+        }
         return result.getData();
     }
 
@@ -367,6 +370,9 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         if (!result.isSuccess()) {
             throw new RuntimeException("同步岗位数据失败：" + result.getMsg());
         }
+        if (result.getData() == null) {
+            throw new RuntimeException("同步岗位数据失败：Auth 未返回岗位列表数据");
+        }
         return result.getData();
     }
 
@@ -378,6 +384,9 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         if (!result.isSuccess()) {
             throw new RuntimeException("同步部门数据失败：" + result.getMsg());
         }
+        if (result.getData() == null) {
+            throw new RuntimeException("同步部门数据失败：Auth 未返回部门数据");
+        }
         return result.getData();
     }
 
@@ -388,6 +397,9 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         }
         if (!result.isSuccess()) {
             throw new RuntimeException("同步岗位数据失败：" + result.getMsg());
+        }
+        if (result.getData() == null) {
+            throw new RuntimeException("同步岗位数据失败：Auth 未返回岗位数据");
         }
         return result.getData();
     }

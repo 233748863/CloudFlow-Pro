@@ -139,6 +139,9 @@ public class OnboardingServiceImpl implements OnboardingService {
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动入职审批流程失败：" + result.getMsg());
             }
+            if (result.getData() == null || result.getData().isBlank()) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动入职审批流程失败：Workflow 未返回流程实例ID");
+            }
 
             application.setStatus("APPROVING");
             application.setProcessInstanceId(result.getData());
@@ -438,8 +441,13 @@ public class OnboardingServiceImpl implements OnboardingService {
                 }
                 throw new HrSystemException("CREATE_USER_FAILED", "创建用户账号失败：" + result.getMsg());
             }
+            if (result.getData() == null) {
+                throw new HrSystemException("CREATE_USER_FAILED", "创建用户账号失败：Auth 未返回用户ID");
+            }
             log.info("用户账号创建成功，申请ID：{}，用户ID：{}", application.getId(), result.getData());
             return result.getData();
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("创建用户账号失败，申请ID：{}", application.getId(), e);
             throw new HrSystemException("CREATE_USER_FAILED", "创建用户账号失败：" + e.getMessage(), e);

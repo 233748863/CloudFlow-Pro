@@ -15,6 +15,7 @@ import com.cloudflow.hr.domain.dto.OnboardingTaskCompleteDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.OnboardingApplication;
 import com.cloudflow.hr.domain.entity.OnboardingTask;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.OnboardingApplicationMapper;
@@ -36,8 +37,10 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -154,6 +157,22 @@ class OnboardingServiceTest {
         verify(onboardingApplicationMapper, times(1)).updateById(application);
     }
 
+    @Test
+    void testSubmitOnboardingApplicationRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        OnboardingApplication application = buildApplication();
+        when(onboardingApplicationMapper.selectById(11L)).thenReturn(application);
+        when(workflowProcessKeyProperties.getOnboarding()).thenReturn("onboarding_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> onboardingService.submitOnboardingApplication(11L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+        verify(onboardingApplicationMapper, never()).updateById(any(OnboardingApplication.class));
+    }
+
     /**
      * 验证审批通过后会生成标准入职任务清单。
      */
@@ -211,6 +230,28 @@ class OnboardingServiceTest {
         assertEquals("13800000000", userCreateDTO.getUserName());
         assertEquals("张三", userCreateDTO.getNickName());
         assertEquals(List.of(201L), userCreateDTO.getPostIds());
+    }
+
+    @Test
+    void testConfirmOnboardingRejectsWhenCreateUserReturnsNullUserId() {
+        OnboardingApplication application = buildApplication();
+        application.setStatus("APPROVED");
+
+        when(onboardingApplicationMapper.selectById(11L)).thenReturn(application);
+        when(authServiceClient.getUserByUserName("13800000000")).thenReturn(null);
+        when(authServiceClient.createUser(any(UserCreateDTO.class))).thenReturn(R.ok((Long) null));
+
+        OnboardingConfirmDTO dto = new OnboardingConfirmDTO();
+        dto.setApplicationId(11L);
+        dto.setActualDate(LocalDate.of(2026, 4, 7));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> onboardingService.confirmOnboarding(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回用户ID"));
+        verify(employeeMapper, never()).insert(any(Employee.class));
     }
 
     /**

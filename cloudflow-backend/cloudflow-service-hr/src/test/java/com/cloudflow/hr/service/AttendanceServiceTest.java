@@ -1,6 +1,10 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.hr.client.WorkflowServiceClient;
+import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.AttendanceCheckDTO;
 import com.cloudflow.hr.domain.dto.AttendanceRecordQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceSupplementDTO;
@@ -55,6 +59,12 @@ class AttendanceServiceTest {
     
     @Mock
     private ShiftMapper shiftMapper;
+
+    @Mock
+    private WorkflowServiceClient workflowServiceClient;
+
+    @Mock
+    private HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
     
     @InjectMocks
     private AttendanceServiceImpl attendanceService;
@@ -369,5 +379,53 @@ class AttendanceServiceTest {
         assertNull(result.getShiftId());
         assertNull(result.getCheckInRecord());
         assertNull(result.getCheckOutRecord());
+    }
+
+    @Test
+    void testSubmitSupplementApplicationRejectsWhenWorkflowServiceReturnsNull() {
+        AttendanceRecord supplementRecord = new AttendanceRecord();
+        supplementRecord.setId(9L);
+        supplementRecord.setTenantId(1L);
+        supplementRecord.setEmployeeId(1L);
+        supplementRecord.setAttendanceDate(LocalDate.now());
+        supplementRecord.setCheckType("CHECK_IN");
+        supplementRecord.setCheckMethod("SUPPLEMENT");
+        supplementRecord.setStatus("MISSING");
+
+        when(attendanceRecordMapper.selectById(9L)).thenReturn(supplementRecord);
+        when(workflowProcessKeyProperties.getAttendanceSupplement()).thenReturn("attendance_supplement");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> attendanceService.submitSupplementApplication(9L)
+        );
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+        verify(attendanceRecordMapper, never()).updateById(any(AttendanceRecord.class));
+    }
+
+    @Test
+    void testSubmitSupplementApplicationRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        AttendanceRecord supplementRecord = new AttendanceRecord();
+        supplementRecord.setId(9L);
+        supplementRecord.setTenantId(1L);
+        supplementRecord.setEmployeeId(1L);
+        supplementRecord.setAttendanceDate(LocalDate.now());
+        supplementRecord.setCheckType("CHECK_IN");
+        supplementRecord.setCheckMethod("SUPPLEMENT");
+        supplementRecord.setStatus("MISSING");
+
+        when(attendanceRecordMapper.selectById(9L)).thenReturn(supplementRecord);
+        when(workflowProcessKeyProperties.getAttendanceSupplement()).thenReturn("attendance_supplement");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrBusinessException exception = assertThrows(
+                HrBusinessException.class,
+                () -> attendanceService.submitSupplementApplication(9L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+        verify(attendanceRecordMapper, never()).updateById(any(AttendanceRecord.class));
     }
 }

@@ -169,6 +169,20 @@ class TransferServiceTest {
     }
 
     @Test
+    void testSubmitTransferApplicationRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        TransferApplication application = buildTransferApplication();
+        when(transferApplicationMapper.selectById(31L)).thenReturn(application);
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(workflowProcessKeyProperties.getTransfer()).thenReturn("transfer_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(HrSystemException.class,
+                () -> transferService.submitTransferApplication(31L));
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+    }
+
+    @Test
     void testApproveTransferEffectiveImmediately() {
         TransferApplication application = buildTransferApplication();
         application.setStatus("APPROVING");

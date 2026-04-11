@@ -72,7 +72,7 @@ public class LeaveServiceImpl implements LeaveService {
     private static final String LEAVE_CODE_ANNUAL = "ANNUAL";
     private static final String LEAVE_CODE_COMPENSATORY = "COMPENSATORY";
 
-    
+     
     // ==================== 假期类型管理 ====================
     
     /**
@@ -398,9 +398,6 @@ public class LeaveServiceImpl implements LeaveService {
         }
     }
 
-    /**
-     * 读取规则中的数值字段。
-     */
     private BigDecimal readDecimalValue(Map<String, Object> quotaRule, String key) {
         if (quotaRule == null || !quotaRule.containsKey(key) || quotaRule.get(key) == null) {
             return null;
@@ -1429,7 +1426,7 @@ public class LeaveServiceImpl implements LeaveService {
             throw new HrBusinessException("请假申请不存在");
         }
         
-        // 验证状态
+        // 校验状态
         if (!"DRAFT".equals(leaveApplication.getStatus())) {
             throw new HrBusinessException("只有草稿状态的申请才能提交");
         }
@@ -1471,11 +1468,6 @@ public class LeaveServiceImpl implements LeaveService {
                     leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
         }
         
-        // TODO: 调用工作流服务启动审批流程
-        // String processInstanceId = workflowServiceClient.startProcess(...);
-        // leaveApplication.setProcessInstanceId(processInstanceId);
-        
-        // 更新申请状态为审批中
         ProcessStartDTO processStartDTO = new ProcessStartDTO();
         processStartDTO.setTenantId(leaveApplication.getTenantId());
         processStartDTO.setProcessDefinitionKey(workflowProcessKeyProperties.getLeave());
@@ -1497,13 +1489,21 @@ public class LeaveServiceImpl implements LeaveService {
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
+            }
+            if (result.getData() == null || result.getData().isBlank()) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 未返回流程实例ID");
             }
 
             leaveApplication.setStatus("APPROVING");
             leaveApplication.setProcessInstanceId(result.getData());
             leaveApplicationMapper.updateById(leaveApplication);
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("启动请假审批流程失败", e);
             throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + e.getMessage(), e);
@@ -1512,10 +1512,6 @@ public class LeaveServiceImpl implements LeaveService {
         log.info("请假申请提交成功，ID: {}", id);
     }
 
-    
-    /**
-     * 审批通过后扣减额度
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approveLeaveApplication(Long id) {

@@ -9,6 +9,7 @@ import com.cloudflow.hr.domain.dto.ProbationConfirmationCreateDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.ProbationConfirmation;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.ProbationConfirmationMapper;
 import com.cloudflow.hr.service.impl.ProbationConfirmationServiceImpl;
@@ -145,9 +146,45 @@ class ProbationConfirmationServiceTest {
         assertEquals("proc-20260322", updated.getProcessInstanceId());
     }
 
+    @Test
+    void testSubmitProbationConfirmationRejectsWhenWorkflowServiceReturnsNull() {
+        ProbationConfirmation confirmation = buildDraftConfirmation();
+        Employee employee = buildProbationEmployee();
+
+        when(probationConfirmationMapper.selectById(10L)).thenReturn(confirmation);
+        when(employeeMapper.selectById(1L)).thenReturn(employee);
+        when(workflowProcessKeyProperties.getProbationConfirmation()).thenReturn("probation_confirmation_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> probationConfirmationService.submitProbationConfirmation(10L)
+        );
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+    }
+
     /**
      * 测试审批通过后，员工状态会变成正式员工
      */
+    @Test
+    void testSubmitProbationConfirmationRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        ProbationConfirmation confirmation = buildDraftConfirmation();
+        Employee employee = buildProbationEmployee();
+
+        when(probationConfirmationMapper.selectById(10L)).thenReturn(confirmation);
+        when(employeeMapper.selectById(1L)).thenReturn(employee);
+        when(workflowProcessKeyProperties.getProbationConfirmation()).thenReturn("probation_confirmation");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> probationConfirmationService.submitProbationConfirmation(10L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+    }
+
     @Test
     void testApproveProbationConfirmationSuccess() {
         ProbationConfirmation confirmation = buildApprovingConfirmation();

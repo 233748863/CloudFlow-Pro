@@ -171,6 +171,22 @@ class RecruitmentAndOfferServiceTest {
     }
 
     @Test
+    void testSubmitRecruitmentRequestRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        RecruitmentRequest request = buildRecruitmentRequest("DRAFT");
+        when(recruitmentRequestMapper.selectById(11L)).thenReturn(request);
+        when(positionMapper.selectById(301L)).thenReturn(buildPosition(301L, 201L, "Java开发工程师"));
+        when(workflowProcessKeyProperties.getRecruitmentRequest()).thenReturn("biz_recruit");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> recruitmentRequestService.submitRecruitmentRequest(11L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
+    }
+
+    @Test
     void testCreateOfferSuccess() {
         AtomicReference<Offer> stored = new AtomicReference<>();
         when(candidateMapper.selectById(501L)).thenReturn(buildCandidate());
@@ -246,6 +262,21 @@ class RecruitmentAndOfferServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+    }
+
+    @Test
+    void testSubmitOfferRejectsWhenWorkflowReturnsBlankProcessInstanceId() {
+        Offer offer = buildOffer("DRAFT");
+        when(offerMapper.selectById(21L)).thenReturn(offer);
+        when(workflowProcessKeyProperties.getOffer()).thenReturn("offer_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(R.ok(""));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> offerService.submitOffer(21L)
+        );
+
+        assertTrue(exception.getMessage().contains("未返回流程实例ID"));
     }
 
     @Test
