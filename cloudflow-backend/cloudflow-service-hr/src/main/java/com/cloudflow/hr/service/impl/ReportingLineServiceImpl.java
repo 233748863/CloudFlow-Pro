@@ -121,10 +121,7 @@ public class ReportingLineServiceImpl implements ReportingLineService {
         log.info("获取部门汇报关系矩阵，部门ID：{}", deptId);
         Long tenantId = SecurityUtils.getTenantId();
 
-        DeptVO dept = deptPostSyncService.getCachedDept(deptId);
-        if (dept == null) {
-            throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
-        }
+        DeptVO dept = resolveDeptForMatrix(deptId);
 
         ReportingMatrixVO matrixVO = new ReportingMatrixVO();
         matrixVO.setDeptId(deptId);
@@ -198,6 +195,30 @@ public class ReportingLineServiceImpl implements ReportingLineService {
                 .collect(Collectors.toList());
         matrixVO.setReportingTree(roots);
         return matrixVO;
+    }
+
+    /**
+     * 兼容缓存未预热的场景，避免真实存在的部门被误判为不存在。
+     */
+    private DeptVO resolveDeptForMatrix(Long deptId) {
+        DeptVO dept = deptPostSyncService.getCachedDept(deptId);
+        if (dept != null) {
+            return dept;
+        }
+
+        if (!deptPostSyncService.validateDeptId(deptId)) {
+            throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
+        }
+
+        dept = deptPostSyncService.getCachedDept(deptId);
+        if (dept != null) {
+            return dept;
+        }
+
+        DeptVO fallbackDept = new DeptVO();
+        fallbackDept.setDeptId(deptId);
+        fallbackDept.setDeptName("未知部门");
+        return fallbackDept;
     }
 
     @Override

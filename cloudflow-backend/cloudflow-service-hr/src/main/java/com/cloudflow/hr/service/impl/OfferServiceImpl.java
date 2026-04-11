@@ -100,6 +100,7 @@ public class OfferServiceImpl implements OfferService {
         if (position == null) {
             throw new HrBusinessException("POSITION_NOT_FOUND", "职位不存在");
         }
+        validateDeptId(dto.getDeptId());
 
         if (dto.getExpiryDate().isBefore(dto.getExpectedDate())) {
             throw new HrBusinessException("INVALID_OFFER_DATE", "Offer 有效期不能早于预计入职日期");
@@ -385,6 +386,24 @@ public class OfferServiceImpl implements OfferService {
         return convertToVO(offer);
     }
 
+    private void validateDeptId(Long deptId) {
+        try {
+            R<DeptVO> result = authServiceClient.getDeptById(deptId);
+            if (result == null) {
+                throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败：Auth 服务无响应");
+            }
+            DeptVO dept = result.getData();
+            if (!result.isSuccess() || dept == null || dept.getDeptId() == null || !deptId.equals(dept.getDeptId())) {
+                throw HrBusinessException.invalidDeptOrPost("DEPT", deptId);
+            }
+        } catch (HrBusinessException | HrSystemException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("校验部门ID失败，deptId：{}", deptId, e);
+            throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败", e);
+        }
+    }
+
     private String generateOfferNo() {
         // 保留日期前缀便于人工识别，同时拼接雪花 ID 避免并发创建 Offer 时撞唯一索引。
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -404,8 +423,11 @@ public class OfferServiceImpl implements OfferService {
         if (offer.getDeptId() != null) {
             try {
                 R<DeptVO> deptResult = authServiceClient.getDeptById(offer.getDeptId());
-                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
-                    vo.setDeptName(deptResult.getData().getDeptName());
+                if (deptResult != null && deptResult.isSuccess()) {
+                    DeptVO dept = deptResult.getData();
+                    if (dept != null && dept.getDeptId() != null && offer.getDeptId().equals(dept.getDeptId())) {
+                        vo.setDeptName(dept.getDeptName());
+                    }
                 }
             } catch (Exception e) {
                 log.warn("获取 Offer 部门名称失败，deptId：{}", offer.getDeptId(), e);

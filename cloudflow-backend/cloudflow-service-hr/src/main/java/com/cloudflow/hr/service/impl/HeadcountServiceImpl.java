@@ -263,8 +263,11 @@ public class HeadcountServiceImpl implements HeadcountService {
                 if (result == null) {
                     throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门编制目标失败：Auth 服务无响应");
                 }
+                if (!result.isSuccess()) {
+                    throw new HrBusinessException("部门不存在");
+                }
                 DeptVO dept = result.getData();
-                if (dept == null) {
+                if (dept == null || dept.getDeptId() == null || !targetId.equals(dept.getDeptId())) {
                     throw new HrBusinessException("部门不存在");
                 }
             } catch (HrBusinessException | HrSystemException e) {
@@ -280,8 +283,11 @@ public class HeadcountServiceImpl implements HeadcountService {
                 if (result == null) {
                     throw new HrSystemException("VALIDATE_POST_FAILED", "校验岗位编制目标失败：Auth 服务无响应");
                 }
+                if (!result.isSuccess()) {
+                    throw new HrBusinessException("岗位不存在");
+                }
                 PostVO post = result.getData();
-                if (post == null) {
+                if (post == null || post.getPostId() == null || !targetId.equals(post.getPostId())) {
                     throw new HrBusinessException("岗位不存在");
                 }
             } catch (HrBusinessException | HrSystemException e) {
@@ -299,24 +305,32 @@ public class HeadcountServiceImpl implements HeadcountService {
     private String getTargetName(String targetType, Long targetId) {
         try {
             if ("DEPT".equals(targetType)) {
-                // 优先从缓存获取
                 DeptVO dept = deptPostSyncService.getCachedDept(targetId);
+                if (dept == null && deptPostSyncService.validateDeptId(targetId)) {
+                    dept = deptPostSyncService.getCachedDept(targetId);
+                }
                 if (dept == null) {
-                    // 缓存未命中，从Auth服务获取
                     R<DeptVO> result = authServiceClient.getDeptById(targetId);
                     if (result != null && result.isSuccess()) {
-                        dept = result.getData();
+                        DeptVO remoteDept = result.getData();
+                        if (remoteDept != null && remoteDept.getDeptId() != null && targetId.equals(remoteDept.getDeptId())) {
+                            dept = remoteDept;
+                        }
                     }
                 }
                 return dept != null ? dept.getDeptName() : "未知部门";
             } else if ("POST".equals(targetType)) {
-                // 优先从缓存获取
                 PostVO post = deptPostSyncService.getCachedPost(targetId);
+                if (post == null && deptPostSyncService.validatePostId(targetId)) {
+                    post = deptPostSyncService.getCachedPost(targetId);
+                }
                 if (post == null) {
-                    // 缓存未命中，从Auth服务获取
                     R<PostVO> result = authServiceClient.getPostById(targetId);
                     if (result != null && result.isSuccess()) {
-                        post = result.getData();
+                        PostVO remotePost = result.getData();
+                        if (remotePost != null && remotePost.getPostId() != null && targetId.equals(remotePost.getPostId())) {
+                            post = remotePost;
+                        }
                     }
                 }
                 return post != null ? post.getPostName() : "未知岗位";

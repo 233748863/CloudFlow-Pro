@@ -756,6 +756,9 @@ public class ScheduleServiceImpl implements ScheduleService {
      * @param tenantId 租户ID
      */
     private void validateTarget(String targetType, Long targetId, Long tenantId) {
+        if ("DEPT".equals(targetType) && deptPostSyncService.validateDeptId(targetId)) {
+            return;
+        }
         if ("EMPLOYEE".equals(targetType)) {
             // 验证员工是否存在
             Employee employee = employeeMapper.selectById(targetId);
@@ -814,7 +817,35 @@ public class ScheduleServiceImpl implements ScheduleService {
             }
         }
         
+        if ("DEPT".equals(plan.getTargetType()) && vo.getTargetName() == null) {
+            DeptVO dept = getDeptFromCacheOrSync(plan.getTargetId());
+            vo.setTargetName(dept != null ? dept.getDeptName() : "未知部门");
+        }
         return vo;
+    }
+
+    /**
+     * 排班展示优先复用缓存，缓存未命中时补一次组织主数据同步。
+     */
+    private DeptVO getDeptFromCacheOrSync(Long deptId) {
+        DeptVO dept = deptPostSyncService.getCachedDept(deptId);
+        if (dept != null) {
+            return dept;
+        }
+
+        if (!deptPostSyncService.validateDeptId(deptId)) {
+            return null;
+        }
+
+        dept = deptPostSyncService.getCachedDept(deptId);
+        if (dept != null) {
+            return dept;
+        }
+
+        DeptVO fallbackDept = new DeptVO();
+        fallbackDept.setDeptId(deptId);
+        fallbackDept.setDeptName("未知部门");
+        return fallbackDept;
     }
     
     /**
