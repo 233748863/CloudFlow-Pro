@@ -9,6 +9,7 @@ import com.cloudflow.hr.domain.dto.SalaryAdjustmentCreateDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.EmployeeSalary;
 import com.cloudflow.hr.domain.entity.SalaryAdjustment;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.EmployeeSalaryMapper;
 import com.cloudflow.hr.mapper.SalaryAdjustmentMapper;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -134,6 +136,19 @@ class SalaryAdjustmentServiceTest {
         assertEquals("APPROVING", adjustment.getStatus());
         assertEquals("proc-salary-001", adjustment.getProcessInstanceId());
         verify(workflowServiceClient, times(1)).startProcess(any(ProcessStartDTO.class));
+    }
+
+    @Test
+    void testSubmitSalaryAdjustmentRejectsWhenWorkflowServiceReturnsNull() {
+        SalaryAdjustment adjustment = buildAdjustment("DRAFT", LocalDate.of(2026, 4, 1));
+        when(salaryAdjustmentMapper.selectById(31L)).thenReturn(adjustment);
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(workflowProcessKeyProperties.getSalaryAdjustment()).thenReturn("salary_adjustment_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(HrSystemException.class, () -> salaryAdjustmentService.submitSalaryAdjustment(31L));
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.cloudflow.common.core.utils.SecurityUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.client.vo.PostVO;
@@ -13,6 +14,7 @@ import com.cloudflow.hr.domain.entity.Headcount;
 import com.cloudflow.hr.domain.vo.HeadcountStatisticsVO;
 import com.cloudflow.hr.domain.vo.HeadcountVO;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.HeadcountMapper;
 import com.cloudflow.hr.service.HeadcountService;
 import lombok.RequiredArgsConstructor;
@@ -257,10 +259,16 @@ public class HeadcountServiceImpl implements HeadcountService {
         if ("DEPT".equals(targetType)) {
             // 验证部门是否存在
             try {
-                DeptVO dept = authServiceClient.getDeptById(targetId).getData();
+                R<DeptVO> result = authServiceClient.getDeptById(targetId);
+                if (result == null) {
+                    throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门编制目标失败：Auth 服务无响应");
+                }
+                DeptVO dept = result.getData();
                 if (dept == null) {
                     throw new HrBusinessException("部门不存在");
                 }
+            } catch (HrBusinessException | HrSystemException e) {
+                throw e;
             } catch (Exception e) {
                 log.error("验证部门失败", e);
                 throw new HrBusinessException("验证部门失败：" + e.getMessage());
@@ -268,10 +276,16 @@ public class HeadcountServiceImpl implements HeadcountService {
         } else if ("POST".equals(targetType)) {
             // 验证岗位是否存在
             try {
-                PostVO post = authServiceClient.getPostById(targetId).getData();
+                R<PostVO> result = authServiceClient.getPostById(targetId);
+                if (result == null) {
+                    throw new HrSystemException("VALIDATE_POST_FAILED", "校验岗位编制目标失败：Auth 服务无响应");
+                }
+                PostVO post = result.getData();
                 if (post == null) {
                     throw new HrBusinessException("岗位不存在");
                 }
+            } catch (HrBusinessException | HrSystemException e) {
+                throw e;
             } catch (Exception e) {
                 log.error("验证岗位失败", e);
                 throw new HrBusinessException("验证岗位失败：" + e.getMessage());
@@ -289,7 +303,10 @@ public class HeadcountServiceImpl implements HeadcountService {
                 DeptVO dept = deptPostSyncService.getCachedDept(targetId);
                 if (dept == null) {
                     // 缓存未命中，从Auth服务获取
-                    dept = authServiceClient.getDeptById(targetId).getData();
+                    R<DeptVO> result = authServiceClient.getDeptById(targetId);
+                    if (result != null && result.isSuccess()) {
+                        dept = result.getData();
+                    }
                 }
                 return dept != null ? dept.getDeptName() : "未知部门";
             } else if ("POST".equals(targetType)) {
@@ -297,7 +314,10 @@ public class HeadcountServiceImpl implements HeadcountService {
                 PostVO post = deptPostSyncService.getCachedPost(targetId);
                 if (post == null) {
                     // 缓存未命中，从Auth服务获取
-                    post = authServiceClient.getPostById(targetId).getData();
+                    R<PostVO> result = authServiceClient.getPostById(targetId);
+                    if (result != null && result.isSuccess()) {
+                        post = result.getData();
+                    }
                 }
                 return post != null ? post.getPostName() : "未知岗位";
             }

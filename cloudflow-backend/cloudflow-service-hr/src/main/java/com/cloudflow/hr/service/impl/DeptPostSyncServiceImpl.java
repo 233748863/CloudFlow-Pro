@@ -1,6 +1,7 @@
 package com.cloudflow.hr.service.impl;
 import com.cloudflow.common.core.utils.SecurityUtils;
 
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.vo.DeptTreeVO;
@@ -63,7 +64,7 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         
         try {
             // 调用Auth服务获取部门树
-            List<DeptTreeVO> deptTree = authServiceClient.getDeptTree(null).getData();
+            List<DeptTreeVO> deptTree = fetchDeptTreeFromAuth();
             
             if (deptTree == null || deptTree.isEmpty()) {
                 log.warn("从Auth服务获取的部门树为空");
@@ -92,7 +93,7 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         
         try {
             // 调用Auth服务获取部门信息
-            DeptVO dept = authServiceClient.getDeptById(deptId).getData();
+            DeptVO dept = fetchDeptFromAuth(deptId);
             
             if (dept == null) {
                 log.warn("从Auth服务获取的部门信息为空，部门ID：{}", deptId);
@@ -118,7 +119,7 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         
         try {
             // 调用Auth服务获取岗位列表
-            List<PostVO> postList = authServiceClient.getPostList(null).getData();
+            List<PostVO> postList = fetchPostListFromAuth();
             
             if (postList == null || postList.isEmpty()) {
                 log.warn("从Auth服务获取的岗位列表为空");
@@ -149,7 +150,7 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
         
         try {
             // 调用Auth服务获取岗位信息
-            PostVO post = authServiceClient.getPostById(postId).getData();
+            PostVO post = fetchPostFromAuth(postId);
             
             if (post == null) {
                 log.warn("从Auth服务获取的岗位信息为空，岗位ID：{}", postId);
@@ -183,7 +184,7 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
 
         // 缓存未命中，从Auth服务获取并缓存
         try {
-            dept = authServiceClient.getDeptById(deptId).getData();
+            dept = fetchDeptFromAuth(deptId);
             if (dept != null) {
                 syncDepartment(deptId);
                 return true;
@@ -209,7 +210,7 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
 
         // 缓存未命中，从Auth服务获取并缓存
         try {
-            post = authServiceClient.getPostById(postId).getData();
+            post = fetchPostFromAuth(postId);
             if (post != null) {
                 syncPost(postId);
                 return true;
@@ -339,6 +340,56 @@ public class DeptPostSyncServiceImpl implements DeptPostSyncService {
             result.add(deptVO);
         }
         return result;
+    }
+
+    /**
+     * 统一处理 Auth 部门树查询结果，避免远端空响应直接触发空指针。
+     */
+    private List<DeptTreeVO> fetchDeptTreeFromAuth() {
+        R<List<DeptTreeVO>> result = authServiceClient.getDeptTree(null);
+        if (result == null) {
+            throw new RuntimeException("同步部门数据失败：Auth 服务无响应");
+        }
+        if (!result.isSuccess()) {
+            throw new RuntimeException("同步部门数据失败：" + result.getMsg());
+        }
+        return result.getData();
+    }
+
+    /**
+     * 统一处理 Auth 岗位列表查询结果，避免远端空响应直接触发空指针。
+     */
+    private List<PostVO> fetchPostListFromAuth() {
+        R<List<PostVO>> result = authServiceClient.getPostList(null);
+        if (result == null) {
+            throw new RuntimeException("同步岗位数据失败：Auth 服务无响应");
+        }
+        if (!result.isSuccess()) {
+            throw new RuntimeException("同步岗位数据失败：" + result.getMsg());
+        }
+        return result.getData();
+    }
+
+    private DeptVO fetchDeptFromAuth(Long deptId) {
+        R<DeptVO> result = authServiceClient.getDeptById(deptId);
+        if (result == null) {
+            throw new RuntimeException("同步部门数据失败：Auth 服务无响应");
+        }
+        if (!result.isSuccess()) {
+            throw new RuntimeException("同步部门数据失败：" + result.getMsg());
+        }
+        return result.getData();
+    }
+
+    private PostVO fetchPostFromAuth(Long postId) {
+        R<PostVO> result = authServiceClient.getPostById(postId);
+        if (result == null) {
+            throw new RuntimeException("同步岗位数据失败：Auth 服务无响应");
+        }
+        if (!result.isSuccess()) {
+            throw new RuntimeException("同步岗位数据失败：" + result.getMsg());
+        }
+        return result.getData();
     }
 
     private void deleteByPattern(String pattern) {

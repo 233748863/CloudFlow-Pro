@@ -316,6 +316,29 @@ class DeptPostSyncUnitTest {
     /**
      * 创建Mock部门树
      */
+    @Test
+    @Order(6)
+    @DisplayName("测试6：Auth 空响应时同步单个部门会给出明确异常")
+    void testSyncDepartmentRejectsWhenAuthReturnsNull() {
+        when(authServiceClient.getDeptById(TEST_DEPT_ID)).thenReturn(null);
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> deptPostSyncService.syncDepartment(TEST_DEPT_ID));
+
+        assertTrue(exception.getMessage().contains("Auth 服务无响应"));
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("测试7：Auth 空响应时校验岗位ID直接返回 false")
+    void testValidatePostIdReturnsFalseWhenAuthReturnsNull() {
+        when(redisCache.getCacheObject("hr:post:" + TEST_POST_ID)).thenReturn(null);
+        when(authServiceClient.getPostById(TEST_POST_ID)).thenReturn(null);
+
+        boolean isValid = deptPostSyncService.validatePostId(TEST_POST_ID);
+
+        assertFalse(isValid, "Auth 空响应时不应把岗位误判为有效");
+    }
+
     private List<DeptTreeVO> createMockDeptTree() {
         List<DeptTreeVO> tree = new ArrayList<>();
 
