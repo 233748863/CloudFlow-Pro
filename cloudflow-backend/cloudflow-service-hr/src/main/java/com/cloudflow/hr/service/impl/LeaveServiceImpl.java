@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -1407,7 +1408,7 @@ public class LeaveServiceImpl implements LeaveService {
      * 生成申请编号
      */
     private String generateApplicationNo() {
-        return "LEAVE" + System.currentTimeMillis();
+        return "LEAVE" + IdUtils.snowflakeIdStr();
     }
 
     
@@ -1635,6 +1636,15 @@ public class LeaveServiceImpl implements LeaveService {
         // 验证状态（只有审批中或已通过的申请才能撤销）
         if (!"APPROVING".equals(leaveApplication.getStatus()) && !"APPROVED".equals(leaveApplication.getStatus())) {
             throw new HrBusinessException("只有审批中或已通过的申请才能撤销");
+        }
+
+        if ("APPROVING".equals(leaveApplication.getStatus()) && leaveApplication.getProcessInstanceId() != null
+                && !leaveApplication.getProcessInstanceId().isBlank()) {
+            R<Void> result = workflowServiceClient.cancelProcess(leaveApplication.getProcessInstanceId());
+            if (result == null || !result.isSuccess()) {
+                throw new HrSystemException("WORKFLOW_CANCEL_FAILED",
+                        "撤销审批流程失败：" + (result != null ? result.getMsg() : "Workflow 服务无响应"));
+            }
         }
         
         // 查询假期类型
