@@ -3,6 +3,7 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
@@ -299,9 +300,7 @@ public class OnboardingServiceImpl implements OnboardingService {
     }
 
     private String generateApplicationNo() {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String random = String.format("%04d", new Random().nextInt(10000));
-        return "OB" + date + random;
+        return "OB" + IdUtils.snowflakeIdStr();
     }
 
     private void validateDeptId(Long deptId) {

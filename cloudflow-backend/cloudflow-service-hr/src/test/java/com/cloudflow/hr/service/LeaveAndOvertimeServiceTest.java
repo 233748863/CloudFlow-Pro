@@ -14,6 +14,7 @@ import com.cloudflow.hr.domain.entity.LeaveQuota;
 import com.cloudflow.hr.domain.entity.LeaveType;
 import com.cloudflow.hr.domain.entity.OvertimeApplication;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.exception.InsufficientQuotaException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.LeaveApplicationMapper;
@@ -278,6 +279,43 @@ class LeaveAndOvertimeServiceTest {
         assertEquals(BigDecimal.ZERO.setScale(2), quota2027.getUsedQuota().setScale(2));
         assertEquals(new BigDecimal("5.00"), quota2026.getAvailableQuota());
         assertEquals(new BigDecimal("5.00"), quota2027.getAvailableQuota());
+    }
+
+    @Test
+    void testCancelApprovingLeaveApplicationCancelsWorkflowAndReleasesFrozenQuota() {
+        LeaveApplication application = buildLeaveApplication("APPROVING");
+        application.setProcessInstanceId("proc-leave-001");
+        LeaveQuota quota = buildLeaveQuota(new BigDecimal("10.00"), BigDecimal.ZERO, new BigDecimal("2.00"));
+        quota.setAvailableQuota(new BigDecimal("8.00"));
+
+        when(leaveApplicationMapper.selectById(11L)).thenReturn(application);
+        when(leaveTypeMapper.selectById(301L)).thenReturn(buildAnnualLeaveType());
+        when(leaveQuotaMapper.selectOne(any())).thenReturn(quota);
+        when(workflowServiceClient.cancelProcess("proc-leave-001")).thenReturn(R.ok());
+
+        leaveService.cancelLeaveApplication(11L);
+
+        assertEquals("CANCELLED", application.getStatus());
+        assertEquals(BigDecimal.ZERO.setScale(2), quota.getFrozenQuota().setScale(2));
+        assertEquals(new BigDecimal("10.00"), quota.getAvailableQuota());
+        verify(workflowServiceClient, times(1)).cancelProcess("proc-leave-001");
+    }
+
+    @Test
+    void testCancelApprovingLeaveApplicationRejectsWhenWorkflowCancelFails() {
+        LeaveApplication application = buildLeaveApplication("APPROVING");
+        application.setProcessInstanceId("proc-leave-001");
+
+        when(leaveApplicationMapper.selectById(11L)).thenReturn(application);
+        when(workflowServiceClient.cancelProcess("proc-leave-001")).thenReturn(R.fail("流程取消失败"));
+
+        HrSystemException exception = assertThrows(
+                HrSystemException.class,
+                () -> leaveService.cancelLeaveApplication(11L)
+        );
+
+        assertTrue(exception.getMessage().contains("撤销审批流程失败"));
+        verify(leaveTypeMapper, times(0)).selectById(any());
     }
 
     @Test

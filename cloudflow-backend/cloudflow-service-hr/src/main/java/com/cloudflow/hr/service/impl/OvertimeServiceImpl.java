@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
@@ -730,7 +731,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     }
 
     private String generateApplicationNo() {
-        return "OT" + System.currentTimeMillis();
+        return "OT" + IdUtils.snowflakeIdStr();
     }
 
     /**

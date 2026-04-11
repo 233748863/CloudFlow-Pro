@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
@@ -33,7 +34,6 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -395,9 +395,7 @@ public class ResignationServiceImpl implements ResignationService {
      * 生成申请编号
      */
     private String generateApplicationNo() {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String random = String.format("%04d", new Random().nextInt(10000));
-        return "RS" + date + random;
+        return "RS" + IdUtils.snowflakeIdStr();
     }
 
     private String normalizeInterviewContent(String interviewContent) {
