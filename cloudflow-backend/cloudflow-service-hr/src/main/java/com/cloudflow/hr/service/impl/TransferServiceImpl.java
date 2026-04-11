@@ -165,6 +165,9 @@ public class TransferServiceImpl implements TransferService {
 
         try {
             R<String> result = workflowServiceClient.startProcess(processStartDTO);
+            if (result == null) {
+                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
+            }
             if (!result.isSuccess()) {
                 throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
             }
@@ -178,6 +181,8 @@ public class TransferServiceImpl implements TransferService {
             transferApplicationMapper.updateById(application);
 
             log.info("调岗申请提交成功，申请ID：{}", id);
+        } catch (HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("启动审批流程失败", e);
             throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + e.getMessage(), e);
@@ -358,9 +363,14 @@ public class TransferServiceImpl implements TransferService {
     private void validateDeptId(Long deptId) {
         try {
             R<DeptVO> result = authServiceClient.getDeptById(deptId);
+            if (result == null) {
+                throw new HrSystemException("VALIDATE_DEPT_FAILED", "校验部门ID失败：Auth 服务无响应");
+            }
             if (!result.isSuccess() || result.getData() == null) {
                 throw new HrBusinessException("INVALID_DEPT", "目标部门不存在或无效");
             }
+        } catch (HrBusinessException | HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("验证部门ID失败，deptId：{}", deptId, e);
             throw new HrSystemException("VALIDATE_DEPT_FAILED", "验证部门ID失败", e);
@@ -373,9 +383,14 @@ public class TransferServiceImpl implements TransferService {
     private void validatePostId(Long postId) {
         try {
             R<PostVO> result = authServiceClient.getPostById(postId);
+            if (result == null) {
+                throw new HrSystemException("VALIDATE_POST_FAILED", "校验岗位ID失败：Auth 服务无响应");
+            }
             if (!result.isSuccess() || result.getData() == null) {
                 throw new HrBusinessException("INVALID_POST", "目标岗位不存在或无效");
             }
+        } catch (HrBusinessException | HrSystemException e) {
+            throw e;
         } catch (Exception e) {
             log.error("验证岗位ID失败，postId：{}", postId, e);
             throw new HrSystemException("VALIDATE_POST_FAILED", "验证岗位ID失败", e);
@@ -390,7 +405,7 @@ public class TransferServiceImpl implements TransferService {
         if (vo.getFromDeptId() != null) {
             try {
                 R<DeptVO> deptResult = authServiceClient.getDeptById(vo.getFromDeptId());
-                if (deptResult.isSuccess() && deptResult.getData() != null) {
+                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
                     vo.setFromDeptName(deptResult.getData().getDeptName());
                 }
             } catch (Exception e) {
@@ -402,7 +417,7 @@ public class TransferServiceImpl implements TransferService {
         if (vo.getToDeptId() != null) {
             try {
                 R<DeptVO> deptResult = authServiceClient.getDeptById(vo.getToDeptId());
-                if (deptResult.isSuccess() && deptResult.getData() != null) {
+                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
                     vo.setToDeptName(deptResult.getData().getDeptName());
                 }
             } catch (Exception e) {
@@ -414,7 +429,7 @@ public class TransferServiceImpl implements TransferService {
         if (vo.getFromPostId() != null) {
             try {
                 R<PostVO> postResult = authServiceClient.getPostById(vo.getFromPostId());
-                if (postResult.isSuccess() && postResult.getData() != null) {
+                if (postResult != null && postResult.isSuccess() && postResult.getData() != null) {
                     vo.setFromPostName(postResult.getData().getPostName());
                 }
             } catch (Exception e) {
@@ -426,7 +441,7 @@ public class TransferServiceImpl implements TransferService {
         if (vo.getToPostId() != null) {
             try {
                 R<PostVO> postResult = authServiceClient.getPostById(vo.getToPostId());
-                if (postResult.isSuccess() && postResult.getData() != null) {
+                if (postResult != null && postResult.isSuccess() && postResult.getData() != null) {
                     vo.setToPostName(postResult.getData().getPostName());
                 }
             } catch (Exception e) {

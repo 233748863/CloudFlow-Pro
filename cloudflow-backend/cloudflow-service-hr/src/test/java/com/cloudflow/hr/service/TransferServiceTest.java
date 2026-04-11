@@ -12,6 +12,7 @@ import com.cloudflow.hr.domain.dto.TransferApplicationCreateDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.TransferApplication;
+import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.PositionMapper;
 import com.cloudflow.hr.mapper.TransferApplicationMapper;
@@ -29,6 +30,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -154,6 +156,19 @@ class TransferServiceTest {
      * 验证审批通过且生效日期已到时，会立即更新员工组织信息。
      */
     @Test
+    void testSubmitTransferApplicationRejectsWhenWorkflowServiceReturnsNull() {
+        TransferApplication application = buildTransferApplication();
+        when(transferApplicationMapper.selectById(31L)).thenReturn(application);
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(workflowProcessKeyProperties.getTransfer()).thenReturn("transfer_approval");
+        when(workflowServiceClient.startProcess(any(ProcessStartDTO.class))).thenReturn(null);
+
+        HrSystemException exception = assertThrows(HrSystemException.class, () -> transferService.submitTransferApplication(31L));
+
+        assertTrue(exception.getMessage().contains("Workflow 服务无响应"));
+    }
+
+    @Test
     void testApproveTransferEffectiveImmediately() {
         TransferApplication application = buildTransferApplication();
         application.setStatus("APPROVING");
@@ -189,6 +204,26 @@ class TransferServiceTest {
 
         assertEquals("REJECTED", application.getStatus());
         verify(transferApplicationMapper, times(1)).updateById(application);
+    }
+
+    @Test
+    void testCreateTransferApplicationRejectsWhenDeptServiceReturnsNull() {
+        TransferApplicationCreateDTO dto = new TransferApplicationCreateDTO();
+        dto.setEmployeeId(1L);
+        dto.setToDeptId(102L);
+        dto.setToPostId(202L);
+        dto.setToPositionId(302L);
+        dto.setTransferType("PROMOTION");
+        dto.setReason("缁勭粐璋冩暣");
+        dto.setEffectiveDate(LocalDate.of(2026, 4, 1));
+        dto.setSalaryChange(Boolean.TRUE);
+
+        when(employeeMapper.selectById(1L)).thenReturn(buildEmployee());
+        when(authServiceClient.getDeptById(102L)).thenReturn(null);
+
+        HrSystemException exception = assertThrows(HrSystemException.class, () -> transferService.createTransferApplication(dto));
+
+        assertTrue(exception.getMessage().contains("Auth 服务无响应"));
     }
 
     private Employee buildEmployee() {

@@ -304,7 +304,7 @@ public class CandidateServiceImpl implements CandidateService {
         if (deptId != null) {
             try {
                 R<DeptVO> deptResult = authServiceClient.getDeptById(deptId);
-                if (deptResult.isSuccess() && deptResult.getData() != null) {
+                if (deptResult != null && deptResult.isSuccess() && deptResult.getData() != null) {
                     vo.setDeptName(deptResult.getData().getDeptName());
                 }
             } catch (Exception e) {
