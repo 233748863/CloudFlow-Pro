@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Filter,
   X,
+  Loader2,
 } from "lucide-react";
 import {
   getArchivedWorkflows,
@@ -23,6 +24,7 @@ import { toast } from "sonner";
 import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
 import { PermissionGuard } from '@/components/ui';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceDialogShell } from '@/components/workspace/WorkspacePanels';
 
 /**
  * 归档流程数据接口
@@ -578,33 +580,24 @@ export const ArchivedWorkflows: React.FC = () => {
 
       {/* 永久删除确认对话框 */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-red-100 rounded-full">
-                <AlertTriangle size={24} className="text-red-600" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800">确认永久删除</h3>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              <p className="text-slate-600">
-                您即将永久删除{" "}
-                <span className="font-bold text-red-600">
-                  {deleteTarget.length}
-                </span>{" "}
-                个流程。
-              </p>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700 font-medium text-sm flex items-start gap-2">
-                  <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-                  <span>
-                    警告：此操作将永久删除流程的所有数据，包括版本历史和关联记录。
-                    <strong className="block mt-1">此操作不可恢复！</strong>
-                  </span>
-                </p>
-              </div>
-            </div>
+        <WorkspaceDialogShell
+          title="确认永久删除"
+          description={`即将永久删除 ${deleteTarget.length} 个归档流程，请再次确认。`}
+          onClose={() => {
+            if (deleting) return;
+            setShowDeleteConfirm(false);
+            setDeleteTarget([]);
+          }}
+          maxWidthClassName="max-w-md"
+        >
+          <div className="space-y-5">
+            <WorkspaceInlineState
+              type="info"
+              icon={<AlertTriangle size={18} className="text-red-500" />}
+              title="此操作不可恢复"
+              description="永久删除会清空流程的版本历史和关联记录。请确认这些归档流程已不再需要保留。"
+              className="py-10"
+            />
 
             <div className="flex justify-end gap-3">
               <button
@@ -613,18 +606,18 @@ export const ArchivedWorkflows: React.FC = () => {
                   setDeleteTarget([]);
                 }}
                 disabled={deleting}
-                className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50"
+                className="rounded-2xl border border-white/85 bg-white/76 px-4 py-2 text-sm text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white disabled:opacity-50"
               >
                 取消
               </button>
               <button
                 onClick={handlePermanentDelete}
                 disabled={deleting}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center gap-2 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-2xl bg-red-500 px-4 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(239,68,68,0.24)] transition hover:bg-red-600 disabled:opacity-50"
               >
                 {deleting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <Loader2 size={16} className="animate-spin" />
                     删除中...
                   </>
                 ) : (
@@ -636,7 +629,7 @@ export const ArchivedWorkflows: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </WorkspaceDialogShell>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FormDefinition } from '../types';
 import { FileText, X, AlertTriangle, Send } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 export const FormRenderer = ({ 
   formDef, 
@@ -44,23 +45,33 @@ export const FormRenderer = ({
   // 如果没有表单定义，显示错误状态
   if (!formDef || !formDef.fields || formDef.fields.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden max-w-2xl mx-auto">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+      <div className="max-w-2xl mx-auto overflow-hidden rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.88))] shadow-[0_24px_60px_rgba(15,23,42,0.12),inset_0_1px_0_rgba(255,255,255,0.78)] backdrop-blur-xl">
+        <div className="relative overflow-hidden border-b border-white/70 px-6 py-4">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_58%),radial-gradient(circle_at_top_right,rgba(244,114,182,0.1),transparent_52%)]" />
+          <div className="relative flex justify-between items-center">
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
             <AlertTriangle size={18} className="text-amber-600"/>
             表单加载失败
           </h3>
           <button onClick={onCancel}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+          </div>
         </div>
-        <div className="p-8 text-center">
-          <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4"/>
-          <p className="text-slate-600 mb-4">未找到表单定义或表单字段为空</p>
-          <button 
-            onClick={onCancel}
-            className="px-6 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
-          >
-            关闭
-          </button>
+        <div className="p-6">
+          <WorkspaceInlineState
+            type="info"
+            icon={<AlertTriangle size={18} className="text-amber-500" />}
+            title="未找到表单定义"
+            description="当前流程没有可用的表单定义，或表单字段为空。请返回上一步重新选择，或联系管理员检查配置。"
+            className="py-12"
+          />
+          <div className="mt-5 flex justify-center">
+            <button 
+              onClick={onCancel}
+              className="rounded-2xl border border-white/85 bg-white/76 px-6 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white"
+            >
+              关闭
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -122,13 +133,16 @@ export const FormRenderer = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden max-w-2xl mx-auto animate-fade-in-up">
-      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-          <FileText size={18} className="text-pink-500"/>
-          填写: {formDef.name}
-        </h3>
-        <button onClick={onCancel}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+    <div className="max-w-2xl mx-auto overflow-hidden rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.88))] shadow-[0_24px_60px_rgba(15,23,42,0.12),inset_0_1px_0_rgba(255,255,255,0.78)] backdrop-blur-xl animate-fade-in-up">
+      <div className="relative overflow-hidden border-b border-white/70 px-6 py-4">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.12),transparent_58%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.1),transparent_52%)]" />
+        <div className="relative flex justify-between items-center">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <FileText size={18} className="text-pink-500"/>
+            填写: {formDef.name}
+          </h3>
+          <button onClick={onCancel}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+        </div>
       </div>
       <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
         {formDef.fields.map(field => (
@@ -184,9 +198,9 @@ export const FormRenderer = ({
           </div>
         ))}
       </div>
-      <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-        <button onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium">取消</button>
-        <button onClick={handleSubmit} className="px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 text-sm font-medium shadow-md shadow-pink-100">
+      <div className="flex justify-end gap-3 border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.72))] px-6 py-4 backdrop-blur-xl">
+        <button onClick={onCancel} className="rounded-2xl border border-white/85 bg-white/76 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white hover:text-slate-900">取消</button>
+        <button onClick={handleSubmit} className="rounded-2xl bg-pink-500 px-6 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:bg-pink-600">
           <Send size={16} className="inline mr-2"/> 提交申请
         </button>
       </div>
