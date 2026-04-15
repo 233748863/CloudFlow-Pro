@@ -4,6 +4,7 @@ import { ArrowRight, GitMerge, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 import { FormBuilder } from '../components/FormBuilder';
 import { EmptyError, EmptyForms, SkeletonForm } from '@/components/ui';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { useMount } from '../hooks/useMount';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
@@ -176,7 +177,11 @@ export const FormDesign = () => {
 
         <div className="flex-1 overflow-y-auto space-y-2">
           {forms.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-4">暂无表单</p>
+            <WorkspaceInlineState
+              title="暂无表单"
+              description="点击上方新建后，这里会显示可编辑的表单列表。"
+              className="py-6"
+            />
           ) : (
             forms.map((form) => (
               <button

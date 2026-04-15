@@ -453,7 +453,12 @@ export const TemplateManagement = () => {
       <div className="bg-white rounded-lg border mb-6">
         <div className="px-6 py-3 border-b text-sm font-medium text-gray-700">分类管理</div>
         {flatCategories.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">暂无分类</div>
+          <WorkspaceInlineState
+            icon={<FolderPlus size={22} />}
+            title="暂无分类"
+            description="先创建分类，再为流程模板建立分组。"
+            className="py-10"
+          />
         ) : (
           <table className="w-full">
             <TableHeader>

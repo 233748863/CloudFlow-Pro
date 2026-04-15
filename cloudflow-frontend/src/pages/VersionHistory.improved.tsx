@@ -21,6 +21,7 @@ import {
   ApiErrorResponse,
 } from '@/utils/errorHandler';
 import { WarningConfirmDialog } from '@/components/ui';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 interface VersionHistoryProps {
   workflowId: string;
@@ -270,14 +271,18 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
       {/* 版本列表 */}
       {loading ? (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <p className="mt-2 text-sm text-gray-500">加载中...</p>
-        </div>
+        <WorkspaceInlineState
+          type="loading"
+          title="正在加载版本历史..."
+          className="py-12"
+        />
       ) : versions.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <p>暂无版本历史</p>
-        </div>
+        <WorkspaceInlineState
+          icon={<GitBranch size={20} className="text-slate-400" />}
+          title="暂无版本历史"
+          description="当前流程还没有生成可查看的历史版本。"
+          className="py-12"
+        />
       ) : (
         <div className="space-y-4">
           {versions.map((version) => {
