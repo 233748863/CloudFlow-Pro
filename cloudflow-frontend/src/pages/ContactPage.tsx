@@ -3,6 +3,7 @@ import { BookUser, Search, RotateCcw, Phone, Mail, Building2, User } from 'lucid
 import { contactApi, Contact, DeptNode } from '../services/api/contact';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { WorkspaceEmptyPanel, WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 /** 通讯录/企业黄页页面 */
 export const ContactPage: React.FC = () => {
@@ -97,14 +98,14 @@ export const ContactPage: React.FC = () => {
           {/* 联系人卡片网格 */}
           <div className="p-4">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-              </div>
+              <WorkspaceInlineState type="loading" title="正在加载通讯录..." className="py-12" />
             ) : contacts.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">
-                <BookUser size={48} className="mx-auto mb-2 opacity-20" />
-                <p>暂无联系人</p>
-              </div>
+              <WorkspaceEmptyPanel
+                variant="glass"
+                icon={<BookUser size={28} />}
+                title="暂无联系人"
+                description="当前筛选条件下没有匹配的联系人，试试切换部门或关键词。"
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {contacts.map(contact => (

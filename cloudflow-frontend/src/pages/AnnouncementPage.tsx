@@ -56,6 +56,7 @@ import {
 } from "@/components/ui";
 import { TableRowActions } from "@/components/ui/table-row-actions";
 import { getDeptTree, getRoleList } from "../services/api/auth";
+import { WorkspaceEmptyPanel, WorkspaceInlineState } from "@/components/workspace/WorkspacePrimitives";
 
 interface DeptItem {
   deptId: number;
@@ -108,11 +109,7 @@ const EmptyPanel = ({
   title: string;
   description: string;
 }) => (
-  <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center">
-    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm">{icon}</div>
-    <div className="text-sm font-semibold text-slate-700">{title}</div>
-    <div className="mt-2 max-w-xs text-xs leading-6 text-slate-400">{description}</div>
-  </div>
+  <WorkspaceEmptyPanel variant="glass" icon={icon} title={title} description={description} />
 );
 
 // 部门树扁平化
@@ -268,9 +265,7 @@ const DeptTreePicker: React.FC<{
       </div>
       <div className="max-h-48 overflow-y-auto p-2">
         {deptTree.length === 0 ? (
-          <div className="p-4 text-sm text-slate-400 text-center">
-            暂无部门数据
-          </div>
+          <WorkspaceInlineState title="暂无部门数据" className="py-6" />
         ) : (
           deptTree.map((node) => renderDeptNode(node, 0))
         )}
@@ -368,13 +363,9 @@ const RoleListPicker: React.FC<{
       </div>
       <div className="max-h-48 overflow-y-auto p-2">
         {roles.length === 0 ? (
-          <div className="p-4 text-sm text-slate-400 text-center">
-            加载中或暂无角色数据
-          </div>
+          <WorkspaceInlineState title="加载中或暂无角色数据" className="py-6" />
         ) : filteredRoles.length === 0 ? (
-          <div className="p-4 text-sm text-slate-400 text-center">
-            未找到匹配的角色
-          </div>
+          <WorkspaceInlineState title="未找到匹配的角色" className="py-6" />
         ) : (
           filteredRoles.map((r) => {
             const id = getRoleIdentifier(r);

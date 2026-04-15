@@ -21,6 +21,7 @@ import {
 } from '@/services/api/monitor';
 import { toast } from 'sonner';
 import { downloadBlob } from '@/utils/download';
+import { WorkspaceEmptyPanel, WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 /**
  * 性能统计主组件
@@ -245,10 +246,7 @@ const PerformanceStats: React.FC = () => {
         </div>
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-              <p className="mt-2 text-sm text-gray-600">加载中...</p>
-            </div>
+            <WorkspaceInlineState type="loading" title="正在加载性能统计..." className="py-12" />
           ) : stats.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
               <TableHeader>
@@ -341,10 +339,13 @@ const PerformanceStats: React.FC = () => {
               </tbody>
             </table>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p>暂无统计数据</p>
-              <p className="text-sm mt-2">请选择不同的时间范围或流程类型</p>
+            <div className="px-4 py-6">
+              <WorkspaceEmptyPanel
+                variant="glass"
+                icon={<BarChart3 className="h-7 w-7" />}
+                title="暂无统计数据"
+                description="请选择不同的时间范围或流程类型后再查看。"
+              />
             </div>
           )}
         </div>

@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getMyCopyList, getCopyUnreadCount, markCopyAsRead, batchMarkCopyAsRead, getProcessDefinitions } from '../services/api/workflow';
 import { useAuth } from '../context/AuthContext';
 import { RefreshCw, Search, ChevronLeft, ChevronRight, Eye, CheckCheck, Mail, MailOpen, X, FileText } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SkeletonCard } from '@/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { toast } from 'sonner';
 import { ProcessTrace } from '../components/ProcessTrace';
+import { WorkspaceEmptyPanel, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
 
 /** 每页条数 */
 const PAGE_SIZE = 12;
@@ -301,11 +302,12 @@ export const CopyListPage: React.FC = () => {
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-slate-800">抄送我的</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
+        <WorkspaceStatusPanel
+          title="正在加载抄送记录..."
+          description="我们正在整理你的流程抄送和已读状态，请稍候。"
+          icon={<Mail size={26} />}
+          className="py-14"
+        />
       </div>
     );
   }
@@ -317,12 +319,17 @@ export const CopyListPage: React.FC = () => {
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-slate-800">抄送我的</h2>
         </div>
-        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-          <p className="mb-4">{error}</p>
-          <button onClick={() => fetchList()} className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600">
-            重试
-          </button>
-        </div>
+        <WorkspaceStatusPanel
+          title="抄送记录加载失败"
+          description={error}
+          icon={<Mail size={26} />}
+          className="py-14"
+          actions={(
+            <button onClick={() => fetchList()} className="rounded-2xl bg-pink-500 px-4 py-2 text-sm font-medium text-white hover:bg-pink-600">
+              重试
+            </button>
+          )}
+        />
       </div>
     );
   }
@@ -447,10 +454,12 @@ export const CopyListPage: React.FC = () => {
       {/* 列表内容 */}
       <div className="flex-1 overflow-auto min-h-[400px]">
         {records.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <Mail size={48} className="mb-3 opacity-50" />
-            <p>暂无抄送记录</p>
-          </div>
+          <WorkspaceEmptyPanel
+            variant="glass"
+            icon={<Mail size={28} />}
+            title="暂无抄送记录"
+            description="后续有流程抄送到你时，这里会展示流程标题、节点和阅读状态。"
+          />
         ) : (
           <div className="space-y-3">
             {records.map(record => (

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import request from '../services/api/request';
+import { WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
 
 function extractTotal(response: unknown): number {
   if (response && typeof response === 'object') {
@@ -121,11 +122,7 @@ const ListSkeleton = () => (
 );
 
 const EmptyState = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
-  <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
-    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm">{icon}</div>
-    <div className="mt-4 text-sm font-semibold text-slate-700">{title}</div>
-    <div className="mt-2 max-w-xs text-xs leading-6 text-slate-400">{description}</div>
-  </div>
+  <WorkspaceEmptyPanel variant="glass" icon={icon} title={title} description={description} />
 );
 
 const SectionHeader = ({

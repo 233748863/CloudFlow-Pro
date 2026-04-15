@@ -25,6 +25,7 @@ import {
   TimeoutAlert,
   AnomalyAlert
 } from '@/services/api/monitor';
+import { WorkspaceEmptyPanel, WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 /**
  * 告警类型标签
@@ -263,10 +264,11 @@ const AlertList: React.FC = () => {
         {/* 告警列表 */}
         <div className="p-6">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-              <p className="mt-2 text-sm text-gray-600">加载中...</p>
-            </div>
+            <WorkspaceInlineState
+              type="loading"
+              title={activeTab === 'timeout' ? '正在加载超时告警...' : '正在加载异常告警...'}
+              className="py-12"
+            />
           ) : (
             <div className="space-y-4">
               {activeTab === 'timeout' ? (
@@ -318,10 +320,12 @@ const AlertList: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <p>暂无超时告警</p>
-                  </div>
+                  <WorkspaceEmptyPanel
+                    variant="glass"
+                    icon={<Clock className="h-7 w-7" />}
+                    title="暂无超时告警"
+                    description="当前筛选条件下还没有需要处理的超时告警。"
+                  />
                 )
               ) : (
                 anomalyAlerts.length > 0 ? (
@@ -381,10 +385,12 @@ const AlertList: React.FC = () => {
                     );
                   })
                 ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <p>暂无异常告警</p>
-                  </div>
+                  <WorkspaceEmptyPanel
+                    variant="glass"
+                    icon={<AlertTriangle className="h-7 w-7" />}
+                    title="暂无异常告警"
+                    description="当前筛选条件下还没有需要关注的异常告警。"
+                  />
                 )
               )}
             </div>

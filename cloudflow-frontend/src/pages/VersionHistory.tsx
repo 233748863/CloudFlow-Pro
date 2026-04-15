@@ -3,6 +3,7 @@ import { Clock, RotateCcw, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkflowPermission } from '../hooks/useWorkflowPermission';
 import request from '../services/api/request';
+import { WorkspaceInlineState, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
 
 interface VersionHistoryProps {
   workflowId: string;
@@ -42,12 +43,12 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, work
   if (!hasViewPermission) {
     return (
       <div className="p-6">
-        <div className="flex flex-col items-center justify-center p-8 text-center">
-          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-            <AlertTriangle className="text-slate-400" size={24} />
-          </div>
-          <p className="text-sm text-slate-500">您没有权限查看此流程的版本历史</p>
-        </div>
+        <WorkspaceStatusPanel
+          title="没有权限查看版本历史"
+          description="当前流程的版本历史仅对流程创建者和管理员开放。"
+          icon={<AlertTriangle size={26} />}
+          className="py-12"
+        />
       </div>
     );
   }
@@ -185,9 +186,19 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, work
       </div>
 
       {loading ? (
-        <div className="text-center py-12">加载中...</div>
+        <WorkspaceStatusPanel
+          title="正在加载版本历史..."
+          description="我们正在整理流程的版本变更记录和回滚信息。"
+          icon={<Clock size={24} />}
+          className="py-12"
+        />
       ) : versions.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">暂无版本历史</div>
+        <WorkspaceStatusPanel
+          title="暂无版本历史"
+          description="这个流程目前还没有可查看的历史版本记录。"
+          icon={<Clock size={24} />}
+          className="py-12"
+        />
       ) : (
         <div className="space-y-4">
           {versions.map((version, index) => (
@@ -362,9 +373,11 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workflowId, work
                (!comparison.modifiedNodes || comparison.modifiedNodes.length === 0) &&
                (!comparison.addedEdges || comparison.addedEdges.length === 0) &&
                (!comparison.removedEdges || comparison.removedEdges.length === 0) && (
-                <div className="text-center py-8 text-gray-500">
-                  两个版本没有差异
-                </div>
+                <WorkspaceInlineState
+                  title="两个版本没有差异"
+                  description="当前选中的两个版本结构一致，无需额外处理。"
+                  className="py-10"
+                />
               )}
             </div>
 

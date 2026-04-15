@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { WorkspaceEmptyPanel, WorkspaceInlineState, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -317,7 +318,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
       </div>
       <div className="max-h-64 overflow-y-auto p-2">
         {deptTree.length === 0 ? (
-          <div className="p-4 text-sm text-slate-400 text-center">暂无组织架构数据</div>
+          <WorkspaceInlineState title="暂无组织架构数据" className="py-6" />
         ) : (
           deptTree.map(node => renderDeptNode(node, 0))
         )}
@@ -355,13 +356,17 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
     fetchBookings();
   }, [roomId, onBookingsLoaded]);
 
-  if (loading) return <div className="py-2 text-xs text-slate-400">正在读取今日预订...</div>;
+  if (loading) {
+    return <WorkspaceInlineState type="loading" title="正在读取今日预订..." className="py-4" />;
+  }
   if (bookings.length === 0) {
     return (
-      <div className="flex items-center gap-2 py-1 text-xs text-slate-400">
-        <Calendar size={10} />
-        今日暂无预订
-      </div>
+      <WorkspaceInlineState
+        title="今日暂无预订"
+        description="当前会议室今天还没有排入新的预订安排。"
+        icon={<Calendar size={14} />}
+        className="py-4"
+      />
     );
   }
 
@@ -629,9 +634,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
 
         <div className="flex-1 overflow-auto p-4">
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-            </div>
+            <WorkspaceInlineState type="loading" title="正在加载周预订..." className="py-12" />
           ) : (
             <div className="min-w-[800px]">
               <div className="grid grid-cols-8 gap-2 mb-2">
@@ -1310,25 +1313,26 @@ export const MeetingRoomPage = () => {
                 </div>
 
                 {loading && (
-                  <div className="flex justify-center py-14">
-                    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-pink-500" />
-                  </div>
+                  <WorkspaceInlineState type="loading" title="正在加载会议室..." className="py-14" />
                 )}
 
                 {!loading && filteredRooms.length === 0 && (
-                  <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center">
-                    <Monitor size={48} className="mx-auto mb-4 text-slate-300" />
-                    <p className="mb-2 text-lg text-slate-500">{searchQuery || statusFilter !== 'all' ? '没有找到符合条件的会议室' : '暂无会议室'}</p>
-                    {!searchQuery && statusFilter === 'all' && (
-                      <>
-                        <p className="mb-6 text-sm text-slate-400">进入管理模式后可以新增会议室</p>
-                        <Button onClick={() => { setManageMode(true); handleAddRoom(); }} className="rounded-2xl bg-pink-500 px-6 text-white hover:bg-pink-600">
-                          <Plus size={16} className="mr-2" />
-                          新增第一个会议室
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  <WorkspaceStatusPanel
+                    icon={<Monitor size={28} />}
+                    title={searchQuery || statusFilter !== 'all' ? '没有找到符合条件的会议室' : '暂无会议室'}
+                    description={
+                      searchQuery || statusFilter !== 'all'
+                        ? '可以试试调整关键词或状态筛选，重新查看会议室资源。'
+                        : '进入管理模式后可以先创建第一间会议室，再开始预订。'
+                    }
+                    className="py-14"
+                    actions={!searchQuery && statusFilter === 'all' ? (
+                      <Button onClick={() => { setManageMode(true); handleAddRoom(); }} className="rounded-2xl bg-pink-500 px-6 text-white hover:bg-pink-600">
+                        <Plus size={16} className="mr-2" />
+                        新增第一个会议室
+                      </Button>
+                    ) : undefined}
+                  />
                 )}
 
                 {!loading && filteredRooms.length > 0 && (
@@ -1441,10 +1445,12 @@ export const MeetingRoomPage = () => {
                 </div>
 
                 {myBookings.length === 0 ? (
-                  <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center">
-                    <CalendarDays size={48} className="mx-auto mb-4 text-slate-300" />
-                    <p className="text-lg text-slate-500">暂无预订记录</p>
-                  </div>
+                  <WorkspaceEmptyPanel
+                    variant="glass"
+                    icon={<CalendarDays size={28} />}
+                    title="暂无预订记录"
+                    description="你创建的会议室预订会在这里展示，方便后续查看与取消。"
+                  />
                 ) : (
                   <div className="space-y-4">
                     {myBookings.map(booking => {
@@ -1486,10 +1492,12 @@ export const MeetingRoomPage = () => {
             {activeTab === 'stats' && (
               <div className="space-y-4">
                 {stats.length === 0 ? (
-                  <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center">
-                    <BarChart3 size={48} className="mx-auto mb-4 text-slate-300" />
-                    <p className="text-lg text-slate-500">暂无统计数据</p>
-                  </div>
+                  <WorkspaceEmptyPanel
+                    variant="glass"
+                    icon={<BarChart3 size={28} />}
+                    title="暂无统计数据"
+                    description="有了会议室预订和使用记录后，这里会汇总利用率和使用时长。"
+                  />
                 ) : (
                   <>
                     {topStatRoom && (

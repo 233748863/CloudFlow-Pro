@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { createEvent, deleteEvent, getMeetingRooms, getMyEvents } from '../services/api/schedule';
 import type { MeetingRoom, SysScheduleEvent } from '../types';
 import { parseBackendDate, toBackendDateString, toLocalDatetimeString, toQueryDateString } from '../utils/dateFormat';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 type ScheduleEventType = SysScheduleEvent['type'];
 type CalendarViewMode = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
@@ -821,9 +822,11 @@ export const SchedulePage = () => {
 
             <div className="mt-5 space-y-3">
               {todayEvents.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-5 text-sm leading-6 text-slate-500">
-                  今天暂时没有安排，你可以留出整块时间处理深度工作，或者提前补充下周计划。
-                </div>
+                <WorkspaceInlineState
+                  title="今天暂时没有安排"
+                  description="你可以留出整块时间处理深度工作，或者提前补充下周计划。"
+                  className="py-6"
+                />
               ) : (
                 todayEvents.slice(0, 3).map(event => {
                   const meta = EVENT_TYPE_META[event.extendedProps.type];
@@ -872,9 +875,11 @@ export const SchedulePage = () => {
 
             <div className="mt-5 space-y-4">
               {upcomingEvents.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-5 text-sm leading-6 text-slate-500">
-                  当前视图中没有即将开始的安排，切换到其他日期或创建新的事项即可补全节奏板。
-                </div>
+                <WorkspaceInlineState
+                  title="当前视图中没有即将开始的安排"
+                  description="切换到其他日期或创建新的事项后，这里会自动更新节奏提醒。"
+                  className="py-6"
+                />
               ) : (
                 upcomingEvents.map(event => {
                   const meta = EVENT_TYPE_META[event.extendedProps.type];
