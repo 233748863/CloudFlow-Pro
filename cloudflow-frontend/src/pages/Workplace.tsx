@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
 import { WORKFLOW_CATEGORY_OPTIONS, getWorkflowCategoryLabel, normalizeWorkflowCategory } from '../utils/workflowCategory';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceDialogShell } from '@/components/workspace/WorkspacePanels';
 
 /**
  * 将后端返回的 tags 统一转换为字符串数组，避免页面内反复强制类型断言。
@@ -286,46 +288,66 @@ export const Workplace = () => {
     <div className="space-y-6">
       {/* 表单渲染弹层 */}
       {isFormOpen && targetWorkflow && (
+        targetWorkflow.formId ? (
+          loadingBoundForm ? (
+            <WorkspaceDialogShell
+              title="正在准备发起表单"
+              description={`正在加载「${targetWorkflow.name}」绑定的表单定义。`}
+              onClose={() => setIsFormOpen(false)}
+              maxWidthClassName="max-w-2xl"
+            >
+              <WorkspaceInlineState
+                type="loading"
+                title="正在加载表单"
+                description="请稍候，系统正在获取流程绑定的表单定义。"
+                className="py-16"
+              />
+            </WorkspaceDialogShell>
+          ) : boundForm ? (
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl">
-                {targetWorkflow.formId ? (
-                loadingBoundForm ? (
-                <div className="bg-white p-8 rounded-xl text-center">
-                    <h3 className="font-bold">正在加载表单</h3>
-                    <p className="text-slate-500 text-sm mb-4">请稍候，正在获取流程绑定的表单定义。</p>
-                    <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-slate-100 rounded">关闭</button>
-                </div>
-                ) : (
-                boundForm ? (
-                <FormRenderer 
-                    formDef={boundForm}
-                    onCancel={() => setIsFormOpen(false)}
-                    onSubmit={handleStartProcess}
-                />
-                ) : (
-                <div className="bg-white p-8 rounded-xl text-center">
-                    <AlertTriangle size={32} className="text-amber-500 mx-auto mb-4"/>
-                    <h3 className="font-bold">绑定表单不存在</h3>
-                    <p className="text-slate-500 text-sm mb-4">
-                      {boundFormError
-                        ? `无法加载绑定表单：${boundFormError}`
-                        : '流程已绑定的表单可能被删除或无权访问，请联系管理员重新配置流程。'}
-                    </p>
-                    <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-slate-100 rounded">关闭</button>
-                </div>
-                )
-                )
-                ) : (
-                <div className="bg-white p-8 rounded-xl text-center">
-                    <AlertTriangle size={32} className="text-amber-500 mx-auto mb-4"/>
-                    <h3 className="font-bold">未绑定表单</h3>
-                    <p className="text-slate-500 text-sm mb-4">该流程尚未配置输入表单，无法自动发起。</p>
-                    <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-slate-100 rounded">关闭</button>
-                </div>
-                )}
+              <FormRenderer
+                formDef={boundForm}
+                onCancel={() => setIsFormOpen(false)}
+                onSubmit={handleStartProcess}
+              />
             </div>
-            </div>
-        )}
+          ) : (
+            <WorkspaceDialogShell
+              title="绑定表单不可用"
+              description={`流程「${targetWorkflow.name}」当前无法加载绑定表单。`}
+              onClose={() => setIsFormOpen(false)}
+              maxWidthClassName="max-w-2xl"
+            >
+              <WorkspaceInlineState
+                type="info"
+                icon={<AlertTriangle size={18} className="text-amber-500" />}
+                title="绑定表单不存在"
+                description={
+                  boundFormError
+                    ? `无法加载绑定表单：${boundFormError}`
+                    : '流程已绑定的表单可能被删除或无权访问，请联系管理员重新配置流程。'
+                }
+                className="py-14"
+              />
+            </WorkspaceDialogShell>
+          )
+        ) : (
+          <WorkspaceDialogShell
+            title="暂未配置输入表单"
+            description={`流程「${targetWorkflow.name}」还没有绑定可发起的表单。`}
+            onClose={() => setIsFormOpen(false)}
+            maxWidthClassName="max-w-2xl"
+          >
+            <WorkspaceInlineState
+              type="info"
+              icon={<AlertTriangle size={18} className="text-amber-500" />}
+              title="未绑定表单"
+              description="该流程尚未配置输入表单，暂时无法自动发起。"
+              className="py-14"
+            />
+          </WorkspaceDialogShell>
+        )
+      )}
 
       <div className="flex justify-between items-center">
          <div>

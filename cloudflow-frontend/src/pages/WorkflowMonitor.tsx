@@ -29,6 +29,16 @@ import {
   TimeoutAlert,
   AnomalyAlert
 } from '@/services/api/monitor';
+import {
+  WorkspaceEmptyPanel,
+  WorkspaceStatusPage,
+  WorkspaceBackdrop,
+} from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceSectionCard,
+} from '@/components/workspace/WorkspacePanels';
 // import { toast } from 'react-hot-toast';
 
 /**
@@ -44,20 +54,17 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend }) => {
   return (
-    <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600 mb-1">{title}</p>
-          <p className={`text-3xl font-bold ${color}`}>{value}</p>
-          {trend && (
-            <p className="text-xs text-gray-500 mt-1">{trend}</p>
-          )}
-        </div>
-        <div className={`p-3 rounded-full ${color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+    <WorkspaceMetricCard
+      label={title}
+      value={value}
+      hint={trend}
+      valueClassName={color}
+      aside={
+        <div className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/82 ring-1 ring-white/80 shadow-[0_12px_24px_rgba(15,23,42,0.05)]">
           {icon}
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 };
 
@@ -186,230 +193,208 @@ const WorkflowMonitor: React.FC = () => {
 
   if (loading && !overview) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <RefreshCw className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">加载监控数据中...</p>
-        </div>
-      </div>
+      <WorkspaceStatusPage
+        icon={<RefreshCw className="h-8 w-8 animate-spin text-pink-500" />}
+        title="正在加载流程监控..."
+        description="正在同步流程概览、趋势和告警信息，请稍候。"
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* 页面标题和控制栏 */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">工作流监控大屏</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            实时监控流程执行状态和告警信息
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="autoRefresh"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            <label htmlFor="autoRefresh" className="text-sm text-gray-700">
-              自动刷新 (30秒)
-            </label>
-          </div>
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>刷新</span>
-          </button>
-          <span className="text-xs text-gray-500">
-            最后更新: {lastUpdate.toLocaleTimeString('zh-CN')}
-          </span>
-        </div>
-      </div>
-
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatCard
-          title="今日启动"
-          value={overview?.todayStarted || 0}
-          icon={<Activity className="w-6 h-6 text-pink-500" />}
-          color="text-pink-500"
-        />
-        <StatCard
-          title="今日完成"
-          value={overview?.todayCompleted || 0}
-          icon={<CheckCircle2 className="w-6 h-6 text-green-600" />}
-          color="text-green-600"
-        />
-        <StatCard
-          title="超时告警"
-          value={(overview?.warningAlertCount || 0) + (overview?.criticalAlertCount || 0)}
-          icon={<Clock className="w-6 h-6 text-yellow-600" />}
-          color="text-yellow-600"
-        />
-        <StatCard
-          title="异常告警"
-          value={overview?.unresolvedAnomalyCount || 0}
-          icon={<AlertTriangle className="w-6 h-6 text-red-600" />}
-          color="text-red-600"
-        />
-      </div>
-
-      {/* 当前状态和性能指标 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">当前状态</h3>
-            <Activity className="w-5 h-5 text-gray-400" />
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">运行中流程</span>
-              <span className="text-lg font-semibold text-pink-500">
-                {overview?.runningCount || 0}
-              </span>
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
+      <div className="relative z-10 space-y-6 px-4 py-4 md:px-6">
+        <WorkspaceHeroCard
+          badge={
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              <Activity size={14} className="text-pink-500" />
+              流程运行洞察
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">待办任务</span>
-              <span className="text-lg font-semibold text-orange-600">
-                {overview?.pendingTaskCount || 0}
-              </span>
+          }
+          title="工作流监控大屏"
+          description="实时查看流程执行、告警变化和整体性能趋势。"
+          actions={
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3.5 py-2 text-sm text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <input
+                  type="checkbox"
+                  id="autoRefresh"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="rounded border-slate-300"
+                />
+                自动刷新（30秒）
+              </label>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                刷新
+              </button>
             </div>
+          }
+        >
+          <div className="pt-1 text-xs text-slate-400">
+            最后更新：{lastUpdate.toLocaleTimeString('zh-CN')}
           </div>
+        </WorkspaceHeroCard>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="今日启动"
+            value={overview?.todayStarted || 0}
+            icon={<Activity className="h-5 w-5 text-pink-500" />}
+            color="text-pink-500"
+          />
+          <StatCard
+            title="今日完成"
+            value={overview?.todayCompleted || 0}
+            icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+            color="text-emerald-600"
+          />
+          <StatCard
+            title="超时告警"
+            value={(overview?.warningAlertCount || 0) + (overview?.criticalAlertCount || 0)}
+            icon={<Clock className="h-5 w-5 text-amber-600" />}
+            color="text-amber-600"
+          />
+          <StatCard
+            title="异常告警"
+            value={overview?.unresolvedAnomalyCount || 0}
+            icon={<AlertTriangle className="h-5 w-5 text-rose-600" />}
+            color="text-rose-600"
+          />
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">告警统计</h3>
-            <AlertTriangle className="w-5 h-5 text-gray-400" />
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">严重告警</span>
-              <span className="text-lg font-semibold text-red-600">
-                {overview?.criticalAlertCount || 0}
-              </span>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <WorkspaceSectionCard title="当前状态" headerAside={<Activity className="h-5 w-5 text-slate-300" />}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+                <span className="text-sm text-slate-500">运行中流程</span>
+                <span className="text-lg font-semibold text-pink-500">{overview?.runningCount || 0}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+                <span className="text-sm text-slate-500">待办任务</span>
+                <span className="text-lg font-semibold text-orange-600">{overview?.pendingTaskCount || 0}</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">警告提醒</span>
-              <span className="text-lg font-semibold text-yellow-600">
-                {overview?.warningAlertCount || 0}
-              </span>
+          </WorkspaceSectionCard>
+
+          <WorkspaceSectionCard title="告警统计" headerAside={<AlertTriangle className="h-5 w-5 text-slate-300" />}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+                <span className="text-sm text-slate-500">严重告警</span>
+                <span className="text-lg font-semibold text-rose-600">{overview?.criticalAlertCount || 0}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+                <span className="text-sm text-slate-500">警告提醒</span>
+                <span className="text-lg font-semibold text-amber-600">{overview?.warningAlertCount || 0}</span>
+              </div>
             </div>
-          </div>
+          </WorkspaceSectionCard>
+
+          <WorkspaceSectionCard title="性能指标" headerAside={<TrendingUp className="h-5 w-5 text-slate-300" />}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+                <span className="text-sm text-slate-500">平均完成时间</span>
+                <span className="text-lg font-semibold text-violet-600">{formatDuration(overview?.avgCompletionTimeMs || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+                <span className="text-sm text-slate-500">成功率</span>
+                <span className="text-lg font-semibold text-emerald-600">{(overview?.successRate || 0).toFixed(1)}%</span>
+              </div>
+            </div>
+          </WorkspaceSectionCard>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">性能指标</h3>
-            <TrendingUp className="w-5 h-5 text-gray-400" />
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">平均完成时间</span>
-              <span className="text-lg font-semibold text-purple-600">
-                {formatDuration(overview?.avgCompletionTimeMs || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">成功率</span>
-              <span className="text-lg font-semibold text-green-600">
-                {(overview?.successRate || 0).toFixed(1)}%
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 流程趋势图表（简化版，使用文本展示） */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">流程趋势（最近7天）</h3>
-          <TrendingUp className="w-5 h-5 text-gray-400" />
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <TableHeader>
-              <tr>
-                <TableHead className="px-4 py-2 text-left">日期</TableHead>
-                <TableHead className="px-4 py-2 text-right">启动</TableHead>
-                <TableHead className="px-4 py-2 text-right">完成</TableHead>
-                <TableHead className="px-4 py-2 text-right">超时</TableHead>
-                <TableHead className="px-4 py-2 text-right">异常</TableHead>
-              </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-gray-200">
-              {trend.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm text-gray-900">{item.date}</td>
-                  <td className="px-4 py-2 text-sm text-right text-pink-500">{item.started}</td>
-                  <td className="px-4 py-2 text-sm text-right text-green-600">{item.completed}</td>
-                  <td className="px-4 py-2 text-sm text-right text-yellow-600">{item.timeout}</td>
-                  <td className="px-4 py-2 text-sm text-right text-red-600">{item.anomaly}</td>
+        <WorkspaceSectionCard
+          title="流程趋势（最近 7 天）"
+          description="快速查看每日启动、完成、超时和异常变化。"
+          headerAside={<TrendingUp className="h-5 w-5 text-slate-300" />}
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/70">
+              <TableHeader className="bg-white/72 backdrop-blur-xl">
+                <tr>
+                  <TableHead className="px-4 py-2 text-left">日期</TableHead>
+                  <TableHead className="px-4 py-2 text-right">启动</TableHead>
+                  <TableHead className="px-4 py-2 text-right">完成</TableHead>
+                  <TableHead className="px-4 py-2 text-right">超时</TableHead>
+                  <TableHead className="px-4 py-2 text-right">异常</TableHead>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </TableHeader>
+              <tbody className="divide-y divide-white/70">
+                {trend.map((item, index) => (
+                  <tr key={index} className="bg-white/30 transition hover:bg-white/65">
+                    <td className="px-4 py-2 text-sm text-slate-900">{item.date}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-pink-500">{item.started}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-emerald-600">{item.completed}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-amber-600">{item.timeout}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-rose-600">{item.anomaly}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </WorkspaceSectionCard>
 
-      {/* 告警列表 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 超时告警 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">超时告警</h3>
-              <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <WorkspaceSectionCard
+            title="超时告警"
+            description="优先处理已超时的流程节点与任务。"
+            headerAside={
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-100">
                 {timeoutAlerts.length} 条
               </span>
+            }
+          >
+            <div className="max-h-96 overflow-y-auto">
+              {timeoutAlerts.length > 0 ? (
+                <div className="space-y-2">
+                  {timeoutAlerts.map((alert) => (
+                    <AlertItem key={alert.id} alert={alert} type="timeout" />
+                  ))}
+                </div>
+              ) : (
+                <WorkspaceEmptyPanel
+                  variant="glass"
+                  icon={<Clock className="h-6 w-6 text-slate-300" />}
+                  title="暂无超时告警"
+                  description="当前没有需要额外关注的超时流程。"
+                />
+              )}
             </div>
-          </div>
-          <div className="p-4 max-h-96 overflow-y-auto">
-            {timeoutAlerts.length > 0 ? (
-              <div className="space-y-2">
-                {timeoutAlerts.map((alert) => (
-                  <AlertItem key={alert.id} alert={alert} type="timeout" />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>暂无超时告警</p>
-              </div>
-            )}
-          </div>
-        </div>
+          </WorkspaceSectionCard>
 
-        {/* 异常告警 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">异常告警</h3>
-              <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+          <WorkspaceSectionCard
+            title="异常告警"
+            description="统一查看失败、异常和高风险流程。"
+            headerAside={
+              <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-100">
                 {anomalyAlerts.length} 条
               </span>
+            }
+          >
+            <div className="max-h-96 overflow-y-auto">
+              {anomalyAlerts.length > 0 ? (
+                <div className="space-y-2">
+                  {anomalyAlerts.map((alert) => (
+                    <AlertItem key={alert.id} alert={alert} type="anomaly" />
+                  ))}
+                </div>
+              ) : (
+                <WorkspaceEmptyPanel
+                  variant="glass"
+                  icon={<AlertTriangle className="h-6 w-6 text-slate-300" />}
+                  title="暂无异常告警"
+                  description="当前没有异常流程告警需要处理。"
+                />
+              )}
             </div>
-          </div>
-          <div className="p-4 max-h-96 overflow-y-auto">
-            {anomalyAlerts.length > 0 ? (
-              <div className="space-y-2">
-                {anomalyAlerts.map((alert) => (
-                  <AlertItem key={alert.id} alert={alert} type="anomaly" />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <AlertTriangle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>暂无异常告警</p>
-              </div>
-            )}
-          </div>
+          </WorkspaceSectionCard>
         </div>
       </div>
     </div>
