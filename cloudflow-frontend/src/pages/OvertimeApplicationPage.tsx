@@ -48,7 +48,8 @@ import {
 } from '@/components/workspace/WorkspacePanels';
 import {
   WorkspaceBackdrop,
-  WorkspaceEmptyPanel,
+  WorkspaceInlineState,
+  WorkspaceTableStateRow,
 } from '@/components/workspace/WorkspacePrimitives';
 
 const emptyForm = (): OvertimeApplicationForm => ({
@@ -619,22 +620,15 @@ export const OvertimeApplicationPage: React.FC = () => {
                   </TableHeader>
                   <tbody className="divide-y divide-white/70">
                     {loading ? (
-                      <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500" />
-                        </td>
-                      </tr>
+                      <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载加班申请..." />
                     ) : list.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="px-0 py-0">
-                          <WorkspaceEmptyPanel
-                            variant="glass"
-                            icon={<Timer size={26} />}
-                            title={hasActiveFilters ? '当前条件下暂无记录' : '暂无加班申请'}
-                            description={hasActiveFilters ? '试试切换状态、清空类型条件，或者直接新建一条加班申请。' : '创建新的加班记录后，这里会展示时段、时长、补偿方式和审批状态。'}
-                          />
-                        </td>
-                      </tr>
+                      <WorkspaceTableStateRow
+                        colSpan={8}
+                        variant="glass"
+                        icon={<Timer size={26} />}
+                        title={hasActiveFilters ? '当前条件下暂无记录' : '暂无加班申请'}
+                        description={hasActiveFilters ? '试试切换状态、清空类型条件，或者直接新建一条加班申请。' : '创建新的加班记录后，这里会展示时段、时长、补偿方式和审批状态。'}
+                      />
                     ) : (
                       list.map((item) => (
                         <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
@@ -914,9 +908,7 @@ export const OvertimeApplicationPage: React.FC = () => {
 
               <div className="flex-1 space-y-6 overflow-y-auto p-6">
                 {detailLoading || !detailRecord ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500" />
-                  </div>
+                  <WorkspaceInlineState type="loading" title="正在加载加班详情..." className="py-12" />
                 ) : (
                   <>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -976,9 +968,12 @@ export const OvertimeApplicationPage: React.FC = () => {
                         {detailRecord.processInstanceId ? (
                           <ProcessTrace instanceId={detailRecord.processInstanceId} variant="glass" />
                         ) : (
-                          <div className="rounded-[22px] border border-white/70 bg-white/72 px-4 py-6 text-center text-sm text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-                            当前记录还没有流程实例，提交审批后这里会显示完整轨迹。
-                          </div>
+                          <WorkspaceInlineState
+                            type="info"
+                            title="暂无流程轨迹"
+                            description="当前记录还没有流程实例，提交审批后这里会显示完整轨迹。"
+                            className="py-8"
+                          />
                         )}
                       </div>
                     </div>

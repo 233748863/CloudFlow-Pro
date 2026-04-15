@@ -7,7 +7,7 @@ import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceEmptyPanel } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { WorkspaceHeroCard, WorkspacePaginationBar, WorkspaceResultCard, WorkspaceWorkbenchCard } from '@/components/workspace/WorkspacePanels';
 
 const formatDateCN = (date: Date) => {
@@ -401,9 +401,15 @@ export const PaymentRequestPage: React.FC = () => {
                   </TableHeader>
                   <tbody className="divide-y divide-white/70">
                     {loading ? (
-                      <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500"><div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500" /></td></tr>
+                      <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载付款申请..." />
                     ) : payments.length === 0 ? (
-                      <tr><td colSpan={8} className="px-0 py-0"><WorkspaceEmptyPanel variant="glass" icon={<DollarSign size={26} />} title={hasActiveFilters ? '当前条件下暂无记录' : '暂无付款申请'} description={hasActiveFilters ? '试试切换状态或付款类型筛选，或者直接新建一条付款申请。' : '创建新的付款申请后，这里会展示收款对象、金额和审批状态。'} /></td></tr>
+                      <WorkspaceTableStateRow
+                        colSpan={8}
+                        variant="glass"
+                        icon={<DollarSign size={26} />}
+                        title={hasActiveFilters ? '当前条件下暂无记录' : '暂无付款申请'}
+                        description={hasActiveFilters ? '试试切换状态或付款类型筛选，或者直接新建一条付款申请。' : '创建新的付款申请后，这里会展示收款对象、金额和审批状态。'}
+                      />
                     ) : payments.map(item => (
                       <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
                         <td className="px-4 py-2.5 text-sm text-slate-900">{item.paymentNo || '-'}</td>
@@ -565,9 +571,7 @@ export const PaymentRequestPage: React.FC = () => {
 
               <div className="flex-1 space-y-6 overflow-y-auto p-6">
                 {detailLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-pink-500" />
-                  </div>
+                  <WorkspaceInlineState type="loading" title="正在加载付款详情..." className="py-12" />
                 ) : (
                   <>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -604,7 +608,7 @@ export const PaymentRequestPage: React.FC = () => {
                             );
                           })
                         ) : (
-                          <div className="rounded-[22px] border border-white/70 bg-white/72 px-4 py-3 text-sm text-slate-400">暂无附件</div>
+                          <WorkspaceInlineState title="暂无附件" description="当前付款单还没有上传附件材料。" className="py-5" />
                         )}
                       </div>
                     </div>
