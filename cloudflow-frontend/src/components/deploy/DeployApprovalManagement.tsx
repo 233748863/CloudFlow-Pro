@@ -1,34 +1,65 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CheckCircle,
-  XCircle,
-  Clock,
-  Eye,
-  Send,
-  X,
-  ChevronRight,
-  User,
-  Users,
   Building,
+  CheckCircle,
+  Clock3,
+  Eye,
   MessageSquare,
   RefreshCw,
+  Send,
+  ShieldCheck,
+  User,
+  Users,
+  X,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button, Textarea } from '@/components/ui';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import {
-  DeployApproval,
+  WorkspaceDialogShell,
+  WorkspaceMetricCard,
+  WorkspaceSectionCard,
+} from '@/components/workspace/WorkspacePanels';
+import { cn } from '@/utils/cn';
+import {
   ApprovalStep,
-  listPendingApprovals,
-  listMySubmittedApprovals,
-  getApprovalDetail,
+  DeployApproval,
   approveDeployRequest,
   cancelDeployApproval,
+  getApprovalDetail,
+  listMySubmittedApprovals,
+  listPendingApprovals,
 } from '@/services/api/deployEnhancement';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  PENDING: { label: '待审批', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-  APPROVED: { label: '已通过', color: 'bg-green-100 text-green-700', icon: CheckCircle },
-  REJECTED: { label: '已驳回', color: 'bg-red-100 text-red-700', icon: XCircle },
-  CANCELLED: { label: '已取消', color: 'bg-gray-100 text-gray-600', icon: X },
+const STATUS_CONFIG: Record<
+  string,
+  {
+    label: string;
+    className: string;
+    icon: React.ElementType;
+  }
+> = {
+  PENDING: {
+    label: '待审批',
+    className: 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
+    icon: Clock3,
+  },
+  APPROVED: {
+    label: '已通过',
+    className: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100',
+    icon: CheckCircle,
+  },
+  REJECTED: {
+    label: '已驳回',
+    className: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100',
+    icon: XCircle,
+  },
+  CANCELLED: {
+    label: '已取消',
+    className: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+    icon: X,
+  },
 };
 
 const APPROVER_TYPE_ICONS: Record<string, React.ElementType> = {
@@ -36,6 +67,14 @@ const APPROVER_TYPE_ICONS: Record<string, React.ElementType> = {
   ROLE: Users,
   DEPT: Building,
 };
+
+const APPROVAL_MODE_LABELS: Record<ApprovalStep['approvalMode'], string> = {
+  ANY: '任一人',
+  ALL: '所有人',
+  SEQUENCE: '依次审批',
+};
+
+const getStatusMeta = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
 
 export const DeployApprovalManagement: React.FC = () => {
   const [activeView, setActiveView] = useState<'pending' | 'submitted'>('pending');
@@ -53,10 +92,6 @@ export const DeployApprovalManagement: React.FC = () => {
     action: 'APPROVE' | 'REJECT';
   } | null>(null);
   const [comment, setComment] = useState('');
-
-  useEffect(() => {
-    loadData();
-  }, [activeView]);
 
   const loadData = async () => {
     try {
@@ -76,13 +111,31 @@ export const DeployApprovalManagement: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    loadData();
+  }, [activeView]);
+
+  const approvals = activeView === 'pending' ? pendingApprovals : submittedApprovals;
+
+  const summary = useMemo(() => {
+    const completedCount = submittedApprovals.filter((item) => item.approvalStatus === 'APPROVED').length;
+    const rejectedCount = submittedApprovals.filter((item) => item.approvalStatus === 'REJECTED').length;
+
+    return {
+      pendingCount: pendingApprovals.length,
+      submittedCount: submittedApprovals.length,
+      completedCount,
+      rejectedCount,
+    };
+  }, [pendingApprovals, submittedApprovals]);
+
   const handleViewDetail = async (approval: DeployApproval) => {
     try {
-      const detail = await getApprovalDetail(approval.id) as any;
+      const detail = await getApprovalDetail(approval.id);
       setDetailModal({
         approval: detail.approval || approval,
         steps: Array.isArray(detail.steps) ? detail.steps : [],
-        processName: detail.processName,
+        processName: detail.processName || detail.processKey,
       });
     } catch (error) {
       toast.error('加载审批详情失败');
@@ -91,344 +144,409 @@ export const DeployApprovalManagement: React.FC = () => {
   };
 
   const handleApprove = async () => {
-    if (!approveModal) return;
+    if (!approveModal) {
+      return;
+    }
 
     try {
       await approveDeployRequest(
         approveModal.approvalId,
         approveModal.stepId,
         approveModal.action,
-        comment || undefined
+        comment || undefined,
       );
-      toast.success(approveModal.action === 'APPROVE' ? '审批通过' : '已驳回');
+      toast.success(approveModal.action === 'APPROVE' ? '审批已通过' : '审批已驳回');
       setApproveModal(null);
       setComment('');
-      loadData();
+      await loadData();
     } catch (error) {
-      toast.error('操作失败');
+      toast.error('审批操作失败');
       console.error(error);
     }
   };
 
   const handleCancel = async (approvalId: number) => {
-    if (!confirm('确定要取消此审批吗？')) return;
+    if (!confirm('确定取消这条发布审批吗？')) {
+      return;
+    }
 
     try {
       await cancelDeployApproval(approvalId);
-      toast.success('已取消');
-      loadData();
+      toast.success('审批已取消');
+      await loadData();
     } catch (error) {
-      toast.error('取消失败');
+      toast.error('取消审批失败');
       console.error(error);
     }
   };
 
-  const renderStatusBadge = (status: string) => {
-    const config = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
-    const Icon = config.icon;
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${config.color}`}>
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
-    );
-  };
-
-  const approvals = activeView === 'pending' ? pendingApprovals : submittedApprovals;
-
   return (
-    <div className="space-y-4">
-      {/* 头部 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-800">发布审批管理</h2>
-          <p className="text-sm text-gray-500 mt-1">管理流程发布的审批请求</p>
-        </div>
-        <button
-          onClick={loadData}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          刷新
-        </button>
+    <div className="space-y-5">
+      <div className="grid gap-4 xl:grid-cols-4">
+        <WorkspaceMetricCard
+          label="待我审批"
+          value={summary.pendingCount}
+          hint="当前需要我处理的发布审批"
+          aside={<ShieldCheck className="h-[18px] w-[18px] text-pink-500" />}
+        />
+        <WorkspaceMetricCard
+          label="我的提交"
+          value={summary.submittedCount}
+          hint="我发起过的全部发布审批单"
+          aside={<Send className="h-[18px] w-[18px] text-sky-500" />}
+        />
+        <WorkspaceMetricCard
+          label="已通过"
+          value={summary.completedCount}
+          hint="已完成并通过的发布审批"
+          aside={<CheckCircle className="h-[18px] w-[18px] text-emerald-500" />}
+        />
+        <WorkspaceMetricCard
+          label="被驳回"
+          value={summary.rejectedCount}
+          hint="需要重新提交或补充说明的审批"
+          aside={<XCircle className="h-[18px] w-[18px] text-amber-500" />}
+        />
       </div>
 
-      {/* 视图切换 */}
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setActiveView('pending')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeView === 'pending'
-              ? 'bg-white text-pink-500 shadow-sm'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          待我审批
-          {pendingApprovals.length > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs bg-red-500 text-white rounded-full">
-              {pendingApprovals.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveView('submitted')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeView === 'submitted'
-              ? 'bg-white text-pink-500 shadow-sm'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          我的提交
-        </button>
-      </div>
-
-      {/* 审批列表 */}
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-        </div>
-      ) : approvals.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>{activeView === 'pending' ? '暂无待审批项' : '暂无提交记录'}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {approvals.map(approval => (
-            <div
-              key={approval.id}
-              className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="font-semibold text-gray-800">
-                      流程: {approval.processDefId}
-                    </span>
-                    {renderStatusBadge(approval.approvalStatus)}
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>步骤: {approval.currentStep}/{approval.totalSteps}</span>
-                    <span>提交时间: {approval.submitTime}</span>
-                    {approval.completeTime && (
-                      <span>完成时间: {approval.completeTime}</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleViewDetail(approval)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    详情
-                  </button>
-
-                  {activeView === 'pending' && approval.approvalStatus === 'PENDING' && (
-                    <>
-                      <button
-                        onClick={() =>
-                          setApproveModal({
-                            approvalId: approval.id,
-                            stepId: approval.currentStep,
-                            action: 'APPROVE',
-                          })
-                        }
-                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-green-600 bg-green-50 rounded hover:bg-green-100 transition-colors"
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        通过
-                      </button>
-                      <button
-                        onClick={() =>
-                          setApproveModal({
-                            approvalId: approval.id,
-                            stepId: approval.currentStep,
-                            action: 'REJECT',
-                          })
-                        }
-                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        驳回
-                      </button>
-                    </>
-                  )}
-
-                  {activeView === 'submitted' && approval.approvalStatus === 'PENDING' && (
-                    <button
-                      onClick={() => handleCancel(approval.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      取消
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 审批详情模态框 */}
-      {detailModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">审批详情</h3>
+      <WorkspaceSectionCard
+        title="审批列表"
+        description="统一查看待处理审批与我提交的审批记录，所有审批动作都在这里完成闭环。"
+        eyebrow="Approval Queue"
+        headerAside={
+          <Button variant="outline" size="sm" onClick={loadData}>
+            <RefreshCw className="h-4 w-4" />
+            刷新
+          </Button>
+        }
+      >
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center gap-2 rounded-[22px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            {[
+              { key: 'pending', label: '待我审批', count: pendingApprovals.length },
+              { key: 'submitted', label: '我的提交', count: submittedApprovals.length },
+            ].map((item) => {
+              const active = activeView === item.key;
+              return (
                 <button
-                  onClick={() => setDetailModal(null)}
-                  className="p-1 text-gray-400 hover:text-gray-600"
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveView(item.key as 'pending' | 'submitted')}
+                  className={cn(
+                    'rounded-[16px] px-4 py-2 text-sm font-medium transition',
+                    active
+                      ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]'
+                      : 'text-slate-600 hover:bg-white/90 hover:text-pink-600',
+                  )}
                 >
-                  <X className="w-5 h-5" />
+                  {item.label}
+                  {item.count > 0 ? ` (${item.count})` : ''}
                 </button>
-              </div>
+              );
+            })}
+          </div>
 
-              {/* 基本信息 */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">流程定义:</span>
-                    <span className="ml-2 font-medium">{detailModal.processName || detailModal.approval.processDefId}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">状态:</span>
-                    <span className="ml-2">{renderStatusBadge(detailModal.approval.approvalStatus)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">提交时间:</span>
-                    <span className="ml-2">{detailModal.approval.submitTime}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">进度:</span>
-                    <span className="ml-2 font-medium">{detailModal.approval.currentStep}/{detailModal.approval.totalSteps}</span>
-                  </div>
-                </div>
-              </div>
+          {loading ? (
+            <WorkspaceInlineState
+              type="loading"
+              title="正在同步审批列表..."
+              description="请稍候，系统正在读取发布审批状态。"
+              className="py-16"
+            />
+          ) : approvals.length === 0 ? (
+            <WorkspaceInlineState
+              icon={<CheckCircle className="h-5 w-5" />}
+              title={activeView === 'pending' ? '当前没有待审批项目' : '还没有提交记录'}
+              description={
+                activeView === 'pending'
+                  ? '当前没有新的发布审批压到你这里，系统会在有新记录时自动进入待处理队列。'
+                  : '你还没有发起过发布审批，后续提交后会在这里追踪状态。'
+              }
+              className="py-16"
+            />
+          ) : (
+            <div className="space-y-4">
+              {approvals.map((approval) => {
+                const statusMeta = getStatusMeta(approval.approvalStatus);
+                const StatusIcon = statusMeta.icon;
 
-              {/* 审批步骤 */}
-              <h4 className="font-medium text-gray-700 mb-3">审批步骤</h4>
-              <div className="space-y-3">
-                {detailModal.steps.map((step, index) => {
-                  const TypeIcon = APPROVER_TYPE_ICONS[step.approverType] || User;
+                return (
+                  <div
+                    key={approval.id}
+                    className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.84))] px-5 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]"
+                  >
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold text-slate-900">
+                            流程定义：{approval.processDefId}
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                              statusMeta.className,
+                            )}
+                          >
+                            <StatusIcon className="h-3.5 w-3.5" />
+                            {statusMeta.label}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                          <span>审批单号：#{approval.id}</span>
+                          {approval.deployId ? <span>部署 ID：{approval.deployId}</span> : null}
+                          <span>
+                            当前步骤：{approval.currentStep} / {approval.totalSteps}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                            <div className="text-xs text-slate-400">提交时间</div>
+                            <div className="mt-1 font-medium">{approval.submitTime}</div>
+                          </div>
+                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                            <div className="text-xs text-slate-400">完成时间</div>
+                            <div className="mt-1 font-medium">{approval.completeTime || '处理中'}</div>
+                          </div>
+                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                            <div className="text-xs text-slate-400">申请人 ID</div>
+                            <div className="mt-1 font-medium">{approval.submitterId}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleViewDetail(approval)}>
+                          <Eye className="h-4 w-4" />
+                          查看详情
+                        </Button>
+
+                        {activeView === 'pending' && approval.approvalStatus === 'PENDING' ? (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-[linear-gradient(135deg,#34d399,#10b981)] shadow-[0_12px_24px_rgba(16,185,129,0.2)]"
+                              onClick={() =>
+                                setApproveModal({
+                                  approvalId: approval.id,
+                                  stepId: approval.currentStep,
+                                  action: 'APPROVE',
+                                })
+                              }
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              通过
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() =>
+                                setApproveModal({
+                                  approvalId: approval.id,
+                                  stepId: approval.currentStep,
+                                  action: 'REJECT',
+                                })
+                              }
+                            >
+                              <XCircle className="h-4 w-4" />
+                              驳回
+                            </Button>
+                          </>
+                        ) : null}
+
+                        {activeView === 'submitted' && approval.approvalStatus === 'PENDING' ? (
+                          <Button variant="ghost" size="sm" onClick={() => handleCancel(approval.id)}>
+                            <X className="h-4 w-4" />
+                            取消审批
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </WorkspaceSectionCard>
+
+      {detailModal ? (
+        <WorkspaceDialogShell
+          title="审批详情"
+          description="查看审批单基础信息和完整步骤流转记录。"
+          onClose={() => setDetailModal(null)}
+          maxWidthClassName="max-w-4xl"
+          bodyClassName="max-h-[82vh] overflow-y-auto"
+        >
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <WorkspaceMetricCard
+                label="流程"
+                value={detailModal.processName || detailModal.approval.processDefId}
+                hint="当前审批绑定的流程定义"
+              />
+              <WorkspaceMetricCard
+                label="审批状态"
+                value={getStatusMeta(detailModal.approval.approvalStatus).label}
+                hint="审批单当前总体状态"
+              />
+              <WorkspaceMetricCard
+                label="当前进度"
+                value={`${detailModal.approval.currentStep}/${detailModal.approval.totalSteps}`}
+                hint="已经推进到的审批步骤"
+              />
+              <WorkspaceMetricCard
+                label="提交时间"
+                value={detailModal.approval.submitTime}
+                hint="审批单创建时间"
+              />
+            </div>
+
+            <WorkspaceSectionCard
+              title="审批步骤"
+              description="按顺序展示每个审批节点的状态、审批模式和处理意见。"
+              bodyClassName="space-y-3"
+            >
+              {detailModal.steps.length === 0 ? (
+                <WorkspaceInlineState
+                  icon={<Clock3 className="h-5 w-5" />}
+                  title="暂未返回审批步骤"
+                  description="当前审批单还没有明细步骤，或后端尚未返回步骤配置。"
+                  className="py-14"
+                />
+              ) : (
+                detailModal.steps.map((step) => {
+                  const statusMeta = getStatusMeta(step.stepStatus);
+                  const StatusIcon = statusMeta.icon;
+                  const ApproverIcon = APPROVER_TYPE_ICONS[step.approverType] || User;
+
                   return (
                     <div
                       key={step.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border ${
-                        step.stepStatus === 'APPROVED'
-                          ? 'border-green-200 bg-green-50'
-                          : step.stepStatus === 'REJECTED'
-                          ? 'border-red-200 bg-red-50'
-                          : 'border-gray-200 bg-white'
-                      }`}
+                      className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
                     >
-                      <div className="flex-shrink-0 mt-0.5">
-                        {step.stepStatus === 'APPROVED' ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        ) : step.stepStatus === 'REJECTED' ? (
-                          <XCircle className="w-5 h-5 text-red-500" />
-                        ) : (
-                          <Clock className="w-5 h-5 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-800">
-                            步骤 {step.stepNo}: {step.stepName}
-                          </span>
-                          {renderStatusBadge(step.stepStatus)}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <TypeIcon className="w-3.5 h-3.5" />
-                          <span>审批模式: {step.approvalMode === 'ANY' ? '任一人' : step.approvalMode === 'ALL' ? '所有人' : '依次'}</span>
-                        </div>
-                        {step.approvalComment && (
-                          <div className="flex items-start gap-1 mt-2 text-sm text-gray-600">
-                            <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                            <span>{step.approvalComment}</span>
+                      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-slate-900">
+                              步骤 {step.stepNo} · {step.stepName}
+                            </div>
+                            <span
+                              className={cn(
+                                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                statusMeta.className,
+                              )}
+                            >
+                              <StatusIcon className="h-3.5 w-3.5" />
+                              {statusMeta.label}
+                            </span>
                           </div>
-                        )}
-                        {step.approvalTime && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            审批时间: {step.approvalTime}
+
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                            <span className="inline-flex items-center gap-1">
+                              <ApproverIcon className="h-3.5 w-3.5" />
+                              审批对象：{step.approverType}
+                            </span>
+                            <span>审批模式：{APPROVAL_MODE_LABELS[step.approvalMode]}</span>
+                            <span>审批 ID：{step.id}</span>
                           </div>
-                        )}
+                        </div>
+
+                        <div className="text-xs text-slate-400">
+                          {step.approvalTime ? `处理时间：${step.approvalTime}` : '尚未处理'}
+                        </div>
                       </div>
-                      {index < detailModal.steps.length - 1 && (
-                        <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" />
-                      )}
+
+                      {step.approvalComment ? (
+                        <div className="mt-3 rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-slate-400">
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            审批意见
+                          </div>
+                          <div>{step.approvalComment}</div>
+                        </div>
+                      ) : null}
                     </div>
                   );
-                })}
-              </div>
+                })
+              )}
+            </WorkspaceSectionCard>
+          </div>
+        </WorkspaceDialogShell>
+      ) : null}
 
-              <div className="mt-6 pt-4 border-t">
-                <button
-                  onClick={() => setDetailModal(null)}
-                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  关闭
-                </button>
-              </div>
+      {approveModal ? (
+        <WorkspaceDialogShell
+          title={approveModal.action === 'APPROVE' ? '确认通过审批' : '确认驳回审批'}
+          description="可补充审批意见，帮助后续回看审批结论。"
+          onClose={() => {
+            setApproveModal(null);
+            setComment('');
+          }}
+          maxWidthClassName="max-w-xl"
+        >
+          <div className="space-y-5">
+            <div
+              className={cn(
+                'rounded-[22px] border px-4 py-4 text-sm',
+                approveModal.action === 'APPROVE'
+                  ? 'border-emerald-100 bg-emerald-50/80 text-emerald-700'
+                  : 'border-rose-100 bg-rose-50/80 text-rose-700',
+              )}
+            >
+              {approveModal.action === 'APPROVE'
+                ? '审批通过后，发布单会继续流转到下一审批节点或直接进入执行。'
+                : '驳回后建议补充原因，方便申请人快速修改并重新提交。'}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                审批意见
+                {approveModal.action === 'REJECT' ? <span className="text-rose-500">（建议填写）</span> : null}
+              </label>
+              <Textarea
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                rows={4}
+                placeholder={
+                  approveModal.action === 'APPROVE'
+                    ? '例如：部署窗口、审批材料和回滚方案均已确认。'
+                    : '例如：回滚预案不完整，请补充风险说明后重新提交。'
+                }
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setApproveModal(null);
+                  setComment('');
+                }}
+              >
+                取消
+              </Button>
+              <Button
+                variant={approveModal.action === 'APPROVE' ? 'default' : 'destructive'}
+                onClick={handleApprove}
+              >
+                {approveModal.action === 'APPROVE' ? (
+                  <>
+                    <Send className="h-4 w-4" />
+                    确认通过
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    确认驳回
+                  </>
+                )}
+              </Button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* 审批操作模态框 */}
-      {approveModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {approveModal.action === 'APPROVE' ? '确认通过' : '确认驳回'}
-              </h3>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  审批意见
-                  {approveModal.action === 'REJECT' && <span className="text-red-500"> *</span>}
-                </label>
-                <textarea
-                  value={comment}
-                  onChange={e => setComment(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
-                  placeholder={approveModal.action === 'APPROVE' ? '同意（可选）' : '请填写驳回原因'}
-                />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setApproveModal(null);
-                    setComment('');
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleApprove}
-                  className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
-                    approveModal.action === 'APPROVE'
-                      ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-red-600 hover:bg-red-700'
-                  }`}
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <Send className="w-4 h-4" />
-                    {approveModal.action === 'APPROVE' ? '确认通过' : '确认驳回'}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        </WorkspaceDialogShell>
+      ) : null}
     </div>
   );
 };

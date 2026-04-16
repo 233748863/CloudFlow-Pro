@@ -1,22 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Power, PowerOff, Clock, Calendar } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Calendar,
+  Clock3,
+  Edit2,
+  Plus,
+  Power,
+  PowerOff,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
-import { DatePicker } from '../ui/date-picker';
+import { Button, Input, Textarea } from '@/components/ui';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceDialogShell,
+  WorkspaceMetricCard,
+  WorkspaceSectionCard,
+} from '@/components/workspace/WorkspacePanels';
+import { cn } from '@/utils/cn';
 import {
   DeployWindow,
+  deleteDeployWindow,
   listDeployWindows,
   saveDeployWindow,
-  updateDeployWindow,
-  deleteDeployWindow,
   toggleDeployWindow,
+  updateDeployWindow,
 } from '@/services/api/deployEnhancement';
 
-const WINDOW_TYPES = [
+const WINDOW_TYPES: Array<{ value: DeployWindow['windowType']; label: string }> = [
   { value: 'DAILY', label: '每日' },
   { value: 'WEEKLY', label: '每周' },
   { value: 'MONTHLY', label: '每月' },
-  { value: 'CUSTOM', label: '自定义' },
+  { value: 'CUSTOM', label: '自定义日期' },
 ];
 
 const WEEK_DAYS = [
@@ -29,26 +46,54 @@ const WEEK_DAYS = [
   { value: '7', label: '周日' },
 ];
 
+const emptyFormData: DeployWindow = {
+  windowName: '',
+  windowType: 'DAILY',
+  startTime: '09:00',
+  endTime: '18:00',
+  weekDays: '',
+  monthDays: '',
+  customDates: '',
+  isEnabled: true,
+  description: '',
+};
+
+const getWindowTypeLabel = (type: DeployWindow['windowType']) =>
+  WINDOW_TYPES.find((item) => item.value === type)?.label || type;
+
+const getWeeklyLabel = (weekDays?: string) =>
+  (weekDays || '')
+    .split(',')
+    .filter(Boolean)
+    .map((day) => WEEK_DAYS.find((item) => item.value === day)?.label || day)
+    .join('、');
+
+const getScheduleLabel = (window: DeployWindow) => {
+  switch (window.windowType) {
+    case 'WEEKLY':
+      return getWeeklyLabel(window.weekDays) || '未配置星期';
+    case 'MONTHLY':
+      return window.monthDays || '未配置日期';
+    case 'CUSTOM':
+      return window.customDates || '未配置日期';
+    case 'DAILY':
+    default:
+      return '每天生效';
+  }
+};
+
 export const DeployWindowManagement: React.FC = () => {
   const [windows, setWindows] = useState<DeployWindow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
   const [editingWindow, setEditingWindow] = useState<DeployWindow | null>(null);
-  const [formData, setFormData] = useState<Partial<DeployWindow>>({
-    windowName: '',
-    windowType: 'DAILY',
-    startTime: '09:00',
-    endTime: '18:00',
-    weekDays: '',
-    monthDays: '',
-    customDates: '',
-    isEnabled: true,
-    description: '',
-  });
+  const [formData, setFormData] = useState<DeployWindow>(emptyFormData);
 
-  useEffect(() => {
-    loadWindows();
-  }, []);
+  const resetDialog = () => {
+    setEditingWindow(null);
+    setFormData(emptyFormData);
+    setShowDialog(false);
+  };
 
   const loadWindows = async () => {
     try {
@@ -63,353 +108,435 @@ export const DeployWindowManagement: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
-    try {
-      if (!formData.windowName || !formData.startTime || !formData.endTime) {
-        toast.error('请填写必填字段');
-        return;
-      }
+  useEffect(() => {
+    loadWindows();
+  }, []);
 
-      if (editingWindow) {
-        await updateDeployWindow({ ...formData, id: editingWindow.id } as DeployWindow);
-        toast.success('更新成功');
-      } else {
-        await saveDeployWindow(formData as DeployWindow);
-        toast.success('创建成功');
-      }
+  const summary = useMemo(() => {
+    const enabledCount = windows.filter((item) => item.isEnabled).length;
+    const weeklyCount = windows.filter((item) => item.windowType === 'WEEKLY').length;
+    const customCount = windows.filter((item) => item.windowType === 'CUSTOM').length;
 
-      setShowModal(false);
-      setEditingWindow(null);
-      setFormData({
-        windowName: '',
-        windowType: 'DAILY',
-        startTime: '09:00',
-        endTime: '18:00',
-        weekDays: '',
-        monthDays: '',
-        customDates: '',
-        isEnabled: true,
-        description: '',
-      });
-      loadWindows();
-    } catch (error) {
-      toast.error('保存失败');
-      console.error(error);
-    }
+    return {
+      total: windows.length,
+      enabledCount,
+      weeklyCount,
+      customCount,
+    };
+  }, [windows]);
+
+  const handleOpenCreate = () => {
+    setEditingWindow(null);
+    setFormData(emptyFormData);
+    setShowDialog(true);
   };
 
   const handleEdit = (window: DeployWindow) => {
     setEditingWindow(window);
-    setFormData(window);
-    setShowModal(true);
+    setFormData({
+      ...emptyFormData,
+      ...window,
+    });
+    setShowDialog(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('确定要删除此发布窗口吗？')) return;
+  const handleSave = async () => {
+    if (!formData.windowName.trim() || !formData.startTime || !formData.endTime) {
+      toast.error('请填写窗口名称和起止时间');
+      return;
+    }
+
+    // 不同窗口类型对应不同规则字段，保存前统一清理无关配置，避免脏数据混入。
+    const payload: DeployWindow = {
+      ...formData,
+      windowName: formData.windowName.trim(),
+      description: formData.description?.trim(),
+      weekDays: formData.windowType === 'WEEKLY' ? formData.weekDays : '',
+      monthDays: formData.windowType === 'MONTHLY' ? formData.monthDays?.trim() : '',
+      customDates: formData.windowType === 'CUSTOM' ? formData.customDates?.trim() : '',
+    };
+
+    if (payload.windowType === 'WEEKLY' && !payload.weekDays) {
+      toast.error('请选择每周生效的星期');
+      return;
+    }
+
+    if (payload.windowType === 'MONTHLY' && !payload.monthDays) {
+      toast.error('请填写每月生效日期');
+      return;
+    }
+
+    if (payload.windowType === 'CUSTOM' && !payload.customDates) {
+      toast.error('请填写自定义日期');
+      return;
+    }
+
+    try {
+      if (editingWindow?.id) {
+        await updateDeployWindow({ ...payload, id: editingWindow.id });
+        toast.success('窗口更新成功');
+      } else {
+        await saveDeployWindow(payload);
+        toast.success('窗口创建成功');
+      }
+
+      resetDialog();
+      await loadWindows();
+    } catch (error) {
+      toast.error('保存窗口失败');
+      console.error(error);
+    }
+  };
+
+  const handleDelete = async (id?: number) => {
+    if (!id) {
+      return;
+    }
+    if (!confirm('确定删除这个发布窗口吗？')) {
+      return;
+    }
 
     try {
       await deleteDeployWindow(id);
-      toast.success('删除成功');
-      loadWindows();
+      toast.success('窗口删除成功');
+      await loadWindows();
     } catch (error) {
-      toast.error('删除失败');
+      toast.error('删除窗口失败');
       console.error(error);
     }
   };
 
-  const handleToggle = async (id: number, enabled: boolean) => {
+  const handleToggle = async (id?: number, enabled?: boolean) => {
+    if (!id) {
+      return;
+    }
+
     try {
       await toggleDeployWindow(id, !enabled);
-      toast.success(enabled ? '已禁用' : '已启用');
-      loadWindows();
+      toast.success(enabled ? '窗口已禁用' : '窗口已启用');
+      await loadWindows();
     } catch (error) {
-      toast.error('操作失败');
+      toast.error('切换窗口状态失败');
       console.error(error);
     }
   };
 
-  const getWindowTypeLabel = (type: string) => {
-    return WINDOW_TYPES.find(t => t.value === type)?.label || type;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {/* 头部操作栏 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-800">发布窗口管理</h2>
-          <p className="text-sm text-gray-500 mt-1">配置允许发布的时间窗口</p>
-        </div>
-        <button
-          onClick={() => {
-            setEditingWindow(null);
-            setFormData({
-              windowName: '',
-              windowType: 'DAILY',
-              startTime: '09:00',
-              endTime: '18:00',
-              weekDays: '',
-              monthDays: '',
-              customDates: '',
-              isEnabled: true,
-              description: '',
-            });
-            setShowModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          新建窗口
-        </button>
+    <div className="space-y-5">
+      <div className="grid gap-4 xl:grid-cols-4">
+        <WorkspaceMetricCard
+          label="窗口总数"
+          value={summary.total}
+          hint="当前系统中定义的全部发布窗口"
+          aside={<Clock3 className="h-[18px] w-[18px] text-pink-500" />}
+        />
+        <WorkspaceMetricCard
+          label="启用中"
+          value={summary.enabledCount}
+          hint="当前允许生效的窗口数量"
+          aside={<Power className="h-[18px] w-[18px] text-emerald-500" />}
+        />
+        <WorkspaceMetricCard
+          label="每周策略"
+          value={summary.weeklyCount}
+          hint="按星期控制开放时段的窗口"
+          aside={<Calendar className="h-[18px] w-[18px] text-sky-500" />}
+        />
+        <WorkspaceMetricCard
+          label="自定义日期"
+          value={summary.customCount}
+          hint="用于活动日或特殊发版场景"
+          aside={<Sparkles className="h-[18px] w-[18px] text-amber-500" />}
+        />
       </div>
 
-      {/* 窗口列表 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {windows.length === 0 ? (
-          <div className="col-span-full text-center py-12 text-gray-400">
-            <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>暂无发布窗口配置</p>
+      <WorkspaceSectionCard
+        title="发布窗口列表"
+        description="统一管理允许发布的时间窗口，覆盖每日、每周、每月和自定义日期四种规则。"
+        eyebrow="Window Rules"
+        headerAside={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={loadWindows}>
+              刷新
+            </Button>
+            <Button size="sm" onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4" />
+              新建窗口
+            </Button>
           </div>
+        }
+      >
+        {loading ? (
+          <WorkspaceInlineState
+            type="loading"
+            title="正在读取发布窗口..."
+            description="系统正在同步可用时段配置，请稍候。"
+            className="py-16"
+          />
+        ) : windows.length === 0 ? (
+          <WorkspaceInlineState
+            icon={<Clock3 className="h-5 w-5" />}
+            title="还没有配置发布窗口"
+            description="先创建一个窗口，后续部署审批和回滚策略才能按时段治理。"
+            className="py-16"
+          />
         ) : (
-          windows.map(window => (
-            <div
-              key={window.id}
-              className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                    {window.windowName}
-                    {window.isEnabled ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                        启用
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                        禁用
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {getWindowTypeLabel(window.windowType)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="w-4 h-4" />
-                  <span>{window.startTime} - {window.endTime}</span>
-                </div>
-                {window.windowType === 'WEEKLY' && window.weekDays && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="w-4 h-4" />
-                    <span>
-                      {window.weekDays.split(',').map(d => 
-                        WEEK_DAYS.find(wd => wd.value === d)?.label
-                      ).join(', ')}
-                    </span>
-                  </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {windows.map((window) => (
+              <div
+                key={window.id}
+                className={cn(
+                  'rounded-[24px] border px-5 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]',
+                  window.isEnabled
+                    ? 'border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.84))]'
+                    : 'border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.9),rgba(241,245,249,0.82))] opacity-85',
                 )}
-                {window.description && (
-                  <p className="text-sm text-gray-500">{window.description}</p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleEdit(window)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-sm text-pink-500 bg-pink-50 rounded hover:bg-pink-50 transition-colors"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  编辑
-                </button>
-                <button
-                  onClick={() => handleToggle(window.id!, window.isEnabled)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
-                >
-                  {window.isEnabled ? (
-                    <>
-                      <PowerOff className="w-3.5 h-3.5" />
-                      禁用
-                    </>
-                  ) : (
-                    <>
-                      <Power className="w-3.5 h-3.5" />
-                      启用
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleDelete(window.id!)}
-                  className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* 创建/编辑模态框 */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                {editingWindow ? '编辑发布窗口' : '新建发布窗口'}
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    窗口名称 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.windowName}
-                    onChange={e => setFormData({ ...formData, windowName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
-                    placeholder="例如：工作日发布窗口"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    窗口类型 <span className="text-red-500">*</span>
-                  </label>
-                  <Select value={formData.windowType} onValueChange={v => setFormData({...formData, windowType: v as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {WINDOW_TYPES.map(type => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      开始时间 <span className="text-red-500">*</span>
-                    </label>
-                    <DatePicker
-                      type="time"
-                      value={formData.startTime}
-                      onChange={e => setFormData({ ...formData, startTime: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      结束时间 <span className="text-red-500">*</span>
-                    </label>
-                    <DatePicker
-                      type="time"
-                      value={formData.endTime}
-                      onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {formData.windowType === 'WEEKLY' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      选择星期
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {WEEK_DAYS.map(day => {
-                        const selected = formData.weekDays?.split(',').includes(day.value);
-                        return (
-                          <button
-                            key={day.value}
-                            type="button"
-                            onClick={() => {
-                              const days = formData.weekDays?.split(',').filter(d => d) || [];
-                              if (selected) {
-                                setFormData({
-                                  ...formData,
-                                  weekDays: days.filter(d => d !== day.value).join(','),
-                                });
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  weekDays: [...days, day.value].join(','),
-                                });
-                              }
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                              selected
-                                ? 'bg-pink-500 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                          >
-                            {day.label}
-                          </button>
-                        );
-                      })}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-base font-semibold text-slate-900">{window.windowName}</div>
+                      <span
+                        className={cn(
+                          'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                          window.isEnabled
+                            ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100'
+                            : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+                        )}
+                      >
+                        {window.isEnabled ? '启用中' : '已禁用'}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-sm text-slate-500">
+                      {getWindowTypeLabel(window.windowType)}
                     </div>
                   </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    描述
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
-                    placeholder="窗口说明..."
-                  />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="mt-4 space-y-2 text-sm text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="h-4 w-4 text-slate-400" />
+                    <span>
+                      {window.startTime} - {window.endTime}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Calendar className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <span>{getScheduleLabel(window)}</span>
+                  </div>
+                  <div className="min-h-[44px] text-sm leading-6 text-slate-500">
+                    {window.description || '未填写窗口说明。'}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(window)}>
+                    <Edit2 className="h-4 w-4" />
+                    编辑
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggle(window.id, window.isEnabled)}
+                    className="text-slate-600"
+                  >
+                    {window.isEnabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    {window.isEnabled ? '禁用' : '启用'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-rose-500 hover:text-rose-600"
+                    onClick={() => handleDelete(window.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    删除
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </WorkspaceSectionCard>
+
+      {showDialog ? (
+        <WorkspaceDialogShell
+          title={editingWindow ? '编辑发布窗口' : '新建发布窗口'}
+          description="配置窗口名称、时段规则和说明信息，让部署治理遵循统一时段。"
+          onClose={resetDialog}
+          maxWidthClassName="max-w-3xl"
+          bodyClassName="max-h-[84vh] overflow-y-auto"
+        >
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  窗口名称 <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={formData.windowName}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, windowName: event.target.value }))}
+                  placeholder="例如：工作日发布窗口"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  窗口类型 <span className="text-rose-500">*</span>
+                </label>
+                <Select
+                  value={formData.windowType}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      windowType: value as DeployWindow['windowType'],
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择窗口类型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WINDOW_TYPES.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end gap-3">
+                <label className="flex items-center gap-2 rounded-2xl border border-white/80 bg-white/76 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                   <input
                     type="checkbox"
-                    id="isEnabled"
                     checked={formData.isEnabled}
-                    onChange={e => setFormData({ ...formData, isEnabled: e.target.checked })}
-                    className="w-4 h-4 text-pink-500 border-gray-300 rounded focus:ring-pink-400"
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isEnabled: event.target.checked,
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-slate-300 accent-pink-500"
                   />
-                  <label htmlFor="isEnabled" className="text-sm text-gray-700">
-                    启用此窗口
-                  </label>
-                </div>
+                  保存后立即启用窗口
+                </label>
               </div>
 
-              <div className="flex items-center gap-3 mt-6 pt-4 border-t">
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingWindow(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
-                >
-                  {editingWindow ? '更新' : '创建'}
-                </button>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  开始时间 <span className="text-rose-500">*</span>
+                </label>
+                <DatePicker
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, startTime: event.target.value }))}
+                  variant="glass"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  结束时间 <span className="text-rose-500">*</span>
+                </label>
+                <DatePicker
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, endTime: event.target.value }))}
+                  variant="glass"
+                />
               </div>
             </div>
+
+            {formData.windowType === 'WEEKLY' ? (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  生效星期 <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {WEEK_DAYS.map((day) => {
+                    const values = (formData.weekDays || '').split(',').filter(Boolean);
+                    const selected = values.includes(day.value);
+
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => {
+                            const items = (prev.weekDays || '').split(',').filter(Boolean);
+                            const next = items.includes(day.value)
+                              ? items.filter((item) => item !== day.value)
+                              : [...items, day.value];
+
+                            return { ...prev, weekDays: next.join(',') };
+                          })
+                        }
+                        className={cn(
+                          'rounded-2xl px-4 py-2 text-sm font-medium transition',
+                          selected
+                            ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_24px_rgba(236,72,153,0.2)]'
+                            : 'border border-white/80 bg-white/80 text-slate-600 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white',
+                        )}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {formData.windowType === 'MONTHLY' ? (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  生效日期 <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={formData.monthDays || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, monthDays: event.target.value }))}
+                  placeholder="例如：1,15,28"
+                />
+                <div className="mt-2 text-xs text-slate-400">使用逗号分隔每月生效日期，例如 1,15,28。</div>
+              </div>
+            ) : null}
+
+            {formData.windowType === 'CUSTOM' ? (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  自定义日期 <span className="text-rose-500">*</span>
+                </label>
+                <Textarea
+                  value={formData.customDates || ''}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, customDates: event.target.value }))}
+                  placeholder="例如：2026-05-01,2026-06-18"
+                  rows={3}
+                />
+                <div className="mt-2 text-xs text-slate-400">
+                  使用逗号分隔完整日期，适合节假日发版窗口或专项活动窗口。
+                </div>
+              </div>
+            ) : null}
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">窗口说明</label>
+              <Textarea
+                value={formData.description || ''}
+                onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="补充窗口适用范围、审批要求或特殊说明。"
+                rows={4}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={resetDialog}>
+                取消
+              </Button>
+              <Button onClick={handleSave}>{editingWindow ? '保存更新' : '创建窗口'}</Button>
+            </div>
           </div>
-        </div>
-      )}
+        </WorkspaceDialogShell>
+      ) : null}
     </div>
   );
 };
