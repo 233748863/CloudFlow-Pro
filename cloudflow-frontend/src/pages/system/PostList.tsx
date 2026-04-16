@@ -1,10 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { BriefcaseBusiness, Edit, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getPostList, addPost, updatePost, deletePost, type SysPost } from '../../services/api/system';
-import { Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
+import { addPost, deletePost, getPostList, updatePost, type SysPost } from '../../services/api/system';
+import {
+  Button,
+  Card,
+  Input,
+  TableActionHead,
+  TableHead,
+  TableHeader,
+  Textarea,
+} from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceDialogShell,
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
+
+const formatDateCN = (date: Date) => {
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+};
 
 export const PostList = () => {
   const [posts, setPosts] = useState<SysPost[]>([]);
@@ -13,26 +33,35 @@ export const PostList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<SysPost | null>(null);
   const [formData, setFormData] = useState<SysPost>({
-    postCode: '', postName: '', postSort: 0, status: '0', remark: '',
+    postCode: '',
+    postName: '',
+    postSort: 0,
+    status: '0',
+    remark: '',
   });
 
-  useEffect(() => { fetchPosts(); }, []);
+  React.useEffect(() => {
+    void fetchPosts();
+  }, []);
 
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const res: any = await getPostList({ postName: searchTerm || undefined });
-      // 兼容分页和数组两种返回格式
-      const list = Array.isArray(res) ? res : (res?.records || res?.rows || []);
+      const response: any = await getPostList({ postName: searchTerm || undefined });
+      const list = Array.isArray(response) ? response : response?.records || response?.rows || [];
       setPosts(list);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
+      toast.error('加载岗位失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchPosts(); };
+  const handleSearch = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await fetchPosts();
+  };
 
   const handleOpenModal = (post?: SysPost) => {
     if (post) {
@@ -45,10 +74,18 @@ export const PostList = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.postCode.trim()) { toast.error('请输入岗位编码'); return; }
-    if (!formData.postName.trim()) { toast.error('请输入岗位名称'); return; }
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!formData.postCode.trim()) {
+      toast.error('请输入岗位编码');
+      return;
+    }
+    if (!formData.postName.trim()) {
+      toast.error('请输入岗位名称');
+      return;
+    }
+
     try {
       if (editingPost) {
         await updatePost({ ...formData, postId: editingPost.postId });
@@ -58,152 +95,303 @@ export const PostList = () => {
         toast.success('岗位创建成功');
       }
       setIsModalOpen(false);
-      fetchPosts();
-    } catch (e) {
-      console.error(e);
+      await fetchPosts();
+    } catch (error) {
+      console.error(error);
+      toast.error('保存岗位失败');
     }
   };
 
   const handleDelete = async (postId: number) => {
-    if (!window.confirm('确认删除该岗位吗？')) return;
+    if (!window.confirm('确认删除该岗位吗？')) {
+      return;
+    }
+
     try {
       await deletePost([postId]);
       toast.success('岗位删除成功');
-      fetchPosts();
-    } catch (e) {
-      console.error(e);
+      await fetchPosts();
+    } catch (error) {
+      console.error(error);
+      toast.error('删除岗位失败');
     }
   };
 
-  const isEdit = !!editingPost;
+  const activeCount = useMemo(() => posts.filter((post) => post.status === '0').length, [posts]);
+  const disabledCount = posts.length - activeCount;
+  const sortedMax = useMemo(
+    () => posts.reduce((max, post) => Math.max(max, Number(post.postSort || 0)), 0),
+    [posts],
+  );
+  const todayLabel = formatDateCN(new Date());
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const hasActiveFilters = Boolean(searchTerm.trim());
+  const isEdit = Boolean(editingPost);
+
+  const overviewItems = [
+    { label: '当前结果', value: `${posts.length} 个岗位` },
+    { label: '正常状态', value: `${activeCount} 个` },
+    { label: '停用状态', value: `${disabledCount} 个` },
+    { label: '最高排序', value: `${sortedMax}` },
+  ];
 
   return (
-    <div className="p-6 h-full flex flex-col bg-slate-50">
-      {/* 标题栏 */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">岗位管理</h1>
-        <button onClick={() => handleOpenModal()} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 transition-colors">
-          <Plus size={18} /> 新增岗位
-        </button>
-      </div>
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
 
-      {/* 搜索栏 */}
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-        <form onSubmit={handleSearch} className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <Input type="text" placeholder="搜索岗位名称..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-          </div>
-          <button type="submit" className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors">搜索</button>
-        </form>
-      </div>
-
-      {/* 表格 */}
-      <div className="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <TableHeader>
-              <tr>
-                <TableHead className="px-6 py-3 text-left">ID</TableHead>
-                <TableHead className="px-6 py-3 text-left">岗位编码</TableHead>
-                <TableHead className="px-6 py-3 text-left">岗位名称</TableHead>
-                <TableHead className="px-6 py-3 text-left">排序</TableHead>
-                <TableHead className="px-6 py-3 text-left">状态</TableHead>
-                <TableHead className="px-6 py-3 text-left">创建时间</TableHead>
-                <TableActionHead className="px-6 py-3 w-48">操作</TableActionHead>
-              </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-200">
-              {loading ? (
-                <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载岗位数据..." />
-              ) : posts.length === 0 ? (
-                <WorkspaceTableStateRow colSpan={7} title="暂无岗位数据" />
-              ) : posts.map(post => (
-                <tr key={post.postId} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{post.postId}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{post.postCode}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{post.postName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{post.postSort}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${post.status === '0' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {post.status === '0' ? '正常' : '停用'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{post.createTime || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        {
-                          label: '编辑',
-                          icon: <Edit size={14} />,
-                          onClick: () => handleOpenModal(post),
-                          tone: 'primary',
-                        },
-                        {
-                          label: '删除',
-                          icon: <Trash2 size={14} />,
-                          onClick: () => handleDelete(post.postId!),
-                          tone: 'danger',
-                        },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 新增/编辑弹窗 */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800">{isEdit ? '编辑岗位' : '新增岗位'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+      <div className="relative z-10 space-y-3">
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <BriefcaseBusiness size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
             </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">岗位编码 <span className="text-red-500">*</span></label>
-                  <Input value={formData.postCode} onChange={e => setFormData({ ...formData, postCode: e.target.value })} placeholder="如: CEO, CTO" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">岗位名称 <span className="text-red-500">*</span></label>
-                  <Input value={formData.postName} onChange={e => setFormData({ ...formData, postName: e.target.value })} placeholder="岗位名称" />
-                </div>
+          )}
+          title="岗位管理"
+          description="岗位页也切到统一工作台结构，保持系统管理页与业务申请页一致的节奏和信息层级。"
+          actions={(
+            <Button onClick={() => handleOpenModal()}>
+              <Plus size={15} />
+              新增岗位
+            </Button>
+          )}
+          contentClassName="p-4 sm:p-5"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="岗位总数"
+              value={posts.length}
+              hint="当前查询结果中的岗位数量"
+              aside={<BriefcaseBusiness size={18} className="text-pink-500" />}
+            />
+            <WorkspaceMetricCard
+              label="正常岗位"
+              value={activeCount}
+              hint="可参与组织分配"
+              aside={<ShieldCheck size={18} className="text-emerald-500" />}
+            />
+            <WorkspaceMetricCard
+              label="停用岗位"
+              value={disabledCount}
+              hint="已下线或暂不启用"
+              aside={<Trash2 size={18} className="text-amber-500" />}
+            />
+            <WorkspaceMetricCard
+              label="排序上限"
+              value={sortedMax}
+              hint="便于快速判断新增排序区间"
+              aside={<Edit size={18} className="text-sky-500" />}
+            />
+          </div>
+        </WorkspaceHeroCard>
+
+        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-3">
+            <WorkspaceWorkbenchCard
+              title="岗位列表"
+              total={posts.length}
+              hasActiveFilters={hasActiveFilters}
+              overviewItems={overviewItems}
+              quickFilterAside={hasActiveFilters ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    void fetchPosts();
+                  }}
+                >
+                  清空筛选
+                </Button>
+              ) : (
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  当前显示全部岗位
+                </span>
+              )}
+              filterBar={(
+                <form onSubmit={handleSearch} className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input
+                      type="text"
+                      placeholder="按岗位名称搜索"
+                      className="pl-10"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                    />
+                  </div>
+                  <Button type="submit">
+                    <Search size={15} />
+                    搜索岗位
+                  </Button>
+                </form>
+              )}
+            />
+
+            <WorkspaceResultCard
+              total={posts.length}
+              description="统一展示岗位编码、名称、状态与排序，系统页和业务页使用同一套信息组织方式。"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[920px]">
+                  <TableHeader>
+                    <tr>
+                      <TableHead>ID</TableHead>
+                      <TableHead>岗位编码</TableHead>
+                      <TableHead>岗位名称</TableHead>
+                      <TableHead>排序</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead>创建时间</TableHead>
+                      <TableActionHead className="w-48">操作</TableActionHead>
+                    </tr>
+                  </TableHeader>
+                  <tbody className="divide-y divide-white/60">
+                    {loading ? (
+                      <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载岗位数据..." />
+                    ) : posts.length === 0 ? (
+                      <WorkspaceTableStateRow colSpan={7} title="暂无岗位数据" description="可以先新建岗位，再分配到组织或人员信息中。" />
+                    ) : (
+                      posts.map((post) => (
+                        <tr key={post.postId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                          <td className="px-4 py-3 text-sm text-slate-500">{post.postId}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-slate-900">{post.postCode}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{post.postName}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{post.postSort}</td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                              post.status === '0'
+                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                                : 'bg-rose-50 text-rose-600 ring-1 ring-rose-100'
+                            }`}>
+                              {post.status === '0' ? '正常' : '停用'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-500">{post.createTime || '-'}</td>
+                          <td className="px-4 py-3 text-right">
+                            <TableRowActions
+                              align="end"
+                              actions={[
+                                {
+                                  label: '编辑',
+                                  icon: <Edit size={14} />,
+                                  onClick: () => handleOpenModal(post),
+                                  tone: 'primary',
+                                },
+                                {
+                                  label: '删除',
+                                  icon: <Trash2 size={14} />,
+                                  onClick: () => handleDelete(post.postId!),
+                                  tone: 'danger',
+                                },
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">显示排序</label>
-                  <Input type="number" value={formData.postSort} onChange={e => setFormData({ ...formData, postSort: Number(e.target.value) })} />
+            </WorkspaceResultCard>
+          </div>
+        </Card>
+
+        {isModalOpen ? (
+          <WorkspaceDialogShell
+            title={isEdit ? '编辑岗位' : '新增岗位'}
+            description="按照统一表单结构维护岗位编码、名称、状态和补充说明。"
+            onClose={() => setIsModalOpen(false)}
+            maxWidthClassName="max-w-3xl"
+          >
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+                <div className="mb-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础信息</div>
+                  <div className="mt-1 text-sm text-slate-500">先定义岗位编码和名称，再设置排序与状态。</div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
-                  <div className="flex gap-4 pt-2">
-                    {[['0', '正常'], ['1', '停用']].map(([v, l]) => (
-                      <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" checked={formData.status === v} onChange={() => setFormData({ ...formData, status: v })} className="accent-pink-500" />
-                        <span className="text-sm">{l}</span>
-                      </label>
-                    ))}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      岗位编码 <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      value={formData.postCode}
+                      onChange={(event) => setFormData({ ...formData, postCode: event.target.value })}
+                      placeholder="如：CEO、CTO"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      岗位名称 <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      value={formData.postName}
+                      onChange={(event) => setFormData({ ...formData, postName: event.target.value })}
+                      placeholder="岗位名称"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">显示排序</label>
+                    <Input
+                      type="number"
+                      value={formData.postSort}
+                      onChange={(event) => setFormData({ ...formData, postSort: Number(event.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">状态</label>
+                    <div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                      {[
+                        ['0', '正常'],
+                        ['1', '停用'],
+                      ].map(([value, label]) => (
+                        <label key={value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="radio"
+                            checked={formData.status === value}
+                            onChange={() => setFormData({ ...formData, status: value })}
+                            className="accent-pink-500"
+                          />
+                          <span>{label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">备注</label>
-                <textarea className="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none resize-none" rows={2} value={formData.remark || ''} onChange={e => setFormData({ ...formData, remark: e.target.value })} placeholder="备注信息" />
+              </section>
+
+              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+                <div className="mb-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">备注</div>
+                  <div className="mt-1 text-sm text-slate-500">记录该岗位的适用范围、职责说明或其他维护信息。</div>
+                </div>
+                <Textarea
+                  rows={3}
+                  className="resize-none"
+                  value={formData.remark || ''}
+                  onChange={(event) => setFormData({ ...formData, remark: event.target.value })}
+                  placeholder="备注信息"
+                />
+              </section>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
+                  取消
+                </Button>
+                <Button type="submit">{isEdit ? '保存修改' : '立即创建'}</Button>
               </div>
             </form>
-            <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
-              <button type="button" onClick={e => handleSubmit(e as any)} className="px-4 py-2 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors shadow-sm">{isEdit ? '保存修改' : '立即创建'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+          </WorkspaceDialogShell>
+        ) : null}
+      </div>
     </div>
   );
 };
+
+export default PostList;

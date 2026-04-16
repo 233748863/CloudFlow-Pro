@@ -11,9 +11,28 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Input, TableActionHead, TableHead, TableHeader } from '@/components/ui';
+import {
+  Button,
+  Card,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableActionHead,
+  TableHead,
+  TableHeader,
+} from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspacePaginationBar,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import { deleteFile, getFileList, getFileStorageSummary, refreshFileStorageSummary, uploadFile } from '../../services/api/file';
@@ -29,6 +48,11 @@ interface SysFile {
   createBy: string;
   createTime: string;
 }
+
+const formatDateCN = (date: Date) => {
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+};
 
 export const FileList = () => {
   const [loading, setLoading] = useState(false);
@@ -49,10 +73,10 @@ export const FileList = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res: any = await getFileList(params);
-      if (res && Array.isArray(res.rows)) {
-        setData(res.rows);
-        setTotal(res.total || 0);
+      const response: any = await getFileList(params);
+      if (response && Array.isArray(response.rows)) {
+        setData(response.rows);
+        setTotal(response.total || 0);
       } else {
         setData([]);
         setTotal(0);
@@ -93,9 +117,7 @@ export const FileList = () => {
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (file.size > maxFileSizeMB * 1024 * 1024) {
       toast.error(`文件大小不能超过 ${maxFileSizeMB}MB`);
@@ -137,42 +159,34 @@ export const FileList = () => {
       setStorageSummary(summary);
       toast.success('存储空间已校准');
     } catch (error: any) {
-      toast.error(error?.message || '存储校准失败');
+      toast.error(error?.message || '校准存储失败');
     } finally {
       setStorageLoading(false);
     }
   };
 
   const formatSize = (size: number) => {
-    if (size < 1024) {
-      return `${size} B`;
-    }
-    if (size < 1024 * 1024) {
-      return `${(size / 1024).toFixed(2)} KB`;
-    }
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
     return `${(size / 1024 / 1024).toFixed(2)} MB`;
   };
 
   const formatStorage = (mb?: number) => {
-    if (!mb || mb <= 0) {
-      return '0 MB';
-    }
-    if (mb >= 1024) {
-      return `${(mb / 1024).toFixed(2)} GB`;
-    }
+    if (!mb || mb <= 0) return '0 MB';
+    if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
     return `${mb} MB`;
   };
 
   const getFileIcon = (type: string) => {
     const normalizedType = type.toLowerCase();
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(normalizedType)) {
-      return <ImageIcon className="text-purple-500" size={20} />;
+      return <ImageIcon className="text-fuchsia-500" size={20} />;
     }
     if (normalizedType === 'pdf') {
-      return <FileText className="text-red-500" size={20} />;
+      return <FileText className="text-rose-500" size={20} />;
     }
     if (['doc', 'docx'].includes(normalizedType)) {
-      return <FileText className="text-blue-500" size={20} />;
+      return <FileText className="text-sky-500" size={20} />;
     }
     if (['xls', 'xlsx'].includes(normalizedType)) {
       return <FileText className="text-emerald-500" size={20} />;
@@ -187,212 +201,244 @@ export const FileList = () => {
     return Math.min(storageSummary.storageUsagePercent || 0, 100);
   }, [storageSummary]);
 
-  return (
-    <div className="p-6 max-w-[1600px] mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">文件管理</h1>
-          <p className="text-slate-500 mt-1">管理当前租户上传的附件文件和存储空间</p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => void handleRefreshStorage()}
-            className="gap-2"
-            disabled={storageLoading}
-          >
-            <RefreshCw size={18} className={storageLoading ? 'animate-spin' : ''} />
-            <span>{storageLoading ? '校准中...' : '校准空间'}</span>
-          </Button>
-          <label
-            className={`inline-flex items-center justify-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition-all cursor-pointer shadow-lg shadow-pink-400/20 text-sm font-medium ${
-              uploading ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-          >
-            <Upload size={18} />
-            <span>{uploading ? '上传中...' : '上传文件'}</span>
-            <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
-          </label>
-        </div>
-      </div>
+  const imageCount = useMemo(
+    () => data.filter((file) => ['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(file.fileType.toLowerCase())).length,
+    [data],
+  );
+  const docCount = useMemo(
+    () => data.filter((file) => ['pdf', 'doc', 'docx', 'xls', 'xlsx'].includes(file.fileType.toLowerCase())).length,
+    [data],
+  );
+  const todayLabel = formatDateCN(new Date());
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const hasActiveFilters = Boolean(params.fileName || params.fileType);
+  const totalPages = Math.max(1, Math.ceil(total / params.pageSize));
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 lg:col-span-2">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-slate-700 font-semibold">
-                <HardDrive size={18} className="text-pink-500" />
-                <span>租户存储概览</span>
-              </div>
-              <p className="text-sm text-slate-500 mt-2">
-                {storageSummary
-                  ? `已使用 ${formatStorage(storageSummary.storageUsed)} / ${formatStorage(storageSummary.storageLimit)}`
-                  : '正在加载当前租户的存储使用情况'}
-              </p>
+  const overviewItems = [
+    { label: '当前结果', value: `${data.length} 个文件` },
+    { label: '图片', value: `${imageCount} 个` },
+    { label: '文档', value: `${docCount} 个` },
+    { label: '剩余空间', value: storageSummary ? formatStorage(storageSummary.remainingStorage) : '--' },
+  ];
+
+  return (
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
+
+      <div className="relative z-10 space-y-3">
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <HardDrive size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-slate-900">{storagePercent.toFixed(0)}%</div>
-              <div className="text-xs text-slate-500">当前占用率</div>
+          )}
+          title="文件管理"
+          description="文件页同时承载上传、容量监控、搜索筛选和列表操作，所以重点统一信息模块和表格反馈，让它也进入同一套工作台系统。"
+          actions={(
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => void handleRefreshStorage()} disabled={storageLoading}>
+                <RefreshCw size={15} className={storageLoading ? 'animate-spin' : ''} />
+                {storageLoading ? '校准中' : '校准空间'}
+              </Button>
+              <label className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(236,72,153,0.22)] transition ${uploading ? 'pointer-events-none opacity-70' : ''}`}>
+                <Upload size={15} />
+                {uploading ? '上传中' : '上传文件'}
+                <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
+              </label>
             </div>
-          </div>
-          <div className="mt-4 w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-            <div
-              className={`h-3 rounded-full transition-all ${
-                storagePercent >= 90 ? 'bg-red-500' : storagePercent >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
-              }`}
-              style={{ width: `${storagePercent}%` }}
+          )}
+          contentClassName="p-4 sm:p-5"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="存储占用"
+              value={`${storagePercent.toFixed(0)}%`}
+              hint={storageSummary ? `已使用 ${formatStorage(storageSummary.storageUsed)} / ${formatStorage(storageSummary.storageLimit)}` : '正在加载租户存储概览'}
+              aside={<HardDrive size={18} className="text-pink-500" />}
+            />
+            <WorkspaceMetricCard
+              label="当前页文件"
+              value={data.length}
+              hint="当前分页下已加载文件数量"
+              aside={<FileIcon size={18} className="text-sky-500" />}
+            />
+            <WorkspaceMetricCard
+              label="上传上限"
+              value={`${maxFileSizeMB}MB`}
+              hint="单文件上传大小限制"
+              aside={<Upload size={18} className="text-emerald-500" />}
+            />
+            <WorkspaceMetricCard
+              label="剩余空间"
+              value={storageSummary ? formatStorage(storageSummary.remainingStorage) : '--'}
+              hint="租户级剩余可用空间"
+              aside={<RefreshCw size={18} className="text-amber-500" />}
             />
           </div>
-        </div>
+        </WorkspaceHeroCard>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-          <div className="text-sm text-slate-500">剩余空间</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">
-            {storageSummary ? formatStorage(storageSummary.remainingStorage) : '--'}
-          </div>
-          <div className="mt-3 text-xs text-slate-500">
-            单文件上传上限 {maxFileSizeMB}MB，超过租户配额时会被直接拦截。
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <Input
-            type="text"
-            placeholder="搜索文件名..."
-            className="pl-10 w-64"
-            value={params.fileName}
-            onChange={(event) => setParams({ ...params, fileName: event.target.value })}
-          />
-        </div>
-
-        <Select value={params.fileType || 'all'} onValueChange={(value) => setParams({ ...params, fileType: value === 'all' ? '' : value })}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="文件类型" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部类型</SelectItem>
-            <SelectItem value="jpg">图片</SelectItem>
-            <SelectItem value="pdf">PDF</SelectItem>
-            <SelectItem value="docx">Word</SelectItem>
-            <SelectItem value="xlsx">Excel</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => void handleSearch()}
-          className="hover:bg-slate-100"
-          title="搜索"
-        >
-          <Search size={20} className="text-slate-600" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            setParams({ ...params, fileName: '', fileType: '' });
-            void fetchData();
-          }}
-          className="hover:bg-slate-100"
-          title="重置"
-        >
-          <RefreshCw size={20} className="text-slate-600" />
-        </Button>
-      </div>
-
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          {/* 为操作列预留最小宽度，例如“下载 + 删除”始终保持同一行显示。 */}
-          <table className="min-w-[1120px] w-full table-auto text-left">
-            <TableHeader>
-              <tr>
-                <TableHead className="px-6 py-3 w-[38%]">文件名</TableHead>
-                <TableHead className="px-6 py-3 w-32">大小</TableHead>
-                <TableHead className="px-6 py-3 w-40">类型</TableHead>
-                <TableHead className="px-6 py-3 w-32">上传者</TableHead>
-                <TableHead className="px-6 py-3 w-48">上传时间</TableHead>
-                <TableActionHead className="px-6 py-3 w-44">操作</TableActionHead>
-              </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载文件数据..." />
-              ) : data.length === 0 ? (
-                <WorkspaceTableStateRow colSpan={6} title="暂无文件数据" />
-              ) : (
-                data.map((file) => (
-                  <tr key={file.fileId} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4 w-[38%]">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="p-2 bg-slate-100 rounded-lg">{getFileIcon(file.fileType)}</div>
-                        <div className="min-w-0 max-w-md truncate font-medium text-slate-700" title={file.fileName}>
-                          {file.fileName}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-sm font-mono">{formatSize(file.fileSize)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md uppercase font-bold">
-                        {file.fileType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-600 text-sm">{file.createBy}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-sm">{file.createTime}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <TableRowActions
-                        align="end"
-                        wrap={false}
-                        className="whitespace-nowrap"
-                        actions={[
-                          {
-                            label: '下载',
-                            icon: <Download size={14} />,
-                            onClick: () => window.open(file.url, '_blank', 'noopener,noreferrer'),
-                            tone: 'info',
-                          },
-                          {
-                            label: '删除',
-                            icon: <Trash2 size={14} />,
-                            onClick: () => void handleDelete(file.fileId),
-                            tone: 'danger',
-                          },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))
+        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-3">
+            <WorkspaceWorkbenchCard
+              title="文件列表"
+              total={total}
+              hasActiveFilters={hasActiveFilters}
+              overviewItems={overviewItems}
+              headerBadges={(
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    支持按类型快速筛选
+                  </span>
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
+              quickFilterAside={hasActiveFilters ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setParams((prev) => ({ ...prev, fileName: '', fileType: '', pageNum: 1 }));
+                    void fetchData();
+                  }}
+                >
+                  清空筛选
+                </Button>
+              ) : (
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  当前显示全部文件
+                </span>
+              )}
+              filterBar={(
+                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_auto]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input
+                      type="text"
+                      placeholder="搜索文件名"
+                      className="pl-10"
+                      value={params.fileName}
+                      onChange={(event) => setParams({ ...params, fileName: event.target.value })}
+                    />
+                  </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-          <div className="text-sm text-slate-500">共 {total} 条记录</div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={params.pageNum === 1}
-              onClick={() => setParams({ ...params, pageNum: params.pageNum - 1 })}
+                  <Select value={params.fileType || 'all'} onValueChange={(value) => setParams({ ...params, fileType: value === 'all' ? '' : value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="文件类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="jpg">图片</SelectItem>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                      <SelectItem value="docx">Word</SelectItem>
+                      <SelectItem value="xlsx">Excel</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Button type="button" onClick={() => void handleSearch()}>
+                    <Search size={15} />
+                    执行搜索
+                  </Button>
+                </div>
+              )}
+            />
+
+            <WorkspaceResultCard
+              total={total}
+              description="上传、筛选、容量监控和文件操作都归到同一套工作台视觉语言下。"
+              footer={(
+                <WorkspacePaginationBar
+                  total={total}
+                  pageNum={params.pageNum}
+                  totalPages={totalPages}
+                  onPrev={() => setParams((prev) => ({ ...prev, pageNum: Math.max(1, prev.pageNum - 1) }))}
+                  onNext={() => setParams((prev) => ({ ...prev, pageNum: Math.min(totalPages, prev.pageNum + 1) }))}
+                  prevDisabled={params.pageNum === 1}
+                  nextDisabled={params.pageNum >= totalPages}
+                />
+              )}
             >
-              上一页
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.length < params.pageSize}
-              onClick={() => setParams({ ...params, pageNum: params.pageNum + 1 })}
-            >
-              下一页
-            </Button>
+              <div className="overflow-x-auto">
+                <table className="min-w-[1120px] w-full table-auto text-left">
+                  <TableHeader>
+                    <tr>
+                      <TableHead className="w-[38%]">文件名</TableHead>
+                      <TableHead className="w-32">大小</TableHead>
+                      <TableHead className="w-40">类型</TableHead>
+                      <TableHead className="w-32">上传者</TableHead>
+                      <TableHead className="w-48">上传时间</TableHead>
+                      <TableActionHead className="w-44">操作</TableActionHead>
+                    </tr>
+                  </TableHeader>
+                  <tbody className="divide-y divide-white/60">
+                    {loading ? (
+                      <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载文件数据..." />
+                    ) : data.length === 0 ? (
+                      <WorkspaceTableStateRow colSpan={6} title="暂无文件数据" description="可以先上传文件，再按名称或类型进行管理。" />
+                    ) : (
+                      data.map((file) => (
+                        <tr key={file.fileId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                          <td className="px-4 py-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="rounded-[14px] bg-white/84 p-2 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                                {getFileIcon(file.fileType)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="max-w-md truncate text-sm font-medium text-slate-900" title={file.fileName}>
+                                  {file.fileName}
+                                </div>
+                                <div className="mt-1 truncate text-xs text-slate-400" title={file.filePath}>
+                                  {file.filePath}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono text-slate-500">{formatSize(file.fileSize)}</td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full bg-white/82 px-2.5 py-1 text-xs font-semibold uppercase text-slate-600 ring-1 ring-slate-200/80">
+                              {file.fileType}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{file.createBy}</td>
+                          <td className="px-4 py-3 text-sm text-slate-500">{file.createTime}</td>
+                          <td className="px-4 py-3 text-right">
+                            <TableRowActions
+                              align="end"
+                              wrap={false}
+                              className="whitespace-nowrap"
+                              actions={[
+                                {
+                                  label: '下载',
+                                  icon: <Download size={14} />,
+                                  onClick: () => window.open(file.url, '_blank', 'noopener,noreferrer'),
+                                  tone: 'info',
+                                },
+                                {
+                                  label: '删除',
+                                  icon: <Trash2 size={14} />,
+                                  onClick: () => void handleDelete(file.fileId),
+                                  tone: 'danger',
+                                },
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </WorkspaceResultCard>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
 };
+
+export default FileList;
