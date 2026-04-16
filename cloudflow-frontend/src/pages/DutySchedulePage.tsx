@@ -1,291 +1,628 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Search, RotateCcw, X, LogIn, LogOut, RefreshCw } from 'lucide-react';
-import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Calendar,
+  LogIn,
+  LogOut,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
+import {
+  Button,
+  DatePicker,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableActionHead,
+  TableHead,
+  TableHeader,
+  Textarea,
+} from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceDialogShell,
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
+import { cn } from '@/utils/cn';
 
-/** 值班排班页面 */
+type SearchParams = {
+  status: string;
+  scheduleType: string;
+  pageNum: number;
+  pageSize: number;
+};
+
+const emptyFormData: DutySchedule = {
+  title: '',
+  scheduleType: 'DAILY',
+  dutyDate: '',
+  userId: 0,
+  shiftType: 'DAY',
+  userName: '',
+  location: '',
+  dutyContent: '',
+};
+
+const emptySwapData = {
+  backupUserId: 0,
+  backupUserName: '',
+  reason: '',
+};
+
+const statusMap: Record<string, string> = {
+  SCHEDULED: '已排班',
+  CHECKED_IN: '已签到',
+  COMPLETED: '已完成',
+  SWAPPED: '已换班',
+  CANCELLED: '已取消',
+};
+
+const typeMap: Record<string, string> = {
+  DAILY: '日常值班',
+  HOLIDAY: '节假日值班',
+  EMERGENCY: '应急值班',
+};
+
+const shiftMap: Record<string, string> = {
+  DAY: '白班',
+  NIGHT: '夜班',
+  FULL: '全天',
+};
+
+const getStatusBadgeClassName = (status: string) => {
+  const config: Record<string, string> = {
+    SCHEDULED: 'bg-pink-50 text-pink-600 ring-1 ring-pink-100',
+    CHECKED_IN: 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
+    COMPLETED: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100',
+    SWAPPED: 'bg-violet-50 text-violet-600 ring-1 ring-violet-100',
+    CANCELLED: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+  };
+  return config[status] || config.SCHEDULED;
+};
+
 export const DutySchedulePage: React.FC = () => {
   const [list, setList] = useState<DutySchedule[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchParams, setSearchParams] = useState({ status: '', scheduleType: '', pageNum: 1, pageSize: 10 });
+  const [searchParams, setSearchParams] = useState<SearchParams>({
+    status: '',
+    scheduleType: '',
+    pageNum: 1,
+    pageSize: 10,
+  });
+  const [filterDraft, setFilterDraft] = useState({ status: '', scheduleType: '' });
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
   const [showSwapDialog, setShowSwapDialog] = useState(false);
   const [swapId, setSwapId] = useState<number | null>(null);
-  const [swapData, setSwapData] = useState({ backupUserId: 0, backupUserName: '', reason: '' });
-  const [formData, setFormData] = useState<DutySchedule>({ title: '', scheduleType: 'DAILY', dutyDate: '', userId: 0, shiftType: 'DAY' });
+  const [swapData, setSwapData] = useState(emptySwapData);
+  const [formData, setFormData] = useState<DutySchedule>(emptyFormData);
 
-  useEffect(() => { fetchList(); }, [searchParams]);
+  useEffect(() => {
+    fetchList();
+  }, [searchParams]);
 
   const fetchList = async () => {
     setLoading(true);
     try {
       const res = await dutyScheduleApi.list(searchParams);
-      if (res) { setList(res.records || res.rows || []); setTotal(res.total || 0); }
-    } catch (error) { toast.error(getErrorMessage(error, '获取列表失败')); } finally { setLoading(false); }
+      if (res) {
+        setList(res.records || res.rows || []);
+        setTotal(res.total || 0);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取排班列表失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyFilters = () => {
+    setSearchParams((prev) => ({
+      ...prev,
+      status: filterDraft.status,
+      scheduleType: filterDraft.scheduleType,
+      pageNum: 1,
+    }));
+  };
+
+  const handleResetFilters = () => {
+    setFilterDraft({ status: '', scheduleType: '' });
+    setSearchParams({
+      status: '',
+      scheduleType: '',
+      pageNum: 1,
+      pageSize: 10,
+    });
   };
 
   const handleAdd = () => {
-    setFormData({ title: '', scheduleType: 'DAILY', dutyDate: '', userId: 0, shiftType: 'DAY', userName: '', location: '', dutyContent: '' });
+    setFormData(emptyFormData);
     setShowDialog(true);
   };
 
   const handleSave = async () => {
-    if (!formData.title || !formData.dutyDate || !formData.userName) { toast.error('请填写完整信息'); return; }
+    if (!formData.title || !formData.dutyDate || !formData.userName) {
+      toast.error('请填写完整排班信息');
+      return;
+    }
+
     try {
       await dutyScheduleApi.add(formData);
-      toast.success('排班成功');
-      setShowDialog(false); fetchList();
-    } catch (error) { toast.error(getErrorMessage(error, '保存失败')); }
+      toast.success('排班创建成功');
+      setShowDialog(false);
+      setFormData(emptyFormData);
+      await fetchList();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '保存排班失败'));
+    }
   };
 
   const handleCheckIn = async (id: number) => {
-    try { await dutyScheduleApi.checkIn(id); toast.success('签到成功'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '签到失败')); }
+    try {
+      await dutyScheduleApi.checkIn(id);
+      toast.success('签到成功');
+      await fetchList();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '签到失败'));
+    }
   };
 
   const handleCheckOut = async (id: number) => {
-    try { await dutyScheduleApi.checkOut(id); toast.success('签退成功'); fetchList(); } catch (error) { toast.error(getErrorMessage(error, '签退失败')); }
+    try {
+      await dutyScheduleApi.checkOut(id);
+      toast.success('签退成功');
+      await fetchList();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '签退失败'));
+    }
   };
 
   const openSwapDialog = (id: number) => {
     setSwapId(id);
-    setSwapData({ backupUserId: 0, backupUserName: '', reason: '' });
+    setSwapData(emptySwapData);
     setShowSwapDialog(true);
   };
 
   const handleSwap = async () => {
-    if (!swapId || !swapData.backupUserName || !swapData.reason) { toast.error('请填写完整信息'); return; }
+    if (!swapId || !swapData.backupUserName || !swapData.reason) {
+      toast.error('请填写完整换班信息');
+      return;
+    }
+
     try {
       await dutyScheduleApi.swap(swapId, swapData);
       toast.success('换班成功');
-      setShowSwapDialog(false); fetchList();
-    } catch (error) { toast.error(getErrorMessage(error, '换班失败')); }
+      setShowSwapDialog(false);
+      setSwapId(null);
+      setSwapData(emptySwapData);
+      await fetchList();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '换班失败'));
+    }
   };
 
-  const statusMap: Record<string, string> = { SCHEDULED: '已排班', CHECKED_IN: '已签到', COMPLETED: '已完成', SWAPPED: '已换班', CANCELLED: '已取消' };
-  const typeMap: Record<string, string> = { DAILY: '日常值班', HOLIDAY: '节假日值班', EMERGENCY: '应急值班' };
-  const shiftMap: Record<string, string> = { DAY: '白班', NIGHT: '夜班', FULL: '全天' };
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
 
-  const getStatusBadge = (status: string) => {
-    const cfg: Record<string, { bg: string; text: string }> = {
-      SCHEDULED: { bg: 'bg-pink-50', text: 'text-pink-500' }, CHECKED_IN: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-      COMPLETED: { bg: 'bg-green-100', text: 'text-green-600' }, SWAPPED: { bg: 'bg-purple-100', text: 'text-purple-600' },
-      CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
+  const summary = useMemo(() => {
+    const scheduledCount = list.filter((item) => item.status === 'SCHEDULED').length;
+    const checkedInCount = list.filter((item) => item.status === 'CHECKED_IN').length;
+    const completedCount = list.filter((item) => item.status === 'COMPLETED').length;
+    const swappedCount = list.filter((item) => item.status === 'SWAPPED').length;
+
+    return {
+      scheduledCount,
+      checkedInCount,
+      completedCount,
+      swappedCount,
     };
-    const c = cfg[status] || cfg.SCHEDULED;
-    return <span className={`text-xs px-2 py-0.5 rounded ${c.bg} ${c.text}`}>{statusMap[status] || status}</span>;
-  };
+  }, [list]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-pink-500" /> 值班排班</h2>
-        <button onClick={handleAdd} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600"><Plus size={18} />新增排班</button>
-      </div>
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
-          <Select value={searchParams.status} onValueChange={v => setSearchParams({...searchParams, status: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">全部状态</SelectItem>
-                      <SelectItem value="SCHEDULED">已排班</SelectItem>
-                      <SelectItem value="CHECKED_IN">已签到</SelectItem>
-                      <SelectItem value="COMPLETED">已完成</SelectItem>
-                      <SelectItem value="SWAPPED">已换班</SelectItem>
-                    </SelectContent>
-                  </Select>
-          <Select value={searchParams.scheduleType} onValueChange={v => setSearchParams({...searchParams, scheduleType: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">全部类型</SelectItem>
-                      <SelectItem value="DAILY">日常值班</SelectItem>
-                      <SelectItem value="HOLIDAY">节假日值班</SelectItem>
-                      <SelectItem value="EMERGENCY">应急值班</SelectItem>
-                    </SelectContent>
-                  </Select>
-          <button onClick={() => setSearchParams({ ...searchParams, pageNum: 1 })} className="bg-pink-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-pink-600 text-sm"><Search size={16} />搜索</button>
-          <button onClick={() => setSearchParams({ status: '', scheduleType: '', pageNum: 1, pageSize: 10 })} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-300 text-sm"><RotateCcw size={16} />重置</button>
-        </div>
+      <div className="relative z-10 space-y-6 p-6">
+        <WorkspaceHeroCard
+          badge={
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <Calendar className="h-3.5 w-3.5" />
+              Duty Workspace
+            </span>
+          }
+          title="值班排班"
+          description="统一管理日常、节假日和应急值班安排，并把签到、签退与换班动作收口到同一工作台。"
+          actions={
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4" />
+              新增排班
+            </Button>
+          }
+        >
+          <div className="mt-6 grid gap-4 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="排班总数"
+              value={total}
+              hint="当前筛选条件下的排班记录总数"
+              aside={<Calendar className="h-[18px] w-[18px] text-pink-500" />}
+            />
+            <WorkspaceMetricCard
+              label="待签到"
+              value={summary.scheduledCount}
+              hint="尚未开始执行的排班"
+              aside={<LogIn className="h-[18px] w-[18px] text-sky-500" />}
+            />
+            <WorkspaceMetricCard
+              label="值班中"
+              value={summary.checkedInCount}
+              hint="已签到但尚未签退"
+              aside={<RefreshCw className="h-[18px] w-[18px] text-amber-500" />}
+            />
+            <WorkspaceMetricCard
+              label="已完成"
+              value={summary.completedCount}
+              hint={`已换班 ${summary.swappedCount} 条`}
+              aside={<LogOut className="h-[18px] w-[18px] text-emerald-500" />}
+            />
+          </div>
+        </WorkspaceHeroCard>
 
-        <div className="flex-1 overflow-auto">
-          <table className="w-full">
-            <TableHeader className="sticky top-0 z-10">
-              <tr>
-                <TableHead>标题</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>值班日期</TableHead>
-                <TableHead>班次</TableHead>
-                <TableHead>值班人</TableHead>
-                <TableHead>地点</TableHead>
-                <TableHead>签到/签退</TableHead>
-                <TableHead>状态</TableHead>
-                <TableActionHead className="w-56">操作</TableActionHead>
-              </tr>
-            </TableHeader>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载排班记录..." />
-              ) : list.length === 0 ? (
-                <WorkspaceTableStateRow colSpan={9} title="暂无排班记录" />
-              ) : list.map(item => (
-                <tr key={item.scheduleId} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm text-slate-900 font-medium">{item.title}</td>
-                  <td className="px-4 py-3 text-sm">{typeMap[item.scheduleType] || item.scheduleType}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{item.dutyDate}</td>
-                  <td className="px-4 py-3 text-sm">{shiftMap[item.shiftType || ''] || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-900">{item.userName}{item.backupUserName ? ` → ${item.backupUserName}` : ''}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{item.location || '-'}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {item.checkInTime ? `到: ${item.checkInTime}` : '-'}<br />
-                    {item.checkOutTime ? `退: ${item.checkOutTime}` : '-'}
-                  </td>
-                  <td className="px-4 py-3">{getStatusBadge(item.status || 'SCHEDULED')}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        {
-                          label: '签到',
-                          icon: <LogIn size={14} />,
-                          onClick: () => handleCheckIn(item.scheduleId!),
-                          tone: 'success',
-                          hidden: item.status !== 'SCHEDULED',
-                        },
-                        {
-                          label: '换班',
-                          icon: <RefreshCw size={14} />,
-                          onClick: () => openSwapDialog(item.scheduleId!),
-                          tone: 'info',
-                          hidden: item.status !== 'SCHEDULED',
-                        },
-                        {
-                          label: '签退',
-                          icon: <LogOut size={14} />,
-                          onClick: () => handleCheckOut(item.scheduleId!),
-                          tone: 'warning',
-                          hidden: item.status !== 'CHECKED_IN',
-                        },
-                      ]}
-                    />
-                  </td>
+        <WorkspaceWorkbenchCard
+          eyebrow="排班筛选"
+          title="值班条件与状态过滤"
+          total={total}
+          hasActiveFilters={Boolean(searchParams.status || searchParams.scheduleType)}
+          overviewItems={[
+            { label: '状态筛选', value: searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态' },
+            { label: '类型筛选', value: searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型' },
+            { label: '当前页', value: `${searchParams.pageNum} / ${totalPages}` },
+            { label: '每页条数', value: searchParams.pageSize },
+          ]}
+          filterBar={
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[220px_220px_auto_auto]">
+              <Select
+                value={filterDraft.status || 'ALL'}
+                onValueChange={(value) =>
+                  setFilterDraft((prev) => ({ ...prev, status: value === 'ALL' ? '' : value }))
+                }
+              >
+                <SelectTrigger className="h-12 rounded-2xl">
+                  <SelectValue placeholder="请选择" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  <SelectItem value="SCHEDULED">已排班</SelectItem>
+                  <SelectItem value="CHECKED_IN">已签到</SelectItem>
+                  <SelectItem value="COMPLETED">已完成</SelectItem>
+                  <SelectItem value="SWAPPED">已换班</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filterDraft.scheduleType || 'ALL'}
+                onValueChange={(value) =>
+                  setFilterDraft((prev) => ({ ...prev, scheduleType: value === 'ALL' ? '' : value }))
+                }
+              >
+                <SelectTrigger className="h-12 rounded-2xl">
+                  <SelectValue placeholder="请选择" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部类型</SelectItem>
+                  <SelectItem value="DAILY">日常值班</SelectItem>
+                  <SelectItem value="HOLIDAY">节假日值班</SelectItem>
+                  <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button onClick={handleApplyFilters} className="h-12 rounded-2xl">
+                <Search className="h-4 w-4" />
+                搜索
+              </Button>
+              <Button variant="outline" onClick={handleResetFilters} className="h-12 rounded-2xl">
+                <RotateCcw className="h-4 w-4" />
+                重置
+              </Button>
+            </div>
+          }
+        />
+
+        <WorkspaceResultCard
+          total={total}
+          title="排班列表"
+          description="集中查看排班标题、班次、值班人、签到签退状态以及换班操作。"
+          footer={
+            <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
+              <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                共 {total} 条
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setSearchParams((prev) => ({
+                      ...prev,
+                      pageNum: Math.max(1, prev.pageNum - 1),
+                    }))
+                  }
+                  disabled={searchParams.pageNum === 1}
+                  className="rounded-xl"
+                >
+                  上一页
+                </Button>
+                <span className="px-3 py-2 text-sm text-slate-600">
+                  第 {searchParams.pageNum} / {totalPages} 页
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setSearchParams((prev) => ({
+                      ...prev,
+                      pageNum: prev.pageNum + 1,
+                    }))
+                  }
+                  disabled={searchParams.pageNum >= totalPages}
+                  className="rounded-xl"
+                >
+                  下一页
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          <div className="overflow-auto">
+            <table className="w-full min-w-[1100px]">
+              <TableHeader className="sticky top-0 z-10">
+                <tr>
+                  <TableHead>标题</TableHead>
+                  <TableHead>类型</TableHead>
+                  <TableHead>值班日期</TableHead>
+                  <TableHead>班次</TableHead>
+                  <TableHead>值班人</TableHead>
+                  <TableHead>地点</TableHead>
+                  <TableHead>签到 / 签退</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableActionHead className="w-56">操作</TableActionHead>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="p-4 border-t border-slate-200 flex justify-between items-center">
-          <span className="text-sm text-slate-600">共 {total} 条</span>
-          <div className="flex gap-2">
-            <button onClick={() => setSearchParams(p => ({ ...p, pageNum: Math.max(1, p.pageNum - 1) }))} disabled={searchParams.pageNum === 1} className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50">上一页</button>
-            <span className="px-3 py-1 text-sm">第 {searchParams.pageNum} 页</span>
-            <button onClick={() => setSearchParams(p => ({ ...p, pageNum: p.pageNum + 1 }))} disabled={searchParams.pageNum * searchParams.pageSize >= total} className="px-3 py-1 border border-slate-300 rounded text-sm disabled:opacity-50">下一页</button>
+              </TableHeader>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  <WorkspaceTableStateRow
+                    colSpan={9}
+                    type="loading"
+                    title="正在加载排班记录..."
+                  />
+                ) : list.length === 0 ? (
+                  <WorkspaceTableStateRow
+                    colSpan={9}
+                    title="暂无排班记录"
+                    description="先创建一条排班，后续可在这里执行签到、签退和换班。"
+                  />
+                ) : (
+                  list.map((item) => (
+                    <tr key={item.scheduleId} className="hover:bg-slate-50/80">
+                      <td className="px-4 py-3 text-sm font-medium text-slate-900">{item.title}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {typeMap[item.scheduleType] || item.scheduleType}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">{item.dutyDate}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {shiftMap[item.shiftType || ''] || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900">
+                        {item.userName}
+                        {item.backupUserName ? ` -> ${item.backupUserName}` : ''}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">{item.location || '-'}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500">
+                        {item.checkInTime ? `到: ${item.checkInTime}` : '-'}
+                        <br />
+                        {item.checkOutTime ? `退: ${item.checkOutTime}` : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+                            getStatusBadgeClassName(item.status || 'SCHEDULED'),
+                          )}
+                        >
+                          {statusMap[item.status || 'SCHEDULED'] || item.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <TableRowActions
+                          align="end"
+                          actions={[
+                            {
+                              label: '签到',
+                              icon: <LogIn size={14} />,
+                              onClick: () => handleCheckIn(item.scheduleId!),
+                              tone: 'success',
+                              hidden: item.status !== 'SCHEDULED',
+                            },
+                            {
+                              label: '换班',
+                              icon: <RefreshCw size={14} />,
+                              onClick: () => openSwapDialog(item.scheduleId!),
+                              tone: 'info',
+                              hidden: item.status !== 'SCHEDULED',
+                            },
+                            {
+                              label: '签退',
+                              icon: <LogOut size={14} />,
+                              onClick: () => handleCheckOut(item.scheduleId!),
+                              tone: 'warning',
+                              hidden: item.status !== 'CHECKED_IN',
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </WorkspaceResultCard>
       </div>
 
-      {/* 新增排班对话框 */}
-      {showDialog && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800">新增排班</h3>
-              <button onClick={() => setShowDialog(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+      {showDialog ? (
+        <WorkspaceDialogShell
+          title="新增排班"
+          description="填写排班标题、值班类型、班次、日期和值班人信息。"
+          onClose={() => setShowDialog(false)}
+          maxWidthClassName="max-w-xl"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">排班标题</label>
+              <Input
+                type="text"
+                value={formData.title}
+                onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                placeholder="例如：2月6日值班"
+              />
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">排班标题</label>
-                <Input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="如：2月16日值班" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">值班类型</label>
-                  <Select value={formData.scheduleType} onValueChange={v => setFormData({...formData, scheduleType: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DAILY">日常值班</SelectItem>
-                      <SelectItem value="HOLIDAY">节假日值班</SelectItem>
-                      <SelectItem value="EMERGENCY">应急值班</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">班次</label>
-                  <Select value={formData.shiftType || 'DAY'} onValueChange={v => setFormData({...formData, shiftType: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DAY">白班</SelectItem>
-                      <SelectItem value="NIGHT">夜班</SelectItem>
-                      <SelectItem value="FULL">全天</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">值班日期</label>
-                <DatePicker type="date" value={formData.dutyDate} onChange={e => setFormData({ ...formData, dutyDate: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">值班人姓名</label>
-                  <Input type="text" value={formData.userName || ''} onChange={e => setFormData({ ...formData, userName: e.target.value })} placeholder="请输入值班人" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">值班地点</label>
-                  <Input type="text" value={formData.location || ''} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="选填" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">值班内容</label>
-                <Textarea className="h-16" value={formData.dutyContent || ''} onChange={e => setFormData({ ...formData, dutyContent: e.target.value })} placeholder="选填" />
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button onClick={() => setShowDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
-              <button onClick={handleSave} className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">保存</button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* 换班对话框 */}
-      {showSwapDialog && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800">换班申请</h3>
-              <button onClick={() => setShowSwapDialog(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
-            </div>
-            <div className="p-6 space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">替班人姓名</label>
-                <Input type="text" value={swapData.backupUserName} onChange={e => setSwapData({ ...swapData, backupUserName: e.target.value })} placeholder="请输入替班人姓名" />
+                <label className="mb-1 block text-sm font-medium text-slate-700">值班类型</label>
+                <Select
+                  value={formData.scheduleType}
+                  onValueChange={(value) => setFormData({ ...formData, scheduleType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DAILY">日常值班</SelectItem>
+                    <SelectItem value="HOLIDAY">节假日值班</SelectItem>
+                    <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">换班原因</label>
-                <Textarea className="h-20" value={swapData.reason} onChange={e => setSwapData({ ...swapData, reason: e.target.value })} placeholder="请输入换班原因" />
+                <label className="mb-1 block text-sm font-medium text-slate-700">班次</label>
+                <Select
+                  value={formData.shiftType || 'DAY'}
+                  onValueChange={(value) => setFormData({ ...formData, shiftType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DAY">白班</SelectItem>
+                    <SelectItem value="NIGHT">夜班</SelectItem>
+                    <SelectItem value="FULL">全天</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button onClick={() => setShowSwapDialog(false)} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-300">取消</button>
-              <button onClick={handleSwap} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700">确认换班</button>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">值班日期</label>
+              <DatePicker
+                type="date"
+                value={formData.dutyDate}
+                onChange={(event) => setFormData({ ...formData, dutyDate: event.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">值班人姓名</label>
+                <Input
+                  type="text"
+                  value={formData.userName || ''}
+                  onChange={(event) => setFormData({ ...formData, userName: event.target.value })}
+                  placeholder="请输入值班人"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">值班地点</label>
+                <Input
+                  type="text"
+                  value={formData.location || ''}
+                  onChange={(event) => setFormData({ ...formData, location: event.target.value })}
+                  placeholder="选填"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">值班内容</label>
+              <Textarea
+                className="h-20"
+                value={formData.dutyContent || ''}
+                onChange={(event) => setFormData({ ...formData, dutyContent: event.target.value })}
+                placeholder="选填"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>
+                取消
+              </Button>
+              <Button onClick={handleSave}>保存</Button>
             </div>
           </div>
-        </div>
-      )}
+        </WorkspaceDialogShell>
+      ) : null}
+
+      {showSwapDialog ? (
+        <WorkspaceDialogShell
+          title="换班申请"
+          description="填写替班人和换班原因，提交换班操作。"
+          onClose={() => setShowSwapDialog(false)}
+          maxWidthClassName="max-w-md"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">替班人姓名</label>
+              <Input
+                type="text"
+                value={swapData.backupUserName}
+                onChange={(event) =>
+                  setSwapData({ ...swapData, backupUserName: event.target.value })
+                }
+                placeholder="请输入替班人姓名"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">换班原因</label>
+              <Textarea
+                className="h-24"
+                value={swapData.reason}
+                onChange={(event) => setSwapData({ ...swapData, reason: event.target.value })}
+                placeholder="请输入换班原因"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowSwapDialog(false)}>
+                取消
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleSwap}
+                className="border border-violet-100 bg-[linear-gradient(180deg,rgba(245,243,255,0.92),rgba(255,255,255,0.82))] text-violet-700 hover:bg-violet-50"
+              >
+                确认换班
+              </Button>
+            </div>
+          </div>
+        </WorkspaceDialogShell>
+      ) : null}
     </div>
   );
 };
