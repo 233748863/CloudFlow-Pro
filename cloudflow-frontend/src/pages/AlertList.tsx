@@ -1,40 +1,115 @@
-/**
- * 告警列表页面
- * Phase 2 新增功能 - 管理超时和异常告警
- * 
- * @author CloudFlow Team
- * @since 2026-02-22
- */
-
-import React, { useState, useEffect } from 'react';
-import { 
-  Bell, 
-  Clock, 
+import React, { useEffect, useMemo, useState } from 'react';
+import {
   AlertTriangle,
+  Bell,
   CheckCircle,
+  Clock,
   Filter,
   Search,
-  X
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
-import { 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Textarea, Input, Card } from '@/components/ui';
+import {
   getTimeoutAlerts,
   getAnomalyAlerts,
   handleTimeoutAlert,
   resolveAnomalyAlert,
   TimeoutAlert,
-  AnomalyAlert
+  AnomalyAlert,
 } from '@/services/api/monitor';
-import { WorkspaceEmptyPanel, WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceBackdrop,
+  WorkspaceEmptyPanel,
+  WorkspaceInlineState,
+} from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceDialogShell,
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
 
-/**
- * 告警类型标签
- */
 type AlertType = 'timeout' | 'anomaly';
 
-/**
- * 告警列表主组件
- */
+const formatDateCN = (date: Date) => {
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+};
+
+const getAnomalyMessage = (alert: AnomalyAlert) =>
+  alert.errorMessage || alert.description || '暂无异常说明';
+
+const getAnomalyDetails = (alert: AnomalyAlert) =>
+  alert.stackTrace || alert.errorDetails;
+
+const getLevelBadge = (alert: TimeoutAlert | AnomalyAlert, type: AlertType) => {
+  if (type === 'timeout') {
+    const timeoutAlert = alert as TimeoutAlert;
+    if (timeoutAlert.timeoutLevel === 'CRITICAL') {
+      return <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 ring-1 ring-rose-100">严重</span>;
+    }
+    if (timeoutAlert.timeoutLevel === 'WARNING') {
+      return <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-100">警告</span>;
+    }
+    return <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-100">提醒</span>;
+  }
+
+  const anomalyAlert = alert as AnomalyAlert;
+  const severityMap: Record<string, { className: string; label: string }> = {
+    CRITICAL: { className: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100', label: '严重' },
+    HIGH: { className: 'bg-orange-50 text-orange-600 ring-1 ring-orange-100', label: '高' },
+    MEDIUM: { className: 'bg-amber-50 text-amber-700 ring-1 ring-amber-100', label: '中' },
+    LOW: { className: 'bg-pink-50 text-pink-600 ring-1 ring-pink-100', label: '低' },
+  };
+  const severity = severityMap[anomalyAlert.severity] || severityMap.MEDIUM;
+  return <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${severity.className}`}>{severity.label}</span>;
+};
+
+const ResolveModal: React.FC<{
+  alert: TimeoutAlert | AnomalyAlert | null;
+  note: string;
+  setNote: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}> = ({ alert, note, setNote, onClose, onSubmit }) => {
+  if (!alert) return null;
+
+  return (
+    <WorkspaceDialogShell
+      title="解决异常告警"
+      description="记录本次排查结果和处理方案，便于后续审计与交接。"
+      onClose={onClose}
+      maxWidthClassName="max-w-2xl"
+    >
+      <div className="space-y-4">
+        <div className="rounded-[24px] border border-white/80 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+          <div className="text-sm font-semibold text-slate-900">
+            {'processName' in alert ? alert.processName : alert.targetName}
+          </div>
+          <div className="mt-2 text-sm text-slate-500">
+            {'anomalyType' in alert ? getAnomalyMessage(alert as AnomalyAlert) : `已超时 ${Math.max(1, Math.ceil((alert as TimeoutAlert).timeoutDuration / (1000 * 60 * 60)))} 小时`}
+          </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">
+            解决说明 <span className="text-red-500">*</span>
+          </label>
+          <Textarea
+            rows={4}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="请输入解决方案和处理说明..."
+          />
+        </div>
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>取消</Button>
+          <Button onClick={onSubmit} disabled={!note.trim()}>确认解决</Button>
+        </div>
+      </div>
+    </WorkspaceDialogShell>
+  );
+};
+
 const AlertList: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AlertType>('timeout');
   const [timeoutAlerts, setTimeoutAlerts] = useState<TimeoutAlert[]>([]);
@@ -43,33 +118,28 @@ const AlertList: React.FC = () => {
   const [selectedAlert, setSelectedAlert] = useState<TimeoutAlert | AnomalyAlert | null>(null);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveNote, setResolveNote] = useState('');
-  
-  // 筛选条件
+  const [keyword, setKeyword] = useState('');
   const [filters, setFilters] = useState({
     alertLevel: '',
     severity: '',
-    resolved: ''
+    resolved: '',
   });
 
-  /**
-   * 加载告警数据
-   */
   const loadAlerts = async () => {
     try {
       setLoading(true);
-      
       if (activeTab === 'timeout') {
         const params: any = { pageNum: 1, pageSize: 100 };
         if (filters.alertLevel) params.alertLevel = filters.alertLevel;
         if (filters.resolved) params.resolved = filters.resolved === 'true';
-        
+
         const data = await getTimeoutAlerts(params);
         setTimeoutAlerts(data.rows || data.records || []);
       } else {
         const params: any = { pageNum: 1, pageSize: 100 };
         if (filters.severity) params.severity = filters.severity;
         if (filters.resolved) params.resolved = filters.resolved === 'true';
-        
+
         const data = await getAnomalyAlerts(params);
         setAnomalyAlerts(data.rows || data.records || []);
       }
@@ -81,374 +151,331 @@ const AlertList: React.FC = () => {
   };
 
   useEffect(() => {
-    loadAlerts();
+    void loadAlerts();
   }, [activeTab, filters]);
 
-  /**
-   * 处理超时告警
-   */
+  const filteredTimeoutAlerts = useMemo(() => {
+    const keywordValue = keyword.trim().toLowerCase();
+    if (!keywordValue) return timeoutAlerts;
+    return timeoutAlerts.filter((alert) =>
+      [alert.targetName, alert.assigneeName, alert.targetId]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keywordValue)),
+    );
+  }, [keyword, timeoutAlerts]);
+
+  const filteredAnomalyAlerts = useMemo(() => {
+    const keywordValue = keyword.trim().toLowerCase();
+    if (!keywordValue) return anomalyAlerts;
+    return anomalyAlerts.filter((alert) =>
+      [alert.processName, alert.processDefKey, alert.anomalyType, getAnomalyMessage(alert)]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keywordValue)),
+    );
+  }, [keyword, anomalyAlerts]);
+
   const handleTimeout = async (alertId: number, action: string) => {
     try {
       await handleTimeoutAlert(alertId, action);
-      loadAlerts();
+      await loadAlerts();
     } catch (error) {
       console.error('处理告警失败:', error);
     }
   };
 
-  /**
-   * 解决异常告警
-   */
   const handleResolve = async () => {
-    if (!selectedAlert || !resolveNote.trim()) {
-      return;
-    }
+    if (!selectedAlert || !resolveNote.trim()) return;
 
     try {
       await resolveAnomalyAlert(selectedAlert.id, resolveNote);
       setShowResolveModal(false);
       setResolveNote('');
       setSelectedAlert(null);
-      loadAlerts();
+      await loadAlerts();
     } catch (error) {
       console.error('解决告警失败:', error);
     }
   };
 
-  /**
-   * 获取告警级别颜色
-   */
-  const getLevelColor = (alert: TimeoutAlert | AnomalyAlert, type: AlertType) => {
-    if (type === 'timeout') {
-      const timeoutAlert = alert as TimeoutAlert;
-      return timeoutAlert.timeoutLevel === 'CRITICAL'
-        ? 'text-red-600'
-        : timeoutAlert.timeoutLevel === 'WARNING'
-          ? 'text-yellow-600'
-          : 'text-blue-600';
-    } else {
-      const anomalyAlert = alert as AnomalyAlert;
-      return anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' 
-        ? 'text-red-600' 
-        : 'text-yellow-600';
-    }
-  };
+  const unresolvedTimeoutCount = timeoutAlerts.filter((alert) => alert.resolved !== 'Y').length;
+  const unresolvedAnomalyCount = anomalyAlerts.filter((alert) => alert.resolved !== 'Y').length;
+  const criticalTimeoutCount = timeoutAlerts.filter((alert) => alert.timeoutLevel === 'CRITICAL').length;
+  const criticalAnomalyCount = anomalyAlerts.filter((alert) => ['CRITICAL', 'HIGH'].includes(alert.severity)).length;
+  const currentList = activeTab === 'timeout' ? filteredTimeoutAlerts : filteredAnomalyAlerts;
+  const todayLabel = formatDateCN(new Date());
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
-  /**
-   * 获取告警级别标签
-   */
-  const getLevelBadge = (alert: TimeoutAlert | AnomalyAlert, type: AlertType) => {
-    if (type === 'timeout') {
-      const timeoutAlert = alert as TimeoutAlert;
-      if (timeoutAlert.timeoutLevel === 'CRITICAL') {
-        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">严重</span>;
-      }
-      if (timeoutAlert.timeoutLevel === 'WARNING') {
-        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">警告</span>;
-      }
-      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">提醒</span>;
-    } else {
-      const anomalyAlert = alert as AnomalyAlert;
-      const severityMap: Record<string, { bg: string; text: string; label: string }> = {
-        CRITICAL: { bg: 'bg-red-100', text: 'text-red-800', label: '严重' },
-        HIGH: { bg: 'bg-orange-100', text: 'text-orange-800', label: '高' },
-        MEDIUM: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '中' },
-        LOW: { bg: 'bg-pink-50', text: 'text-pink-700', label: '低' }
-      };
-      const severity = severityMap[anomalyAlert.severity] || severityMap.MEDIUM;
-      return <span className={`px-2 py-1 text-xs font-medium ${severity.bg} ${severity.text} rounded`}>{severity.label}</span>;
-    }
-  };
-
-  const getAnomalyMessage = (alert: AnomalyAlert) =>
-    alert.errorMessage || alert.description || '暂无异常说明';
-
-  const getAnomalyDetails = (alert: AnomalyAlert) =>
-    alert.stackTrace || alert.errorDetails;
+  const overviewItems = [
+    { label: '当前页签', value: activeTab === 'timeout' ? '超时告警' : '异常告警' },
+    { label: '筛选结果', value: `${currentList.length} 条` },
+    { label: '未处理超时', value: `${unresolvedTimeoutCount} 条` },
+    { label: '未处理异常', value: `${unresolvedAnomalyCount} 条` },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* 页面标题 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">告警管理</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          查看和处理超时告警和异常告警
-        </p>
-      </div>
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
 
-      {/* 标签页 */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('timeout')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'timeout'
-                  ? 'border-pink-400 text-pink-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Clock className="w-5 h-5" />
-                <span>超时告警</span>
-                <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                  {timeoutAlerts.length}
-                </span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('anomaly')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'anomaly'
-                  ? 'border-pink-400 text-pink-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="w-5 h-5" />
-                <span>异常告警</span>
-                <span className="px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded-full">
-                  {anomalyAlerts.length}
-                </span>
-              </div>
-            </button>
-          </nav>
-        </div>
+      <div className="relative z-10 space-y-3">
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <Bell size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+            </div>
+          )}
+          title="告警管理"
+          description="把超时告警和异常告警统一到同一工作台页面结构，提升监控页面与业务页面的一致性。"
+          actions={(
+            <Button variant="outline" onClick={() => void loadAlerts()}>
+              <Search size={15} />
+              刷新告警
+            </Button>
+          )}
+          contentClassName="p-4 sm:p-5"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="超时告警"
+              value={timeoutAlerts.length}
+              hint={`未处理 ${unresolvedTimeoutCount} 条`}
+              aside={<Clock size={18} className="text-amber-500" />}
+            />
+            <WorkspaceMetricCard
+              label="异常告警"
+              value={anomalyAlerts.length}
+              hint={`未处理 ${unresolvedAnomalyCount} 条`}
+              aside={<AlertTriangle size={18} className="text-rose-500" />}
+            />
+            <WorkspaceMetricCard
+              label="严重超时"
+              value={criticalTimeoutCount}
+              hint="超时级别为 CRITICAL"
+              aside={<Bell size={18} className="text-pink-500" />}
+            />
+            <WorkspaceMetricCard
+              label="高危异常"
+              value={criticalAnomalyCount}
+              hint="异常级别为 HIGH / CRITICAL"
+              aside={<CheckCircle size={18} className="text-emerald-500" />}
+            />
+          </div>
+        </WorkspaceHeroCard>
 
-        {/* 筛选栏 */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <span className="text-sm font-medium text-gray-700">筛选:</span>
-            
-            {activeTab === 'timeout' ? (
-              <Select value={filters.alertLevel} onValueChange={v => setFilters({...filters, alertLevel: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
+        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-3">
+            <WorkspaceWorkbenchCard
+              title="告警工作台"
+              total={currentList.length}
+              hasActiveFilters={Boolean(keyword || filters.alertLevel || filters.severity || filters.resolved)}
+              overviewItems={overviewItems}
+              quickFilters={[
+                { label: '超时告警', value: 'timeout' },
+                { label: '异常告警', value: 'anomaly' },
+              ]}
+              activeQuickFilter={activeTab}
+              onQuickFilterChange={(value) => setActiveTab(value as AlertType)}
+              quickFilterAside={(
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  当前页签 {activeTab === 'timeout' ? '更适合处理流程超时' : '更适合排查流程异常'}
+                </span>
+              )}
+              filterBar={(
+                <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input
+                      value={keyword}
+                      onChange={(event) => setKeyword(event.target.value)}
+                      placeholder={activeTab === 'timeout' ? '按目标名称、处理人或目标 ID 搜索' : '按流程、类型或异常内容搜索'}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {activeTab === 'timeout' ? (
+                    <Select value={filters.alertLevel || 'all'} onValueChange={(value) => setFilters((prev) => ({ ...prev, alertLevel: value === 'all' ? '' : value }))}>
+                      <SelectTrigger><SelectValue placeholder="级别" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">所有级别</SelectItem>
+                        <SelectItem value="REMIND">提醒</SelectItem>
+                        <SelectItem value="WARNING">警告</SelectItem>
+                        <SelectItem value="CRITICAL">严重</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select value={filters.severity || 'all'} onValueChange={(value) => setFilters((prev) => ({ ...prev, severity: value === 'all' ? '' : value }))}>
+                      <SelectTrigger><SelectValue placeholder="严重程度" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">所有严重程度</SelectItem>
+                        <SelectItem value="LOW">低</SelectItem>
+                        <SelectItem value="MEDIUM">中</SelectItem>
+                        <SelectItem value="HIGH">高</SelectItem>
+                        <SelectItem value="CRITICAL">严重</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <Select value={filters.resolved || 'all'} onValueChange={(value) => setFilters((prev) => ({ ...prev, resolved: value === 'all' ? '' : value }))}>
+                    <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">所有级别</SelectItem>
-                      <SelectItem value="REMIND">提醒</SelectItem>
-                      <SelectItem value="WARNING">警告</SelectItem>
-                      <SelectItem value="CRITICAL">严重</SelectItem>
-                    </SelectContent>
-                  </Select>
-            ) : (
-              <Select value={filters.severity} onValueChange={v => setFilters({...filters, severity: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">所有严重程度</SelectItem>
-                      <SelectItem value="LOW">低</SelectItem>
-                      <SelectItem value="MEDIUM">中</SelectItem>
-                      <SelectItem value="HIGH">高</SelectItem>
-                      <SelectItem value="CRITICAL">严重</SelectItem>
-                    </SelectContent>
-                  </Select>
-            )}
-            
-            <Select value={filters.resolved} onValueChange={v => setFilters({...filters, resolved: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">所有状态</SelectItem>
+                      <SelectItem value="all">所有状态</SelectItem>
                       <SelectItem value="false">未处理</SelectItem>
                       <SelectItem value="true">已处理</SelectItem>
                     </SelectContent>
                   </Select>
-          </div>
-        </div>
 
-        {/* 告警列表 */}
-        <div className="p-6">
-          {loading ? (
-            <WorkspaceInlineState
-              type="loading"
-              title={activeTab === 'timeout' ? '正在加载超时告警...' : '正在加载异常告警...'}
-              className="py-12"
-            />
-          ) : (
-            <div className="space-y-4">
-              {activeTab === 'timeout' ? (
-                timeoutAlerts.length > 0 ? (
-                  timeoutAlerts.map((alert) => (
-                    <div key={alert.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            {getLevelBadge(alert, 'timeout')}
-                            <span className="text-sm text-gray-500">
-                              {alert.alertType === 'TASK' ? '任务超时' : '流程超时'}
-                            </span>
-                          </div>
-                          <h3 className="text-lg font-medium text-gray-900 mb-1">
-                            {alert.targetName}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            已超时 <span className="font-semibold text-red-600">{Math.max(1, Math.ceil(alert.timeoutDuration / (1000 * 60 * 60)))}</span> 小时
-                          </p>
-                          {alert.assigneeName && (
-                            <p className="text-sm text-gray-500">
-                              处理人: {alert.assigneeName}
-                            </p>
-                          )}
-                          <p className="text-xs text-gray-400 mt-2">
-                            告警时间: {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
-                          </p>
-                        </div>
-                        <div className="flex flex-col space-y-2">
-                          {alert.notificationSent !== 'Y' && (
-                            <button
-                              onClick={() => handleTimeout(alert.id, 'notify')}
-                              className="px-3 py-1 text-sm bg-pink-500 text-white rounded hover:bg-pink-600"
-                            >
-                              发送通知
-                            </button>
-                          )}
-                          {alert.escalated !== 'Y' && alert.timeoutLevel === 'CRITICAL' && (
-                            <button
-                              onClick={() => handleTimeout(alert.id, 'escalate')}
-                              className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700"
-                            >
-                              升级处理
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <WorkspaceEmptyPanel
-                    variant="glass"
-                    icon={<Clock className="h-7 w-7" />}
-                    title="暂无超时告警"
-                    description="当前筛选条件下还没有需要处理的超时告警。"
-                  />
-                )
-              ) : (
-                anomalyAlerts.length > 0 ? (
-                  anomalyAlerts.map((alert) => {
-                    const anomalyMessage = getAnomalyMessage(alert);
-                    const anomalyDetails = getAnomalyDetails(alert);
-
-                    return (
-                      <div key={alert.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              {getLevelBadge(alert, 'anomaly')}
-                              <span className="text-sm text-gray-500">{alert.anomalyType}</span>
-                              {alert.resolved === 'Y' && (
-                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                                  已解决
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">
-                              {alert.processName}
-                            </h3>
-                            <p className="text-sm text-gray-600 mb-2">
-                              {anomalyMessage}
-                            </p>
-                            {anomalyDetails && (
-                              <details className="text-xs text-gray-500 mb-2">
-                                <summary className="cursor-pointer hover:text-gray-700">错误详情</summary>
-                                <pre className="mt-2 p-2 bg-gray-50 rounded overflow-x-auto">
-                                  {anomalyDetails}
-                                </pre>
-                              </details>
-                            )}
-                            {alert.resolveNote && (
-                              <p className="text-sm text-green-600 mb-2">
-                                解决说明: {alert.resolveNote}
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-400">
-                              告警时间: {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
-                            </p>
-                          </div>
-                          {alert.resolved !== 'Y' && (
-                            <button
-                              onClick={() => {
-                                setSelectedAlert(alert);
-                                setShowResolveModal(true);
-                              }}
-                              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                            >
-                              标记已解决
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <WorkspaceEmptyPanel
-                    variant="glass"
-                    icon={<AlertTriangle className="h-7 w-7" />}
-                    title="暂无异常告警"
-                    description="当前筛选条件下还没有需要关注的异常告警。"
-                  />
-                )
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setKeyword('');
+                      setFilters({ alertLevel: '', severity: '', resolved: '' });
+                    }}
+                  >
+                    <Filter size={15} />
+                    清空筛选
+                  </Button>
+                </div>
               )}
-            </div>
-          )}
-        </div>
-      </div>
+            />
 
-      {/* 解决告警模态框 */}
-      {showResolveModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">解决异常告警</h3>
-              <button
-                onClick={() => {
-                  setShowResolveModal(false);
-                  setResolveNote('');
-                  setSelectedAlert(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                解决说明 <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={resolveNote}
-                onChange={(e) => setResolveNote(e.target.value)}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent"
-                placeholder="请输入解决方案和处理说明..."
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowResolveModal(false);
-                  setResolveNote('');
-                  setSelectedAlert(null);
-                }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleResolve}
-                disabled={!resolveNote.trim()}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                确认解决
-              </button>
-            </div>
+            <WorkspaceResultCard
+              total={currentList.length}
+              description="告警列表、处理动作和异常解决入口全部收口到统一工作台页面结构。"
+            >
+              <div className="p-4">
+                {loading ? (
+                  <WorkspaceInlineState
+                    type="loading"
+                    title={activeTab === 'timeout' ? '正在加载超时告警...' : '正在加载异常告警...'}
+                    className="py-12"
+                  />
+                ) : currentList.length === 0 ? (
+                  activeTab === 'timeout' ? (
+                    <WorkspaceEmptyPanel
+                      variant="glass"
+                      icon={<Clock className="h-7 w-7" />}
+                      title="暂无超时告警"
+                      description="当前筛选条件下还没有需要处理的超时告警。"
+                    />
+                  ) : (
+                    <WorkspaceEmptyPanel
+                      variant="glass"
+                      icon={<AlertTriangle className="h-7 w-7" />}
+                      title="暂无异常告警"
+                      description="当前筛选条件下还没有需要关注的异常告警。"
+                    />
+                  )
+                ) : (
+                  <div className="space-y-4">
+                    {activeTab === 'timeout'
+                      ? filteredTimeoutAlerts.map((alert) => (
+                          <div key={alert.id} className="rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.74))] p-5 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {getLevelBadge(alert, 'timeout')}
+                                  <span className="text-sm text-slate-500">
+                                    {alert.alertType === 'TASK' ? '任务超时' : '流程超时'}
+                                  </span>
+                                  {alert.resolved === 'Y' ? (
+                                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+                                      已处理
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <h3 className="mt-3 text-lg font-semibold text-slate-900">{alert.targetName}</h3>
+                                <p className="mt-2 text-sm text-slate-600">
+                                  已超时 <span className="font-semibold text-rose-600">{Math.max(1, Math.ceil(alert.timeoutDuration / (1000 * 60 * 60)))}</span> 小时
+                                </p>
+                                {alert.assigneeName ? <p className="mt-1 text-sm text-slate-500">处理人：{alert.assigneeName}</p> : null}
+                                <p className="mt-2 text-xs text-slate-400">
+                                  告警时间：{new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {alert.notificationSent !== 'Y' ? (
+                                  <Button size="sm" onClick={() => void handleTimeout(alert.id, 'notify')}>
+                                    发送通知
+                                  </Button>
+                                ) : null}
+                                {alert.escalated !== 'Y' && alert.timeoutLevel === 'CRITICAL' ? (
+                                  <Button size="sm" variant="secondary" onClick={() => void handleTimeout(alert.id, 'escalate')}>
+                                    升级处理
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      : filteredAnomalyAlerts.map((alert) => {
+                          const anomalyDetails = getAnomalyDetails(alert);
+                          return (
+                            <div key={alert.id} className="rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.74))] p-5 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+                              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {getLevelBadge(alert, 'anomaly')}
+                                    <span className="text-sm text-slate-500">{alert.anomalyType}</span>
+                                    {alert.resolved === 'Y' ? (
+                                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+                                        已解决
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <h3 className="mt-3 text-lg font-semibold text-slate-900">{alert.processName}</h3>
+                                  <p className="mt-2 text-sm text-slate-600">{getAnomalyMessage(alert)}</p>
+                                  {anomalyDetails ? (
+                                    <details className="mt-3 text-xs text-slate-500">
+                                      <summary className="cursor-pointer hover:text-slate-700">错误详情</summary>
+                                      <pre className="mt-2 overflow-x-auto rounded-[18px] bg-slate-50 p-3 whitespace-pre-wrap break-all">{anomalyDetails}</pre>
+                                    </details>
+                                  ) : null}
+                                  {alert.resolveNote ? <p className="mt-3 text-sm text-emerald-600">解决说明：{alert.resolveNote}</p> : null}
+                                  <p className="mt-2 text-xs text-slate-400">
+                                    告警时间：{new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
+                                  </p>
+                                </div>
+                                {alert.resolved !== 'Y' ? (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setSelectedAlert(alert);
+                                      setShowResolveModal(true);
+                                    }}
+                                  >
+                                    标记已解决
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                  </div>
+                )}
+              </div>
+            </WorkspaceResultCard>
           </div>
-        </div>
-      )}
+        </Card>
+
+        {showResolveModal ? (
+          <ResolveModal
+            alert={selectedAlert}
+            note={resolveNote}
+            setNote={setResolveNote}
+            onClose={() => {
+              setShowResolveModal(false);
+              setResolveNote('');
+              setSelectedAlert(null);
+            }}
+            onSubmit={() => void handleResolve()}
+          />
+        ) : null}
+      </div>
     </div>
   );
 };
