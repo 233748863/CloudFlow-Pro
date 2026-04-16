@@ -530,7 +530,7 @@ export const SchedulePage = () => {
   ].filter(Boolean) as Array<{ label: string; value: string; hint: string; tone: string; onClick: () => void }>;
 
   return (
-    <div className="relative min-h-screen pb-6">
+    <div className="relative min-h-full pb-6">
       <WorkspaceBackdrop />
 
       <div className="relative z-10 space-y-6 p-6">

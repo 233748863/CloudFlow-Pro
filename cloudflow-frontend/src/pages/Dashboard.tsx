@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui';
 import {
@@ -9,20 +9,14 @@ import {
   Calendar,
   CalendarDays,
   Car,
-  CheckCheck,
   CheckCircle2,
-  CircleDot,
   ClipboardCheck,
-  Clock3,
-  CloudSun,
   CreditCard,
-  FileSearch,
   FileText,
   MailOpen,
   Megaphone,
   Moon,
   PlayCircle,
-  Sparkles,
   Sun,
   Sunrise,
   Timer,
@@ -72,13 +66,11 @@ function extractRows(response: unknown): any[] {
 
 function getGreetingInfo(): { text: string; icon: React.ReactNode } {
   const hour = new Date().getHours();
-  if (hour < 6) return { text: '夜深了', icon: <Moon size={20} /> };
-  if (hour < 9) return { text: '早上好', icon: <Sunrise size={20} /> };
-  if (hour < 12) return { text: '上午好', icon: <Sun size={20} /> };
-  if (hour < 14) return { text: '中午好', icon: <CloudSun size={20} /> };
-  if (hour < 18) return { text: '下午好', icon: <Sun size={20} /> };
-  if (hour < 22) return { text: '晚上好', icon: <Moon size={20} /> };
-  return { text: '夜深了', icon: <Moon size={20} /> };
+  if (hour < 6) return { text: '凌晨好', icon: <Moon size={18} /> };
+  if (hour < 9) return { text: '早上好', icon: <Sunrise size={18} /> };
+  if (hour < 12) return { text: '上午好', icon: <Sun size={18} /> };
+  if (hour < 18) return { text: '下午好', icon: <Sun size={18} /> };
+  return { text: '晚上好', icon: <Moon size={18} /> };
 }
 
 function formatDateCN(date: Date): string {
@@ -112,11 +104,11 @@ function formatScheduleRange(item: any): string {
 }
 
 const ListSkeleton = () => (
-  <div className="space-y-3 p-4">
+  <div className="space-y-3">
     {[1, 2, 3].map((index) => (
       <div
         key={index}
-        className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/70 px-4 py-3"
+        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
       >
         <div className="h-10 w-10 shrink-0 rounded-2xl bg-slate-100 animate-pulse" />
         <div className="flex-1 space-y-2">
@@ -181,6 +173,7 @@ export const Dashboard = () => {
 
   useEffect(() => {
     if (!user) return;
+
     const silentConfig = { silent: true };
 
     request
@@ -231,102 +224,65 @@ export const Dashboard = () => {
       .finally(() => setLoadingSchedule(false));
   }, [user]);
 
-  if (!user) {
-    return null;
-  }
+  const unreadAnnouncementCount = useMemo(
+    () =>
+      announcements.filter(
+        (item) => !readAnnouncementIds.has(String(item.announcementId || item.id)),
+      ).length,
+    [announcements, readAnnouncementIds],
+  );
 
-  const unreadAnnouncementCount = announcements.filter(
-    (item) => !readAnnouncementIds.has(String(item.announcementId || item.id)),
-  ).length;
   const completionRate = Math.round((doneCount / Math.max(doneCount + pendingCount, 1)) * 100);
   const greetingSummary =
     pendingCount > 0
-      ? `你今天还有 ${pendingCount} 个流程等待处理，建议优先清理待办审批。`
-      : '今天没有新的审批压力，可以把时间留给计划内工作与协同安排。';
+      ? `今天还有 ${pendingCount} 个待处理事项，建议优先清理审批和日程提醒。`
+      : '今天没有新的待办压力，可以从公告、日程和流程入口开始安排工作。';
 
   const metricCards = [
     {
       label: '待办审批',
       value: pendingCount,
-      desc: '需要优先处理',
+      hint: '需要优先处理',
       path: '/tasks',
-      icon: <ClipboardCheck size={20} />,
-      iconClass: 'bg-pink-50 text-pink-600',
+      icon: <ClipboardCheck size={18} />,
+      iconClass: 'bg-emerald-50 text-emerald-600',
     },
     {
       label: '我的申请',
       value: myAppsCount,
-      desc: '已发起流程',
+      hint: '已发起流程',
       path: '/my-apps',
-      icon: <FileText size={20} />,
+      icon: <FileText size={18} />,
       iconClass: 'bg-slate-100 text-slate-600',
     },
     {
       label: '抄送我的',
       value: copyCount,
-      desc: '需要知悉的流程',
+      hint: '待查看消息',
       path: '/my-copies',
-      icon: <MailOpen size={20} />,
+      icon: <MailOpen size={18} />,
       iconClass: 'bg-amber-50 text-amber-600',
     },
     {
       label: '已完成',
       value: doneCount,
-      desc: '已审批完成',
+      hint: '今日处理结果',
       path: '/tasks',
-      icon: <CheckCheck size={20} />,
-      iconClass: 'bg-emerald-50 text-emerald-600',
+      icon: <CheckCircle2 size={18} />,
+      iconClass: 'bg-cyan-50 text-cyan-600',
     },
   ];
 
-  const shortcuts = [
-    { label: '发起流程', icon: <PlayCircle size={20} />, path: '/workplace', tone: 'bg-pink-50 text-pink-600' },
-    { label: 'HR 工作台', icon: <Users size={20} />, path: '/hr/dashboard', tone: 'bg-rose-50 text-rose-600' },
-    { label: '我的日程', icon: <CalendarDays size={20} />, path: '/schedule', tone: 'bg-amber-50 text-amber-600' },
-    { label: '会议预约', icon: <Users size={20} />, path: '/meeting-room', tone: 'bg-pink-50 text-pink-600' },
-    { label: '公告中心', icon: <Megaphone size={20} />, path: '/announcement', tone: 'bg-slate-100 text-slate-600' },
-    { label: '报销申请', icon: <CreditCard size={20} />, path: '/expense/claim', tone: 'bg-amber-50 text-amber-600' },
-    { label: '付款申请', icon: <FileText size={20} />, path: '/payment/request', tone: 'bg-emerald-50 text-emerald-600' },
-    { label: '出差申请', icon: <Briefcase size={20} />, path: '/office/business-trip', tone: 'bg-rose-50 text-rose-600' },
-    { label: '用车申请', icon: <Car size={20} />, path: '/admin/vehicle/booking', tone: 'bg-slate-100 text-slate-600' },
-    { label: '考勤打卡', icon: <UserCheck size={20} />, path: '/hr/attendance/checkin', tone: 'bg-pink-50 text-pink-600' },
-    { label: '请假申请', icon: <Calendar size={20} />, path: '/hr/leave/application', tone: 'bg-emerald-50 text-emerald-600' },
-    { label: '加班申请', icon: <Timer size={20} />, path: '/hr/overtime/applications', tone: 'bg-amber-50 text-amber-600' },
-    { label: '通讯录', icon: <Building2 size={20} />, path: '/office/contact', tone: 'bg-slate-100 text-slate-600' },
+  const quickActions = [
+    { label: '发起流程', icon: <PlayCircle size={18} />, path: '/workplace', tone: 'bg-emerald-50 text-emerald-600' },
+    { label: '我的日程', icon: <CalendarDays size={18} />, path: '/schedule', tone: 'bg-amber-50 text-amber-600' },
+    { label: '公告中心', icon: <Megaphone size={18} />, path: '/announcement', tone: 'bg-cyan-50 text-cyan-600' },
+    { label: '会议预约', icon: <Users size={18} />, path: '/meeting-room', tone: 'bg-slate-100 text-slate-600' },
+    { label: '报销申请', icon: <CreditCard size={18} />, path: '/expense/claim', tone: 'bg-amber-50 text-amber-600' },
+    { label: '出差申请', icon: <Briefcase size={18} />, path: '/office/business-trip', tone: 'bg-cyan-50 text-cyan-600' },
+    { label: '用车申请', icon: <Car size={18} />, path: '/admin/vehicle/booking', tone: 'bg-slate-100 text-slate-600' },
+    { label: '考勤打卡', icon: <UserCheck size={18} />, path: '/hr/attendance/checkin', tone: 'bg-emerald-50 text-emerald-600' },
   ];
-
-  const focusItems = [
-    pendingCount > 0
-      ? { label: '待办审批', value: `${pendingCount} 项`, hint: '建议优先处理最紧急的流程', path: '/tasks', tone: 'bg-pink-50 text-pink-600' }
-      : null,
-    schedules.length > 0
-      ? { label: '今日日程', value: `${schedules.length} 项`, hint: '查看今天的会议与安排', path: '/schedule', tone: 'bg-amber-50 text-amber-600' }
-      : null,
-    unreadAnnouncementCount > 0
-      ? { label: '公告通知', value: `${unreadAnnouncementCount} 条`, hint: '有新的公告待查看', path: '/announcement', tone: 'bg-rose-50 text-rose-600' }
-      : null,
-  ].filter(Boolean) as Array<{ label: string; value: string; hint: string; path: string; tone: string }>;
-
-  const statusMap: Record<string, { label: string; badgeClass: string }> = {
-    PENDING: { label: '待审批', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
-    RUNNING: { label: '进行中', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
-    APPROVED: { label: '已通过', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    REJECTED: { label: '已驳回', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
-    COMPLETED: { label: '已完成', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    CANCELLED: { label: '已取消', badgeClass: 'bg-slate-50 text-slate-600 border-slate-200' },
-  };
-
-  const renderStatusBadge = (status: string) => {
-    const config = statusMap[status] || {
-      label: status || '未知',
-      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
-    };
-    return (
-      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${config.badgeClass}`}>
-        {config.label}
-      </span>
-    );
-  };
 
   const markAnnouncementAsRead = (id: string) => {
     const nextSet = new Set(readAnnouncementIds);
@@ -339,423 +295,286 @@ export const Dashboard = () => {
     }
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="relative min-h-screen pb-6">
+    <div className="relative min-h-full pb-4 xl:pb-5">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6 p-6">
+      <div className="relative z-10 space-y-4 p-4 xl:space-y-5 xl:p-5">
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              {greeting.icon}
-              Workspace Overview
-            </span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
+              <span className="text-emerald-600">{greeting.icon}</span>
+              <span>{dateStr}</span>
+              <span className="text-slate-300">|</span>
+              <span>{timeStr}</span>
+            </div>
           }
           title={`${greeting.text}，${user.name}`}
           description={greetingSummary}
           actions={
             <>
-              <Button className="h-12 rounded-2xl px-6" onClick={() => navigate('/tasks')}>
-                去处理
-                <ArrowRight size={16} className="ml-1" />
+              <Button onClick={() => navigate('/tasks')}>
+                处理待办
+                <ArrowRight size={16} />
               </Button>
-              <Button
-                variant="outline"
-                className="h-12 rounded-2xl bg-white/85 px-6"
-                onClick={() => navigate('/workplace')}
-              >
-                <PlayCircle size={16} className="mr-2 text-pink-500" />
+              <Button variant="outline" onClick={() => navigate('/workplace')}>
+                <PlayCircle size={16} />
                 发起流程
               </Button>
             </>
           }
         >
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-            <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
-              <Calendar size={14} />
-              {dateStr}
-            </span>
-            <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeStr}</span>
-            {user.deptName ? (
-              <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
-                {user.deptName}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="mt-6 grid gap-4 xl:grid-cols-3">
-            <WorkspaceMetricCard
-              label="审批状态"
-              value={pendingCount}
-              hint="当前仍需处理的流程任务"
-              aside={<ClipboardCheck size={18} className="text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="今日日程"
-              value={schedules.length}
-              hint="今天在日历中的事项数量"
-              aside={<CalendarDays size={18} className="text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="公告提醒"
-              value={unreadAnnouncementCount}
-              hint="仍未查看的公告通知"
-              aside={<Bell size={18} className="text-rose-500" />}
-            />
+          <div className="grid gap-3 xl:grid-cols-4">
+            {metricCards.map((card) => (
+              <button
+                key={card.label}
+                type="button"
+                onClick={() => navigate(card.path)}
+                className="text-left"
+              >
+                <WorkspaceMetricCard
+                  label={card.label}
+                  value={card.value}
+                  hint={card.hint}
+                  aside={
+                    <div className={`rounded-2xl p-3 ${card.iconClass}`}>
+                      {card.icon}
+                    </div>
+                  }
+                  className="transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)]"
+                />
+              </button>
+            ))}
           </div>
         </WorkspaceHeroCard>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <WorkspaceSectionCard
-            title="今天先看这些"
-            description="结合待办、日程和公告提醒，先把今天最值得优先处理的事项摆到桌面上。"
-            eyebrow="Today Focus"
-            bodyClassName="space-y-5"
-          >
-            {focusItems.length > 0 ? (
-              <div className="space-y-3">
-                {focusItems.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => navigate(item.path)}
-                    className="flex w-full items-start gap-3 rounded-[24px] border border-white/80 bg-white/82 px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-pink-100 hover:bg-pink-50/30"
-                  >
-                    <div className={`rounded-2xl p-3 ${item.tone}`}>
-                      <CircleDot size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                        <div className="text-xs font-semibold text-slate-400">{item.value}</div>
-                      </div>
-                      <div className="mt-1 text-xs leading-5 text-slate-500">{item.hint}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={<CheckCircle2 size={26} />}
-                title="今天节奏平稳"
-                description="当前没有高优先级提醒，你可以把时间用于计划内工作。"
-              />
-            )}
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-[24px] border border-white/80 bg-white/76 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  我的申请
-                </div>
-                <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{myAppsCount}</div>
-              </div>
-              <div className="rounded-[24px] border border-white/80 bg-white/76 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  抄送我的
-                </div>
-                <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{copyCount}</div>
-              </div>
-              <div className="rounded-[24px] border border-white/80 bg-white/76 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  完成率
-                </div>
-                <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{completionRate}%</div>
-              </div>
-            </div>
-          </WorkspaceSectionCard>
-
-          <WorkspaceSectionCard
-            title="工作概览"
-            description="用更聚焦的方式查看今天的审批效率和工作分布。"
-            eyebrow="Work Pulse"
-            bodyClassName="space-y-5"
-          >
-            <div className="rounded-[28px] border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-white p-5">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">
-                审批完成率
-              </div>
-              <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{completionRate}%</div>
-              <div className="mt-2 text-sm leading-6 text-slate-500">已完成与待办审批的整体进度比例</div>
-              <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-pink-100/80">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-pink-500 to-rose-500"
-                  style={{ width: `${completionRate}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {[
-                { label: '待办审批', value: pendingCount },
-                { label: '我的申请', value: myAppsCount },
-                { label: '抄送我的', value: copyCount },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between rounded-2xl border border-white/80 bg-white/82 px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
-                >
-                  <div className="text-sm font-medium text-slate-600">{item.label}</div>
-                  <div className="text-lg font-bold tracking-tight text-slate-900">{item.value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-[24px] border border-white/80 bg-slate-50/85 px-4 py-4 text-xs leading-6 text-slate-500">
-              当前桌面端已整合流程中心、公告、日程和 HR 入口，适合作为每天第一屏工作台。
-            </div>
-          </WorkspaceSectionCard>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {metricCards.map((card) => (
-            <button key={card.label} type="button" onClick={() => navigate(card.path)} className="text-left">
-              <WorkspaceMetricCard
-                label={card.label}
-                value={card.value}
-                hint={card.desc}
-                aside={<div className={`rounded-2xl p-3 ${card.iconClass}`}>{card.icon}</div>}
-                className="transition hover:-translate-y-1 hover:shadow-[0_22px_46px_rgba(15,23,42,0.08)]"
-              />
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <div className="space-y-6">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_360px] xl:gap-5">
+          <div className="space-y-4 xl:space-y-5">
             <WorkspaceSectionCard
-              title="优先待办"
-              description="把最需要尽快处理的审批任务收口到一个区块。"
-              eyebrow="Priority Queue"
-              headerAside={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/tasks')}>
-                  查看全部
-                </Button>
-              }
+              title="待办事项"
+              description="把今天最需要处理的流程、公告和申请记录集中放在一屏里。"
+              eyebrow="Today Focus"
             >
               {loadingTodo ? (
                 <ListSkeleton />
-              ) : pendingTasks.length > 0 ? (
+              ) : pendingTasks.length === 0 ? (
+                <EmptyState
+                  icon={<CheckCircle2 size={24} />}
+                  title="当前没有待办"
+                  description="新的审批到达后，这里会自动更新。"
+                />
+              ) : (
                 <div className="space-y-3">
-                  {pendingTasks.map((task, index) => (
+                  {pendingTasks.map((task) => (
                     <button
-                      key={task.id || index}
+                      key={String(task.taskId || task.id || task.processInstanceId)}
                       type="button"
                       onClick={() => navigate('/tasks')}
-                      className="flex w-full items-center gap-4 rounded-[24px] border border-white/80 bg-white/82 px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-pink-100 hover:bg-pink-50/25"
+                      className="flex w-full items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/30"
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-sm font-bold text-pink-600">
-                        {index + 1}
-                      </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900">
-                          {task.processName || task.title || task.instanceName || '审批任务'}
+                        <div className="text-sm font-semibold text-slate-900">
+                          {task.title || task.workflowName || '流程待办'}
                         </div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {task.startUserName || task.creatorName || '发起人未知'}
-                          {task.createTime ? (
-                            <span className="ml-2 text-slate-400">{relTime(task.createTime)}</span>
-                          ) : null}
+                          {task.nodeName || task.currentNodeName || '待处理节点'}
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                          {task.applicantName ? <span>发起人：{task.applicantName}</span> : null}
+                          {task.createdTime ? <span>{relTime(task.createdTime)}</span> : null}
                         </div>
                       </div>
-                      {renderStatusBadge(task.status || 'PENDING')}
+                      <div className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                        待处理
+                      </div>
                     </button>
                   ))}
                 </div>
-              ) : (
-                <EmptyState
-                  icon={<CheckCircle2 size={26} />}
-                  title="待办已清空"
-                  description="当前没有新的审批任务，继续保持这个节奏。"
-                />
               )}
             </WorkspaceSectionCard>
 
             <WorkspaceSectionCard
               title="最近申请"
-              description="跟踪最近发起流程的时间和状态变化。"
+              description="最近发起的流程会在这里保留进度摘要。"
               eyebrow="Recent Applications"
-              headerAside={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/my-apps')}>
-                  查看全部
-                </Button>
-              }
             >
               {loadingApps ? (
                 <ListSkeleton />
-              ) : recentApps.length > 0 ? (
+              ) : recentApps.length === 0 ? (
+                <EmptyState
+                  icon={<FileText size={24} />}
+                  title="还没有申请记录"
+                  description="从右侧快捷入口进入即可发起新的业务流程。"
+                />
+              ) : (
                 <div className="space-y-3">
-                  {recentApps.map((item, index) => (
+                  {recentApps.map((item) => (
                     <button
-                      key={item.id || index}
+                      key={String(item.id || item.processInstanceId || item.businessKey)}
                       type="button"
                       onClick={() => navigate('/my-apps')}
-                      className="flex w-full items-center gap-4 rounded-[24px] border border-white/80 bg-white/82 px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-pink-100 hover:bg-pink-50/25"
+                      className="flex w-full items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-cyan-200 hover:bg-cyan-50/25"
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                        <FileSearch size={16} />
-                      </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900">
-                          {item.processName || item.title || item.instanceName || '流程申请'}
+                        <div className="text-sm font-semibold text-slate-900">
+                          {item.title || item.processDefinitionName || '流程申请'}
                         </div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {item.createTime ? relTime(item.createTime) : '暂无时间信息'}
+                          {item.reason || item.currentNodeName || '查看当前流程状态'}
+                        </div>
+                        <div className="mt-2 text-xs text-slate-400">
+                          {item.createdTime ? relTime(item.createdTime) : '刚刚'}
                         </div>
                       </div>
-                      {renderStatusBadge(item.status || 'RUNNING')}
+                      <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                        查看详情
+                      </div>
                     </button>
                   ))}
                 </div>
-              ) : (
-                <EmptyState
-                  icon={<FileText size={26} />}
-                  title="还没有新的申请记录"
-                  description="发起流程后，这里会展示你最近的审批进展。"
-                />
               )}
             </WorkspaceSectionCard>
+          </div>
 
+          <div className="space-y-4 xl:space-y-5">
             <WorkspaceSectionCard
               title="快捷入口"
-              description="把高频工作动作集中到这里，保持首页操作效率。"
-              eyebrow="Quick Launcher"
+              description="常用业务入口保留在这里，减少二次跳转。"
+              eyebrow="Quick Actions"
             >
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                {shortcuts.map((item) => (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                {quickActions.map((action) => (
                   <button
-                    key={item.label}
+                    key={action.label}
                     type="button"
-                    onClick={() => navigate(item.path)}
-                    className="group rounded-[26px] border border-white/80 bg-white/82 px-4 py-5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-pink-100 hover:bg-pink-50/20 hover:shadow-[0_16px_30px_rgba(236,72,153,0.08)]"
+                    onClick={() => navigate(action.path)}
+                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left transition hover:border-emerald-200 hover:bg-slate-50"
                   >
-                    <div className={`inline-flex rounded-2xl p-3 ${item.tone}`}>{item.icon}</div>
-                    <div className="mt-4 text-sm font-semibold text-slate-900">{item.label}</div>
-                    <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition group-hover:text-pink-600">
-                      进入
-                      <ArrowRight size={14} />
+                    <div className="flex items-center gap-3">
+                      <div className={`rounded-2xl p-2.5 ${action.tone}`}>{action.icon}</div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{action.label}</div>
+                        <div className="mt-1 text-xs text-slate-400">进入对应业务页面</div>
+                      </div>
                     </div>
+                    <ArrowRight size={16} className="text-slate-300" />
                   </button>
                 ))}
               </div>
             </WorkspaceSectionCard>
-          </div>
 
-          <div className="space-y-6">
             <WorkspaceSectionCard
               title="今日日程"
-              description="把当天的会议和个人安排收敛到一个区块里。"
+              description="今天的会议和安排集中查看。"
               eyebrow="Today Schedule"
-              headerAside={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/schedule')}>
-                  查看日历
-                </Button>
-              }
             >
               {loadingSchedule ? (
                 <ListSkeleton />
-              ) : schedules.length > 0 ? (
+              ) : schedules.length === 0 ? (
+                <EmptyState
+                  icon={<CalendarDays size={24} />}
+                  title="今天没有日程"
+                  description="创建新的会议或个人安排后，这里会显示今日摘要。"
+                />
+              ) : (
                 <div className="space-y-3">
-                  {schedules.map((item, index) => (
+                  {schedules.map((item) => (
                     <button
-                      key={item.id || index}
+                      key={String(item.eventId || item.id)}
                       type="button"
                       onClick={() => navigate('/schedule')}
-                      className="flex w-full items-start gap-3 rounded-[24px] border border-white/80 bg-white/82 px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-amber-100 hover:bg-amber-50/25"
+                      className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-amber-200 hover:bg-amber-50/25"
                     >
-                      <div className="mt-0.5 rounded-2xl bg-amber-50 p-3 text-amber-600">
-                        <CalendarDays size={16} />
+                      <div className="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                        {formatClock(item.startTime) || '全天'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900">
-                          {item.title || item.content || '日程'}
+                        <div className="text-sm font-semibold text-slate-900">
+                          {item.title || '日程安排'}
                         </div>
-                        <div className="mt-1 inline-flex items-center gap-1 text-xs text-slate-500">
-                          <Clock3 size={12} />
+                        <div className="mt-1 text-xs text-slate-500">
                           {formatScheduleRange(item)}
                         </div>
+                        {item.description ? (
+                          <div className="mt-2 text-xs leading-5 text-slate-400">
+                            {item.description}
+                          </div>
+                        ) : null}
                       </div>
                     </button>
                   ))}
                 </div>
-              ) : (
-                <EmptyState
-                  icon={<CalendarDays size={26} />}
-                  title="今天没有新日程"
-                  description="你可以留出整块时间处理深度工作，或者回到日历提前安排。"
-                />
-              )}
-            </WorkspaceSectionCard>
-
-            <WorkspaceSectionCard
-              title="公告通知"
-              description="在首页快速看到最新公告，并区分已读和未读状态。"
-              eyebrow="Announcement Center"
-              headerAside={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/announcement')}>
-                  更多公告
-                </Button>
-              }
-            >
-              {loadingAnnouncements ? (
-                <ListSkeleton />
-              ) : announcements.length > 0 ? (
-                <div className="space-y-3">
-                  {announcements.map((item, index) => {
-                    const itemId = String(item.announcementId || item.id);
-                    const isRead = readAnnouncementIds.has(itemId);
-
-                    return (
-                      <button
-                        key={item.announcementId || item.id || index}
-                        type="button"
-                        onClick={() => {
-                          if (!isRead) {
-                            markAnnouncementAsRead(itemId);
-                          }
-                          navigate('/announcement');
-                        }}
-                        className={`flex w-full items-start gap-3 rounded-[24px] border px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition ${
-                          isRead ? 'border-white/80 bg-slate-50/70' : 'border-rose-100 bg-white/82 hover:bg-rose-50/25'
-                        }`}
-                      >
-                        <div
-                          className={`mt-0.5 rounded-2xl p-3 ${
-                            isRead ? 'bg-slate-100 text-slate-400' : 'bg-rose-50 text-rose-600'
-                          }`}
-                        >
-                          <Bell size={16} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div
-                            className={`truncate text-sm font-semibold ${
-                              isRead ? 'text-slate-500' : 'text-slate-900'
-                            }`}
-                          >
-                            {item.title || '公告通知'}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-500">
-                            {item.createTime ? relTime(item.createTime) : '刚刚'}
-                            {isRead ? (
-                              <span className="ml-2 text-slate-400">已读</span>
-                            ) : (
-                              <span className="ml-2 text-rose-500">未读</span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <EmptyState
-                  icon={<Megaphone size={26} />}
-                  title="暂无公告通知"
-                  description="新公告发布后会第一时间出现在这里。"
-                />
               )}
             </WorkspaceSectionCard>
           </div>
         </div>
+
+        <WorkspaceSectionCard
+          title="公告提醒"
+          description="已读未读状态会保留在本地，方便你快速回看。"
+          eyebrow="Announcements"
+          headerAside={
+            <Button variant="outline" size="sm" onClick={() => navigate('/announcement')}>
+              查看全部
+            </Button>
+          }
+        >
+          {loadingAnnouncements ? (
+            <ListSkeleton />
+          ) : announcements.length === 0 ? (
+            <EmptyState
+              icon={<Bell size={24} />}
+              title="暂无公告"
+              description="公告发布后会自动显示在这里。"
+            />
+          ) : (
+            <div className="grid gap-3 xl:grid-cols-3">
+              {announcements.map((item) => {
+                const id = String(item.announcementId || item.id);
+                const isRead = readAnnouncementIds.has(id);
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      markAnnouncementAsRead(id);
+                      navigate('/announcement');
+                    }}
+                    className={`rounded-2xl border px-4 py-4 text-left transition ${
+                      isRead
+                        ? 'border-slate-200 bg-white hover:bg-slate-50'
+                        : 'border-cyan-200 bg-cyan-50/40 hover:bg-cyan-50/70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900">
+                          {item.title || '系统公告'}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {item.publishTime ? relTime(item.publishTime) : '刚刚发布'}
+                        </div>
+                      </div>
+                      {!isRead ? (
+                        <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                          未读
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 line-clamp-3 text-xs leading-6 text-slate-500">
+                      {item.summary || item.content || '点击查看完整公告内容'}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </WorkspaceSectionCard>
       </div>
     </div>
   );

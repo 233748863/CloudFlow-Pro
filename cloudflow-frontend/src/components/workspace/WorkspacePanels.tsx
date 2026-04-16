@@ -71,11 +71,17 @@ interface WorkspaceWorkbenchCardProps {
   className?: string;
 }
 
+const panelClassName =
+  'overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.04)]';
+
+const panelHeaderGlowClassName =
+  'bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.08),transparent_58%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.05),transparent_52%)]';
+
 const defaultOverviewToneClassName =
-  'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]';
+  'border-slate-200 bg-slate-50 text-slate-900';
 
 const defaultMetricToneClassName =
-  'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(248,250,252,0.76))] text-slate-900 shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]';
+  'border-slate-200 bg-white text-slate-900';
 
 export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
   eyebrow = '记录',
@@ -89,31 +95,30 @@ export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
   onQuickFilterChange,
   quickFilterAside,
   filterBar,
-  glowClassName = 'bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.09),transparent_60%)]',
+  glowClassName = panelHeaderGlowClassName,
   className,
 }) => (
-  <div
-    className={cn(
-      'overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl',
-      className,
-    )}
-  >
-    <div className="relative px-4 py-4">
+  <div className={cn(panelClassName, className)}>
+    <div className="relative px-4 py-4 xl:px-5 xl:py-5">
       <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-24', glowClassName)} />
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="relative flex flex-col gap-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</div>
-            <div className="mt-2 text-[1.65rem] font-bold tracking-tight text-slate-950">{title}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {eyebrow}
+            </div>
+            <div className="mt-2 text-[1.55rem] font-semibold tracking-tight text-slate-950 xl:text-[1.7rem]">
+              {title}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+          <div className="flex flex-wrap items-center gap-2">
             {headerBadges || (
               <>
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                  {hasActiveFilters ? '已应用筛选' : '默认视图'}
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+                  {hasActiveFilters ? '已筛选' : '默认视图'}
                 </span>
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
                   共 {total} 条
                 </span>
               </>
@@ -121,42 +126,47 @@ export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
           </div>
         </div>
 
-        <div className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2.5 pt-1 sm:grid-cols-2 xl:grid-cols-4">
           {overviewItems.map((item) => (
             <div
               key={String(item.label)}
               className={cn(
-                'rounded-[18px] border px-3.5 py-2.5 shadow-sm',
+                'rounded-[18px] border px-3.5 py-3 shadow-sm',
                 item.toneClassName || defaultOverviewToneClassName,
               )}
             >
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</div>
-              <div className="mt-1.5 text-sm font-semibold tracking-tight">{item.value}</div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                {item.label}
+              </div>
+              <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900">
+                {item.value}
+              </div>
             </div>
           ))}
         </div>
       </div>
     </div>
 
-    {(quickFilters?.length || quickFilterAside || filterBar) ? (
-      <div className="border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.72))] px-4 py-4 backdrop-blur-xl">
+    {quickFilters?.length || quickFilterAside || filterBar ? (
+      <div className="border-t border-slate-200 bg-slate-50/80 px-4 py-4 xl:px-5">
         <div className="flex flex-col gap-3">
-          {(quickFilters?.length || quickFilterAside) ? (
+          {quickFilters?.length || quickFilterAside ? (
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               {quickFilters?.length ? (
-                <div className="inline-flex flex-wrap items-center gap-1 rounded-[20px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-md">
+                <div className="inline-flex flex-wrap items-center gap-1 rounded-[16px] border border-slate-200 bg-white p-1">
                   {quickFilters.map((item) => {
                     const active = activeQuickFilter === item.value;
+
                     return (
                       <button
                         key={item.value || 'ALL'}
                         type="button"
                         onClick={() => onQuickFilterChange?.(item.value)}
                         className={cn(
-                          'rounded-[16px] px-3 py-1.5 text-[11px] font-medium transition',
+                          'rounded-[12px] px-3 py-1.5 text-xs font-medium transition',
                           active
-                            ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]'
-                            : 'text-slate-600 hover:bg-white/88 hover:text-pink-600',
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
                         )}
                       >
                         {item.label}
@@ -190,16 +200,24 @@ export const WorkspaceMetricCard: React.FC<WorkspaceMetricCardProps> = ({
 }) => (
   <div
     className={cn(
-      'rounded-[24px] border px-5 py-4 backdrop-blur-xl',
+      'rounded-[22px] border px-4 py-4',
       toneClassName || defaultMetricToneClassName,
+      'shadow-[0_8px_24px_rgba(15,23,42,0.04)]',
       className,
     )}
   >
-    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+    <div className="text-[11px] font-medium text-slate-500">{label}</div>
     <div className="mt-3 flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <div className={cn('text-[1.9rem] font-bold tracking-tight text-slate-950', valueClassName)}>{value}</div>
-        {hint ? <div className="mt-2 text-xs text-slate-400">{hint}</div> : null}
+        <div
+          className={cn(
+            'text-[1.9rem] font-semibold tracking-tight text-slate-950 xl:text-[2rem]',
+            valueClassName,
+          )}
+        >
+          {value}
+        </div>
+        {hint ? <div className="mt-1.5 text-xs leading-5 text-slate-400">{hint}</div> : null}
       </div>
       {aside ? <div className="shrink-0">{aside}</div> : null}
     </div>
@@ -215,26 +233,27 @@ export const WorkspaceHeroCard: React.FC<WorkspaceHeroCardProps> = ({
   className,
   contentClassName,
   bodyClassName,
-  glowClassName = 'bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.12),transparent_58%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.1),transparent_52%)]',
+  glowClassName = panelHeaderGlowClassName,
 }) => (
-  <div
-    className={cn(
-      'overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.84))] shadow-[0_20px_54px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.76)] backdrop-blur-xl',
-      className,
-    )}
-  >
-    <div className={cn('relative px-8 py-8', contentClassName)}>
-      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-32', glowClassName)} />
+  <div className={cn(panelClassName, className)}>
+    <div className={cn('relative px-5 py-5 xl:px-6 xl:py-6', contentClassName)}>
+      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-28', glowClassName)} />
       <div className="relative">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            {badge ? <div className="mb-2">{badge}</div> : null}
-            <div className="text-3xl font-bold tracking-tight text-slate-900">{title}</div>
-            {description ? <div className="mt-2 text-sm text-slate-500">{description}</div> : null}
+            {badge ? <div className="mb-3">{badge}</div> : null}
+            <div className="text-[1.85rem] font-semibold tracking-tight text-slate-950 xl:text-[2.15rem]">
+              {title}
+            </div>
+            {description ? (
+              <div className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{description}</div>
+            ) : null}
           </div>
-          {actions ? <div className="flex shrink-0 flex-wrap gap-3">{actions}</div> : null}
+
+          {actions ? <div className="flex shrink-0 flex-wrap gap-2.5">{actions}</div> : null}
         </div>
-        {children ? <div className={cn('mt-3', bodyClassName)}>{children}</div> : null}
+
+        {children ? <div className={cn('mt-4 xl:mt-5', bodyClassName)}>{children}</div> : null}
       </div>
     </div>
   </div>
@@ -246,29 +265,34 @@ export const WorkspaceSectionCard: React.FC<WorkspaceSectionCardProps> = ({
   headerAside,
   children,
   eyebrow,
-  glowClassName = 'bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.08),transparent_62%)]',
+  glowClassName = panelHeaderGlowClassName,
   className,
   bodyClassName,
 }) => (
-  <div
-    className={cn(
-      'overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl',
-      className,
-    )}
-  >
-    <div className="relative px-5 py-5">
-      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-24', glowClassName)} />
+  <div className={cn(panelClassName, className)}>
+    <div className="relative px-4 py-4 xl:px-5 xl:py-5">
+      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-20', glowClassName)} />
       <div className="relative">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             {eyebrow ? (
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                {eyebrow}
+              </div>
             ) : null}
-            <div className={cn(eyebrow ? 'mt-2' : '', 'text-lg font-semibold text-slate-900')}>{title}</div>
-            {description ? <div className="mt-1 text-sm text-slate-500">{description}</div> : null}
+            <div
+              className={cn(
+                eyebrow ? 'mt-2' : '',
+                'text-lg font-semibold tracking-tight text-slate-950',
+              )}
+            >
+              {title}
+            </div>
+            {description ? <div className="mt-1.5 text-sm leading-6 text-slate-500">{description}</div> : null}
           </div>
-          {headerAside ? <div className="flex shrink-0 flex-wrap gap-3">{headerAside}</div> : null}
+          {headerAside ? <div className="flex shrink-0 flex-wrap gap-2.5">{headerAside}</div> : null}
         </div>
+
         <div className={cn('mt-4', bodyClassName)}>{children}</div>
       </div>
     </div>
@@ -284,32 +308,33 @@ export const WorkspaceDialogShell: React.FC<WorkspaceDialogShellProps> = ({
   headerAside,
   bodyClassName,
 }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.34)] p-4 backdrop-blur-md">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/24 p-4 backdrop-blur-sm">
     <div
       className={cn(
-        'max-h-[90vh] w-full overflow-y-auto rounded-[32px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.88))] shadow-[0_28px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.78)] backdrop-blur-xl',
+        'max-h-[90vh] w-full overflow-y-auto rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)]',
         maxWidthClassName,
       )}
     >
-      <div className="relative overflow-hidden border-b border-white/70 px-6 py-5">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.12),transparent_58%),radial-gradient(circle_at_top_right,rgba(125,211,252,0.12),transparent_52%)]" />
-        <div className="relative flex items-start justify-between gap-4">
+      <div className="border-b border-slate-200 px-6 py-5">
+        <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="text-xl font-semibold text-slate-900">{title}</div>
-            {description ? <div className="mt-1 text-sm text-slate-500">{description}</div> : null}
+            <div className="text-xl font-semibold tracking-tight text-slate-950">{title}</div>
+            {description ? <div className="mt-1.5 text-sm leading-6 text-slate-500">{description}</div> : null}
           </div>
+
           <div className="flex shrink-0 items-center gap-3">
             {headerAside}
             <button
               type="button"
               onClick={onClose}
-              className="rounded-2xl border border-white/80 bg-white/80 px-3 py-2 text-sm text-slate-500 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white hover:text-slate-700"
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
             >
               关闭
             </button>
           </div>
         </div>
       </div>
+
       <div className={cn('px-6 py-6', bodyClassName)}>{children}</div>
     </div>
   </div>
@@ -332,18 +357,13 @@ export const WorkspaceResultCard: React.FC<WorkspaceResultCardProps> = ({
   footer,
   className,
 }) => (
-  <div
-    className={cn(
-      'overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl',
-      className,
-    )}
-  >
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.68))] px-4 py-3 backdrop-blur-xl">
+  <div className={cn(panelClassName, className)}>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3.5">
       <div>
         <div className="text-sm font-semibold text-slate-900">{title}</div>
-        <div className="mt-1 text-[11px] text-slate-400">{description}</div>
+        <div className="mt-1 text-xs text-slate-400">{description}</div>
       </div>
-      <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+      <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
         共 {total} 条
       </span>
     </div>
@@ -371,27 +391,27 @@ export const WorkspacePaginationBar: React.FC<WorkspacePaginationBarProps> = ({
   prevDisabled,
   nextDisabled,
 }) => (
-  <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
-    <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3.5">
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
       共 {total} 条
     </span>
-    <div className="flex gap-2">
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={onPrev}
         disabled={prevDisabled}
-        className="h-9 rounded-2xl border border-white/80 bg-white/76 px-3 text-sm text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="h-9 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
       >
         上一页
       </button>
-      <span className="rounded-full bg-white/76 px-3 py-2 text-sm text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+      <span className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-600">
         第 {pageNum} / {totalPages} 页
       </span>
       <button
         type="button"
         onClick={onNext}
         disabled={nextDisabled}
-        className="h-9 rounded-2xl border border-white/80 bg-white/76 px-3 text-sm text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="h-9 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
       >
         下一页
       </button>
