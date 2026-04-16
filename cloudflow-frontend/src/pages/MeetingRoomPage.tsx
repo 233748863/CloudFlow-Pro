@@ -16,7 +16,12 @@ import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceEmptyPanel, WorkspaceInlineState, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceEmptyPanel, WorkspaceInlineState, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceSectionCard,
+} from '@/components/workspace/WorkspacePanels';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -54,35 +59,6 @@ function formatDateCN(date: Date): string {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
 }
-
-const SectionHeader = ({
-  eyebrow,
-  title,
-  actionLabel,
-  onAction,
-}: {
-  eyebrow: string;
-  title: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) => (
-  <div className="flex items-start justify-between gap-4">
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</div>
-      <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{title}</div>
-    </div>
-    {actionLabel && onAction ? (
-      <button
-        type="button"
-        onClick={onAction}
-        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-pink-600"
-      >
-        {actionLabel}
-        <ChevronRight size={14} />
-      </button>
-    ) : null}
-  </div>
-);
 
 function buildDeptTreeWithUsers(deptTree: DeptTreeItem[], users: UserBrief[]): DeptNodeWithUsers[] {
   const mapNode = (node: DeptTreeItem): DeptNodeWithUsers => ({
@@ -1099,6 +1075,11 @@ export const MeetingRoomPage = () => {
       ? `集中查看你的会议室预订记录，及时管理待开始、进行中和已结束的安排。`
       : `按预订次数、使用时长和利用率查看会议室资源的整体使用情况。`;
   const activeTabTitle = activeTab === 'rooms' ? '会议室列表' : activeTab === 'my-bookings' ? '我的预订' : '使用统计';
+  const activeTabDescription = activeTab === 'rooms'
+    ? '按状态筛选会议室，查看今日预订，并快速发起预订或管理房间。'
+    : activeTab === 'my-bookings'
+      ? '集中查看你的会议室预订记录，及时取消尚未开始的安排。'
+      : '通过预订次数、使用时长和利用率查看会议室使用表现。';
   const focusItems = [
     { label: '当前视图', value: activeTabTitle, hint: activeTab === 'rooms' ? '浏览与预订会议室' : activeTab === 'my-bookings' ? '管理个人预订记录' : '查看会议室使用表现', tone: 'bg-pink-50 text-pink-600' },
     { label: '空闲会议室', value: `${availableCount} 间`, hint: '当前可快速发起预订的会议室数量', tone: 'bg-emerald-50 text-emerald-600' },
@@ -1114,83 +1095,84 @@ export const MeetingRoomPage = () => {
 
   return (
     <div className="relative min-h-screen pb-6">
-      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden">
-        <div className="absolute left-[-10%] top-[-8%] h-[32rem] w-[32rem] rounded-full bg-pink-300/18 blur-[120px]" />
-        <div className="absolute right-[-12%] top-[12%] h-[38rem] w-[38rem] rounded-full bg-rose-200/20 blur-[140px]" />
-        <div className="absolute bottom-[-12%] left-[18%] h-[26rem] w-[26rem] rounded-full bg-amber-100/45 blur-[110px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,252,0.55),rgba(255,255,255,0.8))]" />
-      </div>
+      <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6">
+      <div className="relative z-10 space-y-6 p-6">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-            <div className="relative p-7 sm:p-8">
-              <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_55%)]" />
-              <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
-              <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
+          <WorkspaceHeroCard
+            badge={(
+              <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
+                <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
+                  <Calendar size={14} />
+                  {dateLabel}
+                </span>
+                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
+                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{activeTabTitle}</span>
+              </div>
+            )}
+            title="会议室资源"
+            description={usageSummary}
+            actions={(
+              <div className="flex flex-wrap gap-3">
+                <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => setActiveTab('my-bookings')}>
+                  我的预订
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+                <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={() => setActiveTab('stats')}>
+                  <BarChart3 size={16} className="mr-2 text-pink-500" />
+                  使用统计
+                </Button>
+                {activeTab === 'rooms' && (
+                  <Button variant={manageMode ? 'default' : 'outline'} className="h-12 rounded-2xl px-6" onClick={() => setManageMode(!manageMode)}>
+                    <Settings size={16} className="mr-2" />
+                    {manageMode ? '退出管理' : '管理模式'}
+                  </Button>
+                )}
+              </div>
+            )}
+            contentClassName="p-7 sm:p-8"
+            glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.18),transparent_52%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.16),transparent_42%)]"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/78 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+              <Sparkles size={14} />
+              会议室工作台
+            </div>
 
-              <div className="relative">
-                <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
-                    <Calendar size={14} />
-                    {dateLabel}
-                  </span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{activeTabTitle}</span>
-                </div>
-
-                <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="max-w-2xl">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
-                      <Sparkles size={14} />
-                      会议室工作台
-                    </div>
-                    <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-950 sm:text-[2.85rem]">会议室资源</h1>
-                    <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{usageSummary}</p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => setActiveTab('my-bookings')}>
-                      我的预订
-                      <ArrowRight size={16} className="ml-2" />
-                    </Button>
-                    <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={() => setActiveTab('stats')}>
-                      <BarChart3 size={16} className="mr-2 text-pink-500" />
-                      使用统计
-                    </Button>
-                    {activeTab === 'rooms' && (
-                      <Button variant={manageMode ? 'default' : 'outline'} className="h-12 rounded-2xl px-6" onClick={() => setManageMode(!manageMode)}>
-                        <Settings size={16} className="mr-2" />
-                        {manageMode ? '退出管理' : '管理模式'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">会议室总数</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{rooms.length}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">当前已配置的会议室数量</div>
-                  </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">空闲房间</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{availableCount}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">可立即发起预订的会议室</div>
-                  </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">今日预订</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{todayBookingCount}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">当前已载入的今日预订记录</div>
-                  </div>
-                </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">会议室总数</div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{rooms.length}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">当前已配置的会议室数量</div>
+              </div>
+              <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">空闲房间</div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{availableCount}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">可立即发起预订的会议室</div>
+              </div>
+              <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">今日预订</div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{todayBookingCount}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">当前已载入的今日预订记录</div>
               </div>
             </div>
-          </Card>
+          </WorkspaceHeroCard>
 
-          <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-            <SectionHeader eyebrow="今日焦点" title="今天先看这些" />
-            <div className="mt-5 space-y-3">
+          <WorkspaceSectionCard
+            eyebrow="今日焦点"
+            title="今天先看这些"
+            headerAside={topStatRoom ? (
+              <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                最活跃: {topStatRoom.roomName}
+              </div>
+            ) : (
+              <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                实时概览
+              </div>
+            )}
+            className="rounded-[34px]"
+            bodyClassName="space-y-5"
+          >
+            <div className="space-y-3">
               {focusItems.map(item => (
                 <div key={item.label} className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4">
                   <div className={`rounded-2xl p-3 ${item.tone}`}>
@@ -1207,7 +1189,7 @@ export const MeetingRoomPage = () => {
               ))}
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">使用中</div>
                 <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{inUseCount}</div>
@@ -1221,65 +1203,55 @@ export const MeetingRoomPage = () => {
                 <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{totalCapacity}</div>
               </div>
             </div>
-          </Card>
+          </WorkspaceSectionCard>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {metricCards.map(card => (
-            <div key={card.label}>
-              <Card className={`rounded-[28px] border-white/80 bg-white/78 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)] backdrop-blur-xl ring-1 ${card.ringClass}`}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-medium text-slate-500">{card.label}</div>
-                    <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{card.value}</div>
-                    <div className="mt-2 text-xs leading-5 text-slate-400">{card.desc}</div>
-                  </div>
-                  <div className={`rounded-2xl p-3 ${card.iconClass}`}>{card.icon}</div>
-                </div>
-              </Card>
-            </div>
+            <WorkspaceMetricCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              hint={card.desc}
+              aside={<div className={`rounded-2xl p-3 ${card.iconClass}`}>{card.icon}</div>}
+              toneClassName={`border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] shadow-[0_16px_40px_rgba(15,23,42,0.04)] ring-1 ${card.ringClass}`}
+              className="rounded-[28px] px-5 py-5"
+            />
           ))}
         </div>
 
-        <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="flex flex-col gap-5">
-            <div className="rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <div className="min-w-0">
-                  <SectionHeader eyebrow="会议室工作区" title={activeTabTitle} />
-                  <div className="mt-2 text-sm leading-6 text-slate-500">
-                    {activeTab === 'rooms'
-                      ? '按状态筛选会议室，查看今日预订，并快速发起预订或管理房间。'
-                      : activeTab === 'my-bookings'
-                        ? '集中查看你的会议室预订记录，及时取消尚未开始的安排。'
-                        : '通过预订次数、使用时长和利用率查看会议室使用表现。'}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-                  <div className="inline-flex h-11 items-center rounded-2xl bg-slate-100 p-1">
-                    <button type="button" onClick={() => setActiveTab('rooms')} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === 'rooms' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
-                      <Monitor size={16} className="mr-2" />
-                      会议室列表
-                    </button>
-                    <button type="button" onClick={() => setActiveTab('my-bookings')} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === 'my-bookings' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
-                      <CalendarDays size={16} className="mr-2" />
-                      我的预订
-                    </button>
-                    <button type="button" onClick={() => setActiveTab('stats')} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === 'stats' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
-                      <BarChart3 size={16} className="mr-2" />
-                      使用统计
-                    </button>
-                  </div>
-
-                  {activeTab === 'rooms' && manageMode && (
-                    <Button className="h-11 rounded-2xl bg-emerald-600 px-5 text-white hover:bg-emerald-700" onClick={handleAddRoom}>
-                      <Plus size={16} className="mr-2" />
-                      新增会议室
-                    </Button>
-                  )}
-                </div>
+        <WorkspaceSectionCard
+          eyebrow="会议室工作区"
+          title={activeTabTitle}
+          description={activeTabDescription}
+          headerAside={(
+            <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+              <div className="inline-flex h-11 items-center rounded-2xl bg-slate-100 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                <button type="button" onClick={() => setActiveTab('rooms')} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === 'rooms' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <Monitor size={16} className="mr-2" />
+                  会议室列表
+                </button>
+                <button type="button" onClick={() => setActiveTab('my-bookings')} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === 'my-bookings' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <CalendarDays size={16} className="mr-2" />
+                  我的预订
+                </button>
+                <button type="button" onClick={() => setActiveTab('stats')} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === 'stats' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <BarChart3 size={16} className="mr-2" />
+                  使用统计
+                </button>
               </div>
+
+              {activeTab === 'rooms' && manageMode && (
+                <Button className="h-11 rounded-2xl bg-emerald-600 px-5 text-white hover:bg-emerald-700" onClick={handleAddRoom}>
+                  <Plus size={16} className="mr-2" />
+                  新增会议室
+                </Button>
+              )}
             </div>
+          )}
+          className="rounded-[32px]"
+          bodyClassName="space-y-5"
+        >
 
             {activeTab === 'rooms' && (
               <>
@@ -1559,8 +1531,7 @@ export const MeetingRoomPage = () => {
                 )}
               </div>
             )}
-          </div>
-        </Card>
+        </WorkspaceSectionCard>
       </div>
 
       {/* 预订弹窗 */}
