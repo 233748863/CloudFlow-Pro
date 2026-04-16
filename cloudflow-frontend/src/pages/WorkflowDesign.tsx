@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, GitMerge, Loader2 } from 'lucide-react';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
 import {
@@ -12,13 +13,13 @@ import { getRoleList, getUserList } from '../services/api/auth';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { normalizeWorkflowCategory } from '../utils/workflowCategory';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { EmptyError, EmptyWorkflows, SkeletonForm } from '@/components/ui';
 import { toast } from 'sonner';
 import { logWorkflow } from '../lib/logger';
 import {
   createDefaultWorkflowGraph,
   parseWorkflowGraphDefinition,
 } from '../utils/workflowGraph';
+import { WorkspaceBackdrop, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
 
 type WorkflowDesignContextPayload = {
   forms: FormDefinition[];
@@ -255,6 +256,15 @@ export const WorkflowDesign = () => {
   const lastAutoSavedSignatureRef = useRef<string>('');
   const skipNextUrlSyncRef = useRef(false);
 
+  const renderStatusShell = (panel: React.ReactNode) => (
+    <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-[28px]">
+      <WorkspaceBackdrop />
+      <div className="relative z-10 flex h-full items-center justify-center p-6">
+        <div className="w-full max-w-2xl">{panel}</div>
+      </div>
+    </div>
+  );
+
   const syncWorkflowIdToUrl = useCallback(
     (definitionId: string) => {
       if (!definitionId) return;
@@ -469,31 +479,67 @@ export const WorkflowDesign = () => {
   }
 
   if (loading) {
-    return (
-      <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <SkeletonForm fields={6} />
-      </div>
+    return renderStatusShell(
+      <WorkspaceStatusPanel
+        icon={<Loader2 size={28} className="animate-spin text-pink-500" />}
+        title="正在加载流程设计器..."
+        description="正在准备流程定义、表单列表和审批基础数据，请稍候。"
+        className="py-14"
+      />
     );
   }
 
   if (error) {
-    return (
-      <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
-        <EmptyError onRetry={loadData} />
-      </div>
+    return renderStatusShell(
+      <WorkspaceStatusPanel
+        icon={<AlertTriangle size={28} className="text-amber-500" />}
+        title="流程设计数据加载失败"
+        description={error}
+        actions={(
+          <button
+            type="button"
+            onClick={loadData}
+            className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:brightness-105"
+          >
+            重新加载
+          </button>
+        )}
+        className="py-14"
+      />
     );
   }
 
   if (!workflow) {
-    return (
-      <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
-        <EmptyWorkflows onCreate={loadData} />
-      </div>
+    return renderStatusShell(
+      <WorkspaceStatusPanel
+        icon={<GitMerge size={28} className="text-slate-400" />}
+        title="未找到可编辑流程"
+        description="当前没有加载到流程定义。可以重新尝试，或者直接创建一个新的空白流程。"
+        actions={(
+          <>
+            <button
+              type="button"
+              onClick={loadData}
+              className="rounded-2xl border border-white/85 bg-white/78 px-5 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white"
+            >
+              重新加载
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/workflow/create?mode=blank')}
+              className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:brightness-105"
+            >
+              新建流程
+            </button>
+          </>
+        )}
+        className="py-14"
+      />
     );
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-140px)] overflow-hidden rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.86))] shadow-[0_20px_52px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.76)] backdrop-blur-xl">
       <WorkflowBuilder
         workflow={workflow}
         onChange={handleWorkflowChange}
