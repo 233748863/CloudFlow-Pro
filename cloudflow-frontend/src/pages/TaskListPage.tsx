@@ -8,10 +8,12 @@ import { getWorkTasks, updateWorkTaskStatus } from '../services/api/workTask';
 import { useAuth } from '../context/AuthContext';
 import { mapBackendTaskToFrontend, mapBackendInstanceToTask, mapTaskToUnified, mapWorkTaskToUnified } from '../utils/mappers';
 import { LayoutList, Kanban, RefreshCw, Search, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
-import { Button, Input, DatePicker, EmptyError, EmptyTasks, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SkeletonCard } from '@/components/ui';
+import { Button, Input, DatePicker, EmptyTasks, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { toast } from 'sonner';
 import { usePolling } from '../hooks/usePolling';
 import { logTask } from '../lib/logger';
+import { WorkspaceBackdrop, WorkspaceStatusPage } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 
 // 每页条数
 const PAGE_SIZE = 12;
@@ -436,111 +438,219 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
 
   // 分页计算
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const now = new Date();
+  const todayLabel = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }).format(now);
+  const timeLabel = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  const headerTitle = type === 'pending' ? '任务中心' : '我的申请';
+  const currentViewLabel = type === 'pending' ? (viewMode === 'list' ? '列表视图' : '看板视图') : '申请列表';
+  const currentTypeLabel = filterType === 'process' ? '流程审批' : filterType === 'work' ? '协作待办' : '全部任务';
+  const currentStatusLabel = statusFilter === 'RUNNING'
+    ? '进行中'
+    : statusFilter === 'COMPLETED'
+      ? '已完成'
+      : statusFilter === 'REJECTED'
+        ? '已拒绝'
+        : statusFilter === 'REVOKED'
+          ? '已撤回'
+          : '全部状态';
+  const currentPendingProcessLabel = todoProcessDefOptions.find((item) => item.key === todoProcessDefKey)?.name || '全部流程';
+  const currentApplicationProcessLabel = processDefOptions.find((item) => item.key === processDefKey)?.name || '全部流程';
+  const visibleProcessCount = type === 'applications' ? rawTasks.length : (filterType === 'work' ? 0 : rawTasks.length);
+  const visibleWorkCount = type === 'pending' && filterType !== 'process'
+    ? filteredUnifiedTasks.filter((task) => task.type === 'WORK').length
+    : 0;
+  const visibleTotalCount = type === 'applications' ? rawTasks.length : visibleProcessCount + visibleWorkCount;
+  const pendingProcessCount = rawTasks.filter((task) => task.status === TaskStatus.PENDING).length;
+  const completedProcessCount = rawTasks.filter((task) => task.status === TaskStatus.APPROVED).length;
+  const rejectedProcessCount = rawTasks.filter((task) => task.status === TaskStatus.REJECTED).length;
+  const heroDescription = type === 'pending'
+    ? `当前视图共展示 ${visibleTotalCount} 条任务内容，其中流程审批 ${visibleProcessCount} 条、协作待办 ${visibleWorkCount} 条。`
+    : `当前页展示 ${rawTasks.length} 条申请记录，总计 ${total} 条，可按状态、流程和时间范围筛选。`;
+  const metricCards = type === 'pending'
+    ? [
+        {
+          label: '当前视图任务',
+          value: visibleTotalCount,
+          hint: '已纳入当前页面视图的全部任务',
+          toneClass: 'bg-pink-50 text-pink-600',
+          icon: <LayoutList size={18} />,
+        },
+        {
+          label: '流程审批',
+          value: rawTasks.length,
+          hint: '待处理的流程任务数量',
+          toneClass: 'bg-amber-50 text-amber-600',
+          icon: <Calendar size={18} />,
+        },
+        {
+          label: '协作待办',
+          value: filteredUnifiedTasks.filter((task) => task.type === 'WORK').length,
+          hint: '来自工作协作的待办条目',
+          toneClass: 'bg-emerald-50 text-emerald-600',
+          icon: <Kanban size={18} />,
+        },
+        {
+          label: '当前模式',
+          value: currentViewLabel,
+          hint: viewMode === 'board' ? '支持拖拽更新协作待办状态' : '适合顺序处理与快速阅读',
+          toneClass: 'bg-slate-100 text-slate-600',
+          icon: <RefreshCw size={18} />,
+        },
+      ]
+    : [
+        {
+          label: '申请总量',
+          value: total,
+          hint: '符合当前查询条件的全部申请',
+          toneClass: 'bg-pink-50 text-pink-600',
+          icon: <LayoutList size={18} />,
+        },
+        {
+          label: '当前页',
+          value: rawTasks.length,
+          hint: '当前分页已经加载的申请数',
+          toneClass: 'bg-amber-50 text-amber-600',
+          icon: <Calendar size={18} />,
+        },
+        {
+          label: '进行中',
+          value: pendingProcessCount,
+          hint: '仍在审批链路中的申请',
+          toneClass: 'bg-emerald-50 text-emerald-600',
+          icon: <RefreshCw size={18} />,
+        },
+        {
+          label: '已完成/拒绝',
+          value: completedProcessCount + rejectedProcessCount,
+          hint: '当前页已结束的处理结果',
+          toneClass: 'bg-slate-100 text-slate-600',
+          icon: <X size={18} />,
+        },
+      ];
 
   if (!user) return null;
 
   // Loading 状态
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-slate-800">{type === 'pending' ? '任务中心' : '我的申请'}</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      </div>
+      <WorkspaceStatusPage
+        icon={<LayoutList size={28} />}
+        title={`正在加载${headerTitle}...`}
+        description="正在同步当前用户可见的任务与申请记录，请稍候。"
+        actions={(
+          <Button variant="outline" className="rounded-2xl" onClick={handleRefresh}>
+            <RefreshCw size={16} className="mr-2" />
+            刷新状态
+          </Button>
+        )}
+        panelClassName="py-14"
+      />
     );
   }
 
   // Error 状态
   if (error) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-slate-800">{type === 'pending' ? '任务中心' : '我的申请'}</h2>
-        </div>
-        <EmptyError onRetry={() => fetchTasks()} />
-      </div>
+      <WorkspaceStatusPage
+        icon={<LayoutList size={28} />}
+        title={`${headerTitle}加载失败`}
+        description={error}
+        actions={(
+          <Button className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600" onClick={() => fetchTasks()}>
+            重试加载
+          </Button>
+        )}
+        panelClassName="py-14"
+      />
     );
   }
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
-        {/* 标题栏 */}
-        <div className="flex justify-between items-center shrink-0">
-            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-4">
-                {type === 'pending' ? '任务中心' : '我的申请'}
-                
-                {type === 'pending' && (
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
-                        <button 
-                            onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-pink-500' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            <LayoutList size={18} />
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('board')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'board' ? 'bg-white shadow text-pink-500' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            <Kanban size={18} />
-                        </button>
+    <div className="relative min-h-screen pb-6">
+        <WorkspaceBackdrop />
+
+        <div className="relative z-10 space-y-6 p-6">
+            <WorkspaceHeroCard
+                badge={(
+                    <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
+                            <Calendar size={14} />
+                            {todayLabel}
+                        </span>
+                        <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
+                        <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{currentViewLabel}</span>
                     </div>
                 )}
-            </h2>
-
-            <div className="flex gap-2 items-center">
-                {/* 任务中心的类型筛选 */}
-                {type === 'pending' && (
-                    <Select value={filterType} onValueChange={v => setFilterType(v as 'all' | 'process' | 'work')}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部任务</SelectItem>
-                      <SelectItem value="process">流程审批</SelectItem>
-                      <SelectItem value="work">协作待办</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-
-                {/* "我的申请"搜索框 */}
-                {type === 'applications' && (
-                    <div className="relative">
-                        <Input
-                            type="text"
-                            placeholder="搜索标题/编号..."
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            onKeyDown={handleSearchKeyDown}
-                            className="pl-9 pr-12 w-56"
-                        />
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        {searchInput && searchInput !== keyword && (
-                            <button
-                                onClick={handleSearch}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600 font-medium"
-                            >
-                                搜索
-                            </button>
-                        )}
+                title={headerTitle}
+                description={heroDescription}
+                actions={(
+                    <div className="flex flex-wrap gap-3">
+                        {type === 'pending' ? (
+                            <div className="inline-flex h-12 items-center rounded-2xl bg-white/82 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+                                <button type="button" onClick={() => setViewMode('list')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${viewMode === 'list' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
+                                    <LayoutList size={16} className="mr-2 inline" />
+                                    列表
+                                </button>
+                                <button type="button" onClick={() => setViewMode('board')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${viewMode === 'board' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
+                                    <Kanban size={16} className="mr-2 inline" />
+                                    看板
+                                </button>
+                            </div>
+                        ) : null}
+                        <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="h-12 rounded-2xl bg-white/85 px-6">
+                            <RefreshCw size={16} className={`mr-2 text-pink-500 ${refreshing ? 'animate-spin' : ''}`} />
+                            刷新
+                        </Button>
                     </div>
                 )}
+                contentClassName="p-7 sm:p-8"
+                glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.18),transparent_52%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.16),transparent_42%)]"
+            >
+                <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前视图</div>
+                        <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{currentViewLabel}</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">{type === 'pending' ? currentTypeLabel : currentStatusLabel}</div>
+                    </div>
+                    <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{type === 'pending' ? '流程范围' : '流程筛选'}</div>
+                        <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{type === 'pending' ? currentPendingProcessLabel : currentApplicationProcessLabel}</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">{type === 'pending' ? '支持按流程和申请人过滤' : '支持按流程和优先级过滤'}</div>
+                    </div>
+                    <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{type === 'pending' ? '当前任务' : '当前分页'}</div>
+                        <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{type === 'pending' ? visibleTotalCount : `${pageNum}/${totalPages}`}</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">{type === 'pending' ? '当前过滤条件下可见任务数' : `当前页 ${rawTasks.length} 条，共 ${total} 条`}</div>
+                    </div>
+                </div>
+            </WorkspaceHeroCard>
 
-                <Button 
-                    variant="outline"
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    className="gap-1"
-                >
-                    <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-                    刷新
-                </Button>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {metricCards.map((card) => (
+                    <WorkspaceMetricCard
+                        key={card.label}
+                        label={card.label}
+                        value={card.value}
+                        hint={card.hint}
+                        aside={<div className={`rounded-2xl p-3 ${card.toneClass}`}>{card.icon}</div>}
+                        toneClassName="border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] shadow-[0_16px_40px_rgba(15,23,42,0.04)]"
+                        className="rounded-[28px] px-5 py-5"
+                    />
+                ))}
             </div>
-        </div>
+
+            <WorkspaceSectionCard
+                eyebrow={type === 'pending' ? '任务工作区' : '申请工作区'}
+                title={type === 'pending' ? '待处理内容' : '申请记录'}
+                description={type === 'pending' ? '在统一工作区内切换列表或看板，继续处理流程审批与协作待办。' : '按状态、流程与时间筛选申请记录，并查看分页结果。'}
+                headerAside={(
+                    <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                        {type === 'pending' ? currentTypeLabel : `第 ${pageNum} / ${totalPages} 页`}
+                    </div>
+                )}
+                className="rounded-[32px]"
+                bodyClassName="space-y-5"
+            >
         
         {/* 任务中心筛选区域 */}
         {type === 'pending' && (
@@ -826,15 +936,18 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
             </div>
         )}
 
-        <TaskHandleModal 
-            isOpen={isModalOpen} 
-            task={selectedTask} 
-            availableForms={savedForms}
-            currentUser={user}
-            onClose={() => setIsModalOpen(false)}
-            onComplete={handleTaskUpdate}
-            viewOnly={type === 'applications'}
-        />
+            </WorkspaceSectionCard>
+
+            <TaskHandleModal 
+                isOpen={isModalOpen} 
+                task={selectedTask} 
+                availableForms={savedForms}
+                currentUser={user}
+                onClose={() => setIsModalOpen(false)}
+                onComplete={handleTaskUpdate}
+                viewOnly={type === 'applications'}
+            />
+        </div>
     </div>
   );
 };

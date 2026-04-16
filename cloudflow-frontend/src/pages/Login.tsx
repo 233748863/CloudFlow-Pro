@@ -9,23 +9,23 @@ import { login as apiLogin } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 
 const loginStats = [
-  { label: '流程中心', value: '审批 + 申请', hint: '发起流程、待办审批、我的申请' },
-  { label: '协同办公', value: '日程 + 公告', hint: '会议室、通讯录等能力已接入' },
-  { label: 'HR 业务', value: '招聘 + 转正', hint: '登录后可进入 HR 工作台' },
+  { label: '入口定位', value: '统一工作台', hint: '登录后进入待办、审批和通知中心' },
+  { label: '认证方式', value: '账号密码', hint: '使用已开通的系统账号访问当前工作台' },
+  { label: '安全校验', value: '滑块验证', hint: '提交前完成人机校验，降低异常登录风险' },
 ];
 
 const loginHighlights = [
   {
-    title: '继续处理日常协同',
-    description: '登录后可以继续处理审批、日程、公告、会议室等日常办公事项。',
-    icon: Workflow,
-    tone: 'pink' as const,
+    title: '登录后按权限加载菜单',
+    description: '系统会根据当前账号自动加载可访问模块和数据范围。',
+    icon: Layers3,
+    tone: 'slate' as const,
   },
   {
-    title: '回到统一工作台',
-    description: '流程中心、OA 办公和 HR 页面已经在同一套桌面端里联动。',
-    icon: Layers3,
-    tone: 'rose' as const,
+    title: '继续日常办公处理',
+    description: '进入后可继续处理流程、公告、日程和 HR 相关事项。',
+    icon: Workflow,
+    tone: 'pink' as const,
   },
 ];
 
@@ -79,25 +79,25 @@ export const Login = () => {
   return (
     <>
       <AuthExperienceShell
-        formBadge="协同办公入口"
-        formTitle="回到你的协同工作台"
-        formDescription="继续处理审批、日程、公告、会议室与 HR 业务。"
-        heroEyebrow="协同办公 / 统一入口"
-        heroTitle="登录后继续你的审批、日程与协同工作。"
-        heroDescription="CloudFlow Pro 已整合流程中心、OA 办公和 HR 桌面端，适合作为团队日常工作的统一入口。"
+        formBadge="账号登录"
+        formTitle="登录 CloudFlow Pro"
+        formDescription="输入系统账号和密码后进入工作台。"
+        heroEyebrow="Workspace Access / 办公入口"
+        heroTitle="统一办公系统登录入口"
+        heroDescription="这里用于进入 CloudFlow Pro 工作台，不承担产品介绍，只保留访问系统需要的关键信息。"
         heroStats={loginStats}
         heroPoints={loginHighlights}
-        heroFootnote="当前登录链路已接入 JWT、Redis 会话和自研滑块验证码。"
+        heroFootnote="当前登录链路已启用账号密码、滑块验证码与会话校验。"
         formAside={{
-          label: '当前版本',
-          value: 'v2.0 生产就绪',
-          hint: '登录后进入统一工作台',
+          label: '系统状态',
+          value: '生产环境入口',
+          hint: '登录成功后进入统一工作台',
         }}
         footer={
           <div className="flex items-center text-sm">
             <div className="text-slate-500">
               还没有账号？
-              <Link to="/register" className="ml-2 font-semibold text-pink-600 transition-colors hover:text-pink-700">
+              <Link to="/register" className="ml-2 font-semibold text-slate-900 transition-colors hover:text-pink-600">
                 去创建账户
               </Link>
             </div>
@@ -105,8 +105,8 @@ export const Login = () => {
         }
       >
         <form onSubmit={handleLoginClick} className="space-y-4">
-          <div className="flex items-center gap-2 rounded-[20px] border border-pink-100 bg-pink-50/75 px-4 py-3 text-xs leading-5 text-slate-600">
-            <ShieldCheck size={14} className="shrink-0 text-pink-500" />
+          <div className="flex items-center gap-2 rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+            <ShieldCheck size={14} className="shrink-0 text-slate-700" />
             登录前将触发滑块验证码，验证通过后再提交账号密码。
           </div>
 
@@ -122,8 +122,8 @@ export const Login = () => {
                 value={username}
                 onChange={event => setUsername(event.target.value)}
                 autoComplete="username"
-                className="h-12 rounded-[22px] border-slate-200 bg-white/90 pl-12 pr-4 text-base shadow-sm transition-all duration-300 focus:border-pink-200 focus:bg-white focus:ring-4 focus:ring-pink-500/10"
-                placeholder="请输入用户名，例如：admin"
+                className="h-12 rounded-[18px] border-slate-200 bg-white pl-12 pr-4 text-base shadow-sm transition-all duration-300 focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-950/5"
+                placeholder="请输入用户名"
                 required
               />
             </div>
@@ -141,14 +141,14 @@ export const Login = () => {
                 value={password}
                 onChange={event => setPassword(event.target.value)}
                 autoComplete="current-password"
-                className="h-12 rounded-[22px] border-slate-200 bg-white/90 pl-12 pr-12 text-base shadow-sm transition-all duration-300 focus:border-pink-200 focus:bg-white focus:ring-4 focus:ring-pink-500/10"
+                className="h-12 rounded-[18px] border-slate-200 bg-white pl-12 pr-12 text-base shadow-sm transition-all duration-300 focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-950/5"
                 placeholder="请输入登录密码"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(prev => !prev)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-pink-500"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700"
                 aria-label={showPassword ? '隐藏密码' : '显示密码'}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -157,7 +157,7 @@ export const Login = () => {
           </div>
 
           {error && (
-            <div className="flex items-start gap-3 rounded-[24px] border border-red-100 bg-red-50/90 px-4 py-3 text-sm text-red-600">
+            <div className="flex items-start gap-3 rounded-[20px] border border-red-100 bg-red-50/90 px-4 py-3 text-sm text-red-600">
               <ShieldCheck size={16} className="mt-0.5 shrink-0" />
               <span className="leading-6">{error}</span>
             </div>
@@ -166,7 +166,7 @@ export const Login = () => {
           <Button
             type="submit"
             disabled={loading}
-            className="h-12 w-full rounded-[22px] bg-gradient-to-r from-pink-500 via-pink-500 to-rose-500 text-base font-semibold text-white shadow-[0_18px_36px_rgba(236,72,153,0.28)] transition-all duration-300 hover:translate-y-[-1px] hover:from-pink-600 hover:to-rose-600"
+            className="h-12 w-full rounded-[18px] bg-[linear-gradient(135deg,#0f172a,#334155)] text-base font-semibold text-white shadow-[0_18px_36px_rgba(15,23,42,0.2)] transition-all duration-300 hover:translate-y-[-1px] hover:bg-[linear-gradient(135deg,#111827,#1f2937)]"
           >
             {loading ? (
               <span className="inline-flex items-center gap-2">
