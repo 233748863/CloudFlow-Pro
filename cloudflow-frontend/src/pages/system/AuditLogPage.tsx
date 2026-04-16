@@ -1,110 +1,98 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, RotateCcw, Trash2, Eye, RefreshCw, ArrowLeftRight } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowLeftRight, Eye, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  getAuditLogPage, getAuditLogDetail, deleteAuditLogs,
-  SysAuditLog, AuditLogQuery
+  getAuditLogPage,
+  getAuditLogDetail,
+  deleteAuditLogs,
+  SysAuditLog,
+  AuditLogQuery,
 } from '@/services/api/log';
-import { DatePicker, TableActionHead, TableHead, TableHeader } from '@/components/ui';
+import { DatePicker, TableActionHead, TableHead, TableHeader, Button, Card, Input } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceDialogShell,
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspacePaginationBar,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
 
-/**
- * 审计日志页面
- * 
- * 功能：条件筛选、分页表格、变更对比详情弹窗、批量删除
- * 展示数据变更的前后值对比
- */
+const formatDateCN = (date: Date) => {
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+};
 
-// ==================== 变更对比详情弹窗 ====================
 const AuditDetailModal: React.FC<{ log: SysAuditLog | null; onClose: () => void }> = ({ log, onClose }) => {
   if (!log) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* 标题 */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-slate-800">审计详情</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
-        </div>
-
-        {/* 基本信息 */}
-        <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-          <div>
-            <span className="text-slate-500">业务名称：</span>
-            <span className="text-slate-800 font-medium">{log.auditName || '-'}</span>
+    <WorkspaceDialogShell
+      title="审计详情"
+      description="查看业务字段在本次操作中的变更前后值与操作人信息。"
+      onClose={onClose}
+      maxWidthClassName="max-w-5xl"
+    >
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+            <div className="text-xs text-slate-400">业务名称</div>
+            <div className="mt-2 text-sm font-medium text-slate-900">{log.auditName || '-'}</div>
           </div>
-          <div>
-            <span className="text-slate-500">变更字段：</span>
-            <span className="text-pink-500 font-medium">{log.auditField || '-'}</span>
+          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+            <div className="text-xs text-slate-400">变更字段</div>
+            <div className="mt-2 text-sm font-medium text-pink-600">{log.auditField || '-'}</div>
           </div>
-          <div>
-            <span className="text-slate-500">操作人：</span>
-            <span className="text-slate-800">{log.createBy || '-'}</span>
+          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+            <div className="text-xs text-slate-400">操作人</div>
+            <div className="mt-2 text-sm font-medium text-slate-900">{log.createBy || '-'}</div>
           </div>
-          <div>
-            <span className="text-slate-500">操作时间：</span>
-            <span className="text-slate-800">{log.createTime || '-'}</span>
+          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+            <div className="text-xs text-slate-400">操作时间</div>
+            <div className="mt-2 text-sm font-medium text-slate-900">{log.createTime || '-'}</div>
           </div>
         </div>
 
-        {/* 变更前后对比 */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-[1fr_40px_1fr]">
-            {/* 变更前 */}
-            <div className="bg-red-50/50">
-              <div className="px-4 py-2 bg-red-100/60 text-red-700 text-xs font-semibold border-b border-red-200/50">
-                变更前
-              </div>
-              <div className="p-4 text-sm text-slate-700 break-all min-h-[80px] font-mono">
-                {log.beforeVal || <span className="text-slate-400 italic">（空）</span>}
+        <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] shadow-[0_14px_28px_rgba(15,23,42,0.05)]">
+          <div className="grid grid-cols-[1fr_56px_1fr]">
+            <div className="bg-rose-50/70">
+              <div className="border-b border-rose-100/70 px-4 py-3 text-xs font-semibold text-rose-600">变更前</div>
+              <div className="min-h-[120px] p-4 text-sm leading-7 text-slate-700">
+                {log.beforeVal || <span className="italic text-slate-400">（空）</span>}
               </div>
             </div>
 
-            {/* 箭头 */}
-            <div className="flex items-center justify-center bg-slate-50 border-x border-slate-200">
-              <ArrowLeftRight size={16} className="text-slate-400" />
+            <div className="flex items-center justify-center border-x border-white/70 bg-white/72">
+              <ArrowLeftRight size={18} className="text-slate-400" />
             </div>
 
-            {/* 变更后 */}
-            <div className="bg-emerald-50/50">
-              <div className="px-4 py-2 bg-emerald-100/60 text-emerald-700 text-xs font-semibold border-b border-emerald-200/50">
-                变更后
-              </div>
-              <div className="p-4 text-sm text-slate-700 break-all min-h-[80px] font-mono">
-                {log.afterVal || <span className="text-slate-400 italic">（空）</span>}
+            <div className="bg-emerald-50/70">
+              <div className="border-b border-emerald-100/70 px-4 py-3 text-xs font-semibold text-emerald-600">变更后</div>
+              <div className="min-h-[120px] p-4 text-sm leading-7 text-slate-700">
+                {log.afterVal || <span className="italic text-slate-400">（空）</span>}
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </WorkspaceDialogShell>
   );
 };
 
-// ==================== 主页面 ====================
 export const AuditLogPage: React.FC = () => {
-  // 查询参数
   const [query, setQuery] = useState<AuditLogQuery>({ pageNum: 1, pageSize: 10 });
   const [auditName, setAuditName] = useState('');
   const [createBy, setCreateBy] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-
-  // 数据状态
   const [records, setRecords] = useState<SysAuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-
-  // 选中和详情
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [detailLog, setDetailLog] = useState<SysAuditLog | null>(null);
 
-  // 加载列表
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -113,24 +101,25 @@ export const AuditLogPage: React.FC = () => {
       if (createBy) params.createBy = createBy;
       if (startTime) params.startTime = startTime;
       if (endTime) params.endTime = endTime;
-      const res = await getAuditLogPage(params);
-      setRecords(res.records || []);
-      setTotal(res.total || 0);
+      const response = await getAuditLogPage(params);
+      setRecords(response.records || []);
+      setTotal(response.total || 0);
+      setSelectedIds([]);
     } catch {
-      // API 层已处理错误提示
+      // API 层已做统一提示
     } finally {
       setLoading(false);
     }
   }, [query, auditName, createBy, startTime, endTime]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
-  // 查询
   const handleSearch = () => {
-    setQuery(prev => ({ ...prev, pageNum: 1 }));
+    setQuery((prev) => ({ ...prev, pageNum: 1 }));
   };
 
-  // 重置
   const handleReset = () => {
     setAuditName('');
     setCreateBy('');
@@ -139,262 +128,265 @@ export const AuditLogPage: React.FC = () => {
     setQuery({ pageNum: 1, pageSize: 10 });
   };
 
-  // 批量删除
   const handleBatchDelete = async () => {
     if (!selectedIds.length) {
       toast.warning('请选择要删除的审计日志');
       return;
     }
-    if (!confirm(`确定删除选中的 ${selectedIds.length} 条审计日志？`)) return;
+    if (!window.confirm(`确定删除选中的 ${selectedIds.length} 条审计日志吗？`)) {
+      return;
+    }
     try {
       await deleteAuditLogs(selectedIds);
       toast.success('删除成功');
-      setSelectedIds([]);
-      loadData();
+      await loadData();
     } catch {
-      // API 层已处理
+      // API 层已做统一提示
     }
   };
 
-  // 查看详情
   const handleViewDetail = async (id: number) => {
     try {
       const log = await getAuditLogDetail(id);
       setDetailLog(log);
     } catch {
-      // API 层已处理
+      // API 层已做统一提示
     }
   };
 
-  // 单条删除
   const handleDelete = async (id: number) => {
-    if (!confirm('确定删除该条审计日志？')) return;
+    if (!window.confirm('确定删除该条审计日志吗？')) {
+      return;
+    }
     try {
       await deleteAuditLogs([id]);
       toast.success('删除成功');
-      loadData();
+      await loadData();
     } catch {
-      // API 层已处理
+      // API 层已做统一提示
     }
   };
 
-  // 全选/取消全选
-  const allSelected = records.length > 0 && records.every(r => selectedIds.includes(r.auditId));
+  const allSelected = records.length > 0 && records.every((item) => selectedIds.includes(item.auditId));
   const toggleAll = () => {
     if (allSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(records.map(r => r.auditId));
+      setSelectedIds(records.map((item) => item.auditId));
     }
   };
   const toggleOne = (id: number) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
-  // 分页
-  const totalPages = Math.ceil(total / (query.pageSize || 10));
-  const goPage = (p: number) => {
-    if (p < 1 || p > totalPages) return;
-    setQuery(prev => ({ ...prev, pageNum: p }));
-  };
+  const totalPages = Math.max(1, Math.ceil(total / (query.pageSize || 10)));
+  const currentPage = query.pageNum || 1;
+  const changedFieldCount = new Set(records.map((item) => item.auditField).filter(Boolean)).size;
+  const creatorCount = new Set(records.map((item) => item.createBy).filter(Boolean)).size;
+  const hasActiveFilters = Boolean(auditName || createBy || startTime || endTime);
+  const todayLabel = formatDateCN(new Date());
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+  const overviewItems = [
+    { label: '当前结果', value: `${records.length} 条` },
+    { label: '变更字段', value: `${changedFieldCount} 个` },
+    { label: '操作人', value: `${creatorCount} 人` },
+    { label: '已勾选', value: `${selectedIds.length} 条` },
+  ];
 
   return (
-    <div className="space-y-4">
-      {/* 筛选栏 */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="text-sm text-slate-600">业务名称</label>
-          <input
-            type="text"
-            value={auditName}
-            onChange={e => setAuditName(e.target.value)}
-            placeholder="请输入业务名称"
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-40 focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
-          />
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
 
-          <label className="text-sm text-slate-600">操作人</label>
-          <input
-            type="text"
-            value={createBy}
-            onChange={e => setCreateBy(e.target.value)}
-            placeholder="请输入操作人"
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-32 focus:ring-2 focus:ring-pink-100 focus:border-pink-300 outline-none"
-          />
-
-          <label className="text-sm text-slate-600">操作时间</label>
-          <DatePicker
-            type="date"
-            value={startTime}
-            onChange={e => setStartTime(e.target.value)}
-          />
-          <span className="text-slate-400">至</span>
-          <DatePicker
-            type="date"
-            value={endTime}
-            onChange={e => setEndTime(e.target.value)}
-          />
-
-          <button
-            onClick={handleSearch}
-            className="flex items-center gap-1.5 bg-pink-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-pink-600 transition"
-          >
-            <Search size={14} /> 查询
-          </button>
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 border border-slate-300 text-slate-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
-          >
-            <RotateCcw size={14} /> 重置
-          </button>
-        </div>
-      </div>
-
-      {/* 操作栏 + 表格 */}
-      <div className="bg-white rounded-xl border border-slate-200">
-        {/* 操作栏 */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100">
-          <button
-            onClick={handleBatchDelete}
-            className="flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-100 transition"
-          >
-            <Trash2 size={14} /> 删除
-          </button>
-          <div className="flex items-center gap-2">
-            <button onClick={loadData} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition">
-              <RefreshCw size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* 表格 */}
-        <div className="overflow-x-auto">
-          {/* 预留最小表格宽度，避免操作列被其它字段继续压缩。 */}
-          <table className="min-w-[1120px] w-full text-sm">
-            <TableHeader>
-              <tr>
-                <TableHead className="px-4 py-3 w-10">
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
-                </TableHead>
-                <TableHead className="px-4 py-3 w-14">#</TableHead>
-                <TableHead className="px-4 py-3">业务名称</TableHead>
-                <TableHead className="px-4 py-3">变更字段</TableHead>
-                <TableHead className="px-4 py-3">变更前</TableHead>
-                <TableHead className="px-4 py-3">变更后</TableHead>
-                <TableHead className="px-4 py-3 w-28">操作人</TableHead>
-                <TableHead className="px-4 py-3 w-44">操作时间</TableHead>
-                <TableActionHead className="px-4 py-3 w-44">操作</TableActionHead>
-              </tr>
-            </TableHeader>
-            <tbody>
-              {loading ? (
-                <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载审计日志..." />
-              ) : records.length === 0 ? (
-                <WorkspaceTableStateRow colSpan={9} title="暂无审计日志" />
-              ) : (
-                records.map((log, idx) => (
-                  <tr key={log.auditId} className="border-t border-slate-50 hover:bg-slate-50/50 transition">
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(log.auditId)}
-                        onChange={() => toggleOne(log.auditId)}
-                        className="rounded"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-slate-400">
-                      {((query.pageNum || 1) - 1) * (query.pageSize || 10) + idx + 1}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 font-medium">{log.auditName || '-'}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded bg-pink-50 text-pink-500 text-xs font-medium">
-                        {log.auditField || '-'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-red-500 max-w-[150px] truncate text-xs font-mono">
-                      {log.beforeVal || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-emerald-600 max-w-[150px] truncate text-xs font-mono">
-                      {log.afterVal || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{log.createBy || '-'}</td>
-                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{log.createTime || '-'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <TableRowActions
-                        align="end"
-                        wrap={false}
-                        className="whitespace-nowrap"
-                        actions={[
-                          {
-                            label: '详情',
-                            icon: <Eye size={14} />,
-                            onClick: () => handleViewDetail(log.auditId),
-                            tone: 'info',
-                          },
-                          {
-                            label: '删除',
-                            icon: <Trash2 size={14} />,
-                            onClick: () => handleDelete(log.auditId),
-                            tone: 'danger',
-                          },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 分页 */}
-        {total > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-sm text-slate-500">
-            <span>共 {total} 条</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => goPage((query.pageNum || 1) - 1)}
-                disabled={(query.pageNum || 1) <= 1}
-                className="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                上一页
-              </button>
-              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                let p: number;
-                if (totalPages <= 7) {
-                  p = i + 1;
-                } else {
-                  const current = query.pageNum || 1;
-                  const start = Math.max(1, Math.min(current - 3, totalPages - 6));
-                  p = start + i;
-                }
-                return (
-                  <button
-                    key={p}
-                    onClick={() => goPage(p)}
-                    className={`w-8 h-8 rounded text-sm ${
-                      p === (query.pageNum || 1)
-                        ? 'bg-pink-500 text-white'
-                        : 'hover:bg-slate-100'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => goPage((query.pageNum || 1) + 1)}
-                disabled={(query.pageNum || 1) >= totalPages}
-                className="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                下一页
-              </button>
+      <div className="relative z-10 space-y-3">
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <ArrowLeftRight size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
             </div>
+          )}
+          title="审计日志"
+          description="审计页的核心是变更前后对比，所以这次统一的重点是让筛选、列表和对比详情保持同一套层级关系。"
+          actions={(
+            <Button variant="outline" onClick={() => { void loadData(); }}>
+              <RefreshCw size={15} />
+              刷新列表
+            </Button>
+          )}
+          contentClassName="p-4 sm:p-5"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="总记录数"
+              value={total}
+              hint="当前筛选条件下的分页总量"
+              aside={<ShieldCheck size={18} className="text-pink-500" />}
+            />
+            <WorkspaceMetricCard
+              label="当前页"
+              value={records.length}
+              hint="当前分页下已加载的审计记录"
+              aside={<Search size={18} className="text-sky-500" />}
+            />
+            <WorkspaceMetricCard
+              label="字段种类"
+              value={changedFieldCount}
+              hint="当前页内涉及的不同变更字段数"
+              aside={<ArrowLeftRight size={18} className="text-emerald-500" />}
+            />
+            <WorkspaceMetricCard
+              label="操作人"
+              value={creatorCount}
+              hint="当前页内参与操作的人数"
+              aside={<Eye size={18} className="text-amber-500" />}
+            />
           </div>
-        )}
-      </div>
+        </WorkspaceHeroCard>
 
-      {/* 详情弹窗 */}
-      <AuditDetailModal log={detailLog} onClose={() => setDetailLog(null)} />
+        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-3">
+            <WorkspaceWorkbenchCard
+              title="审计筛选"
+              total={total}
+              hasActiveFilters={hasActiveFilters}
+              overviewItems={overviewItems}
+              quickFilterAside={hasActiveFilters ? (
+                <Button variant="outline" size="sm" onClick={handleReset}>
+                  <RotateCcw size={14} />
+                  重置条件
+                </Button>
+              ) : (
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  当前显示默认视图
+                </span>
+              )}
+              filterBar={(
+                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px_220px_auto]">
+                  <Input
+                    value={auditName}
+                    onChange={(event) => setAuditName(event.target.value)}
+                    placeholder="按业务名称搜索"
+                  />
+                  <Input
+                    value={createBy}
+                    onChange={(event) => setCreateBy(event.target.value)}
+                    placeholder="按操作人搜索"
+                  />
+                  <DatePicker variant="glass" type="date" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  <DatePicker variant="glass" type="date" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  <Button type="button" onClick={handleSearch}>
+                    <Search size={15} />
+                    查询审计
+                  </Button>
+                </div>
+              )}
+            />
+
+            <WorkspaceResultCard
+              total={total}
+              description="业务名称、变更字段、前后值和操作记录统一收纳到同一工作台表格里。"
+              footer={(
+                <WorkspacePaginationBar
+                  total={total}
+                  pageNum={currentPage}
+                  totalPages={totalPages}
+                  onPrev={() => setQuery((prev) => ({ ...prev, pageNum: Math.max(1, (prev.pageNum || 1) - 1) }))}
+                  onNext={() => setQuery((prev) => ({ ...prev, pageNum: Math.min(totalPages, (prev.pageNum || 1) + 1) }))}
+                  prevDisabled={currentPage <= 1}
+                  nextDisabled={currentPage >= totalPages}
+                />
+              )}
+            >
+              <div className="border-b border-white/70 px-4 py-3">
+                <Button variant="destructive" size="sm" onClick={() => void handleBatchDelete()}>
+                  <Trash2 size={14} />
+                  删除选中
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-[1120px] w-full text-sm">
+                  <TableHeader>
+                    <tr>
+                      <TableHead className="w-10">
+                        <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
+                      </TableHead>
+                      <TableHead className="w-14">#</TableHead>
+                      <TableHead>业务名称</TableHead>
+                      <TableHead>变更字段</TableHead>
+                      <TableHead>变更前</TableHead>
+                      <TableHead>变更后</TableHead>
+                      <TableHead className="w-28">操作人</TableHead>
+                      <TableHead className="w-44">操作时间</TableHead>
+                      <TableActionHead className="w-44">操作</TableActionHead>
+                    </tr>
+                  </TableHeader>
+                  <tbody>
+                    {loading ? (
+                      <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载审计日志..." />
+                    ) : records.length === 0 ? (
+                      <WorkspaceTableStateRow colSpan={9} title="暂无审计日志" description="可以调整筛选条件，或等待新的业务字段变更写入日志。" />
+                    ) : (
+                      records.map((log, idx) => (
+                        <tr key={log.auditId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(log.auditId)}
+                              onChange={() => toggleOne(log.auditId)}
+                              className="rounded"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-slate-400">
+                            {((query.pageNum || 1) - 1) * (query.pageSize || 10) + idx + 1}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700 font-medium">{log.auditName || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-600 ring-1 ring-pink-100">
+                              {log.auditField || '-'}
+                            </span>
+                          </td>
+                          <td className="max-w-[150px] truncate px-4 py-3 font-mono text-xs text-rose-600">{log.beforeVal || '-'}</td>
+                          <td className="max-w-[150px] truncate px-4 py-3 font-mono text-xs text-emerald-600">{log.afterVal || '-'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-slate-700">{log.createBy || '-'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-slate-500">{log.createTime || '-'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <TableRowActions
+                              align="end"
+                              wrap={false}
+                              className="whitespace-nowrap"
+                              actions={[
+                                {
+                                  label: '详情',
+                                  icon: <Eye size={14} />,
+                                  onClick: () => void handleViewDetail(log.auditId),
+                                  tone: 'info',
+                                },
+                                {
+                                  label: '删除',
+                                  icon: <Trash2 size={14} />,
+                                  onClick: () => void handleDelete(log.auditId),
+                                  tone: 'danger',
+                                },
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </WorkspaceResultCard>
+          </div>
+        </Card>
+
+        <AuditDetailModal log={detailLog} onClose={() => setDetailLog(null)} />
+      </div>
     </div>
   );
 };

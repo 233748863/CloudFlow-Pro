@@ -1,9 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Laptop, LogOut, RefreshCw, RotateCcw, Search, ShieldAlert } from 'lucide-react';
+import { Laptop, LogOut, RefreshCw, RotateCcw, Search, ShieldAlert, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Input, TableHead, TableHeader, TableActionHead } from '@/components/ui';
+import { Button, Card, Input, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspacePaginationBar,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
 import {
   forceLogoutOnlineUsers,
   getOnlineUserPage,
@@ -11,24 +18,21 @@ import {
   type OnlineUserQuery,
 } from '@/services/api/onlineUser';
 
+const formatDateCN = (date: Date) => {
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+};
+
 const formatDateTime = (timestamp?: number) => {
-  if (!timestamp) {
-    return '-';
-  }
+  if (!timestamp) return '-';
   const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return '-';
-  }
+  if (Number.isNaN(date.getTime())) return '-';
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
 };
 
 const formatDuration = (seconds?: number) => {
-  if (seconds == null) {
-    return '-';
-  }
-  if (seconds <= 0) {
-    return '即将过期';
-  }
+  if (seconds == null) return '-';
+  if (seconds <= 0) return '即将过期';
 
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -63,12 +67,12 @@ export const OnlineUserPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getOnlineUserPage(query);
-      setRecords(res.rows || []);
-      setTotal(res.total || 0);
+      const response = await getOnlineUserPage(query);
+      setRecords(response.rows || []);
+      setTotal(response.total || 0);
       setSelectedTokens([]);
     } catch {
-      // 这里交给统一请求层提示错误
+      // API 层已做统一提示
     } finally {
       setLoading(false);
     }
@@ -87,15 +91,11 @@ export const OnlineUserPage: React.FC = () => {
   };
 
   const toggleSelect = (token: string) => {
-    setSelectedTokens((prev) => (
-      prev.includes(token) ? prev.filter((item) => item !== token) : [...prev, token]
-    ));
+    setSelectedTokens((prev) => (prev.includes(token) ? prev.filter((item) => item !== token) : [...prev, token]));
   };
 
   const toggleSelectAll = () => {
-    if (!selectableRecords.length) {
-      return;
-    }
+    if (!selectableRecords.length) return;
     const allSelected = selectableRecords.every((item) => selectedTokens.includes(item.token));
     setSelectedTokens(allSelected ? [] : selectableRecords.map((item) => item.token));
   };
@@ -105,243 +105,260 @@ export const OnlineUserPage: React.FC = () => {
       toast.warning('请选择要强制下线的会话');
       return;
     }
-    if (!confirm(`确定强制下线选中的 ${tokens.length} 个会话吗？`)) {
+    if (!window.confirm(`确定强制下线选中的 ${tokens.length} 个会话吗？`)) {
       return;
     }
 
     try {
       const message = await forceLogoutOnlineUsers(tokens);
       toast.success(message || '强制下线成功');
-      setSelectedTokens([]);
       await loadData();
     } catch {
-      // 这里交给统一请求层提示错误
+      // API 层已做统一提示
     }
   };
 
   const totalPages = Math.max(1, Math.ceil(total / (query.pageSize || 10)));
   const currentPage = query.pageNum || 1;
   const currentLoginCount = records.filter((item) => item.currentLogin).length;
+  const hasActiveFilters = Boolean(query.username || query.nickName || query.deptName || query.tenantId);
+  const todayLabel = formatDateCN(new Date());
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+  const overviewItems = [
+    { label: '在线总会话', value: `${total} 个` },
+    { label: '当前页可操作', value: `${selectableRecords.length} 个` },
+    { label: '当前登录会话', value: `${currentLoginCount} 个` },
+    { label: '已勾选', value: `${selectedTokens.length} 个` },
+  ];
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-pink-500">
-              <Laptop size={22} />
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
+
+      <div className="relative z-10 space-y-3">
+        <WorkspaceHeroCard
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <Laptop size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">在线用户</h1>
-              <p className="mt-1 text-sm text-slate-500">查看当前存活会话，并支持批量强制下线。</p>
+          )}
+          title="在线用户"
+          description="在线会话页统一到同一套工作台结构后，筛选、批量强退和分页浏览的节奏会更稳定。"
+          actions={(
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => { void loadData(); }}>
+                <RefreshCw size={15} />
+                刷新列表
+              </Button>
+              <Button variant="destructive" onClick={() => void handleForceLogout(selectedTokens)} disabled={!selectedTokens.length}>
+                <ShieldAlert size={15} />
+                批量强退
+              </Button>
             </div>
+          )}
+          contentClassName="p-4 sm:p-5"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="在线总会话"
+              value={total}
+              hint="当前筛选条件下的总在线会话数"
+              aside={<Laptop size={18} className="text-pink-500" />}
+            />
+            <WorkspaceMetricCard
+              label="可操作会话"
+              value={selectableRecords.length}
+              hint="当前页中可强制下线的会话数"
+              aside={<ShieldAlert size={18} className="text-amber-500" />}
+            />
+            <WorkspaceMetricCard
+              label="当前登录"
+              value={currentLoginCount}
+              hint="属于当前账号的在线会话"
+              aside={<Users size={18} className="text-emerald-500" />}
+            />
+            <WorkspaceMetricCard
+              label="已勾选"
+              value={selectedTokens.length}
+              hint="本页已选择的会话数"
+              aside={<LogOut size={18} className="text-sky-500" />}
+            />
           </div>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="outline"
-            onClick={() => void loadData()}
-            className="gap-2"
-          >
-            <RefreshCw size={16} />
-            刷新
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => void handleForceLogout(selectedTokens)}
-            disabled={!selectedTokens.length}
-            className="gap-2"
-          >
-            <ShieldAlert size={16} />
-            批量强退
-          </Button>
-        </div>
-      </div>
+        </WorkspaceHeroCard>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">在线总会话</div>
-          <div className="mt-3 text-3xl font-semibold text-slate-900">{total}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">当前页可操作会话</div>
-          <div className="mt-3 text-3xl font-semibold text-slate-900">{selectableRecords.length}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">当前登录会话</div>
-          <div className="mt-3 text-3xl font-semibold text-slate-900">{currentLoginCount}</div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">账号</label>
-            <Input
-              value={query.username || ''}
-              onChange={(event) => setQuery((prev) => ({ ...prev, username: event.target.value }))}
-              placeholder="请输入账号"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">昵称</label>
-            <Input
-              value={query.nickName || ''}
-              onChange={(event) => setQuery((prev) => ({ ...prev, nickName: event.target.value }))}
-              placeholder="请输入昵称"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">部门</label>
-            <Input
-              value={query.deptName || ''}
-              onChange={(event) => setQuery((prev) => ({ ...prev, deptName: event.target.value }))}
-              placeholder="请输入部门名称"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">租户</label>
-            <Input
-              type="number"
-              value={query.tenantId ?? ''}
-              onChange={(event) => setQuery((prev) => ({
-                ...prev,
-                tenantId: event.target.value && Number.isFinite(Number(event.target.value))
-                  ? Number(event.target.value)
-                  : undefined,
-              }))}
-              placeholder="请输入租户 ID"
-            />
-          </div>
-          <div className="flex items-end gap-3">
-            <Button
-              onClick={handleSearch}
-              className="flex-1 bg-pink-500 hover:bg-pink-600 gap-2"
-            >
-              <Search size={16} />
-              查询
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              className="gap-2"
-            >
-              <RotateCcw size={16} />
-              重置
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <TableHeader className="text-left text-slate-600">
-              <tr>
-                <TableHead className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectableRecords.length > 0 && selectableRecords.every((item) => selectedTokens.includes(item.token))}
-                    onChange={toggleSelectAll}
+        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <div className="flex flex-col gap-3">
+            <WorkspaceWorkbenchCard
+              title="在线会话筛选"
+              total={total}
+              hasActiveFilters={hasActiveFilters}
+              overviewItems={overviewItems}
+              quickFilterAside={hasActiveFilters ? (
+                <Button variant="outline" size="sm" onClick={handleReset}>
+                  <RotateCcw size={14} />
+                  重置条件
+                </Button>
+              ) : (
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  当前显示默认视图
+                </span>
+              )}
+              filterBar={(
+                <div className="grid gap-2.5 xl:grid-cols-5">
+                  <Input
+                    value={query.username || ''}
+                    onChange={(event) => setQuery((prev) => ({ ...prev, username: event.target.value }))}
+                    placeholder="按账号搜索"
                   />
-                </TableHead>
-                <TableHead className="px-4 py-3">用户</TableHead>
-                <TableHead className="px-4 py-3">部门</TableHead>
-                <TableHead className="px-4 py-3">租户</TableHead>
-                <TableHead className="px-4 py-3">角色</TableHead>
-                <TableHead className="px-4 py-3">登录时间</TableHead>
-                <TableHead className="px-4 py-3">剩余有效期</TableHead>
-                <TableHead className="px-4 py-3">状态</TableHead>
-                <TableActionHead className="px-4 py-3 w-48">操作</TableActionHead>
-              </tr>
-            </TableHeader>
-            <tbody>
-              {loading ? (
-                <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载在线用户..." />
-              ) : !records.length ? (
-                <WorkspaceTableStateRow colSpan={9} title="暂无在线用户数据" />
-              ) : records.map((item) => (
-                <tr key={item.token} className="border-t border-slate-100 hover:bg-slate-50/60">
-                  <td className="px-4 py-3 align-top">
-                    <input
-                      type="checkbox"
-                      disabled={item.currentLogin}
-                      checked={selectedTokens.includes(item.token)}
-                      onChange={() => toggleSelect(item.token)}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-50 text-sm font-semibold text-pink-600">
-                        {getAvatarText(item)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900">{item.username || '-'}</span>
-                          {item.currentLogin ? (
-                            <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">当前会话</span>
-                          ) : null}
-                        </div>
-                        <div className="mt-1 text-slate-500">{item.nickName || '-'}</div>
-                        <div className="mt-1 font-mono text-xs text-slate-400" title={item.token}>
-                          Token: {item.token.slice(0, 12)}...
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{item.deptName || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{item.tenantId ?? '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{item.roles?.length ? item.roles.join('、') : '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDateTime(item.loginTime)}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDuration(item.remainingSeconds)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${item.currentLogin ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {item.currentLogin ? '当前在线' : '在线'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                    <TableRowActions
-                      align="end"
-                      actions={[
-                        {
-                          label: '强制下线',
-                          icon: <LogOut size={14} />,
-                          onClick: () => void handleForceLogout([item.token]),
-                          tone: 'danger',
-                          disabled: !!item.currentLogin,
-                        },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <Input
+                    value={query.nickName || ''}
+                    onChange={(event) => setQuery((prev) => ({ ...prev, nickName: event.target.value }))}
+                    placeholder="按昵称搜索"
+                  />
+                  <Input
+                    value={query.deptName || ''}
+                    onChange={(event) => setQuery((prev) => ({ ...prev, deptName: event.target.value }))}
+                    placeholder="按部门搜索"
+                  />
+                  <Input
+                    type="number"
+                    value={query.tenantId ?? ''}
+                    onChange={(event) => setQuery((prev) => ({
+                      ...prev,
+                      tenantId: event.target.value && Number.isFinite(Number(event.target.value))
+                        ? Number(event.target.value)
+                        : undefined,
+                    }))}
+                    placeholder="租户 ID"
+                  />
+                  <Button type="button" onClick={handleSearch}>
+                    <Search size={15} />
+                    查询会话
+                  </Button>
+                </div>
+              )}
+            />
 
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4 text-sm text-slate-500">
-          <span>共 {total} 条在线会话</span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={currentPage <= 1}
-              onClick={() => setQuery((prev) => ({ ...prev, pageNum: Math.max((prev.pageNum || 1) - 1, 1) }))}
+            <WorkspaceResultCard
+              total={total}
+              description="账号、部门、租户、会话有效期和强制下线操作统一纳入工作台页面结构。"
+              footer={(
+                <WorkspacePaginationBar
+                  total={total}
+                  pageNum={currentPage}
+                  totalPages={totalPages}
+                  onPrev={() => setQuery((prev) => ({ ...prev, pageNum: Math.max((prev.pageNum || 1) - 1, 1) }))}
+                  onNext={() => setQuery((prev) => ({ ...prev, pageNum: Math.min(totalPages, (prev.pageNum || 1) + 1) }))}
+                  prevDisabled={currentPage <= 1}
+                  nextDisabled={currentPage >= totalPages}
+                />
+              )}
             >
-              上一页
-            </Button>
-            <span>第 {currentPage} / {totalPages} 页</span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={currentPage >= totalPages}
-              onClick={() => setQuery((prev) => ({ ...prev, pageNum: (prev.pageNum || 1) + 1 }))}
-            >
-              下一页
-            </Button>
+              <div className="overflow-x-auto">
+                <table className="min-w-[1180px] w-full text-sm">
+                  <TableHeader>
+                    <tr>
+                      <TableHead>
+                        <input
+                          type="checkbox"
+                          checked={selectableRecords.length > 0 && selectableRecords.every((item) => selectedTokens.includes(item.token))}
+                          onChange={toggleSelectAll}
+                          className="rounded"
+                        />
+                      </TableHead>
+                      <TableHead>用户</TableHead>
+                      <TableHead>部门</TableHead>
+                      <TableHead>租户</TableHead>
+                      <TableHead>角色</TableHead>
+                      <TableHead>登录时间</TableHead>
+                      <TableHead>剩余有效期</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableActionHead className="w-48">操作</TableActionHead>
+                    </tr>
+                  </TableHeader>
+                  <tbody>
+                    {loading ? (
+                      <WorkspaceTableStateRow colSpan={9} type="loading" title="正在加载在线用户..." />
+                    ) : !records.length ? (
+                      <WorkspaceTableStateRow colSpan={9} title="暂无在线用户数据" description="可以调整筛选条件，或等待新的登录会话出现。" />
+                    ) : (
+                      records.map((item) => (
+                        <tr key={item.token} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                          <td className="px-4 py-3 align-top">
+                            <input
+                              type="checkbox"
+                              disabled={item.currentLogin}
+                              checked={selectedTokens.includes(item.token)}
+                              onChange={() => toggleSelect(item.token)}
+                              className="rounded"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-50 text-sm font-semibold text-pink-600">
+                                {getAvatarText(item)}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-slate-900">{item.username || '-'}</span>
+                                  {item.currentLogin ? (
+                                    <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+                                      当前会话
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="mt-1 text-slate-500">{item.nickName || '-'}</div>
+                                <div className="mt-1 font-mono text-xs text-slate-400" title={item.token}>
+                                  Token: {item.token.slice(0, 12)}...
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{item.deptName || '-'}</td>
+                          <td className="px-4 py-3 text-slate-600">{item.tenantId ?? '-'}</td>
+                          <td className="px-4 py-3 text-slate-600">{item.roles?.length ? item.roles.join('、') : '-'}</td>
+                          <td className="px-4 py-3 text-slate-600">{formatDateTime(item.loginTime)}</td>
+                          <td className="px-4 py-3 text-slate-600">{formatDuration(item.remainingSeconds)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                              item.currentLogin
+                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                                : 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
+                            }`}>
+                              {item.currentLogin ? '当前在线' : '在线'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <TableRowActions
+                              align="end"
+                              actions={[
+                                {
+                                  label: '强制下线',
+                                  icon: <LogOut size={14} />,
+                                  onClick: () => void handleForceLogout([item.token]),
+                                  tone: 'danger',
+                                  disabled: !!item.currentLogin,
+                                },
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </WorkspaceResultCard>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
 };
+
+export default OnlineUserPage;
