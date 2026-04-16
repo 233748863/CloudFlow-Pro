@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, GitMerge, Rocket } from 'lucide-react';
+import { ArrowRight, FileSpreadsheet, GitMerge, Rocket, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { FormBuilder } from '../components/FormBuilder';
-import { EmptyError, EmptyForms, SkeletonForm } from '@/components/ui';
-import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { EmptyError, EmptyForms, SkeletonForm, Button } from '@/components/ui';
+import {
+  WorkspaceBackdrop,
+  WorkspaceInlineState,
+  WorkspaceStatusPage,
+} from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceSectionCard,
+} from '@/components/workspace/WorkspacePanels';
 import { useMount } from '../hooks/useMount';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
@@ -27,28 +36,28 @@ export const FormDesign = () => {
 
       const formList = await getFormDefinitions();
       if (Array.isArray(formList)) {
-        const mapped = formList.map((f: any) => {
-          let fields = f.fields || [];
-          if (typeof f.fieldsJson === 'string') {
+        const mapped = formList.map((item: any) => {
+          let fields = item.fields || [];
+
+          if (typeof item.fieldsJson === 'string') {
             try {
-              fields = JSON.parse(f.fieldsJson);
+              fields = JSON.parse(item.fieldsJson);
             } catch (parseErr) {
-              // 兼容历史脏数据中的非法转义字符，避免整个列表加载失败
               try {
-                const sanitized = f.fieldsJson.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
+                const sanitized = item.fieldsJson.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
                 fields = JSON.parse(sanitized);
               } catch {
-                logForm.warn(`表单 ${f.formId || f.id} 的 fieldsJson 解析失败，使用空字段`, parseErr);
+                logForm.warn(`表单 ${item.formId || item.id} 的 fieldsJson 解析失败，使用空字段`, parseErr);
                 fields = [];
               }
             }
-          } else if (f.fieldsJson) {
-            fields = f.fieldsJson;
+          } else if (item.fieldsJson) {
+            fields = item.fieldsJson;
           }
 
           return {
-            id: f.id || f.formId,
-            name: f.name || f.formName,
+            id: item.id || item.formId,
+            name: item.name || item.formName,
             fields,
           } as FormDefinition;
         });
@@ -86,13 +95,12 @@ export const FormDesign = () => {
       };
 
       const result: any = await saveFormDefinition(payload as any);
-      const savedId = (result as any)?.id || (result as any)?.formId;
+      const savedId = result?.id || result?.formId;
 
       if (savedId) {
         const updatedForm = { ...form, id: savedId };
         setSelectedForm(updatedForm);
 
-        // 函数式更新避免并发保存导致的状态覆盖
         setForms((prevForms) => {
           const index = prevForms.findIndex((item) => item.id === form.id);
           if (index >= 0) {
@@ -140,89 +148,165 @@ export const FormDesign = () => {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <SkeletonForm fields={5} />
+      <div className="relative min-h-screen pb-6">
+        <WorkspaceBackdrop />
+        <div className="relative z-10 p-6">
+          <WorkspaceSectionCard title="表单设计器" description="正在准备表单列表和编辑器。" eyebrow="Loading">
+            <SkeletonForm fields={5} />
+          </WorkspaceSectionCard>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
-        <EmptyError onRetry={loadForms} />
-      </div>
+      <WorkspaceStatusPage
+        icon={<FileSpreadsheet size={28} />}
+        title="加载表单失败"
+        description={error}
+        actions={<EmptyError onRetry={loadForms} />}
+      />
     );
   }
 
   if (!selectedForm) {
     return (
-      <div className="h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
-        <EmptyForms onCreate={handleCreateNew} />
-      </div>
+      <WorkspaceStatusPage
+        icon={<FileSpreadsheet size={28} />}
+        title="还没有可编辑的表单"
+        description="先创建一个表单，再进入右侧设计器进行字段配置。"
+        actions={<EmptyForms onCreate={handleCreateNew} />}
+      />
     );
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] flex gap-4">
-      <div className="w-64 bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900">表单列表</h3>
-          <button
-            onClick={handleCreateNew}
-            className="px-3 py-1 text-sm bg-pink-500 text-white rounded hover:bg-pink-600 transition-colors"
-          >
-            新建
-          </button>
-        </div>
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
 
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {forms.length === 0 ? (
-            <WorkspaceInlineState
-              title="暂无表单"
-              description="点击上方新建后，这里会显示可编辑的表单列表。"
-              className="py-6"
+      <div className="relative z-10 space-y-6 p-6">
+        <WorkspaceHeroCard
+          badge={
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Form Workspace
+            </span>
+          }
+          title="表单设计"
+          description="统一管理表单列表、字段编辑和后续流程绑定，把设计器入口纳入工作台视觉体系。"
+          actions={
+            <Button onClick={handleCreateNew}>
+              <Sparkles className="h-4 w-4" />
+              新建表单
+            </Button>
+          }
+        >
+          <div className="mt-6 grid gap-4 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="表单总数"
+              value={forms.length}
+              hint="当前系统中可编辑的表单数量"
+              aside={<FileSpreadsheet className="h-[18px] w-[18px] text-pink-500" />}
             />
-          ) : (
-            forms.map((form) => (
-              <button
-                key={form.id}
-                onClick={() => setSelectedForm(form)}
-                className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                  selectedForm.id === form.id
-                    ? 'bg-pink-50 text-pink-600 border border-pink-100'
-                    : 'hover:bg-slate-50 text-slate-700'
-                }`}
+            <WorkspaceMetricCard
+              label="当前表单"
+              value={selectedForm.name}
+              hint="右侧设计器当前编辑对象"
+              aside={<Sparkles className="h-[18px] w-[18px] text-sky-500" />}
+            />
+            <WorkspaceMetricCard
+              label="字段数量"
+              value={selectedForm.fields.length}
+              hint="用于判断表单复杂度"
+              aside={<GitMerge className="h-[18px] w-[18px] text-amber-500" />}
+            />
+            <WorkspaceMetricCard
+              label="保存策略"
+              value="自动 + 手动"
+              hint="支持自动保存和显式保存"
+              aside={<Rocket className="h-[18px] w-[18px] text-emerald-500" />}
+            />
+          </div>
+        </WorkspaceHeroCard>
+
+        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <WorkspaceSectionCard
+            title="表单列表"
+            description="切换当前编辑对象，并快速进入后续绑定或发起流程。"
+            eyebrow="Form Index"
+            bodyClassName="space-y-4"
+          >
+            <div className="space-y-2">
+              {forms.length === 0 ? (
+                <WorkspaceInlineState
+                  icon={<FileSpreadsheet className="h-5 w-5" />}
+                  title="暂无表单"
+                  description="点击上方新建后，这里会显示可编辑的表单列表。"
+                  className="py-10"
+                />
+              ) : (
+                forms.map((form) => {
+                  const active = selectedForm.id === form.id;
+                  return (
+                    <button
+                      key={form.id}
+                      type="button"
+                      onClick={() => setSelectedForm(form)}
+                      className={`w-full rounded-2xl px-4 py-3 text-left transition ${
+                        active
+                          ? 'border border-pink-100 bg-pink-50 text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.08)]'
+                          : 'border border-white/80 bg-white/82 text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white'
+                      }`}
+                    >
+                      <div className="truncate text-sm font-semibold">{form.name}</div>
+                      <div className="mt-1 text-xs text-slate-500">{form.fields.length} 个字段</div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="space-y-2 border-t border-white/80 pt-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">下一步</div>
+              <Button
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => navigate('/workflow')}
               >
-                <div className="font-medium truncate">{form.name}</div>
-                <div className="text-xs text-slate-500 mt-1">{form.fields.length} 个字段</div>
-              </button>
-            ))
-          )}
-        </div>
+                <span className="inline-flex items-center gap-2">
+                  <GitMerge size={14} />
+                  绑定到流程
+                </span>
+                <ArrowRight size={12} />
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full justify-between"
+                onClick={() => navigate('/workplace')}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Rocket size={14} />
+                  发起流程
+                </span>
+                <ArrowRight size={12} />
+              </Button>
+            </div>
+          </WorkspaceSectionCard>
 
-        <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
-          <p className="text-xs text-slate-400 font-medium">下一步</p>
-          <button
-            onClick={() => navigate('/workflow')}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-pink-500 bg-pink-50 hover:bg-pink-50 rounded-lg transition-colors text-left"
+          <WorkspaceSectionCard
+            title="表单编辑器"
+            description="保持原有 FormBuilder 编辑逻辑，只统一外层工作台壳层。"
+            eyebrow="Editor"
+            className="min-h-[40rem]"
           >
-            <GitMerge size={14} />
-            <span className="flex-1">绑定到流程</span>
-            <ArrowRight size={12} />
-          </button>
-          <button
-            onClick={() => navigate('/workplace')}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors text-left"
-          >
-            <Rocket size={14} />
-            <span className="flex-1">发起流程</span>
-            <ArrowRight size={12} />
-          </button>
+            <FormBuilder
+              key={selectedForm.id}
+              onSave={handleSaveForm}
+              initialForm={selectedForm}
+            />
+          </WorkspaceSectionCard>
         </div>
-      </div>
-
-      <div className="flex-1">
-        <FormBuilder key={selectedForm.id} onSave={handleSaveForm} initialForm={selectedForm} />
       </div>
     </div>
   );
