@@ -22,9 +22,19 @@ import {
 } from "../../services/api/workflow";
 import { toast } from "sonner";
 import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
-import { PermissionGuard } from '@/components/ui';
-import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
-import { WorkspaceDialogShell } from '@/components/workspace/WorkspacePanels';
+import { Button, Input, PermissionGuard } from "@/components/ui";
+import {
+  WorkspaceBackdrop,
+  WorkspaceInlineState,
+} from "@/components/workspace/WorkspacePrimitives";
+import {
+  WorkspaceDialogShell,
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspacePaginationBar,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from "@/components/workspace/WorkspacePanels";
 
 /**
  * 归档流程数据接口
@@ -271,366 +281,426 @@ export const ArchivedWorkflows: React.FC = () => {
     });
   };
 
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() || appliedDateRange.start || appliedDateRange.end,
+  );
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const restorableCount = workflows.filter(
+    (workflow) => workflow.canRestore,
+  ).length;
+  const selectedCount = selectedIds.length;
+  const now = new Date();
+  const todayLabel = `${now.getMonth() + 1}/${now.getDate()}`;
+  const timeLabel = now.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const allSelected =
+    workflows.length > 0 && selectedIds.length === workflows.length;
+  const overviewItems = [
+    { label: "当前结果", value: `${workflows.length} 条` },
+    { label: "可恢复", value: `${restorableCount} 条` },
+    {
+      label: "日期筛选",
+      value:
+        appliedDateRange.start || appliedDateRange.end
+          ? `${appliedDateRange.start || "不限"} - ${appliedDateRange.end || "不限"}`
+          : "未启用",
+    },
+    { label: "批量选择", value: `${selectedCount} 条` },
+  ];
+
   return (
-    <div className="space-y-6 p-6">
-      {/* 页面标题 */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/admin")}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            title="返回管理后台"
-          >
-            <ArrowLeft size={20} className="text-slate-600" />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800">归档流程管理</h2>
-            <p className="text-slate-500 mt-1 text-sm">
-              查看和管理已归档的流程，支持恢复或永久删除
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 搜索和筛选工具栏 */}
-      <div className="bg-white rounded-xl p-4 shadow-sm space-y-4">
-        <div className="flex items-center gap-3">
-          {/* 搜索框 */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="搜索流程名称或归档原因..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-          </div>
-
-          {/* 筛选按钮 */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-              showFilters || appliedDateRange.start || appliedDateRange.end
-                ? "bg-pink-500 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            <Filter size={16} />
-            筛选
-          </button>
-
-          {/* 清除筛选 */}
-          {(searchTerm || appliedDateRange.start || appliedDateRange.end) && (
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all flex items-center gap-2"
-            >
-              <X size={16} />
-              清除
-            </button>
-          )}
-        </div>
-
-        {/* 日期筛选面板 */}
-        {showFilters && (
-          <div className="border-t border-slate-200 pt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  归档开始日期
-                </label>
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) =>
-                    setDateRange((prev) => ({ ...prev, start: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  归档结束日期
-                </label>
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) =>
-                    setDateRange((prev) => ({ ...prev, end: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={applyDateFilter}
-                className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-all"
-              >
-                应用筛选
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 批量操作工具栏 */}
-      {selectedIds.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-blue-700">
-            <CheckCircle2 size={20} />
-            <span className="font-medium">
-              已选中 {selectedIds.length} 个流程
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleRestore(selectedIds)}
-              disabled={restoring || !canBatchRestore}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-2 disabled:opacity-50"
-              title={
-                !canBatchRestore ? "仅管理员可批量恢复" : "批量恢复选中的流程"
-              }
-            >
-              <RotateCcw size={16} />
-              批量恢复
-            </button>
-            <button
-              onClick={() => showDeleteDialog(selectedIds)}
-              disabled={deleting || !canPermanentDelete}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center gap-2 disabled:opacity-50"
-              title={
-                !canPermanentDelete
-                  ? "仅管理员可永久删除"
-                  : "永久删除选中的流程"
-              }
-            >
-              <Trash2 size={16} />
-              批量删除
-            </button>
-            <button
-              onClick={() => setSelectedIds([])}
-              className="px-4 py-2 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-all"
-            >
-              取消选择
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 归档流程列表 */}
-      {loading ? (
-        <div className="bg-white rounded-xl p-12 shadow-sm text-center">
-          <WorkspaceInlineState type="loading" title="正在加载归档流程..." className="py-12" />
-        </div>
-      ) : workflows.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 shadow-sm text-center">
-          <WorkspaceInlineState icon={<FileText size={28} />} title="暂无归档流程" className="py-12" />
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {/* 列表头部 */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
-            <div className="flex items-center gap-4">
-              <input
-                type="checkbox"
-                checked={
-                  selectedIds.length === workflows.length &&
-                  workflows.length > 0
-                }
-                onChange={handleSelectAll}
-                className="w-4 h-4 text-pink-500 rounded focus:ring-pink-500"
-              />
-              <span className="text-sm text-slate-600">
-                共 <span className="font-bold text-slate-800">{total}</span>{" "}
-                个归档流程
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
+      <div className="relative z-10 space-y-6 p-6">
+        <WorkspaceHeroCard
+          badge={
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+                <FileText size={14} />
+                {todayLabel}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+                {timeLabel}
               </span>
             </div>
-          </div>
-
-          {/* 列表内容 */}
-          <div className="divide-y divide-slate-200">
-            {workflows.map((workflow) => (
-              <div
-                key={workflow.id}
-                className={`p-4 hover:bg-slate-50 transition-colors ${
-                  selectedIds.includes(workflow.workflowId) ? "bg-blue-50" : ""
-                }`}
+          }
+          title="归档流程管理"
+          description="统一查看归档流程、恢复资格和清理动作，让归档管理页也保持与申请页一致的工作台结构。"
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/admin")}
+                className="gap-2"
               >
-                <div className="flex items-start gap-4">
-                  {/* 复选框 */}
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(workflow.workflowId)}
-                    onChange={() => handleSelectOne(workflow.workflowId)}
-                    className="mt-1 w-4 h-4 text-pink-500 rounded focus:ring-pink-500"
+                <ArrowLeft className="h-4 w-4" />
+                返回后台
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void loadArchivedWorkflows()}
+                className="gap-2"
+              >
+                <Loader2
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
+                刷新
+              </Button>
+            </div>
+          }
+          contentClassName="p-4 sm:p-5"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="归档总量"
+              value={total}
+              hint="接口返回的归档流程总记录数"
+              aside={<FileText className="h-[18px] w-[18px] text-pink-500" />}
+            />
+            <WorkspaceMetricCard
+              label="当前页"
+              value={workflows.length}
+              hint={`可恢复 ${restorableCount} 条`}
+              aside={<RotateCcw className="h-[18px] w-[18px] text-sky-500" />}
+            />
+            <WorkspaceMetricCard
+              label="批量选择"
+              value={selectedCount}
+              hint="用于批量恢复或永久删除"
+              aside={
+                <CheckCircle2 className="h-[18px] w-[18px] text-emerald-500" />
+              }
+            />
+            <WorkspaceMetricCard
+              label="筛选状态"
+              value={hasActiveFilters ? "已启用" : "默认"}
+              hint={
+                hasActiveFilters
+                  ? "已应用关键词或日期区间"
+                  : "当前展示全部归档流程"
+              }
+              aside={<Filter className="h-[18px] w-[18px] text-amber-500" />}
+            />
+          </div>
+        </WorkspaceHeroCard>
+
+        <WorkspaceWorkbenchCard
+          title="归档流程工作台"
+          total={total}
+          hasActiveFilters={hasActiveFilters}
+          overviewItems={overviewItems}
+          quickFilterAside={
+            hasActiveFilters ? (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                清空筛选
+              </Button>
+            ) : (
+              <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                当前显示全部归档流程
+              </span>
+            )
+          }
+          filterBar={
+            <div className="space-y-4">
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(event) => handleSearch(event.target.value)}
+                    placeholder="搜索流程名称或归档原因..."
+                    className="pl-10"
                   />
-
-                  {/* 流程信息 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-base font-semibold text-slate-800 truncate">
-                        {workflow.workflowName}
-                      </h3>
-                      {!workflow.canRestore && (
-                        <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded">
-                          不可恢复
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 归档信息 */}
-                    <div className="grid grid-cols-3 gap-4 text-sm text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-slate-400" />
-                        <span>
-                          归档时间: {formatDateTime(workflow.archivedAt)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User size={14} className="text-slate-400" />
-                        <span>
-                          操作人:{" "}
-                          {workflow.archivedByName || workflow.archivedBy}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText size={14} className="text-slate-400" />
-                        <span
-                          className="truncate"
-                          title={workflow.archiveReason}
-                        >
-                          原因: {workflow.archiveReason}
-                        </span>
-                      </div>
-                    </div>
+                </div>
+                <Button
+                  variant={
+                    showFilters ||
+                    appliedDateRange.start ||
+                    appliedDateRange.end
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() => setShowFilters((prev) => !prev)}
+                  className="gap-2"
+                >
+                  <Filter size={16} />
+                  日期筛选
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void loadArchivedWorkflows()}
+                  className="gap-2"
+                >
+                  <Loader2
+                    className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                  />
+                  重新加载
+                </Button>
+              </div>
+              {showFilters ? (
+                <div className="grid gap-4 rounded-[22px] border border-white/80 bg-white/60 p-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      归档开始日期
+                    </label>
+                    <input
+                      type="date"
+                      value={dateRange.start}
+                      onChange={(event) =>
+                        setDateRange((prev) => ({
+                          ...prev,
+                          start: event.target.value,
+                        }))
+                      }
+                      className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                    />
                   </div>
-
-                  {/* 操作按钮 */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleRestore([workflow.workflowId])}
-                      disabled={
-                        !workflow.canRestore || restoring || !canBatchRestore
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      归档结束日期
+                    </label>
+                    <input
+                      type="date"
+                      value={dateRange.end}
+                      onChange={(event) =>
+                        setDateRange((prev) => ({
+                          ...prev,
+                          end: event.target.value,
+                        }))
                       }
-                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center gap-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={
-                        !canBatchRestore
-                          ? "仅管理员可恢复流程"
-                          : workflow.canRestore
-                            ? "恢复流程"
-                            : "此流程不可恢复"
-                      }
-                    >
-                      <RotateCcw size={14} />
-                      恢复
-                    </button>
-                    <button
-                      onClick={() => showDeleteDialog([workflow.workflowId])}
-                      disabled={deleting || !canPermanentDelete}
-                      className="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center gap-1 text-sm disabled:opacity-50"
-                      title={
-                        !canPermanentDelete ? "仅管理员可永久删除" : "永久删除"
-                      }
-                    >
-                      <Trash2 size={14} />
-                      删除
-                    </button>
+                      className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                    />
+                  </div>
+                  <div className="md:col-span-2 flex justify-end">
+                    <Button onClick={applyDateFilter}>应用筛选</Button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 分页 */}
-          {total > pageSize && (
-            <div className="flex items-center justify-between p-4 border-t border-slate-200 bg-slate-50">
-              <div className="text-sm text-slate-600">
-                显示 {(currentPage - 1) * pageSize + 1} -{" "}
-                {Math.min(currentPage * pageSize, total)} 条，共 {total} 条
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  上一页
-                </button>
-                <span className="px-4 py-2 text-sm text-slate-600">
-                  第 {currentPage} / {Math.ceil(total / pageSize)} 页
-                </span>
-                <button
-                  onClick={() =>
-                    setCurrentPage((p) =>
-                      Math.min(Math.ceil(total / pageSize), p + 1),
-                    )
-                  }
-                  disabled={currentPage >= Math.ceil(total / pageSize)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  下一页
-                </button>
-              </div>
+              ) : null}
             </div>
-          )}
-        </div>
-      )}
+          }
+        />
 
-      {/* 永久删除确认对话框 */}
-      {showDeleteConfirm && (
-        <WorkspaceDialogShell
-          title="确认永久删除"
-          description={`即将永久删除 ${deleteTarget.length} 个归档流程，请再次确认。`}
-          onClose={() => {
-            if (deleting) return;
-            setShowDeleteConfirm(false);
-            setDeleteTarget([]);
-          }}
-          maxWidthClassName="max-w-md"
+        <WorkspaceResultCard
+          total={total}
+          title="归档流程列表"
+          description="批量工具、恢复操作和永久删除统一收口到这里。"
+          footer={
+            total > pageSize ? (
+              <WorkspacePaginationBar
+                total={total}
+                pageNum={currentPage}
+                totalPages={totalPages}
+                onPrev={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                onNext={() =>
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                }
+                prevDisabled={currentPage === 1}
+                nextDisabled={currentPage >= totalPages}
+              />
+            ) : null
+          }
         >
-          <div className="space-y-5">
-            <WorkspaceInlineState
-              type="info"
-              icon={<AlertTriangle size={18} className="text-red-500" />}
-              title="此操作不可恢复"
-              description="永久删除会清空流程的版本历史和关联记录。请确认这些归档流程已不再需要保留。"
-              className="py-10"
-            />
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteTarget([]);
-                }}
-                disabled={deleting}
-                className="rounded-2xl border border-white/85 bg-white/76 px-4 py-2 text-sm text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white disabled:opacity-50"
-              >
-                取消
-              </button>
-              <button
-                onClick={handlePermanentDelete}
-                disabled={deleting}
-                className="inline-flex items-center gap-2 rounded-2xl bg-red-500 px-4 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(239,68,68,0.24)] transition hover:bg-red-600 disabled:opacity-50"
-              >
-                {deleting ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    删除中...
-                  </>
-                ) : (
-                  <>
+          <div className="space-y-4 px-4 py-4">
+            {selectedIds.length > 0 ? (
+              <div className="flex flex-col gap-3 rounded-[24px] border border-blue-200 bg-blue-50/90 p-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex items-center gap-2 text-blue-700">
+                  <CheckCircle2 size={18} />
+                  <span className="font-medium">
+                    已选中 {selectedIds.length} 个流程
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => void handleRestore(selectedIds)}
+                    disabled={restoring || !canBatchRestore}
+                    className="bg-green-500 text-white hover:bg-green-600 [background-image:none]"
+                  >
+                    <RotateCcw size={16} />
+                    批量恢复
+                  </Button>
+                  <Button
+                    onClick={() => showDeleteDialog(selectedIds)}
+                    disabled={deleting || !canPermanentDelete}
+                    className="bg-red-500 text-white hover:bg-red-600 [background-image:none]"
+                  >
                     <Trash2 size={16} />
-                    确认删除
-                  </>
-                )}
-              </button>
-            </div>
+                    批量删除
+                  </Button>
+                  <Button variant="outline" onClick={() => setSelectedIds([])}>
+                    取消选择
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {loading ? (
+              <WorkspaceInlineState
+                type="loading"
+                title="正在加载归档流程..."
+                className="py-12"
+              />
+            ) : workflows.length === 0 ? (
+              <WorkspaceInlineState
+                icon={<FileText size={28} />}
+                title="暂无归档流程"
+                description="可以调整筛选条件，或等待新的流程归档记录出现。"
+                className="py-12"
+              />
+            ) : (
+              <>
+                <div className="flex items-center gap-4 rounded-[20px] border border-white/80 bg-white/72 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 rounded text-pink-500 focus:ring-pink-500"
+                  />
+                  <span>
+                    共 <span className="font-bold text-slate-800">{total}</span>{" "}
+                    个归档流程
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {workflows.map((workflow) => (
+                    <div
+                      key={workflow.id}
+                      className={`rounded-[24px] border p-4 transition-colors ${selectedIds.includes(workflow.workflowId) ? "border-blue-200 bg-blue-50/80" : "border-white/75 bg-white/80 hover:bg-white"}`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(workflow.workflowId)}
+                          onChange={() => handleSelectOne(workflow.workflowId)}
+                          className="mt-1 h-4 w-4 rounded text-pink-500 focus:ring-pink-500"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-base font-semibold text-slate-800">
+                              {workflow.workflowName}
+                            </h3>
+                            {!workflow.canRestore ? (
+                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                                不可恢复
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="grid gap-3 text-sm text-slate-600 xl:grid-cols-3">
+                            <div className="flex items-center gap-2">
+                              <Calendar size={14} className="text-slate-400" />
+                              <span>
+                                归档时间：{formatDateTime(workflow.archivedAt)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <User size={14} className="text-slate-400" />
+                              <span>
+                                操作人：
+                                {workflow.archivedByName || workflow.archivedBy}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <FileText size={14} className="text-slate-400" />
+                              <span
+                                className="truncate"
+                                title={workflow.archiveReason}
+                              >
+                                原因：{workflow.archiveReason}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <Button
+                            onClick={() =>
+                              void handleRestore([workflow.workflowId])
+                            }
+                            disabled={
+                              !workflow.canRestore ||
+                              restoring ||
+                              !canBatchRestore
+                            }
+                            className="bg-green-500 text-white hover:bg-green-600 [background-image:none]"
+                          >
+                            <RotateCcw size={14} />
+                            恢复
+                          </Button>
+                          <Button
+                            onClick={() =>
+                              showDeleteDialog([workflow.workflowId])
+                            }
+                            disabled={deleting || !canPermanentDelete}
+                            className="bg-red-500 text-white hover:bg-red-600 [background-image:none]"
+                          >
+                            <Trash2 size={14} />
+                            删除
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        </WorkspaceDialogShell>
-      )}
+        </WorkspaceResultCard>
+
+        {/* 永久删除确认对话框 */}
+        {showDeleteConfirm && (
+          <WorkspaceDialogShell
+            title="确认永久删除"
+            description={`即将永久删除 ${deleteTarget.length} 个归档流程，请再次确认。`}
+            onClose={() => {
+              if (deleting) return;
+              setShowDeleteConfirm(false);
+              setDeleteTarget([]);
+            }}
+            maxWidthClassName="max-w-md"
+          >
+            <div className="space-y-5">
+              <WorkspaceInlineState
+                type="info"
+                icon={<AlertTriangle size={18} className="text-red-500" />}
+                title="此操作不可恢复"
+                description="永久删除会清空流程的版本历史和关联记录。请确认这些归档流程已不再需要保留。"
+                className="py-10"
+              />
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteTarget([]);
+                  }}
+                  disabled={deleting}
+                  className="rounded-2xl border border-white/85 bg-white/76 px-4 py-2 text-sm text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handlePermanentDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-red-500 px-4 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(239,68,68,0.24)] transition hover:bg-red-600 disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      删除中...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      确认删除
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </WorkspaceDialogShell>
+        )}
+      </div>
     </div>
   );
 };
