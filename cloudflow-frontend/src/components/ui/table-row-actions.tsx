@@ -32,14 +32,13 @@ interface TableRowActionsProps {
   emptyText?: string;
 }
 
-// 以固定资产页为基准：操作区统一使用“轻量文字按钮 + hover 背景”的风格。
 const toneClassMap: Record<TableRowActionTone, string> = {
-  primary: 'text-pink-500 hover:text-pink-600 hover:bg-pink-50',
-  neutral: 'text-slate-500 hover:text-slate-700 hover:bg-slate-50',
-  success: 'text-green-600 hover:text-green-700 hover:bg-green-50',
-  warning: 'text-amber-600 hover:text-amber-700 hover:bg-amber-50',
-  danger: 'text-red-500 hover:text-red-600 hover:bg-red-50',
-  info: 'text-blue-500 hover:text-blue-700 hover:bg-blue-50',
+  primary: 'bg-pink-50/90 text-pink-600 ring-1 ring-pink-100 hover:bg-pink-100/80',
+  neutral: 'bg-white/88 text-slate-600 ring-1 ring-slate-200/80 hover:bg-white hover:text-slate-800',
+  success: 'bg-emerald-50/90 text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-100/80',
+  warning: 'bg-amber-50/90 text-amber-700 ring-1 ring-amber-100 hover:bg-amber-100/80',
+  danger: 'bg-rose-50/90 text-rose-600 ring-1 ring-rose-100 hover:bg-rose-100/80',
+  info: 'bg-sky-50/90 text-sky-700 ring-1 ring-sky-100 hover:bg-sky-100/80',
 };
 
 const alignClassMap: Record<NonNullable<TableRowActionsProps['align']>, string> = {
@@ -48,7 +47,6 @@ const alignClassMap: Record<NonNullable<TableRowActionsProps['align']>, string> 
   end: 'justify-end',
 };
 
-// 页面只声明动作语义，具体视觉统一由该组件收口，后续整体改版只改这里。
 export function TableRowActions({
   actions,
   align = 'start',
@@ -66,7 +64,7 @@ export function TableRowActions({
   return (
     <div
       className={cn(
-        'flex items-center gap-1',
+        'flex items-center gap-1.5',
         wrap && 'flex-wrap',
         alignClassMap[align],
         className,
@@ -84,15 +82,14 @@ export function TableRowActions({
           aria-label={action.title ?? action.label}
           className={cn(
             iconOnly
-              ? 'h-8 w-8 rounded-md p-0 shadow-none'
-              : 'h-8 px-2 text-sm font-medium gap-1 rounded-md shadow-none',
-            'focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2',
-            'disabled:bg-transparent disabled:text-slate-300 disabled:hover:bg-transparent',
+              ? 'h-8 w-8 rounded-full p-0 shadow-none'
+              : 'h-8 gap-1 rounded-full px-2.5 text-xs font-medium shadow-none',
+            'focus-visible:ring-2 focus-visible:ring-pink-300 focus-visible:ring-offset-2',
+            'disabled:bg-transparent disabled:text-slate-300 disabled:ring-0 disabled:hover:bg-transparent',
             toneClassMap[action.tone ?? 'primary'],
             action.className,
           )}
         >
-          {/* iconOnly 适合公告管理这类动作较多、但列宽有限的表格。 */}
           {action.icon ? <span className="shrink-0">{action.icon}</span> : null}
           {iconOnly ? (
             <span className="sr-only">{action.label}</span>
