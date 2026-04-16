@@ -1,62 +1,72 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  Bell,
+  Building2,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Edit,
+  Eye,
+  Megaphone,
+  Pin,
+  Plus,
+  RotateCcw,
+  Search,
+  Shield,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Announcement,
-  AnnouncementType,
   AnnouncementScope,
+  AnnouncementType,
   Role,
-} from "../types";
+} from '../types';
 import {
+  deleteAnnouncement,
+  getManageList,
   getMyAnnouncements,
+  getReadStats,
   markAnnouncementRead,
   publishAnnouncement,
-  getManageList,
-  updateAnnouncement,
-  deleteAnnouncement,
   revokeAnnouncement,
   toggleTop,
-  getReadStats,
-} from "../services/api/announcement";
-import { useAuth } from "../context/AuthContext";
-import { toBackendDateString } from "../utils/dateFormat";
-import {
-  Bell,
-  Megaphone,
-  AlertCircle,
-  Calendar,
-  Eye,
-  Plus,
-  Edit,
-  Trash2,
-  X,
-  Pin,
-  Users,
-  Search,
-  RotateCcw,
-  CheckCircle2,
-  ChevronRight,
-  ChevronDown,
-  Building2,
-  Shield,
-} from "lucide-react";
-import { toast } from "sonner";
+  updateAnnouncement,
+} from '../services/api/announcement';
+import { useAuth } from '../context/AuthContext';
+import { toBackendDateString } from '../utils/dateFormat';
 import {
   Button,
-  Card,
   DatePicker,
   Input,
-  Textarea,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  TableActionHead,
   TableHead,
   TableHeader,
-  TableActionHead,
-} from "@/components/ui";
-import { TableRowActions } from "@/components/ui/table-row-actions";
-import { getDeptTree, getRoleList } from "../services/api/auth";
-import { WorkspaceEmptyPanel, WorkspaceInlineState } from "@/components/workspace/WorkspacePrimitives";
+  Textarea,
+} from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
+import { getDeptTree, getRoleList } from '../services/api/auth';
+import {
+  WorkspaceBackdrop,
+  WorkspaceEmptyPanel,
+  WorkspaceInlineState,
+} from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceDialogShell,
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceResultCard,
+  WorkspaceWorkbenchCard,
+} from '@/components/workspace/WorkspacePanels';
+import { cn } from '@/utils/cn';
 
 interface DeptItem {
   deptId: number;
@@ -66,39 +76,105 @@ interface DeptItem {
   children?: DeptItem[];
 }
 
-function formatDateCN(date: Date): string {
-  const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+interface ReadStatsData {
+  readCount: number;
+  readUsers: Array<{
+    userId: number;
+    userName?: string;
+    nickName?: string;
+    readTime?: string;
+  }>;
 }
 
-const SectionHeader = ({
-  eyebrow,
-  title,
-  actionLabel,
-  onAction,
-}: {
-  eyebrow: string;
-  title: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) => (
-  <div className="flex items-start justify-between gap-4">
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</div>
-      <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{title}</div>
-    </div>
-    {actionLabel && onAction ? (
-      <button
-        type="button"
-        onClick={onAction}
-        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-pink-600"
-      >
-        {actionLabel}
-        <ChevronRight size={14} />
-      </button>
-    ) : null}
-  </div>
-);
+const formatDateCN = (date: Date) => {
+  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+};
+
+const stripHtml = (content: string) => content.replace(/<[^>]+>/g, '').trim();
+
+const getAnnouncementTypeMeta = (type: AnnouncementType) => {
+  switch (type) {
+    case AnnouncementType.ANNOUNCEMENT:
+      return {
+        label: '公告',
+        icon: <Megaphone size={16} className="text-sky-500" />,
+        className: 'bg-sky-50 text-sky-600 ring-1 ring-sky-100',
+      };
+    case AnnouncementType.URGENT:
+      return {
+        label: '紧急',
+        icon: <AlertCircle size={16} className="text-rose-500" />,
+        className: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100',
+      };
+    case AnnouncementType.NOTIFICATION:
+    default:
+      return {
+        label: '通知',
+        icon: <Bell size={16} className="text-pink-500" />,
+        className: 'bg-pink-50 text-pink-600 ring-1 ring-pink-100',
+      };
+  }
+};
+
+const getPriorityMeta = (priority?: string) => {
+  switch (priority) {
+    case 'H':
+      return {
+        label: '高优先级',
+        className: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100',
+      };
+    case 'L':
+      return {
+        label: '低优先级',
+        className: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+      };
+    default:
+      return {
+        label: '中优先级',
+        className: 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
+      };
+  }
+};
+
+const getStatusMeta = (status?: string) => {
+  switch (status) {
+    case '0':
+      return {
+        label: '草稿',
+        className: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+      };
+    case '1':
+      return {
+        label: '已发布',
+        className: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100',
+      };
+    case '2':
+      return {
+        label: '已撤销',
+        className: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100',
+      };
+    default:
+      return {
+        label: '未知状态',
+        className: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+      };
+  }
+};
+
+const flattenDepts = (
+  depts: DeptItem[],
+  level = 0,
+): { dept: DeptItem; level: number }[] => {
+  const result: { dept: DeptItem; level: number }[] = [];
+  for (const dept of depts) {
+    result.push({ dept, level });
+    if (dept.children?.length) {
+      result.push(...flattenDepts(dept.children, level + 1));
+    }
+  }
+  return result;
+};
 
 const EmptyPanel = ({
   icon,
@@ -108,41 +184,23 @@ const EmptyPanel = ({
   icon: React.ReactNode;
   title: string;
   description: string;
-}) => (
-  <WorkspaceEmptyPanel variant="glass" icon={icon} title={title} description={description} />
-);
-
-// 部门树扁平化
-const flattenDepts = (
-  depts: DeptItem[],
-  level = 0,
-): { dept: DeptItem; level: number }[] => {
-  const result: { dept: DeptItem; level: number }[] = [];
-  for (const d of depts) {
-    result.push({ dept: d, level });
-    if (d.children?.length) result.push(...flattenDepts(d.children, level + 1));
-  }
-  return result;
-};
+}) => <WorkspaceEmptyPanel variant="glass" icon={icon} title={title} description={description} />;
 
 const DeptTreePicker: React.FC<{
   value: string;
   onChange: (v: string) => void;
   deptTree: DeptItem[];
 }> = ({ value, onChange, deptTree }) => {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [expandedDepts, setExpandedDepts] = useState<Set<number>>(new Set());
 
-  const selectedIds = value ? value.split(",").filter(Boolean).map(Number) : [];
+  const selectedIds = value ? value.split(',').filter(Boolean).map(Number) : [];
 
   const toggleDept = (id: number) => {
-    let newIds;
-    if (selectedIds.includes(id)) {
-      newIds = selectedIds.filter((i) => i !== id);
-    } else {
-      newIds = [...selectedIds, id];
-    }
-    onChange(newIds.join(","));
+    const newIds = selectedIds.includes(id)
+      ? selectedIds.filter((item) => item !== id)
+      : [...selectedIds, id];
+    onChange(newIds.join(','));
   };
 
   const toggleExpand = (deptId: number) => {
@@ -156,91 +214,84 @@ const DeptTreePicker: React.FC<{
 
   const flat = flattenDepts(deptTree);
   const selectedDepts = flat
-    .filter((f) => selectedIds.includes(f.dept.deptId))
-    .map((f) => f.dept);
+    .filter((item) => selectedIds.includes(item.dept.deptId))
+    .map((item) => item.dept);
 
   const nodeMatchesSearch = (node: DeptItem, keyword: string): boolean => {
     if (!keyword) return true;
-    const lk = keyword.toLowerCase();
-    if (node.deptName.toLowerCase().includes(lk)) return true;
-    if (node.children)
-      return node.children.some((c) => nodeMatchesSearch(c, keyword));
-    return false;
+    const normalized = keyword.toLowerCase();
+    if (node.deptName.toLowerCase().includes(normalized)) return true;
+    return Boolean(node.children?.some((child) => nodeMatchesSearch(child, keyword)));
   };
 
-  const renderDeptNode = (
-    node: DeptItem,
-    depth: number = 0,
-  ): React.ReactNode => {
+  const renderDeptNode = (node: DeptItem, depth = 0): React.ReactNode => {
     if (search && !nodeMatchesSearch(node, search)) return null;
 
     const isExpanded = expandedDepts.has(node.deptId) || !!search;
-    const hasChildren = node.children && node.children.length > 0;
+    const hasChildren = Boolean(node.children && node.children.length > 0);
     const isSelected = selectedIds.includes(node.deptId);
 
     return (
       <div key={node.deptId}>
         <div
-          className="flex items-center gap-1 py-1.5 px-2 hover:bg-slate-50 rounded-md cursor-pointer group"
+          className="group flex cursor-pointer items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-slate-50"
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           <button
+            type="button"
             onClick={() => toggleExpand(node.deptId)}
-            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 shrink-0"
+            className="flex h-5 w-5 shrink-0 items-center justify-center text-slate-400 hover:text-slate-600"
           >
             {hasChildren ? (
-              isExpanded ? (
-                <ChevronDown size={14} />
-              ) : (
-                <ChevronRight size={14} />
-              )
+              isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
             ) : (
               <span className="w-3.5" />
             )}
           </button>
           <button
+            type="button"
             onClick={() => toggleDept(node.deptId)}
-            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+            className={cn(
+              'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
               isSelected
-                ? "bg-pink-500 border-pink-500"
-                : "border-slate-300 hover:border-pink-300"
-            }`}
+                ? 'border-pink-500 bg-pink-500'
+                : 'border-slate-300 hover:border-pink-300',
+            )}
           >
-            {isSelected && <CheckCircle2 size={10} className="text-white" />}
+            {isSelected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
           </button>
-          <Building2 size={14} className="text-amber-500 shrink-0 ml-1" />
+          <Building2 size={14} className="ml-1 shrink-0 text-amber-500" />
           <span
-            className="text-sm font-medium text-slate-700 flex-1 truncate select-none"
+            className="flex-1 truncate text-sm font-medium text-slate-700 select-none"
             onClick={() => toggleExpand(node.deptId)}
           >
             {node.deptName}
           </span>
         </div>
-        {isExpanded && node.children && (
-          <div>
-            {node.children.map((child) => renderDeptNode(child, depth + 1))}
-          </div>
-        )}
+        {isExpanded && node.children?.map((child) => renderDeptNode(child, depth + 1))}
       </div>
     );
   };
 
   return (
     <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-      {selectedDepts.length > 0 && (
+      {selectedDepts.length > 0 ? (
         <div className="border-b border-slate-100 bg-pink-50/45 p-3">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">已选部门</div>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">
+            已选部门
+          </div>
           <div className="flex flex-wrap gap-1">
-            {selectedDepts.map((d) => (
+            {selectedDepts.map((dept) => (
               <span
-                key={d.deptId}
+                key={dept.deptId}
                 className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-pink-600 ring-1 ring-pink-100"
               >
-                {d.deptName}
+                {dept.deptName}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleDept(d.deptId);
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleDept(dept.deptId);
                   }}
                   className="text-pink-300 hover:text-pink-500"
                 >
@@ -250,7 +301,7 @@ const DeptTreePicker: React.FC<{
             ))}
           </div>
         </div>
-      )}
+      ) : null}
       <div className="border-b border-slate-100 bg-slate-50/60 p-3">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -259,7 +310,7 @@ const DeptTreePicker: React.FC<{
             className="h-11 rounded-2xl pl-9 text-sm"
             placeholder="搜索部门..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
           />
         </div>
       </div>
@@ -271,11 +322,7 @@ const DeptTreePicker: React.FC<{
         )}
       </div>
       <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500">
-        已选择{" "}
-        <span className="font-medium text-pink-500">
-          {selectedDepts.length}
-        </span>{" "}
-        个部门
+        已选择 <span className="font-medium text-pink-500">{selectedDepts.length}</span> 个部门
       </div>
     </div>
   );
@@ -285,7 +332,7 @@ const RoleListPicker: React.FC<{
   value: string;
   onChange: (v: string) => void;
 }> = ({ value, onChange }) => {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [roles, setRoles] = useState<any[]>([]);
 
   useEffect(() => {
@@ -296,47 +343,45 @@ const RoleListPicker: React.FC<{
       .catch(console.error);
   }, []);
 
-  const selectedIds = value ? value.split(",").filter(Boolean) : [];
+  const selectedIds = value ? value.split(',').filter(Boolean) : [];
 
-  const getRoleIdentifier = (r: any) => String(r.roleId || r.id || r.roleKey);
+  const getRoleIdentifier = (role: any) => String(role.roleId || role.id || role.roleKey);
 
   const toggleRole = (id: string) => {
-    let newIds;
-    if (selectedIds.includes(id)) {
-      newIds = selectedIds.filter((i) => i !== id);
-    } else {
-      newIds = [...selectedIds, id];
-    }
-    onChange(newIds.join(","));
+    const newIds = selectedIds.includes(id)
+      ? selectedIds.filter((item) => item !== id)
+      : [...selectedIds, id];
+    onChange(newIds.join(','));
   };
 
-  const selectedRoles = roles.filter((r) =>
-    selectedIds.includes(getRoleIdentifier(r)),
-  );
+  const selectedRoles = roles.filter((role) => selectedIds.includes(getRoleIdentifier(role)));
   const filteredRoles = roles.filter(
-    (r) =>
+    (role) =>
       !search ||
-      (r.roleName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (r.name || "").toLowerCase().includes(search.toLowerCase()),
+      (role.roleName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (role.name || '').toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
     <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-      {selectedRoles.length > 0 && (
+      {selectedRoles.length > 0 ? (
         <div className="border-b border-slate-100 bg-pink-50/45 p-3">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">已选角色</div>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">
+            已选角色
+          </div>
           <div className="flex flex-wrap gap-1">
-            {selectedRoles.map((r) => {
-              const id = getRoleIdentifier(r);
+            {selectedRoles.map((role) => {
+              const id = getRoleIdentifier(role);
               return (
                 <span
                   key={id}
                   className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-pink-600 ring-1 ring-pink-100"
                 >
-                  {r.roleName || r.name}
+                  {role.roleName || role.name}
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
                       toggleRole(id);
                     }}
                     className="text-pink-300 hover:text-pink-500"
@@ -348,7 +393,7 @@ const RoleListPicker: React.FC<{
             })}
           </div>
         </div>
-      )}
+      ) : null}
       <div className="border-b border-slate-100 bg-slate-50/60 p-3">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -357,7 +402,7 @@ const RoleListPicker: React.FC<{
             className="h-11 rounded-2xl pl-9 text-sm"
             placeholder="搜索角色..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
           />
         </div>
       </div>
@@ -367,29 +412,29 @@ const RoleListPicker: React.FC<{
         ) : filteredRoles.length === 0 ? (
           <WorkspaceInlineState title="未找到匹配的角色" className="py-6" />
         ) : (
-          filteredRoles.map((r) => {
-            const id = getRoleIdentifier(r);
+          filteredRoles.map((role) => {
+            const id = getRoleIdentifier(role);
             const isSelected = selectedIds.includes(id);
             return (
               <div
                 key={id}
-                className="flex items-center gap-2 py-1.5 px-2 hover:bg-slate-50 rounded-md cursor-pointer group"
+                className="group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50"
                 onClick={() => toggleRole(id)}
               >
                 <button
-                  className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                  type="button"
+                  className={cn(
+                    'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
                     isSelected
-                      ? "bg-pink-500 border-pink-500"
-                      : "border-slate-300 group-hover:border-pink-300"
-                  }`}
-                >
-                  {isSelected && (
-                    <CheckCircle2 size={10} className="text-white" />
+                      ? 'border-pink-500 bg-pink-500'
+                      : 'border-slate-300 group-hover:border-pink-300',
                   )}
+                >
+                  {isSelected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
                 </button>
-                <Shield size={14} className="text-emerald-500 shrink-0" />
-                <span className="text-sm font-medium text-slate-700 flex-1 truncate select-none">
-                  {r.roleName || r.name}
+                <Shield size={14} className="shrink-0 text-emerald-500" />
+                <span className="flex-1 truncate text-sm font-medium text-slate-700 select-none">
+                  {role.roleName || role.name}
                 </span>
               </div>
             );
@@ -397,11 +442,7 @@ const RoleListPicker: React.FC<{
         )}
       </div>
       <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500">
-        已选择{" "}
-        <span className="font-medium text-pink-500">
-          {selectedRoles.length}
-        </span>{" "}
-        个角色
+        已选择 <span className="font-medium text-pink-500">{selectedRoles.length}</span> 个角色
       </div>
     </div>
   );
@@ -409,39 +450,31 @@ const RoleListPicker: React.FC<{
 
 export const AnnouncementPage = () => {
   const { user } = useAuth();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [activeTab, setActiveTab] = useState<"unread" | "read" | "manage">(
-    "unread",
-  );
-  const [selectedAnnouncement, setSelectedAnnouncement] =
-    useState<Announcement | null>(null);
 
-  // Publish/Edit Modal State
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [activeTab, setActiveTab] = useState<'unread' | 'read' | 'manage'>('unread');
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [formData, setFormData] = useState<Partial<Announcement>>({
     type: AnnouncementType.NOTIFICATION,
     scopeType: AnnouncementScope.ALL,
-    priority: "M",
-    content: "",
+    priority: 'M',
+    content: '',
     isTop: 0,
   });
 
-  // Read Stats Modal State
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const [statsData, setStatsData] = useState<{
-    readCount: number;
-    readUsers: any[];
-  } | null>(null);
+  const [statsData, setStatsData] = useState<ReadStatsData | null>(null);
 
-  // Manage List State
   const [manageList, setManageList] = useState<Announcement[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
-  const [searchTitle, setSearchTitle] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [searchTitle, setSearchTitle] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
 
   useEffect(() => {
@@ -454,7 +487,7 @@ export const AnnouncementPage = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      if (activeTab === "manage") {
+      if (activeTab === 'manage') {
         const result = await getManageList({
           title: searchTitle,
           type: filterType,
@@ -462,15 +495,15 @@ export const AnnouncementPage = () => {
           page: currentPage,
           size: pageSize,
         });
-        setManageList(result.list);
-        setTotal(result.total);
+        setManageList(result.list || []);
+        setTotal(result.total || 0);
       } else {
         const list = await getMyAnnouncements();
         setAnnouncements(Array.isArray(list) ? list : []);
       }
-    } catch (e) {
-      console.error("获取公告失败", e);
-      if (activeTab === "manage") {
+    } catch (error) {
+      console.error('获取公告失败', error);
+      if (activeTab === 'manage') {
         setManageList([]);
       } else {
         setAnnouncements([]);
@@ -490,77 +523,77 @@ export const AnnouncementPage = () => {
       try {
         await markAnnouncementRead(announcement.announcementId.toString());
         await fetchAnnouncements();
-        // 触发自定义事件通知 MainLayout 更新未读数量
-        window.dispatchEvent(new Event("announcementRead"));
-      } catch (e) {
-        console.error("标记已读失败", e);
+        window.dispatchEvent(new Event('announcementRead'));
+      } catch (error) {
+        console.error('标记已读失败', error);
       }
     }
   };
 
+  // 发布与编辑共用同一套表单，提交前统一转换日期格式，避免页面层散落转换逻辑。
   const handlePublish = async () => {
     if (!formData.title || !formData.content) {
-      toast.error("标题和内容不能为空");
+      toast.error('标题和内容不能为空');
       return;
     }
+
     try {
-      // 将 datetime-local 格式的 expireTime 转为后端要求的 "yyyy-MM-dd HH:mm:ss"
       const submitData = {
         ...formData,
-        expireTime: formData.expireTime
-          ? toBackendDateString(formData.expireTime)
-          : undefined,
+        expireTime: formData.expireTime ? toBackendDateString(formData.expireTime) : undefined,
       };
-      if (modalMode === "create") {
+
+      if (modalMode === 'create') {
         await publishAnnouncement(submitData);
-        toast.success("发布成功");
+        toast.success('公告发布成功');
       } else {
         await updateAnnouncement(submitData);
-        toast.success("更新成功");
+        toast.success('公告更新成功');
       }
+
       setIsModalOpen(false);
       resetForm();
-      if (activeTab === "manage") fetchAnnouncements();
-    } catch (e) {
-      toast.error(modalMode === "create" ? "发布失败" : "更新失败");
+      await fetchAnnouncements();
+    } catch (error) {
+      toast.error(modalMode === 'create' ? '公告发布失败' : '公告更新失败');
     }
   };
 
   const handleEdit = (announcement: Announcement) => {
-    setModalMode("edit");
+    setModalMode('edit');
     setFormData(announcement);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("确定要删除这条公告吗？")) return;
+    if (!confirm('确定删除这条公告吗？')) return;
     try {
       await deleteAnnouncement(id);
-      toast.success("删除成功");
-      fetchAnnouncements();
-    } catch (e) {
-      toast.error("删除失败");
+      toast.success('公告删除成功');
+      await fetchAnnouncements();
+    } catch (error) {
+      toast.error('公告删除失败');
     }
   };
 
   const handleRevoke = async (id: number) => {
-    if (!confirm("确定要撤销这条公告吗？")) return;
+    if (!confirm('确定撤销这条公告吗？')) return;
     try {
       await revokeAnnouncement(id);
-      toast.success("撤销成功");
-      fetchAnnouncements();
-    } catch (e) {
-      toast.error("撤销失败");
+      toast.success('公告撤销成功');
+      await fetchAnnouncements();
+    } catch (error) {
+      toast.error('公告撤销失败');
     }
   };
 
   const handleToggleTop = async (id: number) => {
     try {
       await toggleTop(id);
-      toast.success("置顶状态已更新");
-      fetchAnnouncements();
-    } catch (e) {
-      toast.error("操作失败");
+      toast.success('置顶状态已更新');
+      await fetchAnnouncements();
+    } catch (error) {
+      toast.error('操作失败');
     }
   };
 
@@ -569,8 +602,8 @@ export const AnnouncementPage = () => {
       const stats = await getReadStats(id);
       setStatsData(stats);
       setIsStatsModalOpen(true);
-    } catch (e) {
-      toast.error("获取统计失败");
+    } catch (error) {
+      toast.error('获取阅读统计失败');
     }
   };
 
@@ -578,11 +611,11 @@ export const AnnouncementPage = () => {
     setFormData({
       type: AnnouncementType.NOTIFICATION,
       scopeType: AnnouncementScope.ALL,
-      priority: "M",
-      content: "",
+      priority: 'M',
+      content: '',
       isTop: 0,
     });
-    setModalMode("create");
+    setModalMode('create');
   };
 
   const handleSearch = () => {
@@ -591,643 +624,598 @@ export const AnnouncementPage = () => {
   };
 
   const handleReset = () => {
-    setSearchTitle("");
-    setFilterType("");
-    setFilterStatus("");
+    setSearchTitle('');
+    setFilterType('');
+    setFilterStatus('');
     setCurrentPage(1);
   };
 
-  // Filter lists
-  const displayList = announcements.filter((a) => {
-    if (activeTab === "unread") return !a.isRead;
-    if (activeTab === "read") return a.isRead;
+  const displayList = announcements.filter((announcement) => {
+    if (activeTab === 'unread') return !announcement.isRead;
+    if (activeTab === 'read') return announcement.isRead;
     return true;
   });
 
-  const unreadCount = announcements.filter((a) => !a.isRead).length;
-  const readCount = announcements.filter((a) => a.isRead).length;
-  const topCount = announcements.filter((a) => a.isTop === 1).length;
+  const unreadCount = announcements.filter((announcement) => !announcement.isRead).length;
+  const readCount = announcements.filter((announcement) => announcement.isRead).length;
+  const topCount = announcements.filter((announcement) => announcement.isTop === 1).length;
   const activeTabTitle =
-    activeTab === "unread" ? "未读消息" : activeTab === "read" ? "历史消息" : "公告管理";
+    activeTab === 'unread' ? '未读消息' : activeTab === 'read' ? '历史消息' : '公告管理';
   const dateLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
   const canManage = user?.role === Role.ADMIN || user?.role === Role.HR;
   const announcementSummary =
-    activeTab === "unread"
+    activeTab === 'unread'
       ? unreadCount > 0
         ? `当前还有 ${unreadCount} 条未读公告，建议优先处理置顶或紧急消息。`
-        : "当前没有未读公告，公告中心状态平稳。"
-      : activeTab === "read"
-        ? `这里集中归档你已经查看过的公告，方便后续追溯和再次确认。`
-        : `发布、编辑、撤销、置顶和阅读统计都在这里统一管理。`;
-  const focusItems = [
-    { label: "当前视图", value: activeTabTitle, hint: activeTab === "manage" ? "维护公告全生命周期" : "查看公告阅读动态", tone: "bg-pink-50 text-pink-600" },
-    { label: "未读公告", value: `${unreadCount} 条`, hint: "当前仍未阅读的公告数量", tone: "bg-rose-50 text-rose-600" },
-    { label: "置顶公告", value: `${topCount} 条`, hint: "当前对首页和公告中心更重要的消息", tone: "bg-amber-50 text-amber-600" },
+        : '当前没有未读公告，公告中心状态平稳。'
+      : activeTab === 'read'
+        ? '这里集中归档你已经查看过的公告，方便后续追溯和再次确认。'
+        : '发布、编辑、撤销、置顶和阅读统计都在这里统一管理。';
+
+  const overviewItems = [
+    {
+      label: '当前视图',
+      value: activeTabTitle,
+      toneClassName:
+        'border-pink-100 bg-[linear-gradient(135deg,rgba(253,242,248,0.92),rgba(255,255,255,0.84))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.08)]',
+    },
+    {
+      label: '未读公告',
+      value: unreadCount,
+    },
+    {
+      label: '置顶公告',
+      value: topCount,
+    },
+    {
+      label: '管理总量',
+      value: activeTab === 'manage' ? total : announcements.length,
+    },
   ];
+
   const metricCards = [
-    { label: "未读消息", value: unreadCount, desc: "需要优先查看", icon: <Bell size={20} />, iconClass: "bg-pink-50 text-pink-600", ringClass: "ring-pink-100" },
-    { label: "历史消息", value: readCount, desc: "已完成阅读", icon: <Eye size={20} />, iconClass: "bg-slate-100 text-slate-600", ringClass: "ring-slate-200" },
-    { label: "置顶公告", value: topCount, desc: "重点消息总数", icon: <Pin size={20} />, iconClass: "bg-amber-50 text-amber-600", ringClass: "ring-amber-100" },
-    { label: "管理总量", value: activeTab === "manage" ? total : announcements.length, desc: "当前统计口径下的公告数量", icon: <Megaphone size={20} />, iconClass: "bg-rose-50 text-rose-600", ringClass: "ring-rose-100" },
+    {
+      label: '未读消息',
+      value: unreadCount,
+      hint: '需要优先查看',
+      aside: <Bell size={18} className="text-pink-500" />,
+    },
+    {
+      label: '历史消息',
+      value: readCount,
+      hint: '已完成阅读',
+      aside: <Eye size={18} className="text-slate-500" />,
+    },
+    {
+      label: '置顶公告',
+      value: topCount,
+      hint: '重点消息总数',
+      aside: <Pin size={18} className="text-amber-500" />,
+    },
+    {
+      label: '管理总量',
+      value: activeTab === 'manage' ? total : announcements.length,
+      hint: '当前统计口径下的公告数量',
+      aside: <Megaphone size={18} className="text-rose-500" />,
+    },
   ];
 
-  const getTypeIcon = (type: AnnouncementType) => {
-    switch (type) {
-      case AnnouncementType.NOTIFICATION:
-        return <Bell size={18} className="text-pink-400" />;
-      case AnnouncementType.ANNOUNCEMENT:
-        return <Megaphone size={18} className="text-pink-400" />;
-      case AnnouncementType.URGENT:
-        return <AlertCircle size={18} className="text-red-500" />;
-      default:
-        return <Bell size={18} />;
-    }
-  };
-
-  const getPriorityBadge = (p: string) => {
-    if (p === "H")
-      return (
-        <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded">
-          紧急
-        </span>
-      );
-    if (p === "L")
-      return (
-        <span className="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded">
-          低
-        </span>
-      );
+  if (!user) {
     return null;
-  };
-
-  const getStatusBadge = (status: string) => {
-    if (status === "0")
-      return (
-        <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded">
-          草稿
-        </span>
-      );
-    if (status === "1")
-      return (
-        <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded">
-          已发布
-        </span>
-      );
-    if (status === "2")
-      return (
-        <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded">
-          已撤销
-        </span>
-      );
-    return null;
-  };
-
-  if (!user) return null;
+  }
 
   return (
     <div className="relative min-h-screen pb-6">
-      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden">
-        <div className="absolute left-[-10%] top-[-8%] h-[32rem] w-[32rem] rounded-full bg-pink-300/18 blur-[120px]" />
-        <div className="absolute right-[-12%] top-[12%] h-[38rem] w-[38rem] rounded-full bg-rose-200/20 blur-[140px]" />
-        <div className="absolute bottom-[-12%] left-[18%] h-[26rem] w-[26rem] rounded-full bg-amber-100/45 blur-[110px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,252,0.55),rgba(255,255,255,0.8))]" />
-      </div>
+      <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-            <div className="relative p-7 sm:p-8">
-              <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_55%)]" />
-              <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
-              <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
+      <div className="relative z-10 space-y-6 p-6">
+        <WorkspaceHeroCard
+          badge={
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <Megaphone className="h-3.5 w-3.5" />
+              Announcement Workspace
+            </span>
+          }
+          title="公告中心"
+          description={announcementSummary}
+          actions={
+            <div className="flex flex-wrap gap-3">
+              {canManage ? (
+                <Button
+                  className="h-12 rounded-2xl px-6"
+                  onClick={() => {
+                    resetForm();
+                    setIsModalOpen(true);
+                  }}
+                >
+                  <Plus size={16} className="mr-2" />
+                  发布公告
+                </Button>
+              ) : null}
+              {canManage ? (
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-2xl bg-white/85 px-6"
+                  onClick={() => setActiveTab('manage')}
+                >
+                  <Shield size={16} className="mr-2 text-pink-500" />
+                  公告管理
+                </Button>
+              ) : null}
+            </div>
+          }
+        >
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
+            <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
+              <Calendar size={14} />
+              {dateLabel}
+            </span>
+            <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
+              {timeLabel}
+            </span>
+            <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
+              {activeTabTitle}
+            </span>
+          </div>
 
-              <div className="relative">
-                <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
-                    <Calendar size={14} />
-                    {dateLabel}
-                  </span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{activeTabTitle}</span>
-                </div>
+          <div className="mt-6 grid gap-4 xl:grid-cols-4">
+            {metricCards.map((card) => (
+              <WorkspaceMetricCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                hint={card.hint}
+                aside={card.aside}
+              />
+            ))}
+          </div>
+        </WorkspaceHeroCard>
 
-                <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="max-w-2xl">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
-                      <Megaphone size={14} />
-                      Announcement Workspace
-                    </div>
-                    <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-950 sm:text-[2.85rem]">公告中心</h1>
-                    <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{announcementSummary}</p>
-                  </div>
+        <WorkspaceWorkbenchCard
+          eyebrow="公告工作区"
+          title={activeTabTitle}
+          total={activeTab === 'manage' ? total : displayList.length}
+          hasActiveFilters={
+            activeTab === 'manage'
+              ? Boolean(searchTitle || filterType || filterStatus)
+              : activeTab !== 'unread'
+          }
+          overviewItems={overviewItems}
+          quickFilters={[
+            { label: '未读消息', value: 'unread' },
+            { label: '历史消息', value: 'read' },
+            ...(canManage ? [{ label: '公告管理', value: 'manage' }] : []),
+          ]}
+          activeQuickFilter={activeTab}
+          onQuickFilterChange={(value) =>
+            setActiveTab(value as 'unread' | 'read' | 'manage')
+          }
+          filterBar={
+            activeTab === 'manage' ? (
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_180px_180px_auto_auto]">
+                <Input
+                  type="text"
+                  placeholder="搜索标题..."
+                  value={searchTitle}
+                  onChange={(event) => setSearchTitle(event.target.value)}
+                  className="h-12 rounded-2xl"
+                />
+                <Select value={filterType || 'ALL'} onValueChange={(value) => setFilterType(value === 'ALL' ? '' : value)}>
+                  <SelectTrigger className="h-12 rounded-2xl">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">所有类型</SelectItem>
+                    <SelectItem value={String(AnnouncementType.NOTIFICATION)}>通知</SelectItem>
+                    <SelectItem value={String(AnnouncementType.ANNOUNCEMENT)}>公告</SelectItem>
+                    <SelectItem value={String(AnnouncementType.URGENT)}>紧急</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus || 'ALL'} onValueChange={(value) => setFilterStatus(value === 'ALL' ? '' : value)}>
+                  <SelectTrigger className="h-12 rounded-2xl">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">所有状态</SelectItem>
+                    <SelectItem value="0">草稿</SelectItem>
+                    <SelectItem value="1">已发布</SelectItem>
+                    <SelectItem value="2">已撤销</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleSearch} className="h-12 rounded-2xl">
+                  <Search size={16} className="mr-2" />
+                  搜索
+                </Button>
+                <Button variant="outline" onClick={handleReset} className="h-12 rounded-2xl">
+                  <RotateCcw size={16} className="mr-2" />
+                  重置
+                </Button>
+              </div>
+            ) : (
+              <div className="text-sm leading-6 text-slate-500">
+                {activeTab === 'read'
+                  ? '这里会沉淀你已经读过的公告，便于后续追溯。'
+                  : '未读消息会优先展示置顶和高优先级公告，帮助你快速确认团队通知。'}
+              </div>
+            )
+          }
+        />
 
-                  <div className="flex flex-wrap gap-3">
-                    {canManage && (
-                      <Button
-                        className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600"
-                        onClick={() => {
-                          resetForm();
-                          setIsModalOpen(true);
-                        }}
-                      >
-                        <Plus size={16} className="mr-2" />
-                        发布公告
-                      </Button>
-                    )}
-                    {canManage && (
-                      <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={() => setActiveTab("manage")}>
-                        <Shield size={16} className="mr-2 text-pink-500" />
-                        公告管理
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">未读公告</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{unreadCount}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">当前还没有阅读的公告数量</div>
-                  </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">历史消息</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{readCount}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">已经阅读过的公告消息</div>
-                  </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">置顶公告</div>
-                    <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{topCount}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">当前优先展示的重要公告数量</div>
-                  </div>
+        <WorkspaceResultCard
+          total={activeTab === 'manage' ? total : displayList.length}
+          title={activeTab === 'manage' ? '公告管理列表' : activeTabTitle}
+          description={
+            activeTab === 'manage'
+              ? '统一处理公告发布、编辑、撤销、置顶和阅读统计。'
+              : '按阅读状态查看公告详情，未读消息会优先标识。'
+          }
+          footer={
+            activeTab === 'manage' ? (
+              <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
+                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  共 {total} 条
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-xl"
+                  >
+                    上一页
+                  </Button>
+                  <span className="px-3 py-2 text-sm text-slate-600">第 {currentPage} 页</span>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage((page) => page + 1)}
+                    disabled={currentPage * pageSize >= total}
+                    className="rounded-xl"
+                  >
+                    下一页
+                  </Button>
                 </div>
               </div>
-            </div>
-          </Card>
+            ) : null
+          }
+        >
+          <div className="p-4">
+            {activeTab === 'manage' ? (
+              <div className="overflow-hidden rounded-[24px] border border-white/80 bg-white/85 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <div className="overflow-x-auto">
+                  <table className="min-w-[1360px] w-full">
+                    <TableHeader className="sticky top-0 z-10">
+                      <tr>
+                        <TableHead className="px-4 py-3 text-left w-[30%]">标题</TableHead>
+                        <TableHead className="px-4 py-3 text-left">类型</TableHead>
+                        <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                        <TableHead className="px-4 py-3 text-left">优先级</TableHead>
+                        <TableHead className="px-4 py-3 text-left">已读人数</TableHead>
+                        <TableHead className="px-4 py-3 text-left w-44">发布时间</TableHead>
+                        <TableActionHead className="px-4 py-3 w-[360px]">操作</TableActionHead>
+                      </tr>
+                    </TableHeader>
+                    <tbody className="divide-y divide-slate-100">
+                      {manageList.map((item) => {
+                        const typeMeta = getAnnouncementTypeMeta(item.type);
+                        const statusMeta = getStatusMeta(item.status);
+                        const priorityMeta = getPriorityMeta(item.priority);
 
-          <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-            <SectionHeader eyebrow="今日焦点" title="今天先看这些" />
-            <div className="mt-5 space-y-3">
-              {focusItems.map(item => (
-                <div key={item.label} className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4">
-                  <div className={`rounded-2xl p-3 ${item.tone}`}>
-                    <Bell size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                      <div className="text-xs font-semibold text-slate-400">{item.value}</div>
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">{item.hint}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {metricCards.map(card => (
-            <div key={card.label}>
-              <Card className={`rounded-[28px] border-white/80 bg-white/78 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)] backdrop-blur-xl ring-1 ${card.ringClass}`}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-medium text-slate-500">{card.label}</div>
-                    <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{card.value}</div>
-                    <div className="mt-2 text-xs leading-5 text-slate-400">{card.desc}</div>
-                  </div>
-                  <div className={`rounded-2xl p-3 ${card.iconClass}`}>{card.icon}</div>
-                </div>
-              </Card>
-            </div>
-          ))}
-        </div>
-
-        <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="flex flex-col gap-5">
-            <div className="rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <div className="min-w-0">
-                  <SectionHeader eyebrow="公告工作区" title={activeTabTitle} />
-                  <div className="mt-2 text-sm leading-6 text-slate-500">
-                    {activeTab === "manage"
-                      ? "集中处理公告发布、编辑、撤销、置顶和阅读统计。"
-                      : "按未读和历史消息查看公告内容，及时掌握团队通知与全员公告。"}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-                  <div className="inline-flex h-11 items-center rounded-2xl bg-slate-100 p-1">
-                    <button type="button" onClick={() => setActiveTab("unread")} className={`relative flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "unread" ? "bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-700"}`}>
-                      未读消息
-                      {unreadCount > 0 && <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{unreadCount}</span>}
-                    </button>
-                    <button type="button" onClick={() => setActiveTab("read")} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "read" ? "bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-700"}`}>
-                      历史消息
-                    </button>
-                    {canManage && (
-                      <button type="button" onClick={() => setActiveTab("manage")} className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "manage" ? "bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" : "text-slate-500 hover:text-slate-700"}`}>
-                        公告管理
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {activeTab === "manage" ? (
-              <div className="flex flex-col gap-4">
-                <div className="rounded-[24px] border border-slate-100 bg-white/85 p-4 shadow-sm">
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_180px_180px_auto_auto]">
-                    <Input type="text" placeholder="搜索标题..." value={searchTitle} onChange={(e) => setSearchTitle(e.target.value)} className="h-12 rounded-2xl" />
-                    <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
-                      <SelectTrigger className="h-12 rounded-2xl">
-                        <SelectValue placeholder="请选择" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">所有类型</SelectItem>
-                        <SelectItem value="1">通知</SelectItem>
-                        <SelectItem value="2">公告</SelectItem>
-                        <SelectItem value="3">紧急</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v)}>
-                      <SelectTrigger className="h-12 rounded-2xl">
-                        <SelectValue placeholder="请选择" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">所有状态</SelectItem>
-                        <SelectItem value="0">草稿</SelectItem>
-                        <SelectItem value="1">已发布</SelectItem>
-                        <SelectItem value="2">已撤销</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={handleSearch} className="h-12 rounded-2xl bg-pink-500 text-white hover:bg-pink-600">
-                      <Search size={16} className="mr-2" />
-                      搜索
-                    </Button>
-                    <Button variant="outline" onClick={handleReset} className="h-12 rounded-2xl">
-                      <RotateCcw size={16} className="mr-2" />
-                      重置
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-[1360px] w-full">
-                      <TableHeader className="sticky top-0 z-10">
-                        <tr>
-                          <TableHead className="px-4 py-3 text-left w-[30%]">标题</TableHead>
-                          <TableHead className="px-4 py-3 text-left">类型</TableHead>
-                          <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                          <TableHead className="px-4 py-3 text-left">优先级</TableHead>
-                          <TableHead className="px-4 py-3 text-left">已读人数</TableHead>
-                          <TableHead className="px-4 py-3 text-left w-44">发布时间</TableHead>
-                          <TableActionHead className="px-4 py-3 w-[360px]">操作</TableActionHead>
-                        </tr>
-                      </TableHeader>
-                      <tbody className="divide-y divide-slate-100">
-                        {manageList.map((item) => (
+                        return (
                           <tr key={item.announcementId} className="hover:bg-slate-50/80">
                             <td className="px-4 py-3 w-[30%]">
                               <div className="flex min-w-0 items-center gap-2">
-                                {item.isTop === 1 && <Pin size={14} className="text-red-500" />}
+                                {item.isTop === 1 ? <Pin size={14} className="text-red-500" /> : null}
                                 <span className="min-w-0 truncate text-sm text-slate-900">{item.title}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3"><div className="flex items-center gap-1">{getTypeIcon(item.type)}</div></td>
-                            <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
-                            <td className="px-4 py-3">{getPriorityBadge(item.priority)}</td>
                             <td className="px-4 py-3">
-                              <button onClick={() => handleViewStats(item.announcementId)} className="flex items-center gap-1 text-sm text-pink-500 hover:text-pink-700">
+                              <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold', typeMeta.className)}>
+                                {typeMeta.icon}
+                                {typeMeta.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={cn('inline-flex rounded-full px-2.5 py-1 text-xs font-semibold', statusMeta.className)}>
+                                {statusMeta.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={cn('inline-flex rounded-full px-2.5 py-1 text-xs font-semibold', priorityMeta.className)}>
+                                {priorityMeta.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => handleViewStats(item.announcementId)}
+                                className="flex items-center gap-1 text-sm text-pink-500 hover:text-pink-700"
+                              >
                                 <Users size={14} />
                                 查看
                               </button>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-500">{item.publishTime ? new Date(item.publishTime).toLocaleString() : "-"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-500">
+                              {item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
+                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-right">
                               <TableRowActions
                                 align="end"
                                 wrap={false}
                                 className="whitespace-nowrap"
                                 actions={[
-                                  { label: "查看", icon: <Eye size={16} />, onClick: () => handleRead(item), tone: "info" },
-                                  { label: "编辑", icon: <Edit size={16} />, onClick: () => handleEdit(item), tone: "success" },
-                                  { label: item.isTop === 1 ? "取消置顶" : "置顶", icon: <Pin size={16} />, onClick: () => handleToggleTop(item.announcementId), tone: item.isTop === 1 ? "danger" : "neutral" },
-                                  { label: "撤销", icon: <X size={16} />, onClick: () => handleRevoke(item.announcementId), tone: "warning", hidden: item.status !== "1" },
-                                  { label: "删除", icon: <Trash2 size={16} />, onClick: () => handleDelete(item.announcementId), tone: "danger" },
+                                  { label: '查看', icon: <Eye size={16} />, onClick: () => handleRead(item), tone: 'info' },
+                                  { label: '编辑', icon: <Edit size={16} />, onClick: () => handleEdit(item), tone: 'success' },
+                                  {
+                                    label: item.isTop === 1 ? '取消置顶' : '置顶',
+                                    icon: <Pin size={16} />,
+                                    onClick: () => handleToggleTop(item.announcementId),
+                                    tone: item.isTop === 1 ? 'danger' : 'neutral',
+                                  },
+                                  { label: '撤销', icon: <X size={16} />, onClick: () => handleRevoke(item.announcementId), tone: 'warning', hidden: item.status !== '1' },
+                                  { label: '删除', icon: <Trash2 size={16} />, onClick: () => handleDelete(item.announcementId), tone: 'danger' },
                                 ]}
                               />
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4">
-                    <span className="text-sm text-slate-600">共 {total} 条</span>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="rounded-xl">上一页</Button>
-                      <span className="px-3 py-2 text-sm text-slate-600">第 {currentPage} 页</span>
-                      <Button variant="outline" onClick={() => setCurrentPage((p) => p + 1)} disabled={currentPage * pageSize >= total} className="rounded-xl">下一页</Button>
-                    </div>
-                  </div>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
+            ) : displayList.length === 0 ? (
+              <EmptyPanel
+                icon={<Bell size={26} />}
+                title="暂无相关消息"
+                description="新公告发布后会在这里展示，未读消息会优先标识。"
+              />
             ) : (
-              <div className="space-y-4">
-                {displayList.length === 0 ? (
-                  <EmptyPanel icon={<Bell size={26} />} title="暂无相关消息" description="新公告发布后会在这里展示，未读消息会优先标识。" />
-                ) : (
-                  <div className="space-y-3">
-                    {displayList.map((item) => (
-                      <button
-                        key={item.announcementId}
-                        onClick={() => handleRead(item)}
-                        className={`flex w-full items-start gap-4 rounded-[24px] border px-4 py-4 text-left transition ${!item.isRead ? "border-pink-100 bg-pink-50/25 hover:bg-pink-50/40" : "border-slate-100 bg-white hover:bg-slate-50/70"}`}
-                      >
-                        <div className="mt-1 shrink-0">{getTypeIcon(item.type)}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-1 flex items-center gap-2">
-                            {item.isTop === 1 && <Pin size={14} className="text-red-500" />}
-                            {getPriorityBadge(item.priority)}
-                            <h3 className={`truncate text-sm ${!item.isRead ? "font-bold text-slate-900" : "font-medium text-slate-600"}`}>{item.title}</h3>
-                            <span className="ml-auto shrink-0 text-xs text-slate-400">{new Date(item.createTime).toLocaleString()}</span>
-                          </div>
-                          <p
-                            className="line-clamp-2 text-xs text-slate-500"
-                            dangerouslySetInnerHTML={{
-                              __html: item.content.replace(/<[^>]+>/g, "").substring(0, 100),
-                            }}
-                          />
+              <div className="space-y-3">
+                {displayList.map((item) => {
+                  const typeMeta = getAnnouncementTypeMeta(item.type);
+                  const priorityMeta = getPriorityMeta(item.priority);
+                  const excerpt = stripHtml(item.content).slice(0, 100);
+
+                  return (
+                    <button
+                      key={item.announcementId}
+                      type="button"
+                      onClick={() => handleRead(item)}
+                      className={cn(
+                        'flex w-full items-start gap-4 rounded-[24px] border px-4 py-4 text-left transition',
+                        !item.isRead
+                          ? 'border-pink-100 bg-pink-50/25 hover:bg-pink-50/40'
+                          : 'border-white/80 bg-white hover:bg-slate-50/70',
+                      )}
+                    >
+                      <div className="mt-1 shrink-0">{typeMeta.icon}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          {item.isTop === 1 ? <Pin size={14} className="text-red-500" /> : null}
+                          <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', priorityMeta.className)}>
+                            {priorityMeta.label}
+                          </span>
+                          <h3
+                            className={cn(
+                              'truncate text-sm',
+                              !item.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-600',
+                            )}
+                          >
+                            {item.title}
+                          </h3>
+                          <span className="ml-auto shrink-0 text-xs text-slate-400">
+                            {new Date(item.createTime).toLocaleString()}
+                          </span>
                         </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                        <p className="line-clamp-2 text-xs text-slate-500">{excerpt}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
-        </Card>
+        </WorkspaceResultCard>
       </div>
 
-      {selectedAnnouncement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/95 shadow-[0_28px_72px_rgba(15,23,42,0.18)] backdrop-blur-xl">
-            <div className="relative border-b border-slate-100 px-6 pb-5 pt-6">
-              <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
-              <div className="relative flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  {selectedAnnouncement.isTop === 1 && (
-                    <Pin size={14} className="text-red-500" />
-                  )}
-                  {getPriorityBadge(selectedAnnouncement.priority)}
-                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                    {selectedAnnouncement.scopeType === "ALL" ? "全员" : "定向"}
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold text-slate-800">
-                  {selectedAnnouncement.title}
-                </h3>
-                <div className="text-xs text-slate-400 mt-2 space-y-1">
-                  <p>
-                    发布时间:{" "}
-                    {selectedAnnouncement.publishTime
-                      ? new Date(
-                          selectedAnnouncement.publishTime,
-                        ).toLocaleString()
-                      : new Date(
-                          selectedAnnouncement.createTime,
-                        ).toLocaleString()}
-                  </p>
-                  {selectedAnnouncement.expireTime && (
-                    <p>
-                      有效期至:{" "}
-                      {new Date(
-                        selectedAnnouncement.expireTime,
-                      ).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setSelectedAnnouncement(null)} className="rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-                <X size={18} />
-              </Button>
+      {selectedAnnouncement ? (
+        <WorkspaceDialogShell
+          title={selectedAnnouncement.title}
+          description="查看公告详情、发布时间和生效范围。"
+          onClose={() => setSelectedAnnouncement(null)}
+          maxWidthClassName="max-w-3xl"
+          bodyClassName="max-h-[82vh] overflow-y-auto"
+        >
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedAnnouncement.isTop === 1 ? <Pin size={14} className="text-red-500" /> : null}
+              <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', getPriorityMeta(selectedAnnouncement.priority).className)}>
+                {getPriorityMeta(selectedAnnouncement.priority).label}
+              </span>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                {selectedAnnouncement.scopeType === AnnouncementScope.ALL ? '全员' : '定向'}
+              </span>
             </div>
+
+            <div className="space-y-1 text-xs text-slate-400">
+              <p>
+                发布时间：
+                {selectedAnnouncement.publishTime
+                  ? new Date(selectedAnnouncement.publishTime).toLocaleString()
+                  : new Date(selectedAnnouncement.createTime).toLocaleString()}
+              </p>
+              {selectedAnnouncement.expireTime ? (
+                <p>有效期至：{new Date(selectedAnnouncement.expireTime).toLocaleString()}</p>
+              ) : null}
             </div>
-            <div className="p-6 overflow-y-auto prose prose-sm max-w-none text-slate-600">
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: selectedAnnouncement.content,
-                }}
-              />
+
+            <div className="prose prose-sm max-w-none text-slate-600">
+              <div dangerouslySetInnerHTML={{ __html: selectedAnnouncement.content }} />
             </div>
-            <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-6 py-5">
-              <Button onClick={() => setSelectedAnnouncement(null)} className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600">
-                关闭
-              </Button>
+
+            <div className="flex justify-end">
+              <Button onClick={() => setSelectedAnnouncement(null)}>关闭</Button>
             </div>
           </div>
-        </div>
-      )}
+        </WorkspaceDialogShell>
+      ) : null}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/95 shadow-[0_28px_72px_rgba(15,23,42,0.18)] backdrop-blur-xl">
-            <div className="relative border-b border-slate-100 px-6 pb-5 pt-6">
-              <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
-              <div className="relative">
-              <h3 className="text-2xl font-bold tracking-tight text-slate-900">
-                {modalMode === "create" ? "发布新公告" : "编辑公告"}
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500">填写标题、类型、优先级、范围和正文内容，完成一次完整的公告发布或更新。</p>
+      {isModalOpen ? (
+        <WorkspaceDialogShell
+          title={modalMode === 'create' ? '发布新公告' : '编辑公告'}
+          description="填写标题、类型、优先级、范围和正文内容，完成公告发布或更新。"
+          onClose={() => {
+            setIsModalOpen(false);
+            resetForm();
+          }}
+          maxWidthClassName="max-w-3xl"
+          bodyClassName="max-h-[86vh] overflow-y-auto"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">标题</label>
+              <Input
+                type="text"
+                className="h-12 rounded-2xl"
+                value={formData.title || ''}
+                onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                placeholder="请输入公告标题"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">类型</label>
+                <Select
+                  value={String(formData.type)}
+                  onValueChange={(value) => setFormData({ ...formData, type: value as AnnouncementType })}
+                >
+                  <SelectTrigger className="h-12 rounded-2xl">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={String(AnnouncementType.NOTIFICATION)}>通知</SelectItem>
+                    <SelectItem value={String(AnnouncementType.ANNOUNCEMENT)}>公告</SelectItem>
+                    <SelectItem value={String(AnnouncementType.URGENT)}>紧急</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">优先级</label>
+                <Select
+                  value={String(formData.priority)}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, priority: value as 'L' | 'M' | 'H' })
+                  }
+                >
+                  <SelectTrigger className="h-12 rounded-2xl">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="L">低</SelectItem>
+                    <SelectItem value="M">中</SelectItem>
+                    <SelectItem value="H">高</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">发布范围</label>
+                <Select
+                  value={String(formData.scopeType)}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      scopeType: value as AnnouncementScope,
+                      scopeValue: '',
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-12 rounded-2xl">
+                    <SelectValue placeholder="请选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={String(AnnouncementScope.ALL)}>全员</SelectItem>
+                    <SelectItem value={String(AnnouncementScope.DEPT)}>部门</SelectItem>
+                    <SelectItem value={String(AnnouncementScope.ROLE)}>角色</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto">
+
+            {formData.scopeType === AnnouncementScope.DEPT || formData.scopeType === AnnouncementScope.ROLE ? (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  标题
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  {formData.scopeType === AnnouncementScope.DEPT ? '选择部门' : '选择角色'}
                 </label>
-                <Input
-                  type="text"
-                  className="h-12 rounded-2xl"
-                  value={formData.title || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  placeholder="请输入公告标题"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    类型
-                  </label>
-                  <Select
-                    value={String(formData.type)}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, type: v as AnnouncementType })
-                    }
-                  >
-                    <SelectTrigger className="h-12 rounded-2xl">
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={String(AnnouncementType.NOTIFICATION)}>
-                        通知
-                      </SelectItem>
-                      <SelectItem value={String(AnnouncementType.ANNOUNCEMENT)}>
-                        公告
-                      </SelectItem>
-                      <SelectItem value={String(AnnouncementType.URGENT)}>
-                        紧急
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    优先级
-                  </label>
-                  <Select
-                    value={String(formData.priority)}
-                    onValueChange={(v) =>
-                      setFormData({
-                        ...formData,
-                        priority: v as "M" | "L" | "H",
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-12 rounded-2xl">
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="L">低</SelectItem>
-                      <SelectItem value="M">中</SelectItem>
-                      <SelectItem value="H">高</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    发布范围
-                  </label>
-                  <Select
-                    value={String(formData.scopeType)}
-                    onValueChange={(v) =>
-                      setFormData({
-                        ...formData,
-                        scopeType: v as AnnouncementScope,
-                        scopeValue: "",
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-12 rounded-2xl">
-                      <SelectValue placeholder="请选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={String(AnnouncementScope.ALL)}>
-                        全员
-                      </SelectItem>
-                      <SelectItem value={String(AnnouncementScope.DEPT)}>
-                        部门
-                      </SelectItem>
-                      <SelectItem value={String(AnnouncementScope.ROLE)}>
-                        角色
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {(formData.scopeType === AnnouncementScope.DEPT ||
-                formData.scopeType === AnnouncementScope.ROLE) && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {formData.scopeType === AnnouncementScope.DEPT
-                      ? "选择部门"
-                      : "选择角色"}
-                  </label>
-                  {formData.scopeType === AnnouncementScope.DEPT ? (
-                    <DeptTreePicker
-                      value={formData.scopeValue || ""}
-                      onChange={(v) =>
-                        setFormData({ ...formData, scopeValue: v })
-                      }
-                      deptTree={deptTree}
-                    />
-                  ) : (
-                    <RoleListPicker
-                      value={formData.scopeValue || ""}
-                      onChange={(v) =>
-                        setFormData({ ...formData, scopeValue: v })
-                      }
-                    />
-                  )}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    过期时间（可选）
-                  </label>
-                  <DatePicker
-                    type="datetime-local"
-                    value={
-                      formData.expireTime
-                        ? new Date(formData.expireTime)
-                            .toISOString()
-                            .slice(0, 16)
-                        : ""
-                    }
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        expireTime: e.target.value || undefined,
-                      })
-                    }
+                {formData.scopeType === AnnouncementScope.DEPT ? (
+                  <DeptTreePicker
+                    value={formData.scopeValue || ''}
+                    onChange={(value) => setFormData({ ...formData, scopeValue: value })}
+                    deptTree={deptTree}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    置顶
-                  </label>
-                    <div className="flex items-center h-12 rounded-2xl border border-slate-200 bg-white px-4">
-                    <input
-                      type="checkbox"
-                      checked={formData.isTop === 1}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          isTop: e.target.checked ? 1 : 0,
-                        })
-                      }
-                      className="w-4 h-4 text-pink-500 border-slate-300 rounded focus:ring-pink-400"
-                    />
-                    <label className="ml-2 text-sm text-slate-700">
-                      设为置顶
-                    </label>
-                  </div>
-                </div>
+                ) : (
+                  <RoleListPicker
+                    value={formData.scopeValue || ''}
+                    onChange={(value) => setFormData({ ...formData, scopeValue: value })}
+                  />
+                )}
               </div>
+            ) : null}
 
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  内容 (支持 HTML)
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  过期时间（可选）
                 </label>
-                <Textarea
-                  className="h-40 rounded-2xl font-mono text-sm"
-                  value={formData.content || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
+                <DatePicker
+                  type="datetime-local"
+                  value={
+                    formData.expireTime
+                      ? new Date(formData.expireTime).toISOString().slice(0, 16)
+                      : ''
                   }
-                  placeholder="请输入公告内容，支持 HTML 格式"
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      expireTime: event.target.value || undefined,
+                    })
+                  }
                 />
               </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">置顶</label>
+                <div className="flex h-12 items-center rounded-2xl border border-slate-200 bg-white px-4">
+                  <input
+                    type="checkbox"
+                    checked={formData.isTop === 1}
+                    onChange={(event) =>
+                      setFormData({
+                        ...formData,
+                        isTop: event.target.checked ? 1 : 0,
+                      })
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-pink-500 focus:ring-pink-400"
+                  />
+                  <label className="ml-2 text-sm text-slate-700">设为置顶</label>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">内容（支持 HTML）</label>
+              <Textarea
+                className="h-40 rounded-2xl font-mono text-sm"
+                value={formData.content || ''}
+                onChange={(event) => setFormData({ ...formData, content: event.target.value })}
+                placeholder="请输入公告内容，支持 HTML 格式"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1237,63 +1225,58 @@ export const AnnouncementPage = () => {
               >
                 取消
               </Button>
-              <Button
-                onClick={handlePublish}
-                className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600"
-              >
-                {modalMode === "create" ? "发布" : "保存"}
-              </Button>
+              <Button onClick={handlePublish}>{modalMode === 'create' ? '发布' : '保存'}</Button>
             </div>
           </div>
-        </div>
-      )}
+        </WorkspaceDialogShell>
+      ) : null}
 
-      {isStatsModalOpen && statsData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[32px] border border-white/80 bg-white/95 shadow-[0_28px_72px_rgba(15,23,42,0.18)] backdrop-blur-xl">
-            <div className="relative border-b border-slate-100 px-6 pb-5 pt-6">
-              <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
-              <div className="relative flex items-center justify-between">
-                <h3 className="text-2xl font-bold tracking-tight text-slate-900">阅读统计</h3>
-                <Button variant="ghost" size="icon" onClick={() => setIsStatsModalOpen(false)} className="rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-                  <X size={18} />
-                </Button>
-              </div>
+      {isStatsModalOpen && statsData ? (
+        <WorkspaceDialogShell
+          title="阅读统计"
+          description="查看公告已读人数和已读用户明细。"
+          onClose={() => setIsStatsModalOpen(false)}
+          maxWidthClassName="max-w-lg"
+          bodyClassName="max-h-[80vh] overflow-y-auto"
+        >
+          <div className="space-y-5">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-pink-500">{statsData.readCount}</div>
+              <div className="text-sm text-slate-500">已读人数</div>
             </div>
-            <div className="p-6">
-              <div className="text-center mb-4">
-                <div className="text-3xl font-bold text-pink-500">
-                  {statsData.readCount}
+
+            {statsData.readUsers.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-slate-700">已读用户列表</div>
+                <div className="max-h-56 space-y-2 overflow-y-auto">
+                  {statsData.readUsers.map((user, index) => (
+                    <div
+                      key={`${user.userId}-${index}`}
+                      className="flex items-center justify-between rounded-2xl border border-white/80 bg-white/82 px-4 py-3 text-xs text-slate-600 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
+                    >
+                      <span>{user.nickName || user.userName || `用户 ${user.userId}`}</span>
+                      <span>{user.readTime ? new Date(user.readTime).toLocaleString() : '-'}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-sm text-slate-500">已读人数</div>
               </div>
-              {statsData.readUsers.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-slate-700 mb-2">
-                    已读用户列表
-                  </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {statsData.readUsers.map((user: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="text-xs text-slate-600 flex justify-between"
-                      >
-                        <span>用户 ID: {user.userId}</span>
-                        <span>{new Date(user.readTime).toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-6 py-5">
-              <Button onClick={() => setIsStatsModalOpen(false)} className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600">
-                关闭
-              </Button>
+            ) : (
+              <WorkspaceInlineState
+                icon={<Users size={20} />}
+                title="暂无阅读记录"
+                description="这条公告还没有被任何用户读取。"
+                className="py-10"
+              />
+            )}
+
+            <div className="flex justify-end">
+              <Button onClick={() => setIsStatsModalOpen(false)}>关闭</Button>
             </div>
           </div>
-        </div>
-      )}
+        </WorkspaceDialogShell>
+      ) : null}
     </div>
   );
 };
+
+export default AnnouncementPage;
