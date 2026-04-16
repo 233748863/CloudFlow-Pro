@@ -11,7 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { createEvent, deleteEvent, getMeetingRooms, getMyEvents } from '../services/api/schedule';
 import type { MeetingRoom, SysScheduleEvent } from '../types';
 import { parseBackendDate, toBackendDateString, toLocalDatetimeString, toQueryDateString } from '../utils/dateFormat';
-import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 
 type ScheduleEventType = SysScheduleEvent['type'];
 type CalendarViewMode = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
@@ -471,9 +472,11 @@ export const SchedulePage = () => {
 
   const todayLabel = shortDateFormatter.format(now);
   const timeLabel = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  const currentViewLabel = calendarViewMode === 'dayGridMonth' ? '月视图' : calendarViewMode === 'timeGridWeek' ? '周视图' : '日视图';
   const scheduleSummary = primaryTodayEvent
     ? `今天共有 ${todayEvents.length} 项安排，最近一项是“${primaryTodayEvent.title}”。`
     : '今天暂时没有新的日程安排，可以提前规划接下来的工作与个人事项。';
+  const calendarWorkspaceDescription = loadError ? loadError : calendarWindowLabel || '把时间安排放到同一块画布里统一查看';
   const focusItems = [
     {
       label: '当前视图',
@@ -527,198 +530,189 @@ export const SchedulePage = () => {
   ].filter(Boolean) as Array<{ label: string; value: string; hint: string; tone: string; onClick: () => void }>;
 
   return (
-    <div className="relative min-h-screen space-y-6 pb-6">
-      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden">
-        <div className="absolute left-[-10%] top-[-8%] h-[32rem] w-[32rem] rounded-full bg-pink-300/18 blur-[120px]" />
-        <div className="absolute right-[-12%] top-[12%] h-[38rem] w-[38rem] rounded-full bg-rose-200/20 blur-[140px]" />
-        <div className="absolute bottom-[-12%] left-[18%] h-[26rem] w-[26rem] rounded-full bg-amber-100/45 blur-[110px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,252,0.55),rgba(255,255,255,0.8))]" />
-      </div>
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-        <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="relative p-7 sm:p-8">
-            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgba(244,114,182,0.16),_transparent_55%)]" />
-            <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
-            <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
-
-            <div className="relative">
+      <div className="relative z-10 space-y-6 p-6">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
+          <WorkspaceHeroCard
+            badge={(
               <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
                 <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
                   <Calendar size={14} />
                   {todayLabel}
                 </span>
                 <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
-                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{calendarViewMode === 'dayGridMonth' ? '月视图' : calendarViewMode === 'timeGridWeek' ? '周视图' : '日视图'}</span>
-              </div>
-
-              <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
-                    <Sparkles size={14} />
-                    Workspace Calendar
-                  </div>
-                  <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-950 sm:text-[2.85rem]">我的日程</h1>
-                  <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{scheduleSummary}</p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button size="lg" className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => openCreateDrawer()}>
-                    <Plus size={18} className="mr-2" />
-                    新建日程
-                  </Button>
-                  <Button variant="outline" size="lg" className="h-12 rounded-2xl bg-white/85 px-6" onClick={goToToday}>
-                    <Calendar size={18} className="mr-2 text-pink-500" />
-                    回到今天
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前视图</div>
-                  <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{calendarTitle || '日历'}</div>
-                  <div className="mt-1 text-xs leading-5 text-slate-500">{calendarWindowLabel || '同步当前时间窗口'}</div>
-                </div>
-                <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">今日日程</div>
-                  <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{todayEvents.length}</div>
-                  <div className="mt-1 text-xs leading-5 text-slate-500">今天在日历中的事项数量</div>
-                </div>
-                <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">即将开始</div>
-                  <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{upcomingEvents.length}</div>
-                  <div className="mt-1 text-xs leading-5 text-slate-500">当前视图内接下来需要关注的安排</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-          <SectionHeader eyebrow="Today Focus" title="今天先看这些" />
-          <div className="mt-5 space-y-3">
-            {focusItems.length > 0 ? (
-              focusItems.map(item => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={item.onClick}
-                  className="flex w-full items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4 text-left transition hover:border-pink-100 hover:bg-pink-50/30"
-                >
-                  <div className={`rounded-2xl p-3 ${item.tone}`}>
-                    <CircleDot size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                      <div className="text-xs font-semibold text-slate-400">{item.value}</div>
-                    </div>
-                    <div className="mt-1 truncate text-xs leading-5 text-slate-500">{item.hint}</div>
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
-                <div className="text-sm font-semibold text-slate-700">今天节奏平稳</div>
-                <div className="mt-2 text-xs leading-6 text-slate-400">当前没有高优先级日程提醒，你可以提前规划接下来的安排。</div>
+                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{currentViewLabel}</span>
               </div>
             )}
-          </div>
+            title="我的日程"
+            description={scheduleSummary}
+            actions={(
+              <div className="flex flex-wrap gap-3">
+                <Button size="lg" className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => openCreateDrawer()}>
+                  <Plus size={18} className="mr-2" />
+                  新建日程
+                </Button>
+                <Button variant="outline" size="lg" className="h-12 rounded-2xl bg-white/85 px-6" onClick={goToToday}>
+                  <Calendar size={18} className="mr-2 text-pink-500" />
+                  回到今天
+                </Button>
+              </div>
+            )}
+            contentClassName="p-7 sm:p-8"
+            glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.18),transparent_52%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.16),transparent_42%)]"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/78 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+              <Sparkles size={14} />
+              日程工作台
+            </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-3">
-            <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">会议占比</div>
-              <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.filter(event => event.extendedProps.type === 'MEETING').length}</div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前视图</div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{calendarTitle || '日历'}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">{calendarWindowLabel || '同步当前时间窗口'}</div>
+              </div>
+              <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">今日日程</div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{todayEvents.length}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">今天在日历中的事项数量</div>
+              </div>
+              <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">即将开始</div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{upcomingEvents.length}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">当前视图内接下来需要关注的安排</div>
+              </div>
             </div>
-            <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">全天事项</div>
-              <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.filter(event => event.allDay).length}</div>
-            </div>
-            <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前窗口</div>
-              <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.length}</div>
-            </div>
-          </div>
-        </Card>
-      </div>
+          </WorkspaceHeroCard>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(metric => {
-          const Icon = metric.icon;
-          return (
-            <Card key={metric.label} className="rounded-[28px] border-white/80 bg-white/75 p-5 backdrop-blur-xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-medium text-slate-500">{metric.label}</div>
-                  <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{metric.value}</div>
-                  <div className="mt-2 text-xs leading-5 text-slate-400">{metric.hint}</div>
+          <WorkspaceSectionCard
+            eyebrow="今日焦点"
+            title="今天先看这些"
+            headerAside={(
+              <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                {currentViewLabel}
+              </div>
+            )}
+            className="rounded-[34px]"
+            bodyClassName="space-y-5"
+          >
+            <div className="space-y-3">
+              {focusItems.length > 0 ? (
+                focusItems.map(item => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={item.onClick}
+                    className="flex w-full items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4 text-left transition hover:border-pink-100 hover:bg-pink-50/30"
+                  >
+                    <div className={`rounded-2xl p-3 ${item.tone}`}>
+                      <CircleDot size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-slate-900">{item.label}</div>
+                        <div className="text-xs font-semibold text-slate-400">{item.value}</div>
+                      </div>
+                      <div className="mt-1 truncate text-xs leading-5 text-slate-500">{item.hint}</div>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
+                  <div className="text-sm font-semibold text-slate-700">今天节奏平稳</div>
+                  <div className="mt-2 text-xs leading-6 text-slate-400">当前没有高优先级日程提醒，你可以提前规划接下来的安排。</div>
                 </div>
-                <div className={`rounded-2xl p-3 ${metric.softClass}`}>
-                  <Icon size={18} />
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">会议占比</div>
+                <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.filter(event => event.extendedProps.type === 'MEETING').length}</div>
+              </div>
+              <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">全天事项</div>
+                <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.filter(event => event.allDay).length}</div>
+              </div>
+              <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前窗口</div>
+                <div className="mt-2 text-xl font-bold tracking-tight text-slate-900">{events.length}</div>
+              </div>
+            </div>
+          </WorkspaceSectionCard>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {metrics.map(metric => {
+            const Icon = metric.icon;
+            return (
+              <WorkspaceMetricCard
+                key={metric.label}
+                label={metric.label}
+                value={metric.value}
+                hint={metric.hint}
+                aside={<div className={`rounded-2xl p-3 ${metric.softClass}`}><Icon size={18} /></div>}
+                toneClassName="border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] shadow-[0_16px_40px_rgba(15,23,42,0.04)]"
+                className="rounded-[28px] px-5 py-5"
+              />
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <WorkspaceSectionCard
+            eyebrow="日历工作区"
+            title="日历画布"
+            description={calendarWorkspaceDescription}
+            headerAside={(
+              <div className="flex w-full flex-wrap items-center justify-start gap-3 lg:justify-end">
+                <div className="inline-flex h-11 items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <button
+                    type="button"
+                    onClick={goToPrev}
+                    className="inline-flex h-11 w-11 items-center justify-center text-slate-500 transition hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300"
+                    aria-label="上一页"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <div className="h-6 w-px bg-slate-200" />
+                  <button
+                    type="button"
+                    onClick={goToNext}
+                    className="inline-flex h-11 w-11 items-center justify-center text-slate-500 transition hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300"
+                    aria-label="下一页"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                <Button variant="outline" className="h-11 rounded-2xl bg-white px-5" onClick={goToToday}>
+                  今天
+                </Button>
+
+                <div className="inline-flex h-11 items-center rounded-2xl bg-slate-100 p-1">
+                  {VIEW_OPTIONS.map(item => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => changeView(item.value)}
+                      className={`flex min-w-[46px] items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                        calendarViewMode === item.value ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-          <div className="flex flex-col gap-5">
-            <SectionHeader eyebrow="Calendar Workspace" title="日历画布" />
+            )}
+            className="rounded-[32px]"
+            bodyClassName="space-y-5"
+          >
             <div className="rounded-[28px] border border-slate-100 bg-gradient-to-r from-white via-pink-50/35 to-white p-5">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_372px] lg:items-center">
-                <div className="min-w-0 lg:pr-4">
-                  <div className="min-h-[40px] text-2xl font-bold tracking-tight text-slate-900">{calendarTitle || '我的日程'}</div>
-                  <div className="mt-1 min-h-[20px] text-sm leading-5 text-slate-500">
-                    {loadError ? loadError : calendarWindowLabel || '把时间安排放到同一块画布里统一查看'}
-                  </div>
-                </div>
-
-                <div className="flex w-full flex-wrap items-center justify-start gap-3 lg:justify-end">
-                  <div className="inline-flex h-11 items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <button
-                      type="button"
-                      onClick={goToPrev}
-                      className="inline-flex h-11 w-11 items-center justify-center text-slate-500 transition hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300"
-                      aria-label="上一页"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <button
-                      type="button"
-                      onClick={goToNext}
-                      className="inline-flex h-11 w-11 items-center justify-center text-slate-500 transition hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300"
-                      aria-label="下一页"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-
-                  <Button variant="outline" className="h-11 rounded-2xl bg-white px-5" onClick={goToToday}>
-                    今天
-                  </Button>
-
-                  <div className="inline-flex h-11 items-center rounded-2xl bg-slate-100 p-1">
-                    {VIEW_OPTIONS.map(item => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => changeView(item.value)}
-                        className={`flex min-w-[46px] items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                          calendarViewMode === item.value ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {(['MEETING', 'WORK', 'PERSONAL'] as ScheduleEventType[]).map(type => (
                     <span key={type} className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${EVENT_TYPE_META[type].badgeClass}`}>
@@ -810,13 +804,12 @@ export const SchedulePage = () => {
                 }}
               />
             </div>
-          </div>
-        </Card>
+          </WorkspaceSectionCard>
 
         <div className="space-y-6">
           <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
-              <SectionHeader eyebrow="Today Schedule" title="今日日程" />
+              <SectionHeader eyebrow="今日安排" title="今日日程" />
               <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">{todayEvents.length} 项</span>
             </div>
 
@@ -867,7 +860,7 @@ export const SchedulePage = () => {
 
           <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
             <div className="flex items-center justify-between gap-3">
-              <SectionHeader eyebrow="Upcoming Events" title="即将到来" />
+              <SectionHeader eyebrow="即将开始" title="即将到来" />
               <Button variant="ghost" className="rounded-xl px-3" onClick={goToToday}>
                 今日
               </Button>
@@ -927,7 +920,7 @@ export const SchedulePage = () => {
           </Card>
 
           <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
-            <SectionHeader eyebrow="Type Breakdown" title="日程类型" />
+            <SectionHeader eyebrow="类型拆分" title="日程类型" />
             <div className="mt-4 space-y-3">
               {(['MEETING', 'WORK', 'PERSONAL'] as ScheduleEventType[]).map(type => (
                 <div key={type} className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
@@ -946,6 +939,7 @@ export const SchedulePage = () => {
             </div>
           </Card>
         </div>
+      </div>
       </div>
 
       {isCreateDrawerOpen && (
