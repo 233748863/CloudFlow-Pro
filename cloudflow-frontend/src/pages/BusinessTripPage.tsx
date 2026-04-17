@@ -10,6 +10,7 @@ import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, Sel
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { WorkspaceBackdrop, WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { WorkspaceHeroCard, WorkspacePaginationBar, WorkspaceResultCard, WorkspaceWorkbenchCard } from '@/components/workspace/WorkspacePanels';
+import { WorkspaceIconButton } from '@/components/workspace/WorkspaceControls';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -206,7 +207,7 @@ export const BusinessTripPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const config: Record<string, { tone: string }> = {
       DRAFT: { tone: 'bg-white/82 text-slate-600 ring-1 ring-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
-      PENDING: { tone: 'bg-pink-50/88 text-pink-600 ring-1 ring-pink-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
+      PENDING: { tone: 'bg-cyan-50/88 text-cyan-700 ring-1 ring-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
       APPROVED: { tone: 'bg-emerald-50/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
       REJECTED: { tone: 'bg-rose-50/88 text-rose-600 ring-1 ring-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
       CANCELLED: { tone: 'bg-slate-100/88 text-slate-500 ring-1 ring-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]' },
@@ -305,11 +306,11 @@ export const BusinessTripPage: React.FC = () => {
       label: '审批中',
       value: `${pendingCount}`,
       hint: pendingCount > 0 ? '可查看流程轨迹与审批进度' : '当前没有审批中的申请',
-      panelClassName: 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
+      panelClassName: 'border-cyan-100/80 bg-[linear-gradient(135deg,rgba(236,254,255,0.96),rgba(255,255,255,0.82),rgba(240,249,255,0.8))] shadow-[0_16px_32px_rgba(14,165,233,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-cyan-600 ring-1 ring-cyan-100 shadow-[0_10px_22px_rgba(14,165,233,0.08)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-600',
-      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
+      glowClassName: 'from-cyan-100/90 via-sky-50/45 to-transparent',
       icon: <Clock3 size={17} />,
     },
     {
@@ -345,7 +346,7 @@ export const BusinessTripPage: React.FC = () => {
       label: '视图',
       value: hasActiveFilters ? '筛选结果' : '默认视图',
       toneClassName: hasActiveFilters
-        ? 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.9),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06),inset_0_1px_0_rgba(255,255,255,0.75)]'
+        ? 'border-cyan-100/80 bg-[linear-gradient(135deg,rgba(236,254,255,0.92),rgba(255,255,255,0.82))] text-cyan-700 shadow-[0_10px_24px_rgba(14,165,233,0.06),inset_0_1px_0_rgba(255,255,255,0.75)]'
         : 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
   ];
@@ -367,7 +368,7 @@ export const BusinessTripPage: React.FC = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700 ring-1 ring-cyan-100">
                 <Plane size={14} />
                 {todayLabel}
               </span>
@@ -377,12 +378,12 @@ export const BusinessTripPage: React.FC = () => {
           title="出差申请"
           actions={(
             <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600" onClick={handleAdd}>
+              <Button size="lg" onClick={handleAdd}>
                 <Plus size={15} className="mr-2" />
                 新建申请
               </Button>
-              <Button variant="outline" className="h-9 rounded-xl bg-white/85 px-4" onClick={handleExport}>
-                <Download size={15} className="mr-2 text-pink-500" />
+              <Button variant="outline" size="lg" onClick={handleExport}>
+                <Download size={15} className="mr-2" />
                 导出结果
               </Button>
             </div>
@@ -427,7 +428,7 @@ export const BusinessTripPage: React.FC = () => {
               activeQuickFilter={searchParams.status}
               onQuickFilterChange={applyStatusFilter}
               quickFilterAside={hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white">
+                <Button variant="outline" size="sm" onClick={handleResetFilters}>
                   <RotateCcw size={15} className="mr-2" />
                   清空所有条件
                 </Button>
@@ -454,12 +455,12 @@ export const BusinessTripPage: React.FC = () => {
                     />
                   </div>
 
-                  <Button size="sm" onClick={applySearch} className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600">
+                  <Button size="sm" onClick={applySearch}>
                     <Search size={15} className="mr-2" />
                     应用筛选
                   </Button>
 
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white">
+                  <Button variant="outline" size="sm" onClick={handleResetFilters}>
                     <RotateCcw size={15} className="mr-2" />
                     清空条件
                   </Button>
@@ -504,7 +505,7 @@ export const BusinessTripPage: React.FC = () => {
                         <td className="px-4 py-2.5 text-sm">{transportMap[item.transportType || ''] || '-'}</td>
                         <td className="px-4 py-2.5 text-sm">{accommodationMap[item.accommodation || ''] || '-'}</td>
                         <td className="px-4 py-2.5 text-sm">¥{item.estimatedCost?.toFixed(2) || '0.00'}</td>
-                        <td className="px-4 py-2.5 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-pink-400" /> : <span className="text-slate-300">-</span>}</td>
+                        <td className="px-4 py-2.5 text-sm">{item.attachmentUrl ? <Paperclip size={14} className="text-cyan-500" /> : <span className="text-slate-300">-</span>}</td>
                         <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-right">
                           <div className="flex flex-col items-end gap-1">
@@ -527,7 +528,7 @@ export const BusinessTripPage: React.FC = () => {
                                   onClick: () => handleEdit(item.id!),
                                   tone: 'primary',
                                   hidden: item.status !== 'DRAFT',
-                                  className: 'rounded-full bg-pink-50/90 px-2.5 ring-1 ring-pink-100',
+                                  className: 'rounded-full bg-cyan-50/90 px-2.5 ring-1 ring-cyan-100 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800',
                                 },
                                 {
                                   label: '提交',
@@ -583,20 +584,21 @@ export const BusinessTripPage: React.FC = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
             <div className={`${glassModalShellClass} max-w-3xl`}>
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_70%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]" />
                 <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-amber-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       <Plane size={14} />
                       出差申请表单
                     </div>
                     <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{current ? '编辑出差申请' : '新增出差申请'}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">填写出发地、目的地、日期、交通住宿、费用和联系人信息，形成完整的出差申请单。</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">{current ? '修改现有申请' : '创建新申请'}</span>
+                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700">按审批需要补齐信息</span>
+                    </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setShowDialog(false)} className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700">
-                    <X size={18} />
-                  </Button>
+                  <WorkspaceIconButton icon={<X size={18} />} label="关闭出差申请表单" shape="circle" onClick={() => setShowDialog(false)} className="bg-white/62 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white" />
                 </div>
               </div>
 
@@ -713,8 +715,8 @@ export const BusinessTripPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">取消</Button>
-                <Button onClick={handleSave} className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_14px_24px_rgba(236,72,153,0.22)] hover:bg-pink-600">保存</Button>
+                <Button variant="outline" size="lg" onClick={() => setShowDialog(false)}>取消</Button>
+                <Button size="lg" onClick={handleSave}>保存</Button>
               </div>
             </div>
           </div>
@@ -727,11 +729,11 @@ export const BusinessTripPage: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
+                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_70%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]" />
                 <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-emerald-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       <Eye size={14} />
                       申请详情
                     </div>
@@ -741,9 +743,7 @@ export const BusinessTripPage: React.FC = () => {
                       {getStatusBadge(detailTrip.status || 'DRAFT')}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setDetailTrip(null)} className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700">
-                    <X size={18} />
-                  </Button>
+                  <WorkspaceIconButton icon={<X size={18} />} label="关闭出差详情" shape="circle" onClick={() => setDetailTrip(null)} className="bg-white/62 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white" />
                 </div>
               </div>
 
@@ -831,7 +831,7 @@ export const BusinessTripPage: React.FC = () => {
                                 href={url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center gap-2 rounded-[22px] border border-white/75 bg-white/76 px-4 py-3 text-sm text-slate-700 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:border-pink-100 hover:bg-white hover:text-pink-600"
+                                className="flex items-center gap-2 rounded-[22px] border border-white/75 bg-white/76 px-4 py-3 text-sm text-slate-700 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:border-cyan-100 hover:bg-white hover:text-cyan-700"
                               >
                                 <Paperclip size={14} />
                                 <span className="truncate">{label}</span>
@@ -870,11 +870,11 @@ export const BusinessTripPage: React.FC = () => {
 
               <div className={glassModalFooterClass}>
                 {detailTrip.status === 'PENDING' ? (
-                  <Button variant="outline" onClick={() => detailTrip.id && void handleCancel(detailTrip.id)} className="rounded-2xl border-amber-100 bg-white/76 text-amber-600 shadow-[0_10px_20px_rgba(245,158,11,0.06)] hover:bg-white hover:text-amber-700">
+                  <Button variant="destructive" size="lg" onClick={() => detailTrip.id && void handleCancel(detailTrip.id)}>
                     取消申请
                   </Button>
                 ) : null}
-                <Button variant="outline" onClick={() => setDetailTrip(null)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">关闭</Button>
+                <Button variant="outline" size="lg" onClick={() => setDetailTrip(null)}>关闭</Button>
               </div>
             </div>
           </div>

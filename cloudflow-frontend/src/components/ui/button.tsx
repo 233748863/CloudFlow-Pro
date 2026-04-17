@@ -8,8 +8,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     | 'ghost'
     | 'link'
     | 'secondary'
-    | 'destructive';
-  size?: 'default' | 'sm' | 'lg' | 'icon';
+    | 'destructive'
+    | 'soft'
+    | 'contrast';
+  size?: 'default' | 'sm' | 'lg' | 'xl' | 'icon';
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -18,13 +20,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ring-offset-white active:scale-[0.98]';
+      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-transparent text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 ring-offset-white active:scale-[0.98]';
 
     let variantStyles = '';
     switch (variant) {
       case 'default':
         variantStyles =
-          'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md shadow-teal-500/20 hover:from-teal-600 hover:to-teal-700 hover:shadow-lg hover:shadow-teal-500/25';
+          'bg-[linear-gradient(135deg,#0891b2,#0284c7)] text-white shadow-[0_12px_24px_rgba(14,165,233,0.22)] hover:brightness-[1.03]';
         break;
       case 'outline':
         variantStyles =
@@ -44,7 +46,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         break;
       case 'destructive':
         variantStyles =
-          'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md shadow-red-500/20 hover:from-red-600 hover:to-red-700 hover:shadow-lg hover:shadow-red-500/25';
+          'bg-[linear-gradient(135deg,#ef4444,#dc2626)] text-white shadow-[0_12px_24px_rgba(239,68,68,0.22)] hover:brightness-[1.03]';
+        break;
+      case 'soft':
+        variantStyles =
+          'border border-cyan-100 bg-cyan-50 text-cyan-700 shadow-sm hover:border-cyan-200 hover:bg-cyan-100';
+        break;
+      case 'contrast':
+        variantStyles =
+          'bg-slate-900 text-white shadow-[0_10px_22px_rgba(15,23,42,0.18)] hover:bg-slate-800';
         break;
     }
 
@@ -57,7 +67,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         sizeStyles = 'h-9 px-3 text-xs';
         break;
       case 'lg':
-        sizeStyles = 'h-11 px-6 text-base';
+        sizeStyles = 'h-11 px-5';
+        break;
+      case 'xl':
+        sizeStyles = 'h-12 px-6 text-sm';
         break;
       case 'icon':
         sizeStyles = 'h-10 w-10 p-0';

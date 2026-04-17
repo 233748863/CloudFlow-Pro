@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Clock3, Eye, Info, X } from 'lucide-react';
+import { Bell, Check, Clock3, Eye, X } from 'lucide-react';
 import type { Announcement } from '@/types';
 import { AnnouncementContent } from '@/components/common/AnnouncementContent';
+import { Button } from '@/components/ui';
+import { WorkspaceIconButton } from '@/components/workspace/WorkspaceControls';
 import { cn } from '@/utils/cn';
 import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
 import './announcement-overlays.css';
@@ -60,109 +62,88 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
   return createPortal(
     <div
       className={cn(
-        'cf-announcement-modal-overlay fixed inset-0 flex items-start justify-center overflow-y-auto bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-4 pt-[6vh] backdrop-blur-md',
+        'cf-announcement-modal-overlay fixed inset-0 flex items-start justify-center overflow-y-auto bg-slate-900/32 p-4 pt-[6vh] backdrop-blur-sm',
         zIndexClassName,
       )}
       onClick={onClose}
     >
       <div
         className={cn(
-          'cf-announcement-modal-panel w-full overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5',
+          'cf-announcement-modal-panel w-full overflow-hidden rounded-[30px] border border-white/80 bg-white/96 shadow-[0_28px_72px_rgba(15,23,42,0.18)]',
           maxWidthClassName,
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden border-b border-gray-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-purple-50/30 px-8 py-6">
-          <div className="absolute right-0 top-0 h-full w-64 bg-gradient-to-l from-indigo-100/30 to-transparent" />
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-500/20 blur-3xl" />
-          <div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-gradient-to-tr from-purple-400/20 to-pink-500/20 blur-2xl" />
+        <div className="relative border-b border-slate-100 px-6 pb-4 pt-5">
+          <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_70%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]" />
 
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-                  <Info size={18} />
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100">
+                  <Bell size={18} />
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
-                    {titleBadgeLabel}
+                <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 ring-1 ring-cyan-100">
+                  {titleBadgeLabel}
+                </span>
+                {headerBadges}
+                {!announcement.isRead ? (
+                  <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">
+                    未读
                   </span>
-                  {headerBadges}
-                  {!announcement.isRead ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-2.5 py-1 text-xs font-medium text-white shadow-lg shadow-blue-500/30">
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                      </span>
-                      未读
-                    </span>
-                  ) : null}
-                </div>
+                ) : null}
               </div>
 
-              <h2 className="mb-3 text-2xl font-bold leading-tight text-gray-900">
+              <h2 className="text-xl font-semibold leading-tight text-slate-900">
                 {announcement.title}
               </h2>
 
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1.5">
-                  <Clock3 size={16} />
-                  <span>{formatAnnouncementRelativeWithDateTime(announcement.publishTime || announcement.createTime)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Eye size={16} />
-                  <span>{announcement.isRead ? '已读' : '未读'}</span>
-                </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1">
+                  <Clock3 size={13} />
+                  {formatAnnouncementRelativeWithDateTime(announcement.publishTime || announcement.createTime)}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1">
+                  <Eye size={13} />
+                  {announcement.isRead ? '已读' : '未读'}
+                </span>
               </div>
 
               {extraInfo ? <div className="mt-3">{extraInfo}</div> : null}
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700 hover:shadow-lg"
-              aria-label="关闭公告详情"
-            >
-              <X size={18} />
-            </button>
+            <WorkspaceIconButton icon={<X size={18} />} label="关闭公告详情" shape="circle" onClick={onClose} />
           </div>
         </div>
 
-        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-white px-8 py-8">
+        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.96))] px-6 py-6">
           <div className="relative">
-            <div className="absolute bottom-0 left-0 top-0 w-1 rounded-full bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-500" />
-            <div className="pl-6">
+            <div className="absolute bottom-0 left-0 top-0 w-1 rounded-full bg-cyan-500/75" />
+            <div className="pl-5">
               <AnnouncementContent content={announcement.content} />
             </div>
           </div>
         </div>
 
-        <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <Info size={16} />
-              <span>{announcement.isRead ? footerReadText : footerUnreadText}</span>
+        <div className="border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-slate-500">
+              {announcement.isRead ? footerReadText : footerUnreadText}
             </div>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow"
-              >
+              <Button variant="outline" size="lg" onClick={onClose}>
                 关闭
-              </button>
+              </Button>
               {!announcement.isRead && onMarkAsRead ? (
-                <button
-                  type="button"
+                <Button
+                  size="lg"
                   onClick={() => void onMarkAsRead(announcement.announcementId)}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-105 hover:shadow-xl"
                 >
                   <span className="flex items-center gap-2">
                     <Check size={16} />
                     标记已读
                   </span>
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>

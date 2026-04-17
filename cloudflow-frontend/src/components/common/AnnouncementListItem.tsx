@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, ChevronRight, Info, Pin } from 'lucide-react';
+import { Bell, CheckCircle2, ChevronRight, Pin } from 'lucide-react';
 import type { Announcement } from '@/types';
 import { cn } from '@/utils/cn';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
@@ -29,50 +29,48 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         type="button"
         onClick={onClick}
         className={cn(
-          `group relative flex min-h-[72px] w-full items-center gap-4 border-b border-gray-100 px-6 py-4 text-left transition-all hover:bg-gray-50 ${
-            unread ? 'bg-blue-50/30' : ''
+          `group relative flex min-h-[72px] w-full items-center gap-4 border-b border-slate-100 px-5 py-4 text-left transition-colors ${
+            unread ? 'bg-cyan-50/35 hover:bg-cyan-50/60' : 'bg-white hover:bg-slate-50/80'
           }`,
           className,
         )}
       >
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center">
-          {unread ? (
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-xl bg-blue-400 opacity-75" />
-              <Info size={18} className="relative z-10" />
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
-              <CheckCircle2 size={18} />
-            </div>
+        {unread ? <div className="absolute left-0 top-0 h-full w-1 bg-cyan-500" /> : null}
+
+        <div
+          className={cn(
+            'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border',
+            unread
+              ? 'border-cyan-100 bg-cyan-50 text-cyan-700'
+              : 'border-slate-200 bg-slate-50 text-slate-400',
           )}
+        >
+          {unread ? <Bell size={16} /> : <CheckCircle2 size={16} />}
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-medium text-gray-900">
-              {announcement.title}
-            </h3>
-            <div className="mt-1 flex items-center gap-2">
-              <time className="text-xs text-gray-500">{timeText}</time>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-sm font-medium text-slate-900">{announcement.title}</h3>
               {unread ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-75" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-600" />
-                  </span>
+                <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
                   未读
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <time>{timeText}</time>
+              {announcement.isTop === 1 ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600">
+                  <Pin size={10} />
+                  置顶
                 </span>
               ) : null}
             </div>
           </div>
 
-          <ChevronRight className="h-5 w-5 flex-shrink-0 text-gray-400 transition-transform group-hover:translate-x-1" />
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500" />
         </div>
-
-        {unread ? (
-          <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-blue-500 to-indigo-600" />
-        ) : null}
       </button>
     );
   }
@@ -82,43 +80,40 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       type="button"
       onClick={onClick}
       className={cn(
-        `group relative flex w-full items-start gap-4 overflow-hidden rounded-[28px] border px-5 py-5 text-left transition-all ${
+        `group relative flex w-full items-start gap-4 overflow-hidden rounded-[24px] border px-5 py-5 text-left transition-all ${
           unread
-            ? 'border-blue-100 bg-white shadow-[0_16px_42px_rgba(59,130,246,0.08)] hover:border-blue-200 hover:bg-blue-50/30'
+            ? 'border-cyan-100 bg-white shadow-[0_14px_34px_rgba(8,145,178,0.08)] hover:border-cyan-200 hover:bg-cyan-50/30'
             : 'border-slate-200/80 bg-white/92 shadow-[0_14px_36px_rgba(15,23,42,0.05)] hover:bg-slate-50/80'
         }`,
         className,
       )}
     >
-      {unread ? (
-        <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-blue-500 to-indigo-600" />
-      ) : null}
+      {unread ? <div className="absolute left-0 top-0 h-full w-1.5 bg-cyan-500" /> : null}
 
-      <div className="mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center">
-        {unread ? (
-          <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-2xl bg-blue-400 opacity-70" />
-            <Info size={18} className="relative z-10" />
-          </div>
-        ) : (
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-            <CheckCircle2 size={18} />
-          </div>
+      <div
+        className={cn(
+          'mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border',
+          unread
+            ? 'border-cyan-100 bg-cyan-50 text-cyan-700'
+            : 'border-slate-200 bg-slate-50 text-slate-400',
         )}
+      >
+        {unread ? <Bell size={18} /> : <CheckCircle2 size={18} />}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          {announcement.isTop === 1 ? <Pin size={14} className="text-rose-500" /> : null}
+          {announcement.isTop === 1 ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600">
+              <Pin size={10} />
+              置顶
+            </span>
+          ) : null}
           <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', priorityMeta.className)}>
             {priorityMeta.label}
           </span>
           {unread ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-600" />
-              </span>
+            <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
               未读
             </span>
           ) : null}

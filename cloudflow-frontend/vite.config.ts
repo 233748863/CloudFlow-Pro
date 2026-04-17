@@ -7,6 +7,64 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      build: {
+        rollupOptions: {
+          output: {
+            // 按稳定依赖域拆分公共 chunk，避免主入口持续膨胀触发体积告警。
+            manualChunks(id) {
+              if (!id.includes('node_modules')) {
+                return undefined;
+              }
+
+              const normalizedId = id.replace(/\\/g, '/');
+              const packagePath = normalizedId.split('node_modules/')[1];
+
+              if (
+                packagePath.startsWith('react/') ||
+                packagePath.startsWith('react-dom/') ||
+                packagePath.startsWith('react-router-dom/') ||
+                packagePath.startsWith('scheduler/')
+              ) {
+                return 'react-vendor';
+              }
+
+              if (
+                packagePath.startsWith('@tanstack/') ||
+                packagePath.startsWith('axios/') ||
+                packagePath.startsWith('zustand/') ||
+                packagePath.startsWith('date-fns/')
+              ) {
+                return 'data-vendor';
+              }
+
+              if (packagePath.startsWith('@fullcalendar/')) {
+                return 'calendar-vendor';
+              }
+
+              if (packagePath.startsWith('@dnd-kit/')) {
+                return 'dnd-vendor';
+              }
+
+              if (
+                packagePath.startsWith('@google/') ||
+                packagePath.startsWith('marked/') ||
+                packagePath.startsWith('dompurify/')
+              ) {
+                return 'content-vendor';
+              }
+
+              if (
+                packagePath.startsWith('lucide-react/') ||
+                packagePath.startsWith('sonner/')
+              ) {
+                return 'ui-vendor';
+              }
+
+              return 'vendor';
+            },
+          },
+        },
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',
