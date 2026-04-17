@@ -23,7 +23,7 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
-      'border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.84),rgba(255,255,255,0.68))] [&_tr]:border-b [&_tr]:border-white/70',
+      'border-b border-slate-200 bg-slate-50 [&_tr]:border-b [&_tr]:border-slate-200',
       className,
     )}
     {...props}
@@ -52,7 +52,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      'border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.66))] font-medium [&>tr]:last:border-b-0',
+      'border-t border-slate-200 bg-slate-50 font-medium [&>tr]:last:border-b-0',
       className,
     )}
     {...props}
@@ -68,7 +68,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-b border-white/60 transition-colors hover:bg-white/70 data-[state=selected]:bg-pink-50/40',
+      'border-b border-slate-100 transition-colors hover:bg-slate-50 data-[state=selected]:bg-teal-50/40',
       className,
     )}
     {...props}
@@ -84,7 +84,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'px-4 py-3 text-left align-middle text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 whitespace-nowrap [&:has([role=checkbox])]:pr-0',
+      'px-4 py-3 text-left align-middle text-[11px] font-semibold uppercase tracking-[0.14em] whitespace-nowrap text-slate-400 [&:has([role=checkbox])]:pr-0',
       className,
     )}
     {...props}

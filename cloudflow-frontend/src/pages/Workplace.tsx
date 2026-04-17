@@ -355,7 +355,7 @@ export const Workplace = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <div className="relative z-10 space-y-4">
         {isFormOpen && targetWorkflow ? (
           targetWorkflow.formId ? (
             loadingBoundForm ? (
@@ -421,7 +421,7 @@ export const Workplace = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-teal-600 ring-1 ring-teal-100">
                 <Sparkles size={14} />
                 {todayLabel}
               </span>
@@ -437,14 +437,14 @@ export const Workplace = () => {
             </Button>
           )}
           contentClassName="p-4 sm:p-5"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(6,182,212,0.1),transparent_46%)]"
         >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <WorkspaceMetricCard
               label="已发布流程"
               value={workflows.length}
               hint="按流程 key 自动保留最新发布版本"
-              aside={<GitMerge size={18} className="text-pink-500" />}
+              aside={<GitMerge size={18} className="text-teal-500" />}
             />
             <WorkspaceMetricCard
               label="当前筛选"
@@ -467,7 +467,7 @@ export const Workplace = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className="rounded-2xl border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="流程筛选"
@@ -479,10 +479,10 @@ export const Workplace = () => {
               onQuickFilterChange={setSelectedCategory}
               headerBadges={(
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm">
                     标签池 {allTags.length} 个
                   </span>
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm">
                     已缓存表单 {savedForms.length} 个
                   </span>
                 </div>
@@ -500,7 +500,7 @@ export const Workplace = () => {
                   清空筛选
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 shadow-sm">
                   当前未应用额外筛选
                 </span>
               )}
@@ -524,7 +524,7 @@ export const Workplace = () => {
 
                   {allTags.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm">
                         <Tag size={12} />
                         标签筛选
                       </span>
@@ -543,8 +543,8 @@ export const Workplace = () => {
                             }}
                             className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                               active
-                                ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.2)]'
-                                : 'border border-white/80 bg-white/80 text-slate-600 hover:bg-white hover:text-pink-600'
+                                ? 'bg-teal-500 text-white shadow-sm shadow-teal-500/20'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-teal-600'
                             }`}
                           >
                             {tag}
@@ -579,11 +579,11 @@ export const Workplace = () => {
                         onClick={() => handleStartClick(workflow)}
                         className="group text-left"
                       >
-                        <div className="relative overflow-hidden rounded-[28px] border border-white/78 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.78))] p-5 shadow-[0_16px_34px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.74)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_22px_42px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.78)]">
-                          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.12),transparent_58%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.08),transparent_48%)]" />
+                        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,23,42,0.06)]">
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.12),transparent_58%),radial-gradient(circle_at_top_left,rgba(6,182,212,0.08),transparent_48%)]" />
                           <div className="relative">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[11px] font-medium text-pink-600 ring-1 ring-pink-100">
+                              <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-medium text-teal-600 ring-1 ring-teal-100">
                                 {categoryLabel}
                               </span>
                               <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${
@@ -596,13 +596,13 @@ export const Workplace = () => {
                             </div>
 
                             <div className="mt-4 flex items-start justify-between gap-4">
-                              <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-pink-50 text-pink-600 ring-1 ring-pink-100 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-600 ring-1 ring-teal-100 shadow-sm">
                                 {getWorkflowIcon(workflow)}
                               </div>
                               <span className="text-xs font-medium text-slate-400">v{workflow.version || 1}</span>
                             </div>
 
-                            <div className="mt-4 text-lg font-semibold tracking-tight text-slate-900 group-hover:text-pink-600">
+                            <div className="mt-4 text-base font-semibold tracking-tight text-slate-900 group-hover:text-teal-600">
                               {workflow.name}
                             </div>
                             <div className="mt-2 line-clamp-2 min-h-[42px] text-sm leading-6 text-slate-500">
@@ -611,24 +611,24 @@ export const Workplace = () => {
 
                             <div className="mt-4 flex flex-wrap gap-1.5">
                               {workflowTags.length > 0 ? workflowTags.slice(0, 3).map((tag) => (
-                                <span key={tag} className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-white/80">
+                                <span key={tag} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-500">
                                   {tag}
                                 </span>
                               )) : (
-                                <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-400 ring-1 ring-white/80">
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-400">
                                   暂无标签
                                 </span>
                               )}
                             </div>
 
-                            <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/70 pt-4">
+                            <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
                               <div className="min-w-0">
                                 <div className="truncate text-xs font-medium text-slate-400">Key: {workflow.key}</div>
                                 <div className="mt-1 text-xs text-slate-500">
                                   {workflow.formId ? '支持直接发起表单' : '暂未配置发起表单'}
                                 </div>
                               </div>
-                              <div className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-600 ring-1 ring-pink-100">
+                              <div className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-600 ring-1 ring-teal-100">
                                 发起
                                 <ArrowRight size={14} />
                               </div>

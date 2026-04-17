@@ -182,13 +182,13 @@ export const AuthPage: React.FC = () => {
               <img src="/icon.svg" alt="CloudFlow Pro" />
             </div>
             <h1 className="cf-auth-brand__title">CloudFlow Pro</h1>
-            <p className="cf-auth-brand__subtitle">Unified Workspace Gateway</p>
+            <p className="cf-auth-brand__subtitle">企业协同办公入口</p>
           </div>
 
           <div className="cf-auth-card">
             <div className="cf-auth-card__head">
-              <h2>{isLogin ? '欢迎回来' : '创建账户'}</h2>
-              <p>{isLogin ? '登录您的账户以继续' : '注册以开始使用 CloudFlow Pro'}</p>
+              <h2>{isLogin ? '登录系统' : '创建账号'}</h2>
+              <p>{isLogin ? '输入账号和密码继续使用' : '填写基础信息完成注册'}</p>
             </div>
 
             {isLogin ? (
@@ -361,7 +361,7 @@ export const AuthPage: React.FC = () => {
                   ) : (
                     <>
                       <UserPlus size={18} />
-                      创建账户
+                      创建账号
                     </>
                   )}
                 </button>
@@ -372,14 +372,14 @@ export const AuthPage: React.FC = () => {
           <div className="cf-auth-bottom-link">
             {isLogin ? (
               <>
-                还没有账户？
+                还没有账号？
                 <button type="button" onClick={() => switchMode('register')}>
                   注册
                 </button>
               </>
             ) : (
               <>
-                已有账户？
+                已有账号？
                 <button type="button" onClick={() => switchMode('login')}>
                   登录
                 </button>
@@ -398,8 +398,8 @@ export const AuthPage: React.FC = () => {
         title={captchaIntent === 'register' ? '完成注册前验证' : '完成登录前验证'}
         description={
           captchaIntent === 'register'
-            ? '请先完成滑块验证码，验证通过后继续创建账户。'
-            : '请先完成滑块验证码，验证通过后继续处理登录。'
+            ? '请先完成滑块验证码，验证通过后继续创建账号。'
+            : '请先完成滑块验证码，验证通过后继续登录系统。'
         }
         onClose={() => setCaptchaIntent(null)}
         onVerify={handleCaptchaVerify}

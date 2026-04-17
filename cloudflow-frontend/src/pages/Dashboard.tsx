@@ -300,13 +300,13 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="relative min-h-full pb-4 xl:pb-5">
+    <div className="relative min-h-full pb-3 xl:pb-4">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-4 p-4 xl:space-y-5 xl:p-5">
+      <div className="relative z-10 space-y-3.5 p-3.5 xl:space-y-4 xl:p-4">
         <WorkspaceHeroCard
           badge={
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
               <span className="text-emerald-600">{greeting.icon}</span>
               <span>{dateStr}</span>
               <span className="text-slate-300">|</span>
@@ -341,19 +341,19 @@ export const Dashboard = () => {
                   value={card.value}
                   hint={card.hint}
                   aside={
-                    <div className={`rounded-2xl p-3 ${card.iconClass}`}>
+                    <div className={`rounded-xl p-2.5 ${card.iconClass}`}>
                       {card.icon}
                     </div>
                   }
-                  className="transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)]"
+                  className="transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
                 />
               </button>
             ))}
           </div>
         </WorkspaceHeroCard>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_360px] xl:gap-5">
-          <div className="space-y-4 xl:space-y-5">
+        <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1.15fr)_340px] xl:gap-4">
+          <div className="space-y-3.5 xl:space-y-4">
             <WorkspaceSectionCard
               title="待办事项"
               description="把今天最需要处理的流程、公告和申请记录集中放在一屏里。"
@@ -374,7 +374,7 @@ export const Dashboard = () => {
                       key={String(task.taskId || task.id || task.processInstanceId)}
                       type="button"
                       onClick={() => navigate('/tasks')}
-                      className="flex w-full items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/30"
+                      className="flex w-full items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white px-3.5 py-3.5 text-left transition hover:border-emerald-200 hover:bg-emerald-50/30"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-semibold text-slate-900">
@@ -388,7 +388,7 @@ export const Dashboard = () => {
                           {task.createdTime ? <span>{relTime(task.createdTime)}</span> : null}
                         </div>
                       </div>
-                      <div className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                      <div className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
                         待处理
                       </div>
                     </button>
@@ -417,7 +417,7 @@ export const Dashboard = () => {
                       key={String(item.id || item.processInstanceId || item.businessKey)}
                       type="button"
                       onClick={() => navigate('/my-apps')}
-                      className="flex w-full items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-cyan-200 hover:bg-cyan-50/25"
+                      className="flex w-full items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white px-3.5 py-3.5 text-left transition hover:border-cyan-200 hover:bg-cyan-50/25"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-semibold text-slate-900">
@@ -430,7 +430,7 @@ export const Dashboard = () => {
                           {item.createdTime ? relTime(item.createdTime) : '刚刚'}
                         </div>
                       </div>
-                      <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                      <div className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                         查看详情
                       </div>
                     </button>
@@ -440,7 +440,7 @@ export const Dashboard = () => {
             </WorkspaceSectionCard>
           </div>
 
-          <div className="space-y-4 xl:space-y-5">
+          <div className="space-y-3.5 xl:space-y-4">
             <WorkspaceSectionCard
               title="快捷入口"
               description="常用业务入口保留在这里，减少二次跳转。"
@@ -452,10 +452,10 @@ export const Dashboard = () => {
                     key={action.label}
                     type="button"
                     onClick={() => navigate(action.path)}
-                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left transition hover:border-emerald-200 hover:bg-slate-50"
+                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left transition hover:border-emerald-200 hover:bg-slate-50"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`rounded-2xl p-2.5 ${action.tone}`}>{action.icon}</div>
+                      <div className={`rounded-xl p-2 ${action.tone}`}>{action.icon}</div>
                       <div>
                         <div className="text-sm font-semibold text-slate-900">{action.label}</div>
                         <div className="mt-1 text-xs text-slate-400">进入对应业务页面</div>
@@ -487,9 +487,9 @@ export const Dashboard = () => {
                       key={String(item.eventId || item.id)}
                       type="button"
                       onClick={() => navigate('/schedule')}
-                      className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-amber-200 hover:bg-amber-50/25"
+                      className="flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3.5 text-left transition hover:border-amber-200 hover:bg-amber-50/25"
                     >
-                      <div className="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                      <div className="rounded-xl bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700">
                         {formatClock(item.startTime) || '全天'}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -545,7 +545,7 @@ export const Dashboard = () => {
                       markAnnouncementAsRead(id);
                       navigate('/announcement');
                     }}
-                    className={`rounded-2xl border px-4 py-4 text-left transition ${
+                    className={`rounded-xl border px-3.5 py-3.5 text-left transition ${
                       isRead
                         ? 'border-slate-200 bg-white hover:bg-slate-50'
                         : 'border-cyan-200 bg-cyan-50/40 hover:bg-cyan-50/70'
@@ -561,7 +561,7 @@ export const Dashboard = () => {
                         </div>
                       </div>
                       {!isRead ? (
-                        <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+                        <span className="rounded-full bg-cyan-100 px-2 py-1 text-[11px] font-medium text-cyan-700">
                           未读
                         </span>
                       ) : null}
