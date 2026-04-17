@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, History, Megaphone } from 'lucide-react';
+import { ArrowLeft, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Announcement, AnnouncementScope, AnnouncementType } from '@/types';
 import {
@@ -39,10 +39,8 @@ import {
   Textarea,
 } from '@/components/ui';
 
-type AnnouncementTab = 'unread' | 'read' | 'manage';
-
 interface AnnouncementManageViewProps {
-  onSwitchTab: (tab: AnnouncementTab) => void;
+  onExitManage: () => void;
 }
 
 interface ConfirmState {
@@ -63,7 +61,7 @@ const initialFormData: Partial<Announcement> = {
 };
 
 export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
-  onSwitchTab,
+  onExitManage,
 }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -264,15 +262,11 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => onSwitchTab('unread')}>
-              <Bell size={16} className="mr-2" />
-              未读消息
+            <Button variant="outline" onClick={onExitManage}>
+              <ArrowLeft size={16} className="mr-2" />
+              返回公告
             </Button>
-            <Button variant="outline" onClick={() => onSwitchTab('read')}>
-              <History size={16} className="mr-2" />
-              历史消息
-            </Button>
-            <Button className="pointer-events-none">
+            <Button className="pointer-events-none select-none">
               <Megaphone size={16} className="mr-2" />
               公告管理
             </Button>

@@ -1,345 +1,255 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Bell,
-  Calendar,
-  Eye,
-  Megaphone,
-  Pin,
-  Plus,
-  Shield,
-} from 'lucide-react';
-import { Announcement, AnnouncementScope, Role } from '../types';
-import {
-  getMyAnnouncements,
-  markAnnouncementRead,
-} from '../services/api/announcement';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Bell, Check, CheckCheck, Inbox, Megaphone, Shield } from 'lucide-react';
+import { Button } from '@/components/ui';
 import {
   AnnouncementDetailModal,
   AnnouncementListItem,
 } from '@/components/common';
+import { AnnouncementManageView } from '@/components/admin/announcements';
+import { useAuth } from '../context/AuthContext';
+import { AnnouncementScope, Role, type Announcement } from '../types';
 import {
-  AnnouncementManageView,
-} from '@/components/admin/announcements';
-import {
-  WorkspaceBackdrop,
-  WorkspaceEmptyPanel,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspaceResultCard,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  useAnnouncementStore,
+  useAnnouncementUnreadCount,
+} from '@/stores/announcementStore';
 import { cn } from '@/utils/cn';
 import { getAnnouncementPriorityMeta } from '@/utils/announcementMeta';
+import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
+import '@/components/common/announcement-overlays.css';
 
-type AnnouncementTab = 'unread' | 'read' | 'manage';
-
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
-};
-
-const EmptyPanel = ({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) => (
-  <WorkspaceEmptyPanel
-    variant="glass"
-    icon={icon}
-    title={title}
-    description={description}
-  />
-);
+type ViewMode = 'user' | 'manage';
 
 export const AnnouncementPage = () => {
   const { user } = useAuth();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [activeTab, setActiveTab] = useState<AnnouncementTab>('unread');
+  const canManage = user?.role === Role.ADMIN || user?.role === Role.HR;
+
+  const announcements = useAnnouncementStore((state) => state.announcements);
+  const loading = useAnnouncementStore((state) => state.loading);
+  const fetchAnnouncements = useAnnouncementStore((state) => state.fetchAnnouncements);
+  const markAsRead = useAnnouncementStore((state) => state.markAsRead);
+  const markAllAsRead = useAnnouncementStore((state) => state.markAllAsRead);
+  const unreadCount = useAnnouncementUnreadCount();
+
+  const [viewMode, setViewMode] = useState<ViewMode>('user');
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
-  const canManage = user?.role === Role.ADMIN || user?.role === Role.HR;
-  const isManageMode = activeTab === 'manage' && canManage;
-
-  const fetchUserAnnouncements = async () => {
-    try {
-      const list = await getMyAnnouncements();
-      setAnnouncements(Array.isArray(list) ? list : []);
-    } catch (error) {
-      console.error('获取公告失败', error);
-      setAnnouncements([]);
-    }
-  };
-
   useEffect(() => {
-    if (!user || isManageMode) {
-      return;
+    if (viewMode === 'user') {
+      void fetchAnnouncements(true);
     }
-    void fetchUserAnnouncements();
-  }, [user, isManageMode]);
+  }, [fetchAnnouncements, viewMode]);
 
-  const handleRead = async (announcement: Announcement) => {
-    setSelectedAnnouncement(announcement);
-
-    if (announcement.isRead) {
-      return;
+  const displayList = useMemo(() => {
+    if (showUnreadOnly) {
+      return announcements.filter((item) => !item.isRead);
     }
+    return announcements;
+  }, [announcements, showUnreadOnly]);
 
-    try {
-      await markAnnouncementRead(String(announcement.announcementId));
-      setSelectedAnnouncement((previous) => (
-        previous && previous.announcementId === announcement.announcementId
-          ? { ...previous, isRead: true }
-          : previous
-      ));
-      await fetchUserAnnouncements();
-      window.dispatchEvent(new Event('announcementRead'));
-    } catch (error) {
-      console.error('标记公告已读失败', error);
+  const listTitle = showUnreadOnly ? '未读公告' : '全部公告';
+  const listDescription = showUnreadOnly
+    ? '仅显示未读内容，帮助你优先处理新消息。'
+    : '查看全部系统公告，置顶和高优先级内容会优先展示。';
+
+  async function openDetail(announcement: Announcement) {
+    const nextAnnouncement = announcement.isRead ? announcement : { ...announcement, isRead: true };
+    setSelectedAnnouncement(nextAnnouncement);
+
+    if (!announcement.isRead) {
+      await markAsRead(announcement.announcementId);
     }
-  };
+  }
 
-  const unreadCount = announcements.filter((announcement) => !announcement.isRead).length;
-  const readCount = announcements.filter((announcement) => announcement.isRead).length;
-  const topCount = announcements.filter((announcement) => announcement.isTop === 1).length;
+  async function handleMarkAllAsRead() {
+    await markAllAsRead();
+    setSelectedAnnouncement((previous) => (previous ? { ...previous, isRead: true } : previous));
+  }
 
-  const displayList = announcements.filter((announcement) => {
-    if (activeTab === 'unread') {
-      return !announcement.isRead;
-    }
-    if (activeTab === 'read') {
-      return announcement.isRead;
-    }
-    return true;
-  });
-
-  const activeTabTitle = activeTab === 'read' ? '历史消息' : '未读消息';
-  const dateLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const announcementSummary = activeTab === 'unread'
-    ? unreadCount > 0
-      ? `当前还有 ${unreadCount} 条未读公告，建议优先处理置顶或紧急消息。`
-      : '当前没有未读公告，公告中心状态平稳。'
-    : '这里集中归档你已经查看过的公告，方便后续追溯和再次确认。';
-
-  const overviewItems = [
-    {
-      label: '当前视图',
-      value: activeTabTitle,
-      toneClassName:
-        'border-pink-100 bg-[linear-gradient(135deg,rgba(253,242,248,0.92),rgba(255,255,255,0.84))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.08)]',
-    },
-    {
-      label: '未读公告',
-      value: unreadCount,
-    },
-    {
-      label: '置顶公告',
-      value: topCount,
-    },
-    {
-      label: '历史消息',
-      value: readCount,
-    },
-  ];
-
-  const metricCards = [
-    {
-      label: '未读消息',
-      value: unreadCount,
-      hint: '需要优先查看',
-      aside: <Bell size={18} className="text-pink-500" />,
-    },
-    {
-      label: '历史消息',
-      value: readCount,
-      hint: '已完成阅读',
-      aside: <Eye size={18} className="text-slate-500" />,
-    },
-    {
-      label: '置顶公告',
-      value: topCount,
-      hint: '重点消息总数',
-      aside: <Pin size={18} className="text-amber-500" />,
-    },
-    {
-      label: '消息总量',
-      value: announcements.length,
-      hint: '当前用户可见的公告数量',
-      aside: <Megaphone size={18} className="text-rose-500" />,
-    },
-  ];
+  async function handleMarkAsReadAndClose(announcementId: number) {
+    await markAsRead(announcementId);
+    setSelectedAnnouncement(null);
+  }
 
   if (!user) {
     return null;
   }
 
-  return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+  if (viewMode === 'manage' && canManage) {
+    return (
+      <div className="relative min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_38%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-6">
+        <div className="mx-auto max-w-[1180px]">
+          <AnnouncementManageView onExitManage={() => setViewMode('user')} />
+        </div>
+      </div>
+    );
+  }
 
-      <div className="relative z-10 p-6">
-        {isManageMode ? (
-          <AnnouncementManageView onSwitchTab={setActiveTab} />
-        ) : (
-          <div className="space-y-6">
-            <WorkspaceHeroCard
-              badge={(
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                  <Megaphone className="h-3.5 w-3.5" />
-                  公告工作台
-                </span>
-              )}
-              title="公告中心"
-              description={announcementSummary}
-              actions={(
-                <div className="flex flex-wrap gap-3">
-                  {canManage ? (
-                    <>
-                      <Button
-                        className="h-12 rounded-2xl px-6"
-                        onClick={() => setActiveTab('manage')}
-                      >
-                        <Plus size={16} className="mr-2" />
-                        发布公告
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-12 rounded-2xl bg-white/85 px-6"
-                        onClick={() => setActiveTab('manage')}
-                      >
-                        <Shield size={16} className="mr-2 text-pink-500" />
-                        公告管理
-                      </Button>
-                    </>
-                  ) : null}
+  return (
+    <div className="relative min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[760px]">
+        <div className="overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
+          <div className="relative overflow-hidden border-b border-gray-100/80 bg-gradient-to-br from-blue-50/60 to-indigo-50/30 px-6 py-5 sm:px-8">
+            <div className="absolute right-0 top-0 h-full w-48 bg-gradient-to-l from-indigo-100/20 to-transparent" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
+                    <Bell size={18} />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-semibold text-gray-900">公告</h1>
+                    <p className="mt-1 text-sm text-gray-600">查看系统公告</p>
+                  </div>
                 </div>
-              )}
-            >
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
-                  <Calendar size={14} />
-                  {dateLabel}
-                </span>
-                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
-                  {timeLabel}
-                </span>
-                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
-                  {activeTabTitle}
-                </span>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="rounded-full bg-blue-50 px-3 py-1.5 font-medium text-blue-600 ring-1 ring-blue-100">
+                    {unreadCount > 0 ? `有 ${unreadCount} 条新公告` : '当前没有未读公告'}
+                  </span>
+                  <span className="rounded-full bg-white/80 px-3 py-1.5 text-gray-500 ring-1 ring-gray-200/80">
+                    共 {announcements.length} 条公告
+                  </span>
+                </div>
               </div>
 
-              <div className="mt-6 grid gap-4 xl:grid-cols-4">
-                {metricCards.map((card) => (
-                  <WorkspaceMetricCard
-                    key={card.label}
-                    label={card.label}
-                    value={card.value}
-                    hint={card.hint}
-                    aside={card.aside}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUnreadOnly((previous) => !previous)}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all',
+                    showUnreadOnly
+                      ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                  )}
+                >
+                  {showUnreadOnly ? <Check size={16} /> : null}
+                  仅显示未读
+                </button>
+
+                {unreadCount > 0 ? (
+                  <Button
+                    variant="outline"
+                    className="h-10 rounded-xl bg-white/85"
+                    onClick={() => void handleMarkAllAsRead()}
+                  >
+                    <CheckCheck size={16} className="mr-2" />
+                    全部已读
+                  </Button>
+                ) : null}
+
+                {canManage ? (
+                  <Button className="h-10 rounded-xl" onClick={() => setViewMode('manage')}>
+                    <Shield size={16} className="mr-2" />
+                    公告管理
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-b border-gray-100 bg-white px-6 py-4 sm:px-8">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">{listTitle}</h2>
+                <p className="mt-1 text-sm text-gray-500">{listDescription}</p>
+              </div>
+
+              {showUnreadOnly && announcements.length > displayList.length ? (
+                <button
+                  type="button"
+                  onClick={() => setShowUnreadOnly(false)}
+                  className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+                >
+                  查看全部公告
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="max-h-[70vh] overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="relative">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
+                  <div className="absolute inset-0 h-12 w-12 animate-pulse rounded-full border-4 border-blue-400/30" />
+                </div>
+              </div>
+            ) : displayList.length > 0 ? (
+              <div>
+                {displayList.map((item) => (
+                  <AnnouncementListItem
+                    key={item.announcementId}
+                    announcement={item}
+                    variant="compact"
+                    onClick={() => void openDetail(item)}
                   />
                 ))}
               </div>
-            </WorkspaceHeroCard>
-
-            <WorkspaceWorkbenchCard
-              eyebrow="公告工作区"
-              title={activeTabTitle}
-              total={displayList.length}
-              hasActiveFilters={activeTab !== 'unread'}
-              overviewItems={overviewItems}
-              quickFilters={[
-                { label: '未读消息', value: 'unread' },
-                { label: '历史消息', value: 'read' },
-                ...(canManage ? [{ label: '公告管理', value: 'manage' }] : []),
-              ]}
-              activeQuickFilter={activeTab}
-              onQuickFilterChange={(value) => setActiveTab(value as AnnouncementTab)}
-              filterBar={(
-                <div className="text-sm leading-6 text-slate-500">
-                  {activeTab === 'read'
-                    ? '这里会沉淀你已经读过的公告，便于后续追溯。'
-                    : '未读消息会优先展示置顶和高优先级公告，帮助你快速确认团队通知。'}
-                </div>
-              )}
-            />
-
-            <WorkspaceResultCard
-              total={displayList.length}
-              title={activeTabTitle}
-              description="按阅读状态查看公告详情，未读消息会优先标识。"
-            >
-              <div className="p-4">
-                {displayList.length === 0 ? (
-                  <EmptyPanel
-                    icon={<Bell size={26} />}
-                    title="暂无相关消息"
-                    description="新公告发布后会在这里展示，未读消息会优先标识。"
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {displayList.map((item) => (
-                      <AnnouncementListItem
-                        key={item.announcementId}
-                        announcement={item}
-                        variant="page"
-                        onClick={() => handleRead(item)}
-                      />
-                    ))}
+            ) : (
+              <div className="flex flex-col items-center justify-center px-6 py-16">
+                <div className="relative mb-4">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200">
+                    <Inbox size={28} className="text-gray-400" />
                   </div>
-                )}
+                  <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
+                    <Check size={14} />
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-gray-900">
+                  {showUnreadOnly ? '暂无未读公告' : '暂无公告'}
+                </p>
+                <p className="mt-1 text-center text-xs text-gray-500">
+                  {showUnreadOnly ? '当前所有公告都已经处理完成。' : '暂时没有任何系统公告。'}
+                </p>
               </div>
-            </WorkspaceResultCard>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {!isManageMode ? (
-        <AnnouncementDetailModal
-          announcement={selectedAnnouncement}
-          onClose={() => setSelectedAnnouncement(null)}
-          zIndexClassName="z-[140]"
-          headerBadges={selectedAnnouncement ? (
-            <>
-              {selectedAnnouncement.isTop === 1 ? (
-                <span className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 ring-1 ring-rose-100">
-                  置顶
-                </span>
-              ) : null}
-              <span
-                className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-medium',
-                  getAnnouncementPriorityMeta(selectedAnnouncement.priority).className,
-                )}
-              >
-                {getAnnouncementPriorityMeta(selectedAnnouncement.priority).label}
+      <AnnouncementDetailModal
+        announcement={selectedAnnouncement}
+        onClose={() => setSelectedAnnouncement(null)}
+        onMarkAsRead={handleMarkAsReadAndClose}
+        zIndexClassName="z-[110]"
+        headerBadges={selectedAnnouncement ? (
+          <>
+            {selectedAnnouncement.isTop === 1 ? (
+              <span className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-600 ring-1 ring-rose-100">
+                置顶
               </span>
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                {selectedAnnouncement.scopeType === AnnouncementScope.ALL ? '全员' : '定向'}
-              </span>
-            </>
-          ) : null}
-          extraInfo={selectedAnnouncement?.expireTime ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            ) : null}
+            <span
+              className={cn(
+                'rounded-lg px-2.5 py-1 text-xs font-medium',
+                getAnnouncementPriorityMeta(selectedAnnouncement.priority).className,
+              )}
+            >
+              {getAnnouncementPriorityMeta(selectedAnnouncement.priority).label}
+            </span>
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+              {selectedAnnouncement.scopeType === AnnouncementScope.ALL ? '全员' : '定向'}
+            </span>
+          </>
+        ) : null}
+        extraInfo={selectedAnnouncement ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span className="rounded-full bg-white/75 px-3 py-1 ring-1 ring-white/80">
+              发布时间：{formatAnnouncementRelativeWithDateTime(selectedAnnouncement.publishTime || selectedAnnouncement.createTime)}
+            </span>
+            {selectedAnnouncement.expireTime ? (
               <span className="rounded-full bg-white/75 px-3 py-1 ring-1 ring-white/80">
                 有效期至：{new Date(selectedAnnouncement.expireTime).toLocaleString()}
               </span>
-            </div>
-          ) : null}
-          footerReadText="你已阅读该公告"
-          footerUnreadText="打开后会自动标记为已读"
-        />
-      ) : null}
+            ) : null}
+          </div>
+        ) : null}
+        footerReadText="您已阅读此公告"
+        footerUnreadText="点击“已读”标记此公告"
+      />
     </div>
   );
 };
