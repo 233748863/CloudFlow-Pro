@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 import { useAnnouncementStore } from '@/stores/announcementStore';
 
-const ANNOUNCEMENT_POLL_INTERVAL_MS = 60 * 1000;
-
 export function useAnnouncementSync(enabled = true) {
   const fetchAnnouncements = useAnnouncementStore((state) => state.fetchAnnouncements);
   const reset = useAnnouncementStore((state) => state.reset);
@@ -15,17 +13,13 @@ export function useAnnouncementSync(enabled = true) {
 
     void fetchAnnouncements(true);
 
-    const intervalId = setInterval(() => {
-      void fetchAnnouncements();
-    }, ANNOUNCEMENT_POLL_INTERVAL_MS);
-
     const handleAnnouncementRead = () => {
       void fetchAnnouncements(true);
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        void fetchAnnouncements(true);
+        void fetchAnnouncements();
       }
     };
 
@@ -33,7 +27,6 @@ export function useAnnouncementSync(enabled = true) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(intervalId);
       window.removeEventListener('announcementRead', handleAnnouncementRead);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

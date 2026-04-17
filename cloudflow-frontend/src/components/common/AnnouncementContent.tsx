@@ -15,7 +15,7 @@ export const AnnouncementContent: React.FC<AnnouncementContentProps> = ({
   fallbackHtml,
 }) => (
   <div
-    className={cn('cf-announcement-content', className)}
+    className={cn('markdown-body prose prose-sm max-w-none dark:prose-invert', className)}
     dangerouslySetInnerHTML={{
       __html: renderAnnouncementHtml(content, fallbackHtml),
     }}

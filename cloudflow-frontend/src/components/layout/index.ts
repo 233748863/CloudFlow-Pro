@@ -1,0 +1,1 @@
+export { TablePageLayout } from './TablePageLayout';

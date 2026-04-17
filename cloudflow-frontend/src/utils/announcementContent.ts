@@ -78,7 +78,7 @@ function renderMarkdownToHtml(source: string): string {
   return marked.parse(source) as string;
 }
 
-// 纯文本公告按段落和换行转成 HTML，这样详情展示时版式不会塌掉。
+// 纯文本公告按段落和换行转成 HTML，避免详情区域塌版。
 function renderPlainTextToHtml(source: string): string {
   const paragraphs = source
     .split(/\n{2,}/)
@@ -138,7 +138,7 @@ export function renderAnnouncementHtml(
   return html || fallback;
 }
 
-// 摘要统一从最终 HTML 反推纯文本，避免 HTML/Markdown 两套摘要逻辑再次分叉。
+// 摘要统一从最终 HTML 反推纯文本，避免 HTML/Markdown 两套逻辑再次分叉。
 export function getAnnouncementPlainText(
   content?: string,
   fallback = '点击查看完整公告内容',
@@ -170,4 +170,3 @@ export function getAnnouncementExcerpt(
   }
   return `${plainText.slice(0, maxLength).trim()}...`;
 }
-

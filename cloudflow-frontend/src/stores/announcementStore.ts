@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { Announcement, AnnouncementType } from '@/types';
 import { getMyAnnouncements, markAnnouncementRead } from '@/services/api/announcement';
 
-const FETCH_THROTTLE_MS = 60 * 1000;
+const THROTTLE_MS = 20 * 60 * 1000;
 const POPUP_ADVANCE_DELAY_MS = 300;
 
 let shownPopupIds = new Set<number>();
@@ -31,8 +31,9 @@ function sortAnnouncements(list: Announcement[]) {
 }
 
 /**
- * 源码里有 notify_mode 字段，本项目后端没有。
- * 这里用“置顶 / 紧急 / 高优先级”作为弹窗公告的兼容规则。
+ * 参考源码里有 `notify_mode`，但本项目后端没有这个字段。
+ * 这里保留“源码式弹窗队列”的结构，再用本地业务规则做兼容：
+ * 置顶、紧急、高优先级公告进入自动弹窗队列。
  */
 function isPopupCandidate(announcement: Announcement) {
   return (
@@ -51,41 +52,17 @@ function emitAnnouncementReadEvent() {
   }
 }
 
-function syncPopupState(
-  nextAnnouncements: Announcement[],
-  popupQueue: Announcement[],
-  currentPopup: Announcement | null,
-) {
-  const current = currentPopup
-    ? nextAnnouncements.find((item) => item.announcementId === currentPopup.announcementId) || null
-    : null;
-  const nextCurrentPopup = current && isPopupCandidate(current) ? current : null;
-
-  const queueIds = new Set(popupQueue.map((item) => item.announcementId));
-  const refreshedQueue = popupQueue
-    .map((item) => nextAnnouncements.find((announcement) => announcement.announcementId === item.announcementId) || null)
-    .filter((item): item is Announcement => Boolean(item))
-    .filter((item) => isPopupCandidate(item) && item.announcementId !== nextCurrentPopup?.announcementId);
-
-  const newCandidates = nextAnnouncements.filter((item) => (
-    isPopupCandidate(item)
-    && !shownPopupIds.has(item.announcementId)
-    && !queueIds.has(item.announcementId)
-    && item.announcementId !== nextCurrentPopup?.announcementId
-  ));
-
-  let nextQueue = [...refreshedQueue, ...newCandidates];
-  let activePopup = nextCurrentPopup;
-
-  if (!activePopup && nextQueue.length > 0) {
-    activePopup = nextQueue[0];
-    shownPopupIds.add(activePopup.announcementId);
-    nextQueue = nextQueue.slice(1);
+function showNextPopup(state: Pick<AnnouncementStoreState, 'popupQueue' | 'currentPopup'>) {
+  if (state.currentPopup || state.popupQueue.length === 0) {
+    return state;
   }
 
+  const [nextPopup, ...restQueue] = state.popupQueue;
+  shownPopupIds.add(nextPopup.announcementId);
+
   return {
-    currentPopup: activePopup,
-    popupQueue: nextQueue,
+    currentPopup: nextPopup,
+    popupQueue: restQueue,
   };
 }
 
@@ -98,23 +75,48 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
 
   fetchAnnouncements: async (force = false) => {
     const now = Date.now();
-    const { lastFetchTime, popupQueue, currentPopup } = get();
+    const { lastFetchTime } = get();
 
-    if (!force && lastFetchTime > 0 && now - lastFetchTime < FETCH_THROTTLE_MS) {
+    if (!force && lastFetchTime > 0 && now - lastFetchTime < THROTTLE_MS) {
       return;
     }
 
+    // 先写入时间戳，避免并发重复请求；失败后再回滚，和源码策略保持一致。
     set({ loading: true, lastFetchTime: now });
 
     try {
-      const list = await getMyAnnouncements();
-      const sortedAnnouncements = sortAnnouncements(list);
-      const popupState = syncPopupState(sortedAnnouncements, popupQueue, currentPopup);
+      const all = await getMyAnnouncements();
+      const announcements = sortAnnouncements(all).slice(0, 20);
 
-      set({
-        announcements: sortedAnnouncements,
-        loading: false,
-        ...popupState,
+      set((state) => {
+        const queueIds = new Set(state.popupQueue.map((item) => item.announcementId));
+        const nextQueue = state.popupQueue
+          .map((item) => announcements.find((candidate) => candidate.announcementId === item.announcementId) || null)
+          .filter((item): item is Announcement => Boolean(item) && isPopupCandidate(item));
+
+        const currentPopup = state.currentPopup
+          ? announcements.find((item) => item.announcementId === state.currentPopup?.announcementId) || null
+          : null;
+
+        const refreshedCurrentPopup = currentPopup && isPopupCandidate(currentPopup) ? currentPopup : null;
+
+        const newPopups = announcements.filter((item) => (
+          isPopupCandidate(item)
+          && !shownPopupIds.has(item.announcementId)
+          && !queueIds.has(item.announcementId)
+          && item.announcementId !== refreshedCurrentPopup?.announcementId
+        ));
+
+        const popupState = showNextPopup({
+          currentPopup: refreshedCurrentPopup,
+          popupQueue: [...nextQueue, ...newPopups],
+        });
+
+        return {
+          announcements,
+          loading: false,
+          ...popupState,
+        };
       });
     } catch (error) {
       console.error('获取公告列表失败:', error);
@@ -125,6 +127,7 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
   markAsRead: async (announcementId: number) => {
     try {
       await markAnnouncementRead(String(announcementId));
+
       set((state) => ({
         announcements: state.announcements.map((item) => (
           item.announcementId === announcementId ? { ...item, isRead: true } : item
@@ -132,6 +135,7 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
         popupQueue: state.popupQueue.filter((item) => item.announcementId !== announcementId),
         currentPopup: state.currentPopup?.announcementId === announcementId ? null : state.currentPopup,
       }));
+
       emitAnnouncementReadEvent();
     } catch (error) {
       console.error('标记公告已读失败:', error);
@@ -146,6 +150,7 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
 
     try {
       set({ loading: true });
+
       await Promise.all(
         unreadAnnouncements.map((item) => markAnnouncementRead(String(item.announcementId))),
       );
@@ -156,6 +161,7 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
         popupQueue: [],
         currentPopup: null,
       }));
+
       emitAnnouncementReadEvent();
     } catch (error) {
       console.error('全部标记已读失败:', error);
@@ -171,24 +177,16 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
     }
 
     set({ currentPopup: null });
-    await get().markAsRead(currentPopup.announcementId);
+    void get().markAsRead(currentPopup.announcementId);
 
-    setTimeout(() => {
-      set((state) => {
-        if (state.currentPopup || state.popupQueue.length === 0) {
-          return state;
-        }
-
-        const [nextPopup, ...restQueue] = state.popupQueue;
-        shownPopupIds.add(nextPopup.announcementId);
-
-        return {
+    if (get().popupQueue.length > 0) {
+      setTimeout(() => {
+        set((state) => ({
           ...state,
-          currentPopup: nextPopup,
-          popupQueue: restQueue,
-        };
-      });
-    }, POPUP_ADVANCE_DELAY_MS);
+          ...showNextPopup(state),
+        }));
+      }, POPUP_ADVANCE_DELAY_MS);
+    }
   },
 
   reset: () => {
@@ -206,4 +204,3 @@ export const useAnnouncementStore = create<AnnouncementStoreState>((set, get) =>
 export const useAnnouncementUnreadCount = () => (
   useAnnouncementStore((state) => state.announcements.filter((item) => !item.isRead).length)
 );
-
