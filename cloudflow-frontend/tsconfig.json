@@ -21,6 +21,9 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
+      "sonner": [
+        "./src/lib/sonner"
+      ],
       "@/*": [
         "./src/*"
       ]

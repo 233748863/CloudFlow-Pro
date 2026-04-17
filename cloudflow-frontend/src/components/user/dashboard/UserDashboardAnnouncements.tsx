@@ -1,7 +1,8 @@
 import React from 'react';
 import { Bell } from 'lucide-react';
-import { Button } from '@/components/ui';
 import { EmptyState, LoadingSpinner } from '@/components/common';
+import { Button } from '@/components/ui';
+import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 
 interface UserDashboardAnnouncementsProps {
   announcements: any[];
@@ -65,7 +66,7 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
                   {!isRead ? <span className="badge badge-primary">未读</span> : null}
                 </div>
                 <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-500">
-                  {item.summary || item.content || '点击查看完整公告内容'}
+                  {getAnnouncementExcerpt(item.summary || item.content)}
                 </p>
               </button>
             );
@@ -75,3 +76,4 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
     </div>
   </div>
 );
+

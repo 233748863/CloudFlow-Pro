@@ -38,6 +38,7 @@ import {
 } from '../services/api/announcement';
 import { useAuth } from '../context/AuthContext';
 import { toBackendDateString } from '../utils/dateFormat';
+import { AnnouncementContent } from '@/components/common';
 import {
   Button,
   DatePicker,
@@ -66,6 +67,9 @@ import {
   WorkspaceResultCard,
   WorkspaceWorkbenchCard,
 } from '@/components/workspace/WorkspacePanels';
+import {
+  getAnnouncementExcerpt,
+} from '@/utils/announcementContent';
 import { cn } from '@/utils/cn';
 
 interface DeptItem {
@@ -90,8 +94,6 @@ const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
 };
-
-const stripHtml = (content: string) => content.replace(/<[^>]+>/g, '').trim();
 
 const getAnnouncementTypeMeta = (type: AnnouncementType) => {
   switch (type) {
@@ -978,7 +980,7 @@ export const AnnouncementPage = () => {
                 {displayList.map((item) => {
                   const typeMeta = getAnnouncementTypeMeta(item.type);
                   const priorityMeta = getPriorityMeta(item.priority);
-                  const excerpt = stripHtml(item.content).slice(0, 100);
+                  const excerpt = getAnnouncementExcerpt(item.content, 100);
 
                   return (
                     <button
@@ -1053,9 +1055,7 @@ export const AnnouncementPage = () => {
               ) : null}
             </div>
 
-            <div className="prose prose-sm max-w-none text-slate-600">
-              <div dangerouslySetInnerHTML={{ __html: selectedAnnouncement.content }} />
-            </div>
+            <AnnouncementContent content={selectedAnnouncement.content} className="text-slate-600" />
 
             <div className="flex justify-end">
               <Button onClick={() => setSelectedAnnouncement(null)}>关闭</Button>

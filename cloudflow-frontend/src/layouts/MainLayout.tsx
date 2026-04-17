@@ -1,11 +1,11 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, LogOut, ShieldCheck } from 'lucide-react';
+import { AnnouncementHub } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getRouters, MenuItem as ApiMenuItem } from '../services/api/menu';
 import { getIcon } from '../utils/iconMapper';
-import { getMyAnnouncements } from '../services/api/announcement';
 import { TenantSwitcher } from '../components/TenantSwitcher';
 import { HeaderAnnouncementBell } from '../components/header/HeaderAnnouncementBell';
 import { HeaderUserMenu } from '../components/header/HeaderUserMenu';
@@ -29,7 +29,6 @@ export const MainLayout = () => {
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [menuTree, setMenuTree] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuItem[] => {
     return apiMenus
@@ -69,39 +68,6 @@ export const MainLayout = () => {
   }, [user]);
 
   useEffect(() => {
-    const loadUnreadCount = async () => {
-      try {
-        const announcements = await getMyAnnouncements();
-        const unread = Array.isArray(announcements)
-          ? announcements.filter((item) => !item.isRead).length
-          : 0;
-        setUnreadCount(unread);
-      } catch (error) {
-        console.error('加载未读公告数量失败:', error);
-        setUnreadCount(0);
-      }
-    };
-
-    if (!user) {
-      return;
-    }
-
-    void loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 60000);
-
-    const handleAnnouncementRead = () => {
-      void loadUnreadCount();
-    };
-
-    window.addEventListener('announcementRead', handleAnnouncementRead);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('announcementRead', handleAnnouncementRead);
-    };
-  }, [user]);
-
-  useEffect(() => {
     for (const group of menuTree) {
       const match = group.children?.find((child) => {
         if (child.path === '/') {
@@ -123,7 +89,7 @@ export const MainLayout = () => {
       return;
     }
 
-    // 路由切换后重置主体滚动位置，避免内容顶到 sticky 头部下面。
+    // 路由切换后重置主体滚动位置，避免内容顶到 sticky 标题下面。
     const resetScrollPosition = () => {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -302,7 +268,7 @@ export const MainLayout = () => {
                 </div>
 
                 <TenantSwitcher />
-                <HeaderAnnouncementBell unreadCount={unreadCount} />
+                <HeaderAnnouncementBell />
                 <HeaderUserMenu />
               </div>
             </div>
@@ -318,6 +284,9 @@ export const MainLayout = () => {
           </main>
         </div>
       </div>
+
+      <AnnouncementHub enabled={Boolean(user)} />
     </div>
   );
 };
+
