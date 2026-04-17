@@ -1,27 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Bell,
-  ChevronDown,
-  LogOut,
-  Mail,
-  Phone,
-  User,
-} from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Mail, Phone, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
-const getInitials = (name?: string) => {
-  const safeName = String(name || '').trim();
-  if (!safeName) {
-    return 'CF';
+const getInitials = (name?: string, email?: string) => {
+  const userName = String(name || '').trim();
+  if (userName) {
+    return userName.slice(0, 2).toUpperCase();
   }
 
-  const parts = safeName.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) {
-    return safeName.slice(0, 2).toUpperCase();
+  const localPart = String(email || '').split('@')[0];
+  if (localPart) {
+    return localPart.slice(0, 2).toUpperCase();
   }
 
-  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  return 'CF';
 };
 
 export const HeaderUserMenu: React.FC = () => {
@@ -47,18 +40,21 @@ export const HeaderUserMenu: React.FC = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [dropdownOpen]);
 
-  const displayName = useMemo(() => user?.name || user?.username || 'CloudFlow', [user]);
+  const displayName = useMemo(
+    () => user?.username || user?.name || user?.email?.split('@')[0] || 'CloudFlow',
+    [user],
+  );
   const subtitle = useMemo(
-    () => user?.deptName || user?.position || String(user?.role || 'CloudFlow'),
+    () => String(user?.role || 'user').toLowerCase(),
     [user],
   );
 
@@ -67,7 +63,7 @@ export const HeaderUserMenu: React.FC = () => {
   }
 
   const avatar = user.avatar;
-  const initials = getInitials(displayName);
+  const initials = getInitials(user.username || user.name, user.email);
 
   const closeDropdown = () => setDropdownOpen(false);
 
@@ -81,12 +77,12 @@ export const HeaderUserMenu: React.FC = () => {
       <button
         type="button"
         onClick={() => setDropdownOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-slate-100"
+        className="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100"
         aria-label="用户菜单"
         aria-expanded={dropdownOpen}
         aria-haspopup="menu"
       >
-        <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 text-sm font-medium text-white shadow-sm">
+        <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 text-sm font-medium text-white shadow-sm">
           {avatar ? (
             <img src={avatar} alt={displayName} className="h-full w-full object-cover" />
           ) : (
@@ -94,29 +90,29 @@ export const HeaderUserMenu: React.FC = () => {
           )}
         </div>
         <div className="hidden text-left md:block">
-          <div className="text-sm font-medium text-slate-900">{displayName}</div>
-          <div className="text-xs text-slate-500">{subtitle}</div>
+          <div className="text-sm font-medium text-gray-900">{displayName}</div>
+          <div className="text-xs capitalize text-gray-500">{subtitle}</div>
         </div>
-        <ChevronDown size={14} className="hidden text-slate-400 md:block" />
+        <ChevronDown size={14} className="hidden text-gray-400 md:block" />
       </button>
 
       <div
-        className={`absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg transition-all duration-150 ${
+        className={`absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg transition-all duration-150 ${
           dropdownOpen
-            ? 'pointer-events-auto scale-100 opacity-100'
-            : 'pointer-events-none scale-95 opacity-0'
+            ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
+            : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
         }`}
       >
-        <div className="border-b border-slate-100 px-4 py-3">
-          <div className="text-sm font-medium text-slate-900">{displayName}</div>
-          <div className="text-xs text-slate-500">{user.email || user.username || '-'}</div>
+        <div className="border-b border-gray-100 px-4 py-3">
+          <div className="text-sm font-medium text-gray-900">{displayName}</div>
+          <div className="text-xs text-gray-500">{user.email || user.username || '-'}</div>
         </div>
 
         <div className="py-1">
           <button
             type="button"
             onClick={() => handleNavigate('/profile')}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
           >
             <User size={16} />
             个人资料
@@ -125,7 +121,7 @@ export const HeaderUserMenu: React.FC = () => {
           <button
             type="button"
             onClick={() => handleNavigate('/office/announcement')}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
           >
             <Bell size={16} />
             公告中心
@@ -133,36 +129,36 @@ export const HeaderUserMenu: React.FC = () => {
         </div>
 
         {user.email || user.phone ? (
-          <div className="border-t border-slate-100 px-4 py-2.5">
+          <div className="border-t border-gray-100 px-4 py-2.5">
             {user.email ? (
-              <div className="flex items-start gap-2 text-xs text-slate-500">
+              <div className="flex items-start gap-2 text-xs text-gray-500">
                 <Mail size={14} className="mt-0.5 shrink-0" />
                 <div>
                   <div>邮箱 Email:</div>
-                  <div className="font-medium text-slate-700">{user.email}</div>
+                  <div className="font-medium text-gray-700">{user.email}</div>
                 </div>
               </div>
             ) : null}
             {user.phone ? (
-              <div className={`flex items-start gap-2 text-xs text-slate-500 ${user.email ? 'mt-2' : ''}`}>
+              <div className={`flex items-start gap-2 text-xs text-gray-500 ${user.email ? 'mt-2' : ''}`}>
                 <Phone size={14} className="mt-0.5 shrink-0" />
                 <div>
                   <div>电话 Phone:</div>
-                  <div className="font-medium text-slate-700">{user.phone}</div>
+                  <div className="font-medium text-gray-700">{user.phone}</div>
                 </div>
               </div>
             ) : null}
           </div>
         ) : null}
 
-        <div className="border-t border-slate-100 py-1">
+        <div className="border-t border-gray-100 py-1">
           <button
             type="button"
             onClick={async () => {
               closeDropdown();
               await logout();
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 transition-colors hover:bg-rose-50"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
           >
             <LogOut size={16} />
             退出登录

@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { ChevronDown, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getRouters, MenuItem as ApiMenuItem } from '../services/api/menu';
@@ -187,27 +187,29 @@ export const MainLayout = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-[0_12px_30px_rgba(14,165,233,0.16)] ring-1 ring-slate-200">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-[0_12px_30px_rgba(20,184,166,0.16)]">
           <img src="/icon.svg" alt="CloudFlow Pro" className="h-10 w-10 object-contain" />
         </div>
-        <div className="text-sm font-medium text-slate-500">正在加载系统资源...</div>
+        <div className="text-sm font-medium text-gray-500">正在加载系统资源...</div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white">
-        <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-6">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-[0_10px_24px_rgba(14,165,233,0.16)] ring-1 ring-slate-200">
+    <div className="relative h-screen overflow-hidden bg-gray-50 text-gray-900">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(at_40%_20%,rgba(20,184,166,0.12)_0px,transparent_50%),radial-gradient(at_80%_0%,rgba(6,182,212,0.08)_0px,transparent_50%),radial-gradient(at_0%_50%,rgba(20,184,166,0.08)_0px,transparent_50%)]" />
+
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-gray-200 bg-white">
+        <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-6">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-[0_0_20px_rgba(20,184,166,0.18)]">
             <img src="/icon.svg" alt="CloudFlow Pro" className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0 flex-1 whitespace-nowrap">
-            <span className="block truncate text-lg font-bold text-slate-900">
+            <span className="block truncate text-lg font-bold text-gray-900">
               CloudFlow Pro
             </span>
-            <span className="block truncate text-xs text-slate-400">Workspace</span>
+            <span className="block truncate text-xs text-gray-400">Workspace</span>
           </div>
         </div>
 
@@ -216,6 +218,7 @@ export const MainLayout = () => {
             {menuTree.map((group) => {
               const expanded = expandedGroups.includes(group.id);
               const groupActive = Boolean(group.children?.some((child) => isActive(child.path)));
+              const parentButtonActive = groupActive && !expanded;
 
               return (
                 <div key={group.id} className="mb-1">
@@ -223,25 +226,25 @@ export const MainLayout = () => {
                     type="button"
                     onClick={() => toggleGroup(group.id)}
                     className={`flex w-full items-center gap-3 overflow-hidden rounded-xl py-2.5 pl-[1.0625rem] pr-[0.875rem] text-sm font-medium transition-all duration-200 ${
-                      groupActive
-                        ? 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      parentButtonActive
+                        ? 'bg-teal-50 text-teal-600 hover:bg-teal-100'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     }`}
                   >
                     <group.icon size={20} className="shrink-0" />
                     <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                       <span className="truncate">{group.label}</span>
-                      <ChevronRight
+                      <ChevronDown
                         size={16}
                         className={`shrink-0 transition-transform duration-200 ${
-                          expanded ? 'rotate-90' : ''
+                          expanded ? 'rotate-180' : ''
                         }`}
                       />
                     </span>
                   </button>
 
                   {!expanded ? null : (
-                    <div className="mb-1 ml-4 mt-1 border-l border-slate-200 pl-2">
+                    <div className="mb-1 ml-4 mt-1 border-l border-gray-200 pl-2">
                       {group.children?.map((child) => (
                         <button
                           key={child.id}
@@ -249,8 +252,8 @@ export const MainLayout = () => {
                           onClick={() => child.path && navigate(child.path)}
                           className={`mb-0.5 flex w-full items-center gap-3 overflow-hidden rounded-xl py-1.5 pl-[1.0625rem] pr-[0.875rem] text-left text-sm font-medium transition-all duration-200 ${
                             isActive(child.path)
-                              ? 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                              ? 'bg-teal-50 text-teal-600 hover:bg-teal-100'
+                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                           }`}
                         >
                           <child.icon size={16} className="shrink-0" />
@@ -265,11 +268,11 @@ export const MainLayout = () => {
           </div>
         </nav>
 
-        <div className="mt-auto border-t border-slate-100 p-3">
+        <div className="mt-auto border-t border-gray-100 p-3">
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-3 overflow-hidden rounded-xl py-2.5 pl-[1.0625rem] pr-[0.875rem] text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-rose-50 hover:text-rose-600"
+            className="flex w-full items-center gap-3 overflow-hidden rounded-xl py-2.5 pl-[1.0625rem] pr-[0.875rem] text-sm font-medium text-gray-600 transition-all duration-200 hover:bg-red-50 hover:text-red-600"
           >
             <LogOut size={20} className="shrink-0" />
             <span className="truncate">退出登录</span>
@@ -279,25 +282,23 @@ export const MainLayout = () => {
 
       <div className="relative flex h-screen pl-64">
         <div className="flex min-h-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl">
+          <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200/50 bg-white/80 backdrop-blur-xl">
             <div className="flex h-16 items-center justify-between px-4 md:px-6">
               <div className="flex items-center gap-4">
                 <div className="hidden lg:block">
-                  <h1 className="text-lg font-semibold text-slate-900">{activeLabel.item}</h1>
-                  <p className="text-xs text-slate-500">{pageDescription}</p>
+                  <h1 className="text-lg font-semibold text-gray-900">{activeLabel.item}</h1>
+                  <p className="text-xs text-gray-500">{pageDescription}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 lg:flex">
+                <div className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 lg:flex">
                   <ShieldCheck size={14} className="text-emerald-500" />
                   <span>开发环境</span>
                 </div>
 
                 <TenantSwitcher />
-
                 <HeaderAnnouncementBell unreadCount={unreadCount} />
-
                 <HeaderUserMenu />
               </div>
             </div>
