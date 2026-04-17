@@ -28,7 +28,7 @@ export const WorkspaceSectionHeader = ({
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
         {eyebrow}
       </div>
-      <div className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{title}</div>
+      <div className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{title}</div>
     </div>
     {actionLabel && onAction ? (
       <button
@@ -55,14 +55,14 @@ export const WorkspaceEmptyPanel = ({
   variant?: 'default' | 'glass';
 }) => (
   <div
-    className={`flex flex-col items-center justify-center rounded-[24px] px-6 py-14 text-center ${
+    className={`flex flex-col items-center justify-center rounded-2xl px-6 py-12 text-center ${
       variant === 'glass'
-        ? 'border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.04)]'
+        ? 'border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]'
         : 'border border-dashed border-slate-200 bg-slate-50'
     }`}
   >
     <div
-      className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-slate-300 ${
+      className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-slate-300 ${
         variant === 'glass' ? 'bg-slate-50 text-slate-400' : 'bg-white shadow-sm'
       }`}
     >
@@ -90,22 +90,24 @@ export const WorkspaceStatusPanel = ({
 }) => (
   <div
     className={cn(
-      'overflow-hidden rounded-[28px] border border-slate-200 bg-white px-8 py-10 text-center shadow-[0_16px_40px_rgba(15,23,42,0.05)]',
+      'overflow-hidden rounded-[24px] border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_14px_36px_rgba(15,23,42,0.05)]',
       className,
     )}
   >
     <div className="flex flex-col items-center justify-center">
       <div
         className={cn(
-          'mb-4 flex h-16 w-16 items-center justify-center rounded-[22px] bg-slate-50 text-slate-400',
+          'mb-4 flex h-14 w-14 items-center justify-center rounded-[18px] bg-slate-50 text-slate-400',
           iconWrapClassName,
         )}
       >
         {icon}
       </div>
       <div className="text-lg font-semibold tracking-tight text-slate-950">{title}</div>
-      {description ? <div className="mt-3 max-w-md text-sm leading-7 text-slate-500">{description}</div> : null}
-      {actions ? <div className="mt-5 flex flex-wrap items-center justify-center gap-3">{actions}</div> : null}
+      {description ? (
+        <div className="mt-3 max-w-md text-sm leading-6 text-slate-500">{description}</div>
+      ) : null}
+      {actions ? <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">{actions}</div> : null}
     </div>
   </div>
 );
@@ -143,7 +145,7 @@ export const WorkspaceStatusPage = ({
   </div>
 );
 
-// 统一区块内的小状态提示，适用于详情区、列表区内的加载中/空数据提示。
+// 统一区块内的小状态提示，适用于详情区、列表区内的加载与空数据提示。
 export const WorkspaceInlineState = ({
   title,
   description,
@@ -168,7 +170,9 @@ export const WorkspaceInlineState = ({
   >
     {type === 'loading' ? (
       <div className="flex items-center justify-center gap-2 text-sm">
-        {icon || <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-b-emerald-500" />}
+        {icon || (
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-b-emerald-500" />
+        )}
         <span>{title}</span>
       </div>
     ) : (
@@ -205,10 +209,15 @@ export const WorkspaceTableStateRow = ({
   cellClassName?: string;
 }) => (
   <TableRow className={cn('border-slate-200 hover:bg-transparent', rowClassName)}>
-    <TableCell colSpan={colSpan} className={cn(type === 'loading' ? 'px-4 py-16' : 'px-4 py-6', cellClassName)}>
+    <TableCell
+      colSpan={colSpan}
+      className={cn(type === 'loading' ? 'px-4 py-16' : 'px-4 py-6', cellClassName)}
+    >
       {type === 'loading' ? (
         <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-          {icon || <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-200 border-b-emerald-500" />}
+          {icon || (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-200 border-b-emerald-500" />
+          )}
           {title}
         </div>
       ) : (
