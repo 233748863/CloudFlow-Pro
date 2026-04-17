@@ -53,10 +53,15 @@ export const HeaderUserMenu: React.FC = () => {
     () => user?.username || user?.name || user?.email?.split('@')[0] || 'CloudFlow',
     [user],
   );
-  const subtitle = useMemo(
-    () => String(user?.role || 'user').toLowerCase(),
-    [user],
-  );
+
+  const subtitle = useMemo(() => {
+    const rawRole = String(user?.role || 'user').trim();
+    if (!rawRole) {
+      return 'user';
+    }
+
+    return rawRole.replace(/^ROLE_/i, '').replace(/_/g, ' ').toLowerCase();
+  }, [user]);
 
   if (!user) {
     return null;
@@ -89,11 +94,20 @@ export const HeaderUserMenu: React.FC = () => {
             initials
           )}
         </div>
-        <div className="hidden text-left md:block">
-          <div className="text-sm font-medium text-gray-900">{displayName}</div>
-          <div className="text-xs capitalize text-gray-500">{subtitle}</div>
+        <div className="hidden min-w-0 text-left md:block">
+          <div className="max-w-[9rem] truncate text-sm font-medium text-gray-900">
+            {displayName}
+          </div>
+          <div className="max-w-[9rem] truncate text-xs capitalize text-gray-500">
+            {subtitle}
+          </div>
         </div>
-        <ChevronDown size={14} className="hidden text-gray-400 md:block" />
+        <ChevronDown
+          size={14}
+          className={`hidden text-gray-400 transition-transform duration-200 md:block ${
+            dropdownOpen ? 'rotate-180' : ''
+          }`}
+        />
       </button>
 
       <div
@@ -139,8 +153,13 @@ export const HeaderUserMenu: React.FC = () => {
                 </div>
               </div>
             ) : null}
+
             {user.phone ? (
-              <div className={`flex items-start gap-2 text-xs text-gray-500 ${user.email ? 'mt-2' : ''}`}>
+              <div
+                className={`flex items-start gap-2 text-xs text-gray-500 ${
+                  user.email ? 'mt-2' : ''
+                }`}
+              >
                 <Phone size={14} className="mt-0.5 shrink-0" />
                 <div>
                   <div>电话 Phone:</div>

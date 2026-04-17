@@ -24,7 +24,7 @@ export const MainLayout = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const mainScrollRef = useRef<HTMLElement | null>(null);
+  const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [menuTree, setMenuTree] = useState<MenuItem[]>([]);
@@ -107,6 +107,7 @@ export const MainLayout = () => {
         if (child.path === '/') {
           return location.pathname === '/';
         }
+
         return child.path && location.pathname.startsWith(child.path);
       });
 
@@ -122,7 +123,7 @@ export const MainLayout = () => {
       return;
     }
 
-    // 路由切换后重置主体滚动位置，避免内容顶到头部后面。
+    // 路由切换后重置主体滚动位置，避免内容顶到 sticky 头部下面。
     const resetScrollPosition = () => {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -157,9 +158,11 @@ export const MainLayout = () => {
     if (!path) {
       return false;
     }
+
     if (path === '/') {
       return location.pathname === '/';
     }
+
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
@@ -172,12 +175,13 @@ export const MainLayout = () => {
     }
 
     return { group: '工作台', item: '仪表盘' };
-  }, [location.pathname, menuTree]);
+  }, [menuTree, location.pathname]);
 
   const pageDescription = useMemo(() => {
     if (activeLabel.group && activeLabel.group !== activeLabel.item) {
       return `${activeLabel.group} · CloudFlow Workspace`;
     }
+
     return 'CloudFlow Workspace';
   }, [activeLabel.group, activeLabel.item]);
 
@@ -206,10 +210,10 @@ export const MainLayout = () => {
             <img src="/icon.svg" alt="CloudFlow Pro" className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0 flex-1 whitespace-nowrap">
-            <span className="block truncate text-lg font-bold text-gray-900">
+            <span className="block truncate text-[17px] font-bold tracking-[-0.01em] text-gray-900">
               CloudFlow Pro
             </span>
-            <span className="block truncate text-xs text-gray-400">Workspace</span>
+            <span className="mt-0.5 block truncate text-[11px] text-gray-400">Workspace</span>
           </div>
         </div>
 
@@ -291,8 +295,8 @@ export const MainLayout = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 lg:flex">
+              <div className="flex items-center gap-2.5 md:gap-3">
+                <div className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 xl:flex">
                   <ShieldCheck size={14} className="text-emerald-500" />
                   <span>开发环境</span>
                 </div>
@@ -306,7 +310,7 @@ export const MainLayout = () => {
 
           <main
             ref={mainScrollRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 lg:p-8"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain scroll-pt-20 p-4 md:p-6 lg:p-8"
           >
             <div className="min-h-full animate-fade-in">
               <Outlet />

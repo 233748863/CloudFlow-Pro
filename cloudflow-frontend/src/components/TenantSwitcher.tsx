@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Loader2 } from 'lucide-react';
+import { Building2, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { getTenantList } from '@/services/api/tenant';
@@ -9,6 +9,19 @@ interface Tenant {
   tenantName: string;
   status: string;
 }
+
+const getTenantLabel = (tenantName?: string, tenantId?: number) => {
+  const normalizedName = String(tenantName || '').trim();
+  if (normalizedName) {
+    return normalizedName;
+  }
+
+  if (typeof tenantId === 'number') {
+    return `租户 ${tenantId}`;
+  }
+
+  return '默认租户';
+};
 
 export const TenantSwitcher: React.FC = () => {
   const { user, switchTenant } = useAuth();
@@ -88,10 +101,7 @@ export const TenantSwitcher: React.FC = () => {
   }
 
   const currentTenant = tenants.find((tenant) => tenant.tenantId === user.tenantId);
-  const currentTenantValue =
-    typeof user.tenantId === 'number'
-      ? String(user.tenantId)
-      : currentTenant?.tenantName || '默认';
+  const currentTenantLabel = getTenantLabel(currentTenant?.tenantName, user.tenantId);
 
   const handleSwitchTenant = async (tenantId: number) => {
     if (tenantId === user.tenantId) {
@@ -118,12 +128,12 @@ export const TenantSwitcher: React.FC = () => {
         disabled={switching}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        aria-label={`租户 ${currentTenantValue}`}
+        aria-label={`当前租户：${currentTenantLabel}`}
         className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-wait disabled:opacity-70"
       >
-        <span className="text-[14px] text-gray-400">租户</span>
-        <span className="max-w-[5rem] truncate text-[15px] text-gray-700">
-          {currentTenantValue}
+        <Building2 size={15} className="shrink-0 text-gray-400" />
+        <span className="hidden max-w-[5.75rem] truncate text-gray-700 sm:inline">
+          {currentTenantLabel}
         </span>
         {switching ? (
           <Loader2 size={14} className="animate-spin text-gray-400" />
@@ -138,7 +148,7 @@ export const TenantSwitcher: React.FC = () => {
       </button>
 
       <div
-        className={`absolute right-0 top-full z-50 mt-1 w-36 origin-top-right overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg transition-all duration-150 ${
+        className={`absolute right-0 top-full z-50 mt-1 w-40 origin-top-right overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg transition-all duration-150 ${
           isOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
@@ -147,7 +157,7 @@ export const TenantSwitcher: React.FC = () => {
         {loading ? (
           <div className="flex items-center justify-center gap-2 px-3 py-3 text-sm text-gray-500">
             <Loader2 size={14} className="animate-spin" />
-            <span>加载中</span>
+            <span>正在加载</span>
           </div>
         ) : tenants.length === 0 ? (
           <div className="px-3 py-3 text-center text-sm text-gray-500">暂无租户</div>
@@ -155,10 +165,7 @@ export const TenantSwitcher: React.FC = () => {
           <div className="py-1">
             {tenants.map((tenant) => {
               const active = tenant.tenantId === user.tenantId;
-              const tenantValue =
-                typeof tenant.tenantId === 'number'
-                  ? String(tenant.tenantId)
-                  : tenant.tenantName || '默认';
+              const tenantLabel = getTenantLabel(tenant.tenantName, tenant.tenantId);
 
               return (
                 <button
@@ -166,19 +173,16 @@ export const TenantSwitcher: React.FC = () => {
                   type="button"
                   onClick={() => void handleSwitchTenant(tenant.tenantId)}
                   disabled={switching}
-                  title={tenant.tenantName || tenantValue}
+                  title={tenantLabel}
                   className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 ${
                     active ? 'bg-teal-50 text-teal-600' : ''
                   } ${switching ? 'cursor-not-allowed opacity-70' : ''}`}
                 >
-                  <span
-                    className={`min-w-[20px] text-left text-xs font-medium uppercase ${
-                      active ? 'text-teal-500' : 'text-gray-400'
-                    }`}
-                  >
-                    ID
-                  </span>
-                  <span className="flex-1 truncate text-left">{tenantValue}</span>
+                  <Building2
+                    size={15}
+                    className={`shrink-0 ${active ? 'text-teal-500' : 'text-gray-400'}`}
+                  />
+                  <span className="flex-1 truncate text-left">{tenantLabel}</span>
                   {active ? <Check size={14} className="shrink-0 text-teal-500" /> : null}
                 </button>
               );
