@@ -186,6 +186,180 @@
     box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(14px);
   }
+
+  .card {
+    border: 1px solid rgb(226 232 240 / 0.9);
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .card-header {
+    border-bottom: 1px solid rgb(241 245 249);
+    padding: 1rem 1.5rem;
+  }
+
+  .card-body {
+    padding: 1.5rem;
+  }
+
+  .card-footer {
+    border-top: 1px solid rgb(241 245 249);
+    padding: 1rem 1.5rem;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge-gray {
+    background: rgb(241 245 249);
+    color: rgb(71 85 105);
+  }
+
+  .badge-primary {
+    background: rgb(204 251 241);
+    color: rgb(13 148 136);
+  }
+
+  .badge-success {
+    background: rgb(220 252 231);
+    color: rgb(22 163 74);
+  }
+
+  .badge-warning {
+    background: rgb(254 243 199);
+    color: rgb(217 119 6);
+  }
+
+  .stat-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    border: 1px solid rgb(226 232 240 / 0.9);
+    background: white;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  .stat-icon {
+    display: flex;
+    height: 3rem;
+    width: 3rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+  }
+
+  .stat-icon-primary {
+    background: rgb(204 251 241);
+    color: rgb(13 148 136);
+  }
+
+  .stat-icon-success {
+    background: rgb(220 252 231);
+    color: rgb(22 163 74);
+  }
+
+  .stat-icon-warning {
+    background: rgb(254 243 199);
+    color: rgb(217 119 6);
+  }
+
+  .stat-icon-danger {
+    background: rgb(254 226 226);
+    color: rgb(220 38 38);
+  }
+
+  .stat-icon-gray {
+    background: rgb(241 245 249);
+    color: rgb(71 85 105);
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: rgb(15 23 42);
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: rgb(100 116 139);
+  }
+
+  .stat-trend {
+    margin-top: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .stat-trend-up {
+    color: rgb(22 163 74);
+  }
+
+  .stat-trend-down {
+    color: rgb(220 38 38);
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    margin-bottom: 1rem;
+    height: 2.5rem;
+    width: 2.5rem;
+    color: rgb(148 163 184);
+  }
+
+  .empty-state-title {
+    margin-bottom: 0.25rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: rgb(15 23 42);
+  }
+
+  .empty-state-description {
+    max-width: 24rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: rgb(100 116 139);
+  }
+
+  .spinner {
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    animation: cfSpin 0.8s linear infinite;
+  }
+}
+
+@keyframes cfSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes fadeIn {
