@@ -389,7 +389,7 @@ export const BusinessTripPage: React.FC = () => {
             </div>
           )}
           contentClassName="p-4 sm:p-5"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_55%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]"
         >
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {heroMetrics.map((item) => (
@@ -434,7 +434,7 @@ export const BusinessTripPage: React.FC = () => {
                 </Button>
               ) : (
                 <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                  当前未应用额外筛选
+                  默认视图
                 </span>
               )}
               filterBar={(
@@ -468,7 +468,7 @@ export const BusinessTripPage: React.FC = () => {
               )}
             />
 
-            <WorkspaceResultCard total={total} description="轻玻璃视图下展示申请记录与当前操作">
+            <WorkspaceResultCard total={total} description="行程、费用与状态">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
@@ -590,9 +590,9 @@ export const BusinessTripPage: React.FC = () => {
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       <Plane size={14} />
-                      出差申请表单
+                      出差申请
                     </div>
-                    <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{current ? '编辑出差申请' : '新增出差申请'}</h3>
+                    <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">{current ? '编辑出差申请' : '新增出差申请'}</h3>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                       <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">{current ? '修改现有申请' : '创建新申请'}</span>
                       <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700">按审批需要补齐信息</span>
@@ -607,7 +607,6 @@ export const BusinessTripPage: React.FC = () => {
                 <section className={glassModalSectionClass}>
                   <div className="mb-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础行程</div>
-                    <div className="mt-1 text-sm text-slate-500">先填写出发地、目的地与时间区间，系统会自动计算出差天数。</div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
@@ -632,7 +631,6 @@ export const BusinessTripPage: React.FC = () => {
                 <section className={glassModalSectionClass}>
                   <div className="mb-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">交通与预算</div>
-                    <div className="mt-1 text-sm text-slate-500">补充交通方式、住宿安排、预算和关联项目，方便审批时快速判断成本与目的。</div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
@@ -672,7 +670,6 @@ export const BusinessTripPage: React.FC = () => {
                 <section className={glassModalSectionClass}>
                   <div className="mb-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">联系与协作</div>
-                    <div className="mt-1 text-sm text-slate-500">确保审批通过后，出差期间联系人与同行信息可以被快速检索。</div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
@@ -697,7 +694,6 @@ export const BusinessTripPage: React.FC = () => {
                 <section className={glassModalSectionClass}>
                   <div className="mb-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">申请说明</div>
-                    <div className="mt-1 text-sm text-slate-500">用一段简洁说明交代出差背景、目标和现场任务。</div>
                   </div>
                   <div>
                     <label className={glassModalLabelClass}>出差事由 <span className="text-red-500">*</span></label>
@@ -708,7 +704,6 @@ export const BusinessTripPage: React.FC = () => {
                 <section className={glassModalSectionClass}>
                   <div className="mb-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">附件材料</div>
-                    <div className="mt-1 text-sm text-slate-500">可附上邀请函、会议通知、行程单或酒店预订单，帮助审批人快速核实背景。</div>
                   </div>
                   <FileUpload variant="glass" value={formData.attachmentUrl || ''} onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })} maxCount={5} hint="可上传邀请函、会议通知、行程单、酒店预订单等，最多 5 个文件" />
                 </section>
@@ -735,9 +730,9 @@ export const BusinessTripPage: React.FC = () => {
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       <Eye size={14} />
-                      申请详情
+                      出差详情
                     </div>
-                    <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{detailTrip.tripNo || '出差申请'}</h3>
+                    <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">{detailTrip.tripNo || '出差申请'}</h3>
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                       <span>{detailTrip.departure ? `${detailTrip.departure} → ` : ''}{detailTrip.destination || '-'}</span>
                       {getStatusBadge(detailTrip.status || 'DRAFT')}
