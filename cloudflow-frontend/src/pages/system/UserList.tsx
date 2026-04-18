@@ -103,7 +103,7 @@ const TreeSelect: React.FC<{
     <div className="relative">
       <button
         type="button"
-        className="cf-glass-input flex h-11 w-full items-center justify-between rounded-2xl px-3.5 text-left text-sm text-slate-700"
+        className="flex h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-700 shadow-sm transition hover:border-slate-300 focus:outline-none"
         onClick={() => setOpen((prev) => !prev)}
       >
         <span className={selected ? 'text-slate-800' : 'text-slate-400'}>

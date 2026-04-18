@@ -26,6 +26,7 @@ import { Button, Input, PermissionGuard } from "@/components/ui";
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
+  WorkspacePageContent,
 } from "@/components/workspace/WorkspacePrimitives";
 import {
   WorkspaceDialogShell,
@@ -313,7 +314,7 @@ export const ArchivedWorkflows: React.FC = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -440,7 +441,7 @@ export const ArchivedWorkflows: React.FC = () => {
                 </Button>
               </div>
               {showFilters ? (
-                <div className="grid gap-4 rounded-[22px] border border-white/80 bg-white/60 p-4 md:grid-cols-2">
+                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">
                       归档开始日期
@@ -454,7 +455,7 @@ export const ArchivedWorkflows: React.FC = () => {
                           start: event.target.value,
                         }))
                       }
-                      className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
                     />
                   </div>
                   <div>
@@ -470,7 +471,7 @@ export const ArchivedWorkflows: React.FC = () => {
                           end: event.target.value,
                         }))
                       }
-                      className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
                     />
                   </div>
                   <div className="md:col-span-2 flex justify-end">
@@ -550,12 +551,12 @@ export const ArchivedWorkflows: React.FC = () => {
               />
             ) : (
               <>
-                <div className="flex items-center gap-4 rounded-[20px] border border-white/80 bg-white/72 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 shadow-sm">
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={handleSelectAll}
-                    className="h-4 w-4 rounded text-pink-500 focus:ring-pink-500"
+                    className="h-4 w-4 rounded text-teal-600 focus:ring-teal-500"
                   />
                   <span>
                     共 <span className="font-bold text-slate-800">{total}</span>{" "}
@@ -567,14 +568,14 @@ export const ArchivedWorkflows: React.FC = () => {
                   {workflows.map((workflow) => (
                     <div
                       key={workflow.id}
-                      className={`rounded-[24px] border p-4 transition-colors ${selectedIds.includes(workflow.workflowId) ? "border-blue-200 bg-blue-50/80" : "border-white/75 bg-white/80 hover:bg-white"}`}
+                      className={`rounded-2xl border p-4 transition-colors ${selectedIds.includes(workflow.workflowId) ? "border-blue-200 bg-blue-50/80" : "border-slate-200 bg-white hover:bg-slate-50/70"}`}
                     >
                       <div className="flex items-start gap-4">
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(workflow.workflowId)}
                           onChange={() => handleSelectOne(workflow.workflowId)}
-                          className="mt-1 h-4 w-4 rounded text-pink-500 focus:ring-pink-500"
+                          className="mt-1 h-4 w-4 rounded text-teal-600 focus:ring-teal-500"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -675,7 +676,7 @@ export const ArchivedWorkflows: React.FC = () => {
                     setDeleteTarget([]);
                   }}
                   disabled={deleting}
-                  className="rounded-2xl border border-white/85 bg-white/76 px-4 py-2 text-sm text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white disabled:opacity-50"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                 >
                   取消
                 </button>
@@ -700,7 +701,7 @@ export const ArchivedWorkflows: React.FC = () => {
             </div>
           </WorkspaceDialogShell>
         )}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

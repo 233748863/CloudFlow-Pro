@@ -448,7 +448,7 @@ export const OvertimeApplicationPage: React.FC = () => {
           {restrictionMessage ? (
             <div
               data-testid="hr-self-service-restriction"
-              className="mb-2 rounded-[20px] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,247,237,0.88))] px-3.5 py-3.5 text-amber-900 shadow-[0_12px_26px_rgba(245,158,11,0.08)]"
+              className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3.5 text-amber-900 shadow-sm"
             >
               <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
@@ -497,7 +497,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, status: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-[18px]">
+                      <SelectTrigger className="h-10 rounded-xl">
                         <SelectValue placeholder="请选择状态" />
                       </SelectTrigger>
                       <SelectContent>
@@ -516,7 +516,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, overtimeType: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-[18px]">
+                      <SelectTrigger className="h-10 rounded-xl">
                         <SelectValue placeholder="请选择加班类型" />
                       </SelectTrigger>
                       <SelectContent>
@@ -531,7 +531,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <Button
                     size="sm"
                     onClick={() => setSearchParams(prev => ({ ...prev, pageNum: 1 }))}
-                    className="h-10 rounded-[18px] px-3.5"
+                    className="h-10 rounded-xl px-3.5"
                   >
                     <Search size={15} className="mr-2" />
                     应用筛选
@@ -541,7 +541,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleResetFilters}
-                    className="h-10 rounded-[18px] px-3.5"
+                    className="h-10 rounded-xl px-3.5"
                   >
                     <RotateCcw size={15} className="mr-2" />
                     清空条件
@@ -553,7 +553,7 @@ export const OvertimeApplicationPage: React.FC = () => {
             <WorkspaceResultCard total={total} description="轻玻璃视图下展示加班申请记录与当前操作">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
+                  <TableHeader className="sticky top-0 z-10 bg-white">
                     <tr>
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">申请单号</TableHead>
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">加班类型</TableHead>
@@ -565,7 +565,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                       <TableActionHead className="w-56 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/70">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载加班申请..." />
                     ) : list.length === 0 ? (

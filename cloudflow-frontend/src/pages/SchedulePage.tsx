@@ -1203,7 +1203,7 @@ export const SchedulePage = () => {
 
                 <div className="overflow-x-auto">
                   <Table className="min-w-[1120px]">
-                    <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
+                    <TableHeader className="sticky top-0 z-10 bg-white">
                       <TableRow className="border-slate-100 bg-transparent hover:bg-transparent">
                         <TableHead>日程主题</TableHead>
                         <TableHead>节奏状态</TableHead>

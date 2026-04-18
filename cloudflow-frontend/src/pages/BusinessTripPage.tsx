@@ -434,7 +434,7 @@ export const BusinessTripPage: React.FC = () => {
             <WorkspaceResultCard total={total} description="行程、费用与状态">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
+                  <TableHeader className="sticky top-0 z-10 bg-white">
                     <tr>
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">出差单号</TableHead>
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">出发地→目的地</TableHead>

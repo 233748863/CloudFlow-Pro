@@ -346,14 +346,14 @@ export const PaymentRequestPage: React.FC = () => {
               activeQuickFilter={searchParams.status}
               onQuickFilterChange={applyStatusFilter}
               quickFilterAside={hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-8 rounded-[18px] px-3.5"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
+                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-8 rounded-xl px-3.5"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
               ) : (
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">当前未应用额外筛选</span>
               )}
               filterBar={(
                 <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
                   <Select value={paymentTypeInput} onValueChange={setPaymentTypeInput}>
-                    <SelectTrigger className="h-10 rounded-[18px] px-4"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
+                    <SelectTrigger className="h-10 rounded-xl px-4"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
                     <SelectContent className={glassSelectContentClass}>
                       <SelectItem className="rounded-[16px]" value="">全部类型</SelectItem>
                       {PAYMENT_TYPE_OPTIONS.map(option => (
@@ -361,8 +361,8 @@ export const PaymentRequestPage: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" onClick={applySearch} className="h-10 rounded-[18px] px-3.5"><Search size={15} className="mr-2" />应用筛选</Button>
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-[18px] px-3.5"><RotateCcw size={15} className="mr-2" />清空条件</Button>
+                  <Button size="sm" onClick={applySearch} className="h-10 rounded-xl px-3.5"><Search size={15} className="mr-2" />应用筛选</Button>
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-xl px-3.5"><RotateCcw size={15} className="mr-2" />清空条件</Button>
                 </div>
               )}
             />
@@ -370,7 +370,7 @@ export const PaymentRequestPage: React.FC = () => {
             <WorkspaceResultCard total={total} description="统一展示付款单、收款对象、金额和当前审批动作">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
+                  <TableHeader className="sticky top-0 z-10 bg-white">
                     <tr>
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">付款单号</TableHead>
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">收款方</TableHead>

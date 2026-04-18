@@ -48,7 +48,7 @@ export const VersionHistoryPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="inline-flex items-center rounded-2xl border border-white/85 bg-white/82 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white"
+            className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
           >
             返回上一页
           </button>

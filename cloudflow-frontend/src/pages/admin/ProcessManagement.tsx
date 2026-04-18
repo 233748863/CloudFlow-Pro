@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button, Input, TableHead, TableHeader, TableActionHead, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspacePageContent, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   WorkspaceDialogShell,
   WorkspaceHeroCard,
@@ -691,7 +691,7 @@ export const ProcessManagement = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -753,7 +753,7 @@ export const ProcessManagement = () => {
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input className="pl-10" placeholder="搜索流程名称" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
                 </div>
-                <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700">
+                <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300">
                   <option value="">全部分类</option>
                   {WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
                 </select>
@@ -802,7 +802,7 @@ export const ProcessManagement = () => {
         />
         <WorkspaceResultCard total={filteredWorkflows.length} title="流程列表" description="批量动作和单项操作统一收口到这里，保证列表页与业务申请页使用同一套视觉语言。">
           <div className="space-y-4 px-4 py-4">
-            <div className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-4 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <Button type="button" variant="ghost" onClick={handleSelectAll} className="justify-start px-0 text-slate-600 hover:bg-transparent hover:text-pink-500">{allVisibleSelected ? <CheckSquare size={18} className="text-pink-500" /> : <Square size={18} />}全选当前结果 ({selectedVisibleCount}/{filteredWorkflows.length})</Button>
                 <div className="flex flex-wrap gap-2">
@@ -820,9 +820,9 @@ export const ProcessManagement = () => {
             <div className="overflow-x-auto">
               <table className="min-w-[1120px] w-full">
                 <TableHeader><tr><TableHead className="w-12 px-4 py-3 text-left">选择</TableHead><TableHead className="w-[28%] px-4 py-3 text-left">流程名称</TableHead><TableHead className="px-4 py-3 text-left">流程 Key</TableHead><TableHead className="px-4 py-3 text-left">分类</TableHead><TableHead className="px-4 py-3 text-left">标签</TableHead><TableHead className="w-24 px-4 py-3 text-left">版本</TableHead><TableActionHead className="w-72 px-4 py-3">操作</TableActionHead></tr></TableHeader>
-                <tbody className="divide-y divide-white/60">
+                <tbody className="divide-y divide-slate-100">
                   {loading ? <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载流程数据..." /> : filteredWorkflows.length === 0 ? <WorkspaceTableStateRow colSpan={7} title="暂无流程数据" description="可以先创建流程，或调整筛选条件查看其它流程定义。" /> : filteredWorkflows.map((workflow) => (
-                    <tr key={workflow.id} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                    <tr key={workflow.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                       <td className="px-4 py-3"><Button type="button" variant="ghost" size="icon" onClick={() => handleSelectOne(workflow.id)} className="text-slate-400 hover:bg-transparent hover:text-pink-500">{selectedIds.includes(workflow.id) ? <CheckSquare size={18} className="text-pink-500" /> : <Square size={18} />}</Button></td>
                       <td className="px-4 py-4"><div className="space-y-1"><div className="text-sm font-medium text-slate-900">{workflow.name}</div><div className="flex flex-wrap items-center gap-2 text-xs text-slate-400"><span>{workflow.status === 'PUBLISHED' ? '已发布' : workflow.status === 'ARCHIVED' ? '已归档' : '草稿'}</span><span className="rounded-full bg-white/82 px-2.5 py-1 ring-1 ring-slate-200/80">ID {workflow.id}</span></div>{workflow.description ? <div className="line-clamp-1 text-xs text-slate-500">{workflow.description}</div> : null}</div></td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600">{workflow.key}</td>
@@ -844,7 +844,7 @@ export const ProcessManagement = () => {
               {batchEditType === 'category' ? (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-slate-700">目标分类 <span className="text-red-500">*</span></label>
-                  <select value={batchCategory} onChange={(event) => setBatchCategory(event.target.value)} className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"><option value="">请选择分类</option>{WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select>
+                  <select value={batchCategory} onChange={(event) => setBatchCategory(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"><option value="">请选择分类</option>{WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -867,7 +867,7 @@ export const ProcessManagement = () => {
           <WorkspaceDialogShell title={exportType === 'single' ? '导出流程' : '批量导出流程'} description="导出文件会保留流程定义、节点和配置，可用于备份或迁移。" onClose={() => { if (!exporting) { setShowExportModal(false); } }} maxWidthClassName="max-w-2xl">
             <div className="space-y-4">
               {exportType === 'batch' ? <div className="rounded-[24px] border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm text-slate-600">本次将批量导出 <span className="font-semibold text-blue-600">{selectedIds.length}</span> 个流程。</div> : <div className="rounded-[24px] border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm text-slate-600">{currentExportWorkflow ? <div className="space-y-1"><div className="font-medium text-emerald-700">流程信息</div><div>名称：{currentExportWorkflow.name}</div><div>版本：v{currentExportWorkflow.version}</div><div>分类：{currentExportWorkflow.category ? (getWorkflowCategoryLabel(currentExportWorkflow.category) || currentExportWorkflow.category) : '未分类'}</div></div> : '未找到要导出的流程信息。'}</div>}
-              <div className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-4 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="text-sm font-medium text-slate-700">导出选项</div>
                 <label className="mt-3 flex items-start gap-3"><input type="checkbox" checked={includeSensitive} onChange={(event) => setIncludeSensitive(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" /><div className="min-w-0"><div className="text-sm font-medium text-slate-700">包含敏感配置信息</div><div className="mt-1 text-xs leading-6 text-slate-500">包括 API 密钥、连接配置等敏感字段。不勾选时会做脱敏处理，适合日常备份和跨环境流转。</div></div></label>
                 {includeSensitive ? <div className="mt-3 rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700">导出文件将包含敏感配置，请仅在受控环境中使用并妥善保管。</div> : null}
@@ -888,7 +888,7 @@ export const ProcessManagement = () => {
             </div>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
