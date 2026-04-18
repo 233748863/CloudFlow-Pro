@@ -164,13 +164,13 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/32 p-4">
+      <div className="flex max-h-[85vh] w-[600px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         {/* 标题栏 */}
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
-              <Settings size={20} className="text-pink-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50">
+              <Settings size={20} className="text-cyan-700" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">流程设置</h2>
@@ -179,9 +179,9 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
           >
-            <X size={18} className="text-slate-400" />
+            <X size={18} />
           </button>
         </div>
 
@@ -220,7 +220,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="请输入流程的详细描述，帮助用户了解此流程的用途和使用场景..."
-              className="w-full border border-slate-200 rounded-lg p-3 text-sm min-h-[100px] focus:ring-2 focus:ring-pink-400 focus:border-pink-400 outline-none resize-none"
+               className="min-h-[100px] w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
             />
             <p className="text-xs text-slate-400">
               💡 建议包含：流程用途、适用场景、注意事项等
@@ -267,12 +267,12 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-pink-100 text-pink-600 rounded-full text-xs font-medium"
+                    className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700"
                   >
                     {tag}
                     <button
                       onClick={() => handleRemoveTag(tag)}
-                      className="hover:text-pink-700 ml-1"
+                      className="ml-1 hover:text-cyan-800"
                     >
                       ×
                     </button>
@@ -298,7 +298,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               <button
                 onClick={() => handleAddTag(tagInput)}
                 disabled={!tagInput.trim()}
-                className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 添加
               </button>
@@ -460,13 +460,13 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
         <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-sm font-medium"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
             取消
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors text-sm font-medium"
+            className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-700"
           >
             保存设置
           </button>

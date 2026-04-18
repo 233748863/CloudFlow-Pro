@@ -124,13 +124,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               className={[
                 'group flex items-center gap-2 rounded-lg border p-2 transition',
                 isGlass
-                  ? 'border-white/75 bg-white/76 shadow-[0_10px_20px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-md rounded-[20px]'
+                  ? 'rounded-xl border-slate-200 bg-white shadow-sm'
                   : 'border-slate-200 bg-slate-50',
               ].join(' ')}
             >
               {/* 文件图标 */}
               {isImage(file.url) ? (
-                <ImageIcon size={16} className="text-pink-400 flex-shrink-0" />
+                <ImageIcon size={16} className="text-cyan-500 flex-shrink-0" />
               ) : (
                 <FileText size={16} className="text-slate-500 flex-shrink-0" />
               )}
@@ -163,8 +163,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           className={[
             'flex cursor-pointer items-center gap-2 border-2 border-dashed px-3 py-2 transition-colors',
             isGlass
-              ? 'rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(248,250,252,0.68))] shadow-[0_12px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md hover:border-pink-100 hover:bg-white'
-              : 'rounded-lg border-slate-300 hover:border-pink-300 hover:bg-pink-50/50',
+              ? 'rounded-xl border-slate-200 bg-white shadow-sm hover:border-cyan-200 hover:bg-slate-50'
+              : 'rounded-xl border-slate-300 hover:border-cyan-300 hover:bg-cyan-50',
             uploading ? 'cursor-not-allowed opacity-60' : '',
           ].join(' ')}
         >
@@ -178,9 +178,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             disabled={uploading || disabled}
           />
           {uploading ? (
-            <Loader2 size={16} className="animate-spin text-pink-400" />
+            <Loader2 size={16} className="animate-spin text-cyan-500" />
           ) : (
-            <Paperclip size={16} className="text-pink-400" />
+            <Paperclip size={16} className="text-cyan-500" />
           )}
           <span className="text-sm text-slate-500">
             {uploading ? '上传中...' : '点击上传附件'}

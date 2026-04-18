@@ -30,7 +30,7 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
 
   if (workflow.formId && boundForm) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
         <FormRenderer formDef={boundForm} onCancel={onClose} onSubmit={onSubmit} />
       </div>
     );

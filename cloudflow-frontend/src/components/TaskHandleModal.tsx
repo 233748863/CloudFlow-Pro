@@ -284,12 +284,12 @@ export const TaskHandleModal = ({
       />
 
       {/* 主任务处理模态框 */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4 animate-fade-in">
+        <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="flex items-center gap-4">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <Briefcase size={18} className="text-pink-500"/>
+                <Briefcase size={18} className="text-cyan-700"/>
                 {delegationMode ? '选择转办受托人' : rejectMode ? '驳回任务' : `任务详情`}
               </h3>
               
@@ -297,13 +297,13 @@ export const TaskHandleModal = ({
                   <div className="flex bg-slate-200 rounded-lg p-1">
                       <button 
                         onClick={() => setActiveTab('handle')}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${activeTab === 'handle' ? 'bg-white text-pink-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${activeTab === 'handle' ? 'bg-white text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                           处理
                       </button>
                       <button 
                         onClick={() => setActiveTab('trace')}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${activeTab === 'trace' ? 'bg-white text-pink-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${activeTab === 'trace' ? 'bg-white text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                           <GitMerge size={12}/> 审批记录
                       </button>
@@ -339,7 +339,7 @@ export const TaskHandleModal = ({
                       
                       {!historyNodesLoaded ? (
                         <div className="text-center text-slate-400 py-4">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto mb-2"></div>
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-600 mx-auto mb-2"></div>
                           加载历史节点中...
                         </div>
                       ) : historyNodes.length > 0 ? (
@@ -351,12 +351,12 @@ export const TaskHandleModal = ({
                                 onClick={() => setRejectTargetNode(node.key)} 
                                 className={`p-3 border rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
                                   rejectTargetNode === node.key 
-                                    ? 'border-pink-400 bg-pink-50 shadow-sm' 
-                                    : 'border-slate-200 hover:border-pink-200 hover:bg-slate-50'
+                                    ? 'border-cyan-300 bg-cyan-50 shadow-sm' 
+                                    : 'border-slate-200 hover:border-cyan-200 hover:bg-slate-50'
                                 }`}
                               >
-                                <CornerUpLeft size={16} className={rejectTargetNode === node.key ? 'text-pink-500' : 'text-slate-400'} />
-                                <span className={rejectTargetNode === node.key ? 'text-pink-600 font-medium' : 'text-slate-700'}>
+                                <CornerUpLeft size={16} className={rejectTargetNode === node.key ? 'text-cyan-600' : 'text-slate-400'} />
+                                <span className={rejectTargetNode === node.key ? 'text-cyan-700 font-medium' : 'text-slate-700'}>
                                   {node.name}
                                 </span>
                               </div>
@@ -368,7 +368,7 @@ export const TaskHandleModal = ({
                               驳回原因 <span className="text-red-500">*</span>
                             </label>
                             <textarea 
-                              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400" 
+                              className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200" 
                               placeholder="请填写驳回原因（必填）..."
                               rows={4}
                               value={rejectReason}
@@ -421,26 +421,26 @@ export const TaskHandleModal = ({
                     <div className="space-y-4">
                     <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded">选择转办给谁：</p>
                     {users.filter(u => u.id !== currentUser.id).map(u => (
-                        <div key={u.id} onClick={() => setDelegateUser(u.id)} className={`p-2 border rounded cursor-pointer flex items-center gap-2 ${delegateUser === u.id ? 'border-pink-400 bg-pink-50' : ''}`}>
+                        <div key={u.id} onClick={() => setDelegateUser(u.id)} className={`p-2 border rounded cursor-pointer flex items-center gap-2 ${delegateUser === u.id ? 'border-cyan-300 bg-cyan-50' : ''}`}>
                             <img src={u.avatar} className="w-6 h-6 rounded-full" alt=""/> <span>{u.name}</span>
                         </div>
                     ))}
                     <div className="flex justify-end gap-2 mt-4">
                         <button onClick={() => setDelegationMode(false)} className="px-3 py-1 text-slate-500">取消</button>
-                        <button onClick={() => handleAction('DELEGATED')} className="px-3 py-1 bg-pink-500 text-white rounded">确认</button>
+                        <button onClick={() => handleAction('DELEGATED')} className="rounded-xl bg-cyan-600 px-3 py-1 text-white hover:bg-cyan-700">确认</button>
                     </div>
                     </div>
                 ) : (
                     <>
                     {/* 基本信息区域 - 完整展示任务数据 */}
-                    <div className="bg-pink-50 p-4 rounded-lg border border-pink-50 text-sm space-y-3">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm space-y-3">
                         {/* 第一行：流程名称 + 状态 */}
                         <div className="flex justify-between items-center">
                             <h4 className="font-bold text-slate-800 text-base">{task.workflowName}</h4>
                             {(() => {
                                 // 状态中文映射及样式
                                 const statusMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-                                    [TaskStatus.PENDING]: { label: '待处理', color: 'bg-pink-50 text-pink-600 ring-pink-500/20', icon: <Clock size={12} /> },
+                                    [TaskStatus.PENDING]: { label: '待处理', color: 'bg-cyan-50 text-cyan-700 ring-cyan-500/20', icon: <Clock size={12} /> },
                                     [TaskStatus.APPROVED]: { label: '已通过', color: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20', icon: <CheckCircle2 size={12} /> },
                                     [TaskStatus.REJECTED]: { label: '已拒绝', color: 'bg-red-50 text-red-700 ring-red-600/20', icon: <XCircle size={12} /> },
                                     [TaskStatus.RETURNED]: { label: '已退回', color: 'bg-yellow-50 text-yellow-700 ring-yellow-600/20', icon: <ArrowLeftCircle size={12} /> },
@@ -488,7 +488,7 @@ export const TaskHandleModal = ({
                             const fd = task.formData as Record<string, any>;
                             const parts = getWorkflowSummaryParts(fd, 3);
                             return parts.length > 0 ? (
-                                <div className="text-xs text-slate-600 bg-white/60 p-2 rounded border border-pink-50/50">
+                                <div className="text-xs text-slate-600 bg-white p-2 rounded border border-slate-200">
                                     <span className="text-slate-400">业务摘要: </span>{parts.join(' / ')}
                                 </div>
                             ) : null;
@@ -501,13 +501,13 @@ export const TaskHandleModal = ({
                             {/* 步骤进度条 */}
                             <div className="flex items-center justify-between text-xs mb-1.5">
                                 <span className="text-slate-500 font-medium">流程进度</span>
-                                <span className="text-pink-500 font-semibold">
+                                <span className="text-cyan-700 font-semibold">
                                     {task.currentStepIndex || '-'} / {task.totalSteps}
                                 </span>
                             </div>
                             <div className="w-full bg-slate-200 rounded-full h-1.5 mb-3">
                                 <div
-                                    className="bg-pink-400 h-1.5 rounded-full transition-all duration-500"
+                                    className="bg-cyan-500 h-1.5 rounded-full transition-all duration-500"
                                     style={{ width: `${task.currentStepIndex ? (task.currentStepIndex / task.totalSteps) * 100 : 0}%` }}
                                 />
                             </div>
@@ -521,7 +521,7 @@ export const TaskHandleModal = ({
                                         const dotClass = isCompleted
                                             ? 'bg-emerald-500 ring-emerald-100'
                                             : isActive
-                                                ? 'bg-pink-400 ring-pink-50 animate-pulse'
+                                                ? 'bg-cyan-500 ring-cyan-100 animate-pulse'
                                                 : 'bg-slate-300 ring-slate-100';
                                         const lineClass = isCompleted ? 'bg-emerald-400' : 'bg-slate-200';
 
@@ -530,12 +530,12 @@ export const TaskHandleModal = ({
                                                 <div className="flex flex-col items-center min-w-[56px] max-w-[72px]">
                                                     <div className={`w-3 h-3 rounded-full ring-2 ${dotClass} flex-shrink-0`} />
                                                     <span className={`text-[9px] mt-1 text-center leading-tight line-clamp-2 ${
-                                                        isActive ? 'text-pink-500 font-semibold' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
+                                                        isActive ? 'text-cyan-700 font-semibold' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
                                                     }`} title={step.nodeTitle}>
                                                         {step.nodeTitle}
                                                     </span>
                                                     <span className={`text-[8px] mt-0.5 text-center leading-tight truncate max-w-full ${
-                                                        isActive ? 'text-pink-400' : isCompleted ? 'text-emerald-500' : 'text-slate-400'
+                                                        isActive ? 'text-cyan-500' : isCompleted ? 'text-emerald-500' : 'text-slate-400'
                                                     }`}>
                                                         {isCompleted && step.operatorName ? step.operatorName : step.approverDescription}
                                                     </span>
@@ -562,7 +562,7 @@ export const TaskHandleModal = ({
                                         </span>
                                     )}
                                     <ChevronRight size={10} className="text-slate-300 flex-shrink-0" />
-                                    <span className="text-pink-500 font-medium truncate max-w-[30%]">
+                                    <span className="text-cyan-700 font-medium truncate max-w-[30%]">
                                         {task.nodeName || task.currentNodeName || '当前'}
                                     </span>
                                     {task.nextNodeName && (
@@ -643,10 +643,10 @@ export const TaskHandleModal = ({
                                         </h5>
                                         <div className="space-y-1.5">
                                             {files.map((file, idx) => (
-                                                <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 hover:border-pink-200 transition-colors group">
+                                                <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 hover:border-cyan-200 transition-colors group">
                                                     {/* 文件图标 */}
                                                     {file.isImg ? (
-                                                        <ImageIcon size={16} className="text-pink-400 flex-shrink-0" />
+                                                        <ImageIcon size={16} className="text-cyan-500 flex-shrink-0" />
                                                     ) : (
                                                         <FileText size={16} className="text-slate-500 flex-shrink-0" />
                                                     )}
@@ -661,7 +661,7 @@ export const TaskHandleModal = ({
                                                             href={file.url}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-1 text-slate-400 hover:text-pink-500 transition-colors"
+                                                            className="p-1 text-slate-400 hover:text-cyan-600 transition-colors"
                                                             title={file.isImg ? '预览图片' : '查看文件'}
                                                             onClick={e => e.stopPropagation()}
                                                         >
@@ -690,7 +690,7 @@ export const TaskHandleModal = ({
                                                         href={file.url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="block w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:border-pink-300 hover:shadow-md transition-all"
+                                                        className="block w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:border-cyan-300 hover:shadow-md transition-all"
                                                         title={file.name}
                                                     >
                                                         <img
@@ -749,7 +749,7 @@ export const TaskHandleModal = ({
                                       <button 
                                         onClick={() => { setSignatureMode('add'); setSignatureModalOpen(true); }} 
                                         disabled={submitting}
-                                        className="flex-1 px-3 py-1.5 border border-pink-100 text-pink-500 rounded text-xs disabled:opacity-50 hover:bg-pink-50 flex items-center justify-center gap-1"
+                                        className="flex-1 px-3 py-1.5 border border-cyan-200 text-cyan-700 rounded text-xs disabled:opacity-50 hover:bg-cyan-50 flex items-center justify-center gap-1"
                                         title="会签节点可动态增加审批人"
                                       >
                                         <UserPlus size={14} />
@@ -782,7 +782,7 @@ export const TaskHandleModal = ({
                                       <button onClick={() => setConfirmAction('REJECTED')} disabled={submitting} className="px-3 py-1.5 border border-red-200 text-red-600 rounded text-xs disabled:opacity-50">拒绝</button>
                                     )}
                                     {hasBtn('APPROVE') && (
-                                      <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-pink-500 text-white rounded text-xs shadow disabled:opacity-50">
+                                      <button onClick={() => setConfirmAction('APPROVED')} disabled={submitting} className="px-4 py-1.5 bg-cyan-600 text-white rounded text-xs shadow disabled:opacity-50 hover:bg-cyan-700">
                                         {submitting ? '处理中...' : '同意'}
                                       </button>
                                     )}
@@ -803,7 +803,7 @@ export const TaskHandleModal = ({
                                   <button 
                                     onClick={() => handleAction(confirmAction)} 
                                     disabled={submitting}
-                                    className={`px-3 py-1 text-xs text-white rounded disabled:opacity-50 ${confirmAction === 'APPROVED' ? 'bg-pink-500' : 'bg-red-600'}`}
+                                    className={`px-3 py-1 text-xs text-white rounded disabled:opacity-50 ${confirmAction === 'APPROVED' ? 'bg-cyan-600' : 'bg-red-600'}`}
                                   >
                                     {submitting ? '处理中...' : '确认'}
                                   </button>

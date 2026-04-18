@@ -27,7 +27,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 px-4 text-center', className)}>
       {icon && (
-        <div className="mb-5 p-4 bg-slate-50/80 rounded-full text-slate-400 ring-1 ring-slate-100 shadow-sm">
+        <div className="mb-5 rounded-full border border-slate-200 bg-slate-50 p-4 text-slate-400 shadow-sm">
           {icon}
         </div>
       )}
@@ -42,7 +42,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {action && (
         <button
           onClick={action.onClick}
-          className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-pink-500 text-white hover:bg-pink-600 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 active:scale-[0.98]"
+          className="inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 active:scale-[0.98]"
         >
           {action.label}
         </button>

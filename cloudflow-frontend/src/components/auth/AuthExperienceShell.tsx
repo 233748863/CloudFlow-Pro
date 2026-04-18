@@ -22,12 +22,10 @@ export const AuthCaptchaDialog: React.FC<AuthCaptchaDialogProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/22 px-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 px-4">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-[344px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_48px_rgba(15,23,42,0.14)] sm:p-6">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:28px_28px] opacity-40" />
-        <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_center,rgba(20,184,166,0.12),transparent_70%)]" />
+      <div className="relative w-full max-w-[344px] overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
 
         <button
           type="button"

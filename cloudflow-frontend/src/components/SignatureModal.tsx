@@ -109,14 +109,14 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4 animate-fade-in">
+      <div className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         {/* 标题栏 */}
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
             {mode === 'add' ? (
               <>
-                <UserPlus size={18} className="text-pink-500" />
+                <UserPlus size={18} className="text-cyan-700" />
                 加签
               </>
             ) : (
@@ -126,8 +126,8 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               </>
             )}
           </h3>
-          <button onClick={onClose} disabled={submitting}>
-            <X size={20} className="text-slate-400 hover:text-slate-600" />
+          <button onClick={onClose} disabled={submitting} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:opacity-50">
+            <X size={20} />
           </button>
         </div>
 
@@ -136,7 +136,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
           {/* 提示信息 */}
           <div className={`text-sm p-3 rounded-lg border ${
             mode === 'add' 
-              ? 'text-pink-600 bg-pink-50 border-pink-100' 
+              ? 'border-cyan-200 bg-cyan-50 text-cyan-700' 
               : 'text-amber-700 bg-amber-50 border-amber-200'
           }`}>
             <div className="flex items-start gap-2">
@@ -174,7 +174,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               placeholder="搜索用户姓名或账号..."
               value={searchKeyword}
               onChange={e => setSearchKeyword(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
             />
           </div>
 
@@ -191,8 +191,8 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   onClick={() => toggleUser(Number(u.id))}
                   className={`p-3 border rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
                     selectedUserIds.includes(Number(u.id))
-                      ? 'border-pink-400 bg-pink-50 shadow-sm'
-                      : 'border-slate-200 hover:border-pink-200 hover:bg-slate-50'
+                      ? 'border-cyan-300 bg-cyan-50 shadow-sm'
+                      : 'border-slate-200 hover:border-cyan-200 hover:bg-slate-50'
                   }`}
                 >
                   <img 
@@ -202,7 +202,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   />
                   <div className="flex-1 min-w-0">
                     <div className={`font-medium truncate ${
-                      selectedUserIds.includes(Number(u.id)) ? 'text-pink-600' : 'text-slate-700'
+                      selectedUserIds.includes(Number(u.id)) ? 'text-cyan-700' : 'text-slate-700'
                     }`}>
                       {u.name}
                     </div>
@@ -213,7 +213,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                     )}
                   </div>
                   {selectedUserIds.includes(Number(u.id)) && (
-                    <div className="w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center flex-shrink-0">
+                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-cyan-600">
                       <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -227,7 +227,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
           {/* 已选择提示 */}
           {selectedUserIds.length > 0 && (
             <div className="text-sm text-slate-600 bg-slate-50 p-2 rounded">
-              已选择 <span className="font-bold text-pink-500">{selectedUserIds.length}</span> 人
+              已选择 <span className="font-bold text-cyan-700">{selectedUserIds.length}</span> 人
             </div>
           )}
 
@@ -237,7 +237,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               {mode === 'add' ? '加签' : '减签'}说明 <span className="text-red-500">*</span>
             </label>
             <textarea
-              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400"
+              className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
               placeholder={`请填写${mode === 'add' ? '加签' : '减签'}原因（必填）...`}
               rows={3}
               value={comment}
@@ -261,7 +261,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             disabled={submitting || selectedUserIds.length === 0 || !comment.trim()}
             className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed ${
               mode === 'add'
-                ? 'bg-pink-500 hover:bg-pink-600'
+                ? 'bg-cyan-600 hover:bg-cyan-700'
                 : 'bg-amber-600 hover:bg-amber-700'
             }`}
           >
