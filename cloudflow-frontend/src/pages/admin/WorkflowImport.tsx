@@ -16,9 +16,14 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui';
-import { WorkspaceHeroCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceBackdrop, WorkspaceStatusPage } from '@/components/workspace/WorkspacePrimitives';
+import { Button, Card } from '@/components/ui';
+import {
+  WorkspaceBackdrop,
+  WorkspaceHeroMetricsSection,
+  WorkspacePageContent,
+  WorkspaceStatusPage,
+  workspaceGlassSurfaceClassName
+} from '@/components/workspace';
 import {
   ImportResult,
   ValidationResult,
@@ -88,9 +93,6 @@ const conflictStrategyMeta = {
     detail: '适合明确以导入文件为准的修复或迁移场景，建议先确认目标流程。'
   }
 } as const;
-
-const glassPanelClassName =
-  'overflow-hidden rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.82))] shadow-[0_18px_44px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-xl';
 
 /**
  * 解析后端批量导入汇总消息：
@@ -411,13 +413,6 @@ export const WorkflowImport: React.FC = () => {
         label: '队列文件',
         value: `${stats.total}`,
         hint: hasQueuedFiles ? `${canImportBatch ? '批量导入队列已建立' : '当前为单文件导入模式'}` : '尚未加入导入文件',
-        panelClassName:
-          'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
-        iconWrapClassName:
-          'bg-white/84 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
-        valueClassName: 'text-slate-950',
-        hintClassName: 'text-slate-500',
-        glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
         icon: <FileText size={17} />
       },
       {
@@ -429,13 +424,6 @@ export const WorkflowImport: React.FC = () => {
             : stats.valid > 0
               ? '所有已通过校验的文件都可直接导入'
               : '等待文件完成校验',
-        panelClassName:
-          'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-        iconWrapClassName:
-          'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
-        valueClassName: 'text-slate-950',
-        hintClassName: 'text-slate-600',
-        glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
         icon: <CheckCircle2 size={17} />
       },
       {
@@ -448,26 +436,12 @@ export const WorkflowImport: React.FC = () => {
             : completedCount > 0
               ? `本轮已处理 ${completedCount} 个文件`
               : '拖拽或选择 JSON 文件后开始导入',
-        panelClassName:
-          'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-        iconWrapClassName:
-          'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
-        valueClassName: 'text-slate-950',
-        hintClassName: 'text-slate-600',
-        glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
         icon: importing ? <Loader2 size={17} className="animate-spin" /> : <FileCheck size={17} />
       },
       {
         label: '冲突策略',
         value: currentStrategyMeta.label,
         hint: canImportBatch ? currentStrategyMeta.description : `单文件模式下默认使用${currentStrategyMeta.label}策略`,
-        panelClassName:
-          'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
-        iconWrapClassName:
-          'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
-        valueClassName: 'text-slate-950',
-        hintClassName: 'text-slate-600',
-        glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
         icon: <Info size={17} />
       }
     ],
@@ -495,10 +469,7 @@ export const WorkflowImport: React.FC = () => {
         title="当前账号没有流程导入权限"
         description="流程导入仅对具备相应权限的账号开放。你可以先返回流程管理页继续查看和维护流程。"
         actions={(
-          <Button
-            onClick={() => navigate('/workflow/management')}
-            className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:brightness-105"
-          >
+          <Button size="lg" onClick={() => navigate('/workflow/management')}>
             <ArrowLeft size={16} className="mr-2" />
             返回流程管理
           </Button>
@@ -512,15 +483,15 @@ export const WorkflowImport: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3 px-4 py-4 md:px-6">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Download size={14} />
                 Workflow Admin
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 {canImportBatch ? '支持批量导入' : '当前为单文件导入'}
               </span>
             </div>
@@ -529,54 +500,22 @@ export const WorkflowImport: React.FC = () => {
           description="导入流程定义 JSON，统一处理冲突策略、校验反馈和结果回看，让工作流导入页和管理页、监控页保持同一套工作区语言。"
           actions={(
             <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/workflow/management')}
-                className="h-9 rounded-xl border-white/85 bg-white/82 px-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white"
-              >
-                <ArrowLeft size={15} className="mr-2 text-slate-500" />
+              <Button variant="outline" size="lg" onClick={() => navigate('/workflow/management')}>
+                <ArrowLeft size={15} className="mr-2" />
                 返回管理
               </Button>
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="h-9 rounded-xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] transition hover:brightness-105"
-              >
+              <Button size="lg" onClick={() => fileInputRef.current?.click()}>
                 <Upload size={15} className="mr-2" />
                 选择文件
               </Button>
             </div>
           )}
           contentClassName="p-4 sm:p-5"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
-        >
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {heroMetrics.map((item) => (
-              <div
-                key={item.label}
-                className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
-              >
-                <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
-                <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                      <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
-                    </div>
-                    <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
-                      {item.icon}
-                    </div>
-                  </div>
-
-                  <div className={`max-w-full text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-          <div className={`${glassPanelClassName} p-4 sm:p-5`}>
+          <Card className={`${workspaceGlassSurfaceClassName} p-4 sm:p-5`}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -584,53 +523,44 @@ export const WorkflowImport: React.FC = () => {
                   <h3 className="mt-2 text-lg font-semibold text-slate-900">全局冲突策略</h3>
                   <p className="mt-1 text-sm text-slate-500">当导入流程名称已存在时，统一决定保留、重命名还是覆盖。</p>
                 </div>
-                <span className="inline-flex w-fit items-center rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
                   当前策略：{currentStrategyMeta.label}
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={globalConflictStrategy === 'skip' ? 'default' : 'ghost'}
-                  size="sm"
+              <div className="inline-flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+                <button
+                  type="button"
                   onClick={() => setGlobalConflictStrategy('skip')}
-                  className={`h-9 rounded-2xl px-4 text-xs font-medium transition ${
-                    globalConflictStrategy === 'skip'
-                      ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.2)] hover:brightness-105'
-                      : 'bg-white/82 text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white'
+                  className={`rounded-lg px-4 py-2 text-xs font-medium transition ${
+                    globalConflictStrategy === 'skip' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   跳过
-                </Button>
-                <Button
-                  variant={globalConflictStrategy === 'rename' ? 'default' : 'ghost'}
-                  size="sm"
+                </button>
+                <button
+                  type="button"
                   onClick={() => setGlobalConflictStrategy('rename')}
-                  className={`h-9 rounded-2xl px-4 text-xs font-medium transition ${
-                    globalConflictStrategy === 'rename'
-                      ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.2)] hover:brightness-105'
-                      : 'bg-white/82 text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white'
+                  className={`rounded-lg px-4 py-2 text-xs font-medium transition ${
+                    globalConflictStrategy === 'rename' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   重命名
-                </Button>
-                <Button
-                  variant={globalConflictStrategy === 'overwrite' ? 'default' : 'ghost'}
-                  size="sm"
+                </button>
+                <button
+                  type="button"
                   onClick={() => setGlobalConflictStrategy('overwrite')}
-                  className={`h-9 rounded-2xl px-4 text-xs font-medium transition ${
-                    globalConflictStrategy === 'overwrite'
-                      ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.2)] hover:brightness-105'
-                      : 'bg-white/82 text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white'
+                  className={`rounded-lg px-4 py-2 text-xs font-medium transition ${
+                    globalConflictStrategy === 'overwrite' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   覆盖
-                </Button>
+                </button>
               </div>
 
-              <div className="rounded-[24px] border border-blue-100/90 bg-[linear-gradient(135deg,rgba(239,246,255,0.92),rgba(255,255,255,0.82))] p-4 text-sm text-blue-700 shadow-[0_12px_28px_rgba(59,130,246,0.06)]">
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-700">
                 <div className="flex items-start gap-3">
-                  <div className="rounded-2xl bg-white/80 p-2 text-blue-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <div className="rounded-xl border border-sky-200 bg-white p-2 text-sky-600">
                     <Info size={16} />
                   </div>
                   <div className="min-w-0">
@@ -641,23 +571,23 @@ export const WorkflowImport: React.FC = () => {
               </div>
 
               {!canImportBatch && (
-                <div className="rounded-[22px] border border-amber-100/90 bg-[linear-gradient(135deg,rgba(255,251,235,0.92),rgba(255,255,255,0.82))] px-4 py-3 text-xs leading-6 text-amber-700 shadow-[0_10px_22px_rgba(245,158,11,0.06)]">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700">
                   当前账号仅支持单文件导入，不支持批量导入。
                 </div>
               )}
             </div>
-          </div>
+          </Card>
 
-          <div
-            className={`${glassPanelClassName} border-2 border-dashed p-5 sm:p-6 transition-all ${
-              isDragging ? 'border-pink-300 bg-[linear-gradient(180deg,rgba(253,242,248,0.94),rgba(255,255,255,0.84))]' : 'border-white/85'
+          <Card
+            className={`${workspaceGlassSurfaceClassName} border-2 border-dashed p-5 sm:p-6 transition-all ${
+              isDragging ? 'border-slate-300 bg-slate-50' : 'border-slate-200 bg-white'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
             <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-              <div className={`rounded-full p-4 shadow-[0_12px_24px_rgba(15,23,42,0.05)] ${isDragging ? 'bg-pink-100 text-pink-500' : 'bg-white/86 text-slate-400 ring-1 ring-white/80'}`}>
+              <div className={`rounded-full border p-4 ${isDragging ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
                 <Upload size={32} />
               </div>
 
@@ -683,53 +613,50 @@ export const WorkflowImport: React.FC = () => {
               />
 
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_14px_24px_rgba(236,72,153,0.22)] transition hover:brightness-105"
-                >
+                <Button size="lg" onClick={() => fileInputRef.current?.click()}>
                   <Upload size={16} className="mr-2" />
                   选择文件
                 </Button>
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
                   {hasQueuedFiles ? `当前已加入 ${stats.total} 个文件` : '等待首次导入'}
                 </span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         {files.length > 0 && (
-          <div className={glassPanelClassName}>
-            <div className="border-b border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.78),rgba(255,255,255,0.68))] px-4 py-4 sm:px-5">
+          <Card className={workspaceGlassSurfaceClassName}>
+            <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-4 sm:px-5">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">导入队列</div>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                    <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
                       共 {stats.total} 个文件
                     </span>
                     {stats.valid > 0 && (
-                      <span className="rounded-full bg-emerald-50/88 px-3 py-1.5 text-[11px] font-medium text-emerald-600 ring-1 ring-emerald-100">
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-600">
                         {stats.valid} 个有效
                       </span>
                     )}
                     {stats.invalid > 0 && (
-                      <span className="rounded-full bg-rose-50/88 px-3 py-1.5 text-[11px] font-medium text-rose-600 ring-1 ring-rose-100">
+                      <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-medium text-rose-600">
                         {stats.invalid} 个无效
                       </span>
                     )}
                     {stats.success > 0 && (
-                      <span className="rounded-full bg-sky-50/88 px-3 py-1.5 text-[11px] font-medium text-sky-600 ring-1 ring-sky-100">
+                      <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-medium text-sky-600">
                         {stats.success} 个成功
                       </span>
                     )}
                     {stats.failed > 0 && (
-                      <span className="rounded-full bg-orange-50/88 px-3 py-1.5 text-[11px] font-medium text-orange-600 ring-1 ring-orange-100">
+                      <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-medium text-orange-600">
                         {stats.failed} 个失败
                       </span>
                     )}
                     {stats.partial > 0 && (
-                      <span className="rounded-full bg-amber-50/88 px-3 py-1.5 text-[11px] font-medium text-amber-600 ring-1 ring-amber-100">
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-600">
                         {stats.partial} 个部分成功
                       </span>
                     )}
@@ -739,9 +666,10 @@ export const WorkflowImport: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   {stats.failed > 0 && !importing && (
                     <Button
+                      variant="outline"
                       size="sm"
                       onClick={retryFailed}
-                      className="h-9 rounded-2xl bg-[linear-gradient(135deg,#fb923c,#f97316)] px-4 text-xs text-white shadow-[0_10px_20px_rgba(249,115,22,0.2)] transition hover:brightness-105"
+                      className="border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
                     >
                       重试失败
                     </Button>
@@ -751,7 +679,6 @@ export const WorkflowImport: React.FC = () => {
                     size="sm"
                     onClick={clearAll}
                     disabled={importing}
-                    className="h-9 rounded-2xl border-white/85 bg-white/80 px-4 text-xs text-slate-600 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white disabled:opacity-50"
                   >
                     清空列表
                   </Button>
@@ -759,7 +686,7 @@ export const WorkflowImport: React.FC = () => {
               </div>
             </div>
 
-            <div className="divide-y divide-white/70 max-h-96 overflow-y-auto">
+            <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
               {files.map((fileWithStatus) => (
                 <FileItem
                   key={fileWithStatus.id}
@@ -771,12 +698,12 @@ export const WorkflowImport: React.FC = () => {
               ))}
             </div>
 
-            <div className="border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.76),rgba(255,255,255,0.68))] px-4 py-4 sm:px-5">
+            <div className="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-slate-500">
                   {importing ? (
                     <span className="flex items-center gap-2">
-                      <Loader2 size={16} className="animate-spin text-pink-500" />
+                      <Loader2 size={16} className="animate-spin text-slate-500" />
                       正在导入 {importProgress.current}/{importProgress.total}...
                     </span>
                   ) : (
@@ -785,9 +712,9 @@ export const WorkflowImport: React.FC = () => {
                 </div>
 
                 <Button
+                  size="lg"
                   onClick={handleImport}
                   disabled={importing || stats.valid === 0}
-                  className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_14px_24px_rgba(236,72,153,0.22)] transition hover:brightness-105"
                 >
                   {importing ? (
                     <>
@@ -803,11 +730,11 @@ export const WorkflowImport: React.FC = () => {
                 </Button>
               </div>
             </div>
-          </div>
+          </Card>
         )}
 
         {importSummary && (
-          <div className={`${glassPanelClassName} p-5 sm:p-6`}>
+          <Card className={`${workspaceGlassSurfaceClassName} p-5 sm:p-6`}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -818,37 +745,37 @@ export const WorkflowImport: React.FC = () => {
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">统一回看本轮导入结果，便于继续处理失败项或重复导入。</p>
                 </div>
-                <span className="inline-flex w-fit items-center rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
                   本轮共处理 {importSummary.total} 个文件
                 </span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <div className="rounded-[22px] border border-white/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(248,250,252,0.78))] p-4 text-center shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
                   <div className="text-2xl font-bold text-slate-900">{importSummary.total}</div>
                   <div className="mt-1 text-xs text-slate-500">总计</div>
                 </div>
-                <div className="rounded-[22px] border border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.94),rgba(255,255,255,0.82))] p-4 text-center shadow-[0_12px_24px_rgba(16,185,129,0.06)]">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center shadow-sm">
                   <div className="text-2xl font-bold text-emerald-600">{importSummary.success}</div>
                   <div className="mt-1 text-xs text-emerald-600">成功</div>
                 </div>
-                <div className="rounded-[22px] border border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.94),rgba(255,255,255,0.82))] p-4 text-center shadow-[0_12px_24px_rgba(245,158,11,0.06)]">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center shadow-sm">
                   <div className="text-2xl font-bold text-amber-600">{importSummary.partial}</div>
                   <div className="mt-1 text-xs text-amber-600">部分成功</div>
                 </div>
-                <div className="rounded-[22px] border border-orange-100/80 bg-[linear-gradient(135deg,rgba(255,247,237,0.94),rgba(255,255,255,0.82))] p-4 text-center shadow-[0_12px_24px_rgba(249,115,22,0.06)]">
+                <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-center shadow-sm">
                   <div className="text-2xl font-bold text-orange-600">{importSummary.failed}</div>
                   <div className="mt-1 text-xs text-orange-600">失败</div>
                 </div>
-                <div className="rounded-[22px] border border-sky-100/80 bg-[linear-gradient(135deg,rgba(240,249,255,0.94),rgba(255,255,255,0.82))] p-4 text-center shadow-[0_12px_24px_rgba(56,189,248,0.06)]">
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-center shadow-sm">
                   <div className="text-2xl font-bold text-sky-600">{importSummary.skipped}</div>
                   <div className="mt-1 text-xs text-sky-600">跳过</div>
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         )}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
@@ -887,7 +814,7 @@ const FileItem: React.FC<FileItemProps> = ({
     if (status === 'validating') return <Loader2 size={16} className="animate-spin text-blue-500" />;
     if (status === 'valid') return <CheckCircle2 size={16} className="text-green-500" />;
     if (status === 'invalid') return <AlertCircle size={16} className="text-red-500" />;
-    if (status === 'importing') return <Loader2 size={16} className="animate-spin text-pink-500" />;
+    if (status === 'importing') return <Loader2 size={16} className="animate-spin text-slate-500" />;
     if (status === 'success') return <FileCheck size={16} className="text-blue-500" />;
     if (status === 'partial') return <AlertTriangle size={16} className="text-amber-500" />;
     if (status === 'failed') return <FileX size={16} className="text-orange-500" />;
@@ -970,46 +897,43 @@ const FileItem: React.FC<FileItemProps> = ({
           {status === 'valid' && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-slate-500">冲突策略:</span>
-              <div className="flex gap-1">
-                <Button
-                  variant={conflictStrategy === 'skip' ? 'default' : 'ghost'}
-                  size="sm"
+              <div className="inline-flex gap-1 rounded-lg bg-slate-100 p-1">
+                <button
+                  type="button"
                   onClick={() => onUpdateStrategy('skip')}
                   disabled={disabled}
-                  className={`h-6 px-2 text-xs rounded transition-all ${
+                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
                     conflictStrategy === 'skip'
-                      ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900'
                   } disabled:opacity-50`}
                 >
                   跳过
-                </Button>
-                <Button
-                  variant={conflictStrategy === 'rename' ? 'default' : 'ghost'}
-                  size="sm"
+                </button>
+                <button
+                  type="button"
                   onClick={() => onUpdateStrategy('rename')}
                   disabled={disabled}
-                  className={`h-6 px-2 text-xs rounded transition-all ${
+                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
                     conflictStrategy === 'rename'
-                      ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900'
                   } disabled:opacity-50`}
                 >
                   重命名
-                </Button>
-                <Button
-                  variant={conflictStrategy === 'overwrite' ? 'default' : 'ghost'}
-                  size="sm"
+                </button>
+                <button
+                  type="button"
                   onClick={() => onUpdateStrategy('overwrite')}
                   disabled={disabled}
-                  className={`h-6 px-2 text-xs rounded transition-all ${
+                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
                     conflictStrategy === 'overwrite'
-                      ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900'
                   } disabled:opacity-50`}
                 >
                   覆盖
-                </Button>
+                </button>
               </div>
             </div>
           )}
