@@ -77,44 +77,32 @@ export const AnnouncementPage = () => {
       label: '公告总量',
       value: `${announcements.length} 条`,
       hint: showUnreadOnly ? `${displayList.length} 条待处理` : `高优先级 ${highPriorityCount} 条`,
-      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
-      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-500',
-      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
       icon: <Megaphone size={17} />,
     },
     {
       label: '未读公告',
       value: `${unreadCount} 条`,
       hint: unreadCount > 0 ? '建议优先处理最新消息' : '当前没有待处理公告',
-      panelClassName: 'border-cyan-100/80 bg-[linear-gradient(135deg,rgba(236,254,255,0.96),rgba(255,255,255,0.82),rgba(240,249,255,0.8))] shadow-[0_16px_32px_rgba(14,165,233,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-cyan-600 ring-1 ring-cyan-100 shadow-[0_10px_22px_rgba(14,165,233,0.08)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-600',
-      glowClassName: 'from-cyan-100/90 via-sky-50/45 to-transparent',
       icon: <Bell size={17} />,
     },
     {
       label: '已读进度',
       value: `${readRate}%`,
       hint: `${readCount} 条已完成阅读确认`,
-      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-600',
-      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
       icon: <CheckCheck size={17} />,
     },
     {
       label: '置顶与优先级',
       value: `${pinnedCount} / ${highPriorityCount}`,
       hint: latestAnnouncement?.title || '等待新的公告内容',
-      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
-      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-600',
-      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
       icon: <Shield size={17} />,
     },
   ];
@@ -163,14 +151,14 @@ export const AnnouncementPage = () => {
         <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700 ring-1 ring-cyan-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Megaphone size={14} />
                 公告中心
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 共 {announcements.length} 条
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 {showUnreadOnly ? '仅看未读' : '默认视图'}
               </span>
             </div>
@@ -210,8 +198,7 @@ export const AnnouncementPage = () => {
             </div>
           )}
           metrics={heroMetrics}
-          contentClassName="p-3.5 sm:p-4"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_55%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]"
+          contentClassName="p-4 sm:p-5"
         />
 
         <WorkspaceSectionCard
@@ -232,7 +219,7 @@ export const AnnouncementPage = () => {
           className={`${workspaceGlassSurfaceClassName} space-y-0`}
           bodyClassName="space-y-2.5"
         >
-          <div className="rounded-[20px] border border-slate-100 bg-white/90 p-3.5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
@@ -256,7 +243,7 @@ export const AnnouncementPage = () => {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[22px] border border-slate-100 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {loading ? (
               <WorkspaceInlineState type="loading" title="正在加载公告..." className="m-3.5 py-12" />
             ) : displayList.length > 0 ? (
