@@ -579,7 +579,7 @@ export const HrOfferPage: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-emerald-700">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
               当前可直接创建 Offer 的候选人 {availableCandidates.length} 名，仅展示面试中且尚未生成 Offer / 入职申请的候选人。
             </div>
 
@@ -596,8 +596,8 @@ export const HrOfferPage: React.FC = () => {
                     type="button"
                     className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                       isActive
-                        ? 'border-emerald-200 bg-emerald-50/80 shadow-sm'
-                        : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-emerald-200 bg-emerald-50 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                     onClick={() => setSelectedOfferId(String(item.id))}
                   >
@@ -679,60 +679,60 @@ export const HrOfferPage: React.FC = () => {
             bodyClassName="mt-0"
           >
             {currentOffer && offerAlreadyConverted && selectedOnboarding && (
-              <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
+              <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700">
                 该 Offer 已生成入职申请 #{selectedOnboarding.id}，页面已锁定重复转入职操作。
               </div>
             )}
 
             {!currentOffer && !detailLoading && (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                 从左侧选择一条 Offer，或者先创建一条新的 Offer 记录。
               </div>
             )}
 
             {currentOffer && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">Offer 编号</div>
                   <div className="mt-2 font-semibold text-slate-900">{currentOffer.offerNo}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">当前状态</div>
                   <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${currentOfferStatusMeta.className}`}>
                     {currentOfferStatusMeta.label}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">流程实例</div>
                   <div className="mt-2 break-all text-sm font-semibold text-slate-900">{currentOffer.processInstanceId || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">候选人</div>
                   <div className="mt-2 font-semibold text-slate-900">{currentOffer.candidateName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">{selectedCandidate?.phone || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">部门 / 岗位</div>
                   <div className="mt-2 font-semibold text-slate-900">{currentOffer.deptName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">{currentOffer.positionName || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">建议薪资</div>
                   <div className="mt-2 font-semibold text-slate-900">{formatSalary(currentOffer.salary)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">预计入职日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(currentOffer.expectedDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">Offer 有效期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(currentOffer.expiryDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">候选人状态</div>
                   <div className="mt-2 font-semibold text-slate-900">{selectedCandidate?.statusDesc || selectedCandidate?.status || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">入职申请</div>
                   <div className="mt-2 font-semibold text-slate-900">
                     {selectedOnboarding ? `#${selectedOnboarding.id}` : '未生成'}
@@ -741,7 +741,7 @@ export const HrOfferPage: React.FC = () => {
                     {selectedOnboarding?.statusDesc || selectedOnboarding?.status || '可在候选人接受 Offer 后生成'}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
                   <div className="text-xs text-slate-400">Offer 内容</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                     {currentOffer.offerContent || '当前 Offer 未填写正文内容。'}
@@ -759,13 +759,13 @@ export const HrOfferPage: React.FC = () => {
             bodyClassName="mt-0"
           >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                 建议链路：创建 Offer → 提交审批 → 审批通过 → 发送 → 接受 → 转入职。
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                 如果发送或接受时报过期，优先检查 Offer 有效期是否早于当前日期。
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                 如果右侧已经出现入职申请编号，说明这条 Offer 已完成转入职，页面会自动禁止再次建单。
               </div>
             </div>

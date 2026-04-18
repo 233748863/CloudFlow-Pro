@@ -489,8 +489,8 @@ export const HrTransferPage: React.FC = () => {
                     type="button"
                     className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                       active
-                        ? 'border-violet-200 bg-violet-50/80 shadow-sm'
-                        : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-violet-200 bg-violet-50 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                     onClick={() => setSelectedEmployeeId(String(employee.id))}
                   >
@@ -524,7 +524,7 @@ export const HrTransferPage: React.FC = () => {
           title="申请列表"
           description="优先聚焦最近申请，并默认定位到还能继续推进的单据。"
           headerAside={(
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm">
               <Users size={14} />
               {selectedEmployee ? `${applications.length} 条记录` : '等待选择员工'}
             </div>
@@ -557,8 +557,8 @@ export const HrTransferPage: React.FC = () => {
                   tabIndex={0}
                   className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                     active
-                      ? 'border-sky-200 bg-sky-50/80 shadow-sm'
-                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                      ? 'border-sky-200 bg-sky-50 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                   }`}
                   onClick={() => void loadDetail(item.id)}
                   onKeyDown={event => {
@@ -627,7 +627,7 @@ export const HrTransferPage: React.FC = () => {
         >
 
           {!detail && (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
               先在中间列表选择一条调岗申请，这里会展示完整详情与办理动作。
             </div>
           )}
@@ -635,49 +635,49 @@ export const HrTransferPage: React.FC = () => {
           {detail && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">申请编号</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">状态</div>
                   <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${transferStatusClass(detail.status)}`}>
                     {detail.statusDesc || detail.status}
                   </div>
                   <div className="mt-2 text-xs text-slate-400">{getTransferActionHint(detail.status)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">生效日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.effectiveDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">员工</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.employeeName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">{detail.employeeNo || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">原组织</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.fromDeptName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">{detail.fromPostName || '-'} / {detail.fromPositionName || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">目标组织</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.toDeptName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">{detail.toPostName || '-'} / {detail.toPositionName || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">调岗类型</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.transferTypeDesc || detail.transferType}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">薪资影响</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.salaryChange ? '涉及薪资变更' : '不涉及薪资变更'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">流程提示</div>
                   <div className="mt-2 text-sm text-slate-700">{getTransferActionHint(detail.status)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
                   <div className="text-xs text-slate-400">调岗原因</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.reason || '-'}</div>
                 </div>

@@ -828,12 +828,12 @@ export const HrLeaveQuotaPage: React.FC = () => {
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <div className="text-xs text-slate-400">当前员工</div>
             <div className="mt-2 font-semibold text-slate-900">{selectedEmployee?.name || '-'}</div>
             <div className="mt-1 text-sm text-slate-500">{selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}</div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <div className="text-xs text-slate-400">当前假种</div>
             <div className="mt-2 font-semibold text-slate-900">{selectedLeaveType?.leaveName || '未选择'}</div>
             <div className="mt-1 text-sm text-slate-500">
@@ -842,7 +842,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
                 : '先从下方选择需要查看的假种'}
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <div className="text-xs text-slate-400">操作提醒</div>
             <div className="mt-2 font-semibold text-slate-900">
               {isCompensatorySelected ? '调休调整需要落到具体额度桶' : '普通假种直接按年度额度调整'}
@@ -867,7 +867,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
       </div>
 
       {!visibleInitResult && hiddenInitResult ? (
-        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50/80 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-sm font-medium text-slate-900">最近一次补齐结果已隐藏</div>
             <div className="mt-1 text-xs leading-6 text-slate-500">
@@ -892,19 +892,19 @@ export const HrLeaveQuotaPage: React.FC = () => {
           )}
         >
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
               <div className="text-xs text-slate-400">纳入处理</div>
               <div className="mt-2 text-xl font-semibold text-slate-900">{visibleInitResult.requestedCount}</div>
             </div>
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
               <div className="text-xs text-emerald-700">新建</div>
               <div className="mt-2 text-xl font-semibold text-emerald-900">{visibleInitResult.createdCount}</div>
             </div>
-            <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-3">
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
               <div className="text-xs text-sky-700">刷新</div>
               <div className="mt-2 text-xl font-semibold text-sky-900">{visibleInitResult.refreshedCount}</div>
             </div>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <div className="text-xs text-amber-700">跳过</div>
               <div className="mt-2 text-xl font-semibold text-amber-900">{visibleInitResult.skippedCount}</div>
             </div>
@@ -973,10 +973,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
                     key={`${item.leaveTypeId}-${item.year}`}
                     className={selected
                       ? pendingInit
-                        ? 'bg-amber-50/80 cursor-pointer'
-                        : 'bg-pink-50/70 cursor-pointer'
+                        ? 'bg-amber-100 cursor-pointer'
+                        : 'bg-cyan-50 cursor-pointer'
                       : pendingInit
-                        ? 'bg-amber-50/30 cursor-pointer'
+                        ? 'bg-amber-50 cursor-pointer'
                         : 'cursor-pointer'}
                     onClick={() => setSelectedLeaveTypeId(String(item.leaveTypeId))}
                   >
@@ -1016,7 +1016,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
           headerAside={(
             <div className="flex flex-wrap items-center gap-3">
               <Select value={selectedLeaveTypeId} onValueChange={setSelectedLeaveTypeId}>
-                <SelectTrigger className="w-[220px] bg-white/80">
+                <SelectTrigger className="w-[220px] bg-white">
                   <SelectValue placeholder="选择假种" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1052,7 +1052,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
           {selectedLeaveType && (
             <div className="space-y-4">
               {canInitCurrentAnnualQuota || showBulkInitButton ? (
-                <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="font-medium">
                       {canInitCurrentAnnualQuota ? '当前假种还没有年度额度记录' : '当前员工还有待初始化年度额度'}
@@ -1065,12 +1065,12 @@ export const HrLeaveQuotaPage: React.FC = () => {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {canInitCurrentAnnualQuota ? (
-                      <Button variant="outline" className="border-amber-200 bg-white/80" onClick={() => void handleInitAnnualQuota()} disabled={actionLoading}>
+                      <Button variant="outline" className="border-amber-200 bg-white" onClick={() => void handleInitAnnualQuota()} disabled={actionLoading}>
                         补齐当前假种额度
                       </Button>
                     ) : null}
                     {showBulkInitButton ? (
-                      <Button variant="outline" className="border-amber-200 bg-white/80" onClick={handleOpenBulkInitDialog} disabled={actionLoading}>
+                      <Button variant="outline" className="border-amber-200 bg-white" onClick={handleOpenBulkInitDialog} disabled={actionLoading}>
                         批量补齐待初始化
                       </Button>
                     ) : null}
@@ -1138,21 +1138,21 @@ export const HrLeaveQuotaPage: React.FC = () => {
         >
           <div className="space-y-5">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs text-slate-400">当前员工</div>
                 <div className="mt-2 font-semibold text-slate-900">{selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs text-slate-400">年度口径</div>
                 <div className="mt-2 font-semibold text-slate-900">{selectedYear} 年</div>
               </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <div className="text-xs text-amber-700">待补齐假种</div>
                 <div className="mt-2 font-semibold text-amber-900">{pendingAnnualQuotaSummaries.length} 类</div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <div className="text-sm font-medium text-slate-900">本次会补齐以下普通假种</div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {pendingAnnualQuotaSummaries.map(item => {
@@ -1162,7 +1162,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
                     <div
                       key={`bulk-init-${item.leaveTypeId}`}
                       className={isCurrentSelection
-                        ? 'rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-sm text-pink-700'
+                        ? 'rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm text-cyan-700'
                         : 'rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700'}
                     >
                       {item.leaveTypeName || leaveType?.leaveName || `假种#${item.leaveTypeId}`}
@@ -1174,7 +1174,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-600">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
               批量补齐只会创建或刷新普通按年控额假种的年度额度记录，不会改动调休额度桶，也不会自动触发请假申请或加班申请的状态变化。
             </div>
 
@@ -1201,11 +1201,11 @@ export const HrLeaveQuotaPage: React.FC = () => {
         >
           <div className="space-y-5">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs text-slate-400">当前员工</div>
                 <div className="mt-2 font-semibold text-slate-900">{selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs text-slate-400">当前假种</div>
                 <div className="mt-2 font-semibold text-slate-900">{selectedLeaveType.leaveName}</div>
                 <div className="mt-1 text-sm text-slate-500">{getUnitLabel(selectedLeaveType.unit)} / {selectedYear} 年视角</div>
@@ -1294,7 +1294,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
             </div>
 
             {/* 这里把调休与普通假种的提示拆开，避免 HR 在弹窗里误把“年度”与“额度桶”当成一回事。 */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-600">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
               {isCompensatorySelected
                 ? '调休是按额度桶管理的，正数可以补一个新桶，负数只能从已有桶扣减。这样才能保证冻结和已使用额度不会被误冲掉。'
                 : '普通假种直接调年度汇总额度，系统会自动重算可用额度 = 总额度 - 已用 - 冻结。'}

@@ -430,8 +430,8 @@ export const HrProbationPage: React.FC = () => {
                     type="button"
                     className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                       active
-                        ? 'border-amber-200 bg-amber-50/80 shadow-sm'
-                        : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-amber-200 bg-amber-50 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                     onClick={() => setSelectedEmployeeId(String(employee.id))}
                   >
@@ -486,7 +486,7 @@ export const HrProbationPage: React.FC = () => {
               </div>
               <div className="mt-3 text-xs text-slate-500">{selectedEmployee.phone || '未维护手机号'}</div>
               {!selectedEmployeeCanCreate && (
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500">
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
                   当前员工不是试用期，仅建议查看历史转正记录；新建申请时会自动切换到可发起的试用期员工。
                 </div>
               )}
@@ -504,8 +504,8 @@ export const HrProbationPage: React.FC = () => {
                   tabIndex={0}
                   className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                     active
-                      ? 'border-sky-200 bg-sky-50/80 shadow-sm'
-                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                      ? 'border-sky-200 bg-sky-50 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                   }`}
                   onClick={() => void loadDetail(item.id)}
                   onKeyDown={event => {
@@ -579,7 +579,7 @@ export const HrProbationPage: React.FC = () => {
         >
 
           {!detail && (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
               先在中间列表选择一条转正申请，这里会展示完整评价信息与办理动作。
             </div>
           )}
@@ -587,55 +587,55 @@ export const HrProbationPage: React.FC = () => {
           {detail && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">申请编号</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">员工</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.employeeName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">{detail.employeeNo || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">状态</div>
                   <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${probationStatusClass(detail.status)}`}>
                     {detail.statusDesc || detail.status}
                   </div>
                   <div className="mt-2 text-xs text-slate-400">{getProbationActionHint(detail.status)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">试用开始</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.probationStartDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">试用结束</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.probationEndDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">预计转正日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.expectedRegularDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">创建时间</div>
                   <div className="mt-2 font-semibold text-slate-900">
                     {detail.createTime ? new Date(detail.createTime).toLocaleString('zh-CN') : '-'}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
                   <div className="text-xs text-slate-400">流程实例 ID</div>
                   <div className="mt-2 break-all font-mono text-sm text-slate-700">{detail.processInstanceId || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
                   <div className="text-xs text-slate-400">自我评价</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.selfEvaluation || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
                   <div className="text-xs text-slate-400">主管评价</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.managerEvaluation || '-'}</div>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white/80 p-5">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-semibold text-slate-900">驳回处理</h3>
