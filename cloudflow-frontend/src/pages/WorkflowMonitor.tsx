@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TableHead, TableHeader } from '@/components/ui';
+import { Button, TableHead, TableHeader } from '@/components/ui';
 
 import { 
   Activity, 
@@ -33,6 +33,7 @@ import {
   WorkspaceEmptyPanel,
   WorkspaceStatusPage,
   WorkspaceBackdrop,
+  WorkspacePageContent,
 } from '@/components/workspace/WorkspacePrimitives';
 import {
   WorkspaceHeroCard,
@@ -60,7 +61,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend })
       hint={trend}
       valueClassName={color}
       aside={
-        <div className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/82 ring-1 ring-white/80 shadow-[0_12px_24px_rgba(15,23,42,0.05)]">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm">
           {icon}
         </div>
       }
@@ -99,7 +100,7 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, type }) => {
     : (anomalyAlert.alertTime || anomalyAlert.createTime);
 
   return (
-    <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+    <div className="flex items-start gap-3 rounded-xl border border-transparent p-3 transition hover:border-slate-200 hover:bg-slate-50">
       <span className="text-xl">{levelIcon}</span>
       <div className="flex-1 min-w-0">
         <p className={`font-medium ${levelColor}`}>
@@ -194,7 +195,8 @@ const WorkflowMonitor: React.FC = () => {
   if (loading && !overview) {
     return (
       <WorkspaceStatusPage
-        icon={<RefreshCw className="h-8 w-8 animate-spin text-pink-500" />}
+        icon={<RefreshCw className="h-8 w-8 animate-spin text-teal-600" />}
+        iconWrapClassName="border border-teal-100 bg-teal-50 text-teal-600"
         title="正在加载流程监控..."
         description="正在同步流程概览、趋势和告警信息，请稍候。"
       />
@@ -204,11 +206,11 @@ const WorkflowMonitor: React.FC = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-6 px-4 py-4 md:px-6">
+      <WorkspacePageContent className="space-y-6">
         <WorkspaceHeroCard
           badge={
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-              <Activity size={14} className="text-pink-500" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+              <Activity size={14} className="text-teal-600" />
               流程运行洞察
             </div>
           }
@@ -216,24 +218,24 @@ const WorkflowMonitor: React.FC = () => {
           description="实时查看流程执行、告警变化和整体性能趋势。"
           actions={
             <div className="flex flex-wrap items-center gap-3">
-              <label className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3.5 py-2 text-sm text-slate-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 shadow-sm">
                 <input
                   type="checkbox"
                   id="autoRefresh"
                   checked={autoRefresh}
                   onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="rounded border-slate-300"
+                  className="rounded border-slate-300 accent-teal-600"
                 />
                 自动刷新（30秒）
               </label>
-              <button
+              <Button
                 onClick={loadData}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 刷新
-              </button>
+              </Button>
             </div>
           }
         >
@@ -246,8 +248,8 @@ const WorkflowMonitor: React.FC = () => {
           <StatCard
             title="今日启动"
             value={overview?.todayStarted || 0}
-            icon={<Activity className="h-5 w-5 text-pink-500" />}
-            color="text-pink-500"
+            icon={<Activity className="h-5 w-5 text-teal-600" />}
+            color="text-cyan-700"
           />
           <StatCard
             title="今日完成"
@@ -272,11 +274,11 @@ const WorkflowMonitor: React.FC = () => {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <WorkspaceSectionCard title="当前状态" headerAside={<Activity className="h-5 w-5 text-slate-300" />}>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <span className="text-sm text-slate-500">运行中流程</span>
-                <span className="text-lg font-semibold text-pink-500">{overview?.runningCount || 0}</span>
+                <span className="text-lg font-semibold text-teal-600">{overview?.runningCount || 0}</span>
               </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <span className="text-sm text-slate-500">待办任务</span>
                 <span className="text-lg font-semibold text-orange-600">{overview?.pendingTaskCount || 0}</span>
               </div>
@@ -285,11 +287,11 @@ const WorkflowMonitor: React.FC = () => {
 
           <WorkspaceSectionCard title="告警统计" headerAside={<AlertTriangle className="h-5 w-5 text-slate-300" />}>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <span className="text-sm text-slate-500">严重告警</span>
                 <span className="text-lg font-semibold text-rose-600">{overview?.criticalAlertCount || 0}</span>
               </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <span className="text-sm text-slate-500">警告提醒</span>
                 <span className="text-lg font-semibold text-amber-600">{overview?.warningAlertCount || 0}</span>
               </div>
@@ -298,11 +300,11 @@ const WorkflowMonitor: React.FC = () => {
 
           <WorkspaceSectionCard title="性能指标" headerAside={<TrendingUp className="h-5 w-5 text-slate-300" />}>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <span className="text-sm text-slate-500">平均完成时间</span>
                 <span className="text-lg font-semibold text-violet-600">{formatDuration(overview?.avgCompletionTimeMs || 0)}</span>
               </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/72 px-4 py-3 ring-1 ring-white/80">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <span className="text-sm text-slate-500">成功率</span>
                 <span className="text-lg font-semibold text-emerald-600">{(overview?.successRate || 0).toFixed(1)}%</span>
               </div>
@@ -315,9 +317,9 @@ const WorkflowMonitor: React.FC = () => {
           description="快速查看每日启动、完成、超时和异常变化。"
           headerAside={<TrendingUp className="h-5 w-5 text-slate-300" />}
         >
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/70">
-              <TableHeader className="bg-white/72 backdrop-blur-xl">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table className="min-w-full divide-y divide-slate-100">
+              <TableHeader className="bg-slate-50">
                 <tr>
                   <TableHead className="px-4 py-2 text-left">日期</TableHead>
                   <TableHead className="px-4 py-2 text-right">启动</TableHead>
@@ -326,11 +328,11 @@ const WorkflowMonitor: React.FC = () => {
                   <TableHead className="px-4 py-2 text-right">异常</TableHead>
                 </tr>
               </TableHeader>
-              <tbody className="divide-y divide-white/70">
+              <tbody className="divide-y divide-slate-100">
                 {trend.map((item, index) => (
-                  <tr key={index} className="bg-white/30 transition hover:bg-white/65">
+                  <tr key={index} className="transition hover:bg-slate-50/80">
                     <td className="px-4 py-2 text-sm text-slate-900">{item.date}</td>
-                    <td className="px-4 py-2 text-right text-sm font-medium text-pink-500">{item.started}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-teal-600">{item.started}</td>
                     <td className="px-4 py-2 text-right text-sm font-medium text-emerald-600">{item.completed}</td>
                     <td className="px-4 py-2 text-right text-sm font-medium text-amber-600">{item.timeout}</td>
                     <td className="px-4 py-2 text-right text-sm font-medium text-rose-600">{item.anomaly}</td>
@@ -396,7 +398,7 @@ const WorkflowMonitor: React.FC = () => {
             </div>
           </WorkspaceSectionCard>
         </div>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

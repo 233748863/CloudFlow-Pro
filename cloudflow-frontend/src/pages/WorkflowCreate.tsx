@@ -9,7 +9,10 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui';
-import { WorkspaceBackdrop } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceBackdrop,
+  WorkspacePageContent,
+} from '@/components/workspace/WorkspacePrimitives';
 import {
   WorkspaceHeroCard,
   WorkspaceMetricCard,
@@ -23,8 +26,7 @@ const creationOptions = [
     title: '空白创建',
     description: '从开始节点和结束节点起步，自定义节点、规则、表单与权限。',
     eyebrow: 'Blank Canvas',
-    accentClassName:
-      'bg-[linear-gradient(135deg,rgba(254,243,199,0.92),rgba(255,255,255,0.86))] ring-amber-200 text-amber-700',
+    accentClassName: 'border border-amber-200 bg-amber-50 text-amber-700',
     icon: PenTool,
     bulletPoints: ['适合全新业务流程', '避免模板历史包袱', '直接进入设计器开始搭建'],
     actionLabel: '进入空白设计',
@@ -34,8 +36,7 @@ const creationOptions = [
     title: '从模板创建',
     description: '先进入模板中心挑选行业或业务模板，再生成流程草稿进入设计器。',
     eyebrow: 'Template Center',
-    accentClassName:
-      'bg-[linear-gradient(135deg,rgba(224,242,254,0.92),rgba(255,255,255,0.86))] ring-sky-200 text-sky-700',
+    accentClassName: 'border border-sky-200 bg-sky-50 text-sky-700',
     icon: Sparkles,
     bulletPoints: ['适合复用成熟流程', '支持分类、搜索与预览', '生成后自动带入模板结构'],
     actionLabel: '进入模板中心',
@@ -57,11 +58,11 @@ export const WorkflowCreate: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              <Workflow className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              <Workflow className="h-3.5 w-3.5 text-teal-600" />
               Flow Entry
             </span>
           }
@@ -73,7 +74,7 @@ export const WorkflowCreate: React.FC = () => {
               label="创建方式"
               value={creationOptions.length}
               hint="空白创建与模板创建双入口"
-              aside={<Workflow className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<Workflow className="h-[18px] w-[18px] text-teal-600" />}
             />
             <WorkspaceMetricCard
               label="空白设计"
@@ -114,7 +115,7 @@ export const WorkflowCreate: React.FC = () => {
                 >
                   <div
                     className={cn(
-                      'inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] ring-1',
+                      'inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em]',
                       option.accentClassName,
                     )}
                   >
@@ -122,17 +123,17 @@ export const WorkflowCreate: React.FC = () => {
                     {option.eyebrow}
                   </div>
 
-                  <div className="mt-5 space-y-3 rounded-[22px] bg-white/72 p-4 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                  <div className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
                     {option.bulletPoints.map((item) => (
                       <div key={item} className="flex items-center gap-3 text-sm text-slate-600">
-                        <div className="h-2.5 w-2.5 rounded-full bg-pink-300" />
+                        <div className="h-2.5 w-2.5 rounded-full bg-teal-500/70" />
                         <span>{item}</span>
                       </div>
                     ))}
                   </div>
 
                   <div className="mt-6">
-                    <Button onClick={primaryAction} className="h-11 w-full justify-between rounded-2xl px-4">
+                    <Button onClick={primaryAction} size="lg" className="w-full justify-between rounded-xl">
                       <span>{option.actionLabel}</span>
                       <ArrowRight className="h-4 w-4" />
                     </Button>
@@ -149,7 +150,7 @@ export const WorkflowCreate: React.FC = () => {
             className="h-full"
             bodyClassName="space-y-4"
           >
-            <div className="rounded-[22px] bg-slate-950 px-5 py-5 text-slate-100 shadow-[0_20px_48px_rgba(15,23,42,0.2)]">
+            <div className="rounded-2xl bg-slate-900 px-5 py-5 text-slate-100 shadow-[0_18px_36px_rgba(15,23,42,0.18)]">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-200">
                 <DraftingCompass className="h-4 w-4 text-amber-300" />
                 New Flow Guide
@@ -164,7 +165,7 @@ export const WorkflowCreate: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              <div className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                 <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
                   <Layers3 className="h-4 w-4 text-sky-500" />
                   模板中心
@@ -174,7 +175,7 @@ export const WorkflowCreate: React.FC = () => {
                 </p>
               </div>
 
-              <div className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                 <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
                   <PenTool className="h-4 w-4 text-amber-500" />
                   流程设计器
@@ -185,9 +186,9 @@ export const WorkflowCreate: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-[22px] bg-[linear-gradient(135deg,rgba(244,114,182,0.1),rgba(255,255,255,0.84))] px-4 py-4 ring-1 ring-pink-100">
+            <div className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-4">
               <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
-                <Workflow className="h-4 w-4 text-pink-500" />
+                <Workflow className="h-4 w-4 text-teal-600" />
                 当前建议
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -204,7 +205,7 @@ export const WorkflowCreate: React.FC = () => {
             </div>
           </WorkspaceSectionCard>
         </div>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

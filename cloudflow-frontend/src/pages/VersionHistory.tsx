@@ -10,10 +10,11 @@ import {
   RefreshCw,
   RotateCcw,
 } from 'lucide-react';
-import { WarningConfirmDialog } from '@/components/ui';
+import { Button, Textarea, WarningConfirmDialog } from '@/components/ui';
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
+  WorkspacePageContent,
   WorkspaceStatusPage,
 } from '@/components/workspace/WorkspacePrimitives';
 import {
@@ -200,7 +201,7 @@ const CompareNodeSection = ({
                   {node.changes.map((change, index) => (
                     <div
                       key={`${node.nodeId}-${change.path}-${index}`}
-                      className="rounded-2xl bg-white/80 px-3 py-3 text-xs text-slate-500 ring-1 ring-white/80"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs text-slate-500 shadow-sm"
                     >
                       <div className="font-semibold text-slate-700">{change.path}</div>
                       <div className="mt-1">
@@ -478,14 +479,10 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         description="当前流程的版本历史仅对流程创建者和管理员开放。"
         actions={
           onBack ? (
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/85 bg-white/82 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white"
-            >
+            <Button type="button" variant="outline" onClick={onBack} className="rounded-xl">
               <ArrowLeft className="h-4 w-4" />
               返回上一页
-            </button>
+            </Button>
           ) : null
         }
       />
@@ -495,11 +492,11 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              <History className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              <History className="h-3.5 w-3.5 text-teal-600" />
               Version Workspace
             </span>
           }
@@ -512,33 +509,30 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           actions={
             <>
               {onBack ? (
-                <button
-                  type="button"
-                  onClick={onBack}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/85 bg-white/82 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white"
-                >
+                <Button type="button" variant="outline" onClick={onBack} className="rounded-xl">
                   <ArrowLeft className="h-4 w-4" />
                   返回
-                </button>
+                </Button>
               ) : null}
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={loadVersions}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/85 bg-white/82 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl"
               >
                 <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
                 刷新版本
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleCompare}
                 disabled={selectedVersions.length !== 2 || comparing}
-                className="inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(236,72,153,0.24)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl"
               >
                 <ArrowRightLeft className="h-4 w-4" />
                 {comparing ? '正在对比...' : '对比选中版本'}
-              </button>
+              </Button>
             </>
           }
         >
@@ -547,7 +541,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               label="版本总数"
               value={versions.length}
               hint="当前流程已沉淀的全部历史版本"
-              aside={<GitBranch className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<GitBranch className="h-[18px] w-[18px] text-teal-600" />}
             />
             <WorkspaceMetricCard
               label="已选对比"
@@ -596,13 +590,13 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           filterBar={
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
                   按版本勾选，最多两项
                 </span>
                 {selectedVersionList.map((version) => (
                   <span
                     key={version.id}
-                    className="rounded-full bg-pink-50/88 px-3 py-1.5 text-[11px] font-medium text-pink-600 ring-1 ring-pink-100 shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
+                    className="rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-[11px] font-medium text-teal-700"
                   >
                     v{version.versionNumber}
                   </span>
@@ -610,13 +604,14 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               </div>
 
               {selectedVersions.length > 0 ? (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setSelectedVersions([])}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/85 bg-white/82 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white"
+                  className="rounded-xl"
                 >
                   清空选择
-                </button>
+                </Button>
               ) : (
                 <div className="text-xs text-slate-400">
                   当前版本默认位于列表顶部，可直接与任一历史版本做差异对比。
@@ -655,10 +650,10 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                   <div
                     key={version.id}
                     className={cn(
-                      'rounded-[24px] border px-5 py-5 transition',
+                      'rounded-2xl border px-5 py-5 transition',
                       isSelected
-                        ? 'border-pink-200 bg-[linear-gradient(135deg,rgba(253,242,248,0.96),rgba(255,255,255,0.92))] shadow-[0_18px_38px_rgba(236,72,153,0.12)]'
-                        : 'border-white/78 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.82))] shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]',
+                        ? 'border-teal-200 bg-teal-50/70 shadow-sm'
+                        : 'border-slate-200 bg-white shadow-sm',
                     )}
                   >
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -667,7 +662,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleVersionSelection(version.id)}
-                          className="mt-1 h-4 w-4 rounded border-slate-300 accent-pink-500"
+                          className="mt-1 h-4 w-4 rounded border-slate-300 accent-teal-600"
                           aria-label={`选择版本 v${version.versionNumber}`}
                         />
 
@@ -717,27 +712,24 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                       </div>
 
                       <div className="flex shrink-0 flex-wrap items-center gap-2">
-                        <button
+                        <Button
                           type="button"
+                          variant={isSelected ? 'soft' : 'outline'}
                           onClick={() => toggleVersionSelection(version.id)}
-                          className={cn(
-                            'rounded-2xl border px-4 py-2 text-sm font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition',
-                            isSelected
-                              ? 'border-pink-200 bg-pink-50 text-pink-600 hover:bg-pink-100'
-                              : 'border-white/85 bg-white/82 text-slate-600 hover:bg-white',
-                          )}
+                          className="rounded-xl"
                         >
                           {isSelected ? '取消选择' : '加入对比'}
-                        </button>
+                        </Button>
                         {index !== 0 && canRollbackCurrentWorkflow ? (
-                          <button
+                          <Button
                             type="button"
+                            variant="destructive"
                             onClick={() => handleOpenRollback(version)}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#fb7185,#f43f5e)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(244,63,94,0.22)] transition hover:brightness-105"
+                            className="rounded-xl"
                           >
                             <RotateCcw className="h-4 w-4" />
                             回滚到此版本
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     </div>
@@ -747,7 +739,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             )}
           </div>
         </WorkspaceResultCard>
-      </div>
+      </WorkspacePageContent>
       {showCompareModal && comparison ? (
         <WorkspaceDialogShell
           title={`版本对比：v${comparison.fromVersion} -> v${comparison.toVersion}`}
@@ -792,13 +784,14 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             )}
 
             <div className="flex justify-end">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowCompareModal(false)}
-                className="rounded-2xl border border-white/85 bg-white/82 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white"
+                className="rounded-xl"
               >
                 关闭
-              </button>
+              </Button>
             </div>
           </div>
         </WorkspaceDialogShell>
@@ -812,7 +805,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           maxWidthClassName="max-w-2xl"
         >
           <div className="space-y-5">
-            <div className="rounded-[24px] border border-amber-100 bg-amber-50/80 p-5">
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-5">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
                 <div className="space-y-1 text-sm text-amber-800">
@@ -825,7 +818,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             </div>
 
             {hasRunningInstances ? (
-              <div className="rounded-[24px] border border-rose-100 bg-rose-50/80 p-5">
+              <div className="rounded-2xl border border-rose-100 bg-rose-50/80 p-5">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 text-rose-500" />
                   <div className="space-y-2 text-sm text-rose-700">
@@ -845,34 +838,36 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               </div>
             ) : null}
 
-            <div className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.78))] p-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 回滚原因 <span className="text-rose-500">*</span>
               </label>
-              <textarea
+              <Textarea
                 value={rollbackReason}
                 onChange={(event) => setRollbackReason(event.target.value)}
                 placeholder="例如：最新流程配置存在审批分支错误，需要恢复到稳定版本。"
                 rows={4}
-                className="w-full rounded-[20px] border border-white/85 bg-white/85 px-4 py-3 text-sm text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] outline-none transition focus:border-pink-200 focus:bg-white focus:ring-2 focus:ring-pink-100"
+                className="min-h-[112px]"
               />
             </div>
 
             <div className="flex justify-end gap-3">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowRollbackModal(false)}
-                className="rounded-2xl border border-white/85 bg-white/82 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:bg-white"
+                className="rounded-xl"
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
                 onClick={handleRollback}
-                className="rounded-2xl bg-[linear-gradient(135deg,#fb7185,#f43f5e)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(244,63,94,0.22)] transition hover:brightness-105"
+                className="rounded-xl"
               >
                 确认回滚
-              </button>
+              </Button>
             </div>
           </div>
         </WorkspaceDialogShell>
