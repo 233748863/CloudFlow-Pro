@@ -223,7 +223,7 @@ export const LeaveApplicationPage: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const glassModalShellClass = 'w-full rounded-2xl border border-slate-200 bg-white shadow-2xl';
   const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-6 py-4';
-  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-5';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-5';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
   const glassModalInputClass = 'h-11 rounded-xl';
   const glassModalTextareaClass = 'min-h-[112px] rounded-xl';
@@ -628,7 +628,7 @@ export const LeaveApplicationPage: React.FC = () => {
               className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3.5 text-amber-900 shadow-sm"
             >
               <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+                <div className="rounded-xl border border-amber-200 bg-white p-2 text-amber-600">
                   <AlertCircle size={18} />
                 </div>
                 <div>
@@ -756,7 +756,7 @@ export const LeaveApplicationPage: React.FC = () => {
                       />
                     ) : (
                       list.map((item) => (
-                        <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
+                        <tr key={item.id} className="transition hover:bg-slate-50">
                           <td className="px-4 py-2.5 text-sm text-slate-900">{item.applicationNo || '-'}</td>
                           <td className="px-4 py-2.5 text-sm text-slate-600">{item.leaveTypeName || '-'}</td>
                           <td className="px-4 py-2.5 text-sm text-slate-600">
@@ -777,7 +777,7 @@ export const LeaveApplicationPage: React.FC = () => {
                                     icon: <Eye size={14} />,
                                     onClick: () => void handleView(item.id!),
                                     tone: 'neutral',
-                                    className: 'rounded-full bg-slate-50/90 px-2.5 ring-1 ring-slate-200/80 hover:bg-slate-100',
+                                    className: 'rounded-full border border-slate-200 bg-white px-2.5 hover:bg-slate-50',
                                   },
                                   {
                                     label: '提交',
@@ -785,7 +785,7 @@ export const LeaveApplicationPage: React.FC = () => {
                                     onClick: () => handleSubmitDraft(item.id!),
                                     hidden: item.status !== 'DRAFT',
                                     tone: 'primary',
-                                    className: 'rounded-full bg-pink-50/90 px-2.5 ring-1 ring-pink-100',
+                                    className: 'rounded-full border border-cyan-200 bg-cyan-50 px-2.5 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800',
                                   },
                                   {
                                     label: '撤销',
@@ -793,7 +793,7 @@ export const LeaveApplicationPage: React.FC = () => {
                                     onClick: () => handleCancel(item.id!),
                                     hidden: item.status !== 'APPROVING' && item.status !== 'APPROVED',
                                     tone: 'warning',
-                                    className: 'rounded-full bg-amber-50/90 px-2.5 ring-1 ring-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
+                                    className: 'rounded-full border border-amber-200 bg-amber-50 px-2.5 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
                                   },
                                 ]}
                               />
@@ -832,7 +832,7 @@ export const LeaveApplicationPage: React.FC = () => {
       </WorkspacePageContent>
 
         {showDialog ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
             <div className={`${glassModalShellClass} max-w-2xl`}>
               <div className={glassModalHeaderClass}>
                 <div className="relative flex items-start justify-between gap-4">
@@ -877,7 +877,7 @@ export const LeaveApplicationPage: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent className={glassModalSelectContentClass}>
                           {leaveTypes.map((item) => (
-                            <SelectItem key={item.id} className="rounded-[16px]" value={String(item.id)}>
+                            <SelectItem key={item.id} className="rounded-xl" value={String(item.id)}>
                               {item.leaveName}
                             </SelectItem>
                           ))}
@@ -959,21 +959,21 @@ export const LeaveApplicationPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl px-5">
+                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-xl px-5">
                   取消
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleSaveDraft}
                   disabled={submitting}
-                  className="rounded-2xl px-5"
+                  className="rounded-xl px-5"
                 >
                   保存草稿
                 </Button>
                 <Button
                   onClick={handleCreateAndSubmit}
                   disabled={submitting}
-                  className="rounded-2xl px-5"
+                  className="rounded-xl px-5"
                 >
                   <Send size={16} className="mr-2" />
                   直接提交
@@ -984,7 +984,7 @@ export const LeaveApplicationPage: React.FC = () => {
         ) : null}
 
         {showDetail ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.22)] p-4 backdrop-blur-md" onClick={() => !detailLoading && setShowDetail(false)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4" onClick={() => !detailLoading && setShowDetail(false)}>
             <div
               className={`flex max-h-[90vh] max-w-4xl flex-col ${glassModalShellClass}`}
               onClick={(event) => event.stopPropagation()}
@@ -1089,7 +1089,7 @@ export const LeaveApplicationPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDetail(false)} className="rounded-2xl px-5">
+                <Button variant="outline" onClick={() => setShowDetail(false)} className="rounded-xl px-5">
                   关闭
                 </Button>
               </div>

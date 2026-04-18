@@ -304,7 +304,7 @@ export const DutySchedulePage: React.FC = () => {
                       setFilterDraft((prev) => ({ ...prev, status: value === 'ALL' ? '' : value }))
                     }
                   >
-                    <SelectTrigger className="h-10 rounded-[18px]">
+                    <SelectTrigger className="h-10 rounded-xl">
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
@@ -322,7 +322,7 @@ export const DutySchedulePage: React.FC = () => {
                       setFilterDraft((prev) => ({ ...prev, scheduleType: value === 'ALL' ? '' : value }))
                     }
                   >
-                    <SelectTrigger className="h-10 rounded-[18px]">
+                    <SelectTrigger className="h-10 rounded-xl">
                       <SelectValue placeholder="请选择" />
                     </SelectTrigger>
                     <SelectContent>
@@ -333,11 +333,11 @@ export const DutySchedulePage: React.FC = () => {
                     </SelectContent>
                   </Select>
 
-                  <Button onClick={handleApplyFilters} className="h-10 rounded-[18px]">
+                  <Button onClick={handleApplyFilters} className="h-10 rounded-xl">
                     <Search className="h-4 w-4" />
                     搜索
                   </Button>
-                  <Button variant="outline" onClick={handleResetFilters} className="h-10 rounded-[18px]">
+                  <Button variant="outline" onClick={handleResetFilters} className="h-10 rounded-xl">
                     <RotateCcw className="h-4 w-4" />
                     重置
                   </Button>
@@ -364,7 +364,7 @@ export const DutySchedulePage: React.FC = () => {
                         }))
                       }
                       disabled={searchParams.pageNum === 1}
-                      className="rounded-[18px]"
+                      className="rounded-xl"
                     >
                       上一页
                     </Button>
@@ -380,7 +380,7 @@ export const DutySchedulePage: React.FC = () => {
                         }))
                       }
                       disabled={searchParams.pageNum >= totalPages}
-                      className="rounded-[18px]"
+                      className="rounded-xl"
                     >
                       下一页
                     </Button>
@@ -418,7 +418,7 @@ export const DutySchedulePage: React.FC = () => {
                       />
                     ) : (
                       list.map((item) => (
-                        <tr key={item.scheduleId} className="hover:bg-slate-50/80">
+                        <tr key={item.scheduleId} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">{item.title}</td>
                           <td className="px-4 py-3 text-sm text-slate-600">
                             {typeMap[item.scheduleType] || item.scheduleType}

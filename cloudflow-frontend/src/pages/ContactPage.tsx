@@ -211,18 +211,18 @@ export const ContactPage: React.FC = () => {
                         }}
                         placeholder="搜索姓名、用户名或手机号"
                       className="max-w-xl flex-1"
-                      inputClassName="h-10 rounded-[18px] pr-4"
+                      inputClassName="h-10 rounded-xl pr-4"
                       />
 
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" className="h-10 rounded-[18px]" onClick={handleApplyFilters}>
+                      <Button size="sm" className="h-10 rounded-xl" onClick={handleApplyFilters}>
                         <Search className="h-4 w-4" />
                         搜索
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-10 rounded-[18px] px-4"
+                        className="h-10 rounded-xl px-4"
                         onClick={handleResetFilters}
                       >
                         <RotateCcw className="h-4 w-4" />
@@ -424,7 +424,7 @@ export const ContactPage: React.FC = () => {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="flex items-center gap-3 rounded-[18px] bg-slate-50/90 p-3 ring-1 ring-slate-100"
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
                 >
                   {item.icon}
                   <div>
@@ -436,7 +436,7 @@ export const ContactPage: React.FC = () => {
             </div>
 
             <div className="flex justify-end">
-              <Button variant="outline" className="rounded-[18px]" onClick={() => setSelectedUser(null)}>
+              <Button variant="outline" className="rounded-xl" onClick={() => setSelectedUser(null)}>
                 关闭
               </Button>
             </div>
