@@ -221,15 +221,15 @@ export const LeaveApplicationPage: React.FC = () => {
     : '全部类型';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.leaveTypeId);
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
-  const glassModalShellClass = 'w-full rounded-[36px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] shadow-[0_30px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-2xl';
-  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] px-6 pb-5 pt-6 backdrop-blur-2xl';
-  const glassModalSectionClass = 'rounded-[28px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.76))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.7)]';
+  const glassModalShellClass = 'w-full rounded-2xl border border-slate-200 bg-white shadow-2xl';
+  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-6 py-4';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-5';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
-  const glassModalInputClass = 'h-12 rounded-[20px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
-  const glassModalTextareaClass = 'min-h-[112px] rounded-[22px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
-  const glassModalFooterClass = 'sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-white/75 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.74))] px-6 py-5 backdrop-blur-2xl';
-  const glassModalSelectContentClass = 'rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.78))] p-1 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-2xl';
-  const glassDetailCardClass = 'rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_12px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]';
+  const glassModalInputClass = 'h-11 rounded-xl';
+  const glassModalTextareaClass = 'min-h-[112px] rounded-xl';
+  const glassModalFooterClass = 'sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4';
+  const glassModalSelectContentClass = '';
+  const glassDetailCardClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') {
@@ -269,44 +269,24 @@ export const LeaveApplicationPage: React.FC = () => {
       label: '当前结果',
       value: `${total}`,
       hint: hasActiveFilters ? `${currentStatusLabel} · ${currentTypeLabel}` : '默认视图下全部请假申请',
-      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
-      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-500',
-      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
       icon: <ClipboardList size={17} />,
     },
     {
       label: '待提交草稿',
       value: `${draftCount}`,
       hint: draftCount > 0 ? '建议优先确认时间区间和原因后提交' : '当前没有待提交草稿',
-      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
-      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
-      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
       icon: <Edit size={17} />,
     },
     {
       label: '审批中',
       value: `${pendingCount}`,
       hint: pendingCount > 0 ? '可继续查看流程节点与审批进度' : '当前没有审批中的申请',
-      panelClassName: 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
-      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
       icon: <Clock3 size={17} />,
     },
     {
       label: '已通过',
       value: `${approvedCount}`,
       hint: approvedCount > 0 ? '便于快速回看已审批完成的请假记录' : '用于快速判断当前已通过申请数',
-      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
-      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
       icon: <CheckCircle2 size={17} />,
     },
   ]), [approvedCount, currentStatusLabel, currentTypeLabel, draftCount, hasActiveFilters, pendingCount, total]);
@@ -315,24 +295,18 @@ export const LeaveApplicationPage: React.FC = () => {
     {
       label: '记录数',
       value: `${total} 条`,
-      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '状态',
       value: currentStatusLabel,
-      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '类型',
       value: currentTypeLabel,
-      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '视图',
       value: hasActiveFilters ? '筛选结果' : '默认视图',
-      toneClassName: hasActiveFilters
-        ? 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.9),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06),inset_0_1px_0_rgba(255,255,255,0.75)]'
-        : 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
   ];
 
@@ -617,11 +591,11 @@ export const LeaveApplicationPage: React.FC = () => {
         <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Calendar size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="请假申请"
@@ -630,7 +604,7 @@ export const LeaveApplicationPage: React.FC = () => {
               <Button
                 onClick={openCreateDialog}
                 disabled={loadingTypes || eligibilityLoading || !canStartSelfService}
-                className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600"
+                className="h-9 rounded-xl px-4"
               >
                 <Plus size={15} className="mr-2" />
                 新建申请
@@ -638,15 +612,14 @@ export const LeaveApplicationPage: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={handleExport}
-                className="h-9 rounded-xl bg-white/85 px-4"
+                className="h-9 rounded-xl px-4"
               >
-                <Download size={15} className="mr-2 text-pink-500" />
+                <Download size={15} className="mr-2 text-slate-500" />
                 导出结果
               </Button>
             </div>
           )}
           contentClassName="p-3.5 sm:p-4"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
           metrics={heroMetrics}
         >
           {restrictionMessage ? (
@@ -682,13 +655,13 @@ export const LeaveApplicationPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleResetFilters}
-                  className="h-8 rounded-[18px] border-white/80 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                  className="h-8 rounded-[18px] px-3.5"
                 >
                   <RotateCcw size={15} className="mr-2" />
                   清空所有条件
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-400">
                   当前未应用额外筛选
                 </span>
               )}
@@ -701,7 +674,7 @@ export const LeaveApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, status: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                      <SelectTrigger className="h-10 rounded-[18px]">
                         <SelectValue placeholder="请选择状态" />
                       </SelectTrigger>
                       <SelectContent>
@@ -720,7 +693,7 @@ export const LeaveApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, leaveTypeId: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                      <SelectTrigger className="h-10 rounded-[18px]">
                         <SelectValue placeholder="请选择请假类型" />
                       </SelectTrigger>
                       <SelectContent>
@@ -737,7 +710,7 @@ export const LeaveApplicationPage: React.FC = () => {
                   <Button
                     size="sm"
                     onClick={() => setSearchParams(prev => ({ ...prev, pageNum: 1 }))}
-                    className="h-10 rounded-[18px] bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-3.5 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
+                    className="h-10 rounded-[18px] px-3.5"
                   >
                     <Search size={15} className="mr-2" />
                     应用筛选
@@ -747,7 +720,7 @@ export const LeaveApplicationPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleResetFilters}
-                    className="h-10 rounded-[18px] border-white/85 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                    className="h-10 rounded-[18px] px-3.5"
                   >
                     <RotateCcw size={15} className="mr-2" />
                     清空条件
@@ -862,11 +835,9 @@ export const LeaveApplicationPage: React.FC = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
             <div className={`${glassModalShellClass} max-w-2xl`}>
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
-                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-emerald-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                       <Calendar size={14} />
                       请假申请表单
                     </div>
@@ -879,7 +850,7 @@ export const LeaveApplicationPage: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowDialog(false)}
-                    className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700"
+                    className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                   >
                     <X size={18} />
                   </Button>
@@ -940,7 +911,6 @@ export const LeaveApplicationPage: React.FC = () => {
                         <span className="text-red-500">*</span>
                       </label>
                       <DatePicker
-                        variant="glass"
                         className={glassModalInputClass}
                         type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
                         value={formData.startValue}
@@ -956,7 +926,6 @@ export const LeaveApplicationPage: React.FC = () => {
                         <span className="text-red-500">*</span>
                       </label>
                       <DatePicker
-                        variant="glass"
                         className={glassModalInputClass}
                         type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
                         value={formData.endValue}
@@ -990,21 +959,21 @@ export const LeaveApplicationPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">
+                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl px-5">
                   取消
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleSaveDraft}
                   disabled={submitting}
-                  className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white"
+                  className="rounded-2xl px-5"
                 >
                   保存草稿
                 </Button>
                 <Button
                   onClick={handleCreateAndSubmit}
                   disabled={submitting}
-                  className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_14px_24px_rgba(236,72,153,0.22)] hover:bg-pink-600"
+                  className="rounded-2xl px-5"
                 >
                   <Send size={16} className="mr-2" />
                   直接提交
@@ -1021,11 +990,9 @@ export const LeaveApplicationPage: React.FC = () => {
               onClick={(event) => event.stopPropagation()}
             >
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
-                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-emerald-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                       <Eye size={14} />
                       申请详情
                     </div>
@@ -1039,7 +1006,7 @@ export const LeaveApplicationPage: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowDetail(false)}
-                    className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700"
+                    className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                   >
                     <X size={18} />
                   </Button>
@@ -1092,7 +1059,7 @@ export const LeaveApplicationPage: React.FC = () => {
 
                     <div className={glassModalSectionClass}>
                       <div className="text-sm font-semibold text-slate-900">请假原因</div>
-                      <div className="mt-3 whitespace-pre-wrap rounded-[22px] border border-white/70 bg-white/72 p-4 text-sm leading-7 text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                      <div className="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">
                         {detailRecord.reason || '-'}
                       </div>
                     </div>
@@ -1106,7 +1073,7 @@ export const LeaveApplicationPage: React.FC = () => {
                       </div>
                       <div className="mt-4">
                         {detailRecord.processInstanceId ? (
-                          <ProcessTrace instanceId={detailRecord.processInstanceId} variant="glass" />
+                          <ProcessTrace instanceId={detailRecord.processInstanceId} />
                         ) : (
                           <WorkspaceInlineState
                             type="info"
@@ -1122,7 +1089,7 @@ export const LeaveApplicationPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDetail(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">
+                <Button variant="outline" onClick={() => setShowDetail(false)} className="rounded-2xl px-5">
                   关闭
                 </Button>
               </div>

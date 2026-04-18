@@ -123,15 +123,15 @@ export const OvertimeApplicationPage: React.FC = () => {
   };
 
   const selfServiceLocked = eligibilityLoading || !canStartSelfService;
-  const glassModalShellClass = 'w-full rounded-[36px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.82))] shadow-[0_30px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-2xl';
-  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] px-6 pb-5 pt-6 backdrop-blur-2xl';
-  const glassModalSectionClass = 'rounded-[28px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.76))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.7)]';
+  const glassModalShellClass = 'w-full rounded-2xl border border-slate-200 bg-white shadow-2xl';
+  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-6 py-4';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-5';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
-  const glassModalInputClass = 'h-12 rounded-[20px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
-  const glassModalTextareaClass = 'min-h-[112px] rounded-[22px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
-  const glassModalFooterClass = 'sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-white/75 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.74))] px-6 py-5 backdrop-blur-2xl';
-  const glassModalSelectContentClass = 'rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.78))] p-1 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-2xl';
-  const glassDetailCardClass = 'rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_12px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]';
+  const glassModalInputClass = 'h-11 rounded-xl';
+  const glassModalTextareaClass = 'min-h-[112px] rounded-xl';
+  const glassModalFooterClass = 'sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4';
+  const glassModalSelectContentClass = '';
+  const glassDetailCardClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') {
@@ -298,11 +298,11 @@ export const OvertimeApplicationPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { bg: string; text: string }> = {
-      DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600' },
-      APPROVING: { bg: 'bg-pink-50', text: 'text-pink-500' },
-      APPROVED: { bg: 'bg-emerald-100', text: 'text-emerald-600' },
-      REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
-      CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-600' },
+      DRAFT: { bg: 'border border-slate-200 bg-slate-50', text: 'text-slate-600' },
+      APPROVING: { bg: 'border border-cyan-200 bg-cyan-50', text: 'text-cyan-700' },
+      APPROVED: { bg: 'border border-emerald-200 bg-emerald-50', text: 'text-emerald-600' },
+      REJECTED: { bg: 'border border-rose-200 bg-rose-50', text: 'text-rose-600' },
+      CANCELLED: { bg: 'border border-slate-200 bg-slate-100', text: 'text-slate-600' },
     };
     const currentConfig = config[status] || config.DRAFT;
     return (
@@ -357,44 +357,24 @@ export const OvertimeApplicationPage: React.FC = () => {
       label: '当前结果',
       value: `${total}`,
       hint: hasActiveFilters ? `${currentStatusLabel} · ${currentTypeLabel}` : '默认视图下全部加班申请',
-      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
-      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-500',
-      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
       icon: <Timer size={17} />,
     },
     {
       label: '待提交草稿',
       value: `${draftCount}`,
       hint: draftCount > 0 ? '建议优先补齐时间段和事由后提交' : '当前没有待提交草稿',
-      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
-      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
-      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
       icon: <Edit size={17} />,
     },
     {
       label: '审批中',
       value: `${pendingCount}`,
       hint: pendingCount > 0 ? '可继续查看流程进度和审批节点' : '当前没有审批中的申请',
-      panelClassName: 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
-      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
       icon: <Clock size={17} />,
     },
     {
       label: '累计加班时长',
       value: `${totalHours.toFixed(1)} h`,
       hint: approvedCount > 0 ? `已通过 ${approvedCount} 条，便于快速估算投入` : '用于快速判断当前加班总量',
-      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
-      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
       icon: <CheckCircle2 size={17} />,
     },
   ]), [approvedCount, currentStatusLabel, currentTypeLabel, draftCount, hasActiveFilters, pendingCount, total, totalHours]);
@@ -403,24 +383,18 @@ export const OvertimeApplicationPage: React.FC = () => {
     {
       label: '记录数',
       value: `${total} 条`,
-      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '状态',
       value: currentStatusLabel,
-      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '类型',
       value: currentTypeLabel,
-      toneClassName: 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '视图',
       value: hasActiveFilters ? '筛选结果' : '默认视图',
-      toneClassName: hasActiveFilters
-        ? 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.9),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06),inset_0_1px_0_rgba(255,255,255,0.75)]'
-        : 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
   ];
 
@@ -440,18 +414,18 @@ export const OvertimeApplicationPage: React.FC = () => {
         <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Clock size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="加班申请"
           actions={(
             <div className="flex flex-wrap gap-2 xl:justify-end">
               <Button
-                className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600"
+                className="h-9 rounded-xl px-4"
                 onClick={handleAdd}
                 disabled={selfServiceLocked}
               >
@@ -460,16 +434,15 @@ export const OvertimeApplicationPage: React.FC = () => {
               </Button>
               <Button
                 variant="outline"
-                className="h-9 rounded-xl bg-white/85 px-4"
+                className="h-9 rounded-xl px-4"
                 onClick={handleExport}
               >
-                <Download size={15} className="mr-2 text-pink-500" />
+                <Download size={15} className="mr-2 text-slate-500" />
                 导出结果
               </Button>
             </div>
           )}
           contentClassName="p-3.5 sm:p-4"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
           metrics={heroMetrics}
         >
           {restrictionMessage ? (
@@ -511,7 +484,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                   清空所有条件
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-400">
                   当前未应用额外筛选
                 </span>
               )}
@@ -524,7 +497,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, status: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                      <SelectTrigger className="h-10 rounded-[18px]">
                         <SelectValue placeholder="请选择状态" />
                       </SelectTrigger>
                       <SelectContent>
@@ -543,7 +516,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, overtimeType: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                      <SelectTrigger className="h-10 rounded-[18px]">
                         <SelectValue placeholder="请选择加班类型" />
                       </SelectTrigger>
                       <SelectContent>
@@ -558,7 +531,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <Button
                     size="sm"
                     onClick={() => setSearchParams(prev => ({ ...prev, pageNum: 1 }))}
-                    className="h-10 rounded-[18px] bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-3.5 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
+                    className="h-10 rounded-[18px] px-3.5"
                   >
                     <Search size={15} className="mr-2" />
                     应用筛选
@@ -568,7 +541,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleResetFilters}
-                    className="h-10 rounded-[18px] border-white/85 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                    className="h-10 rounded-[18px] px-3.5"
                   >
                     <RotateCcw size={15} className="mr-2" />
                     清空条件
@@ -704,11 +677,9 @@ export const OvertimeApplicationPage: React.FC = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
             <div className={`${glassModalShellClass} max-w-3xl`}>
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
-                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-amber-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                       <Timer size={14} />
                       加班申请表单
                     </div>
@@ -723,7 +694,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowDialog(false)}
-                    className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700"
+                    className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                   >
                     <X size={18} />
                   </Button>
@@ -790,7 +761,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                         开始时间 <span className="text-red-500">*</span>
                       </label>
                       <DatePicker
-                        variant="glass"
                         className={glassModalInputClass}
                         type="datetime-local"
                         value={formData.startTime}
@@ -804,7 +774,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                         结束时间 <span className="text-red-500">*</span>
                       </label>
                       <DatePicker
-                        variant="glass"
                         className={glassModalInputClass}
                         type="datetime-local"
                         value={formData.endTime}
@@ -838,10 +807,10 @@ export const OvertimeApplicationPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">
+                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl px-5">
                   取消
                 </Button>
-                <Button onClick={handleSave} className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_14px_24px_rgba(236,72,153,0.22)] hover:bg-pink-600">
+                <Button onClick={handleSave} className="rounded-2xl px-5">
                   保存
                 </Button>
               </div>
@@ -856,11 +825,9 @@ export const OvertimeApplicationPage: React.FC = () => {
               onClick={(event) => event.stopPropagation()}
             >
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_70%)]" />
-                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-emerald-100/30 blur-3xl" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                       <Eye size={14} />
                       申请详情
                     </div>
@@ -874,7 +841,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowDetail(false)}
-                    className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700"
+                    className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                   >
                     <X size={18} />
                   </Button>
@@ -927,7 +894,7 @@ export const OvertimeApplicationPage: React.FC = () => {
 
                     <div className={glassModalSectionClass}>
                       <div className="text-sm font-semibold text-slate-900">加班事由</div>
-                      <div className="mt-3 whitespace-pre-wrap rounded-[22px] border border-white/70 bg-white/72 p-4 text-sm leading-7 text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                      <div className="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">
                         {detailRecord.reason || '-'}
                       </div>
                     </div>
@@ -941,7 +908,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                       </div>
                       <div className="mt-4">
                         {detailRecord.processInstanceId ? (
-                          <ProcessTrace instanceId={detailRecord.processInstanceId} variant="glass" />
+                          <ProcessTrace instanceId={detailRecord.processInstanceId} />
                         ) : (
                           <WorkspaceInlineState
                             type="info"
@@ -960,7 +927,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowDetail(false)}
-                  className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white"
+                  className="rounded-2xl px-5"
                 >
                   关闭
                 </Button>
