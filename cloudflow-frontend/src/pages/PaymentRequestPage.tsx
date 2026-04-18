@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Search, Send, Trash2, WalletCards, X } from 'lucide-react';
+import { Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Search, Send, Trash2, WalletCards, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
 import { FileUpload } from '../components/FileUpload';
@@ -210,14 +210,19 @@ export const PaymentRequestPage: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const config: Record<string, string> = {
-      DRAFT: 'bg-white/82 text-slate-600 ring-1 ring-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
-      PENDING: 'bg-pink-50/88 text-pink-600 ring-1 ring-pink-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
-      APPROVED: 'bg-emerald-50/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
-      REJECTED: 'bg-rose-50/88 text-rose-600 ring-1 ring-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
-      PAID: 'bg-amber-50/88 text-amber-700 ring-1 ring-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
+    const config: Record<string, { bg: string; text: string }> = {
+      DRAFT: { bg: 'border border-slate-200 bg-slate-50', text: 'text-slate-600' },
+      PENDING: { bg: 'border border-cyan-200 bg-cyan-50', text: 'text-cyan-700' },
+      APPROVED: { bg: 'border border-emerald-200 bg-emerald-50', text: 'text-emerald-600' },
+      REJECTED: { bg: 'border border-rose-200 bg-rose-50', text: 'text-rose-600' },
+      PAID: { bg: 'border border-amber-200 bg-amber-50', text: 'text-amber-700' },
     };
-    return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${config[status] || config.DRAFT}`}>{STATUS_LABELS[status] || status}</span>;
+    const currentConfig = config[status] || config.DRAFT;
+    return (
+      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${currentConfig.bg} ${currentConfig.text}`}>
+        {STATUS_LABELS[status] || status}
+      </span>
+    );
   };
 
   const renderDetailValue = (value?: string | number | null) => {
@@ -269,36 +274,24 @@ export const PaymentRequestPage: React.FC = () => {
       label: '当前结果',
       value: `${total}`,
       hint: hasActiveFilters ? `${currentStatusLabel} · ${currentTypeLabel}` : '默认视图下全部付款申请',
-      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))]',
-      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85',
-      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
       icon: <DollarSign size={17} />,
     },
     {
       label: '待补充草稿',
       value: `${draftCount}`,
       hint: draftCount > 0 ? '建议优先补齐收款与账户信息' : '当前没有待补充草稿',
-      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))]',
-      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100',
-      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
       icon: <Edit size={17} />,
     },
     {
       label: '审批中',
       value: `${pendingCount}`,
       hint: pendingCount > 0 ? '可快速查看当前审批进度' : '当前没有审批中的申请',
-      panelClassName: 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))]',
-      iconWrapClassName: 'bg-white/88 text-pink-600 ring-1 ring-pink-100',
-      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
       icon: <Clock3 size={17} />,
     },
     {
       label: '累计申请金额',
       value: formatAmount(totalAmount),
       hint: approvedCount > 0 ? `已通过 ${approvedCount} 条，便于快速判断付款规模` : '用于快速判断当前付款规模',
-      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))]',
-      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100',
-      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
       icon: <WalletCards size={17} />,
     },
   ]), [approvedCount, currentStatusLabel, currentTypeLabel, draftCount, hasActiveFilters, pendingCount, total, totalAmount]);
@@ -310,15 +303,15 @@ export const PaymentRequestPage: React.FC = () => {
     { label: '视图', value: hasActiveFilters ? '筛选结果' : '默认视图' },
   ];
 
-  const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-[36px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] shadow-[0_30px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-2xl';
-  const glassModalHeaderClass = 'sticky top-0 z-10 overflow-hidden border-b border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] px-6 pb-5 pt-6 backdrop-blur-2xl';
-  const glassModalSectionClass = 'relative overflow-visible rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] p-4 shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl';
+  const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl';
+  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-6 py-4';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-4';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
-  const glassModalInputClass = 'h-12 rounded-[20px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
-  const glassModalTextareaClass = 'min-h-28 rounded-[22px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md';
-  const glassModalFooterClass = 'sticky bottom-0 flex justify-end gap-3 border-t border-white/75 bg-[linear-gradient(180deg,rgba(248,250,252,0.82),rgba(255,255,255,0.74))] px-6 py-5 backdrop-blur-2xl';
-  const glassSelectContentClass = 'rounded-[22px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.78))] p-1 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-2xl';
-  const glassDetailCardClass = 'rounded-[22px] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(248,250,252,0.7))] p-4 shadow-[0_12px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl';
+  const glassModalInputClass = 'h-11 rounded-xl';
+  const glassModalTextareaClass = 'min-h-28 rounded-xl';
+  const glassModalFooterClass = 'sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4';
+  const glassSelectContentClass = '';
+  const glassDetailCardClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
 
   return (
     <div className="relative min-h-screen pb-6">
@@ -327,23 +320,22 @@ export const PaymentRequestPage: React.FC = () => {
         <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-600 ring-1 ring-emerald-100"><DollarSign size={14} />{todayLabel}</span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600"><DollarSign size={14} />{todayLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="付款申请"
           actions={(
             <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button className="h-9 rounded-xl bg-pink-500 px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.2)] hover:bg-pink-600" onClick={handleAdd}><Plus size={15} className="mr-2" />新建申请</Button>
-              <Button variant="outline" className="h-9 rounded-xl bg-white/85 px-4" onClick={handleExport}><Download size={15} className="mr-2 text-pink-500" />导出结果</Button>
+              <Button className="h-9 rounded-xl px-4" onClick={handleAdd}><Plus size={15} className="mr-2" />新建申请</Button>
+              <Button variant="outline" className="h-9 rounded-xl px-4" onClick={handleExport}><Download size={15} className="mr-2 text-slate-500" />导出结果</Button>
             </div>
           )}
-          contentClassName="p-3.5 sm:p-4"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(103,232,249,0.12),transparent_48%)]"
+          contentClassName="p-4 sm:p-5"
           metrics={heroMetrics}
         />
 
-        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="申请列表"
@@ -353,16 +345,15 @@ export const PaymentRequestPage: React.FC = () => {
               quickFilters={statusQuickFilters}
               activeQuickFilter={searchParams.status}
               onQuickFilterChange={applyStatusFilter}
-              glowClassName="bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.09),transparent_60%)]"
               quickFilterAside={hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-8 rounded-[18px] border-white/80 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
+                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-8 rounded-[18px] px-3.5"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">当前未应用额外筛选</span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">当前未应用额外筛选</span>
               )}
               filterBar={(
                 <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
                   <Select value={paymentTypeInput} onValueChange={setPaymentTypeInput}>
-                    <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 px-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
+                    <SelectTrigger className="h-10 rounded-[18px] px-4"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
                     <SelectContent className={glassSelectContentClass}>
                       <SelectItem className="rounded-[16px]" value="">全部类型</SelectItem>
                       {PAYMENT_TYPE_OPTIONS.map(option => (
@@ -370,8 +361,8 @@ export const PaymentRequestPage: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" onClick={applySearch} className="h-10 rounded-[18px] bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-3.5 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"><Search size={15} className="mr-2" />应用筛选</Button>
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-[18px] border-white/85 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空条件</Button>
+                  <Button size="sm" onClick={applySearch} className="h-10 rounded-[18px] px-3.5"><Search size={15} className="mr-2" />应用筛选</Button>
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-[18px] px-3.5"><RotateCcw size={15} className="mr-2" />清空条件</Button>
                 </div>
               )}
             />
@@ -442,21 +433,19 @@ export const PaymentRequestPage: React.FC = () => {
       </WorkspacePageContent>
 
         {showDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
             <div className={`${glassModalShellClass} max-w-4xl`}>
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.16),transparent_70%)]" />
-                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-cyan-100/35 blur-3xl" />
-                <div className="relative flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                       <DollarSign size={14} />
                       付款申请表单
                     </div>
-                    <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{currentPayment ? '编辑付款申请' : '新增付款申请'}</h3>
+                    <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">{currentPayment ? '编辑付款申请' : '新增付款申请'}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-500">整理收款对象、账户信息、付款类型和附件材料，形成完整的付款申请单。</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setShowDialog(false)} className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700">
+                  <Button variant="ghost" size="icon" onClick={() => setShowDialog(false)} className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700">
                     <X size={18} />
                   </Button>
                 </div>
@@ -490,7 +479,7 @@ export const PaymentRequestPage: React.FC = () => {
                     </div>
                     <div>
                       <label className={glassModalLabelClass}>期望付款日期</label>
-                      <DatePicker variant="glass" className={glassModalInputClass} type="date" value={formData.expectedDate || ''} onChange={e => setFormData(prev => ({ ...prev, expectedDate: e.target.value }))} />
+                      <DatePicker className={glassModalInputClass} type="date" value={formData.expectedDate || ''} onChange={e => setFormData(prev => ({ ...prev, expectedDate: e.target.value }))} />
                     </div>
                   </div>
                 </section>
@@ -526,37 +515,35 @@ export const PaymentRequestPage: React.FC = () => {
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">附件材料</div>
                     <div className="mt-1 text-sm text-slate-500">可附上合同、发票、付款通知或审批附件，帮助审批人与财务快速核实背景。</div>
                   </div>
-                  <FileUpload variant="glass" value={formData.attachmentUrl || ''} onChange={urls => setFormData(prev => ({ ...prev, attachmentUrl: urls }))} maxCount={5} hint="可上传合同、付款通知、发票或收款凭证，最多 5 个文件" />
+                  <FileUpload value={formData.attachmentUrl || ''} onChange={urls => setFormData(prev => ({ ...prev, attachmentUrl: urls }))} maxCount={5} hint="可上传合同、付款通知、发票或收款凭证，最多 5 个文件" />
                 </section>
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">取消</Button>
-                <Button onClick={handleSave} className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 text-white shadow-[0_14px_24px_rgba(236,72,153,0.22)] hover:bg-pink-600">保存</Button>
+                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl px-5">取消</Button>
+                <Button onClick={handleSave} className="rounded-2xl px-5">保存</Button>
               </div>
             </div>
           </div>
         )}
 
         {detailPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.22)] p-4 backdrop-blur-md" onClick={() => !detailLoading && setDetailPayment(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm" onClick={() => !detailLoading && setDetailPayment(null)}>
             <div className={`flex max-h-[90vh] max-w-5xl flex-col ${glassModalShellClass}`} onClick={e => e.stopPropagation()}>
               <div className={glassModalHeaderClass}>
-                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.16),transparent_70%)]" />
-                <div className="absolute left-8 top-0 h-24 w-24 rounded-full bg-cyan-100/35 blur-3xl" />
-                <div className="relative flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/74 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                       <Eye size={14} />
                       申请详情
                     </div>
-                    <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{detailPayment.paymentNo || '付款申请'}</h3>
+                    <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">{detailPayment.paymentNo || '付款申请'}</h3>
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                       <span>{detailPayment.payeeName || '-'}</span>
                       {getStatusBadge(detailPayment.status || 'DRAFT')}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setDetailPayment(null)} className="rounded-full bg-white/62 text-slate-400 ring-1 ring-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white hover:text-slate-700">
+                  <Button variant="ghost" size="icon" onClick={() => setDetailPayment(null)} className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700">
                     <X size={18} />
                   </Button>
                 </div>
@@ -581,7 +568,7 @@ export const PaymentRequestPage: React.FC = () => {
 
                     <div className={glassModalSectionClass}>
                       <div className="text-sm font-semibold text-slate-900">付款事由</div>
-                      <div className="mt-3 whitespace-pre-wrap rounded-[22px] border border-white/70 bg-white/72 p-4 text-sm leading-7 text-slate-600">{detailPayment.reason || '-'}</div>
+                      <div className="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">{detailPayment.reason || '-'}</div>
                     </div>
 
                     <div className={glassModalSectionClass}>
@@ -594,7 +581,7 @@ export const PaymentRequestPage: React.FC = () => {
                           getAttachmentList(detailPayment.attachmentUrl).map(url => {
                             const label = url.split('/').pop() || '附件';
                             return (
-                              <a key={url} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-[22px] border border-white/75 bg-white/76 px-4 py-3 text-sm text-slate-700 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:border-pink-100 hover:bg-white hover:text-pink-600">
+                              <a key={url} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-cyan-200 hover:bg-white hover:text-cyan-700">
                                 <Paperclip size={14} />
                                 <span className="truncate">{label}</span>
                               </a>
@@ -610,7 +597,7 @@ export const PaymentRequestPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setDetailPayment(null)} className="rounded-2xl border-white/85 bg-white/76 px-5 shadow-[0_10px_20px_rgba(15,23,42,0.04)] hover:bg-white">关闭</Button>
+                <Button variant="outline" onClick={() => setDetailPayment(null)} className="rounded-2xl px-5">关闭</Button>
               </div>
             </div>
           </div>
