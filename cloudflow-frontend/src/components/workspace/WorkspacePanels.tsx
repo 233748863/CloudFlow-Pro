@@ -141,7 +141,7 @@ export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
     </div>
 
     {quickFilters?.length || quickFilterAside || filterBar ? (
-      <div className="border-t border-slate-200 bg-slate-50/80 px-4 py-4 xl:px-5">
+      <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 xl:px-5">
         <div className="flex flex-col gap-3">
           {quickFilters?.length || quickFilterAside ? (
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -309,7 +309,7 @@ export const WorkspaceResultCard: React.FC<WorkspaceResultCardProps> = ({
   className,
 }) => (
   <div className={cn(panelClassName, className)}>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3.5">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3.5">
       <div>
         <div className="text-sm font-semibold text-slate-900">{title}</div>
         <div className="mt-1 text-xs text-slate-500">{description}</div>

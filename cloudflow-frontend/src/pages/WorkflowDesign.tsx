@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, GitMerge, Loader2 } from 'lucide-react';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
+import { Button } from '@/components/ui';
 import {
   getProcessDefinition,
   getProcessDefinitions,
@@ -257,7 +258,7 @@ export const WorkflowDesign = () => {
   const skipNextUrlSyncRef = useRef(false);
 
   const renderStatusShell = (panel: React.ReactNode) => (
-    <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-[28px]">
+    <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <WorkspaceBackdrop />
       <div className="relative z-10 flex h-full items-center justify-center p-6">
         <div className="w-full max-w-2xl">{panel}</div>
@@ -481,7 +482,7 @@ export const WorkflowDesign = () => {
   if (loading) {
     return renderStatusShell(
       <WorkspaceStatusPanel
-        icon={<Loader2 size={28} className="animate-spin text-pink-500" />}
+        icon={<Loader2 size={28} className="animate-spin text-teal-600" />}
         title="正在加载流程设计器..."
         description="正在准备流程定义、表单列表和审批基础数据，请稍候。"
         className="py-14"
@@ -496,13 +497,13 @@ export const WorkflowDesign = () => {
         title="流程设计数据加载失败"
         description={error}
         actions={(
-          <button
+          <Button
             type="button"
             onClick={loadData}
-            className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:brightness-105"
+            className="rounded-xl"
           >
             重新加载
-          </button>
+          </Button>
         )}
         className="py-14"
       />
@@ -517,20 +518,21 @@ export const WorkflowDesign = () => {
         description="当前没有加载到流程定义。可以重新尝试，或者直接创建一个新的空白流程。"
         actions={(
           <>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={loadData}
-              className="rounded-2xl border border-white/85 bg-white/78 px-5 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.04)] transition hover:bg-white"
+              className="rounded-xl"
             >
               重新加载
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => navigate('/workflow/create?mode=blank')}
-              className="rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-5 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(236,72,153,0.24)] transition hover:brightness-105"
+              className="rounded-xl"
             >
               新建流程
-            </button>
+            </Button>
           </>
         )}
         className="py-14"
@@ -539,7 +541,7 @@ export const WorkflowDesign = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] overflow-hidden rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.86))] shadow-[0_20px_52px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.76)] backdrop-blur-xl">
+    <div className="h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <WorkflowBuilder
         workflow={workflow}
         onChange={handleWorkflowChange}

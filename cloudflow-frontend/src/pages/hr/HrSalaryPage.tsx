@@ -24,7 +24,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import { WorkspaceDialogShell, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceInlineState, WorkspacePageContent, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
   EmployeeInsurance,
   EmployeeSalary,
@@ -774,7 +774,7 @@ const SalaryAmountEditor: React.FC<{
 }> = ({ fields, valueMap, onValueChange, emptyText }) => {
   if (!fields.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
         {emptyText}
       </div>
     );
@@ -783,7 +783,7 @@ const SalaryAmountEditor: React.FC<{
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {fields.map(field => (
-        <div key={field.key} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+        <div key={field.key} className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="font-medium text-slate-900">{field.label}</div>
           <div className="mt-1 text-xs text-slate-400">{field.description}</div>
           <Input
@@ -803,14 +803,14 @@ const SalaryAmountEditor: React.FC<{
 const SalaryDiffTable: React.FC<{ rows: SalaryDiffField[] }> = ({ rows }) => {
   if (!rows.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
         当前没有可展示的薪资明细差异。
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <Table>
         <TableHeader>
           <TableRow>
@@ -1892,7 +1892,7 @@ export const HrSalaryPage: React.FC = () => {
           ...item,
           coverage,
           missing,
-          cardClassName: 'border-emerald-200 bg-emerald-50/80',
+          cardClassName: 'border-emerald-200 bg-emerald-50',
           textClassName: 'text-emerald-700',
           barClassName: 'bg-emerald-500',
         };
@@ -1903,7 +1903,7 @@ export const HrSalaryPage: React.FC = () => {
           ...item,
           coverage,
           missing,
-          cardClassName: 'border-rose-200 bg-rose-50/80',
+          cardClassName: 'border-rose-200 bg-rose-50',
           textClassName: 'text-rose-700',
           barClassName: 'bg-rose-500',
         };
@@ -1913,7 +1913,7 @@ export const HrSalaryPage: React.FC = () => {
         ...item,
         coverage,
         missing,
-        cardClassName: 'border-amber-200 bg-amber-50/80',
+        cardClassName: 'border-amber-200 bg-amber-50',
         textClassName: 'text-amber-700',
         barClassName: 'bg-amber-500',
       };
@@ -8052,8 +8052,10 @@ export const HrSalaryPage: React.FC = () => {
 
   return (
     <>
-      <div className="space-y-6">
-        <Card className="rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+      <div className="relative min-h-screen pb-6">
+        <WorkspaceBackdrop />
+        <WorkspacePageContent className="space-y-6">
+          <Card className="rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
@@ -8066,17 +8068,17 @@ export const HrSalaryPage: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button className="rounded-2xl" onClick={openAssignDialog} disabled={!assignableEmployees.length || !enabledSalaryStructures.length}>
+              <Button className="rounded-xl" onClick={openAssignDialog} disabled={!assignableEmployees.length || !enabledSalaryStructures.length}>
                 <BadgePlus size={16} className="mr-2" />
                 分配薪资
               </Button>
-              <Button variant="outline" className="rounded-2xl" onClick={openAdjustDialog} disabled={!employeesWithSalary.length}>
+              <Button variant="outline" className="rounded-xl" onClick={openAdjustDialog} disabled={!employeesWithSalary.length}>
                 <FilePlus2 size={16} className="mr-2" />
                 发起调薪
               </Button>
               <Button
                 variant="outline"
-                className="rounded-2xl"
+                className="rounded-xl"
                 onClick={() => {
                   void Promise.all([loadFoundationData(), loadEmployeeSalaryList(), loadAdjustmentList()]);
                 }}
@@ -8090,7 +8092,7 @@ export const HrSalaryPage: React.FC = () => {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {metrics.map(metric => (
-            <Card key={metric.label} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+            <Card key={metric.label} className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-500">{metric.label}</div>
@@ -8106,7 +8108,7 @@ export const HrSalaryPage: React.FC = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-          <TabsList className="rounded-2xl bg-white/70">
+          <TabsList className="rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
             <TabsTrigger value="employees">员工薪资</TabsTrigger>
             <TabsTrigger value="adjustments">调薪申请</TabsTrigger>
             <TabsTrigger value="foundation">基础配置</TabsTrigger>
@@ -8114,7 +8116,7 @@ export const HrSalaryPage: React.FC = () => {
 
           <TabsContent value="employees" className="space-y-6">
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-              <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+              <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-4">
                   <h2 className="text-lg font-semibold text-slate-900">在岗薪资档案</h2>
                   <p className="mt-1 text-sm text-slate-500">当前只拉生效中的员工薪资，方便直接联调调薪与现薪详情。</p>
@@ -8173,7 +8175,7 @@ export const HrSalaryPage: React.FC = () => {
                     </Select>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                     <div>
                       当前命中 {workingEmployeeSalaries.length} 条在岗现薪档案
                       {salaryKeyword.trim() ? `，关键词筛后 ${filteredEmployeeSalaries.length} 条` : ''}
@@ -8193,18 +8195,18 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   {futureEffectiveEmployeeSalaries.length > 0 && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                       真实联调发现 {workingEmployeeSalaries.length} 条 ACTIVE 现薪里有 {futureEffectiveEmployeeSalaries.length} 条生效日晚于今天。
                       当前页面会按接口原样展示这些未来档案，联调时需要区分“接口当前返回”和“实际已到生效日”。
                     </div>
                   )}
 
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-emerald-700">
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
                     当前还有 {assignableEmployees.length} 名在岗员工未分配薪资，可直接通过上方“分配薪资”真实写库联调。
                   </div>
 
                   {resignedEmployeeSalaries.length > 0 && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                       真实联调发现 {resignedEmployeeSalaries.length} 条 ACTIVE 薪资档案对应的员工已离职。
                       这些记录已从当前工作区和调薪候选中过滤，避免继续对离职员工发起调薪。
                     </div>
@@ -8219,8 +8221,8 @@ export const HrSalaryPage: React.FC = () => {
                           type="button"
                           className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                             isActive
-                              ? 'border-emerald-200 bg-emerald-50/80 shadow-sm'
-                              : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                              ? 'border-emerald-200 bg-emerald-50 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                           }`}
                           onClick={() => setSelectedEmployeeId(String(item.employeeId))}
                         >
@@ -8271,7 +8273,7 @@ export const HrSalaryPage: React.FC = () => {
               </Card>
 
               <div className="space-y-6">
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">员工薪资详情</h2>
@@ -8299,7 +8301,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   {!currentEmployeeRecord && !employeeSalaryDetailLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                       先分配一条员工薪资，或从左侧选择一条现有记录。
                     </div>
                   )}
@@ -8307,21 +8309,21 @@ export const HrSalaryPage: React.FC = () => {
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">员工</div>
                           <div className="mt-2 font-semibold text-slate-900">{employeeSalaryDetail?.employeeName || currentEmployeeRecord.employeeName || '-'}</div>
                           <div className="mt-1 text-sm text-slate-500">{employeeSalaryDetail?.employeeNo || currentEmployeeRecord.employeeNo || '-'}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">薪资结构</div>
                           <div className="mt-2 font-semibold text-slate-900">{employeeSalaryDetail?.structureName || currentEmployeeRecord.structureName || '-'}</div>
                           <div className="mt-1 text-sm text-slate-500">{employeeSalaryDetail?.structureCode || currentEmployeeRecord.structureCode || '-'}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">总薪资</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(employeeSalaryDetail?.totalSalary || currentEmployeeRecord.totalSalary)}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">生效日期</div>
                           <div className="mt-2 font-semibold text-slate-900">{currentEmployeeEffectiveDate || '-'}</div>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
@@ -8338,8 +8340,8 @@ export const HrSalaryPage: React.FC = () => {
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <div className={`rounded-2xl border p-4 ${
                           currentEmployeeFutureEffective
-                            ? 'border-amber-200 bg-amber-50/80'
-                            : 'border-emerald-200 bg-emerald-50/80'
+                            ? 'border-amber-200 bg-amber-50'
+                            : 'border-emerald-200 bg-emerald-50'
                         }`}>
                           <div className={`text-xs ${currentEmployeeFutureEffective ? 'text-amber-600' : 'text-emerald-600'}`}>当前档案阶段</div>
                           <div className={`mt-2 text-2xl font-semibold ${currentEmployeeFutureEffective ? 'text-amber-700' : 'text-emerald-700'}`}>
@@ -8351,14 +8353,14 @@ export const HrSalaryPage: React.FC = () => {
                               : '当前档案已经进入生效区间'}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">ACTIVE 档案数</div>
                           <div className={`mt-2 text-2xl font-semibold ${salaryHistoryMetrics.active === 1 ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {salaryHistoryMetrics.active}
                           </div>
                           <div className="mt-2 text-sm text-slate-500">正常情况下应只保留 1 条 ACTIVE</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">同日档案峰值</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">
                             {employeeSalaryDuplicateEffectiveDates[0]?.[1] || 1}
@@ -8369,7 +8371,7 @@ export const HrSalaryPage: React.FC = () => {
                               : '当前没有同一生效日重复档案'}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">最近调薪</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">
                             {latestEmployeeAdjustment ? adjustmentStatusLabel(latestEmployeeAdjustment.status) : '暂无'}
@@ -8383,14 +8385,14 @@ export const HrSalaryPage: React.FC = () => {
                       </div>
 
                       {currentEmployeeFutureEffective && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm text-amber-700">
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700">
                           当前 ACTIVE 现薪的生效日是 {currentEmployeeEffectiveDate}，晚于今天。
                           到手收入测算、社保台账联动和调薪候选都会基于这条未来档案继续联调，核对结果时要注意它并不代表“今天已经实际发放”的薪资。
                         </div>
                       )}
 
                       {!currentEmployeeFutureEffective && latestEmployeeAdjustment && latestEmployeeAdjustmentMatchedCurrentSalary && (
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4 text-sm text-emerald-700">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
                           最近一次调薪已经对齐到当前 ACTIVE 现薪，当前档案与最近调薪单据的生效日和调薪后总额一致。
                         </div>
                       )}
@@ -8403,13 +8405,13 @@ export const HrSalaryPage: React.FC = () => {
                       )}
 
                       {!currentEmployeeFutureEffective && latestEmployeeAdjustment && !latestEmployeeAdjustmentMatchedCurrentSalary && !latestEmployeeAdjustmentMatchedArchive && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm text-amber-700">
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700">
                           最近一次调薪还没有在当前现薪或历史档案中命中。
                           如果这条调薪的生效日还没到，属于正常待落档；如果已经过了生效日，建议切到“调薪申请”页继续核对真实状态流转。
                         </div>
                       )}
 
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -8442,7 +8444,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
                 </Card>
 
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">薪资档案历史</h2>
@@ -8475,7 +8477,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   {!currentEmployeeRecord && !employeeSalaryHistoryLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看薪资档案历史。
                     </div>
                   )}
@@ -8483,22 +8485,22 @@ export const HrSalaryPage: React.FC = () => {
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">档案总数</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{salaryHistoryMetrics.total}</div>
                           <div className="mt-1 text-sm text-slate-500">当前员工所有薪资档案</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">生效中</div>
                           <div className="mt-2 text-2xl font-semibold text-emerald-600">{salaryHistoryMetrics.active}</div>
                           <div className="mt-1 text-sm text-slate-500">正常应只保留 1 条 ACTIVE</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">已失效</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{salaryHistoryMetrics.expired}</div>
                           <div className="mt-1 text-sm text-slate-500">调薪或重新分配后自动沉淀</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">重复生效日</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{employeeSalaryDuplicateEffectiveDates.length}</div>
                           <div className="mt-1 text-sm text-slate-500">
@@ -8516,7 +8518,7 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
                       )}
 
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -8574,7 +8576,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
                 </Card>
 
-                <Card className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">到手收入测算</h2>
@@ -8608,7 +8610,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   {!currentEmployeeRecord && !employeeCompensationLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看五险一金和个税测算结果。
                     </div>
                   )}
@@ -8616,13 +8618,13 @@ export const HrSalaryPage: React.FC = () => {
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
                       {!hasInsuranceProfile && !employeeCompensationLoading && (
-                        <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
+                        <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                           当前员工还没有可用的社保公积金方案。可以直接点击右上角“分配社保方案”补齐后，再刷新测算结果。
                         </div>
                       )}
 
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">测算基准薪资</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(currentGrossSalary)}</div>
                           <div className="mt-1 text-sm text-slate-500">{currentEmployeeEffectiveHint}</div>
@@ -8631,7 +8633,7 @@ export const HrSalaryPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">社保方案口径</div>
                           <div className="mt-2 text-lg font-semibold text-slate-900">
                             {employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '未分配'}
@@ -8648,7 +8650,7 @@ export const HrSalaryPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">专项扣除命中</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{sortedEmployeeTaxDeductions.length} 项</div>
                           <div className="mt-1 text-sm text-slate-500">
@@ -8661,7 +8663,7 @@ export const HrSalaryPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">联调风险等级</div>
                           <div className="mt-2 flex items-center gap-2">
                             <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${compensationRiskSummary.className}`}>
@@ -8681,7 +8683,7 @@ export const HrSalaryPage: React.FC = () => {
                         <div className={`rounded-2xl border p-4 ${
                           compensationRiskItems.length
                             ? compensationRiskSummary.className
-                            : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
                         }`}>
                           <div className="font-medium">
                             {compensationRiskItems.length ? '测算风险提示' : '当前测算口径已对齐'}
@@ -8746,7 +8748,7 @@ export const HrSalaryPage: React.FC = () => {
                             hint: '住房租金、继续教育等',
                           },
                         ].map(metric => (
-                          <div key={metric.label} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-4">
                             <div className="text-xs text-slate-400">{metric.label}</div>
                             <div className="mt-2 text-2xl font-semibold text-slate-900">{metric.value}</div>
                             <div className="mt-1 text-sm text-slate-500">{metric.hint}</div>
@@ -8755,7 +8757,7 @@ export const HrSalaryPage: React.FC = () => {
                       </div>
 
                       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="mb-4 flex items-start justify-between gap-3">
                             <div>
                               <div className="font-semibold text-slate-900">五险一金拆分</div>
@@ -8780,7 +8782,7 @@ export const HrSalaryPage: React.FC = () => {
                           </div>
 
                           {insuranceBaseMismatch && (
-                            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-700">
+                            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                               当前台账基数仍是 {formatCurrency(insuranceReferenceBase)}，下方拆分按现薪 {formatCurrency(insuranceCalculatedBase)} 做模拟测算，用来核对调薪后的成本变化。
                             </div>
                           )}
@@ -8819,7 +8821,7 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                          <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <div className="font-semibold text-slate-900">个税测算摘要</div>
@@ -8836,13 +8838,13 @@ export const HrSalaryPage: React.FC = () => {
                               </Button>
                             </div>
                             <div className="mt-4 grid grid-cols-1 gap-3">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                                 <div className="text-xs text-slate-400">起征点</div>
                                 <div className="mt-1 font-semibold text-slate-900">
                                   {employeeTaxCalculation ? formatCurrency(employeeTaxCalculation.threshold) : '-'}
                                 </div>
                               </div>
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                                 <div className="text-xs text-slate-400">专项扣除合计</div>
                                 <div className="mt-1 font-semibold text-slate-900">
                                   {(employeeTaxCalculation || sortedEmployeeTaxDeductions.length)
@@ -8850,7 +8852,7 @@ export const HrSalaryPage: React.FC = () => {
                                     : '-'}
                                 </div>
                               </div>
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                                 <div className="text-xs text-slate-400">应纳税所得额</div>
                                 <div className="mt-1 font-semibold text-slate-900">
                                   {employeeTaxCalculation ? formatCurrency(currentTaxableAmount) : '-'}
@@ -8859,7 +8861,7 @@ export const HrSalaryPage: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
                             <div className="mb-4 flex items-start justify-between gap-3">
                               <div>
                                 <div className="font-semibold text-slate-900">专项扣除明细</div>
@@ -8951,7 +8953,7 @@ export const HrSalaryPage: React.FC = () => {
                 >
 
                   {!currentEmployeeRecord && !employeeInsuranceListLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看社保台账。
                     </div>
                   )}
@@ -8959,7 +8961,7 @@ export const HrSalaryPage: React.FC = () => {
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">全量台账</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">
                             {employeeInsuranceLedgerDiagnostics.allRecords.length}
@@ -8971,7 +8973,7 @@ export const HrSalaryPage: React.FC = () => {
                             {insuranceLedgerStatusOptions.find(option => option.value === insuranceLedgerStatusFilter)?.label}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">当前 ACTIVE 方案</div>
                           <div className="mt-2 font-semibold text-slate-900">
                             {employeeInsuranceLedgerDiagnostics.activeReferenceRecord?.schemeName || employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '-'}
@@ -8985,7 +8987,7 @@ export const HrSalaryPage: React.FC = () => {
                               : '当前没有 ACTIVE 台账'}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">未来生效记录</div>
                           <div className="mt-2 text-2xl font-semibold text-amber-700">
                             {employeeInsuranceLedgerDiagnostics.futureRecords.length}
@@ -9001,7 +9003,7 @@ export const HrSalaryPage: React.FC = () => {
                               : '可以直接按当前社保口径核对本月结果'}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">最近基数变化</div>
                           <div className={`mt-2 text-2xl font-semibold ${
                             (employeeInsuranceLedgerDiagnostics.latestBaseShift?.delta ?? 0) >= 0 ? 'text-sky-700' : 'text-rose-700'
@@ -9043,8 +9045,8 @@ export const HrSalaryPage: React.FC = () => {
                                 key={item.key}
                                 className={`rounded-2xl border px-4 py-3 ${
                                   item.severity === 'danger'
-                                    ? 'border-rose-200 bg-white/70 text-rose-700'
-                                    : 'border-amber-200 bg-white/70 text-amber-700'
+                                    ? 'border-rose-200 bg-white text-rose-700'
+                                    : 'border-amber-200 bg-white text-amber-700'
                                 }`}
                               >
                                 <div className="text-sm font-semibold">{item.title}</div>
@@ -9055,7 +9057,7 @@ export const HrSalaryPage: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -9164,10 +9166,10 @@ export const HrSalaryPage: React.FC = () => {
                   description="建议先给一名正式员工分配标准薪资结构，再发起调薪，可以最快看清整条链路。"
                 >
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                       如果左侧为空，优先点击“分配薪资”，后端会把旧记录自动置为 EXPIRED，并新建 ACTIVE 档案。
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                       薪资详情里的项目金额来自员工薪资 JSON 展开，不是前端本地计算出来的临时值。
                     </div>
                   </div>
@@ -9185,7 +9187,7 @@ export const HrSalaryPage: React.FC = () => {
                 >
 
                   {!currentEmployeeRecord && !employeeAdjustmentHistoryLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看调薪历史。
                     </div>
                   )}
@@ -9193,7 +9195,7 @@ export const HrSalaryPage: React.FC = () => {
                   {currentEmployeeRecord && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">累计调薪次数</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{sortedEmployeeAdjustmentHistory.length}</div>
                           <div className="mt-1 text-sm text-slate-500">当前接口仅统计已通过或已生效的历史调薪单据</div>
@@ -9203,7 +9205,7 @@ export const HrSalaryPage: React.FC = () => {
                               : '当前没有同日多次调薪'}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">最近状态</div>
                           {latestEmployeeAdjustment ? (
                             <>
@@ -9219,7 +9221,7 @@ export const HrSalaryPage: React.FC = () => {
                             <WorkspaceInlineState title="暂无调薪记录" className="mt-2 py-3" />
                           )}
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">落档命中</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">
                             {employeeAdjustmentHistoryDiagnostics.landedCurrentCount + employeeAdjustmentHistoryDiagnostics.landedHistoryCount}
@@ -9228,7 +9230,7 @@ export const HrSalaryPage: React.FC = () => {
                             当前现薪 {employeeAdjustmentHistoryDiagnostics.landedCurrentCount} 条 / 历史档案 {employeeAdjustmentHistoryDiagnostics.landedHistoryCount} 条
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">待核对风险</div>
                           <div className="mt-2 text-2xl font-semibold text-rose-700">
                             {employeeAdjustmentHistoryDiagnostics.pendingPastDueCount + employeeAdjustmentHistoryDiagnostics.unmatchedEffectiveCount}
@@ -9262,8 +9264,8 @@ export const HrSalaryPage: React.FC = () => {
                                 key={item.key}
                                 className={`rounded-2xl border px-4 py-3 ${
                                   item.severity === 'danger'
-                                    ? 'border-rose-200 bg-white/70 text-rose-700'
-                                    : 'border-amber-200 bg-white/70 text-amber-700'
+                                    ? 'border-rose-200 bg-white text-rose-700'
+                                    : 'border-amber-200 bg-white text-amber-700'
                                 }`}
                               >
                                 <div className="text-sm font-semibold">{item.title}</div>
@@ -9274,7 +9276,7 @@ export const HrSalaryPage: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -9448,7 +9450,7 @@ export const HrSalaryPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                     <div className="text-xs text-slate-500">
                       {currentEmployeeRecord
                         ? `当前员工：${currentSelectedEmployeeLabel}`
@@ -9467,7 +9469,7 @@ export const HrSalaryPage: React.FC = () => {
                     </Button>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                     <div>
                       当前命中 {salaryAdjustments.length} 条服务端结果
                       {currentAdjustmentFilterEmployee ? `，员工：${buildEmployeeLabel(currentAdjustmentFilterEmployee)}` : ''}
@@ -9490,22 +9492,22 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="text-xs text-slate-400">已落当前现薪</div>
                       <div className="mt-2 text-2xl font-semibold text-emerald-700">{adjustmentListDiagnostics.matchedCurrentCount}</div>
                       <div className="mt-1 text-sm text-slate-500">当前 ACTIVE 现薪已命中的调薪单</div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="text-xs text-slate-400">过期未推进</div>
                       <div className="mt-2 text-2xl font-semibold text-rose-700">{adjustmentListDiagnostics.pendingPastDueCount}</div>
                       <div className="mt-1 text-sm text-slate-500">生效日已到但状态仍未推进</div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="text-xs text-slate-400">当前现薪未追平</div>
                       <div className="mt-2 text-2xl font-semibold text-rose-700">{adjustmentListDiagnostics.currentMismatchCount}</div>
                       <div className="mt-1 text-sm text-slate-500">EFFECTIVE 但当前现薪仍未命中</div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="text-xs text-slate-400">同日多单 / 未来生效</div>
                       <div className="mt-2 text-2xl font-semibold text-amber-700">
                         {adjustmentListDiagnostics.duplicateEmployeeDateGroups.length} / {adjustmentListDiagnostics.futureEffectiveCount}
@@ -9538,8 +9540,8 @@ export const HrSalaryPage: React.FC = () => {
                             key={item.key}
                             className={`rounded-2xl border px-4 py-3 ${
                               item.severity === 'danger'
-                                ? 'border-rose-200 bg-white/70 text-rose-700'
-                                : 'border-amber-200 bg-white/70 text-amber-700'
+                                ? 'border-rose-200 bg-white text-rose-700'
+                                : 'border-amber-200 bg-white text-amber-700'
                             }`}
                           >
                             <div className="text-sm font-semibold">{item.title}</div>
@@ -9555,12 +9557,12 @@ export const HrSalaryPage: React.FC = () => {
                       const isActive = String(item.id) === selectedAdjustmentId;
                       const rowIssues = adjustmentListDiagnostics.rowIssueMap.get(item.id) || [];
                       const itemClassName = rowIssues.some(issue => issue.severity === 'danger')
-                        ? 'border-rose-200 bg-rose-50/80 shadow-sm hover:border-rose-300 hover:bg-rose-50'
+                        ? 'border-rose-200 bg-rose-50 shadow-sm hover:border-rose-300 hover:bg-rose-50'
                         : rowIssues.length
-                          ? 'border-amber-200 bg-amber-50/80 shadow-sm hover:border-amber-300 hover:bg-amber-50'
+                          ? 'border-amber-200 bg-amber-50 shadow-sm hover:border-amber-300 hover:bg-amber-50'
                           : isActive
-                            ? 'border-amber-200 bg-amber-50/80 shadow-sm'
-                            : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50';
+                            ? 'border-amber-200 bg-amber-50 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50';
 
                       return (
                         <button
@@ -9568,7 +9570,7 @@ export const HrSalaryPage: React.FC = () => {
                           type="button"
                           className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                             isActive && !rowIssues.length
-                              ? 'border-amber-200 bg-amber-50/80 shadow-sm'
+                              ? 'border-amber-200 bg-amber-50 shadow-sm'
                               : itemClassName
                           }`}
                           onClick={() => setSelectedAdjustmentId(String(item.id))}
@@ -9597,8 +9599,8 @@ export const HrSalaryPage: React.FC = () => {
                                     key={issue.key}
                                     className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
                                       issue.severity === 'danger'
-                                        ? 'border-rose-200 bg-white/80 text-rose-700'
-                                        : 'border-amber-200 bg-white/80 text-amber-700'
+                                        ? 'border-rose-200 bg-white text-rose-700'
+                                        : 'border-amber-200 bg-white text-amber-700'
                                     }`}
                                   >
                                     {issue.label}
@@ -9665,7 +9667,7 @@ export const HrSalaryPage: React.FC = () => {
                 >
 
                   {!adjustmentDetail && !adjustmentDetailLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                       从左侧选择一条调薪申请，或先发起新的调薪。
                     </div>
                   )}
@@ -9673,23 +9675,23 @@ export const HrSalaryPage: React.FC = () => {
                   {adjustmentDetail && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">申请编号</div>
                           <div className="mt-2 font-semibold text-slate-900">{adjustmentDetail.applicationNo}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">员工</div>
                           <div className="mt-2 font-semibold text-slate-900">{adjustmentDetail.employeeName || '-'}</div>
                           <div className="mt-1 text-sm text-slate-500">{adjustmentDetail.employeeNo || '-'}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">类型 / 状态</div>
                           <div className="mt-2 font-semibold text-slate-900">{adjustmentTypeLabel(adjustmentDetail.adjustmentType)}</div>
                           <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(adjustmentDetail.status)}`}>
                             {adjustmentStatusLabel(adjustmentDetail.status)}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">生效日期</div>
                           <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(adjustmentDetail.effectiveDate) || '-'}</div>
                           <div className="mt-1 text-sm text-slate-500">流程实例：{adjustmentDetail.processInstanceId || '-'}</div>
@@ -9697,21 +9699,21 @@ export const HrSalaryPage: React.FC = () => {
                             <div className="mt-2 text-xs text-amber-600">未到生效日期前，前端不会开放“执行生效”。</div>
                           )}
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">调薪前总额</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentDetail.beforeTotal)}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">调薪后总额</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentDetail.afterTotal)}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">调薪金额</div>
                           <div className={`mt-2 text-2xl font-semibold ${Number(adjustmentDetail.adjustmentAmount || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {formatCurrency(adjustmentDetail.adjustmentAmount)}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                           <div className="text-xs text-slate-400">调薪比例</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900">
                             {Number.isFinite(Number(adjustmentDetail.adjustmentRate))
@@ -9746,8 +9748,8 @@ export const HrSalaryPage: React.FC = () => {
                                 key={item.key}
                                 className={`rounded-2xl border px-4 py-3 ${
                                   item.severity === 'danger'
-                                    ? 'border-rose-200 bg-white/70 text-rose-700'
-                                    : 'border-amber-200 bg-white/70 text-amber-700'
+                                    ? 'border-rose-200 bg-white text-rose-700'
+                                    : 'border-amber-200 bg-white text-amber-700'
                                 }`}
                               >
                                 <div className="font-medium">{item.title}</div>
@@ -9762,7 +9764,7 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
                       )}
 
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                           <div>
                             <div className="font-semibold text-slate-900">调薪闭环校验</div>
@@ -9789,27 +9791,27 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
 
                         {adjustmentEmployeeSalaryLoading ? (
-                          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
+                          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
                             正在读取调薪对应员工的现薪与档案历史...
                           </div>
                         ) : (
                           <>
                             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <div className="text-xs text-slate-400">流程阶段</div>
                                 <div className="mt-2 text-2xl font-semibold text-slate-900">{adjustmentClosureInsight?.stageLabel || '-'}</div>
                                 <div className="mt-2 text-sm text-slate-500">{adjustmentClosureInsight?.stageHint || '等待读取调薪状态。'}</div>
                               </div>
                               <div className={`rounded-2xl border p-4 ${
                                 adjustmentClosureInsight?.landingTone === 'emerald'
-                                  ? 'border-emerald-200 bg-emerald-50/80'
+                                  ? 'border-emerald-200 bg-emerald-50'
                                   : adjustmentClosureInsight?.landingTone === 'sky'
                                     ? 'border-sky-200 bg-sky-50/80'
                                     : adjustmentClosureInsight?.landingTone === 'amber'
-                                      ? 'border-amber-200 bg-amber-50/80'
+                                      ? 'border-amber-200 bg-amber-50'
                                       : adjustmentClosureInsight?.landingTone === 'rose'
-                                        ? 'border-rose-200 bg-rose-50/80'
-                                        : 'border-slate-200 bg-slate-50/80'
+                                        ? 'border-rose-200 bg-rose-50'
+                                        : 'border-slate-200 bg-slate-50'
                               }`}>
                                 <div className={`text-xs ${
                                   adjustmentClosureInsight?.landingTone === 'emerald'
@@ -9881,11 +9883,11 @@ export const HrSalaryPage: React.FC = () => {
                             </div>
 
                             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_minmax(0,1fr)]">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 text-sm text-slate-600">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                                 <div className="font-medium text-slate-900">下一步动作建议</div>
                                 <div className="mt-2">{adjustmentClosureInsight?.nextAction || '等待更多闭环信息。'}</div>
                               </div>
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 text-sm text-slate-600">
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                                 <div className="font-medium text-slate-900">档案匹配结果</div>
                                 <div className="mt-2">
                                   {adjustmentMatchedArchive
@@ -9903,7 +9905,7 @@ export const HrSalaryPage: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
                         <div className="text-xs text-slate-400">调薪原因</div>
                         <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                           {adjustmentDetail.adjustmentReason || '未填写调薪原因。'}
@@ -9924,10 +9926,10 @@ export const HrSalaryPage: React.FC = () => {
                   description="推荐使用今天或更早的生效日，这样审批通过后更容易观察是否自动生效。"
                 >
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                       调薪后明细的金额之和必须等于 `afterTotal`，页面会按明细自动求和，避免手工算错。
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                       调薪生效后，会生成新的员工薪资记录并把旧的 ACTIVE 记录置为 EXPIRED。
                     </div>
                   </div>
@@ -9949,17 +9951,17 @@ export const HrSalaryPage: React.FC = () => {
               >
 
                 <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <div className="text-xs text-slate-400">已启用项目</div>
                     <div className="mt-2 text-2xl font-semibold text-slate-900">{enabledSalaryItems.length}</div>
                     <div className="mt-2 text-sm text-slate-500">当前总数 {salaryItems.length}</div>
                   </div>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                     <div className="text-xs text-emerald-600">命中现薪联动</div>
                     <div className="mt-2 text-2xl font-semibold text-emerald-700">{linkedSalaryItems.length}</div>
                     <div className="mt-2 text-sm text-emerald-700">这些项目已落到当前 ACTIVE 现薪链路</div>
                   </div>
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
                     <div className="text-xs text-amber-600">孤立项目</div>
                     <div className="mt-2 text-2xl font-semibold text-amber-700">{orphanSalaryItems.length}</div>
                     <div className="mt-2 text-sm text-amber-700">当前未被任何薪资结构引用</div>
@@ -9974,7 +9976,7 @@ export const HrSalaryPage: React.FC = () => {
                 <div className={`mb-4 rounded-2xl border p-4 ${
                   salaryItemRiskItems.length
                     ? salaryItemRiskSummary.className
-                    : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
                 }`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
@@ -10001,7 +10003,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -10126,7 +10128,7 @@ export const HrSalaryPage: React.FC = () => {
                           className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                             isActive
                               ? 'border-sky-200 bg-sky-50/80 shadow-sm'
-                              : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                           }`}
                           onClick={() => setSelectedStructureId(String(item.id))}
                         >
@@ -10140,9 +10142,9 @@ export const HrSalaryPage: React.FC = () => {
                     })}
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
                     {!structureDetail && !structureDetailLoading && (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-12 text-center text-sm text-slate-500">
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
                         从左侧选择一个薪资结构查看详情。
                       </div>
                     )}
@@ -10227,7 +10229,7 @@ export const HrSalaryPage: React.FC = () => {
                         <div className={`rounded-2xl border p-4 ${
                           structureRiskItems.length
                             ? structureRiskSummary.className
-                            : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
                         }`}>
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
@@ -10257,7 +10259,7 @@ export const HrSalaryPage: React.FC = () => {
                           <div className={`rounded-2xl border p-4 ${
                             selectedStructureDeleteDiagnostics.riskItems.length
                               ? selectedStructureDeleteDiagnostics.riskSummary.className
-                              : 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
                           }`}>
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                               <div>
@@ -10296,7 +10298,7 @@ export const HrSalaryPage: React.FC = () => {
                             </Button>
                           )}
                         </div>
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                           <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
                             <div>
                               <div className="font-semibold text-slate-900">关联现薪样本</div>
@@ -10386,7 +10388,7 @@ export const HrSalaryPage: React.FC = () => {
                           ))}
                         </div>
                         {!structureDetail.items?.length && (
-                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
+                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
                             当前结构还没有关联薪资项目。
                           </div>
                         )}
@@ -10413,17 +10415,17 @@ export const HrSalaryPage: React.FC = () => {
             >
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                   <div className="text-xs text-slate-400">启用职级</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">{activeJobLevels.length}</div>
                   <div className="mt-2 text-sm text-slate-500">来自职级配置中心</div>
                 </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                   <div className="text-xs text-emerald-600">已配置薪级</div>
                   <div className="mt-2 text-2xl font-semibold text-emerald-700">{sortedSalaryGrades.length}</div>
                   <div className="mt-2 text-sm text-emerald-700">覆盖率 {gradeCoverageRate}%</div>
                 </div>
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
                   <div className="text-xs text-amber-600">待配置职级</div>
                   <div className="mt-2 text-2xl font-semibold text-amber-700">{pendingGradeLevels.length}</div>
                   <div className="mt-2 text-sm text-amber-700">可以从下方直接补齐</div>
@@ -10455,7 +10457,7 @@ export const HrSalaryPage: React.FC = () => {
                     {salaryGradeRiskItems.map(item => (
                       <div
                         key={item.key}
-                        className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                        className={`rounded-2xl border bg-white px-4 py-3 ${
                           item.severity === 'danger'
                             ? 'border-rose-200 text-rose-800'
                             : 'border-amber-200 text-amber-800'
@@ -10480,7 +10482,7 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
                         <div className={`text-sm font-semibold ${item.textClassName}`}>{item.coverage}%</div>
                       </div>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80">
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                         <div className={`h-full rounded-full ${item.barClassName}`} style={{ width: `${item.coverage}%` }} />
                       </div>
                       <div className="mt-3 text-xs text-slate-600">
@@ -10495,7 +10497,7 @@ export const HrSalaryPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
+              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-amber-800">待配置职级</div>
@@ -10533,7 +10535,7 @@ export const HrSalaryPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -10653,17 +10655,17 @@ export const HrSalaryPage: React.FC = () => {
             >
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                   <div className="text-xs text-slate-400">全量方案</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">{insuranceSchemeStats.total}</div>
                   <div className="mt-2 text-sm text-slate-500">来自真实接口返回</div>
                 </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                   <div className="text-xs text-emerald-600">启用中</div>
                   <div className="mt-2 text-2xl font-semibold text-emerald-700">{insuranceSchemeStats.enabled}</div>
                   <div className="mt-2 text-sm text-emerald-700">员工分配入口可见</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                   <div className="text-xs text-slate-500">禁用中</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-700">{insuranceSchemeStats.disabled}</div>
                   <div className="mt-2 text-sm text-slate-600">仍保留在维护列表</div>
@@ -10695,7 +10697,7 @@ export const HrSalaryPage: React.FC = () => {
                     {insuranceSchemeRiskItems.map(item => (
                       <div
                         key={item.key}
-                        className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                        className={`rounded-2xl border bg-white px-4 py-3 ${
                           item.severity === 'danger'
                             ? 'border-rose-200 text-rose-800'
                             : 'border-amber-200 text-amber-800'
@@ -10709,7 +10711,7 @@ export const HrSalaryPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
                   <Select value={insuranceSchemeCityFilter} onValueChange={setInsuranceSchemeCityFilter}>
                     <SelectTrigger>
@@ -10753,8 +10755,8 @@ export const HrSalaryPage: React.FC = () => {
 
               <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
                 currentEmployeeRecord
-                  ? 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
-                  : 'border-slate-200 bg-slate-50/80 text-slate-600'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-slate-200 bg-slate-50 text-slate-600'
               }`}>
                 {currentEmployeeRecord
                   ? `${currentSelectedEmployeeLabel || '当前员工'} 已锁定为联调对象，下方可以直接发起“给当前员工分配”回放社保方案切换。`
@@ -10762,24 +10764,24 @@ export const HrSalaryPage: React.FC = () => {
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                   <div className="text-xs text-emerald-600">命中 ACTIVE 台账方案</div>
                   <div className="mt-2 text-2xl font-semibold text-emerald-700">{activeLinkedInsuranceSchemes.length}</div>
                   <div className="mt-2 text-sm text-emerald-700">当前至少有一条员工台账在用</div>
                 </div>
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
                   <div className="text-xs text-amber-600">待补分配样本</div>
                   <div className="mt-2 text-2xl font-semibold text-amber-700">{unusedInsuranceSchemes.length}</div>
                   <div className="mt-2 text-sm text-amber-700">当前还没有员工命中的方案</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                   <div className="text-xs text-slate-500">仅历史台账</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-700">{expiredOnlyInsuranceSchemes.length}</div>
                   <div className="mt-2 text-sm text-slate-600">保留历史样本但当前无人使用</div>
                 </div>
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -10939,6 +10941,7 @@ export const HrSalaryPage: React.FC = () => {
             </WorkspaceSectionCard>
           </TabsContent>
         </Tabs>
+        </WorkspacePageContent>
       </div>
 
       {itemDialogOpen && (
@@ -11021,12 +11024,12 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前保存影响</div>
                 <div className="mt-2 font-semibold text-slate-900">{itemFormDiagnostics.modeLabel}</div>
                 <div className="mt-1 text-sm text-slate-500">{itemFormDiagnostics.modeHint}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">结构命中</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">{itemFormDiagnostics.usage?.structureIds.size || 0}</div>
                 <div className="mt-1 text-sm text-slate-500">
@@ -11040,7 +11043,7 @@ export const HrSalaryPage: React.FC = () => {
                     : '当前没有未来生效样本'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前口径</div>
                 <div className="mt-2 font-semibold text-slate-900">{itemCategoryLabel(itemForm.category)} / {itemTypeLabel(itemForm.itemType)}</div>
                 <div className="mt-1 text-sm text-slate-500">{itemForm.isTaxable ? '参与计税' : '不参与计税'}</div>
@@ -11070,8 +11073,8 @@ export const HrSalaryPage: React.FC = () => {
                       key={item.key}
                       className={`rounded-2xl border px-4 py-3 ${
                         item.severity === 'danger'
-                          ? 'border-rose-200 bg-white/70 text-rose-700'
-                          : 'border-amber-200 bg-white/70 text-amber-700'
+                          ? 'border-rose-200 bg-white text-rose-700'
+                          : 'border-amber-200 bg-white text-amber-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{item.title}</div>
@@ -11163,12 +11166,12 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前保存影响</div>
                 <div className="mt-2 font-semibold text-slate-900">{structureFormDiagnostics.modeLabel}</div>
                 <div className="mt-1 text-sm text-slate-500">{structureFormDiagnostics.modeHint}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">项目体检</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">{structureFormDiagnostics.selectedItems.length}</div>
                 <div className="mt-1 text-sm text-slate-500">
@@ -11180,7 +11183,7 @@ export const HrSalaryPage: React.FC = () => {
                     : '当前没有选中禁用项目'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">历史命中</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">{structureFormDiagnostics.activeUsage?.archiveCount || 0}</div>
                 <div className="mt-1 text-sm text-slate-500">
@@ -11216,8 +11219,8 @@ export const HrSalaryPage: React.FC = () => {
                       key={item.key}
                       className={`rounded-2xl border px-4 py-3 ${
                         item.severity === 'danger'
-                          ? 'border-rose-200 bg-white/70 text-rose-700'
-                          : 'border-amber-200 bg-white/70 text-amber-700'
+                          ? 'border-rose-200 bg-white text-rose-700'
+                          : 'border-amber-200 bg-white text-amber-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{item.title}</div>
@@ -11288,7 +11291,7 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">目标职级</div>
                 <div className="mt-2 font-semibold text-slate-900">
                   {gradeFormDiagnostics.selectedLevel
@@ -11306,12 +11309,12 @@ export const HrSalaryPage: React.FC = () => {
                     : '当前职级还没有薪级配置'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前保存影响</div>
                 <div className="mt-2 font-semibold text-slate-900">{gradeFormDiagnostics.modeLabel}</div>
                 <div className="mt-1 text-sm text-slate-500">{gradeFormDiagnostics.modeHint}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">覆盖率变化</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">
                   {gradeFormDiagnostics.currentCoverageRate}% → {gradeFormDiagnostics.nextCoverageRate}%
@@ -11345,8 +11348,8 @@ export const HrSalaryPage: React.FC = () => {
                       key={item.key}
                       className={`rounded-2xl border px-4 py-3 ${
                         item.severity === 'danger'
-                          ? 'border-rose-200 bg-white/70 text-rose-700'
-                          : 'border-amber-200 bg-white/70 text-amber-700'
+                          ? 'border-rose-200 bg-white text-rose-700'
+                          : 'border-amber-200 bg-white text-amber-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{item.title}</div>
@@ -11358,7 +11361,7 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs text-slate-400">上一级已配薪级</div>
                 {gradeFormDiagnostics.previousLevel && gradeFormDiagnostics.previousGrade ? (
                   <>
@@ -11376,7 +11379,7 @@ export const HrSalaryPage: React.FC = () => {
                   <div className="mt-2 text-sm text-slate-500">当前序列里还没有更低一级的已配薪级。</div>
                 )}
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs text-slate-400">下一级已配薪级</div>
                 {gradeFormDiagnostics.nextLevel && gradeFormDiagnostics.nextGrade ? (
                   <>
@@ -11509,7 +11512,7 @@ export const HrSalaryPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
               <div className="font-medium text-slate-900">当前比例汇总</div>
               <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
@@ -11524,12 +11527,12 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前保存影响</div>
                 <div className="mt-2 font-semibold text-slate-900">{insuranceSchemeFormDiagnostics.modeLabel}</div>
                 <div className="mt-1 text-sm text-slate-500">{insuranceSchemeFormDiagnostics.modeHint}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">台账命中</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">{insuranceSchemeFormDiagnostics.usage?.recordCount || 0}</div>
                 <div className="mt-1 text-sm text-slate-500">
@@ -11543,7 +11546,7 @@ export const HrSalaryPage: React.FC = () => {
                     : '保存后需要补员工分配样本'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">比例合计</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">{formatPercent(insuranceSchemeFormDiagnostics.totalRate)}</div>
                 <div className="mt-1 text-sm text-slate-500">
@@ -11575,8 +11578,8 @@ export const HrSalaryPage: React.FC = () => {
                       key={item.key}
                       className={`rounded-2xl border px-4 py-3 ${
                         item.severity === 'danger'
-                          ? 'border-rose-200 bg-white/70 text-rose-700'
-                          : 'border-amber-200 bg-white/70 text-amber-700'
+                          ? 'border-rose-200 bg-white text-rose-700'
+                          : 'border-amber-200 bg-white text-amber-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{item.title}</div>
@@ -11612,7 +11615,7 @@ export const HrSalaryPage: React.FC = () => {
               />
             ) : (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="mb-4">
                     <div className="font-semibold text-slate-900">基础参数</div>
                     <div className="mt-1 text-sm text-slate-500">维护起征点、生效日期和专项附加扣除参考标准。</div>
@@ -11663,7 +11666,7 @@ export const HrSalaryPage: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                       <div className="text-xs text-amber-600">标准月度合计</div>
                       <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(taxConfigStandardDeductionTotal)}</div>
                       <div className="mt-2 text-sm text-amber-700">用于核对各专项附加扣除参考标准是否录齐。</div>
@@ -11671,7 +11674,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <div className="font-semibold text-slate-900">税率档配置</div>
@@ -11686,7 +11689,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                       <div className="text-xs text-slate-400">起征点</div>
                       <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(taxConfigForm.threshold)}</div>
                       <div className="mt-2 text-sm text-slate-500">当前编辑值</div>
@@ -11696,7 +11699,7 @@ export const HrSalaryPage: React.FC = () => {
                       <div className="mt-2 text-2xl font-semibold text-sky-700">{taxConfigForm.effectiveDate || '-'}</div>
                       <div className="mt-2 text-sm text-sky-700">保存后将按此日期生效</div>
                     </div>
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                       <div className="text-xs text-emerald-600">税率档数</div>
                       <div className="mt-2 text-2xl font-semibold text-emerald-700">{taxConfigBracketPreview.rows.length}</div>
                       <div className="mt-2 text-sm text-emerald-700">即时从 JSON 解析</div>
@@ -11728,7 +11731,7 @@ export const HrSalaryPage: React.FC = () => {
                         {taxConfigDiagnostics.riskItems.map(item => (
                           <div
                             key={item.key}
-                            className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                            className={`rounded-2xl border bg-white px-4 py-3 ${
                               item.severity === 'danger'
                                 ? 'border-rose-200 text-rose-800'
                                 : 'border-amber-200 text-amber-800'
@@ -11743,7 +11746,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="font-semibold text-slate-900">当前联调样本预览</div>
@@ -11767,7 +11770,7 @@ export const HrSalaryPage: React.FC = () => {
                             <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(taxConfigDiagnostics.sampleTaxableIncome)}</div>
                             <div className="mt-2 text-sm text-slate-500">税前减个人社保后的口径</div>
                           </div>
-                          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
                             <div className="text-xs text-amber-600">应纳税所得额</div>
                             <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(taxConfigDiagnostics.sampleTaxableAmount)}</div>
                             <div className="mt-2 text-sm text-amber-700">已扣起征点与专项扣除</div>
@@ -11787,7 +11790,7 @@ export const HrSalaryPage: React.FC = () => {
                                   : '请先检查税率档区间是否连续'}
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                             <div className="text-xs text-emerald-600">预估个税 / 到手</div>
                             <div className="mt-2 text-2xl font-semibold text-emerald-700">{formatCurrency(taxConfigDiagnostics.estimatedTaxAmount)}</div>
                             <div className="mt-2 text-sm text-emerald-700">
@@ -11801,13 +11804,13 @@ export const HrSalaryPage: React.FC = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-4 py-10 text-center text-sm text-slate-500">
+                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
                           当前没有选中员工，无法展示样本税档预览。
                         </div>
                       )}
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="font-semibold text-slate-900">专项附加扣除参考值</div>
                       <div className="mt-1 text-sm text-slate-500">这里展示的是当前编辑值里的正向模板，方便你核对 HR 常用扣除标准是否录齐。</div>
 
@@ -11828,7 +11831,7 @@ export const HrSalaryPage: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50/80 px-4 py-10 text-center text-sm text-amber-700">
+                        <div className="mt-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-10 text-center text-sm text-amber-700">
                           当前编辑值里还没有任何正向专项附加扣除模板。
                         </div>
                       )}
@@ -11843,7 +11846,7 @@ export const HrSalaryPage: React.FC = () => {
                   />
 
                   {taxConfigBracketPreview.error ? (
-                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700">
+                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                       {taxConfigBracketPreview.error}
                     </div>
                   ) : (
@@ -11907,7 +11910,7 @@ export const HrSalaryPage: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-xs text-slate-500">
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
                     <div>规则说明：</div>
                     <div className="mt-1">1. `rate` 使用 0.03 这种小数格式，不是 3。</div>
                     <div className="mt-1">2. 最后一档可以不写 `max`，表示无上限。</div>
@@ -11955,7 +11958,7 @@ export const HrSalaryPage: React.FC = () => {
         >
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="mb-4">
                   <div className="font-semibold text-slate-900">{editingTaxDeductionId ? '编辑专项扣除' : '新增专项扣除'}</div>
                   <div className="mt-1 text-sm text-slate-500">支持直接维护当前员工的专项附加扣除，并同步刷新个税测算。</div>
@@ -12054,12 +12057,12 @@ export const HrSalaryPage: React.FC = () => {
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="text-xs text-slate-400">当前保存影响</div>
                     <div className="mt-2 font-semibold text-slate-900">{taxDeductionFormDiagnostics.modeLabel}</div>
                     <div className="mt-1 text-sm text-slate-500">{taxDeductionFormDiagnostics.modeHint}</div>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="text-xs text-slate-400">本月命中预估</div>
                     <div className="mt-2 font-semibold text-slate-900">
                       {taxDeductionFormDiagnostics.proposedInScope ? `会命中 ${taxReferencePeriod}` : `不会命中 ${taxReferencePeriod}`}
@@ -12077,7 +12080,7 @@ export const HrSalaryPage: React.FC = () => {
                         : '当前没有与历史 ACTIVE 记录的区间重叠'}
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="text-xs text-slate-400">参考与历史</div>
                     <div className="mt-2 font-semibold text-slate-900">
                       {taxDeductionFormDiagnostics.referenceAmount > 0
@@ -12117,8 +12120,8 @@ export const HrSalaryPage: React.FC = () => {
                           key={item.key}
                           className={`rounded-2xl border px-4 py-3 ${
                             item.severity === 'danger'
-                              ? 'border-rose-200 bg-white/70 text-rose-700'
-                              : 'border-amber-200 bg-white/70 text-amber-700'
+                              ? 'border-rose-200 bg-white text-rose-700'
+                              : 'border-amber-200 bg-white text-amber-700'
                           }`}
                         >
                           <div className="text-sm font-semibold">{item.title}</div>
@@ -12141,7 +12144,7 @@ export const HrSalaryPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <div className="font-semibold text-slate-900">专项扣除记录</div>
@@ -12156,7 +12159,7 @@ export const HrSalaryPage: React.FC = () => {
                     <div className="mt-2 text-2xl font-semibold text-slate-900">{employeeTaxDeductionStats.total}</div>
                     <div className="mt-2 text-sm text-slate-500">当前员工历史专项扣除</div>
                   </div>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                     <div className="text-xs text-emerald-600">ACTIVE 状态</div>
                     <div className="mt-2 text-2xl font-semibold text-emerald-700">{employeeTaxDeductionStats.active}</div>
                     <div className="mt-2 text-sm text-emerald-700">记录状态仍处于生效</div>
@@ -12166,7 +12169,7 @@ export const HrSalaryPage: React.FC = () => {
                     <div className="mt-2 text-2xl font-semibold text-sky-700">{employeeTaxDeductionStats.inScope}</div>
                     <div className="mt-2 text-sm text-sky-700">参与当前个税测算</div>
                   </div>
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
                     <div className="text-xs text-amber-600">当月扣除合计</div>
                     <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(employeeTaxDeductionStats.currentAmount)}</div>
                     <div className="mt-2 text-sm text-amber-700">与右侧测算摘要保持同月</div>
@@ -12191,7 +12194,7 @@ export const HrSalaryPage: React.FC = () => {
                       {taxDeductionRiskItems.map(item => (
                         <div
                           key={item.key}
-                          className={`rounded-2xl border bg-white/80 px-4 py-3 ${
+                          className={`rounded-2xl border bg-white px-4 py-3 ${
                             item.severity === 'danger'
                               ? 'border-rose-200 text-rose-800'
                               : 'border-amber-200 text-amber-800'
@@ -12206,7 +12209,7 @@ export const HrSalaryPage: React.FC = () => {
                 </div>
 
                 {employeeTaxDeductionDiagnostics.referenceEntries.length > 0 && (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                       <div>
                         <div className="font-semibold text-slate-900">个税参考模板</div>
@@ -12220,12 +12223,12 @@ export const HrSalaryPage: React.FC = () => {
                     <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
                       {employeeTaxDeductionDiagnostics.referenceEntries.map(item => {
                         const cardClassName = item.hasDuplicateInScope || item.hasOverlap
-                          ? 'border-rose-200 bg-rose-50/70'
+                          ? 'border-rose-200 bg-rose-50'
                           : item.inScopeCount > 0
-                            ? 'border-emerald-200 bg-emerald-50/70'
+                            ? 'border-emerald-200 bg-emerald-50'
                             : item.referenceAmount > 0
-                              ? 'border-amber-200 bg-amber-50/70'
-                              : 'border-slate-200 bg-white/80';
+                              ? 'border-amber-200 bg-amber-50'
+                              : 'border-slate-200 bg-white';
                         const textClassName = item.hasDuplicateInScope || item.hasOverlap
                           ? 'text-rose-700'
                           : item.inScopeCount > 0
@@ -12249,13 +12252,13 @@ export const HrSalaryPage: React.FC = () => {
                             </div>
 
                             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                              <div className="rounded-xl bg-white/70 px-3 py-2">
+                              <div className="rounded-xl bg-white px-3 py-2">
                                 <div className="text-xs text-slate-400">本月命中</div>
                                 <div className="mt-1 font-semibold text-slate-900">
                                   {item.inScopeCount ? `${item.inScopeCount} 条 / ${formatCurrency(item.inScopeAmount)}` : '0 条'}
                                 </div>
                               </div>
-                              <div className="rounded-xl bg-white/70 px-3 py-2">
+                              <div className="rounded-xl bg-white px-3 py-2">
                                 <div className="text-xs text-slate-400">历史记录</div>
                                 <div className="mt-1 font-semibold text-slate-900">
                                   {item.totalCount} 条
@@ -12313,7 +12316,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
                     <Select value={taxDeductionTypeFilter} onValueChange={setTaxDeductionTypeFilter}>
                       <SelectTrigger>
@@ -12549,7 +12552,7 @@ export const HrSalaryPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="font-semibold text-slate-900">{selectedInsuranceScheme?.schemeName || '请选择社保方案'}</div>
               <div className="mt-2 grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-3">
                 <div>
@@ -12592,8 +12595,8 @@ export const HrSalaryPage: React.FC = () => {
                       key={item.key}
                       className={`rounded-2xl border px-4 py-3 ${
                         item.severity === 'danger'
-                          ? 'border-rose-200 bg-white/70 text-rose-700'
-                          : 'border-amber-200 bg-white/70 text-amber-700'
+                          ? 'border-rose-200 bg-white text-rose-700'
+                          : 'border-amber-200 bg-white text-amber-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{item.title}</div>
@@ -12605,7 +12608,7 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前 ACTIVE</div>
                 <div className="mt-2 font-semibold text-slate-900">
                   {insuranceAssignDiagnostics.currentActiveLedger?.schemeName || employeeInsuranceDetail?.schemeName || '暂无当前方案'}
@@ -12618,7 +12621,7 @@ export const HrSalaryPage: React.FC = () => {
                       : '当前员工还没有 ACTIVE 台账'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">本次保存影响</div>
                 <div className="mt-2 font-semibold text-slate-900">{insuranceAssignDiagnostics.modeLabel}</div>
                 <div className="mt-1 text-sm text-slate-500">{insuranceAssignDiagnostics.modeHint}</div>
@@ -12628,7 +12631,7 @@ export const HrSalaryPage: React.FC = () => {
                     : '目标日期当前没有同日台账'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">预计缴纳合计</div>
                 <div className="mt-2 font-semibold text-slate-900">
                   {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.totalAmount) : '-'}
@@ -12643,7 +12646,7 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             {insuranceAssignPreview && (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/80">
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -12749,12 +12752,12 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前保存影响</div>
                 <div className="mt-2 font-semibold text-slate-900">{assignFormDiagnostics.modeLabel}</div>
                 <div className="mt-1 text-sm text-slate-500">{assignFormDiagnostics.modeHint}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">结构样本</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">{assignFormDiagnostics.benchmarkStats.count}</div>
                 <div className="mt-1 text-sm text-slate-500">
@@ -12768,7 +12771,7 @@ export const HrSalaryPage: React.FC = () => {
                     : '这次保存后可能成为首个联调样本'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前口径</div>
                 <div className="mt-2 font-semibold text-slate-900">
                   已录入 {assignFormDiagnostics.filledItemCount} / {assignFormDiagnostics.selectedItemCount} 项
@@ -12805,8 +12808,8 @@ export const HrSalaryPage: React.FC = () => {
                       key={item.key}
                       className={`rounded-2xl border px-4 py-3 ${
                         item.severity === 'danger'
-                          ? 'border-rose-200 bg-white/70 text-rose-700'
-                          : 'border-amber-200 bg-white/70 text-amber-700'
+                          ? 'border-rose-200 bg-white text-rose-700'
+                          : 'border-amber-200 bg-white text-amber-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{item.title}</div>
@@ -12922,7 +12925,7 @@ export const HrSalaryPage: React.FC = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">当前现薪</div>
                 <div className="mt-2 font-semibold text-slate-900">
                   {adjustmentFormEmployee ? buildEmployeeLabel(adjustmentFormEmployee) : '请选择员工'}
@@ -12933,12 +12936,12 @@ export const HrSalaryPage: React.FC = () => {
                     : '读取员工现薪后显示'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">本次创建影响</div>
                 <div className="mt-2 font-semibold text-slate-900">{adjustmentFormDiagnostics.modeLabel}</div>
                 <div className="mt-1 text-sm text-slate-500">{adjustmentFormDiagnostics.modeHint}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">变更规模</div>
                 <div className="mt-2 text-xl font-semibold text-slate-900">{adjustmentFormDiagnostics.changedItemCount}</div>
                 <div className="mt-1 text-sm text-slate-500">变动薪资项目数</div>
@@ -12968,8 +12971,8 @@ export const HrSalaryPage: React.FC = () => {
                       key={item.key}
                       className={`rounded-2xl border px-4 py-3 ${
                         item.severity === 'danger'
-                          ? 'border-rose-200 bg-white/70 text-rose-700'
-                          : 'border-amber-200 bg-white/70 text-amber-700'
+                          ? 'border-rose-200 bg-white text-rose-700'
+                          : 'border-amber-200 bg-white text-amber-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{item.title}</div>
@@ -13011,3 +13014,4 @@ export const HrSalaryPage: React.FC = () => {
 };
 
 export default HrSalaryPage;
+

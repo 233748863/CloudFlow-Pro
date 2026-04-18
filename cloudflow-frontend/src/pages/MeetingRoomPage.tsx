@@ -269,9 +269,9 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
   const selectedUsers = getSelectedUserNames(deptTree);
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {selectedUsers.length > 0 && (
-        <div className="border-b border-slate-100 bg-slate-50/70 p-3">
+        <div className="border-b border-slate-100 bg-slate-50 p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">已选成员</div>
           <div className="flex flex-wrap gap-1">
             {selectedUsers.slice(0, 10).map(u => (
@@ -288,12 +288,12 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
           </div>
         </div>
       )}
-      <div className="border-b border-slate-100 bg-slate-50/60 p-3">
+      <div className="border-b border-slate-100 bg-slate-50 p-3">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
             type="text"
-            className="h-11 rounded-2xl pl-9 text-sm"
+            className="h-11 rounded-xl pl-9 text-sm"
             placeholder="搜索部门或人员..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -307,7 +307,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
           deptTree.map(node => renderDeptNode(node, 0))
         )}
       </div>
-      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500">
+      <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500">
         已选择 <span className="font-medium text-slate-700">{selectedUsers.length}</span> 人
       </div>
     </div>
@@ -566,7 +566,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <div className="border-b border-slate-100 px-6 py-4">
           <div className="flex items-start justify-between gap-4">
@@ -713,7 +713,7 @@ const RoomFormModal: React.FC<{
   const isEdit = room && room.roomId;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
       <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
         <div className="border-b border-slate-100 px-6 py-4">
           <div className="flex items-start justify-between gap-4">
@@ -734,27 +734,27 @@ const RoomFormModal: React.FC<{
         <div className="space-y-4 bg-white p-6">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">会议室名称 <span className="text-red-500">*</span></label>
-            <Input className="h-12 rounded-2xl" type="text" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
+            <Input className="h-12 rounded-xl" type="text" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">位置 <span className="text-red-500">*</span></label>
-              <Input className="h-12 rounded-2xl" type="text" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="例如：3楼东侧" />
+              <Input className="h-12 rounded-xl" type="text" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="例如：3楼东侧" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">容纳人数 <span className="text-red-500">*</span></label>
-              <Input className="h-12 rounded-2xl" type="number" min={1} value={form.capacity || ''} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} placeholder="例如：50" />
+              <Input className="h-12 rounded-xl" type="number" min={1} value={form.capacity || ''} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} placeholder="例如：50" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">设备配置</label>
-            <Input className="h-12 rounded-2xl" type="text" value={equipmentInput} onChange={e => setEquipmentInput(e.target.value)} placeholder="多个设备用逗号分隔，例如：投影仪, 白板, 音响" />
+            <Input className="h-12 rounded-xl" type="text" value={equipmentInput} onChange={e => setEquipmentInput(e.target.value)} placeholder="多个设备用逗号分隔，例如：投影仪, 白板, 音响" />
             <p className="mt-1 text-xs text-slate-400">多个设备用逗号分隔</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
             <Select value={form.status || '1'} onValueChange={v => setForm({...form, status: v as '0' | '1'})}>
-              <SelectTrigger className="h-12 rounded-2xl">
+              <SelectTrigger className="h-12 rounded-xl">
                 <SelectValue placeholder="请选择" />
               </SelectTrigger>
               <SelectContent>
@@ -764,7 +764,7 @@ const RoomFormModal: React.FC<{
             </Select>
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
           <Button variant="outline" size="lg" onClick={onClose}>
             取消
           </Button>
@@ -783,7 +783,7 @@ const DeleteConfirmModal: React.FC<{
 }> = ({ visible, roomName, onClose, onConfirm }) => {
   if (!visible) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
       <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
         <div className="px-6 py-5">
           <div>
@@ -795,7 +795,7 @@ const DeleteConfirmModal: React.FC<{
             <p className="mt-2 text-sm leading-6 text-slate-600">确定要删除会议室 <span className="font-semibold text-red-600">「{roomName}」</span> 吗？此操作不可撤销。</p>
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
           <Button variant="outline" size="lg" onClick={onClose}>
             取消
           </Button>
@@ -1214,7 +1214,7 @@ export const MeetingRoomPage = () => {
 
             {activeTab === 'rooms' && (
               <>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">当前 {filteredRooms.length} 间</span>
                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{statusFilterLabel}</span>
@@ -1235,13 +1235,13 @@ export const MeetingRoomPage = () => {
                         placeholder="搜索会议室名称或位置..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="h-11 rounded-[18px] pl-10"
+                        className="h-11 rounded-xl pl-10"
                       />
                     </div>
                     <div className="flex items-center gap-2">
                       <Filter size={16} className="text-slate-500" />
                       <Select value={statusFilter} onValueChange={v => setStatusFilter(v as 'all' | RoomRealtimeStatus)}>
-                        <SelectTrigger className="h-11 rounded-[18px]">
+                        <SelectTrigger className="h-11 rounded-xl">
                           <SelectValue placeholder="请选择" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1287,7 +1287,7 @@ export const MeetingRoomPage = () => {
                       const equipmentList = parseEquipment(room.equipment);
                       return (
                         <Card key={room.roomId} className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                          <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3.5">
+                          <div className="border-b border-slate-100 bg-slate-50 px-4 py-3.5">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-start gap-3">
                                 <div className="rounded-xl bg-white p-2.5 text-slate-600 shadow-sm ring-1 ring-slate-200">
@@ -1326,7 +1326,7 @@ export const MeetingRoomPage = () => {
                               )}
                             </div>
 
-                            <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+                            <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                               <RoomBookings key={`${room.roomId}-${refreshKey}`} roomId={room.roomId.toString()} onBookingsLoaded={handleBookingsLoaded} />
                             </div>
 
@@ -1381,7 +1381,7 @@ export const MeetingRoomPage = () => {
 
             {activeTab === 'my-bookings' && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                       <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">共 {myBookings.length} 条</span>
@@ -1474,7 +1474,7 @@ export const MeetingRoomPage = () => {
                   />
                 ) : (
                   <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-                    <Card className="rounded-2xl border-slate-200 bg-slate-50/70 p-5 shadow-sm">
+                    <Card className="rounded-2xl border-slate-200 bg-slate-50 p-5 shadow-sm">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">资源总览</div>
                       <div className="mt-2 text-lg font-semibold tracking-tight text-slate-900">{topStatRoom?.roomName || '等待统计数据'}</div>
                       <div className="mt-4 space-y-2">
@@ -1519,7 +1519,7 @@ export const MeetingRoomPage = () => {
                               const utilizationRate = getUtilizationRate(stat);
 
                               return (
-                                <tr key={index} className="hover:bg-slate-50/80">
+                                <tr key={index} className="hover:bg-slate-50">
                                   <td className="whitespace-nowrap px-6 py-4">
                                     <div className="flex items-center">
                                       <Monitor size={16} className="mr-2 text-slate-400" />
@@ -1556,7 +1556,7 @@ export const MeetingRoomPage = () => {
 
       {/* 预订弹窗 */}
       {selectedRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="border-b border-slate-100 px-6 py-4">
               <div className="flex items-start justify-between gap-4">
@@ -1578,7 +1578,7 @@ export const MeetingRoomPage = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">会议主题 <span className="text-red-500">*</span></label>
                 <Input
-                  className="h-12 rounded-2xl"
+                  className="h-12 rounded-xl"
                   type="text"
                   value={bookingForm.title}
                   onChange={e => setBookingForm({ ...bookingForm, title: e.target.value })}
@@ -1628,7 +1628,7 @@ export const MeetingRoomPage = () => {
                 <OrgTreePicker deptTree={deptTree} selectedIds={selectedAttendees} onChange={setSelectedAttendees} />
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
               <Button variant="outline" size="lg" onClick={() => setSelectedRoom(null)}>
                 取消
               </Button>
