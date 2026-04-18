@@ -28,15 +28,14 @@ import {
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   WorkspaceBackdrop,
-  WorkspaceTableStateRow,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
   WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
+  WorkspaceHeroMetricsSection,
+  WorkspacePageContent,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 import { toast } from 'sonner';
 import {
   addUser,
@@ -114,15 +113,15 @@ const TreeSelect: React.FC<{
       </button>
 
       {open ? (
-        <div className="absolute z-[140] mt-1 max-h-56 w-full overflow-y-auto rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.8))] p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-2xl">
+        <div className="absolute z-[140] mt-1 max-h-56 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
           {flat.map(({ dept, level }) => (
             <button
               key={dept.deptId}
               type="button"
-              className={`flex w-full items-center rounded-[18px] px-3 py-2 text-sm transition ${
+              className={`flex w-full items-center rounded-xl px-3 py-2 text-sm transition ${
                 value === dept.deptId
-                  ? 'bg-pink-50 text-pink-600'
-                  : 'text-slate-700 hover:bg-white hover:text-pink-600'
+                  ? 'bg-slate-100 text-slate-900'
+                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
               }`}
               style={{ paddingLeft: `${level * 18 + 14}px` }}
               onClick={() => {
@@ -327,6 +326,32 @@ export const UserList = () => {
     { label: '停用账号', value: `${disabledCount} 个` },
     { label: '租户覆盖', value: `${tenantCount} 个` },
   ];
+  const heroMetrics = [
+    {
+      label: '用户规模',
+      value: `${users.length}`,
+      hint: '当前已接入账号总量',
+      icon: <UserRound size={17} />,
+    },
+    {
+      label: '正常账号',
+      value: `${activeCount}`,
+      hint: '可正常登录和使用系统',
+      icon: <ShieldCheck size={17} />,
+    },
+    {
+      label: '停用账号',
+      value: `${disabledCount}`,
+      hint: '需要复核状态或权限',
+      icon: <Trash2 size={17} />,
+    },
+    {
+      label: '角色模板',
+      value: `${roles.length}`,
+      hint: '用于用户授权的角色数量',
+      icon: <Check size={17} />,
+    },
+  ];
 
   const isEdit = Boolean(editingUser);
 
@@ -334,15 +359,15 @@ export const UserList = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Users size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 {timeLabel}
               </span>
             </div>
@@ -350,43 +375,16 @@ export const UserList = () => {
           title="用户管理"
           description="统一管理账号、组织归属、角色分配和租户信息，让系统侧页面也保持和业务申请页一致的工作台结构。"
           actions={(
-            <Button onClick={() => handleOpenModal()}>
+            <Button size="lg" onClick={() => handleOpenModal()}>
               <Plus size={15} />
               新增用户
             </Button>
           )}
           contentClassName="p-4 sm:p-5"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(125,211,252,0.1),transparent_48%)]"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="用户规模"
-              value={users.length}
-              hint="当前已接入账号总量"
-              aside={<UserRound size={18} className="text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="正常账号"
-              value={activeCount}
-              hint="可正常登录和使用系统"
-              aside={<ShieldCheck size={18} className="text-emerald-500" />}
-            />
-            <WorkspaceMetricCard
-              label="停用账号"
-              value={disabledCount}
-              hint="需要复核状态或权限"
-              aside={<Trash2 size={18} className="text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="角色模板"
-              value={roles.length}
-              hint="用于用户授权的角色数量"
-              aside={<Check size={18} className="text-sky-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="用户列表"
@@ -395,10 +393,10 @@ export const UserList = () => {
               overviewItems={overviewItems}
               headerBadges={(
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
                     已配置 {roles.length} 个角色
                   </span>
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
                     覆盖 {tenants.length} 个租户
                   </span>
                 </div>
@@ -408,7 +406,7 @@ export const UserList = () => {
                   清空筛选
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                   当前未应用额外筛选
                 </span>
               )}
@@ -456,11 +454,11 @@ export const UserList = () => {
                       <WorkspaceTableStateRow colSpan={8} title="暂无用户数据" description="可以先创建账号，再分配角色和组织信息。" />
                     ) : (
                       users.map((user) => (
-                        <tr key={user.userId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={user.userId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3 text-sm text-slate-500">{user.userId}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-50 text-xs font-semibold text-pink-600 ring-1 ring-pink-100">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
                                 {(user.nickName || user.userName || '?')[0]}
                               </div>
                               <span>{user.userName}</span>
@@ -473,7 +471,7 @@ export const UserList = () => {
                           <td className="px-4 py-3 text-sm text-slate-600">{user.deptName || '-'}</td>
                           <td className="px-4 py-3 text-sm text-slate-600">
                             {user.role ? (
-                              <span className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-600 ring-1 ring-pink-100">
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
                                 {user.role}
                               </span>
                             ) : '-'}
@@ -524,7 +522,7 @@ export const UserList = () => {
             maxWidthClassName="max-w-4xl"
           >
             <form onSubmit={handleSubmit} className="space-y-4">
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础资料</div>
                   <div className="mt-1 text-sm text-slate-500">先确认用户名、昵称和联系方式，后续再补充组织与授权信息。</div>
@@ -581,7 +579,7 @@ export const UserList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">组织归属</div>
                   <div className="mt-1 text-sm text-slate-500">将用户放到正确的部门和租户下，保证后续菜单权限和流程范围准确。</div>
@@ -616,7 +614,7 @@ export const UserList = () => {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">性别</label>
-                    <div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                    <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                       {[
                         ['0', '男'],
                         ['1', '女'],
@@ -626,7 +624,7 @@ export const UserList = () => {
                             type="radio"
                             checked={formData.sex === value}
                             onChange={() => setFormData({ ...formData, sex: value })}
-                            className="accent-pink-500"
+                            className="accent-slate-700"
                           />
                           <span>{label}</span>
                         </label>
@@ -635,7 +633,7 @@ export const UserList = () => {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">状态</label>
-                    <div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                    <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                       {[
                         ['0', '正常'],
                         ['1', '停用'],
@@ -645,7 +643,7 @@ export const UserList = () => {
                             type="radio"
                             checked={formData.status === value}
                             onChange={() => setFormData({ ...formData, status: value })}
-                            className="accent-pink-500"
+                            className="accent-slate-700"
                           />
                           <span>{label}</span>
                         </label>
@@ -655,7 +653,7 @@ export const UserList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">角色授权</div>
                   <div className="mt-1 text-sm text-slate-500">用更清晰的标签式交互分配角色，便于快速识别当前授权组合。</div>
@@ -668,8 +666,8 @@ export const UserList = () => {
                       onClick={() => toggleRole(role.roleId)}
                       className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                         selRoles.includes(role.roleId)
-                          ? 'border-pink-100 bg-pink-50 text-pink-600'
-                          : 'border-white/80 bg-white/80 text-slate-600 hover:bg-white hover:text-pink-600'
+                          ? 'border-slate-300 bg-white text-slate-900 shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
                       }`}
                     >
                       {selRoles.includes(role.roleId) ? <Check size={12} className="mr-1 inline" /> : null}
@@ -680,7 +678,7 @@ export const UserList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">备注</div>
                   <div className="mt-1 text-sm text-slate-500">保留账号补充说明，方便后续审计和协作交接。</div>
@@ -702,7 +700,7 @@ export const UserList = () => {
             </form>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
