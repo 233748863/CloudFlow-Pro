@@ -228,7 +228,7 @@ export const DeployWindowManagement: React.FC = () => {
           label="窗口总数"
           value={summary.total}
           hint="当前系统中定义的全部发布窗口"
-          aside={<Clock3 className="h-[18px] w-[18px] text-pink-500" />}
+          aside={<Clock3 className="h-[18px] w-[18px] text-cyan-700" />}
         />
         <WorkspaceMetricCard
           label="启用中"
@@ -286,10 +286,10 @@ export const DeployWindowManagement: React.FC = () => {
               <div
                 key={window.id}
                 className={cn(
-                  'rounded-[24px] border px-5 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]',
+                  'rounded-3xl border px-5 py-5 shadow-sm',
                   window.isEnabled
-                    ? 'border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.84))]'
-                    : 'border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.9),rgba(241,245,249,0.82))] opacity-85',
+                    ? 'border-slate-200 bg-white'
+                    : 'border-slate-200 bg-slate-50 opacity-90',
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -407,7 +407,7 @@ export const DeployWindowManagement: React.FC = () => {
               </div>
 
               <div className="flex items-end gap-3">
-                <label className="flex items-center gap-2 rounded-2xl border border-white/80 bg-white/76 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                   <input
                     type="checkbox"
                     checked={formData.isEnabled}
@@ -417,7 +417,7 @@ export const DeployWindowManagement: React.FC = () => {
                         isEnabled: event.target.checked,
                       }))
                     }
-                    className="h-4 w-4 rounded border-slate-300 accent-pink-500"
+                    className="h-4 w-4 rounded border-slate-300 accent-cyan-600"
                   />
                   保存后立即启用窗口
                 </label>
@@ -475,8 +475,8 @@ export const DeployWindowManagement: React.FC = () => {
                         className={cn(
                           'rounded-2xl px-4 py-2 text-sm font-medium transition',
                           selected
-                            ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_24px_rgba(236,72,153,0.2)]'
-                            : 'border border-white/80 bg-white/80 text-slate-600 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white',
+                            ? 'bg-cyan-600 text-white shadow-sm'
+                            : 'border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50',
                         )}
                       >
                         {day.label}

@@ -187,7 +187,7 @@ export const DeployApprovalManagement: React.FC = () => {
           label="待我审批"
           value={summary.pendingCount}
           hint="当前需要我处理的发布审批"
-          aside={<ShieldCheck className="h-[18px] w-[18px] text-pink-500" />}
+          aside={<ShieldCheck className="h-[18px] w-[18px] text-cyan-700" />}
         />
         <WorkspaceMetricCard
           label="我的提交"
@@ -221,7 +221,7 @@ export const DeployApprovalManagement: React.FC = () => {
         }
       >
         <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-2 rounded-[22px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
             {[
               { key: 'pending', label: '待我审批', count: pendingApprovals.length },
               { key: 'submitted', label: '我的提交', count: submittedApprovals.length },
@@ -233,10 +233,10 @@ export const DeployApprovalManagement: React.FC = () => {
                   type="button"
                   onClick={() => setActiveView(item.key as 'pending' | 'submitted')}
                   className={cn(
-                    'rounded-[16px] px-4 py-2 text-sm font-medium transition',
+                    'rounded-xl px-4 py-2 text-sm font-medium transition',
                     active
-                      ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]'
-                      : 'text-slate-600 hover:bg-white/90 hover:text-pink-600',
+                      ? 'bg-cyan-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-white hover:text-cyan-700',
                   )}
                 >
                   {item.label}
@@ -273,7 +273,7 @@ export const DeployApprovalManagement: React.FC = () => {
                 return (
                   <div
                     key={approval.id}
-                    className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.84))] px-5 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]"
+                    className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm"
                   >
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="min-w-0 flex-1 space-y-3">
@@ -301,15 +301,15 @@ export const DeployApprovalManagement: React.FC = () => {
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">提交时间</div>
                             <div className="mt-1 font-medium">{approval.submitTime}</div>
                           </div>
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">完成时间</div>
                             <div className="mt-1 font-medium">{approval.completeTime || '处理中'}</div>
                           </div>
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">申请人 ID</div>
                             <div className="mt-1 font-medium">{approval.submitterId}</div>
                           </div>
@@ -326,7 +326,7 @@ export const DeployApprovalManagement: React.FC = () => {
                           <>
                             <Button
                               size="sm"
-                              className="bg-[linear-gradient(135deg,#34d399,#10b981)] shadow-[0_12px_24px_rgba(16,185,129,0.2)]"
+                              className="bg-emerald-600 shadow-none hover:bg-emerald-700"
                               onClick={() =>
                                 setApproveModal({
                                   approvalId: approval.id,
@@ -424,7 +424,7 @@ export const DeployApprovalManagement: React.FC = () => {
                   return (
                     <div
                       key={step.id}
-                      className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm"
                     >
                       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                         <div className="space-y-2">
@@ -459,7 +459,7 @@ export const DeployApprovalManagement: React.FC = () => {
                       </div>
 
                       {step.approvalComment ? (
-                        <div className="mt-3 rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                           <div className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-slate-400">
                             <MessageSquare className="h-3.5 w-3.5" />
                             审批意见
@@ -489,10 +489,10 @@ export const DeployApprovalManagement: React.FC = () => {
           <div className="space-y-5">
             <div
               className={cn(
-                'rounded-[22px] border px-4 py-4 text-sm',
+                'rounded-2xl border px-4 py-4 text-sm',
                 approveModal.action === 'APPROVE'
-                  ? 'border-emerald-100 bg-emerald-50/80 text-emerald-700'
-                  : 'border-rose-100 bg-rose-50/80 text-rose-700',
+                  ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                  : 'border-rose-100 bg-rose-50 text-rose-700',
               )}
             >
               {approveModal.action === 'APPROVE'

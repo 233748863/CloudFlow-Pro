@@ -179,7 +179,7 @@ export const DeployStatistics: React.FC = () => {
             </Select>
           </div>
 
-          <div className="rounded-[22px] bg-white/78 px-4 py-3 text-sm text-slate-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
             当前统计对象：
             <span className="ml-2 font-semibold text-slate-700">
               {selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '未选择流程'}
@@ -209,7 +209,7 @@ export const DeployStatistics: React.FC = () => {
               label="总发布次数"
               value={derived.totalDeploys}
               hint="当前流程累计部署次数"
-              aside={<Package className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<Package className="h-[18px] w-[18px] text-cyan-700" />}
             />
             <WorkspaceMetricCard
               label="成功发布"
@@ -239,7 +239,7 @@ export const DeployStatistics: React.FC = () => {
               bodyClassName="space-y-5"
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.76))] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
                   <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                     <TrendingUp className="h-4 w-4 text-emerald-500" />
                     发布成功率
@@ -252,13 +252,13 @@ export const DeployStatistics: React.FC = () => {
                   </div>
                   <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-full rounded-full bg-[linear-gradient(135deg,#34d399,#10b981)] transition-all duration-500"
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-500"
                       style={{ width: `${derived.successRate}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.76))] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
                   <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                     <RotateCcw className="h-4 w-4 text-amber-500" />
                     回滚占比
@@ -271,14 +271,14 @@ export const DeployStatistics: React.FC = () => {
                   </div>
                   <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-full rounded-full bg-[linear-gradient(135deg,#fbbf24,#f97316)] transition-all duration-500"
+                      className="h-full rounded-full bg-amber-500 transition-all duration-500"
                       style={{ width: `${derived.rollbackRate}%` }}
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(248,250,252,0.78))] px-5 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+              <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-sm font-semibold text-slate-700">发布健康度</div>
@@ -297,16 +297,16 @@ export const DeployStatistics: React.FC = () => {
               eyebrow="Version Signal"
               bodyClassName="space-y-4"
             >
-              <div className="rounded-[24px] bg-[linear-gradient(135deg,rgba(253,242,248,0.9),rgba(255,255,255,0.82))] px-5 py-5 ring-1 ring-pink-100 shadow-[0_12px_28px_rgba(236,72,153,0.08)]">
+              <div className="rounded-3xl border border-cyan-200 bg-cyan-50 px-5 py-5 shadow-sm">
                 <div className="text-sm font-semibold text-slate-700">当前版本</div>
-                <div className="mt-3 text-4xl font-bold tracking-tight text-pink-500">
+                <div className="mt-3 text-4xl font-bold tracking-tight text-cyan-700">
                   {derived.latestVersion > 0 ? `v${derived.latestVersion}` : '--'}
                 </div>
                 <div className="mt-2 text-sm text-slate-500">已生成 {derived.snapshotCount} 个版本快照</div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-[22px] bg-white/78 px-4 py-4 text-sm text-slate-600 ring-1 ring-white/80">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
                   <div className="text-xs text-slate-400">平均发布密度</div>
                   <div className="mt-1 font-semibold text-slate-900">
                     {derived.latestVersion > 0
@@ -314,7 +314,7 @@ export const DeployStatistics: React.FC = () => {
                       : '暂无数据'}
                   </div>
                 </div>
-                <div className="rounded-[22px] bg-white/78 px-4 py-4 text-sm text-slate-600 ring-1 ring-white/80">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
                   <div className="text-xs text-slate-400">快照覆盖率</div>
                   <div className="mt-1 font-semibold text-slate-900">
                     {derived.latestVersion > 0
@@ -335,9 +335,9 @@ export const DeployStatistics: React.FC = () => {
             {suggestions.map((item, index) => (
               <div
                 key={`${item}-${index}`}
-                className="flex items-start gap-3 rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] px-4 py-4 text-sm text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600 shadow-sm"
               >
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-pink-500" />
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-700" />
                 <span>{item}</span>
               </div>
             ))}

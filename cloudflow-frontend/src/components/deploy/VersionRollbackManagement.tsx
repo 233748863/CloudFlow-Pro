@@ -256,7 +256,7 @@ export const VersionRollbackManagement: React.FC = () => {
           label="流程数"
           value={summary.processCount}
           hint="当前可用于回滚治理的流程定义"
-          aside={<GitBranch className="h-[18px] w-[18px] text-pink-500" />}
+          aside={<GitBranch className="h-[18px] w-[18px] text-cyan-700" />}
         />
         <WorkspaceMetricCard
           label="可回滚版本"
@@ -307,7 +307,7 @@ export const VersionRollbackManagement: React.FC = () => {
               </Select>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 rounded-[22px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
               {[
                 { key: 'versions', label: '版本列表' },
                 { key: 'history', label: '回滚历史' },
@@ -319,10 +319,10 @@ export const VersionRollbackManagement: React.FC = () => {
                     type="button"
                     onClick={() => setActiveView(item.key as 'versions' | 'history')}
                     className={cn(
-                      'rounded-[16px] px-4 py-2 text-sm font-medium transition',
+                      'rounded-xl px-4 py-2 text-sm font-medium transition',
                       active
-                        ? 'bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]'
-                        : 'text-slate-600 hover:bg-white/90 hover:text-pink-600',
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-white hover:text-cyan-700',
                     )}
                   >
                     {item.label}
@@ -363,7 +363,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 {versions.map((version) => (
                   <div
                     key={version.id}
-                    className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.84))] px-5 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]"
+                    className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm"
                   >
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="min-w-0 flex-1 space-y-3">
@@ -375,15 +375,15 @@ export const VersionRollbackManagement: React.FC = () => {
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">创建时间</div>
                             <div className="mt-1 font-medium">{version.createdTime}</div>
                           </div>
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">创建人</div>
                             <div className="mt-1 font-medium">{version.createdBy}</div>
                           </div>
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">流程定义</div>
                             <div className="mt-1 font-medium">{version.processDefId}</div>
                           </div>
@@ -419,7 +419,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 return (
                   <div
                     key={record.id}
-                    className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.84))] px-5 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)]"
+                    className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm"
                   >
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
@@ -436,7 +436,7 @@ export const VersionRollbackManagement: React.FC = () => {
                         >
                           {statusMeta.label}
                         </span>
-                        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-500 ring-1 ring-white/80">
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
                           {record.rollbackType === 'MANUAL' ? '手动回滚' : '自动回滚'}
                         </span>
                       </div>
@@ -496,7 +496,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 title="BPMN XML"
                 description="这是流程结构的原始 XML 内容，可用于对照流程定义。"
               >
-                <pre className="overflow-x-auto rounded-[22px] bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
+                <pre className="overflow-x-auto rounded-2xl bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
                   {snapshotModal.bpmnXml}
                 </pre>
               </WorkspaceSectionCard>
@@ -507,7 +507,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 title="表单配置"
                 description="回滚前建议确认表单字段和节点引用是否符合目标版本。"
               >
-                <pre className="overflow-x-auto rounded-[22px] bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
+                <pre className="overflow-x-auto rounded-2xl bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
                   {formatJsonSafely(snapshotModal.formConfig)}
                 </pre>
               </WorkspaceSectionCard>
@@ -518,7 +518,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 title="节点配置"
                 description="这里会展示审批节点、分支条件等节点级配置。"
               >
-                <pre className="overflow-x-auto rounded-[22px] bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
+                <pre className="overflow-x-auto rounded-2xl bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
                   {formatJsonSafely(snapshotModal.nodeConfig)}
                 </pre>
               </WorkspaceSectionCard>
@@ -572,7 +572,7 @@ export const VersionRollbackManagement: React.FC = () => {
                     return (
                       <div
                         key={`${impact.impactType}-${index}`}
-                        className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.8))] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm"
                       >
                         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                           <div>
@@ -591,11 +591,11 @@ export const VersionRollbackManagement: React.FC = () => {
                         </div>
 
                         <div className="mt-3 grid gap-3 md:grid-cols-2">
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">影响数量</div>
                             <div className="mt-1 font-medium">{impact.impactCount}</div>
                           </div>
-                          <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             <div className="text-xs text-slate-400">建议处理</div>
                             <div className="mt-1 font-medium">{impact.suggestion || '暂无建议'}</div>
                           </div>
@@ -608,7 +608,7 @@ export const VersionRollbackManagement: React.FC = () => {
             ) : null}
 
             {!rollbackModal.impact?.allowDeploy ? (
-              <div className="rounded-[24px] border border-rose-100 bg-rose-50/80 px-5 py-4">
+              <div className="rounded-3xl border border-rose-100 bg-rose-50 px-5 py-4">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 text-rose-500" />
                   <div className="space-y-2 text-sm text-rose-700">
