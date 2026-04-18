@@ -150,7 +150,7 @@ export const FormDesign = () => {
     return (
       <div className="relative min-h-screen pb-6">
         <WorkspaceBackdrop />
-        <div className="relative z-10 p-6">
+        <div className="relative z-10 p-4 sm:p-5">
           <WorkspaceSectionCard title="表单设计器" description="正在准备表单列表和编辑器。" eyebrow="Loading">
             <SkeletonForm fields={5} />
           </WorkspaceSectionCard>
@@ -185,7 +185,7 @@ export const FormDesign = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6 p-6">
+      <div className="relative z-10 space-y-3">
         <WorkspaceHeroCard
           badge={
             <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">

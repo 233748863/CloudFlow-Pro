@@ -23,6 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
+#临时文件
+.references/
+.tmp/
+
 # Java/Maven
 target/
 *.class

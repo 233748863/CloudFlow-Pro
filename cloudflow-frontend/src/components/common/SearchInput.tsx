@@ -1,12 +1,17 @@
 import React, { useEffect } from 'react';
 import { Search } from 'lucide-react';
+import { Input } from '@/components/ui';
+import { cn } from '@/utils/cn';
 
-interface SearchInputProps {
+interface SearchInputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
   value: string;
   placeholder?: string;
   debounceMs?: number;
   onChange: (value: string) => void;
   onSearch?: (value: string) => void;
+  className?: string;
+  inputClassName?: string;
 }
 
 export const SearchInput: React.FC<SearchInputProps> = ({
@@ -15,6 +20,9 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   debounceMs = 300,
   onChange,
   onSearch,
+  className,
+  inputClassName,
+  ...props
 }) => {
   useEffect(() => {
     if (!onSearch) {
@@ -31,16 +39,17 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   }, [debounceMs, onSearch, value]);
 
   return (
-    <div className="relative w-full">
+    <div className={cn('relative w-full', className)}>
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
         <Search size={16} className="text-slate-400" />
       </div>
-      <input
+      <Input
         value={value}
         type="text"
-        className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 shadow-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/25"
+        className={cn('pl-10', inputClassName)}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
+        {...props}
       />
     </div>
   );

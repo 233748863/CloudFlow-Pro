@@ -9,6 +9,9 @@ interface StatCardProps {
   icon?: React.ReactNode;
   iconVariant?: IconVariant;
   meta?: React.ReactNode;
+  iconClassName?: string;
+  valueClassName?: string;
+  metaClassName?: string;
   className?: string;
 }
 
@@ -26,18 +29,21 @@ export const StatCard: React.FC<StatCardProps> = ({
   icon,
   iconVariant = 'primary',
   meta,
+  iconClassName,
+  valueClassName,
+  metaClassName,
   className,
 }) => (
   <div className={cn('stat-card', className)}>
     {icon ? (
-      <div className={cn('stat-icon', iconVariantClassMap[iconVariant])}>{icon}</div>
+      <div className={cn('stat-icon', iconVariantClassMap[iconVariant], iconClassName)}>{icon}</div>
     ) : null}
     <div className="min-w-0 flex-1">
       <p className="stat-label truncate">{title}</p>
       <div className="mt-1">
-        <p className="stat-value truncate">{value}</p>
+        <p className={cn('stat-value truncate', valueClassName)}>{value}</p>
       </div>
-      {meta ? <div className="mt-1 text-xs text-slate-500">{meta}</div> : null}
+      {meta ? <div className={cn('mt-1 text-xs text-slate-500', metaClassName)}>{meta}</div> : null}
     </div>
   </div>
 );

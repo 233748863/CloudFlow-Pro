@@ -691,7 +691,7 @@ export const ProcessManagement = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-6 p-6">
+      <div className="relative z-10 space-y-3">
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">

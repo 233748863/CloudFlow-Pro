@@ -7,8 +7,17 @@ import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
-import { WorkspaceHeroCard, WorkspacePaginationBar, WorkspaceResultCard, WorkspaceWorkbenchCard } from '@/components/workspace/WorkspacePanels';
+import {
+  WorkspaceBackdrop,
+  WorkspaceHeroMetricsSection,
+  WorkspaceInlineState,
+  WorkspacePageContent,
+  WorkspacePaginationBar,
+  WorkspaceResultCard,
+  WorkspaceTableStateRow,
+  WorkspaceWorkbenchCard,
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -314,8 +323,8 @@ export const PaymentRequestPage: React.FC = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-600 ring-1 ring-emerald-100"><DollarSign size={14} />{todayLabel}</span>
@@ -329,29 +338,12 @@ export const PaymentRequestPage: React.FC = () => {
               <Button variant="outline" className="h-9 rounded-xl bg-white/85 px-4" onClick={handleExport}><Download size={15} className="mr-2 text-pink-500" />导出结果</Button>
             </div>
           )}
-          contentClassName="p-4 sm:p-5"
+          contentClassName="p-3.5 sm:p-4"
           glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(103,232,249,0.12),transparent_48%)]"
-        >
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {heroMetrics.map(item => (
-              <div key={item.label} className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}>
-                <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                      <div className="mt-1 text-[1.32rem] font-bold tracking-tight text-slate-950">{item.value}</div>
-                    </div>
-                    <div className={`rounded-[14px] p-2 shadow-[0_10px_22px_rgba(15,23,42,0.06)] backdrop-blur-md ${item.iconWrapClassName}`}>{item.icon}</div>
-                  </div>
-                  <div className="max-w-full truncate text-[10px] leading-4 text-slate-600">{item.hint}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="申请列表"
@@ -363,14 +355,14 @@ export const PaymentRequestPage: React.FC = () => {
               onQuickFilterChange={applyStatusFilter}
               glowClassName="bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.09),transparent_60%)]"
               quickFilterAside={hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
+                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-8 rounded-[18px] border-white/80 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">当前未应用额外筛选</span>
+                <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">当前未应用额外筛选</span>
               )}
               filterBar={(
                 <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
                   <Select value={paymentTypeInput} onValueChange={setPaymentTypeInput}>
-                    <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 px-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
+                    <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 px-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)] backdrop-blur-md"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
                     <SelectContent className={glassSelectContentClass}>
                       <SelectItem className="rounded-[16px]" value="">全部类型</SelectItem>
                       {PAYMENT_TYPE_OPTIONS.map(option => (
@@ -378,8 +370,8 @@ export const PaymentRequestPage: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" onClick={applySearch} className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"><Search size={15} className="mr-2" />应用筛选</Button>
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空条件</Button>
+                  <Button size="sm" onClick={applySearch} className="h-10 rounded-[18px] bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-3.5 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"><Search size={15} className="mr-2" />应用筛选</Button>
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-[18px] border-white/85 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"><RotateCcw size={15} className="mr-2" />清空条件</Button>
                 </div>
               )}
             />
@@ -447,6 +439,7 @@ export const PaymentRequestPage: React.FC = () => {
             </WorkspaceResultCard>
           </div>
         </Card>
+      </WorkspacePageContent>
 
         {showDialog && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
@@ -622,7 +615,6 @@ export const PaymentRequestPage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 };

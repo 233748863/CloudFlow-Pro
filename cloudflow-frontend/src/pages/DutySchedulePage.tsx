@@ -13,6 +13,7 @@ import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   Button,
+  Card,
   DatePicker,
   Input,
   Select,
@@ -26,14 +27,16 @@ import {
   Textarea,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
+  WorkspaceBackdrop,
   WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
+  WorkspaceHeroMetricsSection,
+  WorkspacePageContent,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 import { cn } from '@/utils/cn';
 
 type SearchParams = {
@@ -228,12 +231,52 @@ export const DutySchedulePage: React.FC = () => {
     };
   }, [list]);
 
+  const hasActiveFilters = Boolean(searchParams.status || searchParams.scheduleType);
+  const heroMetrics = [
+    {
+      label: '排班总数',
+      value: `${total}`,
+      hint: '当前筛选条件下的排班记录总数',
+      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))]',
+      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85',
+      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
+      icon: <Calendar size={17} />,
+    },
+    {
+      label: '待签到',
+      value: `${summary.scheduledCount}`,
+      hint: '尚未开始执行的排班',
+      panelClassName: 'border-sky-100/80 bg-[linear-gradient(135deg,rgba(239,246,255,0.95),rgba(255,255,255,0.82),rgba(240,249,255,0.8))]',
+      iconWrapClassName: 'bg-white/88 text-sky-600 ring-1 ring-sky-100',
+      glowClassName: 'from-sky-100/90 via-cyan-50/45 to-transparent',
+      icon: <LogIn size={17} />,
+    },
+    {
+      label: '值班中',
+      value: `${summary.checkedInCount}`,
+      hint: '已签到但尚未签退',
+      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))]',
+      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100',
+      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
+      icon: <RefreshCw size={17} />,
+    },
+    {
+      label: '已完成',
+      value: `${summary.completedCount}`,
+      hint: `已换班 ${summary.swappedCount} 条`,
+      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))]',
+      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100',
+      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
+      icon: <LogOut size={17} />,
+    },
+  ];
+
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6 p-6">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={
             <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
               <Calendar className="h-3.5 w-3.5" />
@@ -248,233 +291,212 @@ export const DutySchedulePage: React.FC = () => {
               新增排班
             </Button>
           }
-        >
-          <div className="mt-6 grid gap-4 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="排班总数"
-              value={total}
-              hint="当前筛选条件下的排班记录总数"
-              aside={<Calendar className="h-[18px] w-[18px] text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="待签到"
-              value={summary.scheduledCount}
-              hint="尚未开始执行的排班"
-              aside={<LogIn className="h-[18px] w-[18px] text-sky-500" />}
-            />
-            <WorkspaceMetricCard
-              label="值班中"
-              value={summary.checkedInCount}
-              hint="已签到但尚未签退"
-              aside={<RefreshCw className="h-[18px] w-[18px] text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="已完成"
-              value={summary.completedCount}
-              hint={`已换班 ${summary.swappedCount} 条`}
-              aside={<LogOut className="h-[18px] w-[18px] text-emerald-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
-
-        <WorkspaceWorkbenchCard
-          eyebrow="排班筛选"
-          title="值班条件与状态过滤"
-          total={total}
-          hasActiveFilters={Boolean(searchParams.status || searchParams.scheduleType)}
-          overviewItems={[
-            { label: '状态筛选', value: searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态' },
-            { label: '类型筛选', value: searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型' },
-            { label: '当前页', value: `${searchParams.pageNum} / ${totalPages}` },
-            { label: '每页条数', value: searchParams.pageSize },
-          ]}
-          filterBar={
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[220px_220px_auto_auto]">
-              <Select
-                value={filterDraft.status || 'ALL'}
-                onValueChange={(value) =>
-                  setFilterDraft((prev) => ({ ...prev, status: value === 'ALL' ? '' : value }))
-                }
-              >
-                <SelectTrigger className="h-12 rounded-2xl">
-                  <SelectValue placeholder="请选择" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">全部状态</SelectItem>
-                  <SelectItem value="SCHEDULED">已排班</SelectItem>
-                  <SelectItem value="CHECKED_IN">已签到</SelectItem>
-                  <SelectItem value="COMPLETED">已完成</SelectItem>
-                  <SelectItem value="SWAPPED">已换班</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filterDraft.scheduleType || 'ALL'}
-                onValueChange={(value) =>
-                  setFilterDraft((prev) => ({ ...prev, scheduleType: value === 'ALL' ? '' : value }))
-                }
-              >
-                <SelectTrigger className="h-12 rounded-2xl">
-                  <SelectValue placeholder="请选择" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">全部类型</SelectItem>
-                  <SelectItem value="DAILY">日常值班</SelectItem>
-                  <SelectItem value="HOLIDAY">节假日值班</SelectItem>
-                  <SelectItem value="EMERGENCY">应急值班</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button onClick={handleApplyFilters} className="h-12 rounded-2xl">
-                <Search className="h-4 w-4" />
-                搜索
-              </Button>
-              <Button variant="outline" onClick={handleResetFilters} className="h-12 rounded-2xl">
-                <RotateCcw className="h-4 w-4" />
-                重置
-              </Button>
-            </div>
-          }
+          contentClassName="p-3.5 sm:p-4"
+          metrics={heroMetrics}
         />
 
-        <WorkspaceResultCard
-          total={total}
-          title="排班列表"
-          description="集中查看排班标题、班次、值班人、签到签退状态以及换班操作。"
-          footer={
-            <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
-              <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                共 {total} 条
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      pageNum: Math.max(1, prev.pageNum - 1),
-                    }))
-                  }
-                  disabled={searchParams.pageNum === 1}
-                  className="rounded-xl"
-                >
-                  上一页
-                </Button>
-                <span className="px-3 py-2 text-sm text-slate-600">
-                  第 {searchParams.pageNum} / {totalPages} 页
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      pageNum: prev.pageNum + 1,
-                    }))
-                  }
-                  disabled={searchParams.pageNum >= totalPages}
-                  className="rounded-xl"
-                >
-                  下一页
-                </Button>
-              </div>
-            </div>
-          }
-        >
-          <div className="overflow-auto">
-            <table className="w-full min-w-[1100px]">
-              <TableHeader className="sticky top-0 z-10">
-                <tr>
-                  <TableHead>标题</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>值班日期</TableHead>
-                  <TableHead>班次</TableHead>
-                  <TableHead>值班人</TableHead>
-                  <TableHead>地点</TableHead>
-                  <TableHead>签到 / 签退</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableActionHead className="w-56">操作</TableActionHead>
-                </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <WorkspaceTableStateRow
-                    colSpan={9}
-                    type="loading"
-                    title="正在加载排班记录..."
-                  />
-                ) : list.length === 0 ? (
-                  <WorkspaceTableStateRow
-                    colSpan={9}
-                    title="暂无排班记录"
-                    description="先创建一条排班，后续可在这里执行签到、签退和换班。"
-                  />
-                ) : (
-                  list.map((item) => (
-                    <tr key={item.scheduleId} className="hover:bg-slate-50/80">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900">{item.title}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {typeMap[item.scheduleType] || item.scheduleType}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{item.dutyDate}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {shiftMap[item.shiftType || ''] || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-900">
-                        {item.userName}
-                        {item.backupUserName ? ` -> ${item.backupUserName}` : ''}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{item.location || '-'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-500">
-                        {item.checkInTime ? `到: ${item.checkInTime}` : '-'}
-                        <br />
-                        {item.checkOutTime ? `退: ${item.checkOutTime}` : '-'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-                            getStatusBadgeClassName(item.status || 'SCHEDULED'),
-                          )}
-                        >
-                          {statusMap[item.status || 'SCHEDULED'] || item.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            {
-                              label: '签到',
-                              icon: <LogIn size={14} />,
-                              onClick: () => handleCheckIn(item.scheduleId!),
-                              tone: 'success',
-                              hidden: item.status !== 'SCHEDULED',
-                            },
-                            {
-                              label: '换班',
-                              icon: <RefreshCw size={14} />,
-                              onClick: () => openSwapDialog(item.scheduleId!),
-                              tone: 'info',
-                              hidden: item.status !== 'SCHEDULED',
-                            },
-                            {
-                              label: '签退',
-                              icon: <LogOut size={14} />,
-                              onClick: () => handleCheckOut(item.scheduleId!),
-                              tone: 'warning',
-                              hidden: item.status !== 'CHECKED_IN',
-                            },
-                          ]}
-                        />
-                      </td>
+        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
+          <div className="flex flex-col gap-3">
+            <WorkspaceWorkbenchCard
+              eyebrow="排班筛选"
+              title="值班条件与状态过滤"
+              total={total}
+              hasActiveFilters={hasActiveFilters}
+              overviewItems={[
+                { label: '状态筛选', value: searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态' },
+                { label: '类型筛选', value: searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型' },
+                { label: '当前页', value: `${searchParams.pageNum} / ${totalPages}` },
+                { label: '每页条数', value: searchParams.pageSize },
+              ]}
+              filterBar={
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-[220px_220px_auto_auto]">
+                  <Select
+                    value={filterDraft.status || 'ALL'}
+                    onValueChange={(value) =>
+                      setFilterDraft((prev) => ({ ...prev, status: value === 'ALL' ? '' : value }))
+                    }
+                  >
+                    <SelectTrigger className="h-10 rounded-[18px]">
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">全部状态</SelectItem>
+                      <SelectItem value="SCHEDULED">已排班</SelectItem>
+                      <SelectItem value="CHECKED_IN">已签到</SelectItem>
+                      <SelectItem value="COMPLETED">已完成</SelectItem>
+                      <SelectItem value="SWAPPED">已换班</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={filterDraft.scheduleType || 'ALL'}
+                    onValueChange={(value) =>
+                      setFilterDraft((prev) => ({ ...prev, scheduleType: value === 'ALL' ? '' : value }))
+                    }
+                  >
+                    <SelectTrigger className="h-10 rounded-[18px]">
+                      <SelectValue placeholder="请选择" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">全部类型</SelectItem>
+                      <SelectItem value="DAILY">日常值班</SelectItem>
+                      <SelectItem value="HOLIDAY">节假日值班</SelectItem>
+                      <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Button onClick={handleApplyFilters} className="h-10 rounded-[18px]">
+                    <Search className="h-4 w-4" />
+                    搜索
+                  </Button>
+                  <Button variant="outline" onClick={handleResetFilters} className="h-10 rounded-[18px]">
+                    <RotateCcw className="h-4 w-4" />
+                    重置
+                  </Button>
+                </div>
+              }
+            />
+
+            <WorkspaceResultCard
+              total={total}
+              title="排班列表"
+              description="集中查看排班标题、班次、值班人、签到签退状态以及换班操作。"
+              footer={
+                <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
+                  <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    共 {total} 条
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setSearchParams((prev) => ({
+                          ...prev,
+                          pageNum: Math.max(1, prev.pageNum - 1),
+                        }))
+                      }
+                      disabled={searchParams.pageNum === 1}
+                      className="rounded-[18px]"
+                    >
+                      上一页
+                    </Button>
+                    <span className="px-3 py-2 text-sm text-slate-600">
+                      第 {searchParams.pageNum} / {totalPages} 页
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setSearchParams((prev) => ({
+                          ...prev,
+                          pageNum: prev.pageNum + 1,
+                        }))
+                      }
+                      disabled={searchParams.pageNum >= totalPages}
+                      className="rounded-[18px]"
+                    >
+                      下一页
+                    </Button>
+                  </div>
+                </div>
+              }
+            >
+              <div className="overflow-auto">
+                <table className="w-full min-w-[1100px]">
+                  <TableHeader className="sticky top-0 z-10">
+                    <tr>
+                      <TableHead>标题</TableHead>
+                      <TableHead>类型</TableHead>
+                      <TableHead>值班日期</TableHead>
+                      <TableHead>班次</TableHead>
+                      <TableHead>值班人</TableHead>
+                      <TableHead>地点</TableHead>
+                      <TableHead>签到 / 签退</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableActionHead className="w-56">操作</TableActionHead>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  </TableHeader>
+                  <tbody className="divide-y divide-slate-100">
+                    {loading ? (
+                      <WorkspaceTableStateRow
+                        colSpan={9}
+                        type="loading"
+                        title="正在加载排班记录..."
+                      />
+                    ) : list.length === 0 ? (
+                      <WorkspaceTableStateRow
+                        colSpan={9}
+                        title="暂无排班记录"
+                        description="先创建一条排班，后续可在这里执行签到、签退和换班。"
+                      />
+                    ) : (
+                      list.map((item) => (
+                        <tr key={item.scheduleId} className="hover:bg-slate-50/80">
+                          <td className="px-4 py-3 text-sm font-medium text-slate-900">{item.title}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">
+                            {typeMap[item.scheduleType] || item.scheduleType}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{item.dutyDate}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">
+                            {shiftMap[item.shiftType || ''] || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-900">
+                            {item.userName}
+                            {item.backupUserName ? ` -> ${item.backupUserName}` : ''}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{item.location || '-'}</td>
+                          <td className="px-4 py-3 text-xs text-slate-500">
+                            {item.checkInTime ? `到: ${item.checkInTime}` : '-'}
+                            <br />
+                            {item.checkOutTime ? `退: ${item.checkOutTime}` : '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+                                getStatusBadgeClassName(item.status || 'SCHEDULED'),
+                              )}
+                            >
+                              {statusMap[item.status || 'SCHEDULED'] || item.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <TableRowActions
+                              align="end"
+                              actions={[
+                                {
+                                  label: '签到',
+                                  icon: <LogIn size={14} />,
+                                  onClick: () => handleCheckIn(item.scheduleId!),
+                                  tone: 'success',
+                                  hidden: item.status !== 'SCHEDULED',
+                                },
+                                {
+                                  label: '换班',
+                                  icon: <RefreshCw size={14} />,
+                                  onClick: () => openSwapDialog(item.scheduleId!),
+                                  tone: 'info',
+                                  hidden: item.status !== 'SCHEDULED',
+                                },
+                                {
+                                  label: '签退',
+                                  icon: <LogOut size={14} />,
+                                  onClick: () => handleCheckOut(item.scheduleId!),
+                                  tone: 'warning',
+                                  hidden: item.status !== 'CHECKED_IN',
+                                },
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </WorkspaceResultCard>
           </div>
-        </WorkspaceResultCard>
-      </div>
+        </Card>
+      </WorkspacePageContent>
 
       {showDialog ? (
         <WorkspaceDialogShell

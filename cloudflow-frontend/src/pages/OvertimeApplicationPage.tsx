@@ -41,16 +41,16 @@ import {
 import { ProcessTrace } from '@/components/ProcessTrace';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
-  WorkspaceHeroCard,
+  WorkspaceBackdrop,
+  WorkspaceHeroMetricsSection,
+  WorkspaceInlineState,
+  WorkspacePageContent,
   WorkspacePaginationBar,
   WorkspaceResultCard,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
-import {
-  WorkspaceBackdrop,
-  WorkspaceInlineState,
   WorkspaceTableStateRow,
-} from '@/components/workspace/WorkspacePrimitives';
+  WorkspaceWorkbenchCard,
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const emptyForm = (): OvertimeApplicationForm => ({
   overtimeType: 'WORKDAY',
@@ -436,8 +436,8 @@ export const OvertimeApplicationPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
@@ -468,55 +468,29 @@ export const OvertimeApplicationPage: React.FC = () => {
               </Button>
             </div>
           )}
-          contentClassName="p-4 sm:p-5"
+          contentClassName="p-3.5 sm:p-4"
           glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
+          metrics={heroMetrics}
         >
-          <>
-            {restrictionMessage && (
-              <div
-                data-testid="hr-self-service-restriction"
-                className="rounded-[24px] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,247,237,0.88))] px-4 py-4 text-amber-900 shadow-[0_12px_26px_rgba(245,158,11,0.08)]"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
-                    <AlertCircle size={18} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助流程</div>
-                    <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
-                  </div>
+          {restrictionMessage ? (
+            <div
+              data-testid="hr-self-service-restriction"
+              className="mb-2 rounded-[20px] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,247,237,0.88))] px-3.5 py-3.5 text-amber-900 shadow-[0_12px_26px_rgba(245,158,11,0.08)]"
+            >
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+                  <AlertCircle size={18} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助流程</div>
+                  <div className="mt-1 text-xs leading-6 text-amber-800">{restrictionMessage}</div>
                 </div>
               </div>
-            )}
-
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {heroMetrics.map((item) => (
-                <div
-                  key={item.label}
-                  className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
-                >
-                  <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                  <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
-                  <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                        <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
-                      </div>
-                      <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
-                        {item.icon}
-                      </div>
-                    </div>
-
-                    <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
-                  </div>
-                </div>
-              ))}
             </div>
-          </>
-        </WorkspaceHeroCard>
+          ) : null}
+        </WorkspaceHeroMetricsSection>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="申请列表"
@@ -531,13 +505,13 @@ export const OvertimeApplicationPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleResetFilters}
-                  className="h-9 rounded-xl border-white/80 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                  className="h-8 rounded-[18px] border-white/80 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
                 >
                   <RotateCcw size={15} className="mr-2" />
                   清空所有条件
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                   当前未应用额外筛选
                 </span>
               )}
@@ -550,7 +524,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, status: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                      <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
                         <SelectValue placeholder="请选择状态" />
                       </SelectTrigger>
                       <SelectContent>
@@ -569,7 +543,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                         setSearchParams(prev => ({ ...prev, overtimeType: value, pageNum: 1 }))
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                      <SelectTrigger className="h-10 rounded-[18px] border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
                         <SelectValue placeholder="请选择加班类型" />
                       </SelectTrigger>
                       <SelectContent>
@@ -584,7 +558,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <Button
                     size="sm"
                     onClick={() => setSearchParams(prev => ({ ...prev, pageNum: 1 }))}
-                    className="h-10 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
+                    className="h-10 rounded-[18px] bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-3.5 text-white shadow-[0_12px_22px_rgba(236,72,153,0.22)] hover:bg-pink-600"
                   >
                     <Search size={15} className="mr-2" />
                     应用筛选
@@ -594,7 +568,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleResetFilters}
-                    className="h-10 rounded-2xl border-white/85 bg-white/74 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                    className="h-10 rounded-[18px] border-white/85 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
                   >
                     <RotateCcw size={15} className="mr-2" />
                     清空条件
@@ -724,6 +698,7 @@ export const OvertimeApplicationPage: React.FC = () => {
             </WorkspaceResultCard>
           </div>
         </Card>
+      </WorkspacePageContent>
 
         {showDialog && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
@@ -993,7 +968,6 @@ export const OvertimeApplicationPage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 };

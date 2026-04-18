@@ -34,7 +34,7 @@ export const WorkspaceControlGroup: React.FC<WorkspaceControlGroupProps> = ({
 }) => (
   <div
     className={cn(
-      'inline-flex h-11 items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm',
+      'inline-flex h-10 items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
       className,
     )}
   >
@@ -61,7 +61,7 @@ export const WorkspaceIconButton: React.FC<WorkspaceIconButtonProps> = ({
     aria-label={label}
     title={label}
     className={cn(
-      'h-11 w-11 text-slate-500 shadow-none hover:text-cyan-700',
+      'h-10 w-10 text-slate-500 shadow-none hover:text-cyan-700',
       variant === 'outline'
         ? 'border border-slate-200 bg-white hover:border-cyan-100 hover:bg-cyan-50'
         : 'border-0 bg-transparent hover:bg-cyan-50',
@@ -83,7 +83,7 @@ export function WorkspaceSegmentedControl<T extends string>({
   return (
     <div
       className={cn(
-        'inline-flex h-11 items-center rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]',
+        'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-slate-100 p-1',
         className,
       )}
     >
@@ -97,9 +97,9 @@ export function WorkspaceSegmentedControl<T extends string>({
             onClick={() => onChange(item.value)}
             disabled={item.disabled}
             className={cn(
-              'flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
+              'flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition',
               active
-                ? 'bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-100'
+                ? 'bg-white text-cyan-700 shadow-sm'
                 : 'text-slate-500 hover:text-slate-700',
               item.disabled && 'cursor-not-allowed opacity-50',
             )}

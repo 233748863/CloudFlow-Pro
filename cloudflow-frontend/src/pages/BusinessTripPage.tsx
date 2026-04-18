@@ -8,9 +8,18 @@ import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceInlineState, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
-import { WorkspaceHeroCard, WorkspacePaginationBar, WorkspaceResultCard, WorkspaceWorkbenchCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceIconButton } from '@/components/workspace/WorkspaceControls';
+import {
+  WorkspaceBackdrop,
+  WorkspaceHeroMetricsSection,
+  WorkspaceIconButton,
+  WorkspaceInlineState,
+  WorkspacePaginationBar,
+  WorkspacePageContent,
+  WorkspaceResultCard,
+  WorkspaceTableStateRow,
+  WorkspaceWorkbenchCard,
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -364,8 +373,8 @@ export const BusinessTripPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700 ring-1 ring-cyan-100">
@@ -390,34 +399,20 @@ export const BusinessTripPage: React.FC = () => {
           )}
           contentClassName="p-4 sm:p-5"
           glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_55%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]"
-        >
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {heroMetrics.map((item) => (
-              <div
-                key={item.label}
-                className={`group relative overflow-hidden rounded-[22px] border px-3.5 py-3 backdrop-blur-xl transition-transform duration-200 hover:-translate-y-0.5 ${item.panelClassName}`}
-              >
-                <div className={`pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-br ${item.glowClassName}`} />
-                <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(255,255,255,0.52),rgba(255,255,255,0.12)_38%,transparent_100%)] opacity-80" />
-                <div className="relative flex min-h-[82px] flex-col justify-between gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">{item.label}</div>
-                      <div className={`mt-1 text-[1.32rem] font-bold tracking-tight ${item.valueClassName}`}>{item.value}</div>
-                    </div>
-                    <div className={`rounded-[14px] p-2 backdrop-blur-md ${item.iconWrapClassName}`}>
-                      {item.icon}
-                    </div>
-                  </div>
+          metrics={heroMetrics.map((item) => ({
+            label: item.label,
+            value: item.value,
+            hint: item.hint,
+            icon: item.icon,
+            panelClassName: item.panelClassName,
+            iconWrapClassName: item.iconWrapClassName,
+            valueClassName: item.valueClassName,
+            hintClassName: item.hintClassName,
+            glowClassName: item.glowClassName,
+          }))}
+        />
 
-                  <div className={`max-w-full truncate text-[10px] leading-4 ${item.hintClassName}`}>{item.hint}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </WorkspaceHeroCard>
-
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="申请列表"
@@ -874,7 +869,7 @@ export const BusinessTripPage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

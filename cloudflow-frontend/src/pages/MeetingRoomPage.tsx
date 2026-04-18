@@ -10,23 +10,26 @@ import {
   MapPin, Users, Monitor, CheckCircle2, XCircle, Plus, Pencil, Trash2,
   Settings, X, Clock, UserPlus, Calendar, ChevronRight, ChevronDown,
   Building2, User, Search, ChevronLeft, BarChart3, Filter, CalendarDays,
-  Sparkles, ArrowRight
+  ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceEmptyPanel, WorkspaceInlineState, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
 import {
-  WorkspaceHeroCard,
-  WorkspaceSectionCard,
-} from '@/components/workspace/WorkspacePanels';
-import {
+  WorkspaceBackdrop,
   WorkspaceControlDivider,
   WorkspaceControlGroup,
+  WorkspaceEmptyPanel,
+  WorkspaceHeroMetricsSection,
   WorkspaceIconButton,
+  WorkspaceInlineState,
+  WorkspacePageContent,
+  WorkspaceSectionCard,
   WorkspaceSegmentedControl,
-} from '@/components/workspace/WorkspaceControls';
+  WorkspaceStatusPanel,
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 // ==================== 类型定义 ====================
 interface UserBrief {
@@ -1103,39 +1106,49 @@ export const MeetingRoomPage = () => {
   const statusFilterLabel = statusFilter === 'all' ? '全部状态' : statusFilter === 'available' ? '空闲' : statusFilter === 'in-use' ? '使用中' : '维护中';
   const bookingFilterLabel = bookingsFilter === 'all' ? '全部预订' : bookingsFilter === 'upcoming' ? '待开始' : '已结束';
   const heroMetrics = [
-    { label: '会议室', value: `${rooms.length} 间`, className: 'border-cyan-100 bg-cyan-50/80 text-cyan-700' },
-    { label: '空闲', value: `${availableCount} 间`, className: 'border-emerald-100 bg-emerald-50 text-emerald-700' },
-    { label: '使用中', value: `${inUseCount} 间`, className: 'border-amber-100 bg-amber-50 text-amber-700' },
-    { label: '今日预订', value: `${todayBookingCount} 条`, className: 'border-slate-200 bg-white text-slate-700' },
-  ];
-  const overviewCards = [
     {
-      label: '当前视图',
-      value: activeTabTitle,
-      meta: manageMode && activeTab === 'rooms' ? '管理模式' : '工作中',
-      metaClassName: manageMode && activeTab === 'rooms'
-        ? 'border-cyan-100 bg-cyan-50 text-cyan-700'
-        : 'border-slate-200 bg-white text-slate-500',
+      label: '会议室总量',
+      value: `${rooms.length} 间`,
+      hint: activeTab === 'rooms' ? `${filteredRooms.length} 间当前可见` : `${activeTabCount} 项当前视图`,
+      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
+      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-500',
+      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
+      icon: <Monitor size={17} />,
     },
     {
       label: '空闲会议室',
       value: `${availableCount} 间`,
-      meta: `${rooms.length} 间总量`,
-      metaClassName: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+      hint: `${rooms.length} 间总量`,
+      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
+      icon: <CheckCircle2 size={17} />,
     },
     {
       label: '使用中',
       value: `${inUseCount} 间`,
-      meta: maintenanceCount > 0 ? `${maintenanceCount} 间维护` : '无维护',
-      metaClassName: maintenanceCount > 0
-        ? 'border-amber-100 bg-amber-50 text-amber-700'
-        : 'border-slate-200 bg-white text-slate-500',
+      hint: maintenanceCount > 0 ? `${maintenanceCount} 间维护` : '当前无维护中会议室',
+      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
+      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
+      icon: <Clock size={17} />,
     },
     {
-      label: '总座位数',
-      value: `${totalCapacity} 席`,
-      meta: `${todayBookingCount} 条今日预订`,
-      metaClassName: 'border-slate-200 bg-white text-slate-500',
+      label: '今日预订',
+      value: `${todayBookingCount} 条`,
+      hint: totalCapacity > 0 ? `${totalCapacity} 席资源容量` : '等待会议室资源数据',
+      panelClassName: 'border-cyan-100/80 bg-[linear-gradient(135deg,rgba(236,254,255,0.96),rgba(255,255,255,0.82),rgba(240,249,255,0.8))] shadow-[0_16px_32px_rgba(14,165,233,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-cyan-600 ring-1 ring-cyan-100 shadow-[0_10px_22px_rgba(14,165,233,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-cyan-100/90 via-sky-50/45 to-transparent',
+      icon: <CalendarDays size={17} />,
     },
   ];
   const tabItems: Array<{ value: TabType; label: string; icon: React.ReactNode }> = [
@@ -1148,106 +1161,46 @@ export const MeetingRoomPage = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6 p-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_320px]">
-          <WorkspaceHeroCard
-            badge={(
-              <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                <span className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1.5 text-cyan-700 ring-1 ring-cyan-100">
-                  <Calendar size={14} />
-                  {dateLabel}
-                </span>
-                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
-                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{activeTabTitle}</span>
-              </div>
-            )}
-            title="会议室协同"
-            description={usageSummary}
-            actions={(
-              <div className="flex flex-wrap gap-3">
-                <Button size="xl" onClick={() => setActiveTab('my-bookings')}>
-                  我的预订
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-                <Button variant="outline" size="xl" onClick={() => setActiveTab('stats')}>
-                  <BarChart3 size={16} className="mr-2" />
-                  使用统计
-                </Button>
-                {activeTab === 'rooms' && (
-                  <Button
-                    variant={manageMode ? 'contrast' : 'outline'}
-                    size="xl"
-                    onClick={() => setManageMode(!manageMode)}
-                  >
-                    <Settings size={16} className="mr-2" />
-                    {manageMode ? '退出管理' : '管理模式'}
-                  </Button>
-                )}
-              </div>
-            )}
-            contentClassName="p-6 sm:p-7"
-            glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_52%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.14),transparent_42%)]"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50/85 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
-                <Sparkles size={13} />
-                会议室工作台
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
+          badge={(
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700 ring-1 ring-cyan-100">
+                <Calendar size={14} />
+                {dateLabel}
               </span>
-              {heroMetrics.map(item => (
-                <span
-                  key={item.label}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${item.className}`}
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{activeTabTitle}</span>
+            </div>
+          )}
+          title="会议室协同"
+          description={usageSummary}
+          actions={(
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              <Button size="lg" onClick={() => setActiveTab('my-bookings')}>
+                我的预订
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => setActiveTab('stats')}>
+                <BarChart3 size={16} className="mr-2" />
+                使用统计
+              </Button>
+              {activeTab === 'rooms' && (
+                <Button
+                  variant={manageMode ? 'contrast' : 'outline'}
+                  size="lg"
+                  onClick={() => setManageMode(!manageMode)}
                 >
-                  <span className="text-[11px] font-medium uppercase tracking-[0.14em] opacity-70">{item.label}</span>
-                  <span>{item.value}</span>
-                </span>
-              ))}
+                  <Settings size={16} className="mr-2" />
+                  {manageMode ? '退出管理' : '管理模式'}
+                </Button>
+              )}
             </div>
-          </WorkspaceHeroCard>
-
-          <WorkspaceSectionCard
-            eyebrow="当日概览"
-            title="实时状态"
-            headerAside={(
-              <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-                {manageMode && activeTab === 'rooms' ? '管理中' : '实时更新'}
-              </div>
-            )}
-            className="rounded-[30px]"
-            bodyClassName="space-y-3"
-          >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {overviewCards.map(item => (
-                <div key={item.label} className="rounded-[22px] border border-slate-100 bg-slate-50/75 px-4 py-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-slate-900">{item.value}</div>
-                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${item.metaClassName}`}>
-                      {item.meta}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-[22px] border border-slate-100 bg-white px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">最活跃会议室</div>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-slate-900">{topStatRoom?.roomName || '等待统计数据'}</div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
-                    {topStatRoom ? `${topStatRoom.bookingCount} 次预订` : '暂无统计'}
-                  </span>
-                  {topStatRoom ? (
-                    <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700">
-                      {formatMinutes(topStatRoom.totalMinutes)}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </WorkspaceSectionCard>
-        </div>
+          )}
+          metrics={heroMetrics}
+          contentClassName="p-3.5 sm:p-4"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_55%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]"
+        />
 
         <WorkspaceSectionCard
           eyebrow="会议室工作区"
@@ -1271,26 +1224,26 @@ export const MeetingRoomPage = () => {
               )}
             </div>
           )}
-          className="rounded-[32px]"
-          bodyClassName="space-y-5"
+          className={workspaceGlassSurfaceClassName}
+          bodyClassName="space-y-4"
         >
 
             {activeTab === 'rooms' && (
               <>
-                <div className="rounded-[24px] border border-slate-100 bg-white/90 p-4 shadow-sm">
+                <div className="rounded-[20px] border border-slate-100 bg-white/90 p-3.5 shadow-sm">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">当前 {filteredRooms.length} 间</span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1">{statusFilterLabel}</span>
-                    <span className={`rounded-full border px-3 py-1 ${manageMode ? 'border-cyan-100 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-500'}`}>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">当前 {filteredRooms.length} 间</span>
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{statusFilterLabel}</span>
+                    <span className={`rounded-full border px-2.5 py-1 ${manageMode ? 'border-cyan-100 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-500'}`}>
                       {manageMode ? '管理模式' : '预订模式'}
                     </span>
                     {searchQuery ? (
-                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-cyan-700">
+                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                         关键词: {searchQuery}
                       </span>
                     ) : null}
                   </div>
-                  <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+                  <div className="mt-3 grid grid-cols-1 gap-3.5 lg:grid-cols-[minmax(0,1fr)_220px]">
                     <div className="relative">
                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
@@ -1298,13 +1251,13 @@ export const MeetingRoomPage = () => {
                         placeholder="搜索会议室名称或位置..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="h-12 rounded-2xl pl-10"
+                        className="h-11 rounded-[18px] pl-10"
                       />
                     </div>
                     <div className="flex items-center gap-2">
                       <Filter size={16} className="text-slate-500" />
                       <Select value={statusFilter} onValueChange={v => setStatusFilter(v as 'all' | RoomRealtimeStatus)}>
-                        <SelectTrigger className="h-12 rounded-2xl">
+                        <SelectTrigger className="h-11 rounded-[18px]">
                           <SelectValue placeholder="请选择" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1342,22 +1295,22 @@ export const MeetingRoomPage = () => {
                 )}
 
                 {!loading && filteredRooms.length > 0 && (
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {filteredRooms.map(room => {
                       const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
                       const statusCfg = roomStatusConfig[realtimeStatus];
                       const StatusIcon = realtimeStatus === 'available' ? CheckCircle2 : realtimeStatus === 'in-use' ? Clock : XCircle;
                       const equipmentList = parseEquipment(room.equipment);
                       return (
-                        <Card key={room.roomId} className="overflow-hidden rounded-[28px] border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(15,23,42,0.04)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_46px_rgba(15,23,42,0.08)]">
-                          <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_right,rgba(207,250,254,0.78),transparent_56%),linear-gradient(180deg,rgba(248,250,252,0.9),rgba(255,255,255,0.94))] px-5 py-4">
+                        <Card key={room.roomId} className="overflow-hidden rounded-[24px] border-white/80 bg-white/90 shadow-[0_14px_34px_rgba(15,23,42,0.04)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+                          <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_right,rgba(207,250,254,0.78),transparent_56%),linear-gradient(180deg,rgba(248,250,252,0.9),rgba(255,255,255,0.94))] px-4 py-3.5">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-start gap-3">
-                                <div className="rounded-2xl bg-white/90 p-3 text-cyan-600 shadow-sm ring-1 ring-white/80">
-                                  <Monitor size={20} />
+                                <div className="rounded-xl bg-white/90 p-2.5 text-cyan-600 shadow-sm ring-1 ring-white/80">
+                                  <Monitor size={18} />
                                 </div>
                                 <div className="min-w-0">
-                                  <h3 className="text-lg font-semibold tracking-tight text-slate-900">{room.name}</h3>
+                                  <h3 className="text-base font-semibold tracking-tight text-slate-900">{room.name}</h3>
                                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                                     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
                                       <MapPin size={12} className="text-cyan-500" />
@@ -1370,14 +1323,14 @@ export const MeetingRoomPage = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${statusCfg.bg}`}>
+                              <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${statusCfg.bg}`}>
                                 <StatusIcon size={12} />
                                 {statusCfg.label}
                               </div>
                             </div>
                           </div>
 
-                          <div className="p-5">
+                          <div className="p-4">
                             <div className="flex flex-wrap gap-2">
                               {equipmentList.map((eq: string, i: number) => (
                                 <span key={i} className="rounded-full border border-slate-100 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{eq}</span>
@@ -1389,12 +1342,12 @@ export const MeetingRoomPage = () => {
                               )}
                             </div>
 
-                            <div className="mt-4 rounded-[20px] border border-slate-100 bg-slate-50/80 px-3 py-3">
+                            <div className="mt-3.5 rounded-[18px] border border-slate-100 bg-slate-50/80 px-3 py-2.5">
                               <RoomBookings key={`${room.roomId}-${refreshKey}`} roomId={room.roomId.toString()} onBookingsLoaded={handleBookingsLoaded} />
                             </div>
 
                             {!manageMode && (
-                              <div className="mt-4 flex gap-2">
+                              <div className="mt-3.5 flex gap-2">
                                 <Button
                                   size="lg"
                                   onClick={() => {
@@ -1422,7 +1375,7 @@ export const MeetingRoomPage = () => {
                             )}
 
                             {manageMode && (
-                              <div className="mt-4">
+                              <div className="mt-3.5">
                                 <TableRowActions
                                   wrap={false}
                                   className="w-full"
@@ -1615,7 +1568,7 @@ export const MeetingRoomPage = () => {
               </div>
             )}
         </WorkspaceSectionCard>
-      </div>
+      </WorkspacePageContent>
 
       {/* 预订弹窗 */}
       {selectedRoom && (

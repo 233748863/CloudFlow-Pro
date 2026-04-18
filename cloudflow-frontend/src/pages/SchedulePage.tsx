@@ -14,7 +14,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
   Clock3,
   Eye,
   FileText,
@@ -22,7 +21,6 @@ import {
   Plus,
   RotateCcw,
   Search,
-  Sparkles,
   SunMedium,
   Trash2,
   X,
@@ -60,21 +58,19 @@ import {
 } from '../utils/dateFormat';
 import {
   WorkspaceBackdrop,
-  WorkspaceInlineState,
-  WorkspaceTableStateRow,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
-  WorkspaceHeroCard,
-  WorkspaceResultCard,
-  WorkspaceSectionCard,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
-import {
   WorkspaceControlDivider,
   WorkspaceControlGroup,
+  WorkspaceHeroMetricsSection,
   WorkspaceIconButton,
+  WorkspaceInlineState,
+  WorkspacePageContent,
+  WorkspaceResultCard,
+  WorkspaceSectionCard,
+  WorkspaceTableStateRow,
+  WorkspaceWorkbenchCard,
   WorkspaceSegmentedControl,
-} from '@/components/workspace/WorkspaceControls';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 import { cn } from '@/utils/cn';
 
 type ScheduleEventType = SysScheduleEvent['type'];
@@ -491,20 +487,20 @@ const AsidePanel = ({
   meta?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <Card className="rounded-[22px] border-white/80 bg-white/80 p-4 backdrop-blur-xl">
+  <Card className="rounded-[20px] border-white/80 bg-white/80 p-3.5 backdrop-blur-xl">
     <SectionHeader
       eyebrow={eyebrow}
       title={title}
       aside={
         count ? (
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
             {count}
           </span>
         ) : undefined
       }
     />
-    {meta ? <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">{meta}</div> : null}
-    <div className="mt-3 space-y-2">{children}</div>
+    {meta ? <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">{meta}</div> : null}
+    <div className="mt-2.5 space-y-2">{children}</div>
   </Card>
 );
 
@@ -524,7 +520,7 @@ const AsideEventButton = ({
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-[20px] border border-slate-100 bg-white px-4 py-2.5 text-left transition hover:border-cyan-100 hover:bg-slate-50/80"
+      className="flex w-full items-center gap-3 rounded-[18px] border border-slate-100 bg-white px-3.5 py-2 text-left transition hover:border-cyan-100 hover:bg-slate-50/80"
     >
       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.color }} />
       <div className="min-w-0 flex-1">
@@ -951,9 +947,9 @@ export const SchedulePage = () => {
         : '日视图';
   const scheduleSummary = nextFocusEvent
     ? `接下来：${nextFocusEvent.extendedProps.originalTitle}`
-    : todayEvents.length > 0
-      ? `今日 ${todayEvents.length} 项安排`
-      : undefined;
+    : todayFocusEvent
+      ? `今天重点：${todayFocusEvent.extendedProps.originalTitle}`
+      : '按月、周、日视图统一查看个人安排。';
   const calendarWorkspaceDescription = loadError || undefined;
   const selectionSummary = selectedDate
     ? formatDateRangeFromDates(
@@ -986,188 +982,99 @@ export const SchedulePage = () => {
   const metrics = [
     {
       label: '当前窗口',
-      value: events.length,
-      hint: undefined,
-      icon: Calendar,
-      toneClassName: 'bg-cyan-50 text-cyan-600',
+      value: `${events.length} 项`,
+      hint: calendarWindowLabel || currentViewLabel,
+      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
+      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-500',
+      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
+      icon: <Calendar size={17} />,
     },
     {
       label: '今日日程',
-      value: todayEvents.length,
-      hint: undefined,
-      icon: SunMedium,
-      toneClassName: 'bg-amber-50 text-amber-600',
+      value: `${todayEvents.length} 项`,
+      hint: todayFocusEvent
+        ? `当前聚焦：${todayFocusEvent.extendedProps.originalTitle}`
+        : `全天 ${todayAllDayCount} 项`,
+      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
+      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
+      icon: <SunMedium size={17} />,
     },
     {
       label: '进行中',
-      value: ongoingEvents.length,
-      hint: undefined,
-      icon: Sparkles,
-      toneClassName: 'bg-sky-50 text-sky-600',
+      value: `${ongoingEvents.length} 项`,
+      hint: ongoingEvents.length > 0
+        ? `今天有 ${todayOngoingCount} 项正在推进`
+        : nextFocusTimingMeta?.hint || '当前没有进行中的事项',
+      panelClassName: 'border-cyan-100/80 bg-[linear-gradient(135deg,rgba(236,254,255,0.96),rgba(255,255,255,0.82),rgba(240,249,255,0.8))] shadow-[0_16px_32px_rgba(14,165,233,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-cyan-600 ring-1 ring-cyan-100 shadow-[0_10px_22px_rgba(14,165,233,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-cyan-100/90 via-sky-50/45 to-transparent',
+      icon: <Clock3 size={17} />,
     },
     {
-      label: '全天事项',
-      value: events.filter(event => event.allDay).length,
-      hint: undefined,
-      icon: Clock3,
-      toneClassName: 'bg-emerald-50 text-emerald-600',
+      label: '会议安排',
+      value: `${meetingEventsCount} 项`,
+      hint: boundMeetingEventsCount > 0
+        ? `已绑定会议室 ${boundMeetingEventsCount} 项`
+        : '当前没有绑定会议室的安排',
+      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
+      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
+      valueClassName: 'text-slate-950',
+      hintClassName: 'text-slate-600',
+      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
+      icon: <MapPin size={17} />,
     },
-  ];
-
-  const focusItems = [
-    {
-      label: '当前视图',
-      value: calendarTitle || '日历',
-      hint: calendarWindowLabel || '同步当前时间窗口',
-      toneClassName: 'bg-cyan-50 text-cyan-600',
-      onClick: () => calendarRef.current?.getApi().today(),
-    },
-    ...(todayFocusEvent
-      ? [{
-          label: '今日日程',
-          value: todayFocusEvent.allDay
-            ? '全天'
-            : timeFormatter.format(getSafeDate(todayFocusEvent.extendedProps.startTime) ?? now),
-          hint: todayFocusEvent.extendedProps.originalTitle,
-          toneClassName: 'bg-amber-50 text-amber-600',
-          onClick: () => openEventDetail(todayFocusEvent),
-        }]
-      : []),
-    ...(nextFocusEvent
-      ? [{
-          label: '即将开始',
-          value: nextFocusEvent.allDay
-            ? '全天'
-            : timeFormatter.format(getSafeDate(nextFocusEvent.extendedProps.startTime) ?? now),
-          hint: nextFocusEvent.extendedProps.originalTitle,
-          toneClassName: 'bg-sky-50 text-sky-600',
-          onClick: () => openEventDetail(nextFocusEvent),
-        }]
-      : []),
   ];
 
   return (
     <div className="relative min-h-full pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-6 p-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <WorkspaceHeroCard
-            badge={
-              <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                <span className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1.5 text-cyan-700 ring-1 ring-cyan-100">
-                  <Calendar size={14} />
-                  {shortDateFormatter.format(now)}
-                </span>
-                <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">
-                  {currentViewLabel}
-                </span>
-              </div>
-            }
-            title="我的日程"
-            description={scheduleSummary}
-            actions={
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  size="xl"
-                  onClick={() => openCreateDrawer()}
-                >
-                  <Plus size={18} className="mr-2" />
-                  新建日程
-                </Button>
-                <Button
-                  variant="outline"
-                  size="xl"
-                  onClick={() => calendarRef.current?.getApi().today()}
-                >
-                  <Calendar size={18} className="mr-2" />
-                  回到今天
-                </Button>
-              </div>
-            }
-          >
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => (nextFocusEvent ? openEventDetail(nextFocusEvent) : calendarRef.current?.getApi().today())}
-                className="inline-flex min-w-[260px] flex-1 items-center justify-between gap-3 rounded-full border border-slate-200/90 bg-white/90 px-4 py-3 text-left shadow-[0_10px_20px_rgba(15,23,42,0.05)] transition hover:border-cyan-100 hover:bg-white"
-              >
-                <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    下一关注
-                  </div>
-                  <div className="mt-1 truncate text-sm font-semibold text-slate-900">
-                    {nextFocusEvent ? nextFocusEvent.extendedProps.originalTitle : '当前没有待开始事项'}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500">
-                  {nextFocusTimingMeta ? (
-                    <span className={`rounded-full px-2.5 py-1 font-semibold ${nextFocusTimingMeta.badgeClass}`}>
-                      {nextFocusTimingMeta.label}
-                    </span>
-                  ) : null}
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
-                    {nextFocusEvent ? formatEventSlot(nextFocusEvent) : '当前为空'}
-                  </span>
-                </div>
-              </button>
-
-              {metrics.map(metric => {
-                const Icon = metric.icon;
-                return (
-                  <div
-                    key={metric.label}
-                    className="inline-flex min-w-[150px] flex-1 items-center gap-3 rounded-full border border-slate-200/90 bg-white/82 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.05)]"
-                  >
-                    <div className={`rounded-2xl p-2.5 ${metric.toneClassName}`}>
-                      <Icon size={16} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-medium text-slate-400">{metric.label}</div>
-                      <div className="mt-1 text-sm font-semibold text-slate-900">{metric.value}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </WorkspaceHeroCard>
-          <WorkspaceSectionCard
-            eyebrow="今日节奏"
-            title="今天先看这些"
-            headerAside={
-              <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
+          badge={
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700 ring-1 ring-cyan-100">
+                <Calendar size={14} />
+                {shortDateFormatter.format(now)}
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
                 {currentViewLabel}
-              </div>
-            }
-            className="rounded-[34px]"
-            bodyClassName="space-y-3"
-          >
-            {focusItems.length > 0 ? (
-              focusItems.map(item => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={item.onClick}
-                  className="flex w-full items-start gap-3 rounded-[22px] border border-slate-100 bg-white px-4 py-3 text-left transition hover:border-cyan-100 hover:bg-cyan-50/30"
-                >
-                  <div className={`rounded-2xl p-3 ${item.toneClassName}`}>
-                    <CircleDot size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                      <div className="text-xs font-semibold text-slate-400">{item.value}</div>
-                    </div>
-                    <div className="mt-1 truncate text-xs text-slate-500">{item.hint}</div>
-                  </div>
-                </button>
-              ))
-            ) : (
-              <WorkspaceInlineState title="今天节奏平稳" className="py-6" />
-            )}
-          </WorkspaceSectionCard>
-        </div>
+              </span>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+                {calendarWindowLabel || '当前时间窗口'}
+              </span>
+            </div>
+          }
+          title="我的日程"
+          description={scheduleSummary}
+          actions={
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              <Button size="lg" onClick={() => openCreateDrawer()}>
+                <Plus size={16} className="mr-2" />
+                新建日程
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => calendarRef.current?.getApi().today()}
+              >
+                <Calendar size={16} className="mr-2" />
+                回到今天
+              </Button>
+            </div>
+          }
+          metrics={metrics}
+          contentClassName="p-3.5 sm:p-4"
+          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_55%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]"
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               eyebrow="日程筛选"
@@ -1279,14 +1186,14 @@ export const SchedulePage = () => {
                 ) : null
               }
             >
-              <div className="space-y-4 px-4 py-4">
+              <div className="space-y-3.5 px-3.5 py-3.5">
                 {tableHasActiveFilters ? (
-                  <div className="flex flex-col gap-2.5 rounded-[20px] border border-cyan-100 bg-cyan-50/70 px-4 py-3 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex flex-col gap-2 rounded-[18px] border border-cyan-100 bg-cyan-50/70 px-3.5 py-2.5 xl:flex-row xl:items-center xl:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                       {activeFilterSummaries.map(item => (
                         <span
                           key={item}
-                          className="rounded-full border border-cyan-100 bg-white/90 px-3 py-1.5 text-xs font-medium text-cyan-700"
+                          className="rounded-full border border-cyan-100 bg-white/90 px-2.5 py-1 text-xs font-medium text-cyan-700"
                         >
                           {item}
                         </span>
@@ -1297,7 +1204,7 @@ export const SchedulePage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between rounded-[20px] border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-xs text-slate-500">
+                  <div className="flex items-center justify-between rounded-[18px] border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-xs text-slate-500">
                     <span>{calendarTitle || '当前视图'}</span>
                     <span>
                       {tableTotal > 0
@@ -1438,26 +1345,31 @@ export const SchedulePage = () => {
             </WorkspaceResultCard>
           </div>
         </Card>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <WorkspaceSectionCard title="日历画布" eyebrow="日历工作区" description={calendarWorkspaceDescription}>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-2.5">
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <WorkspaceSectionCard
+            title="日历画布"
+            eyebrow="日历工作区"
+            description={calendarWorkspaceDescription}
+            className={workspaceGlassSurfaceClassName}
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   {(['MEETING', 'WORK', 'PERSONAL'] as ScheduleEventType[]).map(type => (
-                    <span key={type} className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${EVENT_TYPE_META[type].badgeClass}`}>
+                    <span key={type} className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold ${EVENT_TYPE_META[type].badgeClass}`}>
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EVENT_TYPE_META[type].color }} />
                       {EVENT_TYPE_META[type].label}
                     </span>
                   ))}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700">
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700">
                     {calendarTitle || currentViewLabel}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-medium text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium text-slate-500">
                     {calendarWindowLabel || currentViewLabel}
                   </span>
-                  <span className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-slate-400">
+                  <span className="rounded-full border border-slate-200/80 bg-white/70 px-2.5 py-1 text-slate-400">
                     {calendarToolbarSummary}
                   </span>
                 </div>
@@ -1486,8 +1398,8 @@ export const SchedulePage = () => {
             </div>
 
             <div className="schedule-calendar relative h-[720px] md:h-[760px] xl:h-[820px]">
-              <style>{`.schedule-calendar .fc { height: 100%; color: #0f172a; }.schedule-calendar .fc-header-toolbar { display: none !important; }.schedule-calendar .fc-scrollgrid, .schedule-calendar .fc-theme-standard .fc-scrollgrid { border-radius: 28px; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.95); background: radial-gradient(circle at top right, rgba(207, 250, 254, 0.88), transparent 35%), radial-gradient(circle at top left, rgba(220, 252, 231, 0.5), transparent 30%), linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%); }.schedule-calendar .fc-daygrid-day-frame { min-height: 118px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.84) 100%); }.schedule-calendar .fc-day-today .fc-daygrid-day-frame, .schedule-calendar .fc-day-today .fc-timegrid-col-frame { background: radial-gradient(circle at top, rgba(207, 250, 254, 0.9), transparent 52%), linear-gradient(180deg, rgba(240, 253, 250, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%); }.schedule-calendar .fc-daygrid-day-number { margin: 0.45rem 0.55rem 0 0; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.82rem; font-weight: 700; color: #334155; }.schedule-calendar .fc-day-today .fc-daygrid-day-number { background: #0891b2; color: #fff; box-shadow: 0 8px 16px rgba(8, 145, 178, 0.28); }.schedule-calendar .fc-day-other .fc-daygrid-day-number { color: #94a3b8; }.schedule-calendar .fc-event { cursor: pointer; border: none !important; border-radius: 16px !important; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.65); }.schedule-calendar .fc-event-main { padding: 0 !important; }`}</style>
-              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[28px] bg-white/55 backdrop-blur-[2px]"><div className="rounded-full border border-cyan-100 bg-white/90 px-4 py-2 text-sm font-medium text-cyan-700 shadow-sm">正在同步日程...</div></div>}
+              <style>{`.schedule-calendar .fc { height: 100%; color: #0f172a; }.schedule-calendar .fc-header-toolbar { display: none !important; }.schedule-calendar .fc-scrollgrid, .schedule-calendar .fc-theme-standard .fc-scrollgrid { border-radius: 24px; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.95); background: radial-gradient(circle at top right, rgba(207, 250, 254, 0.88), transparent 35%), radial-gradient(circle at top left, rgba(220, 252, 231, 0.5), transparent 30%), linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%); }.schedule-calendar .fc-daygrid-day-frame { min-height: 118px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.84) 100%); }.schedule-calendar .fc-day-today .fc-daygrid-day-frame, .schedule-calendar .fc-day-today .fc-timegrid-col-frame { background: radial-gradient(circle at top, rgba(207, 250, 254, 0.9), transparent 52%), linear-gradient(180deg, rgba(240, 253, 250, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%); }.schedule-calendar .fc-daygrid-day-number { margin: 0.45rem 0.55rem 0 0; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.82rem; font-weight: 700; color: #334155; }.schedule-calendar .fc-day-today .fc-daygrid-day-number { background: #0891b2; color: #fff; box-shadow: 0 8px 16px rgba(8, 145, 178, 0.28); }.schedule-calendar .fc-day-other .fc-daygrid-day-number { color: #94a3b8; }.schedule-calendar .fc-event { cursor: pointer; border: none !important; border-radius: 14px !important; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.65); }.schedule-calendar .fc-event-main { padding: 0 !important; }`}</style>
+              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-white/55 backdrop-blur-[2px]"><div className="rounded-full border border-cyan-100 bg-white/90 px-4 py-2 text-sm font-medium text-cyan-700 shadow-sm">正在同步日程...</div></div>}
               <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1517,16 +1429,16 @@ export const SchedulePage = () => {
             </div>
           </WorkspaceSectionCard>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <AsidePanel
               eyebrow="今日安排"
               title="今日日程"
               count={`${todayEvents.length} 项`}
               meta={
                 <>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">全天 {todayAllDayCount}</span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">进行中 {todayOngoingCount}</span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">会议 {todayMeetingCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">全天 {todayAllDayCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">进行中 {todayOngoingCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">会议 {todayMeetingCount}</span>
                 </>
               }
             >
@@ -1550,8 +1462,8 @@ export const SchedulePage = () => {
               count={`${nextStartingEvents.length} 项`}
               meta={
                 <>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">24 小时内 {next24HourEventsCount}</span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">全天 {nextAllDayCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">24 小时内 {next24HourEventsCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">全天 {nextAllDayCount}</span>
                 </>
               }
             >
@@ -1571,7 +1483,7 @@ export const SchedulePage = () => {
 
             <AsidePanel eyebrow="类型拆分" title="日程类型">
               {typeBreakdownItems.map(item => (
-                <div key={item.type} className="flex items-center gap-3 rounded-[20px] border border-slate-100 bg-white px-4 py-3">
+                <div key={item.type} className="flex items-center gap-3 rounded-[18px] border border-slate-100 bg-white px-3.5 py-2.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EVENT_TYPE_META[item.type].color }} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
@@ -1593,7 +1505,7 @@ export const SchedulePage = () => {
             </AsidePanel>
           </div>
         </div>
-      </div>
+      </WorkspacePageContent>
       {isCreateDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div className="absolute inset-0 bg-slate-900/28 backdrop-blur-sm" onClick={closeCreateDrawer} />
