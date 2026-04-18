@@ -62,33 +62,31 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
   return createPortal(
     <div
       className={cn(
-        'cf-announcement-modal-overlay fixed inset-0 flex items-start justify-center overflow-y-auto bg-slate-900/32 p-4 pt-[6vh] backdrop-blur-sm',
+        'cf-announcement-modal-overlay fixed inset-0 flex items-start justify-center overflow-y-auto bg-slate-900/32 p-4 pt-[6vh]',
         zIndexClassName,
       )}
       onClick={onClose}
     >
       <div
         className={cn(
-          'cf-announcement-modal-panel w-full overflow-hidden rounded-[30px] border border-white/80 bg-white/96 shadow-[0_28px_72px_rgba(15,23,42,0.18)]',
+          'cf-announcement-modal-panel w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl',
           maxWidthClassName,
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative border-b border-slate-100 px-6 pb-4 pt-5">
-          <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_70%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]" />
-
+        <div className="border-b border-slate-100 bg-white px-6 pb-4 pt-5">
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 text-cyan-700">
                   <Bell size={18} />
                 </div>
-                <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 ring-1 ring-cyan-100">
+                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">
                   {titleBadgeLabel}
                 </span>
                 {headerBadges}
                 {!announcement.isRead ? (
-                  <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">
+                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">
                     未读
                   </span>
                 ) : null}
@@ -116,27 +114,28 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
           </div>
         </div>
 
-        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.96))] px-6 py-6">
+        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-slate-50 px-6 py-6">
           <div className="relative">
-            <div className="absolute bottom-0 left-0 top-0 w-1 rounded-full bg-cyan-500/75" />
+            <div className="absolute bottom-0 left-0 top-0 w-1 rounded-full bg-cyan-500" />
             <div className="pl-5">
               <AnnouncementContent content={announcement.content} />
             </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-100 bg-slate-50/80 px-6 py-5">
+        <div className="border-t border-slate-100 bg-slate-50 px-6 py-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-slate-500">
               {announcement.isRead ? footerReadText : footerUnreadText}
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="lg" onClick={onClose}>
+              <Button variant="outline" size="lg" className="rounded-xl" onClick={onClose}>
                 关闭
               </Button>
               {!announcement.isRead && onMarkAsRead ? (
                 <Button
                   size="lg"
+                  className="rounded-xl px-5"
                   onClick={() => void onMarkAsRead(announcement.announcementId)}
                 >
                   <span className="flex items-center gap-2">

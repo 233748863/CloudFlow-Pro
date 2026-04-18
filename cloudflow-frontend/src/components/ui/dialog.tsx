@@ -59,17 +59,17 @@ export const DialogContent = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in-0" onClick={() => onOpenChange(false)} />
+      <div className="fixed inset-0 z-50 bg-slate-900/32 transition-opacity animate-in fade-in-0" onClick={() => onOpenChange(false)} />
       <div
         className={cn(
-          'fixed z-50 grid w-full gap-4 border border-slate-200 bg-white p-6 shadow-2xl duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-xl md:w-full max-h-[90vh] overflow-y-auto',
+          'fixed z-50 grid w-full max-h-[90vh] gap-4 overflow-y-auto border border-slate-200 bg-white p-6 shadow-2xl duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-3xl md:w-full',
           !disableDefaultMaxWidth && 'sm:max-w-lg',
           className
         )}
       >
         {children}
         <button
-          className="absolute right-4 top-4 rounded-full p-1.5 opacity-70 transition-all hover:bg-slate-100 hover:opacity-100 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 disabled:pointer-events-none"
+          className="absolute right-5 top-5 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none"
           onClick={() => onOpenChange(false)}
         >
           <span className="sr-only">关闭</span>

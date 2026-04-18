@@ -1,7 +1,7 @@
 import React from 'react';
 import { Edit, Eye, Pin, Trash2, X } from 'lucide-react';
 import type { Announcement } from '@/types';
-import { TableActionHead, TableHead, TableHeader } from '@/components/ui';
+import { TableActionHead, TableHead, TableHeader, TableRowActions } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import {
   getAnnouncementPriorityMeta,
@@ -19,7 +19,6 @@ interface AnnouncementManageTableProps {
   embedded?: boolean;
 }
 
-// 管理列表动作统一收口到公共组件，后续继续向源码结构贴近时只需要维护这一层。
 export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = ({
   announcements,
   onEdit,
@@ -49,11 +48,11 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
             const priorityMeta = getAnnouncementPriorityMeta(item.priority);
 
             return (
-              <tr key={item.announcementId} className="hover:bg-slate-50/80">
+              <tr key={item.announcementId} className="hover:bg-slate-50">
                 <td className="w-[34%] px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                      {item.isTop === 1 ? <Pin size={14} className="text-red-500" /> : null}
+                      {item.isTop === 1 ? <Pin size={14} className="text-amber-600" /> : null}
                       <span className="truncate font-medium text-slate-900">{item.title}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
@@ -98,55 +97,44 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                   {item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => onViewStats(item.announcementId)}
-                      className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                      title="阅读状态"
-                    >
-                      <Eye size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onEdit(item)}
-                      className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                      title="编辑"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onToggleTop(item.announcementId)}
-                      className={cn(
-                        'rounded-lg p-1.5 transition-colors',
-                        item.isTop === 1
-                          ? 'text-rose-500 hover:bg-rose-50 hover:text-rose-600'
-                          : 'text-slate-500 hover:bg-amber-50 hover:text-amber-600',
-                      )}
-                      title={item.isTop === 1 ? '取消置顶' : '置顶'}
-                    >
-                      <Pin size={16} />
-                    </button>
-                    {item.status === '1' ? (
-                      <button
-                        type="button"
-                        onClick={() => onRevoke(item.announcementId)}
-                        className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-orange-50 hover:text-orange-600"
-                        title="撤销"
-                      >
-                        <X size={16} />
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => onDelete(item.announcementId)}
-                      className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                      title="删除"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  <TableRowActions
+                    align="start"
+                    iconOnly
+                    className="gap-1"
+                    actions={[
+                      {
+                        label: '阅读状态',
+                        icon: <Eye size={16} />,
+                        onClick: () => onViewStats(item.announcementId),
+                        tone: 'info',
+                      },
+                      {
+                        label: '编辑',
+                        icon: <Edit size={16} />,
+                        onClick: () => onEdit(item),
+                        tone: 'neutral',
+                      },
+                      {
+                        label: item.isTop === 1 ? '取消置顶' : '置顶',
+                        icon: <Pin size={16} />,
+                        onClick: () => onToggleTop(item.announcementId),
+                        tone: item.isTop === 1 ? 'danger' : 'warning',
+                      },
+                      {
+                        label: '撤销',
+                        icon: <X size={16} />,
+                        onClick: () => onRevoke(item.announcementId),
+                        tone: 'warning',
+                        hidden: item.status !== '1',
+                      },
+                      {
+                        label: '删除',
+                        icon: <Trash2 size={16} />,
+                        onClick: () => onDelete(item.announcementId),
+                        tone: 'danger',
+                      },
+                    ]}
+                  />
                 </td>
               </tr>
             );
@@ -161,7 +149,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   }
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-white/80 bg-white/85 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {table}
     </div>
   );

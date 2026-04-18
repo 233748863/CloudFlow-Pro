@@ -59,7 +59,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4"
       onClick={() => {
         if (closeOnClickOutside) {
           onClose();
@@ -71,7 +71,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
     >
       <div
         className={cn(
-          'w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl',
+          'w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl',
           maxWidthClassName,
           panelClassName,
         )}
@@ -87,7 +87,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
               aria-label="关闭弹窗"
             >
               <X size={18} />
@@ -96,7 +96,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
         </div>
         <div className={cn('px-6 py-6', bodyClassName)}>{children}</div>
         {footer ? (
-          <div className={cn('border-t border-slate-100 px-6 py-4', footerClassName)}>{footer}</div>
+          <div className={cn('border-t border-slate-100 bg-slate-50 px-6 py-4', footerClassName)}>{footer}</div>
         ) : null}
       </div>
     </div>,

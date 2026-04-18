@@ -73,12 +73,12 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
     <BaseDialog
       open={open}
       title="阅读状态"
-      description={announcementTitle ? `查看《${announcementTitle}》的已读用户明细` : '查看公告已读用户明细'}
+      description={announcementTitle ? `查看“${announcementTitle}”的已读用户明细` : '查看公告已读用户明细'}
       onClose={onClose}
       maxWidthClassName="max-w-5xl"
       footer={(
         <div className="flex justify-end">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" className="rounded-xl" onClick={onClose}>
             关闭
           </Button>
         </div>
@@ -96,6 +96,7 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
           </div>
           <Button
             variant="outline"
+            className="rounded-xl"
             onClick={() => {
               if (announcementId && onRefresh) {
                 void onRefresh(announcementId);
@@ -108,8 +109,8 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-          <div className="text-3xl font-bold text-teal-600">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-3xl font-bold text-cyan-700">
             {statsData?.readCount ?? 0}
           </div>
           <div className="mt-1 text-sm text-slate-500">已读人数</div>
@@ -128,7 +129,7 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pagedUsers.map((user) => (
-                  <tr key={`${user.userId}-${user.readTime || 'unknown'}`} className="hover:bg-slate-50/80">
+                  <tr key={`${user.userId}-${user.readTime || 'unknown'}`} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm text-slate-700">{user.userId}</td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-900">{user.userName || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{user.nickName || '-'}</td>

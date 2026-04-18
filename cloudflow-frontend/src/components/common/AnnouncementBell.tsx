@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Bell, Check, Inbox, X } from 'lucide-react';
 import { AnnouncementDetailModal } from '@/components/common/AnnouncementDetailModal';
 import { AnnouncementListItem } from '@/components/common/AnnouncementListItem';
+import { Button } from '@/components/ui';
 import { useAnnouncementStore, useAnnouncementUnreadCount } from '@/stores/announcementStore';
 import type { Announcement } from '@/types';
 import './announcement-overlays.css';
@@ -74,51 +75,50 @@ export const AnnouncementBell: React.FC = () => {
   const modal = isModalOpen
     ? createPortal(
         <div
-          className="cf-announcement-modal-overlay fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-4 pt-[8vh] backdrop-blur-md"
+          className="cf-announcement-modal-overlay fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-900/32 p-4 pt-[8vh]"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="cf-announcement-modal-panel w-full max-w-[620px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5"
+            className="cf-announcement-modal-panel w-full max-w-[620px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="relative overflow-hidden border-b border-gray-100/80 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 px-6 py-5">
-              <div className="absolute right-0 top-0 h-full w-48 bg-gradient-to-l from-indigo-100/20 to-transparent" />
-
-              <div className="relative z-10 flex items-start justify-between">
+            <div className="border-b border-slate-100 bg-white px-6 py-5">
+              <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700">
                       <Bell size={16} />
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">公告</h2>
+                    <h2 className="text-lg font-semibold text-slate-900">公告</h2>
                   </div>
                   {unreadCount > 0 ? (
-                    <p className="mt-2 text-sm text-gray-600">
-                      <span className="font-medium text-blue-600">{unreadCount}</span>
-                      {' '}未读
+                    <p className="mt-2 text-sm text-slate-500">
+                      <span className="font-semibold text-cyan-700">{unreadCount}</span>
+                      {' '}条未读
                     </p>
                   ) : null}
                 </div>
 
                 <div className="flex items-center gap-2">
                   {unreadCount > 0 ? (
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
+                      className="h-9 rounded-xl px-4"
                       disabled={loading}
                       onClick={() => void handleMarkAllAsRead()}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-xl disabled:opacity-50"
                     >
                       全部已读
-                    </button>
+                    </Button>
                   ) : null}
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 rounded-xl"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/50 text-gray-500 backdrop-blur-sm transition-all hover:bg-white hover:text-gray-700"
                     aria-label="关闭公告弹层"
                   >
                     <X size={16} />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -127,8 +127,8 @@ export const AnnouncementBell: React.FC = () => {
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="relative">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-                    <div className="absolute inset-0 h-12 w-12 animate-pulse rounded-full border-4 border-blue-400/30" />
+                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-600" />
+                    <div className="absolute inset-0 h-12 w-12 animate-pulse rounded-full border-4 border-cyan-300/30" />
                   </div>
                 </div>
               ) : announcements.length > 0 ? (
@@ -145,15 +145,15 @@ export const AnnouncementBell: React.FC = () => {
               ) : (
                 <div className="flex flex-col items-center justify-center py-16">
                   <div className="relative mb-4">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200">
-                      <Inbox size={28} className="text-gray-400" />
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
+                      <Inbox size={28} className="text-slate-400" />
                     </div>
-                    <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
+                    <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
                       <Check size={14} />
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-gray-900">暂无公告</p>
-                  <p className="mt-1 text-xs text-gray-500">新公告发布后会显示在这里</p>
+                  <p className="text-sm font-medium text-slate-900">暂无公告</p>
+                  <p className="mt-1 text-xs text-slate-500">新公告发布后会显示在这里</p>
                 </div>
               )}
             </div>
@@ -168,16 +168,18 @@ export const AnnouncementBell: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:scale-105 hover:bg-gray-100 ${
-          unreadCount > 0 ? 'text-blue-600' : ''
+        className={`relative flex h-9 w-9 items-center justify-center rounded-xl border transition-colors ${
+          unreadCount > 0
+            ? 'border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
         }`}
         aria-label="公告"
       >
         <Bell size={18} />
         {unreadCount > 0 ? (
           <span className="absolute right-1 top-1 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
           </span>
         ) : null}
       </button>
@@ -189,8 +191,8 @@ export const AnnouncementBell: React.FC = () => {
         onClose={() => setSelectedAnnouncement(null)}
         onMarkAsRead={handleMarkAsReadAndClose}
         zIndexClassName="z-[110]"
-        footerReadText="已同步为已读状态"
-        footerUnreadText="打开后会自动标记为已读"
+        footerReadText="当前公告已同步为已读状态"
+        footerUnreadText="打开后会自动同步为已读状态"
       />
     </>
   );

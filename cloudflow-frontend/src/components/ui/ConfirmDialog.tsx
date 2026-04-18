@@ -26,30 +26,30 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   const variantStyles = {
     warning: {
-      icon: 'text-amber-500',
-      iconBg: 'bg-amber-100',
+      icon: 'text-amber-700',
+      iconBg: 'border border-amber-200 bg-amber-50',
       confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white'
     },
     danger: {
-      icon: 'text-red-500',
-      iconBg: 'bg-red-100',
-      confirmBtn: 'bg-red-600 hover:bg-red-700 text-white'
+      icon: 'text-rose-600',
+      iconBg: 'border border-rose-200 bg-rose-50',
+      confirmBtn: 'bg-rose-600 hover:bg-rose-700 text-white'
     },
     info: {
-      icon: 'text-pink-400',
-      iconBg: 'bg-pink-50',
-      confirmBtn: 'bg-pink-500 hover:bg-pink-600 text-white'
+      icon: 'text-cyan-700',
+      iconBg: 'border border-cyan-200 bg-cyan-50',
+      confirmBtn: 'bg-cyan-600 hover:bg-cyan-700 text-white'
     }
   };
 
   const styles = variantStyles[variant];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-[420px] max-w-[90vw] overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/32 p-4 animate-in fade-in duration-200">
+      <div className="w-[420px] max-w-[90vw] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
         {/* 头部 */}
-        <div className="p-5 border-b border-slate-100 flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${styles.iconBg} shrink-0`}>
+        <div className="flex items-start gap-3 border-b border-slate-100 bg-white p-5">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${styles.iconBg}`}>
             <AlertTriangle size={20} className={styles.icon} />
           </div>
           <div className="flex-1 min-w-0">
@@ -57,9 +57,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           </div>
           <button 
             onClick={onCancel}
-            className="p-1 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
+            className="shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
           >
-            <X size={18} className="text-slate-400" />
+            <X size={18} />
           </button>
         </div>
 
@@ -71,10 +71,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </div>
 
         {/* 按钮 */}
-        <div className="p-5 pt-0 flex gap-3 justify-end">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 p-5">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
             {cancelText}
           </button>
@@ -83,7 +83,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               onConfirm();
               onCancel();
             }}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors shadow-sm ${styles.confirmBtn}`}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${styles.confirmBtn}`}
           >
             {confirmText}
           </button>
