@@ -25,6 +25,7 @@ import { TableRowActions } from "@/components/ui/table-row-actions";
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
+  WorkspacePageContent,
 } from "@/components/workspace/WorkspacePrimitives";
 import {
   WorkspaceDialogShell,
@@ -442,7 +443,7 @@ export const TemplateManagement = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -538,7 +539,7 @@ export const TemplateManagement = () => {
                   setSelectedCategory(event.target.value);
                   setCurrentPage(1);
                 }}
-                className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
               >
                 <option value="">全部分类</option>
                 {flatCategories.map((item) => (
@@ -554,7 +555,7 @@ export const TemplateManagement = () => {
                   setStatusFilter(event.target.value as StatusFilter);
                   setCurrentPage(1);
                 }}
-                className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
               >
                 <option value="all">全部状态</option>
                 <option value="active">仅启用</option>
@@ -588,11 +589,11 @@ export const TemplateManagement = () => {
                     <TableActionHead className="w-48">操作</TableActionHead>
                   </tr>
                 </TableHeader>
-                <tbody className="divide-y divide-white/60">
+                <tbody className="divide-y divide-slate-100">
                   {flatCategories.map((category) => (
                     <tr
                       key={category.id}
-                      className="border-b border-white/60 transition-colors hover:bg-white/60"
+                      className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
                     >
                       <td className="px-4 py-3 text-sm text-slate-700">
                         <span
@@ -681,11 +682,11 @@ export const TemplateManagement = () => {
                     <TableActionHead className="w-52">操作</TableActionHead>
                   </tr>
                 </TableHeader>
-                <tbody className="divide-y divide-white/60">
+                <tbody className="divide-y divide-slate-100">
                   {templates.map((template) => (
                     <tr
                       key={template.id}
-                      className="border-b border-white/60 transition-colors hover:bg-white/60"
+                      className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
                     >
                       <td className="px-4 py-4">
                         <div>
@@ -705,7 +706,7 @@ export const TemplateManagement = () => {
                           {template.tags?.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
-                              className="rounded-full bg-white/82 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200/80"
+                              className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600"
                             >
                               {tag}
                             </span>
@@ -790,7 +791,7 @@ export const TemplateManagement = () => {
                         categoryId: event.target.value,
                       }))
                     }
-                    className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
                   >
                     <option value="">请选择分类</option>
                     {flatCategories.map((item) => (
@@ -896,7 +897,7 @@ export const TemplateManagement = () => {
                         status: event.target.value as TemplateStatus,
                       }))
                     }
-                    className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
                   >
                     <option value="active">启用</option>
                     <option value="inactive">禁用</option>
@@ -936,7 +937,7 @@ export const TemplateManagement = () => {
                       parentId: event.target.value,
                     }))
                   }
-                  className="cf-glass-input h-11 w-full rounded-2xl px-3.5 text-sm text-slate-700"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
                 >
                   <option value="">无（顶级分类）</option>
                   {selectableParentCategories.map((item) => (
@@ -1002,7 +1003,7 @@ export const TemplateManagement = () => {
             </div>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

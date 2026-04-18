@@ -16,7 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
-import { WorkspaceBackdrop, WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspaceInlineState, WorkspacePageContent } from '@/components/workspace/WorkspacePrimitives';
 import {
   WorkspaceDialogShell,
   WorkspaceHeroCard,
@@ -151,7 +151,7 @@ const ProcessCategoryPage: React.FC = () => {
     return (
       <div key={node.categoryId}>
         <div
-          className={`group flex cursor-pointer items-center rounded-[18px] px-3 py-2 transition-colors ${isSelected ? 'bg-pink-50 ring-1 ring-pink-100' : 'hover:bg-white/70'}`}
+          className={`group flex cursor-pointer items-center rounded-2xl px-3 py-2 transition-colors ${isSelected ? 'bg-slate-100 ring-1 ring-slate-200' : 'hover:bg-slate-50/70'}`}
           style={{ paddingLeft: `${level * 22 + 12}px` }}
           onClick={() => setSelectedId(node.categoryId!)}
         >
@@ -188,7 +188,7 @@ const ProcessCategoryPage: React.FC = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={<div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500"><span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100"><FolderTree className="h-3.5 w-3.5" />{todayLabel}</span><span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span></div>}
           title="流程分类管理"
@@ -225,11 +225,11 @@ const ProcessCategoryPage: React.FC = () => {
           >
             {selectedNode ? (
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]"><div className="text-xs text-slate-400">分类编码</div><div className="mt-2 font-mono text-sm text-slate-900">{selectedNode.categoryCode}</div></div>
-                <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]"><div className="text-xs text-slate-400">排序号</div><div className="mt-2 text-sm text-slate-900">{selectedNode.sortOrder}</div></div>
-                <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]"><div className="text-xs text-slate-400">父分类</div><div className="mt-2 text-sm text-slate-900">{selectedNode.parentId === 0 ? '顶级分类' : selectedNode.parentId}</div></div>
-                <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]"><div className="text-xs text-slate-400">图标</div><div className="mt-2 flex items-center gap-2 text-sm text-slate-900">{renderIcon(selectedNode.icon)}<span>{selectedNode.icon || '无'}</span></div></div>
-                <div className="md:col-span-2 rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]"><div className="text-xs text-slate-400">备注</div><div className="mt-2 text-sm leading-7 text-slate-700">{selectedNode.remark || '暂无备注'}</div></div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs text-slate-400">分类编码</div><div className="mt-2 font-mono text-sm text-slate-900">{selectedNode.categoryCode}</div></div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs text-slate-400">排序号</div><div className="mt-2 text-sm text-slate-900">{selectedNode.sortOrder}</div></div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs text-slate-400">父分类</div><div className="mt-2 text-sm text-slate-900">{selectedNode.parentId === 0 ? '顶级分类' : selectedNode.parentId}</div></div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs text-slate-400">图标</div><div className="mt-2 flex items-center gap-2 text-sm text-slate-900">{renderIcon(selectedNode.icon)}<span>{selectedNode.icon || '无'}</span></div></div>
+                <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs text-slate-400">备注</div><div className="mt-2 text-sm leading-7 text-slate-700">{selectedNode.remark || '暂无备注'}</div></div>
               </div>
             ) : (
               <WorkspaceInlineState icon={<FolderTree className="w-5 h-5" />} title="请选择一个分类查看详情" className="py-16" />
@@ -247,13 +247,13 @@ const ProcessCategoryPage: React.FC = () => {
                 <div><label className="mb-2 block text-sm font-medium text-slate-700">图标标识</label><Select value={form.icon || ''} onValueChange={(value) => setForm({ ...form, icon: value })}><SelectTrigger><SelectValue placeholder="无" /></SelectTrigger><SelectContent><SelectItem value="">无</SelectItem><SelectItem value="briefcase">briefcase</SelectItem><SelectItem value="users">users</SelectItem><SelectItem value="dollar-sign">dollar-sign</SelectItem><SelectItem value="building">building</SelectItem><SelectItem value="folder-kanban">folder-kanban</SelectItem><SelectItem value="layers">layers</SelectItem></SelectContent></Select></div>
                 <div><label className="mb-2 block text-sm font-medium text-slate-700">排序号</label><Input type="number" value={form.sortOrder ?? 0} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} /></div>
               </div>
-              <div><label className="mb-2 block text-sm font-medium text-slate-700">状态</label><div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]"><label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.status === '0'} onChange={() => setForm({ ...form, status: '0' })} className="accent-pink-500" />正常</label><label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.status === '1'} onChange={() => setForm({ ...form, status: '1' })} className="accent-pink-500" />停用</label></div></div>
+              <div><label className="mb-2 block text-sm font-medium text-slate-700">状态</label><div className="flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.status === '0'} onChange={() => setForm({ ...form, status: '0' })} className="accent-slate-700" />正常</label><label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.status === '1'} onChange={() => setForm({ ...form, status: '1' })} className="accent-slate-700" />停用</label></div></div>
               <div><label className="mb-2 block text-sm font-medium text-slate-700">备注</label><Textarea rows={3} value={form.remark || ''} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="可选" /></div>
               <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={() => setModalOpen(false)}>取消</Button><Button onClick={handleSubmit} disabled={loading}>{loading ? '提交中...' : '确定'}</Button></div>
             </div>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

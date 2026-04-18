@@ -21,15 +21,18 @@ import {
   LogTrendItem,
 } from '@/services/api/log';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
+  WorkspaceBackdrop,
   WorkspaceDialogShell,
   WorkspaceHeroCard,
   WorkspaceMetricCard,
+  WorkspacePageContent,
   WorkspacePaginationBar,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -60,7 +63,7 @@ const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
   const xLabels = data.filter((_, index) => index % Math.ceil(data.length / 10) === 0 || index === data.length - 1);
 
   return (
-    <div className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.74))] p-4 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+    <div className="card p-4">
       <div className="mb-2 flex items-center justify-end gap-4 text-xs text-slate-500">
         <span className="flex items-center gap-1">
           <span className="inline-block h-3 w-3 rounded-full bg-sky-400" />
@@ -129,7 +132,7 @@ const DetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = ({ lo
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           {items.map((item) => (
-            <div key={item.label} className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+            <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-xs font-medium text-slate-400">{item.label}</div>
               <div className="mt-2 break-all text-sm font-medium text-slate-900">{item.value || '-'}</div>
             </div>
@@ -281,7 +284,7 @@ export const OperationLogPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -338,7 +341,7 @@ export const OperationLogPage: React.FC = () => {
 
         <TrendChart data={trendData} />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="日志筛选"
@@ -380,8 +383,8 @@ export const OperationLogPage: React.FC = () => {
                       className="pl-10"
                     />
                   </div>
-                  <DatePicker variant="glass" type="date" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                  <DatePicker variant="glass" type="date" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  <DatePicker className="h-11 rounded-2xl" type="date" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  <DatePicker className="h-11 rounded-2xl" type="date" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                   <Button type="button" onClick={handleSearch}>
                     <Search size={15} />
                     查询日志
@@ -405,7 +408,7 @@ export const OperationLogPage: React.FC = () => {
                 />
               )}
             >
-              <div className="border-b border-white/70 px-4 py-3">
+              <div className="border-b border-slate-200 px-4 py-3">
                 <Button variant="destructive" size="sm" onClick={() => void handleBatchDelete()}>
                   <Trash2 size={14} />
                   删除选中
@@ -437,7 +440,7 @@ export const OperationLogPage: React.FC = () => {
                       <WorkspaceTableStateRow colSpan={10} title="暂无操作日志" description="可以调整筛选条件，或等待新的业务操作写入日志。" />
                     ) : (
                       records.map((log, idx) => (
-                        <tr key={log.logId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={log.logId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3">
                             <input
                               type="checkbox"
@@ -496,7 +499,7 @@ export const OperationLogPage: React.FC = () => {
         </Card>
 
         <DetailModal log={detailLog} onClose={() => setDetailLog(null)} />
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

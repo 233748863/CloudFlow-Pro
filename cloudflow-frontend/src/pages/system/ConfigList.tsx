@@ -24,15 +24,18 @@ import {
   Textarea,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
+  WorkspaceBackdrop,
   WorkspaceDialogShell,
   WorkspaceHeroCard,
   WorkspaceMetricCard,
+  WorkspacePageContent,
   WorkspacePaginationBar,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -191,7 +194,7 @@ export const ConfigList = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -240,7 +243,7 @@ export const ConfigList = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="参数列表"
@@ -313,14 +316,14 @@ export const ConfigList = () => {
                       <TableActionHead className="w-48">操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/60">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载参数配置..." />
                     ) : configs.length === 0 ? (
                       <WorkspaceTableStateRow colSpan={8} title="暂无参数配置" description="可以先创建一条配置，随后逐步收口系统常量。" />
                     ) : (
                       configs.map((config) => (
-                        <tr key={config.configId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={config.configId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3 text-sm text-slate-500">{config.configId}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">{config.configName}</td>
                           <td className="px-4 py-3 font-mono text-xs text-slate-600">{config.configKey}</td>
@@ -391,7 +394,7 @@ export const ConfigList = () => {
             maxWidthClassName="max-w-4xl"
           >
             <form onSubmit={handleSubmit} className="space-y-4">
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础信息</div>
                   <div className="mt-1 text-sm text-slate-500">参数名称和键名决定了配置的可识别性，建议保持语义清晰、命名统一。</div>
@@ -421,7 +424,7 @@ export const ConfigList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">配置值与范围</div>
                   <div className="mt-1 text-sm text-slate-500">内置参数通常由系统或运维维护，作用域则决定配置是否只在租户级别生效。</div>
@@ -429,7 +432,7 @@ export const ConfigList = () => {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">系统内置</label>
-                    <div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                    <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                       {[
                         ['Y', '是'],
                         ['N', '否'],
@@ -439,7 +442,7 @@ export const ConfigList = () => {
                             type="radio"
                             checked={formData.configType === value}
                             onChange={() => setFormData({ ...formData, configType: value })}
-                            className="accent-pink-500"
+                            className="accent-slate-700"
                           />
                           <span>{label}</span>
                         </label>
@@ -448,7 +451,7 @@ export const ConfigList = () => {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">作用域</label>
-                    <div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                    <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                       {[
                         ['0', '全局'],
                         ['1', '租户'],
@@ -458,7 +461,7 @@ export const ConfigList = () => {
                             type="radio"
                             checked={formData.configScope === value}
                             onChange={() => setFormData({ ...formData, configScope: value })}
-                            className="accent-pink-500"
+                            className="accent-slate-700"
                           />
                           <span>{label}</span>
                         </label>
@@ -480,7 +483,7 @@ export const ConfigList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">备注</div>
                   <div className="mt-1 text-sm text-slate-500">记录参数适用场景、默认含义或上线注意事项，避免后续维护误用。</div>
@@ -503,7 +506,7 @@ export const ConfigList = () => {
             </form>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

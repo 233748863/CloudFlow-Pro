@@ -10,15 +10,18 @@ import {
 } from '@/services/api/log';
 import { DatePicker, TableActionHead, TableHead, TableHeader, Button, Card, Input } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
+  WorkspaceBackdrop,
   WorkspaceDialogShell,
   WorkspaceHeroCard,
   WorkspaceMetricCard,
+  WorkspacePageContent,
   WorkspacePaginationBar,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -37,25 +40,25 @@ const AuditDetailModal: React.FC<{ log: SysAuditLog | null; onClose: () => void 
     >
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs text-slate-400">业务名称</div>
             <div className="mt-2 text-sm font-medium text-slate-900">{log.auditName || '-'}</div>
           </div>
-          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs text-slate-400">变更字段</div>
             <div className="mt-2 text-sm font-medium text-pink-600">{log.auditField || '-'}</div>
           </div>
-          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs text-slate-400">操作人</div>
             <div className="mt-2 text-sm font-medium text-slate-900">{log.createBy || '-'}</div>
           </div>
-          <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs text-slate-400">操作时间</div>
             <div className="mt-2 text-sm font-medium text-slate-900">{log.createTime || '-'}</div>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] shadow-[0_14px_28px_rgba(15,23,42,0.05)]">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="grid grid-cols-[1fr_56px_1fr]">
             <div className="bg-rose-50/70">
               <div className="border-b border-rose-100/70 px-4 py-3 text-xs font-semibold text-rose-600">变更前</div>
@@ -64,7 +67,7 @@ const AuditDetailModal: React.FC<{ log: SysAuditLog | null; onClose: () => void 
               </div>
             </div>
 
-            <div className="flex items-center justify-center border-x border-white/70 bg-white/72">
+            <div className="flex items-center justify-center border-x border-slate-200 bg-slate-50">
               <ArrowLeftRight size={18} className="text-slate-400" />
             </div>
 
@@ -198,7 +201,7 @@ export const AuditLogPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -247,7 +250,7 @@ export const AuditLogPage: React.FC = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="审计筛选"
@@ -276,8 +279,8 @@ export const AuditLogPage: React.FC = () => {
                     onChange={(event) => setCreateBy(event.target.value)}
                     placeholder="按操作人搜索"
                   />
-                  <DatePicker variant="glass" type="date" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                  <DatePicker variant="glass" type="date" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  <DatePicker className="h-11 rounded-2xl" type="date" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  <DatePicker className="h-11 rounded-2xl" type="date" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                   <Button type="button" onClick={handleSearch}>
                     <Search size={15} />
                     查询审计
@@ -301,7 +304,7 @@ export const AuditLogPage: React.FC = () => {
                 />
               )}
             >
-              <div className="border-b border-white/70 px-4 py-3">
+              <div className="border-b border-slate-200 px-4 py-3">
                 <Button variant="destructive" size="sm" onClick={() => void handleBatchDelete()}>
                   <Trash2 size={14} />
                   删除选中
@@ -332,7 +335,7 @@ export const AuditLogPage: React.FC = () => {
                       <WorkspaceTableStateRow colSpan={9} title="暂无审计日志" description="可以调整筛选条件，或等待新的业务字段变更写入日志。" />
                     ) : (
                       records.map((log, idx) => (
-                        <tr key={log.auditId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={log.auditId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3">
                             <input
                               type="checkbox"
@@ -386,7 +389,7 @@ export const AuditLogPage: React.FC = () => {
         </Card>
 
         <AuditDetailModal log={detailLog} onClose={() => setDetailLog(null)} />
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

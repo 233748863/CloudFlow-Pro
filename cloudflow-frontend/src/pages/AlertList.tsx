@@ -20,6 +20,7 @@ import {
   WorkspaceBackdrop,
   WorkspaceEmptyPanel,
   WorkspaceInlineState,
+  WorkspacePageContent,
 } from '@/components/workspace/WorkspacePrimitives';
 import {
   WorkspaceDialogShell,
@@ -27,6 +28,7 @@ import {
   WorkspaceMetricCard,
   WorkspaceResultCard,
   WorkspaceWorkbenchCard,
+  workspaceGlassSurfaceClassName,
 } from '@/components/workspace/WorkspacePanels';
 
 type AlertType = 'timeout' | 'anomaly';
@@ -82,7 +84,7 @@ const ResolveModal: React.FC<{
       maxWidthClassName="max-w-2xl"
     >
       <div className="space-y-4">
-        <div className="rounded-[24px] border border-white/80 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-sm font-semibold text-slate-900">
             {'processName' in alert ? alert.processName : alert.targetName}
           </div>
@@ -216,7 +218,7 @@ const AlertList: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -265,7 +267,7 @@ const AlertList: React.FC = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="告警工作台"
@@ -373,7 +375,7 @@ const AlertList: React.FC = () => {
                   <div className="space-y-4">
                     {activeTab === 'timeout'
                       ? filteredTimeoutAlerts.map((alert) => (
-                          <div key={alert.id} className="rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.74))] p-5 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+                          <div key={alert.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                               <div className="flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
@@ -414,7 +416,7 @@ const AlertList: React.FC = () => {
                       : filteredAnomalyAlerts.map((alert) => {
                           const anomalyDetails = getAnomalyDetails(alert);
                           return (
-                            <div key={alert.id} className="rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(248,250,252,0.74))] p-5 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+                            <div key={alert.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                 <div className="flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
@@ -431,7 +433,7 @@ const AlertList: React.FC = () => {
                                   {anomalyDetails ? (
                                     <details className="mt-3 text-xs text-slate-500">
                                       <summary className="cursor-pointer hover:text-slate-700">错误详情</summary>
-                                      <pre className="mt-2 overflow-x-auto rounded-[18px] bg-slate-50 p-3 whitespace-pre-wrap break-all">{anomalyDetails}</pre>
+                                      <pre className="mt-2 overflow-x-auto rounded-2xl bg-slate-50 p-3 whitespace-pre-wrap break-all">{anomalyDetails}</pre>
                                     </details>
                                   ) : null}
                                   {alert.resolveNote ? <p className="mt-3 text-sm text-emerald-600">解决说明：{alert.resolveNote}</p> : null}
@@ -475,7 +477,7 @@ const AlertList: React.FC = () => {
             onSubmit={() => void handleResolve()}
           />
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

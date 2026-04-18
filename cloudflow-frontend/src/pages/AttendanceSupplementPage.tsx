@@ -441,7 +441,7 @@ export const AttendanceSupplementPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleResetFilters}
-                  className="h-8 rounded-[18px] border-white/80 bg-white/74 px-3.5 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                  className="h-8 rounded-full border-slate-200 bg-white px-3.5 shadow-sm hover:bg-slate-50"
                 >
                   <RotateCcw size={15} className="mr-2" />
                   清空所有条件

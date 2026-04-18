@@ -30,6 +30,7 @@ import {
 import { Button, Card, Input, TableHead, TableHeader } from '@/components/ui';
 import {
   WorkspaceBackdrop,
+  WorkspacePageContent,
   WorkspaceInlineState,
   WorkspaceTableStateRow,
 } from '@/components/workspace/WorkspacePrimitives';
@@ -39,6 +40,7 @@ import {
   WorkspaceResultCard,
   WorkspaceSectionCard,
   WorkspaceWorkbenchCard,
+  workspaceGlassSurfaceClassName,
 } from '@/components/workspace/WorkspacePanels';
 
 interface TreeNode {
@@ -342,7 +344,7 @@ export const CacheMonitor = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -399,7 +401,7 @@ export const CacheMonitor = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="缓存工作台"
@@ -452,7 +454,7 @@ export const CacheMonitor = () => {
                   <div className="grid gap-4 xl:grid-cols-2">
                     <WorkspaceSectionCard title="基本信息" description="展示 Redis 运行状态、内存和角色信息。">
                       <table className="w-full text-sm">
-                        <tbody className="divide-y divide-white/60">
+                        <tbody className="divide-y divide-slate-100">
                           {[
                             ['Redis 版本', redisVersion],
                             ['运行天数', `${uptimeInDays} 天`],
@@ -512,7 +514,7 @@ export const CacheMonitor = () => {
                           ) : keyGroups.map((group) => {
                             const percent = dbSize > 0 ? ((group.count / dbSize) * 100).toFixed(1) : '0';
                             return (
-                              <tr key={group.prefix} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                              <tr key={group.prefix} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                                 <td className="px-4 py-3 font-mono text-sm text-slate-800">{group.prefix}*</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{group.count}</td>
                                 <td className="px-4 py-3 text-sm">
@@ -536,8 +538,8 @@ export const CacheMonitor = () => {
                 </div>
               ) : (
                 <div className="grid gap-4 p-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-                  <div className="rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
-                    <div className="border-b border-white/70 px-4 py-3 text-sm font-semibold text-slate-900">Key 树</div>
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Key 树</div>
                     <div className="max-h-[68vh] overflow-y-auto p-2">
                       {keysLoading ? (
                         <WorkspaceInlineState type="loading" title="正在加载 Key 列表..." className="py-12" />
@@ -558,14 +560,14 @@ export const CacheMonitor = () => {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     {!selectedKey ? (
                       <WorkspaceInlineState icon={<Eye size={28} />} title="选择左侧的 Key 查看详情" className="m-6 py-16" />
                     ) : detailLoading ? (
                       <WorkspaceInlineState type="loading" title="正在加载 Key 详情..." className="m-6 py-16" />
                     ) : keyDetail ? (
                       <>
-                        <div className="flex items-center justify-between border-b border-white/70 px-4 py-3">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                           <div className="flex min-w-0 items-center gap-2">
                             <Key size={16} className="shrink-0 text-pink-500" />
                             <span className="truncate font-mono text-sm text-slate-800" title={keyDetail.key}>{keyDetail.key}</span>
@@ -583,7 +585,7 @@ export const CacheMonitor = () => {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 border-b border-white/70 px-4 py-3 text-xs">
+                        <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 px-4 py-3 text-xs">
                           <span className="flex items-center gap-1 text-slate-500">
                             <Tag size={12} />
                             类型：
@@ -610,7 +612,7 @@ export const CacheMonitor = () => {
                               复制值
                             </button>
                           </div>
-                          <pre className="max-h-[52vh] overflow-auto rounded-[20px] border border-white/80 bg-white/78 p-4 text-xs font-mono whitespace-pre-wrap break-all text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+                          <pre className="max-h-[52vh] overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-mono whitespace-pre-wrap break-all text-slate-700">
                             {formatValue(keyDetail.value)}
                           </pre>
                         </div>
@@ -624,7 +626,7 @@ export const CacheMonitor = () => {
             </WorkspaceResultCard>
           </div>
         </Card>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

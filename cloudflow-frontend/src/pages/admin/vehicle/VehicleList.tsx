@@ -42,6 +42,7 @@ import { TableRowActions } from "@/components/ui/table-row-actions";
 import {
   WorkspaceBackdrop,
   WorkspaceEmptyPanel,
+  WorkspacePageContent,
   WorkspaceTableStateRow,
 } from "@/components/workspace/WorkspacePrimitives";
 import {
@@ -326,7 +327,7 @@ const VehicleList: React.FC = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -487,7 +488,7 @@ const VehicleList: React.FC = () => {
         >
           <div className="space-y-4 px-4 py-4">
             {selectedIds.length > 0 ? (
-              <div className="flex flex-col gap-3 rounded-[24px] border border-rose-200 bg-rose-50/80 p-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 p-4 xl:flex-row xl:items-center xl:justify-between">
                 <div className="text-sm font-medium text-rose-700">
                   已选中 {selectedIds.length} 辆车辆
                 </div>
@@ -558,7 +559,7 @@ const VehicleList: React.FC = () => {
                     vehicles.map((vehicle) => (
                       <TableRow
                         key={vehicle.vehicleId}
-                        className="transition-colors hover:bg-white/70"
+                        className="transition-colors hover:bg-slate-50/70"
                       >
                         <TableCell>
                           <input
@@ -862,8 +863,8 @@ const VehicleList: React.FC = () => {
           >
             <div className="space-y-4">
               <div className="flex items-center gap-3 border-b pb-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-pink-50">
-                  <Car size={24} className="text-pink-500" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100">
+                  <Car size={24} className="text-slate-700" />
                 </div>
                 <div>
                   <p className="font-mono text-lg font-bold">
@@ -949,7 +950,7 @@ const VehicleList: React.FC = () => {
             </div>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

@@ -885,7 +885,7 @@ export const LeaveApplicationPage: React.FC = () => {
                       </Select>
                     </div>
 
-                    <div className="rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_12px_22px_rgba(15,23,42,0.04)]">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                       <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                         Duration
                       </div>

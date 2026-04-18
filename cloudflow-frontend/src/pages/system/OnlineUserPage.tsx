@@ -3,14 +3,17 @@ import { Laptop, LogOut, RefreshCw, RotateCcw, Search, ShieldAlert, Users } from
 import { toast } from 'sonner';
 import { Button, Card, Input, TableActionHead, TableHead, TableHeader } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
+  WorkspaceBackdrop,
   WorkspaceHeroCard,
   WorkspaceMetricCard,
+  WorkspacePageContent,
   WorkspacePaginationBar,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 import {
   forceLogoutOnlineUsers,
   getOnlineUserPage,
@@ -136,7 +139,7 @@ export const OnlineUserPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -191,7 +194,7 @@ export const OnlineUserPage: React.FC = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="在线会话筛选"
@@ -288,7 +291,7 @@ export const OnlineUserPage: React.FC = () => {
                       <WorkspaceTableStateRow colSpan={9} title="暂无在线用户数据" description="可以调整筛选条件，或等待新的登录会话出现。" />
                     ) : (
                       records.map((item) => (
-                        <tr key={item.token} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={item.token} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3 align-top">
                             <input
                               type="checkbox"
@@ -300,7 +303,7 @@ export const OnlineUserPage: React.FC = () => {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-start gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-50 text-sm font-semibold text-pink-600">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
                                 {getAvatarText(item)}
                               </div>
                               <div>
@@ -356,7 +359,7 @@ export const OnlineUserPage: React.FC = () => {
             </WorkspaceResultCard>
           </div>
         </Card>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

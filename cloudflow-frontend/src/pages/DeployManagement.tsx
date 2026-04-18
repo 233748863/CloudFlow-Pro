@@ -11,7 +11,7 @@ import { DeployWindowManagement } from '@/components/deploy/DeployWindowManageme
 import { DeployApprovalManagement } from '@/components/deploy/DeployApprovalManagement';
 import { VersionRollbackManagement } from '@/components/deploy/VersionRollbackManagement';
 import { DeployStatistics } from '@/components/deploy/DeployStatistics';
-import { WorkspaceBackdrop } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspacePageContent } from '@/components/workspace/WorkspacePrimitives';
 import {
   WorkspaceHeroCard,
   WorkspaceMetricCard,
@@ -79,7 +79,7 @@ export const DeployManagement: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
             <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
@@ -150,7 +150,7 @@ export const DeployManagement: React.FC = () => {
         >
           <div className="p-4 sm:p-5">{renderActivePanel()}</div>
         </WorkspaceResultCard>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

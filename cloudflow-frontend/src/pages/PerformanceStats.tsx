@@ -17,12 +17,14 @@ import {
   WorkspaceBackdrop,
   WorkspaceEmptyPanel,
   WorkspaceInlineState,
+  WorkspacePageContent,
 } from '@/components/workspace/WorkspacePrimitives';
 import {
   WorkspaceHeroCard,
   WorkspaceMetricCard,
   WorkspaceResultCard,
   WorkspaceWorkbenchCard,
+  workspaceGlassSurfaceClassName,
 } from '@/components/workspace/WorkspacePanels';
 
 const formatDateCN = (date: Date) => {
@@ -147,7 +149,7 @@ const PerformanceStats: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -196,7 +198,7 @@ const PerformanceStats: React.FC = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="性能筛选"
@@ -216,14 +218,14 @@ const PerformanceStats: React.FC = () => {
               filterBar={(
                 <div className="grid gap-2.5 xl:grid-cols-[220px_220px_minmax(0,1fr)]">
                   <DatePicker
-                    variant="glass"
+                    className="h-11 rounded-2xl"
                     type="date"
                     value={dateRange.startDate}
                     onChange={(event) => setDateRange({ ...dateRange, startDate: event.target.value })}
                   />
 
                   <DatePicker
-                    variant="glass"
+                    className="h-11 rounded-2xl"
                     type="date"
                     value={dateRange.endDate}
                     onChange={(event) => setDateRange({ ...dateRange, endDate: event.target.value })}
@@ -252,7 +254,7 @@ const PerformanceStats: React.FC = () => {
                 {loading ? (
                   <WorkspaceInlineState type="loading" title="正在加载性能统计..." className="m-4 py-12" />
                 ) : stats.length > 0 ? (
-                  <table className="min-w-[1180px] w-full divide-y divide-white/60">
+                  <table className="min-w-[1180px] w-full divide-y divide-slate-100">
                     <TableHeader>
                       <tr>
                         <TableHead>日期</TableHead>
@@ -267,9 +269,9 @@ const PerformanceStats: React.FC = () => {
                         <TableHead className="text-right">异常率</TableHead>
                       </tr>
                     </TableHeader>
-                    <tbody className="divide-y divide-white/60">
+                    <tbody className="divide-y divide-slate-100">
                       {stats.map((stat, index) => (
-                        <tr key={`${stat.processDefKey}-${stat.statDate}-${index}`} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={`${stat.processDefKey}-${stat.statDate}-${index}`} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3 text-sm text-slate-900">{stat.statDate}</td>
                           <td className="px-4 py-3 text-sm text-slate-900">{stat.processName}</td>
                           <td className="px-4 py-3 text-right text-sm font-medium text-pink-500">{stat.totalCount}</td>
@@ -322,7 +324,7 @@ const PerformanceStats: React.FC = () => {
             </WorkspaceResultCard>
           </div>
         </Card>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

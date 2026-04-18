@@ -24,6 +24,7 @@ import { TableRowActions } from "@/components/ui/table-row-actions";
 import {
   WorkspaceInlineState,
   WorkspaceBackdrop,
+  WorkspacePageContent,
 } from "@/components/workspace/WorkspacePrimitives";
 import {
   WorkspaceDialogShell,
@@ -319,7 +320,7 @@ export const DictPage: React.FC = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -447,10 +448,10 @@ export const DictPage: React.FC = () => {
                     key={item.dictId}
                     onClick={() => setSelectedType(item)}
                     className={cn(
-                      "group cursor-pointer rounded-[22px] border px-4 py-3 transition-all",
+                      "group cursor-pointer rounded-2xl border px-4 py-3 transition-all",
                       selectedType?.dictId === item.dictId
                         ? "border-pink-200 bg-pink-50/90 shadow-[0_12px_24px_rgba(244,114,182,0.08)]"
-                        : "border-white/70 bg-white/72 hover:bg-white hover:shadow-[0_12px_24px_rgba(15,23,42,0.05)]",
+                        : "border-slate-200 bg-white hover:bg-slate-50/70 hover:shadow-[0_12px_24px_rgba(15,23,42,0.05)]",
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -554,7 +555,7 @@ export const DictPage: React.FC = () => {
                     {dictDataList.map((item) => (
                       <tr
                         key={item.dictCode}
-                        className="border-t border-slate-100 transition-colors hover:bg-white/70"
+                        className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
                       >
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {item.dictSort}
@@ -820,7 +821,7 @@ export const DictPage: React.FC = () => {
             </div>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

@@ -10,15 +10,18 @@ import {
   type LoginLogQuery,
   type SysLog,
 } from '@/services/api/log';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
+  WorkspaceBackdrop,
   WorkspaceDialogShell,
   WorkspaceHeroCard,
   WorkspaceMetricCard,
+  WorkspacePageContent,
   WorkspacePaginationBar,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -36,33 +39,33 @@ const LoginDetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = 
       maxWidthClassName="max-w-4xl"
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs text-slate-400">用户</div>
           <div className="mt-2 text-sm font-medium text-slate-900">{log.createBy || '-'}</div>
         </div>
-        <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs text-slate-400">状态</div>
           <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${log.logType === '9' ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'}`}>
             {log.logType === '9' ? '失败' : '成功'}
           </div>
         </div>
-        <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs text-slate-400">客户端 IP</div>
           <div className="mt-2 text-sm font-medium text-slate-900">{log.remoteAddr || '-'}</div>
         </div>
-        <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs text-slate-400">耗时</div>
           <div className="mt-2 text-sm font-medium text-slate-900">{log.time ?? 0} ms</div>
         </div>
-        <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)] md:col-span-2">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
           <div className="text-xs text-slate-400">浏览器 / UA</div>
           <div className="mt-2 break-all text-sm text-slate-900">{log.userAgent || '-'}</div>
         </div>
-        <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)] md:col-span-2">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
           <div className="text-xs text-slate-400">请求参数</div>
           <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs text-slate-700">{log.params || '-'}</pre>
         </div>
-        <div className="rounded-[22px] border border-white/75 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)] md:col-span-2">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
           <div className="text-xs text-slate-400">异常信息</div>
           <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs text-slate-700">{log.exception || '-'}</pre>
         </div>
@@ -171,7 +174,7 @@ export const LoginLogPage: React.FC = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
@@ -226,7 +229,7 @@ export const LoginLogPage: React.FC = () => {
           </div>
         </WorkspaceHeroCard>
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="登录筛选"
@@ -262,8 +265,8 @@ export const LoginLogPage: React.FC = () => {
                     onChange={(event) => setQuery((prev) => ({ ...prev, remoteAddr: event.target.value, pageNum: 1 }))}
                     placeholder="按客户端 IP 搜索"
                   />
-                  <DatePicker variant="glass" type="date" value={query.startTime || ''} onChange={(event) => setQuery((prev) => ({ ...prev, startTime: event.target.value, pageNum: 1 }))} />
-                  <DatePicker variant="glass" type="date" value={query.endTime || ''} onChange={(event) => setQuery((prev) => ({ ...prev, endTime: event.target.value, pageNum: 1 }))} />
+                  <DatePicker className="h-11 rounded-2xl" type="date" value={query.startTime || ''} onChange={(event) => setQuery((prev) => ({ ...prev, startTime: event.target.value, pageNum: 1 }))} />
+                  <DatePicker className="h-11 rounded-2xl" type="date" value={query.endTime || ''} onChange={(event) => setQuery((prev) => ({ ...prev, endTime: event.target.value, pageNum: 1 }))} />
                   <Button type="button" onClick={() => void fetchPage()}>
                     <Search size={15} />
                     查询日志
@@ -315,7 +318,7 @@ export const LoginLogPage: React.FC = () => {
                       <WorkspaceTableStateRow colSpan={8} title="暂无登录日志" description="可以调整筛选条件，或等待新的登录行为写入日志。" />
                     ) : (
                       records.map((item) => (
-                        <tr key={item.logId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={item.logId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3">
                             <input
                               type="checkbox"
@@ -368,7 +371,7 @@ export const LoginLogPage: React.FC = () => {
         </Card>
 
         <LoginDetailModal log={detailLog} onClose={() => setDetailLog(null)} />
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
