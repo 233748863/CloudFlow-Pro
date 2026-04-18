@@ -1026,27 +1026,27 @@ const PropertyPanel = ({
                 />
               )}
               {formData.approverType === "DIRECT_LEADER" && (
-                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-600 font-medium">直属上级</p>
-                  <p className="text-[10px] text-pink-400 mt-0.5">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">直属上级</p>
+                  <p className="mt-0.5 text-[10px] text-cyan-500">
                     系统将自动查找流程发起人的直属上级作为审批人。无需手动指定。
                   </p>
                 </div>
               )}
               {formData.approverType === "INITIATOR" && (
-                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-600 font-medium">发起人</p>
-                  <p className="text-[10px] text-pink-400 mt-0.5">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">发起人</p>
+                  <p className="mt-0.5 text-[10px] text-cyan-500">
                     系统将自动把当前节点分配给流程发起人本人处理。
                   </p>
                 </div>
               )}
               {formData.approverType === "DEPT_MANAGER" && (
-                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-600 font-medium">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">
                     部门负责人
                   </p>
-                  <p className="text-[10px] text-pink-400 mt-0.5">
+                  <p className="mt-0.5 text-[10px] text-cyan-500">
                     系统将自动查找流程发起人所在部门的负责人作为审批人。无需手动指定。
                   </p>
                 </div>
@@ -1181,7 +1181,7 @@ const PropertyPanel = ({
                 </div>
                 <input
                   type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-pink-500 focus:ring-pink-500 cursor-pointer"
+                  className="h-4 w-4 cursor-pointer rounded border-slate-300 text-cyan-600 focus:ring-cyan-400"
                   checked={formData.allowEdit || false}
                   onChange={(e) => handleChange("allowEdit", e.target.checked)}
                 />
@@ -1295,7 +1295,7 @@ const PropertyPanel = ({
                   通知内容
                 </span>
                 <LazyTextarea
-                  className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-pink-400 outline-none"
+                  className="min-h-[80px] w-full rounded-xl border border-slate-200 p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-200"
                   placeholder="支持变量: ${initiator}, ${amount}, ${days} 等"
                   value={formData.props?.notificationContent || ""}
                   onChange={(val: any) =>
@@ -1675,19 +1675,19 @@ const PropertyPanel = ({
                 />
               )}
               {formData.approverType === "DIRECT_LEADER" && (
-                <div className="bg-pink-50 border border-pink-100 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-700 font-medium">直属上级</p>
-                  <p className="text-[10px] text-pink-500 mt-0.5">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">直属上级</p>
+                  <p className="mt-0.5 text-[10px] text-cyan-600">
                     系统将自动抄送给流程发起人的直属上级。
                   </p>
                 </div>
               )}
               {formData.approverType === "DEPT_MANAGER" && (
-                <div className="bg-pink-50 border border-pink-100 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-700 font-medium">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">
                     部门负责人
                   </p>
-                  <p className="text-[10px] text-pink-500 mt-0.5">
+                  <p className="mt-0.5 text-[10px] text-cyan-600">
                     系统将自动抄送给流程发起人所在部门的负责人。
                   </p>
                 </div>
@@ -1792,27 +1792,27 @@ const PropertyPanel = ({
                 />
               )}
               {formData.approverType === "DIRECT_LEADER" && (
-                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-600 font-medium">直属上级</p>
-                  <p className="text-[10px] text-pink-400 mt-0.5">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">直属上级</p>
+                  <p className="mt-0.5 text-[10px] text-cyan-500">
                     系统将自动查找流程发起人的直属上级作为处理人。无需手动指定。
                   </p>
                 </div>
               )}
               {formData.approverType === "INITIATOR" && (
-                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-600 font-medium">发起人</p>
-                  <p className="text-[10px] text-pink-400 mt-0.5">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">发起人</p>
+                  <p className="mt-0.5 text-[10px] text-cyan-500">
                     系统将自动把人工任务分配给流程发起人本人处理。
                   </p>
                 </div>
               )}
               {formData.approverType === "DEPT_MANAGER" && (
-                <div className="bg-pink-50 border border-pink-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-pink-600 font-medium">
+                <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                  <p className="text-xs font-medium text-cyan-700">
                     部门负责人
                   </p>
-                  <p className="text-[10px] text-pink-400 mt-0.5">
+                  <p className="mt-0.5 text-[10px] text-cyan-500">
                     系统将自动查找流程发起人所在部门的负责人作为处理人。无需手动指定。
                   </p>
                 </div>
@@ -1952,7 +1952,7 @@ const PropertyPanel = ({
                   </code>
                 </p>
                 <LazyTextarea
-                  className="w-full border border-slate-200 rounded focus:ring-2 focus:ring-pink-200 outline-none p-2 text-[10px] font-mono min-h-[60px]"
+                  className="min-h-[60px] w-full rounded border border-slate-200 p-2 text-[10px] font-mono outline-none focus:ring-2 focus:ring-cyan-200"
                   placeholder='{"orderId": "formData.id"}'
                   value={
                     formData.inputs
@@ -1984,7 +1984,7 @@ const PropertyPanel = ({
                   </code>
                 </p>
                 <LazyTextarea
-                  className="w-full border border-slate-200 rounded focus:ring-2 focus:ring-pink-200 outline-none p-2 text-[10px] font-mono min-h-[60px]"
+                  className="min-h-[60px] w-full rounded border border-slate-200 p-2 text-[10px] font-mono outline-none focus:ring-2 focus:ring-cyan-200"
                   placeholder='{"formData.status": "resultStatus"}'
                   value={
                     formData.outputs
@@ -2211,7 +2211,7 @@ const FlowNode = ({
               : isInvalid
                 ? `border-red-500 ring-4 ring-red-100/50 shadow-xl scale-[1.02] bg-red-50/50`
                 : isSelected
-                  ? `border-pink-500 ring-4 ring-pink-100 ring-offset-2 shadow-xl scale-[1.02] ${visual.bg}`
+                  ? `border-cyan-500 ring-4 ring-cyan-100 ring-offset-2 shadow-xl scale-[1.02] ${visual.bg}`
                   : `${visual.border} ${visual.hoverBorder} hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]`
           } active:scale-95 active:shadow-sm`}
           onClick={(e) => {
