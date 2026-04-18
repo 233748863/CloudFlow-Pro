@@ -549,8 +549,8 @@ export const HrOnboardingPage: React.FC = () => {
                     key={item.id}
                     type="button"
                     className={`w-full rounded-2xl border px-4 py-4 text-left transition ${active
-                      ? 'border-sky-200 bg-sky-50/80 shadow-sm'
-                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'}`}
+                      ? 'border-sky-200 bg-sky-50 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
                     onClick={() => void loadApplicationDetail(item.id)}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -599,48 +599,48 @@ export const HrOnboardingPage: React.FC = () => {
         >
 
           {!currentApplication && (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
               从左侧列表选择一条申请后，这里会展示真实详情、任务办理动作和确认入职入口。
             </div>
           )}
 
           {currentApplication && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">申请编号</div>
                 <div className="mt-2 font-semibold text-slate-900">{currentApplication.applicationNo}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">申请状态</div>
                 <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${onboardingStatusClass(currentApplication.status)}`}>
                   {currentApplication.statusDesc || currentApplication.status}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">关联员工</div>
                 <div className="mt-2 font-semibold text-slate-900">{currentApplication.employeeId || '-'}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">姓名 / 电话</div>
                 <div className="mt-2 font-semibold text-slate-900">{currentApplication.name}</div>
                 <div className="mt-1 text-sm text-slate-500">{currentApplication.phone}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">部门 / 岗位 / 职位</div>
                 <div className="mt-2 font-semibold text-slate-900">{currentApplication.deptName || '-'}</div>
                 <div className="mt-1 text-sm text-slate-500">{currentApplication.postName || '-'} / {currentApplication.positionName || '-'}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">预计入职日期</div>
                 <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(currentApplication.expectedDate) || '-'}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="text-xs text-slate-400">创建时间</div>
                 <div className="mt-2 font-semibold text-slate-900">
                   {currentApplication.createTime ? new Date(currentApplication.createTime).toLocaleString('zh-CN') : '-'}
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
                 <div className="text-xs text-slate-400">流程实例 ID</div>
                 <div className="mt-2 break-all font-mono text-sm text-slate-700">{currentApplication.processInstanceId || '-'}</div>
               </div>

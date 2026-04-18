@@ -485,8 +485,8 @@ export const HrResignationPage: React.FC = () => {
                     type="button"
                     className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                       active
-                        ? 'border-rose-200 bg-rose-50/80 shadow-sm'
-                        : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-rose-200 bg-rose-50 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                     onClick={() => setSelectedEmployeeId(String(employee.id))}
                   >
@@ -553,8 +553,8 @@ export const HrResignationPage: React.FC = () => {
                   tabIndex={0}
                   className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                     active
-                      ? 'border-sky-200 bg-sky-50/80 shadow-sm'
-                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-slate-50'
+                      ? 'border-sky-200 bg-sky-50 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                   }`}
                   onClick={() => void loadDetail(item.id)}
                   onKeyDown={event => {
@@ -623,7 +623,7 @@ export const HrResignationPage: React.FC = () => {
         >
 
           {!detail && (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
               先在中间列表选择一条离职申请，这里会展示完整详情与办理动作。
             </div>
           )}
@@ -631,41 +631,41 @@ export const HrResignationPage: React.FC = () => {
           {detail && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">申请编号</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">状态</div>
                   <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${resignationStatusClass(detail.status)}`}>
                     {detail.statusDesc || detail.status}
                   </div>
                   <div className="mt-2 text-xs text-slate-400">{getResignationActionHint(detail.status)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">离职类型</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.resignationTypeDesc || detail.resignationType}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">预计离职日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.expectedDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">实际离职日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.actualDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">员工</div>
                   <div className="mt-2 font-semibold text-slate-900">{detail.employeeName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">{detail.employeeNo || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2 xl:col-span-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
                   <div className="text-xs text-slate-400">离职原因</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.resignationReason || '-'}</div>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white/80 p-5">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
                 <div className="mb-3">
                   <h3 className="text-base font-semibold text-slate-900">离职面谈</h3>
                   <p className="mt-1 text-sm text-slate-500">这里直接调用后端 `interview` 接口保存面谈内容。</p>

@@ -483,7 +483,7 @@ export const HrHeadcountPage: React.FC = () => {
                 <WorkspaceTableStateRow
                   colSpan={8}
                   title="当前筛选条件下没有编制记录"
-                  rowClassName="border-white/60 hover:bg-transparent"
+                  rowClassName="border-slate-100 hover:bg-transparent"
                   cellClassName="px-4 py-6"
                 />
               )}
@@ -492,7 +492,7 @@ export const HrHeadcountPage: React.FC = () => {
                   type="loading"
                   colSpan={8}
                   title="正在加载编制列表..."
-                  rowClassName="border-white/60 hover:bg-transparent"
+                  rowClassName="border-slate-100 hover:bg-transparent"
                   cellClassName="px-4 py-16"
                 />
               )}
@@ -513,29 +513,29 @@ export const HrHeadcountPage: React.FC = () => {
             bodyClassName="mt-0"
           >
             {!selectedHeadcount && (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
                 从左侧选择一条编制记录查看详情和统计。
               </div>
             )}
 
             {selectedHeadcount && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 md:col-span-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
                   <div className="text-xs text-slate-400">目标名称</div>
                   <div className="mt-2 font-semibold text-slate-900">{statistics?.targetName || selectedHeadcount.targetName || '-'}</div>
                   <div className="mt-1 text-sm text-slate-500">
                     {targetTypeLabel(selectedHeadcount.targetType)} / 目标 ID：{selectedHeadcount.targetId}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">核定编制</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">{detailApprovedCount}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">实际在职</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">{detailActualCount}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">空缺 / 超编</div>
                   <div className="mt-2">
                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${vacancyTone({
@@ -549,15 +549,15 @@ export const HrHeadcountPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">使用率</div>
                   <div className="mt-2 text-2xl font-semibold text-slate-900">{formatUtilizationRate(statistics?.utilizationRate)}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">生效日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(selectedHeadcount.effectiveDate) || '-'}</div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs text-slate-400">失效日期</div>
                   <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(selectedHeadcount.expiryDate) || '长期有效'}</div>
                 </div>
@@ -573,7 +573,7 @@ export const HrHeadcountPage: React.FC = () => {
             bodyClassName="mt-0"
           >
             {!selectedHeadcount && (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
                 先从左侧选择一条编制记录，再维护实际在职人数。
               </div>
             )}
