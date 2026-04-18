@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Download,
   File as FileIcon,
@@ -25,14 +25,16 @@ import {
   TableHeader,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
+  WorkspaceBackdrop,
+  WorkspaceHeroMetricsSection,
   WorkspacePaginationBar,
+  WorkspacePageContent,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import { deleteFile, getFileList, getFileStorageSummary, refreshFileStorageSummary, uploadFile } from '../../services/api/file';
@@ -55,6 +57,7 @@ const formatDateCN = (date: Date) => {
 };
 
 export const FileList = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<SysFile[]>([]);
   const [total, setTotal] = useState(0);
@@ -223,68 +226,68 @@ export const FileList = () => {
     { label: '文档', value: `${docCount} 个` },
     { label: '剩余空间', value: storageSummary ? formatStorage(storageSummary.remainingStorage) : '--' },
   ];
+  const heroMetrics = [
+    {
+      label: '存储占用',
+      value: `${storagePercent.toFixed(0)}%`,
+      hint: storageSummary ? `已使用 ${formatStorage(storageSummary.storageUsed)} / ${formatStorage(storageSummary.storageLimit)}` : '正在加载租户存储概览',
+      icon: <HardDrive size={17} />,
+    },
+    {
+      label: '当前页文件',
+      value: `${data.length}`,
+      hint: '当前分页下已加载文件数量',
+      icon: <FileIcon size={17} />,
+    },
+    {
+      label: '上传上限',
+      value: `${maxFileSizeMB}MB`,
+      hint: '单文件上传大小限制',
+      icon: <Upload size={17} />,
+    },
+    {
+      label: '剩余空间',
+      value: storageSummary ? formatStorage(storageSummary.remainingStorage) : '--',
+      hint: '租户级剩余可用空间',
+      icon: <RefreshCw size={17} />,
+    },
+  ];
 
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <HardDrive size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="文件管理"
           description="文件页同时承载上传、容量监控、搜索筛选和列表操作，所以重点统一信息模块和表格反馈，让它也进入同一套工作台系统。"
           actions={(
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => void handleRefreshStorage()} disabled={storageLoading}>
+              <Button variant="outline" size="lg" onClick={() => void handleRefreshStorage()} disabled={storageLoading}>
                 <RefreshCw size={15} className={storageLoading ? 'animate-spin' : ''} />
                 {storageLoading ? '校准中' : '校准空间'}
               </Button>
-              <label className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#f472b6,#ec4899)] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(236,72,153,0.22)] transition ${uploading ? 'pointer-events-none opacity-70' : ''}`}>
+              <Button size="lg" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                 <Upload size={15} />
                 {uploading ? '上传中' : '上传文件'}
-                <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
-              </label>
+              </Button>
+              <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
             </div>
           )}
           contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="存储占用"
-              value={`${storagePercent.toFixed(0)}%`}
-              hint={storageSummary ? `已使用 ${formatStorage(storageSummary.storageUsed)} / ${formatStorage(storageSummary.storageLimit)}` : '正在加载租户存储概览'}
-              aside={<HardDrive size={18} className="text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="当前页文件"
-              value={data.length}
-              hint="当前分页下已加载文件数量"
-              aside={<FileIcon size={18} className="text-sky-500" />}
-            />
-            <WorkspaceMetricCard
-              label="上传上限"
-              value={`${maxFileSizeMB}MB`}
-              hint="单文件上传大小限制"
-              aside={<Upload size={18} className="text-emerald-500" />}
-            />
-            <WorkspaceMetricCard
-              label="剩余空间"
-              value={storageSummary ? formatStorage(storageSummary.remainingStorage) : '--'}
-              hint="租户级剩余可用空间"
-              aside={<RefreshCw size={18} className="text-amber-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="文件列表"
@@ -293,7 +296,7 @@ export const FileList = () => {
               overviewItems={overviewItems}
               headerBadges={(
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
                     支持按类型快速筛选
                   </span>
                 </div>
@@ -310,7 +313,7 @@ export const FileList = () => {
                   清空筛选
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                   当前显示全部文件
                 </span>
               )}
@@ -375,17 +378,17 @@ export const FileList = () => {
                       <TableActionHead className="w-44">操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/60">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载文件数据..." />
                     ) : data.length === 0 ? (
                       <WorkspaceTableStateRow colSpan={6} title="暂无文件数据" description="可以先上传文件，再按名称或类型进行管理。" />
                     ) : (
                       data.map((file) => (
-                        <tr key={file.fileId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={file.fileId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3">
                             <div className="flex min-w-0 items-center gap-3">
-                              <div className="rounded-[14px] bg-white/84 p-2 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                              <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-sm">
                                 {getFileIcon(file.fileType)}
                               </div>
                               <div className="min-w-0">
@@ -400,7 +403,7 @@ export const FileList = () => {
                           </td>
                           <td className="px-4 py-3 text-sm font-mono text-slate-500">{formatSize(file.fileSize)}</td>
                           <td className="px-4 py-3">
-                            <span className="rounded-full bg-white/82 px-2.5 py-1 text-xs font-semibold uppercase text-slate-600 ring-1 ring-slate-200/80">
+                            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold uppercase text-slate-600">
                               {file.fileType}
                             </span>
                           </td>
@@ -436,7 +439,7 @@ export const FileList = () => {
             </WorkspaceResultCard>
           </div>
         </Card>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
