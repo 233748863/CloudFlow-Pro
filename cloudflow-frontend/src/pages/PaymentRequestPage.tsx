@@ -305,7 +305,7 @@ export const PaymentRequestPage: React.FC = () => {
 
   const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl';
   const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-6 py-4';
-  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-4';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
   const glassModalInputClass = 'h-11 rounded-xl';
   const glassModalTextareaClass = 'min-h-28 rounded-xl';
@@ -355,9 +355,9 @@ export const PaymentRequestPage: React.FC = () => {
                   <Select value={paymentTypeInput} onValueChange={setPaymentTypeInput}>
                     <SelectTrigger className="h-10 rounded-xl px-4"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
                     <SelectContent className={glassSelectContentClass}>
-                      <SelectItem className="rounded-[16px]" value="">全部类型</SelectItem>
+                      <SelectItem className="rounded-xl" value="">全部类型</SelectItem>
                       {PAYMENT_TYPE_OPTIONS.map(option => (
-                        <SelectItem key={option.value} className="rounded-[16px]" value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} className="rounded-xl" value={option.value}>{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -382,7 +382,7 @@ export const PaymentRequestPage: React.FC = () => {
                       <TableActionHead className="px-4 py-3 w-52 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/70">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载付款申请..." />
                     ) : payments.length === 0 ? (
@@ -394,7 +394,7 @@ export const PaymentRequestPage: React.FC = () => {
                         description={hasActiveFilters ? '试试切换状态或付款类型筛选，或者直接新建一条付款申请。' : '创建新的付款申请后，这里会展示收款对象、金额和审批状态。'}
                       />
                     ) : payments.map(item => (
-                      <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
+                      <tr key={item.id} className="transition hover:bg-slate-50">
                         <td className="px-4 py-2.5 text-sm text-slate-900">{item.paymentNo || '-'}</td>
                         <td className="px-4 py-2.5 text-sm font-medium text-slate-900">{item.payeeName}</td>
                         <td className="px-4 py-2.5 text-sm">{formatAmount(item.amount)}</td>
@@ -405,10 +405,10 @@ export const PaymentRequestPage: React.FC = () => {
                         <td className="px-4 py-2.5 whitespace-nowrap text-right">
                           <div className="flex flex-col items-end gap-1">
                             <TableRowActions align="end" className="gap-1" actions={[
-                              { label: '详情', icon: <Eye size={14} />, onClick: () => void handleView(item), tone: 'neutral', className: 'rounded-full bg-slate-50/90 px-2.5 ring-1 ring-slate-200/80 hover:bg-slate-100' },
-                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT', className: 'rounded-full bg-pink-50/90 px-2.5 ring-1 ring-pink-100' },
-                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT', className: 'rounded-full bg-emerald-50/90 px-2.5 ring-1 ring-emerald-100 text-emerald-700 hover:bg-emerald-100' },
-                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT', className: 'rounded-full bg-rose-50/90 px-2.5 ring-1 ring-rose-100 text-rose-600 hover:bg-rose-100' },
+                              { label: '详情', icon: <Eye size={14} />, onClick: () => void handleView(item), tone: 'neutral', className: 'rounded-full border border-slate-200 bg-white px-2.5 hover:bg-slate-50' },
+                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-cyan-200 bg-cyan-50 px-2.5 text-cyan-700 hover:bg-cyan-100' },
+                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700 hover:bg-emerald-100' },
+                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-rose-200 bg-rose-50 px-2.5 text-rose-600 hover:bg-rose-100' },
                             ]} />
                             <span className="text-[10px] font-medium text-slate-400">{getActionHint(item.status)}</span>
                           </div>
@@ -433,7 +433,7 @@ export const PaymentRequestPage: React.FC = () => {
       </WorkspacePageContent>
 
         {showDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
             <div className={`${glassModalShellClass} max-w-4xl`}>
               <div className={glassModalHeaderClass}>
                 <div className="flex items-start justify-between gap-4">
@@ -472,7 +472,7 @@ export const PaymentRequestPage: React.FC = () => {
                         <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择付款类型" /></SelectTrigger>
                         <SelectContent className={glassSelectContentClass}>
                           {PAYMENT_TYPE_OPTIONS.map(option => (
-                            <SelectItem key={option.value} className="rounded-[16px]" value={option.value}>{option.label}</SelectItem>
+                            <SelectItem key={option.value} className="rounded-xl" value={option.value}>{option.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -520,15 +520,15 @@ export const PaymentRequestPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl px-5">取消</Button>
-                <Button onClick={handleSave} className="rounded-2xl px-5">保存</Button>
+                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-xl px-5">取消</Button>
+                <Button onClick={handleSave} className="rounded-xl px-5">保存</Button>
               </div>
             </div>
           </div>
         )}
 
         {detailPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm" onClick={() => !detailLoading && setDetailPayment(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4" onClick={() => !detailLoading && setDetailPayment(null)}>
             <div className={`flex max-h-[90vh] max-w-5xl flex-col ${glassModalShellClass}`} onClick={e => e.stopPropagation()}>
               <div className={glassModalHeaderClass}>
                 <div className="flex items-start justify-between gap-4">
@@ -597,7 +597,7 @@ export const PaymentRequestPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setDetailPayment(null)} className="rounded-2xl px-5">关闭</Button>
+                <Button variant="outline" onClick={() => setDetailPayment(null)} className="rounded-xl px-5">关闭</Button>
               </div>
             </div>
           </div>

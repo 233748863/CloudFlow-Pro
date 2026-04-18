@@ -297,7 +297,7 @@ export const VisitorPage: React.FC = () => {
     },
   ];
 
-  const modalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-4';
+  const modalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
   const modalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
   const modalInputClass = 'h-11 rounded-xl';
   const modalTextareaClass = 'min-h-28 rounded-xl';
@@ -323,11 +323,11 @@ export const VisitorPage: React.FC = () => {
           description="统一查看预约状态、签到进度和当日来访情况。"
           actions={
             <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button className="h-9 rounded-[18px] px-4" onClick={handleAdd}>
+              <Button className="h-9 rounded-xl px-4" onClick={handleAdd}>
                 <Plus size={15} className="mr-2" />
                 新增预约
               </Button>
-              <Button variant="outline" className="h-9 rounded-[18px] px-4" onClick={() => void fetchList()}>
+              <Button variant="outline" className="h-9 rounded-xl px-4" onClick={() => void fetchList()}>
                 <RotateCcw size={15} className="mr-2 text-slate-500" />
                 刷新数据
               </Button>
@@ -349,7 +349,7 @@ export const VisitorPage: React.FC = () => {
               onQuickFilterChange={applyStatusFilter}
               quickFilterAside={
                 hasActiveFilters ? (
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-[18px] px-4">
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-xl px-4">
                     <RotateCcw size={15} className="mr-2" />
                     清空全部条件
                   </Button>
@@ -370,22 +370,22 @@ export const VisitorPage: React.FC = () => {
                       }
                     }}
                     placeholder="按访客姓名搜索"
-                    inputClassName="h-10 rounded-[18px] pr-4"
+                    inputClassName="h-10 rounded-xl pr-4"
                   />
 
                   <DatePicker
-                    className="h-10 rounded-[18px]"
+                    className="h-10 rounded-xl"
                     type="date"
                     value={visitDateInput}
                     onChange={(e) => setVisitDateInput(e.target.value)}
                   />
 
-                  <Button size="sm" onClick={applySearch} className="h-10 rounded-[18px] px-4">
+                  <Button size="sm" onClick={applySearch} className="h-10 rounded-xl px-4">
                     <Search size={15} className="mr-2" />
                     应用筛选
                   </Button>
 
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-[18px] px-4">
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-xl px-4">
                     <RotateCcw size={15} className="mr-2" />
                     清空条件
                   </Button>
@@ -396,7 +396,7 @@ export const VisitorPage: React.FC = () => {
             <WorkspaceResultCard total={total} description="展示访客预约、通行码、来访状态和当前可执行动作">
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-slate-50/80">
+                  <TableHeader className="bg-slate-50">
                     <TableRow className="border-slate-200 hover:bg-transparent">
                       <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                         访客姓名

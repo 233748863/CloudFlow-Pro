@@ -647,7 +647,7 @@ export const TemplateLibrary: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-5 py-4">
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
           <div className="flex flex-col">
             <span className="text-xs text-slate-400">{TEXT.templateUsage}</span>
             <span className="text-sm font-bold text-slate-700">
@@ -1002,7 +1002,7 @@ export const TemplateLibrary: React.FC = () => {
                 {categories.length > 0 ? (
                   renderCategoryTree(categories)
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-center text-sm text-slate-400">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">
                     {TEXT.noCategoryDesc}
                   </div>
                 )}
@@ -1128,7 +1128,7 @@ export const TemplateLibrary: React.FC = () => {
                   </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden bg-slate-50/70">
+                <div className="flex-1 overflow-hidden bg-slate-50">
                   <div className="h-full overflow-y-auto p-6">
                     <div className="space-y-6">
                       {previewTemplate.previewImage ? (
@@ -1156,7 +1156,7 @@ export const TemplateLibrary: React.FC = () => {
                           {previewOverviewStats.map((item) => (
                             <div
                               key={item.label}
-                              className="rounded-2xl bg-white px-5 py-4 ring-1 ring-slate-200/70"
+                              className="rounded-2xl border border-slate-200 bg-white px-5 py-4"
                             >
                               <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                                 {item.label}
@@ -1172,7 +1172,7 @@ export const TemplateLibrary: React.FC = () => {
                         </div>
 
                         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,0.95fr)]">
-                          <div className="rounded-2xl bg-white/90 px-5 py-4 ring-1 ring-slate-200/70">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
                             <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                               {TEXT.templateInfo}
                             </div>
@@ -1182,7 +1182,7 @@ export const TemplateLibrary: React.FC = () => {
                             </p>
                           </div>
 
-                          <div className="rounded-2xl bg-white/90 px-5 py-4 ring-1 ring-slate-200/70">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
                             <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                               {TEXT.tags}
                             </div>
@@ -1191,7 +1191,7 @@ export const TemplateLibrary: React.FC = () => {
                                 {previewTags.map((tag) => (
                                   <span
                                     key={tag}
-                                    className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200/70"
+                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600"
                                   >
                                     {tag}
                                   </span>
@@ -1204,7 +1204,7 @@ export const TemplateLibrary: React.FC = () => {
                             )}
                           </div>
 
-                          <div className="rounded-2xl bg-white/90 px-5 py-4 ring-1 ring-slate-200/70">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
                             <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                               {TEXT.nodeTypes}
                             </div>
@@ -1213,7 +1213,7 @@ export const TemplateLibrary: React.FC = () => {
                                 {previewNodeTypes.map((type) => (
                                   <span
                                     key={type}
-                                    className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200/70"
+                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500"
                                   >
                                     {type}
                                   </span>
@@ -1239,13 +1239,13 @@ export const TemplateLibrary: React.FC = () => {
                         </div>
 
                         {previewGraph.nodes.length > 0 ? (
-                          <div className="rounded-[26px] bg-slate-100/80 p-5 lg:p-6">
+                          <div className="rounded-3xl bg-slate-100 p-5 lg:p-6">
                             <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                               {previewGraph.nodes
                                 .slice(0, 8)
                                 .map((node, index) => (
                                   <React.Fragment key={node.id}>
-                                    <div className="min-w-[220px] rounded-2xl bg-white px-5 py-4 ring-1 ring-slate-200/70">
+                                    <div className="min-w-[220px] rounded-2xl border border-slate-200 bg-white px-5 py-4">
                                       <div
                                         className={`${PREVIEW_META_LABEL_CLASS_NAME} mb-2`}
                                       >
@@ -1263,7 +1263,7 @@ export const TemplateLibrary: React.FC = () => {
                                       previewGraph.nodes.length - 1,
                                       7,
                                     ) ? (
-                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-slate-300 ring-1 ring-slate-200/70">
+                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300">
                                         <ArrowRight className="h-4 w-4" />
                                       </div>
                                     ) : null}
@@ -1277,7 +1277,7 @@ export const TemplateLibrary: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="rounded-[24px] border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+                          <div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
                             <Workflow className="mx-auto mb-4 h-12 w-12 text-slate-200" />
                             <p className="text-sm leading-6 text-slate-500">
                               {TEXT.invalidDefinition}
@@ -1287,7 +1287,7 @@ export const TemplateLibrary: React.FC = () => {
                       </section>
 
                       <div className="grid gap-5 xl:grid-cols-2">
-                        <section className="overflow-hidden rounded-[28px] bg-white ring-1 ring-slate-200/70">
+                        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                           <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
                             {TEXT.nodeList}
                           </div>
@@ -1301,12 +1301,12 @@ export const TemplateLibrary: React.FC = () => {
                                 {previewGraph.nodes.map((node) => (
                                   <div
                                     key={node.id}
-                                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50/80"
+                                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50"
                                   >
                                     <span className="truncate text-sm font-semibold text-slate-800">
                                       {node.name}
                                     </span>
-                                    <span className="shrink-0 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200/70">
+                                    <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                       {formatNodeType(node.type)}
                                     </span>
                                   </div>
@@ -1316,7 +1316,7 @@ export const TemplateLibrary: React.FC = () => {
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-[28px] bg-white ring-1 ring-slate-200/70">
+                        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                           <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
                             {TEXT.edgeList}
                           </div>
@@ -1330,7 +1330,7 @@ export const TemplateLibrary: React.FC = () => {
                                 {previewGraph.edges.map((edge, index) => (
                                   <div
                                     key={`${edge.source}-${edge.target}-${index}`}
-                                    className="px-4 py-3 transition-colors hover:bg-slate-50/80"
+                                    className="px-4 py-3 transition-colors hover:bg-slate-50"
                                   >
                                     <div className="flex items-center gap-2 text-sm text-slate-700">
                                       <span className="min-w-0 flex-1 truncate font-semibold">
