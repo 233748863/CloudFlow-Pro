@@ -627,7 +627,7 @@ export const WorkflowImport: React.FC = () => {
 
         {files.length > 0 && (
           <Card className={workspaceGlassSurfaceClassName}>
-            <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-4 sm:px-5">
+            <div className="border-b border-slate-100 bg-slate-50 px-4 py-4 sm:px-5">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">导入队列</div>

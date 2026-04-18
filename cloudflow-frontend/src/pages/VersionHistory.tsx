@@ -188,7 +188,7 @@ const CompareNodeSection = ({
         {items.map((node) => (
           <div
             key={node.nodeId}
-            className={cn('rounded-[20px] border p-4', toneMeta.cardClassName)}
+            className={cn('rounded-2xl border p-4', toneMeta.cardClassName)}
           >
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-sm font-semibold text-slate-900">{node.nodeName}</div>
@@ -245,7 +245,7 @@ const CompareEdgeSection = ({
         {addedEdges.map((edge, index) => (
           <div
             key={`added-${edge.sourceId}-${edge.targetId}-${index}`}
-            className="rounded-[20px] border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-slate-600"
+            className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-slate-600"
           >
             新增连线：{edge.sourceId}
             {' -> '}
@@ -255,7 +255,7 @@ const CompareEdgeSection = ({
         {removedEdges.map((edge, index) => (
           <div
             key={`removed-${edge.sourceId}-${edge.targetId}-${index}`}
-            className="rounded-[20px] border border-rose-100 bg-rose-50/80 p-4 text-sm text-slate-600"
+            className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-slate-600"
           >
             删除连线：{edge.sourceId}
             {' -> '}

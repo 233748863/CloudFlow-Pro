@@ -144,7 +144,7 @@ const DeptTreePicker: React.FC<{
   };
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {selectedDepts.length > 0 ? (
         <div className="border-b border-slate-100 bg-teal-50/45 p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-600">
@@ -238,7 +238,7 @@ const RoleListPicker: React.FC<{
   });
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {selectedRoles.length > 0 ? (
         <div className="border-b border-slate-100 bg-teal-50/45 p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-600">

@@ -203,13 +203,13 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
         
         {/* Status Overlay */}
         {status === 'success' && (
-           <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/20 z-30 backdrop-blur-[2px] transition-all">
+           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-emerald-500/20 transition-all">
                <CheckCircle2 className="text-emerald-500 w-10 h-10 mb-2" />
                <span className="text-emerald-600 font-bold text-sm">验证通过</span>
            </div>
         )}
         {status === 'fail' && (
-           <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/20 z-30 backdrop-blur-[2px] transition-all">
+           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-red-500/20 transition-all">
                <XCircle className="text-red-500 w-10 h-10 mb-2" />
                <span className="text-red-600 font-bold text-sm">验证失败</span>
            </div>
@@ -218,7 +218,7 @@ export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
         {/* Refresh Button */}
         <button 
            onClick={(e) => { e.preventDefault(); fetchCaptcha(); }}
-           className="absolute top-2 right-2 p-1.5 bg-white/80 hover:bg-white rounded-full shadow-sm z-30 text-slate-600 transition-colors"
+           className="absolute top-2 right-2 z-30 rounded-full border border-slate-200 bg-white p-1.5 text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
            title="刷新验证码"
         >
            <RefreshCw size={14} />

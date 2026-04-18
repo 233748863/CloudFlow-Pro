@@ -333,7 +333,7 @@ export const HrRecruitmentPage: React.FC = () => {
       </WorkspaceSectionCard>
 
       <Tabs defaultValue="request">
-        <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-white/70 p-1 backdrop-blur-xl">
+        <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-slate-50 p-1">
           <TabsTrigger value="request">招聘需求</TabsTrigger>
           <TabsTrigger value="candidate">候选人</TabsTrigger>
           <TabsTrigger value="interview">面试安排</TabsTrigger>

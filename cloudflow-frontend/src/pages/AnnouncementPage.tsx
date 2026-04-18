@@ -219,7 +219,7 @@ export const AnnouncementPage = () => {
           className={`${workspaceGlassSurfaceClassName} space-y-0`}
           bodyClassName="space-y-2.5"
         >
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
