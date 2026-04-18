@@ -209,7 +209,7 @@ export const HrEmployeePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+      <Card className="rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -265,7 +265,7 @@ export const HrEmployeePage: React.FC = () => {
         title="员工档案列表"
         description="点击任意一行即可切到下方员工工作区，继续维护合同、证件和紧急联系人。"
         headerAside={(
-          <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
             共 {filteredEmployees.length} 条
           </span>
         )}
@@ -289,7 +289,7 @@ export const HrEmployeePage: React.FC = () => {
             {filteredEmployees.map(item => (
               <TableRow
                 key={item.id}
-                className={`cursor-pointer ${selectedEmployeeId === item.id ? 'bg-pink-50/70' : ''}`}
+                className={`cursor-pointer ${selectedEmployeeId === item.id ? 'bg-teal-50/70' : ''}`}
                 onClick={() => setSelectedEmployeeId(item.id)}
               >
                 <TableCell className="font-semibold text-slate-900">{item.employeeNo}</TableCell>
@@ -333,7 +333,7 @@ export const HrEmployeePage: React.FC = () => {
                 icon={<Users size={24} />}
                 title="暂无符合条件的员工数据"
                 description="试试调整筛选条件，或新增员工档案后再回来查看。"
-                rowClassName="border-white/60 hover:bg-transparent"
+                rowClassName="border-slate-200 hover:bg-transparent"
                 cellClassName="px-4 py-6"
               />
             )}
@@ -342,7 +342,7 @@ export const HrEmployeePage: React.FC = () => {
                 type="loading"
                 colSpan={9}
                 title="正在加载员工档案..."
-                rowClassName="border-white/60 hover:bg-transparent"
+                rowClassName="border-slate-200 hover:bg-transparent"
                 cellClassName="px-4 py-16"
               />
             )}
@@ -368,7 +368,7 @@ export const HrEmployeePage: React.FC = () => {
               <WorkspaceSectionCard
                 title="基础信息"
                 description="先完成姓名、工号、性别和当前员工状态。"
-                className="border-white/80 bg-white/88"
+                className="border-slate-200 bg-white shadow-sm"
               >
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div><Label>工号</Label><Input value={form.employeeNo} disabled={Boolean(editingId)} onChange={event => setForm(prev => ({ ...prev, employeeNo: event.target.value }))} /></div>
@@ -411,7 +411,7 @@ export const HrEmployeePage: React.FC = () => {
               <WorkspaceSectionCard
                 title="联系方式"
                 description="联系方式会直接影响员工联络和后续流程通知。"
-                className="border-white/80 bg-white/88"
+                className="border-slate-200 bg-white shadow-sm"
               >
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div><Label>手机号</Label><Input value={form.phone || ''} onChange={event => setForm(prev => ({ ...prev, phone: event.target.value }))} /></div>
@@ -426,7 +426,7 @@ export const HrEmployeePage: React.FC = () => {
             <WorkspaceSectionCard
               title="组织与岗位"
               description="部门、岗位和职位一起决定员工在后续流程和薪酬中的定位。"
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
             >
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
@@ -456,7 +456,7 @@ export const HrEmployeePage: React.FC = () => {
             <WorkspaceSectionCard
               title="补充说明"
               description="当前接口没有备注字段，这里保留口径说明，避免误解为会提交到后端。"
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
             >
               <Textarea
                 value="当前员工档案接口暂未提供备注字段，这里只展示说明，不会提交到后端。"

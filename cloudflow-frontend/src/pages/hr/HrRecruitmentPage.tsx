@@ -37,7 +37,7 @@ const candidateStatusTone: Record<string, string> = {
   NEW: 'bg-slate-100 text-slate-700',
   SCREENING: 'bg-blue-50 text-blue-700',
   INTERVIEW: 'bg-amber-50 text-amber-700',
-  OFFER: 'bg-pink-50 text-pink-700',
+  OFFER: 'bg-teal-50 text-teal-700',
   HIRED: 'bg-emerald-50 text-emerald-700',
   REJECTED: 'bg-rose-50 text-rose-700',
 };
@@ -343,7 +343,7 @@ export const HrRecruitmentPage: React.FC = () => {
           <WorkspaceSectionCard
             title="招聘需求"
             description="创建、提交、审批和关闭招聘需求都在这一组主表里推进。"
-            headerAside={<span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {filteredRequests.length} 条</span>}
+            headerAside={<span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">共 {filteredRequests.length} 条</span>}
             bodyClassName="mt-0"
           >
             <Table>
@@ -401,7 +401,7 @@ export const HrRecruitmentPage: React.FC = () => {
           <WorkspaceSectionCard
             title="候选人"
             description="候选人状态只在招聘链路内推进，到 Offer 或入职阶段后转由后续模块继续处理。"
-            headerAside={<span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {filteredCandidates.length} 条</span>}
+            headerAside={<span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">共 {filteredCandidates.length} 条</span>}
             bodyClassName="mt-0"
           >
             <Table>
@@ -459,7 +459,7 @@ export const HrRecruitmentPage: React.FC = () => {
           <WorkspaceSectionCard
             title="面试安排"
             description="所有已排期面试统一在这里复核时间、地点和当前状态。"
-            headerAside={<span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">共 {interviews.length} 条</span>}
+            headerAside={<span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">共 {interviews.length} 条</span>}
             bodyClassName="mt-0"
           >
             <Table>

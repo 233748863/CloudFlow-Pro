@@ -523,7 +523,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
   if (!selectedEmployeeId) {
     return (
-      <Card className="rounded-3xl border-white/80 bg-white/70 p-8 backdrop-blur-xl">
+      <Card className="rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
         <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
           {loading ? '正在准备员工工作区...' : '先从上方选择一位员工，再维护合同、证件和紧急联系人。'}
         </div>
@@ -599,7 +599,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             <WorkspaceSectionCard
               title={contractEditingId ? '编辑员工合同' : '新增员工合同'}
               description="直接写入合同档案，适合真实联调合同新增、续签和状态维护。"
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
             >
 
               <div className="space-y-4">
@@ -663,7 +663,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             <WorkspaceSectionCard
               title="合同列表"
               description={`当前员工已有 ${contracts.length} 份合同。仅草稿合同允许删除，生效中合同请走续签或终止流程。`}
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
               headerAside={(
                 <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                   {contractsLoading ? '同步中' : `${contracts.length} 条记录`}
@@ -729,7 +729,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             <WorkspaceSectionCard
               title={documentEditingId ? '编辑员工证件' : '新增员工证件'}
               description="优先覆盖身份证、护照、学历与学位证书这几类真实业务证件。"
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
               headerAside={<ShieldCheck size={18} className="text-slate-500" />}
             >
 
@@ -775,7 +775,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             <WorkspaceSectionCard
               title="证件列表"
               description="适合联调证件详情接口和删除回收流程。"
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
               headerAside={(
                 <span className="inline-flex rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
                   {documentsLoading ? '同步中' : `${documents.length} 条记录`}
@@ -803,7 +803,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                       <TableCell>{toDateInputValue(item.expiryDate) || '-'}</TableCell>
                       <TableCell>
                         {item.fileUrl ? (
-                          <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-pink-500 hover:text-pink-600">
+                          <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-teal-600 hover:text-teal-700">
                             查看附件
                           </a>
                         ) : '-'}
@@ -835,7 +835,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             <WorkspaceSectionCard
               title={contactEditingId ? '编辑紧急联系人' : '新增紧急联系人'}
               description="建议至少维护 1 位主联系人，真实联调时也能覆盖优先级字段。"
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
               headerAside={<Phone size={18} className="text-slate-500" />}
             >
 
@@ -886,7 +886,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             <WorkspaceSectionCard
               title="紧急联系人列表"
               description="覆盖联系人详情、编辑和删除接口，确保员工联络信息可维护。"
-              className="border-white/80 bg-white/88"
+              className="border-slate-200 bg-white shadow-sm"
               headerAside={(
                 <span className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
                   {contactsLoading ? '同步中' : `${contacts.length} 条记录`}

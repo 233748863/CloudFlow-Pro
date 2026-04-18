@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users, Wallet } from 'lucide-react';
 import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import { WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { WorkspaceBackdrop, WorkspacePageContent, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { useAuth } from '@/context/AuthContext';
 import { HrEmployee, RecruitmentRequest, Candidate, Interview, Offer, OnboardingApplication, listEmployees, listRecruitmentRequests, listCandidates, listInterviews, listOffers, listOnboardingApplications } from '@/services/api/hr';
 
@@ -15,9 +15,9 @@ const normalizeRows = <T,>(data: any): T[] => {
   return [];
 };
 
-const statusPill = (text: string, tone: 'pink' | 'emerald' | 'slate' | 'amber' = 'slate') => {
+const statusPill = (text: string, tone: 'teal' | 'emerald' | 'slate' | 'amber' = 'slate') => {
   const toneClass = {
-    pink: 'bg-pink-50 text-pink-700 border-pink-100',
+    teal: 'bg-teal-50 text-teal-700 border-teal-100',
     emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
     slate: 'bg-slate-100 text-slate-700 border-slate-200',
     amber: 'bg-amber-50 text-amber-700 border-amber-100',
@@ -34,7 +34,7 @@ const employeeStatusTone = (status?: string) => {
     case 'RESIGNED':
       return 'slate';
     default:
-      return 'pink';
+      return 'teal';
   }
 };
 
@@ -47,7 +47,7 @@ const requestStatusTone = (status?: string) => {
     case 'COMPLETED':
       return 'slate';
     default:
-      return 'pink';
+      return 'teal';
   }
 };
 
@@ -133,7 +133,7 @@ export const HrDashboardPage: React.FC = () => {
     ).length;
     const convertedOfferCount = offers.filter(item => item.status === 'ACCEPTED' && onboardingMap.has(item.candidateId)).length;
     return [
-      { label: '员工总数', value: employees.length, icon: <Users size={20} />, hint: `${regularCount} 名正式员工`, tone: 'pink' as const },
+      { label: '员工总数', value: employees.length, icon: <Users size={20} />, hint: `${regularCount} 名正式员工`, tone: 'teal' as const },
       { label: '试用期员工', value: probationCount, icon: <UserCog size={20} />, hint: '重点关注转正与带教', tone: 'amber' as const },
       { label: '招聘需求', value: recruitingCount, icon: <BriefcaseBusiness size={20} />, hint: '正在推进中的招聘岗位', tone: 'emerald' as const },
       { label: '候选人 / 面试', value: interviewingCount, icon: <FileSearch size={20} />, hint: `${interviews.length} 场面试记录`, tone: 'slate' as const },
@@ -201,12 +201,14 @@ export const HrDashboardPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <Card className="overflow-hidden rounded-3xl border-white/80 bg-white/70 p-8 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
+      <WorkspacePageContent className="space-y-6">
+      <Card className="overflow-hidden rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">
-              <ShieldCheck size={14} />
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
+              <ShieldCheck size={14} className="text-teal-600" />
               HR Desktop
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">人力资源工作台</h1>
@@ -215,27 +217,27 @@ export const HrDashboardPage: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button size="lg" className="rounded-2xl" onClick={() => navigate('/hr/employees')}>
+            <Button size="lg" className="rounded-xl" onClick={() => navigate('/hr/employees')}>
               <BadgePlus size={18} className="mr-2" />
               员工档案
             </Button>
-            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/offer')}>
+            <Button variant="outline" size="lg" className="rounded-xl" onClick={() => navigate('/hr/offer')}>
               <Send size={18} className="mr-2" />
               Offer 管理
             </Button>
-            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/recruitment')}>
+            <Button variant="outline" size="lg" className="rounded-xl" onClick={() => navigate('/hr/recruitment')}>
               <BriefcaseBusiness size={18} className="mr-2" />
               招聘中心
             </Button>
-            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/headcount')}>
+            <Button variant="outline" size="lg" className="rounded-xl" onClick={() => navigate('/hr/headcount')}>
               <Layers3 size={18} className="mr-2" />
               编制管理
             </Button>
-            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/salary')}>
+            <Button variant="outline" size="lg" className="rounded-xl" onClick={() => navigate('/hr/salary')}>
               <Landmark size={18} className="mr-2" />
               薪酬管理
             </Button>
-            <Button variant="outline" size="lg" className="rounded-2xl" onClick={() => navigate('/hr/leave/quota')}>
+            <Button variant="outline" size="lg" className="rounded-xl" onClick={() => navigate('/hr/leave/quota')}>
               <Wallet size={18} className="mr-2" />
               假期额度
             </Button>
@@ -252,8 +254,8 @@ export const HrDashboardPage: React.FC = () => {
             hint={metric.hint}
             aside={(
               <div className={`rounded-2xl p-3 ${
-                metric.tone === 'pink'
-                  ? 'bg-pink-50 text-pink-500'
+                metric.tone === 'teal'
+                  ? 'bg-teal-50 text-teal-600'
                   : metric.tone === 'amber'
                     ? 'bg-amber-50 text-amber-500'
                     : metric.tone === 'emerald'
@@ -269,14 +271,14 @@ export const HrDashboardPage: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {workflowCards.map(item => (
-          <Card key={item.title} className="rounded-3xl border-white/80 bg-white/70 p-6 backdrop-blur-xl">
+          <Card key={item.title} className="rounded-2xl border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex h-full flex-col">
               <div className={`inline-flex w-fit rounded-2xl p-3 ${item.tone}`}>
                 {item.icon}
               </div>
               <h2 className="mt-5 text-lg font-semibold text-slate-900">{item.title}</h2>
               <p className="mt-2 flex-1 text-sm leading-6 text-slate-500">{item.description}</p>
-              <Button className="mt-5 rounded-2xl" variant="outline" onClick={() => navigate(item.path)}>
+              <Button className="mt-5 rounded-xl" variant="outline" onClick={() => navigate(item.path)}>
                 进入流程
               </Button>
             </div>
@@ -343,6 +345,7 @@ export const HrDashboardPage: React.FC = () => {
           </Table>
         </WorkspaceSectionCard>
       </div>
+      </WorkspacePageContent>
     </div>
   );
 };

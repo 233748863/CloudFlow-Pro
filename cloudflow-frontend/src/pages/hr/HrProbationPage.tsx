@@ -471,7 +471,7 @@ export const HrProbationPage: React.FC = () => {
           title="申请列表"
           description="优先展示当前员工最近的转正记录，并默认聚焦可推进申请。"
           headerAside={(
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
               <Users size={14} />
               {selectedEmployee ? `${applications.length} 条记录` : '等待选择员工'}
             </div>

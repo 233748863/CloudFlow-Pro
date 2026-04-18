@@ -666,7 +666,7 @@ export const HrOnboardingPage: React.FC = () => {
         title="入职任务"
         description="任务列表直接取后端入职任务接口，完成后立即刷新状态。"
         headerAside={(
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
             <ClipboardList size={14} />
             {currentApplication ? `${tasks.length} 项任务` : '等待加载申请'}
           </div>

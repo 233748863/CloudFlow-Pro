@@ -520,7 +520,7 @@ export const HrResignationPage: React.FC = () => {
           title="申请列表"
           description="优先定位还能推进的离职单据，减少在员工维度下的来回切换。"
           headerAside={(
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
               <Users size={14} />
               {selectedEmployee ? `${applications.length} 条记录` : '等待选择员工'}
             </div>
@@ -696,7 +696,7 @@ export const HrResignationPage: React.FC = () => {
         title="交接清单"
         description="交接事项完成后会实时刷新，方便核对离职闭环是否完成。"
         headerAside={(
-          <div className="rounded-full bg-white/82 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+          <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
             {detail ? `${handovers.length} 项交接` : '等待加载申请'}
           </div>
         )}
