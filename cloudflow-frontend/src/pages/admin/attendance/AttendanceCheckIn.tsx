@@ -452,7 +452,7 @@ const AttendanceCheckIn: React.FC = () => {
                     <div className="mt-2">{result.msg}</div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-500">
                     打卡结果会显示在这里。完成定位后，可以直接点击上班打卡或下班签退。
                   </div>
                 )}
@@ -461,7 +461,7 @@ const AttendanceCheckIn: React.FC = () => {
 
             <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
               <SectionHeader eyebrow="打卡说明" title="规则提示" />
-              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-500">
                 <div className="flex items-center gap-2 font-semibold text-slate-700">
                   <ShieldCheck size={16} className="text-teal-600" />
                   Web 端打卡说明

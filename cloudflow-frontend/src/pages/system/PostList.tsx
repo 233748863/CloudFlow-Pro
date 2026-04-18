@@ -260,7 +260,7 @@ export const PostList = () => {
                       <WorkspaceTableStateRow colSpan={7} title="暂无岗位数据" description="可以先新建岗位，再分配到组织或人员信息中。" />
                     ) : (
                       posts.map((post) => (
-                        <tr key={post.postId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={post.postId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm text-slate-500">{post.postId}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">{post.postCode}</td>
                           <td className="px-4 py-3 text-sm text-slate-700">{post.postName}</td>

@@ -385,7 +385,7 @@ export const FileList = () => {
                       <WorkspaceTableStateRow colSpan={6} title="暂无文件数据" description="可以先上传文件，再按名称或类型进行管理。" />
                     ) : (
                       data.map((file) => (
-                        <tr key={file.fileId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={file.fileId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3">
                             <div className="flex min-w-0 items-center gap-3">
                               <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-sm">

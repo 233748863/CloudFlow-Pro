@@ -524,7 +524,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   if (!selectedEmployeeId) {
     return (
       <Card className="rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-16 text-center text-sm text-slate-500">
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
           {loading ? '正在准备员工工作区...' : '先从上方选择一位员工，再维护合同、证件和紧急联系人。'}
         </div>
       </Card>

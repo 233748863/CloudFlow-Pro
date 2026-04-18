@@ -75,8 +75,8 @@ const STATUS_CONFIG: Record<
   },
   "2": {
     label: "已预约",
-    color: "text-pink-600",
-    bg: "bg-pink-50 border-pink-100",
+    color: "text-cyan-700",
+    bg: "bg-cyan-50 border-cyan-200",
     icon: <Clock size={14} />,
   },
   "3": {
@@ -331,11 +331,11 @@ const VehicleList: React.FC = () => {
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <Car className="h-3.5 w-3.5" />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                 {timeLabel}
               </span>
             </div>
@@ -559,7 +559,7 @@ const VehicleList: React.FC = () => {
                     vehicles.map((vehicle) => (
                       <TableRow
                         key={vehicle.vehicleId}
-                        className="transition-colors hover:bg-slate-50/70"
+                        className="transition-colors hover:bg-slate-50"
                       >
                         <TableCell>
                           <input

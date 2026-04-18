@@ -153,11 +153,11 @@ const PerformanceStats: React.FC = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <BarChart3 size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span>
             </div>
           )}
           title="性能统计"
@@ -271,7 +271,7 @@ const PerformanceStats: React.FC = () => {
                     </TableHeader>
                     <tbody className="divide-y divide-slate-100">
                       {stats.map((stat, index) => (
-                        <tr key={`${stat.processDefKey}-${stat.statDate}-${index}`} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={`${stat.processDefKey}-${stat.statDate}-${index}`} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm text-slate-900">{stat.statDate}</td>
                           <td className="px-4 py-3 text-sm text-slate-900">{stat.processName}</td>
                           <td className="px-4 py-3 text-right text-sm font-medium text-pink-500">{stat.totalCount}</td>

@@ -330,7 +330,7 @@ const WorkflowMonitor: React.FC = () => {
               </TableHeader>
               <tbody className="divide-y divide-slate-100">
                 {trend.map((item, index) => (
-                  <tr key={index} className="transition hover:bg-slate-50/80">
+                  <tr key={index} className="transition hover:bg-slate-50">
                     <td className="px-4 py-2 text-sm text-slate-900">{item.date}</td>
                     <td className="px-4 py-2 text-right text-sm font-medium text-teal-600">{item.started}</td>
                     <td className="px-4 py-2 text-right text-sm font-medium text-emerald-600">{item.completed}</td>

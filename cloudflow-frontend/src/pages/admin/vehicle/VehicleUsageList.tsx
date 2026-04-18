@@ -85,8 +85,8 @@ const USAGE_STATUS: Record<string, { label: string; color: string; bg: string; i
   },
   '3': {
     label: '进行中',
-    color: 'text-pink-600',
-    bg: 'border border-pink-200 bg-pink-50',
+    color: 'text-cyan-700',
+    bg: 'border border-cyan-200 bg-cyan-50',
     icon: <Car size={14} />
   },
   '4': {
@@ -578,7 +578,7 @@ const VehicleUsageList: React.FC = () => {
                 <WorkspaceResultCard total={usageTotal} description="展示车辆使用记录、审批状态与当前可执行操作">
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-slate-50/80">
+                      <TableHeader className="bg-slate-50">
                         <TableRow className="border-slate-200 hover:bg-transparent">
                           <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">车辆</TableHead>
                           <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">申请人</TableHead>
@@ -606,7 +606,7 @@ const VehicleUsageList: React.FC = () => {
                             />
                           ) : (
                             usages.map((usage) => (
-                              <TableRow key={usage.usageId} className="border-slate-100 transition hover:bg-slate-50/70">
+                              <TableRow key={usage.usageId} className="border-slate-100 transition hover:bg-slate-50">
                                 <TableCell className="px-4 py-4 align-top">
                                   <div className="text-sm font-semibold text-slate-900">
                                     {usage.vehiclePlate || `车辆#${usage.vehicleId}`}
@@ -698,7 +698,7 @@ const VehicleUsageList: React.FC = () => {
                 <WorkspaceResultCard total={expenseTotal} title="费用记录" description="展示每笔车辆费用的类型、金额、日期与录入说明">
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-slate-50/80">
+                      <TableHeader className="bg-slate-50">
                         <TableRow className="border-slate-200 hover:bg-transparent">
                           <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">车辆</TableHead>
                           <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">费用类型</TableHead>
@@ -731,7 +731,7 @@ const VehicleUsageList: React.FC = () => {
                               color: 'text-slate-600',
                             };
                             return (
-                              <TableRow key={expense.expenseId} className="border-slate-100 transition hover:bg-slate-50/70">
+                              <TableRow key={expense.expenseId} className="border-slate-100 transition hover:bg-slate-50">
                                 <TableCell className="px-4 py-4 align-top">
                                   <div className="text-sm font-semibold text-slate-900">
                                     {expense.vehiclePlate || `车辆#${expense.vehicleId}`}

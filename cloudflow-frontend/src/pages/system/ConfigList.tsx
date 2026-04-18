@@ -198,11 +198,11 @@ export const ConfigList = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <Settings2 size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span>
             </div>
           )}
           title="参数配置"
@@ -323,7 +323,7 @@ export const ConfigList = () => {
                       <WorkspaceTableStateRow colSpan={8} title="暂无参数配置" description="可以先创建一条配置，随后逐步收口系统常量。" />
                     ) : (
                       configs.map((config) => (
-                        <tr key={config.configId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={config.configId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm text-slate-500">{config.configId}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">{config.configName}</td>
                           <td className="px-4 py-3 font-mono text-xs text-slate-600">{config.configKey}</td>
@@ -342,7 +342,7 @@ export const ConfigList = () => {
                           <td className="px-4 py-3">
                             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                               config.configScope === '0'
-                                ? 'bg-pink-50 text-pink-600 ring-1 ring-pink-100'
+                                ? 'border border-cyan-200 bg-cyan-50 text-cyan-700'
                                 : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
                             }`}>
                               {config.configScope === '0' ? '全局' : '租户'}

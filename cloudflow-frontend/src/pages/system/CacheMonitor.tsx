@@ -142,7 +142,7 @@ const KeyTreeNode: React.FC<{
     <div>
       <div
         className={`group flex cursor-pointer items-center gap-2 rounded-[16px] px-2 py-1.5 text-sm transition ${
-          isSelected ? 'bg-pink-50 text-pink-700' : 'text-slate-700 hover:bg-white hover:text-pink-600'
+          isSelected ? 'border border-cyan-200 bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-white hover:text-cyan-700'
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => {
@@ -348,11 +348,11 @@ export const CacheMonitor = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <Database size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span>
             </div>
           )}
           title="缓存监控"
@@ -514,7 +514,7 @@ export const CacheMonitor = () => {
                           ) : keyGroups.map((group) => {
                             const percent = dbSize > 0 ? ((group.count / dbSize) * 100).toFixed(1) : '0';
                             return (
-                              <tr key={group.prefix} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                              <tr key={group.prefix} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                                 <td className="px-4 py-3 font-mono text-sm text-slate-800">{group.prefix}*</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{group.count}</td>
                                 <td className="px-4 py-3 text-sm">
@@ -606,7 +606,7 @@ export const CacheMonitor = () => {
                             <button
                               type="button"
                               onClick={() => copyToClipboard(formatValue(keyDetail.value))}
-                              className="inline-flex items-center gap-1 text-xs text-pink-500 transition hover:text-pink-600"
+                              className="inline-flex items-center gap-1 text-xs text-cyan-600 transition hover:text-cyan-700"
                             >
                               <Copy size={12} />
                               复制值

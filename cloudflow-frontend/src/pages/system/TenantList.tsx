@@ -473,7 +473,7 @@ export const TenantList: React.FC = () => {
                         const expireHint = getExpireHint(tenant.expireTime);
 
                         return (
-                          <tr key={tenant.tenantId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                          <tr key={tenant.tenantId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700">

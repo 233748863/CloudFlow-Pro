@@ -318,11 +318,11 @@ export const ArchivedWorkflows: React.FC = () => {
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <FileText size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                 {timeLabel}
               </span>
             </div>
@@ -568,7 +568,7 @@ export const ArchivedWorkflows: React.FC = () => {
                   {workflows.map((workflow) => (
                     <div
                       key={workflow.id}
-                      className={`rounded-2xl border p-4 transition-colors ${selectedIds.includes(workflow.workflowId) ? "border-blue-200 bg-blue-50/80" : "border-slate-200 bg-white hover:bg-slate-50/70"}`}
+                      className={`rounded-2xl border p-4 transition-colors ${selectedIds.includes(workflow.workflowId) ? "border-cyan-200 bg-cyan-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
                     >
                       <div className="flex items-start gap-4">
                         <input

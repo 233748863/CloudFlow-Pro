@@ -178,11 +178,11 @@ export const LoginLogPage: React.FC = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <Lock size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span>
             </div>
           )}
           title="登录日志"
@@ -318,7 +318,7 @@ export const LoginLogPage: React.FC = () => {
                       <WorkspaceTableStateRow colSpan={8} title="暂无登录日志" description="可以调整筛选条件，或等待新的登录行为写入日志。" />
                     ) : (
                       records.map((item) => (
-                        <tr key={item.logId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={item.logId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3">
                             <input
                               type="checkbox"

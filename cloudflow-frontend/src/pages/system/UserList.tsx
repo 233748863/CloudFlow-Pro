@@ -454,7 +454,7 @@ export const UserList = () => {
                       <WorkspaceTableStateRow colSpan={8} title="暂无用户数据" description="可以先创建账号，再分配角色和组织信息。" />
                     ) : (
                       users.map((user) => (
-                        <tr key={user.userId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={user.userId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm text-slate-500">{user.userId}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">
                             <div className="flex items-center gap-3">

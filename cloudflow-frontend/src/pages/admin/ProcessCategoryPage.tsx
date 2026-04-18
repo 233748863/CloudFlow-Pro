@@ -151,7 +151,7 @@ const ProcessCategoryPage: React.FC = () => {
     return (
       <div key={node.categoryId}>
         <div
-          className={`group flex cursor-pointer items-center rounded-2xl px-3 py-2 transition-colors ${isSelected ? 'bg-slate-100 ring-1 ring-slate-200' : 'hover:bg-slate-50/70'}`}
+          className={`group flex cursor-pointer items-center rounded-2xl px-3 py-2 transition-colors ${isSelected ? 'bg-slate-100 ring-1 ring-slate-200' : 'hover:bg-slate-50'}`}
           style={{ paddingLeft: `${level * 22 + 12}px` }}
           onClick={() => setSelectedId(node.categoryId!)}
         >
@@ -165,13 +165,13 @@ const ProcessCategoryPage: React.FC = () => {
           >
             {hasChildren ? (isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : <span className="w-4" />}
           </button>
-          <span className="mr-2 text-pink-500">{renderIcon(node.icon)}</span>
+          <span className="mr-2 text-cyan-600">{renderIcon(node.icon)}</span>
           <span className="flex-1 truncate text-sm font-medium text-slate-700">{node.categoryName}</span>
           <span className="mr-3 hidden text-xs text-slate-400 sm:inline">{node.categoryCode}</span>
           <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${node.status === '0' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100' : 'bg-rose-50 text-rose-600 ring-1 ring-rose-100'}`}>{node.status === '0' ? '正常' : '停用'}</span>
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-pink-600" onClick={(event) => { event.stopPropagation(); handleAdd(node.categoryId!); }}><Plus className="w-3.5 h-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-pink-500" onClick={(event) => { event.stopPropagation(); void handleEdit(node.categoryId!); }}><Pencil className="w-3.5 h-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-cyan-700" onClick={(event) => { event.stopPropagation(); handleAdd(node.categoryId!); }}><Plus className="w-3.5 h-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-cyan-600" onClick={(event) => { event.stopPropagation(); void handleEdit(node.categoryId!); }}><Pencil className="w-3.5 h-3.5" /></Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:bg-rose-50 hover:text-rose-600" onClick={(event) => { event.stopPropagation(); void handleDelete(node.categoryId!, node.categoryName!); }}><Trash2 className="w-3.5 h-3.5" /></Button>
           </div>
         </div>
@@ -190,7 +190,7 @@ const ProcessCategoryPage: React.FC = () => {
       <WorkspaceBackdrop />
       <WorkspacePageContent>
         <WorkspaceHeroCard
-          badge={<div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500"><span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100"><FolderTree className="h-3.5 w-3.5" />{todayLabel}</span><span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span></div>}
+          badge={<div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500"><span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700"><FolderTree className="h-3.5 w-3.5" />{todayLabel}</span><span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span></div>}
           title="流程分类管理"
           description="统一流程分类树、详情面板和编辑弹窗，让流程治理页也进入同一套工作台结构。"
           actions={<Button onClick={() => handleAdd(0)}><Plus className="h-4 w-4" />新增顶级分类</Button>}

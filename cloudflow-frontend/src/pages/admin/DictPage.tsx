@@ -324,11 +324,11 @@ export const DictPage: React.FC = () => {
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <BookOpen className="h-3.5 w-3.5" />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                 {timeLabel}
               </span>
             </div>
@@ -450,8 +450,8 @@ export const DictPage: React.FC = () => {
                     className={cn(
                       "group cursor-pointer rounded-2xl border px-4 py-3 transition-all",
                       selectedType?.dictId === item.dictId
-                        ? "border-pink-200 bg-pink-50/90 shadow-[0_12px_24px_rgba(244,114,182,0.08)]"
-                        : "border-slate-200 bg-white hover:bg-slate-50/70 hover:shadow-[0_12px_24px_rgba(15,23,42,0.05)]",
+                        ? "border-cyan-200 bg-cyan-50 shadow-sm"
+                        : "border-slate-200 bg-white hover:bg-slate-50 hover:shadow-[0_12px_24px_rgba(15,23,42,0.05)]",
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -555,7 +555,7 @@ export const DictPage: React.FC = () => {
                     {dictDataList.map((item) => (
                       <tr
                         key={item.dictCode}
-                        className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
+                        className="border-t border-slate-100 transition-colors hover:bg-slate-50"
                       >
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {item.dictSort}

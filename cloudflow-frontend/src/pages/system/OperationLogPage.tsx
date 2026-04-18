@@ -140,7 +140,7 @@ const DetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = ({ lo
         </div>
 
         {log.logType === '9' && log.exception ? (
-          <div className="rounded-[24px] border border-rose-100 bg-rose-50/70 p-4">
+          <div className="rounded-3xl border border-rose-100 bg-rose-50 p-4">
             <div className="text-sm font-semibold text-rose-600">异常信息</div>
             <div className="mt-3 break-all text-sm leading-7 text-rose-700">{log.exception}</div>
           </div>
@@ -288,11 +288,11 @@ export const OperationLogPage: React.FC = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <Activity size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span>
             </div>
           )}
           title="操作日志"
@@ -440,7 +440,7 @@ export const OperationLogPage: React.FC = () => {
                       <WorkspaceTableStateRow colSpan={10} title="暂无操作日志" description="可以调整筛选条件，或等待新的业务操作写入日志。" />
                     ) : (
                       records.map((log, idx) => (
-                        <tr key={log.logId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={log.logId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3">
                             <input
                               type="checkbox"

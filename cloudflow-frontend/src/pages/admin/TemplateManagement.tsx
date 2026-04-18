@@ -447,11 +447,11 @@ export const TemplateManagement = () => {
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <FolderPlus className="h-3.5 w-3.5" />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                 {timeLabel}
               </span>
             </div>
@@ -593,7 +593,7 @@ export const TemplateManagement = () => {
                   {flatCategories.map((category) => (
                     <tr
                       key={category.id}
-                      className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+                      className="border-b border-slate-100 transition-colors hover:bg-slate-50"
                     >
                       <td className="px-4 py-3 text-sm text-slate-700">
                         <span
@@ -686,7 +686,7 @@ export const TemplateManagement = () => {
                   {templates.map((template) => (
                     <tr
                       key={template.id}
-                      className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+                      className="border-b border-slate-100 transition-colors hover:bg-slate-50"
                     >
                       <td className="px-4 py-4">
                         <div>
@@ -843,7 +843,7 @@ export const TemplateManagement = () => {
                   {templateForm.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1 text-xs font-medium text-pink-600 ring-1 ring-pink-100"
+                      className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700"
                     >
                       {tag}
                       <button type="button" onClick={() => removeTag(tag)}>

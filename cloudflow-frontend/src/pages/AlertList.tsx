@@ -61,7 +61,7 @@ const getLevelBadge = (alert: TimeoutAlert | AnomalyAlert, type: AlertType) => {
     CRITICAL: { className: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100', label: '严重' },
     HIGH: { className: 'bg-orange-50 text-orange-600 ring-1 ring-orange-100', label: '高' },
     MEDIUM: { className: 'bg-amber-50 text-amber-700 ring-1 ring-amber-100', label: '中' },
-    LOW: { className: 'bg-pink-50 text-pink-600 ring-1 ring-pink-100', label: '低' },
+    LOW: { className: 'border border-cyan-200 bg-cyan-50 text-cyan-700', label: '低' },
   };
   const severity = severityMap[anomalyAlert.severity] || severityMap.MEDIUM;
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${severity.className}`}>{severity.label}</span>;
@@ -222,11 +222,11 @@ const AlertList: React.FC = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <Bell size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span>
             </div>
           )}
           title="告警管理"

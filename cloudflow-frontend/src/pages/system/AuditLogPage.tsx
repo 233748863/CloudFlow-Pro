@@ -46,7 +46,7 @@ const AuditDetailModal: React.FC<{ log: SysAuditLog | null; onClose: () => void 
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs text-slate-400">变更字段</div>
-            <div className="mt-2 text-sm font-medium text-pink-600">{log.auditField || '-'}</div>
+            <div className="mt-2 text-sm font-medium text-cyan-700">{log.auditField || '-'}</div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs text-slate-400">操作人</div>
@@ -60,7 +60,7 @@ const AuditDetailModal: React.FC<{ log: SysAuditLog | null; onClose: () => void 
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="grid grid-cols-[1fr_56px_1fr]">
-            <div className="bg-rose-50/70">
+            <div className="bg-rose-50">
               <div className="border-b border-rose-100/70 px-4 py-3 text-xs font-semibold text-rose-600">变更前</div>
               <div className="min-h-[120px] p-4 text-sm leading-7 text-slate-700">
                 {log.beforeVal || <span className="italic text-slate-400">（空）</span>}
@@ -205,11 +205,11 @@ export const AuditLogPage: React.FC = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <ArrowLeftRight size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{timeLabel}</span>
             </div>
           )}
           title="审计日志"
@@ -335,7 +335,7 @@ export const AuditLogPage: React.FC = () => {
                       <WorkspaceTableStateRow colSpan={9} title="暂无审计日志" description="可以调整筛选条件，或等待新的业务字段变更写入日志。" />
                     ) : (
                       records.map((log, idx) => (
-                        <tr key={log.auditId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+                        <tr key={log.auditId} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3">
                             <input
                               type="checkbox"
@@ -349,7 +349,7 @@ export const AuditLogPage: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 text-slate-700 font-medium">{log.auditName || '-'}</td>
                           <td className="px-4 py-3">
-                            <span className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-600 ring-1 ring-pink-100">
+                            <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700">
                               {log.auditField || '-'}
                             </span>
                           </td>

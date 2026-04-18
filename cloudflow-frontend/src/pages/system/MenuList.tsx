@@ -81,7 +81,7 @@ const formatDateCN = (date: Date) => {
 const menuTypeMeta: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
   M: {
     label: '目录',
-    className: 'bg-pink-50 text-pink-600 ring-1 ring-pink-100',
+    className: 'border border-cyan-200 bg-cyan-50 text-cyan-700',
     icon: <Folder size={14} />,
   },
   C: {
@@ -253,7 +253,7 @@ export const MenuList = () => {
 
       return (
         <React.Fragment key={node.menuId}>
-          <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
+          <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50">
             <td className="px-4 py-3 text-sm text-slate-900">
               <div className="flex items-center" style={{ paddingLeft: `${level * 22}px` }}>
                 {node.children && node.children.length > 0 ? (
