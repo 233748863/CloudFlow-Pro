@@ -422,7 +422,7 @@ export const CopyListPage: React.FC = () => {
         title="正在加载抄送记录..."
         description="系统正在整理你的流程抄送和已读状态，请稍候。"
         actions={
-          <Button variant="outline" className="rounded-[18px]" onClick={handleRefresh}>
+          <Button variant="outline" className="rounded-xl" onClick={handleRefresh}>
             <RefreshCw size={16} className="mr-2" />
             刷新状态
           </Button>
@@ -439,7 +439,7 @@ export const CopyListPage: React.FC = () => {
         title="抄送记录加载失败"
         description={error}
         actions={
-          <Button className="rounded-[18px]" onClick={() => void fetchList()}>
+          <Button className="rounded-xl" onClick={() => void fetchList()}>
             重试加载
           </Button>
         }
@@ -474,7 +474,7 @@ export const CopyListPage: React.FC = () => {
             <div className="flex flex-wrap gap-2 xl:justify-end">
               {selectedIds.size > 0 ? (
                   <Button
-                    className="h-9 rounded-[18px] px-4"
+                    className="h-9 rounded-xl px-4"
                     onClick={handleBatchMarkRead}
                   >
                   <CheckCheck size={15} className="mr-2" />
@@ -483,7 +483,7 @@ export const CopyListPage: React.FC = () => {
               ) : null}
               <Button
                 variant="outline"
-                className="h-9 rounded-[18px] px-4"
+                className="h-9 rounded-xl px-4"
                 onClick={handleRefresh}
                 disabled={refreshing}
               >
@@ -522,7 +522,7 @@ export const CopyListPage: React.FC = () => {
               quickFilterAside={
                 <div className="flex flex-wrap items-center gap-2">
                   {unreadOnPage.length > 0 ? (
-                    <label className="inline-flex h-9 items-center gap-2 rounded-[18px] border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
+                    <label className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
                       <input
                         type="checkbox"
                         checked={allUnreadSelected}
@@ -537,7 +537,7 @@ export const CopyListPage: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 rounded-[18px] px-4"
+                      className="h-9 rounded-xl px-4"
                       onClick={handleClearFilters}
                     >
                       <X size={15} className="mr-2 text-slate-400" />
@@ -563,7 +563,7 @@ export const CopyListPage: React.FC = () => {
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                       onKeyDown={handleSearchKeyDown}
-                      className="h-10 rounded-[18px] pl-10 pr-16"
+                      className="h-10 rounded-xl pl-10 pr-16"
                     />
                     {searchInput && searchInput.trim() !== keyword ? (
                       <button
@@ -583,17 +583,17 @@ export const CopyListPage: React.FC = () => {
                         handleProcessTypeChange(value === ALL_PROCESS_VALUE ? '' : value)
                       }
                     >
-                      <SelectTrigger className="h-10 rounded-[18px]">
+                      <SelectTrigger className="h-10 rounded-xl">
                         <SelectValue placeholder="全部流程类型" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem className="rounded-[14px]" value={ALL_PROCESS_VALUE}>
+                        <SelectItem className="rounded-lg" value={ALL_PROCESS_VALUE}>
                           全部流程类型
                         </SelectItem>
                         {processDefOptions.map((option) => (
                           <SelectItem
                             key={option.key}
-                            className="rounded-[14px]"
+                            className="rounded-lg"
                             value={String(option.key)}
                           >
                             {option.name}
@@ -608,7 +608,7 @@ export const CopyListPage: React.FC = () => {
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Button
                       size="sm"
-                      className="h-10 rounded-[18px]"
+                      className="h-10 rounded-xl"
                       onClick={handleSearch}
                     >
                       <Search size={15} className="mr-2" />
@@ -617,7 +617,7 @@ export const CopyListPage: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 rounded-[18px] px-4"
+                      className="h-10 rounded-xl px-4"
                       onClick={handleRefresh}
                       disabled={refreshing}
                     >
@@ -669,7 +669,7 @@ export const CopyListPage: React.FC = () => {
                         key={record.id}
                         className={cn(
                           'card card-hover cursor-pointer rounded-2xl px-4 py-4',
-                          record.isRead === 0 ? 'border-cyan-200 bg-cyan-50/60' : '',
+                          record.isRead === 0 ? 'border-cyan-200 bg-cyan-50' : '',
                         )}
                         onClick={() => handleViewDetail(record)}
                       >
@@ -730,7 +730,7 @@ export const CopyListPage: React.FC = () => {
                             {record.isRead === 0 ? (
                               <Button
                                 variant="outline"
-                                className="h-10 rounded-[18px] border-cyan-200 px-4 text-cyan-700 hover:bg-cyan-50"
+                                className="h-10 rounded-xl border-cyan-200 px-4 text-cyan-700 hover:bg-cyan-50"
                                 onClick={() => void handleMarkRead(record)}
                               >
                                 标记已读
@@ -738,7 +738,7 @@ export const CopyListPage: React.FC = () => {
                             ) : null}
                             <Button
                               variant="outline"
-                              className="h-10 rounded-[18px] px-4"
+                              className="h-10 rounded-xl px-4"
                               onClick={() => handleViewDetail(record)}
                             >
                               <Eye size={14} className="mr-2 text-slate-400" />
@@ -774,7 +774,7 @@ export const CopyListPage: React.FC = () => {
           bodyClassName="space-y-6"
         >
           {selectedRecord.formData ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                 <FileText size={16} className="text-cyan-600" />
                 表单数据快照
@@ -791,7 +791,7 @@ export const CopyListPage: React.FC = () => {
                       {Object.entries(data).map(([key, value]) => (
                         <div
                           key={key}
-                          className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm"
+                          className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"
                         >
                           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                             {key}

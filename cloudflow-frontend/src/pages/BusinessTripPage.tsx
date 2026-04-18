@@ -336,7 +336,7 @@ export const BusinessTripPage: React.FC = () => {
 
   const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl';
   const glassModalHeaderClass = 'border-b border-slate-100 px-6 py-4';
-  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-4';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
   const glassModalInputClass = 'h-11 rounded-xl';
   const glassModalTextareaClass = 'min-h-28 rounded-xl';
@@ -448,7 +448,7 @@ export const BusinessTripPage: React.FC = () => {
                       <TableActionHead className="px-4 py-3 w-52 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/70">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={10} type="loading" title="正在加载出差申请..." />
                     ) : list.length === 0 ? (
@@ -460,7 +460,7 @@ export const BusinessTripPage: React.FC = () => {
                         description={hasActiveFilters ? '试试切换状态、清空目的地条件，或者直接新建一条出差申请。' : '创建新的出差申请后，这里会展示行程、费用、住宿安排和审批状态。'}
                       />
                     ) : list.map(item => (
-                      <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
+                      <tr key={item.id} className="transition hover:bg-slate-50">
                         <td className="px-4 py-2.5 text-sm text-slate-900">{item.tripNo}</td>
                         <td className="px-4 py-2.5 text-sm font-medium text-slate-900">{item.departure ? `${item.departure} → ` : ''}{item.destination}</td>
                         <td className="px-4 py-2.5 text-sm text-slate-600">{item.startDate} ~ {item.endDate}</td>
@@ -482,7 +482,7 @@ export const BusinessTripPage: React.FC = () => {
                                   icon: <Eye size={14} />,
                                   onClick: () => void handleView(item),
                                   tone: 'neutral',
-                                  className: 'rounded-full bg-slate-50/90 px-2.5 ring-1 ring-slate-200/80 hover:bg-slate-100',
+                                  className: 'rounded-full border border-slate-200 bg-white px-2.5 hover:bg-slate-50',
                                 },
                                 {
                                   label: '编辑',
@@ -491,7 +491,7 @@ export const BusinessTripPage: React.FC = () => {
                                   onClick: () => handleEdit(item.id!),
                                   tone: 'primary',
                                   hidden: item.status !== 'DRAFT',
-                                  className: 'rounded-full bg-cyan-50/90 px-2.5 ring-1 ring-cyan-100 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800',
+                                  className: 'rounded-full border border-cyan-200 bg-cyan-50 px-2.5 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800',
                                 },
                                 {
                                   label: '提交',
@@ -500,7 +500,7 @@ export const BusinessTripPage: React.FC = () => {
                                   onClick: () => handleSubmit(item.id!),
                                   tone: 'success',
                                   hidden: item.status !== 'DRAFT',
-                                  className: 'rounded-full bg-emerald-50/90 px-2.5 ring-1 ring-emerald-100 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800',
+                                  className: 'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800',
                                 },
                                 {
                                   label: '取消',
@@ -509,7 +509,7 @@ export const BusinessTripPage: React.FC = () => {
                                   onClick: () => handleCancel(item.id!),
                                   tone: 'warning',
                                   hidden: item.status !== 'PENDING',
-                                  className: 'rounded-full bg-amber-50/90 px-2.5 ring-1 ring-amber-100 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
+                                  className: 'rounded-full border border-amber-200 bg-amber-50 px-2.5 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
                                 },
                                 {
                                   label: '删除',
@@ -518,7 +518,7 @@ export const BusinessTripPage: React.FC = () => {
                                   onClick: () => handleDelete([item.id!]),
                                   tone: 'danger',
                                   hidden: item.status !== 'DRAFT',
-                                  className: 'rounded-full bg-rose-50/90 px-2.5 ring-1 ring-rose-100 text-rose-600 hover:bg-rose-100 hover:text-rose-700',
+                                  className: 'rounded-full border border-rose-200 bg-rose-50 px-2.5 text-rose-600 hover:bg-rose-100 hover:text-rose-700',
                                 },
                               ]}
                             />
@@ -544,7 +544,7 @@ export const BusinessTripPage: React.FC = () => {
         </Card>
 
         {showDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.2)] p-4 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
             <div className={`${glassModalShellClass} max-w-3xl`}>
               <div className={glassModalHeaderClass}>
                 <div className="relative flex items-start justify-between gap-4">
@@ -599,10 +599,10 @@ export const BusinessTripPage: React.FC = () => {
                       <Select value={formData.transportType || 'TRAIN'} onValueChange={value => setFormData({ ...formData, transportType: value })}>
                         <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem className="rounded-[16px]" value="PLANE">飞机</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="TRAIN">火车</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="CAR">自驾</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="OTHER">其他</SelectItem>
+                          <SelectItem className="rounded-xl" value="PLANE">飞机</SelectItem>
+                          <SelectItem className="rounded-xl" value="TRAIN">火车</SelectItem>
+                          <SelectItem className="rounded-xl" value="CAR">自驾</SelectItem>
+                          <SelectItem className="rounded-xl" value="OTHER">其他</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -611,9 +611,9 @@ export const BusinessTripPage: React.FC = () => {
                       <Select value={formData.accommodation || 'SELF'} onValueChange={value => setFormData({ ...formData, accommodation: value })}>
                         <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem className="rounded-[16px]" value="SELF">自行安排</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="COMPANY">公司安排</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="NONE">无需住宿</SelectItem>
+                          <SelectItem className="rounded-xl" value="SELF">自行安排</SelectItem>
+                          <SelectItem className="rounded-xl" value="COMPANY">公司安排</SelectItem>
+                          <SelectItem className="rounded-xl" value="NONE">无需住宿</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -679,7 +679,7 @@ export const BusinessTripPage: React.FC = () => {
         )}
 
         {detailTrip && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.22)] p-4 backdrop-blur-md" onClick={() => !detailLoading && setDetailTrip(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4" onClick={() => !detailLoading && setDetailTrip(null)}>
             <div
               className={`flex max-h-[90vh] max-w-5xl flex-col ${glassModalShellClass}`}
               onClick={(e) => e.stopPropagation()}
