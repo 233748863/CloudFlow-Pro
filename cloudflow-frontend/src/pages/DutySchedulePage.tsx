@@ -85,11 +85,11 @@ const shiftMap: Record<string, string> = {
 
 const getStatusBadgeClassName = (status: string) => {
   const config: Record<string, string> = {
-    SCHEDULED: 'bg-pink-50 text-pink-600 ring-1 ring-pink-100',
-    CHECKED_IN: 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
-    COMPLETED: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100',
-    SWAPPED: 'bg-violet-50 text-violet-600 ring-1 ring-violet-100',
-    CANCELLED: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+    SCHEDULED: 'border border-cyan-200 bg-cyan-50 text-cyan-700',
+    CHECKED_IN: 'border border-amber-200 bg-amber-50 text-amber-600',
+    COMPLETED: 'border border-emerald-200 bg-emerald-50 text-emerald-600',
+    SWAPPED: 'border border-violet-200 bg-violet-50 text-violet-600',
+    CANCELLED: 'border border-slate-200 bg-slate-100 text-slate-500',
   };
   return config[status] || config.SCHEDULED;
 };
@@ -237,36 +237,24 @@ export const DutySchedulePage: React.FC = () => {
       label: '排班总数',
       value: `${total}`,
       hint: '当前筛选条件下的排班记录总数',
-      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))]',
-      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85',
-      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
       icon: <Calendar size={17} />,
     },
     {
       label: '待签到',
       value: `${summary.scheduledCount}`,
       hint: '尚未开始执行的排班',
-      panelClassName: 'border-sky-100/80 bg-[linear-gradient(135deg,rgba(239,246,255,0.95),rgba(255,255,255,0.82),rgba(240,249,255,0.8))]',
-      iconWrapClassName: 'bg-white/88 text-sky-600 ring-1 ring-sky-100',
-      glowClassName: 'from-sky-100/90 via-cyan-50/45 to-transparent',
       icon: <LogIn size={17} />,
     },
     {
       label: '值班中',
       value: `${summary.checkedInCount}`,
       hint: '已签到但尚未签退',
-      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))]',
-      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100',
-      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
       icon: <RefreshCw size={17} />,
     },
     {
       label: '已完成',
       value: `${summary.completedCount}`,
       hint: `已换班 ${summary.swappedCount} 条`,
-      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))]',
-      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100',
-      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
       icon: <LogOut size={17} />,
     },
   ];
@@ -278,7 +266,7 @@ export const DutySchedulePage: React.FC = () => {
       <WorkspacePageContent>
         <WorkspaceHeroMetricsSection
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
               <Calendar className="h-3.5 w-3.5" />
               Duty Workspace
             </span>
@@ -291,11 +279,11 @@ export const DutySchedulePage: React.FC = () => {
               新增排班
             </Button>
           }
-          contentClassName="p-3.5 sm:p-4"
+          contentClassName="p-4 sm:p-5"
           metrics={heroMetrics}
         />
 
-        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               eyebrow="排班筛选"
@@ -362,8 +350,8 @@ export const DutySchedulePage: React.FC = () => {
               title="排班列表"
               description="集中查看排班标题、班次、值班人、签到签退状态以及换班操作。"
               footer={
-                <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.6))] px-4 py-3">
-                  <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center justify-between border-t border-slate-100 bg-white px-4 py-3">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-500">
                     共 {total} 条
                   </span>
                   <div className="flex gap-2">
@@ -634,11 +622,7 @@ export const DutySchedulePage: React.FC = () => {
               <Button variant="outline" onClick={() => setShowSwapDialog(false)}>
                 取消
               </Button>
-              <Button
-                variant="secondary"
-                onClick={handleSwap}
-                className="border border-violet-100 bg-[linear-gradient(180deg,rgba(245,243,255,0.92),rgba(255,255,255,0.82))] text-violet-700 hover:bg-violet-50"
-              >
+              <Button onClick={handleSwap}>
                 确认换班
               </Button>
             </div>
