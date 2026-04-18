@@ -27,15 +27,14 @@ import {
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   WorkspaceBackdrop,
-  WorkspaceTableStateRow,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
   WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
+  WorkspaceHeroMetricsSection,
+  WorkspacePageContent,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 import { toast } from 'sonner';
 import { addMenu, deleteMenu, getMenuList, updateMenu } from '../../services/api/auth';
 
@@ -254,14 +253,14 @@ export const MenuList = () => {
 
       return (
         <React.Fragment key={node.menuId}>
-          <tr className="border-b border-white/60 transition-colors hover:bg-white/60">
+          <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
             <td className="px-4 py-3 text-sm text-slate-900">
               <div className="flex items-center" style={{ paddingLeft: `${level * 22}px` }}>
                 {node.children && node.children.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => toggleExpand(node.menuId)}
-                    className="mr-2 rounded-full p-1 text-slate-400 transition hover:bg-white hover:text-pink-600"
+                    className="mr-2 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                   >
                     {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </button>
@@ -325,61 +324,61 @@ export const MenuList = () => {
     { label: '菜单页', value: `${menuCounts.page} 个` },
     { label: '按钮', value: `${menuCounts.button} 个` },
   ];
+  const heroMetrics = [
+    {
+      label: '节点总数',
+      value: `${menuCounts.total}`,
+      hint: '包含目录、菜单和按钮',
+      icon: <LayoutTemplate size={17} />,
+    },
+    {
+      label: '目录',
+      value: `${menuCounts.dir}`,
+      hint: '用于组织导航结构',
+      icon: <Folder size={17} />,
+    },
+    {
+      label: '菜单页',
+      value: `${menuCounts.page}`,
+      hint: '可映射前端路由页面',
+      icon: <Layout size={17} />,
+    },
+    {
+      label: '按钮',
+      value: `${menuCounts.button}`,
+      hint: '通常作为细粒度权限点',
+      icon: <File size={17} />,
+    },
+  ];
 
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <LayoutTemplate size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="菜单管理"
           description="把树状菜单配置页也拉到统一工作台体系，目录、菜单页和按钮在同一视觉语言下维护。"
           actions={(
-            <Button onClick={() => handleOpenModal()}>
+            <Button size="lg" onClick={() => handleOpenModal()}>
               <Plus size={15} />
               新增菜单
             </Button>
           )}
           contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="节点总数"
-              value={menuCounts.total}
-              hint="包含目录、菜单和按钮"
-              aside={<LayoutTemplate size={18} className="text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="目录"
-              value={menuCounts.dir}
-              hint="用于组织导航结构"
-              aside={<Folder size={18} className="text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="菜单页"
-              value={menuCounts.page}
-              hint="可映射前端路由页面"
-              aside={<Layout size={18} className="text-emerald-500" />}
-            />
-            <WorkspaceMetricCard
-              label="按钮"
-              value={menuCounts.button}
-              hint="通常作为细粒度权限点"
-              aside={<File size={18} className="text-sky-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="菜单树"
@@ -388,7 +387,7 @@ export const MenuList = () => {
               overviewItems={overviewItems}
               headerBadges={(
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
                     支持树形展开与增量维护
                   </span>
                 </div>
@@ -398,7 +397,7 @@ export const MenuList = () => {
                   清空搜索
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                   当前显示完整菜单树
                 </span>
               )}
@@ -432,7 +431,7 @@ export const MenuList = () => {
                       <TableActionHead className="w-60">操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/60">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载菜单数据..." />
                     ) : filteredMenus.length === 0 ? (
@@ -455,7 +454,7 @@ export const MenuList = () => {
             maxWidthClassName="max-w-4xl"
           >
             <form onSubmit={handleSubmit} className="space-y-4">
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">结构信息</div>
                   <div className="mt-1 text-sm text-slate-500">先确定菜单挂载位置、节点类型与展示顺序，再补充路由相关配置。</div>
@@ -519,7 +518,7 @@ export const MenuList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">路由与权限</div>
                   <div className="mt-1 text-sm text-slate-500">目录、菜单和按钮会根据类型展示不同配置项，避免无关字段干扰录入。</div>
@@ -589,7 +588,7 @@ export const MenuList = () => {
             </form>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
