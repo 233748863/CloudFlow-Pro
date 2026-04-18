@@ -487,7 +487,7 @@ const AsidePanel = ({
   meta?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <Card className="rounded-[20px] border-white/80 bg-white/80 p-3.5 backdrop-blur-xl">
+  <Card className="rounded-2xl border-slate-200 bg-white p-3.5">
     <SectionHeader
       eyebrow={eyebrow}
       title={title}
@@ -558,7 +558,7 @@ const DrawerSection = ({
 }) => (
   <section
     className={cn(
-      'overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]',
+      'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm',
       className,
     )}
   >
@@ -984,11 +984,8 @@ export const SchedulePage = () => {
       label: '当前窗口',
       value: `${events.length} 项`,
       hint: calendarWindowLabel || currentViewLabel,
-      panelClassName: 'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
-      iconWrapClassName: 'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-500',
-      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
       icon: <Calendar size={17} />,
     },
     {
@@ -997,11 +994,8 @@ export const SchedulePage = () => {
       hint: todayFocusEvent
         ? `当前聚焦：${todayFocusEvent.extendedProps.originalTitle}`
         : `全天 ${todayAllDayCount} 项`,
-      panelClassName: 'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
-      iconWrapClassName: 'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-600',
-      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
       icon: <SunMedium size={17} />,
     },
     {
@@ -1010,11 +1004,8 @@ export const SchedulePage = () => {
       hint: ongoingEvents.length > 0
         ? `今天有 ${todayOngoingCount} 项正在推进`
         : nextFocusTimingMeta?.hint || '当前没有进行中的事项',
-      panelClassName: 'border-cyan-100/80 bg-[linear-gradient(135deg,rgba(236,254,255,0.96),rgba(255,255,255,0.82),rgba(240,249,255,0.8))] shadow-[0_16px_32px_rgba(14,165,233,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-cyan-600 ring-1 ring-cyan-100 shadow-[0_10px_22px_rgba(14,165,233,0.08)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-600',
-      glowClassName: 'from-cyan-100/90 via-sky-50/45 to-transparent',
       icon: <Clock3 size={17} />,
     },
     {
@@ -1023,11 +1014,8 @@ export const SchedulePage = () => {
       hint: boundMeetingEventsCount > 0
         ? `已绑定会议室 ${boundMeetingEventsCount} 项`
         : '当前没有绑定会议室的安排',
-      panelClassName: 'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName: 'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
       valueClassName: 'text-slate-950',
       hintClassName: 'text-slate-600',
-      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
       icon: <MapPin size={17} />,
     },
   ];
@@ -1039,14 +1027,14 @@ export const SchedulePage = () => {
         <WorkspaceHeroMetricsSection
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700 ring-1 ring-cyan-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Calendar size={14} />
                 {shortDateFormatter.format(now)}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 {currentViewLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 {calendarWindowLabel || '当前时间窗口'}
               </span>
             </div>
@@ -1070,11 +1058,10 @@ export const SchedulePage = () => {
             </div>
           }
           metrics={metrics}
-          contentClassName="p-3.5 sm:p-4"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_55%),radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_46%)]"
+          contentClassName="p-4 sm:p-5"
         />
 
-        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               eyebrow="日程筛选"
@@ -1107,7 +1094,7 @@ export const SchedulePage = () => {
                     清空所有条件
                   </Button>
                 ) : (
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                     {calendarTitle || '当前视图'} | {calendarWindowLabel || currentViewLabel}
                   </span>
                 )
@@ -1126,11 +1113,11 @@ export const SchedulePage = () => {
                           applyTableFilters();
                         }
                       }}
-                      className="h-10 rounded-2xl border-white/85 bg-white/78 pl-10 pr-4 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md"
+                      className="h-10 rounded-2xl pl-10 pr-4"
                     />
                   </div>
                   <Select value={tableFilterDraft.scope} onValueChange={value => setTableFilterDraft(prev => ({ ...prev, scope: value as ScheduleFilterScope }))}>
-                    <SelectTrigger className="h-10 rounded-2xl border-white/85 bg-white/78 shadow-[0_10px_22px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md">
+                    <SelectTrigger className="h-10 rounded-2xl">
                       <SelectValue placeholder="请选择时间范围" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1217,7 +1204,7 @@ export const SchedulePage = () => {
                 <div className="overflow-x-auto">
                   <Table className="min-w-[1120px]">
                     <TableHeader className="sticky top-0 z-10 bg-white/72 backdrop-blur-xl">
-                      <TableRow className="border-white/70 bg-transparent hover:bg-transparent">
+                      <TableRow className="border-slate-100 bg-transparent hover:bg-transparent">
                         <TableHead>日程主题</TableHead>
                         <TableHead>节奏状态</TableHead>
                         <TableHead>时间安排</TableHead>
@@ -1399,7 +1386,7 @@ export const SchedulePage = () => {
 
             <div className="schedule-calendar relative h-[720px] md:h-[760px] xl:h-[820px]">
               <style>{`.schedule-calendar .fc { height: 100%; color: #0f172a; }.schedule-calendar .fc-header-toolbar { display: none !important; }.schedule-calendar .fc-scrollgrid, .schedule-calendar .fc-theme-standard .fc-scrollgrid { border-radius: 24px; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.95); background: radial-gradient(circle at top right, rgba(207, 250, 254, 0.88), transparent 35%), radial-gradient(circle at top left, rgba(220, 252, 231, 0.5), transparent 30%), linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%); }.schedule-calendar .fc-daygrid-day-frame { min-height: 118px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.84) 100%); }.schedule-calendar .fc-day-today .fc-daygrid-day-frame, .schedule-calendar .fc-day-today .fc-timegrid-col-frame { background: radial-gradient(circle at top, rgba(207, 250, 254, 0.9), transparent 52%), linear-gradient(180deg, rgba(240, 253, 250, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%); }.schedule-calendar .fc-daygrid-day-number { margin: 0.45rem 0.55rem 0 0; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.82rem; font-weight: 700; color: #334155; }.schedule-calendar .fc-day-today .fc-daygrid-day-number { background: #0891b2; color: #fff; box-shadow: 0 8px 16px rgba(8, 145, 178, 0.28); }.schedule-calendar .fc-day-other .fc-daygrid-day-number { color: #94a3b8; }.schedule-calendar .fc-event { cursor: pointer; border: none !important; border-radius: 14px !important; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.65); }.schedule-calendar .fc-event-main { padding: 0 !important; }`}</style>
-              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-white/55 backdrop-blur-[2px]"><div className="rounded-full border border-cyan-100 bg-white/90 px-4 py-2 text-sm font-medium text-cyan-700 shadow-sm">正在同步日程...</div></div>}
+              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70"><div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">正在同步日程...</div></div>}
               <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1515,7 +1502,7 @@ export const SchedulePage = () => {
                 <div className="border-b border-slate-100 px-5 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
                         <Plus size={14} />
                         新建日程
                       </div>
@@ -1533,15 +1520,15 @@ export const SchedulePage = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 space-y-5 overflow-y-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.96))] px-6 py-6">
+                <div className="flex-1 space-y-5 overflow-y-auto bg-white px-6 py-6">
                   <DrawerSection
                     eyebrow="安排概览"
                     title="先确认这次安排"
-                    className="border-cyan-100 bg-[radial-gradient(circle_at_top_right,rgba(207,250,254,0.86),transparent_58%),radial-gradient(circle_at_top_left,rgba(220,252,231,0.52),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.92))]"
+                    className="border-slate-200 bg-slate-50/70"
                     bodyClassName="space-y-3"
                   >
-                    <div className="rounded-2xl border border-white/90 bg-white/90 px-4 py-3 shadow-sm">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                         当前时间
                       </div>
                       <div className="mt-1.5 text-sm font-semibold text-slate-900">
@@ -1555,11 +1542,11 @@ export const SchedulePage = () => {
                       >
                         {EVENT_TYPE_META[form.type || 'PERSONAL'].label}
                       </span>
-                      <span className="rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-500">
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
                         {form.isAllDay ? '全天事项' : '时段安排'}
                       </span>
                       {form.type === 'MEETING' ? (
-                        <span className="rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-500">
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
                           {draftMeetingRoomLabel || '未绑定会议室'}
                         </span>
                       ) : null}
@@ -1659,7 +1646,7 @@ export const SchedulePage = () => {
                     </label>
 
                     {form.isAllDay ? (
-                      <div className="grid grid-cols-1 gap-4 rounded-[24px] border border-amber-100 bg-amber-50/80 p-5">
+                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-5">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold text-slate-700">开始日期</Label>
                           <DatePicker
@@ -1691,7 +1678,7 @@ export const SchedulePage = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4 rounded-[24px] border border-slate-100 bg-slate-50/80 p-5">
+                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                             <Clock3 size={14} className="text-cyan-500" />
@@ -1788,23 +1775,23 @@ export const SchedulePage = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 space-y-5 overflow-y-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.72),rgba(255,255,255,0.96))] px-6 py-6">
+                <div className="flex-1 space-y-5 overflow-y-auto bg-white px-6 py-6">
                   <DrawerSection
                     eyebrow="时间概览"
                     title="当前安排状态"
-                    className="border-cyan-100 bg-[radial-gradient(circle_at_top_right,rgba(207,250,254,0.86),transparent_58%),radial-gradient(circle_at_top_left,rgba(220,252,231,0.52),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.92))]"
+                    className="border-slate-200 bg-slate-50/70"
                     bodyClassName="grid gap-3 sm:grid-cols-2"
                   >
-                    <div className="rounded-2xl border border-white/90 bg-white/90 px-4 py-4 shadow-sm">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                         时间范围
                       </div>
                       <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
                         {formatEventSlot(selectedEvent)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/90 bg-white/90 px-4 py-4 shadow-sm">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                         预计占用
                       </div>
                       <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
@@ -1820,7 +1807,7 @@ export const SchedulePage = () => {
                   >
                     <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
                       <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <MapPin size={14} className="text-cyan-500" />
+                        <MapPin size={14} className="text-slate-500" />
                         会议室 / 地点
                       </div>
                       <div className="mt-2 text-sm leading-6 text-slate-600">
