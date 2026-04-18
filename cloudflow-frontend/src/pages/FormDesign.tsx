@@ -7,6 +7,7 @@ import { EmptyError, EmptyForms, SkeletonForm, Button } from '@/components/ui';
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
+  WorkspacePageContent,
   WorkspaceStatusPage,
 } from '@/components/workspace/WorkspacePrimitives';
 import {
@@ -150,11 +151,11 @@ export const FormDesign = () => {
     return (
       <div className="relative min-h-screen pb-6">
         <WorkspaceBackdrop />
-        <div className="relative z-10 p-4 sm:p-5">
+        <WorkspacePageContent className="p-4 sm:p-5">
           <WorkspaceSectionCard title="表单设计器" description="正在准备表单列表和编辑器。" eyebrow="Loading">
             <SkeletonForm fields={5} />
           </WorkspaceSectionCard>
-        </div>
+        </WorkspacePageContent>
       </div>
     );
   }
@@ -185,11 +186,11 @@ export const FormDesign = () => {
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              <FileSpreadsheet className="h-3.5 w-3.5 text-teal-600" />
               Form Workspace
             </span>
           }
@@ -207,7 +208,7 @@ export const FormDesign = () => {
               label="表单总数"
               value={forms.length}
               hint="当前系统中可编辑的表单数量"
-              aside={<FileSpreadsheet className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<FileSpreadsheet className="h-[18px] w-[18px] text-teal-600" />}
             />
             <WorkspaceMetricCard
               label="当前表单"
@@ -255,8 +256,8 @@ export const FormDesign = () => {
                       onClick={() => setSelectedForm(form)}
                       className={`w-full rounded-2xl px-4 py-3 text-left transition ${
                         active
-                          ? 'border border-pink-100 bg-pink-50 text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.08)]'
-                          : 'border border-white/80 bg-white/82 text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)] hover:bg-white'
+                          ? 'border border-teal-100 bg-teal-50 text-teal-700 shadow-sm'
+                          : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50'
                       }`}
                     >
                       <div className="truncate text-sm font-semibold">{form.name}</div>
@@ -267,7 +268,7 @@ export const FormDesign = () => {
               )}
             </div>
 
-            <div className="space-y-2 border-t border-white/80 pt-4">
+            <div className="space-y-2 border-t border-slate-200 pt-4">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">下一步</div>
               <Button
                 variant="outline"
@@ -307,7 +308,7 @@ export const FormDesign = () => {
             />
           </WorkspaceSectionCard>
         </div>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

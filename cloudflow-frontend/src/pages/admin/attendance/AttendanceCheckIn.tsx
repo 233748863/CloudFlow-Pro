@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowRight, Calendar, CheckCircle2, CircleDot, Clock3, MapPin, RefreshCw, ShieldCheck, Sparkles, Timer, Wifi } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
+import {
+  WorkspaceBackdrop,
+  WorkspacePageContent,
+} from '@/components/workspace/WorkspacePrimitives';
 import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { useAuth } from '@/context/AuthContext';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
@@ -187,7 +191,7 @@ const AttendanceCheckIn: React.FC = () => {
     return {
       title: '下班签退时段',
       hint: `当前已过下班时间 ${rule.checkOutTime}，请确认是否需要签退`,
-      tone: 'bg-pink-50 text-pink-700',
+      tone: 'bg-teal-50 text-teal-700',
     };
   }, [currentTime, rule, ruleLoading]);
 
@@ -209,8 +213,8 @@ const AttendanceCheckIn: React.FC = () => {
       value: rule?.checkInTime || '--:--',
       desc: '今日签到基准时间',
       icon: <Clock3 size={20} />,
-      iconClass: 'bg-pink-50 text-pink-600',
-      ringClass: 'ring-pink-100',
+      iconClass: 'bg-teal-50 text-teal-700',
+      ringClass: 'ring-teal-100',
     },
     {
       label: '下班时间',
@@ -240,34 +244,25 @@ const AttendanceCheckIn: React.FC = () => {
 
   return (
     <div className="relative min-h-screen pb-6">
-      <div className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden">
-        <div className="absolute left-[-10%] top-[-8%] h-[32rem] w-[32rem] rounded-full bg-pink-300/18 blur-[120px]" />
-        <div className="absolute right-[-12%] top-[12%] h-[38rem] w-[38rem] rounded-full bg-rose-200/20 blur-[140px]" />
-        <div className="absolute bottom-[-12%] left-[18%] h-[26rem] w-[26rem] rounded-full bg-amber-100/45 blur-[110px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,252,0.55),rgba(255,255,255,0.8))]" />
-      </div>
+      <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-6">
+      <WorkspacePageContent className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <Card className="overflow-hidden rounded-[34px] border-white/80 bg-white/78 shadow-[0_20px_60px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <Card className="overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm">
             <div className="relative p-7 sm:p-8">
-              <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_55%)]" />
-              <div className="absolute -right-16 top-8 h-48 w-48 rounded-full bg-pink-200/30 blur-3xl" />
-              <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-amber-100/55 blur-2xl" />
-
               <div className="relative">
                 <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-teal-700">
                     <Calendar size={14} />
                     {dateLabel}
                   </span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
-                  <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">考勤打卡</span>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">{timeLabel}</span>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">考勤打卡</span>
                 </div>
 
                 <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                   <div className="max-w-2xl">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-600 ring-1 ring-pink-100">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
                       <Sparkles size={14} />
                       Attendance Workspace
                     </div>
@@ -280,12 +275,12 @@ const AttendanceCheckIn: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Button className="h-12 rounded-2xl bg-pink-500 px-6 text-white shadow-[0_16px_32px_rgba(236,72,153,0.24)] hover:bg-pink-600" onClick={() => handleCheckIn('1')} disabled={loading || !location || selfServiceLocked}>
+                    <Button className="h-12 rounded-xl px-6" onClick={() => handleCheckIn('1')} disabled={loading || !location || selfServiceLocked}>
                       上班打卡
                       <ArrowRight size={16} className="ml-2" />
                     </Button>
-                    <Button variant="outline" className="h-12 rounded-2xl bg-white/85 px-6" onClick={getLocation} disabled={loading || selfServiceLocked}>
-                      <RefreshCw size={16} className={`mr-2 text-pink-500 ${loading ? 'animate-spin' : ''}`} />
+                    <Button variant="outline" className="h-12 rounded-xl px-6" onClick={getLocation} disabled={loading || selfServiceLocked}>
+                      <RefreshCw size={16} className={`mr-2 text-teal-600 ${loading ? 'animate-spin' : ''}`} />
                       重新定位
                     </Button>
                   </div>
@@ -294,10 +289,10 @@ const AttendanceCheckIn: React.FC = () => {
                 {restrictionMessage && (
                   <div
                     data-testid="hr-self-service-restriction"
-                    className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/90 px-4 py-4 text-amber-900"
+                    className="mt-5 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-4 text-amber-900"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="rounded-2xl bg-white/80 p-2 text-amber-600 ring-1 ring-amber-200">
+                      <div className="rounded-xl bg-white p-2 text-amber-600 ring-1 ring-amber-200">
                         <AlertCircle size={18} />
                       </div>
                       <div>
@@ -309,17 +304,17 @@ const AttendanceCheckIn: React.FC = () => {
                 )}
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前时间</div>
                     <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{secondLabel}</div>
                     <div className="mt-1 text-xs leading-5 text-slate-500">每秒自动同步当前设备时间</div>
                   </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前阶段</div>
                     <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{phaseInfo.title}</div>
                     <div className="mt-1 text-xs leading-5 text-slate-500">{phaseInfo.hint}</div>
                   </div>
-                  <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-sm backdrop-blur">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">定位状态</div>
                     <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{location ? '已就绪' : '待处理'}</div>
                     <div className="mt-1 text-xs leading-5 text-slate-500">{location ? '当前坐标已获取' : '打卡前请先获取定位信息'}</div>
@@ -329,10 +324,10 @@ const AttendanceCheckIn: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="rounded-[34px] border-white/80 bg-white/82 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+          <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
             <SectionHeader eyebrow="今日焦点" title="今天先看这些" />
             <div className="mt-5 space-y-3">
-              <div className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4">
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className={`rounded-2xl p-3 ${phaseInfo.tone}`}>
                   <CircleDot size={16} />
                 </div>
@@ -341,7 +336,7 @@ const AttendanceCheckIn: React.FC = () => {
                   <div className="mt-1 text-xs leading-5 text-slate-500">{phaseInfo.hint}</div>
                 </div>
               </div>
-              <div className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4">
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className={`rounded-2xl p-3 ${locationStatus.tone}`}>
                   <MapPin size={16} />
                 </div>
@@ -350,7 +345,7 @@ const AttendanceCheckIn: React.FC = () => {
                   <div className="mt-1 text-xs leading-5 text-slate-500">{locationStatus.hint}</div>
                 </div>
               </div>
-              <div className="flex items-start gap-3 rounded-[24px] border border-slate-100 bg-white px-4 py-4">
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="rounded-2xl bg-slate-100 p-3 text-slate-600">
                   <Wifi size={16} />
                 </div>
@@ -366,7 +361,7 @@ const AttendanceCheckIn: React.FC = () => {
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           {metrics.map(metric => (
             <div key={metric.label}>
-              <Card className={`rounded-[28px] border-white/80 bg-white/78 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)] backdrop-blur-xl ring-1 ${metric.ringClass}`}>
+              <Card className={`rounded-2xl border-slate-200 bg-white p-5 shadow-sm ring-1 ${metric.ringClass}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-sm font-medium text-slate-500">{metric.label}</div>
@@ -381,14 +376,14 @@ const AttendanceCheckIn: React.FC = () => {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <Card className="rounded-[32px] border-white/80 bg-white/78 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+          <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-5">
               <SectionHeader eyebrow="考勤工作区" title="打卡面板" />
-              <div className="rounded-[28px] border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-white p-6">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500">实时打卡时钟</div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">实时打卡时钟</div>
                 <div className="mt-4 text-6xl font-bold tracking-[0.1em] text-slate-900">{secondLabel}</div>
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-600 ring-1 ring-slate-200">
-                  <Clock3 size={14} className="text-pink-500" />
+                  <Clock3 size={14} className="text-teal-600" />
                   上班：{rule?.checkInTime || '--:--'}
                   <span className="mx-1 text-slate-300">|</span>
                   下班：{rule?.checkOutTime || '--:--'}
@@ -397,7 +392,7 @@ const AttendanceCheckIn: React.FC = () => {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <Button
-                  className="h-36 rounded-[28px] bg-pink-500 text-white shadow-[0_18px_36px_rgba(236,72,153,0.28)] hover:bg-pink-600"
+                  className="h-36 rounded-2xl"
                   onClick={() => handleCheckIn('1')}
                   disabled={loading || !location || selfServiceLocked}
                 >
@@ -408,7 +403,8 @@ const AttendanceCheckIn: React.FC = () => {
                 </Button>
 
                 <Button
-                  className="h-36 rounded-[28px] bg-rose-500 text-white shadow-[0_18px_36px_rgba(244,63,94,0.22)] hover:bg-rose-600"
+                  variant="destructive"
+                  className="h-36 rounded-2xl"
                   onClick={() => handleCheckIn('2')}
                   disabled={loading || !location || selfServiceLocked}
                 >
@@ -422,33 +418,33 @@ const AttendanceCheckIn: React.FC = () => {
           </Card>
 
           <div className="space-y-6">
-            <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
+            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
               <SectionHeader eyebrow="定位信息" title="当前定位" />
               <div className="mt-5 space-y-3">
                 {location ? (
-                  <div className="rounded-[24px] border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-700">
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-700">
                     <div className="flex items-center gap-2 font-semibold"><MapPin size={16} />已定位成功</div>
                     <div className="mt-2 leading-6">{location.lat.toFixed(4)}, {location.lng.toFixed(4)}</div>
                   </div>
                 ) : (
-                  <div className="rounded-[24px] border border-amber-100 bg-amber-50/70 p-4 text-sm text-amber-700">
+                  <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-4 text-sm text-amber-700">
                     <div className="flex items-center gap-2 font-semibold"><AlertCircle size={16} />定位待完成</div>
                     <div className="mt-2 leading-6">{loading ? '正在获取当前位置...' : (locationError || '请先获取定位信息')}</div>
                   </div>
                 )}
 
-                <Button variant="outline" onClick={getLocation} disabled={loading || selfServiceLocked} className="h-11 w-full rounded-2xl bg-white">
-                  <RefreshCw size={16} className={`mr-2 text-pink-500 ${loading ? 'animate-spin' : ''}`} />
+                <Button variant="outline" onClick={getLocation} disabled={loading || selfServiceLocked} className="h-11 w-full rounded-xl">
+                  <RefreshCw size={16} className={`mr-2 text-teal-600 ${loading ? 'animate-spin' : ''}`} />
                   {loading ? '定位中...' : '重新获取定位'}
                 </Button>
               </div>
             </Card>
 
-            <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
+            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
               <SectionHeader eyebrow="打卡反馈" title="结果与提示" />
               <div className="mt-5">
                 {result ? (
-                  <div className={`rounded-[24px] border p-4 text-sm leading-6 ${result.success ? 'border-emerald-100 bg-emerald-50/70 text-emerald-700' : 'border-red-100 bg-red-50/70 text-red-700'}`}>
+                  <div className={`rounded-xl border p-4 text-sm leading-6 ${result.success ? 'border-emerald-100 bg-emerald-50/70 text-emerald-700' : 'border-red-100 bg-red-50/70 text-red-700'}`}>
                     <div className="flex items-center gap-2 font-semibold">
                       {result.success ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                       {result.success ? '打卡成功' : '打卡失败'}
@@ -456,18 +452,18 @@ const AttendanceCheckIn: React.FC = () => {
                     <div className="mt-2">{result.msg}</div>
                   </div>
                 ) : (
-                  <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
                     打卡结果会显示在这里。完成定位后，可以直接点击上班打卡或下班签退。
                   </div>
                 )}
               </div>
             </Card>
 
-            <Card className="rounded-[28px] border-white/80 bg-white/80 p-5 backdrop-blur-xl">
+            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
               <SectionHeader eyebrow="打卡说明" title="规则提示" />
-              <div className="mt-5 rounded-[24px] border border-slate-100 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
                 <div className="flex items-center gap-2 font-semibold text-slate-700">
-                  <ShieldCheck size={16} className="text-pink-500" />
+                  <ShieldCheck size={16} className="text-teal-600" />
                   Web 端打卡说明
                 </div>
                 <div className="mt-2">浏览器端目前通过地理定位辅助校验；Wi-Fi 信息在 Web 环境下无法读取，因此不会参与校验。</div>
@@ -475,7 +471,7 @@ const AttendanceCheckIn: React.FC = () => {
             </Card>
           </div>
         </div>
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
