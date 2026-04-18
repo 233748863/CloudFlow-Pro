@@ -32,6 +32,7 @@ import {
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
+  WorkspacePageContent,
 } from "@/components/workspace/WorkspacePrimitives";
 import {
   WorkspaceDialogShell,
@@ -170,7 +171,7 @@ const EMPTY_GRAPH = { nodes: [], edges: [] } as {
 };
 
 const FILTER_CHIP_CLASS_NAME =
-  "inline-flex items-center rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-pink-50 hover:text-pink-700 hover:ring-pink-200 shadow-sm";
+  "inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700";
 const PANEL_STAT_LABEL_CLASS_NAME =
   "text-xs font-bold uppercase tracking-[0.14em] text-slate-400";
 const PREVIEW_META_LABEL_CLASS_NAME =
@@ -578,7 +579,7 @@ export const TemplateLibrary: React.FC = () => {
             className={cn(
               "h-9 w-full justify-start text-left text-sm font-medium",
               active
-                ? "bg-pink-50 text-pink-600 hover:bg-pink-100"
+                ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
                 : "text-slate-600 hover:bg-slate-100",
             )}
             style={{ paddingLeft: `${level * 16 + 12}px` }}
@@ -605,11 +606,11 @@ export const TemplateLibrary: React.FC = () => {
     return (
       <div
         key={template.id}
-        className="group flex flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(15,23,42,0.08)]"
+        className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
       >
         <div className="flex-1 p-5">
           <div className="mb-3 flex items-start justify-between gap-4">
-            <div className="inline-flex items-center rounded-full bg-white/82 px-2.5 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200/70">
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500">
               <Layers3 className="mr-1.5 h-3.5 w-3.5 text-slate-400" />
               {template.categoryName || TEXT.uncategorized}
             </div>
@@ -646,7 +647,7 @@ export const TemplateLibrary: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-white/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.74),rgba(255,255,255,0.68))] px-5 py-4">
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-5 py-4">
           <div className="flex flex-col">
             <span className="text-xs text-slate-400">{TEXT.templateUsage}</span>
             <span className="text-sm font-bold text-slate-700">
@@ -684,7 +685,7 @@ export const TemplateLibrary: React.FC = () => {
     return (
       <div
         key={template.id}
-        className="overflow-hidden rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84))] shadow-[0_16px_34px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.72)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(15,23,42,0.08)]"
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
       >
         <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1">
@@ -734,7 +735,7 @@ export const TemplateLibrary: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3 border-t border-white/70 pt-4 lg:flex-col lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 xl:flex-row">
+          <div className="flex shrink-0 items-center gap-3 border-t border-slate-200 pt-4 lg:flex-col lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 xl:flex-row">
             <Button variant="outline" onClick={() => handlePreview(template)}>
               <Eye className="mr-2 h-4 w-4" />
               {TEXT.preview}
@@ -773,15 +774,15 @@ export const TemplateLibrary: React.FC = () => {
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
+      <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-teal-50 px-2.5 py-1 text-teal-700">
                 <Workflow className="h-3.5 w-3.5" />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                 {timeLabel}
               </span>
             </div>
@@ -825,7 +826,7 @@ export const TemplateLibrary: React.FC = () => {
               label={TEXT.currentResults}
               value={total}
               hint="当前分页接口返回的模板总量"
-              aside={<Layers3 className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<Layers3 className="h-[18px] w-[18px] text-teal-600" />}
             />
             <WorkspaceMetricCard
               label={TEXT.categoryCount}
@@ -868,7 +869,7 @@ export const TemplateLibrary: React.FC = () => {
                 {TEXT.clearFilters}
               </Button>
             ) : (
-              <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                 当前显示默认视图
               </span>
             )
@@ -889,15 +890,15 @@ export const TemplateLibrary: React.FC = () => {
                   />
                 </div>
                 <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-nowrap">
-                  <div className="inline-flex items-center gap-1 rounded-[20px] bg-white/78 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                  <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                     <button
                       type="button"
                       onClick={() => setViewMode("grid")}
                       className={cn(
-                        "rounded-[16px] px-3 py-1.5 text-[11px] font-medium transition",
+                        "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
                         viewMode === "grid"
-                          ? "bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]"
-                          : "text-slate-600 hover:bg-white/88 hover:text-pink-600",
+                          ? "bg-slate-50 text-teal-700 shadow-sm"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700",
                       )}
                     >
                       <Grid className="h-4 w-4" />
@@ -906,10 +907,10 @@ export const TemplateLibrary: React.FC = () => {
                       type="button"
                       onClick={() => setViewMode("list")}
                       className={cn(
-                        "rounded-[16px] px-3 py-1.5 text-[11px] font-medium transition",
+                        "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
                         viewMode === "list"
-                          ? "bg-[linear-gradient(135deg,#f472b6,#ec4899)] text-white shadow-[0_10px_20px_rgba(236,72,153,0.24)]"
-                          : "text-slate-600 hover:bg-white/88 hover:text-pink-600",
+                          ? "bg-slate-50 text-teal-700 shadow-sm"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700",
                       )}
                     >
                       <List className="h-4 w-4" />
@@ -919,7 +920,7 @@ export const TemplateLibrary: React.FC = () => {
               </div>
 
               {hasActiveFilters ? (
-                <div className="rounded-[22px] border border-dashed border-white/80 bg-white/58 px-4 py-3">
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3">
                   <div className={PANEL_STAT_LABEL_CLASS_NAME}>
                     {TEXT.filterSummary}
                   </div>
@@ -1109,10 +1110,10 @@ export const TemplateLibrary: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
                       <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                        <Workflow className="h-5 w-5 text-pink-500" />
+                        <Workflow className="h-5 w-5 text-teal-600" />
                         {previewTemplate.name}
                       </DialogTitle>
-                      <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-medium text-pink-600">
+                      <span className="rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
                         {TEXT.previewTitleSuffix}
                       </span>
                       {previewTemplate.isSystem ? (
@@ -1143,7 +1144,7 @@ export const TemplateLibrary: React.FC = () => {
                       <section className="space-y-5">
                         <div>
                           <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                            <Sparkles className="h-4 w-4 text-pink-500" />
+                            <Sparkles className="h-4 w-4 text-teal-600" />
                             {TEXT.previewOverview}
                           </div>
                           <div className="mt-1 text-sm leading-6 text-slate-500">
@@ -1425,7 +1426,7 @@ export const TemplateLibrary: React.FC = () => {
             </div>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };

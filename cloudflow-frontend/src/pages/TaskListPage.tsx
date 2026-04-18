@@ -12,7 +12,11 @@ import { Button, Input, DatePicker, EmptyTasks, Select, SelectContent, SelectIte
 import { toast } from 'sonner';
 import { usePolling } from '../hooks/usePolling';
 import { logTask } from '../lib/logger';
-import { WorkspaceBackdrop, WorkspaceStatusPage } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceBackdrop,
+  WorkspacePageContent,
+  WorkspaceStatusPage,
+} from '@/components/workspace/WorkspacePrimitives';
 import { WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 
 // 每页条数
@@ -472,7 +476,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
           label: '当前视图任务',
           value: visibleTotalCount,
           hint: '已纳入当前页面视图的全部任务',
-          toneClass: 'bg-pink-50 text-pink-600',
+          toneClass: 'bg-teal-50 text-teal-700',
           icon: <LayoutList size={18} />,
         },
         {
@@ -502,7 +506,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
           label: '申请总量',
           value: total,
           hint: '符合当前查询条件的全部申请',
-          toneClass: 'bg-pink-50 text-pink-600',
+          toneClass: 'bg-teal-50 text-teal-700',
           icon: <LayoutList size={18} />,
         },
         {
@@ -556,7 +560,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
         title={`${headerTitle}加载失败`}
         description={error}
         actions={(
-          <Button className="rounded-2xl bg-pink-500 text-white hover:bg-pink-600" onClick={() => fetchTasks()}>
+          <Button className="rounded-xl" onClick={() => fetchTasks()}>
             重试加载
           </Button>
         )}
@@ -569,16 +573,16 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
     <div className="relative min-h-screen pb-6">
         <WorkspaceBackdrop />
 
-        <div className="relative z-10 space-y-3">
+        <WorkspacePageContent>
             <WorkspaceHeroCard
                 badge={(
                     <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                        <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1.5 text-pink-600 ring-1 ring-pink-100">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-teal-700">
                             <Calendar size={14} />
                             {todayLabel}
                         </span>
-                        <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{timeLabel}</span>
-                        <span className="rounded-full bg-white/80 px-3 py-1.5 ring-1 ring-slate-200/80">{currentViewLabel}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">{timeLabel}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">{currentViewLabel}</span>
                     </div>
                 )}
                 title={headerTitle}
@@ -586,38 +590,37 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 actions={(
                     <div className="flex flex-wrap gap-3">
                         {type === 'pending' ? (
-                            <div className="inline-flex h-12 items-center rounded-2xl bg-white/82 p-1 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
-                                <button type="button" onClick={() => setViewMode('list')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${viewMode === 'list' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
+                            <div className="inline-flex h-12 items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                                <button type="button" onClick={() => setViewMode('list')} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${viewMode === 'list' ? 'bg-slate-50 text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                                     <LayoutList size={16} className="mr-2 inline" />
                                     列表
                                 </button>
-                                <button type="button" onClick={() => setViewMode('board')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${viewMode === 'board' ? 'bg-white text-pink-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]' : 'text-slate-500 hover:text-slate-700'}`}>
+                                <button type="button" onClick={() => setViewMode('board')} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${viewMode === 'board' ? 'bg-slate-50 text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                                     <Kanban size={16} className="mr-2 inline" />
                                     看板
                                 </button>
                             </div>
                         ) : null}
-                        <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="h-12 rounded-2xl bg-white/85 px-6">
-                            <RefreshCw size={16} className={`mr-2 text-pink-500 ${refreshing ? 'animate-spin' : ''}`} />
+                        <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="h-12 rounded-xl px-6">
+                            <RefreshCw size={16} className={`mr-2 text-teal-600 ${refreshing ? 'animate-spin' : ''}`} />
                             刷新
                         </Button>
                     </div>
                 )}
-                contentClassName="p-7 sm:p-8"
-                glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.18),transparent_52%),radial-gradient(circle_at_bottom_left,rgba(251,191,36,0.16),transparent_42%)]"
+                contentClassName="p-5 sm:p-6"
             >
                 <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前视图</div>
                         <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{currentViewLabel}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">{type === 'pending' ? currentTypeLabel : currentStatusLabel}</div>
                     </div>
-                    <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{type === 'pending' ? '流程范围' : '流程筛选'}</div>
                         <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{type === 'pending' ? currentPendingProcessLabel : currentApplicationProcessLabel}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">{type === 'pending' ? '支持按流程和申请人过滤' : '支持按流程和优先级过滤'}</div>
                     </div>
-                    <div className="rounded-[24px] border border-white/80 bg-white/72 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{type === 'pending' ? '当前任务' : '当前分页'}</div>
                         <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{type === 'pending' ? visibleTotalCount : `${pageNum}/${totalPages}`}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">{type === 'pending' ? '当前过滤条件下可见任务数' : `当前页 ${rawTasks.length} 条，共 ${total} 条`}</div>
@@ -633,8 +636,8 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         value={card.value}
                         hint={card.hint}
                         aside={<div className={`rounded-2xl p-3 ${card.toneClass}`}>{card.icon}</div>}
-                        toneClassName="border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] shadow-[0_16px_40px_rgba(15,23,42,0.04)]"
-                        className="rounded-[28px] px-5 py-5"
+                        toneClassName="border border-slate-200 bg-white shadow-sm"
+                        className="rounded-2xl px-5 py-5"
                     />
                 ))}
             </div>
@@ -644,7 +647,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 title={type === 'pending' ? '待处理内容' : '申请记录'}
                 description={type === 'pending' ? '在统一工作区内切换列表或看板，继续处理流程审批与协作待办。' : '按状态、流程与时间筛选申请记录，并查看分页结果。'}
                 headerAside={(
-                    <div className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
                         {type === 'pending' ? currentTypeLabel : `第 ${pageNum} / ${totalPages} 页`}
                     </div>
                 )}
@@ -671,7 +674,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         {todoSearchInput && todoSearchInput !== todoKeyword && (
                             <button
                                 onClick={handleTodoSearch}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pink-500 hover:text-pink-600 font-medium"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-teal-600 hover:text-teal-700"
                             >
                                 搜索
                             </button>
@@ -744,7 +747,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
                         {([
                             { key: 'ALL', label: '全部', color: '' },
-                            { key: 'RUNNING', label: '进行中', color: 'text-pink-500' },
+                            { key: 'RUNNING', label: '进行中', color: 'text-teal-600' },
                             { key: 'COMPLETED', label: '已完成', color: 'text-emerald-600' },
                             { key: 'REJECTED', label: '已拒绝', color: 'text-red-600' },
                             { key: 'REVOKED', label: '已撤回', color: 'text-amber-600' },
@@ -859,7 +862,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                                              <div className="flex justify-between items-start mb-2">
                                                  <h4 className="font-bold text-slate-800">{t.title}</h4>
                                                  <span className={`text-xs px-2 py-1 rounded font-medium 
-                                                     ${t.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : 'bg-pink-50 text-pink-500'}`}>
+                                                     ${t.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : 'bg-teal-50 text-teal-700'}`}>
                                                      {t.statusLabel}
                                                  </span>
                                              </div>
@@ -885,9 +888,10 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     }}
                 />
             )}
-        </div>
 
         {/* "我的申请"分页器 */}
+        </div>
+
         {type === 'applications' && total > PAGE_SIZE && (
             <div className="flex items-center justify-between pt-4 border-t border-slate-100 shrink-0">
                 <span className="text-sm text-slate-500">
@@ -916,7 +920,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                                 onClick={() => setPageNum(page)}
                                 className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
                                     page === pageNum
-                                        ? 'bg-pink-500 text-white shadow'
+                                        ? 'bg-teal-600 text-white shadow'
                                         : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                             >
@@ -947,7 +951,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                 onComplete={handleTaskUpdate}
                 viewOnly={type === 'applications'}
             />
-        </div>
+        </WorkspacePageContent>
     </div>
   );
 };
