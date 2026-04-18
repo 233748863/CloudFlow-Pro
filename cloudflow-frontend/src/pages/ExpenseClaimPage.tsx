@@ -349,7 +349,7 @@ export const ExpenseClaimPage: React.FC = () => {
 
   const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl';
   const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-6 py-4';
-  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50/70 p-4';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
   const glassModalInputClass = 'h-11 rounded-xl';
   const glassModalTextareaClass = 'min-h-28 rounded-xl';
@@ -399,12 +399,12 @@ export const ExpenseClaimPage: React.FC = () => {
                   <Select value={categoryInput} onValueChange={setCategoryInput}>
                     <SelectTrigger className="h-10 rounded-xl px-4"><SelectValue placeholder="按报销类别筛选" /></SelectTrigger>
                     <SelectContent className={glassSelectContentClass}>
-                      <SelectItem className="rounded-[16px]" value="">全部类别</SelectItem>
-                      <SelectItem className="rounded-[16px]" value="TRAVEL">差旅</SelectItem>
-                      <SelectItem className="rounded-[16px]" value="OFFICE">办公</SelectItem>
-                      <SelectItem className="rounded-[16px]" value="ENTERTAINMENT">招待</SelectItem>
-                      <SelectItem className="rounded-[16px]" value="TRANSPORT">交通</SelectItem>
-                      <SelectItem className="rounded-[16px]" value="OTHER">其他</SelectItem>
+                      <SelectItem className="rounded-xl" value="">全部类别</SelectItem>
+                      <SelectItem className="rounded-xl" value="TRAVEL">差旅</SelectItem>
+                      <SelectItem className="rounded-xl" value="OFFICE">办公</SelectItem>
+                      <SelectItem className="rounded-xl" value="ENTERTAINMENT">招待</SelectItem>
+                      <SelectItem className="rounded-xl" value="TRANSPORT">交通</SelectItem>
+                      <SelectItem className="rounded-xl" value="OTHER">其他</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button size="sm" onClick={applySearch} className="h-10 rounded-xl px-3.5"><Search size={15} className="mr-2" />应用筛选</Button>
@@ -428,7 +428,7 @@ export const ExpenseClaimPage: React.FC = () => {
                       <TableActionHead className="px-4 py-3 w-52 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/70">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载报销申请..." />
                     ) : claims.length === 0 ? (
@@ -440,7 +440,7 @@ export const ExpenseClaimPage: React.FC = () => {
                         description={hasActiveFilters ? '试试切换状态或类别筛选，或者直接新建一条报销申请。' : '创建新的报销申请后，这里会展示金额、说明和审批状态。'}
                       />
                     ) : claims.map(item => (
-                      <tr key={item.id} className="bg-white/36 transition hover:bg-white/70">
+                      <tr key={item.id} className="transition hover:bg-slate-50">
                         <td className="px-4 py-2.5 text-sm text-slate-900">{item.claimNo || '-'}</td>
                         <td className="px-4 py-2.5 text-sm font-medium text-slate-900">{categoryMap[item.category] || item.category}</td>
                         <td className="px-4 py-2.5 text-sm">{formatAmount(item.totalAmount)}</td>
@@ -451,10 +451,10 @@ export const ExpenseClaimPage: React.FC = () => {
                         <td className="px-4 py-2.5 whitespace-nowrap text-right">
                           <div className="flex flex-col items-end gap-1">
                             <TableRowActions align="end" className="gap-1" actions={[
-                              { label: '详情', icon: <Eye size={14} />, onClick: () => void handleView(item), tone: 'neutral', className: 'rounded-full bg-slate-50/90 px-2.5 ring-1 ring-slate-200/80 hover:bg-slate-100' },
-                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT', className: 'rounded-full bg-pink-50/90 px-2.5 ring-1 ring-pink-100' },
-                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT', className: 'rounded-full bg-emerald-50/90 px-2.5 ring-1 ring-emerald-100 text-emerald-700 hover:bg-emerald-100' },
-                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT', className: 'rounded-full bg-rose-50/90 px-2.5 ring-1 ring-rose-100 text-rose-600 hover:bg-rose-100' },
+                              { label: '详情', icon: <Eye size={14} />, onClick: () => void handleView(item), tone: 'neutral', className: 'rounded-full border border-slate-200 bg-white px-2.5 hover:bg-slate-50' },
+                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-cyan-200 bg-cyan-50 px-2.5 text-cyan-700 hover:bg-cyan-100' },
+                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700 hover:bg-emerald-100' },
+                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-rose-200 bg-rose-50 px-2.5 text-rose-600 hover:bg-rose-100' },
                             ]} />
                             <span className="text-[10px] font-medium text-slate-400">{getActionHint(item.status)}</span>
                           </div>
@@ -479,7 +479,7 @@ export const ExpenseClaimPage: React.FC = () => {
       </WorkspacePageContent>
 
         {showDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
             <div className={`${glassModalShellClass} max-w-4xl`}>
               <div className={glassModalHeaderClass}>
                 <div className="flex items-start justify-between gap-4">
@@ -509,11 +509,11 @@ export const ExpenseClaimPage: React.FC = () => {
                       <Select value={formData.category} onValueChange={value => setFormData(prev => ({ ...prev, category: value }))}>
                         <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择" /></SelectTrigger>
                         <SelectContent className={glassSelectContentClass}>
-                          <SelectItem className="rounded-[16px]" value="TRAVEL">差旅</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="OFFICE">办公</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="ENTERTAINMENT">招待</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="TRANSPORT">交通</SelectItem>
-                          <SelectItem className="rounded-[16px]" value="OTHER">其他</SelectItem>
+                          <SelectItem className="rounded-xl" value="TRAVEL">差旅</SelectItem>
+                          <SelectItem className="rounded-xl" value="OFFICE">办公</SelectItem>
+                          <SelectItem className="rounded-xl" value="ENTERTAINMENT">招待</SelectItem>
+                          <SelectItem className="rounded-xl" value="TRANSPORT">交通</SelectItem>
+                          <SelectItem className="rounded-xl" value="OTHER">其他</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -557,12 +557,12 @@ export const ExpenseClaimPage: React.FC = () => {
                             <Select value={item.expenseType} onValueChange={value => updateItem(index, 'expenseType', value)}>
                               <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择" /></SelectTrigger>
                               <SelectContent className={glassSelectContentClass}>
-                                <SelectItem className="rounded-[16px]" value="TRANSPORT">交通</SelectItem>
-                                <SelectItem className="rounded-[16px]" value="ACCOMMODATION">住宿</SelectItem>
-                                <SelectItem className="rounded-[16px]" value="MEAL">餐饮</SelectItem>
-                                <SelectItem className="rounded-[16px]" value="COMMUNICATION">通讯</SelectItem>
-                                <SelectItem className="rounded-[16px]" value="OFFICE_SUPPLIES">办公用品</SelectItem>
-                                <SelectItem className="rounded-[16px]" value="OTHER">其他</SelectItem>
+                                <SelectItem className="rounded-xl" value="TRANSPORT">交通</SelectItem>
+                                <SelectItem className="rounded-xl" value="ACCOMMODATION">住宿</SelectItem>
+                                <SelectItem className="rounded-xl" value="MEAL">餐饮</SelectItem>
+                                <SelectItem className="rounded-xl" value="COMMUNICATION">通讯</SelectItem>
+                                <SelectItem className="rounded-xl" value="OFFICE_SUPPLIES">办公用品</SelectItem>
+                                <SelectItem className="rounded-xl" value="OTHER">其他</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -590,15 +590,15 @@ export const ExpenseClaimPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-2xl px-5">取消</Button>
-                <Button onClick={handleSave} className="rounded-2xl px-5">保存</Button>
+                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-xl px-5">取消</Button>
+                <Button onClick={handleSave} className="rounded-xl px-5">保存</Button>
               </div>
             </div>
           </div>
         )}
 
         {detailClaim && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/28 p-4 backdrop-blur-sm" onClick={() => !detailLoading && setDetailClaim(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4" onClick={() => !detailLoading && setDetailClaim(null)}>
             <div className={`flex max-h-[90vh] max-w-5xl flex-col ${glassModalShellClass}`} onClick={e => e.stopPropagation()}>
               <div className={glassModalHeaderClass}>
                 <div className="flex items-start justify-between gap-4">
@@ -668,7 +668,7 @@ export const ExpenseClaimPage: React.FC = () => {
               </div>
 
               <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setDetailClaim(null)} className="rounded-2xl px-5">关闭</Button>
+                <Button variant="outline" onClick={() => setDetailClaim(null)} className="rounded-xl px-5">关闭</Button>
               </div>
             </div>
           </div>

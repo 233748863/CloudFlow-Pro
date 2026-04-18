@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -520,7 +520,7 @@ const AsideEventButton = ({
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-[18px] border border-slate-100 bg-white px-3.5 py-2 text-left transition hover:border-cyan-100 hover:bg-slate-50/80"
+      className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left transition hover:border-cyan-200 hover:bg-slate-50"
     >
       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.color }} />
       <div className="min-w-0 flex-1">
@@ -562,7 +562,7 @@ const DrawerSection = ({
       className,
     )}
   >
-    <div className="border-b border-slate-100/90 px-4 py-3.5">
+    <div className="border-b border-slate-200 px-4 py-3.5">
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
         {eyebrow}
       </div>
@@ -1175,12 +1175,12 @@ export const SchedulePage = () => {
             >
               <div className="space-y-3.5 px-3.5 py-3.5">
                 {tableHasActiveFilters ? (
-                  <div className="flex flex-col gap-2 rounded-[18px] border border-cyan-100 bg-cyan-50/70 px-3.5 py-2.5 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex flex-col gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3.5 py-2.5 xl:flex-row xl:items-center xl:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                       {activeFilterSummaries.map(item => (
                         <span
                           key={item}
-                          className="rounded-full border border-cyan-100 bg-white/90 px-2.5 py-1 text-xs font-medium text-cyan-700"
+                          className="rounded-full border border-cyan-100 bg-white px-2.5 py-1 text-xs font-medium text-cyan-700"
                         >
                           {item}
                         </span>
@@ -1191,7 +1191,7 @@ export const SchedulePage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between rounded-[18px] border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-xs text-slate-500">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-500">
                     <span>{calendarTitle || '当前视图'}</span>
                     <span>
                       {tableTotal > 0
@@ -1214,7 +1214,7 @@ export const SchedulePage = () => {
                         <TableActionHead className="w-56 text-right">当前操作</TableActionHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-white/70">
+                    <TableBody className="divide-y divide-slate-100">
                       {isLoadingEvents ? (
                         <WorkspaceTableStateRow colSpan={7} type="loading" title="正在同步日程列表..." />
                       ) : tablePageEvents.length === 0 ? (
@@ -1237,7 +1237,7 @@ export const SchedulePage = () => {
                           const startDate = getSafeDate(event.extendedProps.startTime);
 
                           return (
-                            <TableRow key={event.id} className="bg-white/36 transition hover:bg-white/70">
+                            <TableRow key={event.id} className="transition hover:bg-slate-50">
                               <TableCell className="py-4">
                                 <div className="flex items-start gap-3">
                                   <span
@@ -1356,7 +1356,7 @@ export const SchedulePage = () => {
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium text-slate-500">
                     {calendarWindowLabel || currentViewLabel}
                   </span>
-                  <span className="rounded-full border border-slate-200/80 bg-white/70 px-2.5 py-1 text-slate-400">
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-400">
                     {calendarToolbarSummary}
                   </span>
                 </div>
@@ -1386,7 +1386,7 @@ export const SchedulePage = () => {
 
             <div className="schedule-calendar relative h-[720px] md:h-[760px] xl:h-[820px]">
               <style>{`.schedule-calendar .fc { height: 100%; color: #0f172a; }.schedule-calendar .fc-header-toolbar { display: none !important; }.schedule-calendar .fc-scrollgrid, .schedule-calendar .fc-theme-standard .fc-scrollgrid { border-radius: 24px; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.95); background: radial-gradient(circle at top right, rgba(207, 250, 254, 0.88), transparent 35%), radial-gradient(circle at top left, rgba(220, 252, 231, 0.5), transparent 30%), linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%); }.schedule-calendar .fc-daygrid-day-frame { min-height: 118px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.84) 100%); }.schedule-calendar .fc-day-today .fc-daygrid-day-frame, .schedule-calendar .fc-day-today .fc-timegrid-col-frame { background: radial-gradient(circle at top, rgba(207, 250, 254, 0.9), transparent 52%), linear-gradient(180deg, rgba(240, 253, 250, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%); }.schedule-calendar .fc-daygrid-day-number { margin: 0.45rem 0.55rem 0 0; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.82rem; font-weight: 700; color: #334155; }.schedule-calendar .fc-day-today .fc-daygrid-day-number { background: #0891b2; color: #fff; box-shadow: 0 8px 16px rgba(8, 145, 178, 0.28); }.schedule-calendar .fc-day-other .fc-daygrid-day-number { color: #94a3b8; }.schedule-calendar .fc-event { cursor: pointer; border: none !important; border-radius: 14px !important; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.65); }.schedule-calendar .fc-event-main { padding: 0 !important; }`}</style>
-              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70"><div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">正在同步日程...</div></div>}
+              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-50/90"><div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">正在同步日程...</div></div>}
               <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1470,7 +1470,7 @@ export const SchedulePage = () => {
 
             <AsidePanel eyebrow="类型拆分" title="日程类型">
               {typeBreakdownItems.map(item => (
-                <div key={item.type} className="flex items-center gap-3 rounded-[18px] border border-slate-100 bg-white px-3.5 py-2.5">
+                <div key={item.type} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EVENT_TYPE_META[item.type].color }} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
@@ -1495,7 +1495,7 @@ export const SchedulePage = () => {
       </WorkspacePageContent>
       {isCreateDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-slate-900/28 backdrop-blur-sm" onClick={closeCreateDrawer} />
+          <div className="absolute inset-0 bg-slate-900/32" onClick={closeCreateDrawer} />
           <div className="absolute inset-y-0 right-0 flex max-w-full">
             <div className="relative w-screen max-w-[420px]">
               <div className="flex h-full flex-col bg-white shadow-[0_30px_60px_rgba(15,23,42,0.16)]">
@@ -1524,7 +1524,7 @@ export const SchedulePage = () => {
                   <DrawerSection
                     eyebrow="安排概览"
                     title="先确认这次安排"
-                    className="border-slate-200 bg-slate-50/70"
+                    className="border-slate-200 bg-slate-50"
                     bodyClassName="space-y-3"
                   >
                     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -1563,7 +1563,7 @@ export const SchedulePage = () => {
                       <Input
                         type="text"
                         placeholder="例如：项目评审、客户回访、个人学习"
-                        className="h-12 rounded-2xl"
+                        className="h-12 rounded-xl"
                         value={form.title || ''}
                         onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))}
                       />
@@ -1573,7 +1573,7 @@ export const SchedulePage = () => {
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold text-slate-700">日程类型</Label>
                         <Select value={form.type || 'PERSONAL'} onValueChange={handleFormTypeChange}>
-                          <SelectTrigger className="h-12 rounded-2xl">
+                          <SelectTrigger className="h-12 rounded-xl">
                             <SelectValue placeholder="请选择日程类型" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1596,7 +1596,7 @@ export const SchedulePage = () => {
                               }))
                             }
                           >
-                            <SelectTrigger className="h-12 rounded-2xl">
+                            <SelectTrigger className="h-12 rounded-xl">
                               <SelectValue placeholder="请选择会议室" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1615,7 +1615,7 @@ export const SchedulePage = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                           <div className="text-sm font-semibold text-slate-700">地点绑定</div>
                           <div className="mt-1.5 text-xs text-slate-500">
                             非会议事项无需绑定
@@ -1630,7 +1630,7 @@ export const SchedulePage = () => {
                     title="安排时间范围"
                     bodyClassName="space-y-4"
                   >
-                    <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 transition hover:border-cyan-200 hover:bg-cyan-50/40">
+                    <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-cyan-200 hover:bg-cyan-50">
                       <input
                         type="checkbox"
                         checked={Boolean(form.isAllDay)}
@@ -1646,7 +1646,7 @@ export const SchedulePage = () => {
                     </label>
 
                     {form.isAllDay ? (
-                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-5">
+                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold text-slate-700">开始日期</Label>
                           <DatePicker
@@ -1678,7 +1678,7 @@ export const SchedulePage = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
+                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                             <Clock3 size={14} className="text-cyan-500" />
@@ -1726,7 +1726,7 @@ export const SchedulePage = () => {
                       </Label>
                       <Textarea
                         placeholder="补充议程、目标、注意事项或提醒信息"
-                        className="min-h-[140px] rounded-2xl resize-none"
+                        className="min-h-[140px] rounded-xl resize-none"
                         value={form.description || ''}
                         onChange={event => setForm(prev => ({ ...prev, description: event.target.value }))}
                       />
@@ -1746,7 +1746,7 @@ export const SchedulePage = () => {
 
       {selectedEvent && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-slate-900/28 backdrop-blur-sm" onClick={() => setSelectedEvent(null)} />
+          <div className="absolute inset-0 bg-slate-900/32" onClick={() => setSelectedEvent(null)} />
           <div className="absolute inset-y-0 right-0 flex max-w-full">
             <div className="relative w-screen max-w-[400px]">
               <div className="flex h-full flex-col bg-white shadow-[0_30px_60px_rgba(15,23,42,0.16)]">
@@ -1779,7 +1779,7 @@ export const SchedulePage = () => {
                   <DrawerSection
                     eyebrow="时间概览"
                     title="当前安排状态"
-                    className="border-slate-200 bg-slate-50/70"
+                    className="border-slate-200 bg-slate-50"
                     bodyClassName="grid gap-3 sm:grid-cols-2"
                   >
                     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
@@ -1805,7 +1805,7 @@ export const SchedulePage = () => {
                     title="关键信息"
                     bodyClassName="space-y-3"
                   >
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                         <MapPin size={14} className="text-slate-500" />
                         会议室 / 地点
@@ -1820,7 +1820,7 @@ export const SchedulePage = () => {
                     eyebrow="备注信息"
                     title="补充说明"
                   >
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-4 text-sm leading-6 text-slate-600">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
                       {selectedEvent.description?.trim() || '暂无补充备注'}
                     </div>
                   </DrawerSection>
