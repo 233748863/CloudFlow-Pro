@@ -43,15 +43,14 @@ import {
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   WorkspaceBackdrop,
-  WorkspaceTableStateRow,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
   WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
+  WorkspaceHeroMetricsSection,
+  WorkspacePageContent,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 interface TenantView extends SysTenant, TenantStatistics {
   tenantId: number;
@@ -348,61 +347,61 @@ export const TenantList: React.FC = () => {
     { label: '30天内到期', value: `${summary.expiringSoon} 个` },
     { label: '重点关注', value: `${summary.warning} 个` },
   ];
+  const heroMetrics = [
+    {
+      label: '租户总数',
+      value: `${summary.total}`,
+      hint: '当前已接入的租户数量',
+      icon: <Building2 size={17} />,
+    },
+    {
+      label: '正常运行',
+      value: `${summary.active}`,
+      hint: '未停用且未过期',
+      icon: <ShieldCheck size={17} />,
+    },
+    {
+      label: '即将到期',
+      value: `${summary.expiringSoon}`,
+      hint: '30 天内需要续费或处理',
+      icon: <Clock3 size={17} />,
+    },
+    {
+      label: '风险租户',
+      value: `${summary.warning}`,
+      hint: '配额、容量或有效期存在风险',
+      icon: <AlertTriangle size={17} />,
+    },
+  ];
 
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Building2 size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="租户管理"
           description="租户页的信息密度很高，所以这次重点统一信息卡、搜索台、结果表和弹窗表单的层级，让它和业务申请页属于同一套产品。"
           actions={(
-            <Button onClick={() => handleOpenModal()}>
+            <Button size="lg" onClick={() => handleOpenModal()}>
               <Plus size={15} />
               新增租户
             </Button>
           )}
           contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="租户总数"
-              value={summary.total}
-              hint="当前已接入的租户数量"
-              aside={<Building2 size={18} className="text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="正常运行"
-              value={summary.active}
-              hint="未停用且未过期"
-              aside={<ShieldCheck size={18} className="text-emerald-500" />}
-            />
-            <WorkspaceMetricCard
-              label="即将到期"
-              value={summary.expiringSoon}
-              hint="30 天内需要续费或处理"
-              aside={<Clock3 size={18} className="text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="风险租户"
-              value={summary.warning}
-              hint="配额、容量或有效期存在风险"
-              aside={<AlertTriangle size={18} className="text-rose-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="租户列表"
@@ -411,7 +410,7 @@ export const TenantList: React.FC = () => {
               overviewItems={overviewItems}
               headerBadges={(
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
                     支持实时刷新存储统计
                   </span>
                 </div>
@@ -421,7 +420,7 @@ export const TenantList: React.FC = () => {
                   清空筛选
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                   当前显示全部租户
                 </span>
               )}
@@ -462,7 +461,7 @@ export const TenantList: React.FC = () => {
                       <TableActionHead className="w-72">操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/60">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载租户数据..." />
                     ) : tenants.length === 0 ? (
@@ -474,10 +473,10 @@ export const TenantList: React.FC = () => {
                         const expireHint = getExpireHint(tenant.expireTime);
 
                         return (
-                          <tr key={tenant.tenantId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                          <tr key={tenant.tenantId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-pink-50 text-pink-600 ring-1 ring-pink-100">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700">
                                   <Building2 size={18} />
                                 </div>
                                 <div>
@@ -549,8 +548,8 @@ export const TenantList: React.FC = () => {
                                   onClick={() => handleToggleStatus(tenant)}
                                   className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
                                     tenant.status === '0'
-                                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
-                                      : 'bg-rose-50 text-rose-600 ring-1 ring-rose-100'
+                                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                                      : 'border border-rose-200 bg-rose-50 text-rose-600'
                                   }`}
                                 >
                                   {tenant.status === '0' ? <Power size={12} /> : <PowerOff size={12} />}
@@ -558,8 +557,8 @@ export const TenantList: React.FC = () => {
                                 </button>
                                 <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
                                   tenant.expired
-                                    ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100'
-                                    : 'bg-white/82 text-slate-600 ring-1 ring-slate-200/80'
+                                    ? 'border border-rose-200 bg-rose-50 text-rose-600'
+                                    : 'border border-slate-200 bg-white text-slate-600'
                                 }`}>
                                   {tenant.expired ? '已过期' : '未过期'}
                                 </span>
@@ -610,7 +609,7 @@ export const TenantList: React.FC = () => {
             maxWidthClassName="max-w-4xl"
           >
             <form onSubmit={handleSubmit} className="space-y-4">
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础资料</div>
                   <div className="mt-1 text-sm text-slate-500">先确认租户名称、联系人和域名信息，便于后续统一检索和联络。</div>
@@ -658,7 +657,7 @@ export const TenantList: React.FC = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">配额与有效期</div>
                   <div className="mt-1 text-sm text-slate-500">集中管理用户上限、存储容量、到期时间和状态，方便运维排查风险租户。</div>
@@ -685,7 +684,7 @@ export const TenantList: React.FC = () => {
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">到期时间</label>
                     <DatePicker
-                      variant="glass"
+                      className="h-11 rounded-2xl"
                       type="date"
                       value={formData.expireTime}
                       onChange={(event) => setFormData({ ...formData, expireTime: event.target.value })}
@@ -693,7 +692,7 @@ export const TenantList: React.FC = () => {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">状态</label>
-                    <div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                    <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                       {[
                         ['0', '正常'],
                         ['1', '停用'],
@@ -703,7 +702,7 @@ export const TenantList: React.FC = () => {
                             type="radio"
                             checked={formData.status === value}
                             onChange={() => setFormData({ ...formData, status: value })}
-                            className="accent-pink-500"
+                            className="accent-slate-700"
                           />
                           <span>{label}</span>
                         </label>
@@ -713,7 +712,7 @@ export const TenantList: React.FC = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">备注</div>
                   <div className="mt-1 text-sm text-slate-500">记录续费说明、特殊权限或交接备注，方便后续协作。</div>
@@ -735,7 +734,7 @@ export const TenantList: React.FC = () => {
             </form>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
