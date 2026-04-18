@@ -23,10 +23,10 @@ spring:
       username: nacos
       password: nacos
       config:
-        namespace: ${NACOS_NAMESPACE:886292cd-bfe3-4651-a67a-7604d2f4f3b9}
+        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
         file-extension: yaml
       discovery:
-        namespace: ${NACOS_NAMESPACE:886292cd-bfe3-4651-a67a-7604d2f4f3b9}
+        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true}

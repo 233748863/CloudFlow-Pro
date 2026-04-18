@@ -10,14 +10,14 @@ spring:
       - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
     nacos:
-      server-addr: 192.168.1.173:8848
+      server-addr: ${NACOS_SERVER:192.168.1.173:8848}
       username: nacos
       password: nacos
       config:
-        namespace: 886292cd-bfe3-4651-a67a-7604d2f4f3b9
+        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
         file-extension: yaml
       discovery:
-        namespace: 886292cd-bfe3-4651-a67a-7604d2f4f3b9
+        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
         group: DEFAULT_GROUP
   # 本地数据源配置（Nacos不可用时的后备配置）
   datasource:

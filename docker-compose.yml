@@ -162,7 +162,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       NACOS_SERVER: nacos:8848
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
@@ -212,7 +212,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       NACOS_SERVER: nacos:8848
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
       DB_USERNAME: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
@@ -264,7 +264,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       NACOS_SERVER: nacos:8848
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
       DB_USERNAME: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
@@ -318,7 +318,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       NACOS_SERVER: nacos:8848
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
       DB_USERNAME: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
