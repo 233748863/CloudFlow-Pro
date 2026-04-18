@@ -309,15 +309,15 @@ export const CopyListPage: React.FC = () => {
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'RUNNING':
-        return 'bg-pink-50 text-pink-600';
+        return 'border border-cyan-200 bg-cyan-50 text-cyan-700';
       case 'COMPLETED':
-        return 'bg-emerald-50 text-emerald-600';
+        return 'border border-emerald-200 bg-emerald-50 text-emerald-600';
       case 'REJECTED':
-        return 'bg-rose-50 text-rose-600';
+        return 'border border-rose-200 bg-rose-50 text-rose-600';
       case 'REVOKED':
-        return 'bg-amber-50 text-amber-700';
+        return 'border border-amber-200 bg-amber-50 text-amber-700';
       default:
-        return 'bg-slate-100 text-slate-600';
+        return 'border border-slate-200 bg-slate-100 text-slate-600';
     }
   };
 
@@ -364,44 +364,24 @@ export const CopyListPage: React.FC = () => {
       label: '全部记录',
       value: `${total}`,
       hint: hasActiveFilters ? '当前列表已按筛选条件收敛' : '默认展示当前用户可见的全部抄送',
-      panelClassName:
-        'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.95),rgba(255,255,255,0.82),rgba(255,241,242,0.8))] shadow-[0_16px_32px_rgba(236,72,153,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName:
-        'bg-white/88 text-pink-600 ring-1 ring-pink-100 shadow-[0_10px_22px_rgba(236,72,153,0.08)]',
-      glowClassName: 'from-pink-100/90 via-rose-50/45 to-transparent',
       icon: <Mail size={17} />,
     },
     {
       label: '未读总数',
       value: `${unreadCount}`,
       hint: unreadCount > 0 ? '建议优先处理未读节点通知' : '当前没有未读抄送',
-      panelClassName:
-        'border-amber-100/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82),rgba(255,247,237,0.82))] shadow-[0_16px_32px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.75)]',
-      iconWrapClassName:
-        'bg-white/88 text-amber-700 ring-1 ring-amber-100 shadow-[0_10px_22px_rgba(245,158,11,0.08)]',
-      glowClassName: 'from-amber-100/90 via-orange-50/45 to-transparent',
       icon: <MailOpen size={17} />,
     },
     {
       label: '本页未读',
       value: `${unreadOnPage.length}`,
       hint: unreadOnPage.length > 0 ? '支持当前页批量标记已读' : '当前页没有未读记录',
-      panelClassName:
-        'border-emerald-100/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.82),rgba(236,254,255,0.78))] shadow-[0_16px_32px_rgba(16,185,129,0.08),inset_0_1px_0_rgba(255,255,255,0.76)]',
-      iconWrapClassName:
-        'bg-white/88 text-emerald-600 ring-1 ring-emerald-100 shadow-[0_10px_22px_rgba(16,185,129,0.08)]',
-      glowClassName: 'from-emerald-100/90 via-cyan-50/45 to-transparent',
       icon: <CheckCheck size={17} />,
     },
     {
       label: '已选条数',
       value: `${selectedIds.size}`,
       hint: selectedIds.size > 0 ? '可直接执行批量已读' : `当前流程：${currentProcessLabel}`,
-      panelClassName:
-        'border-slate-200/75 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(248,250,252,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.72)]',
-      iconWrapClassName:
-        'bg-white/82 text-slate-700 ring-1 ring-slate-200/85 shadow-[0_10px_22px_rgba(15,23,42,0.06)]',
-      glowClassName: 'from-slate-100/95 via-slate-50/40 to-transparent',
       icon: <Eye size={17} />,
     },
   ];
@@ -410,27 +390,18 @@ export const CopyListPage: React.FC = () => {
     {
       label: '视图状态',
       value: currentReadFilterLabel,
-      toneClassName:
-        'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '流程范围',
       value: currentProcessLabel,
-      toneClassName:
-        'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '关键字',
       value: keyword || '未设置',
-      toneClassName:
-        'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
     {
       label: '当前页码',
       value: `${pageNum} / ${totalPages}`,
-      toneClassName: hasActiveFilters
-        ? 'border-pink-100/80 bg-[linear-gradient(135deg,rgba(253,242,248,0.9),rgba(255,255,255,0.82))] text-pink-600 shadow-[0_10px_24px_rgba(236,72,153,0.06),inset_0_1px_0_rgba(255,255,255,0.75)]'
-        : 'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(248,250,252,0.72))] text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.7)]',
     },
   ];
 
@@ -468,7 +439,7 @@ export const CopyListPage: React.FC = () => {
         title="抄送记录加载失败"
         description={error}
         actions={
-          <Button className="rounded-[18px] bg-pink-500 text-white hover:bg-pink-600" onClick={() => void fetchList()}>
+          <Button className="rounded-[18px]" onClick={() => void fetchList()}>
             重试加载
           </Button>
         }
@@ -485,14 +456,14 @@ export const CopyListPage: React.FC = () => {
         <WorkspaceHeroMetricsSection
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Mail size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 {timeLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
                 {currentReadFilterLabel}
               </span>
             </div>
@@ -518,27 +489,26 @@ export const CopyListPage: React.FC = () => {
               >
                 <RefreshCw
                   size={15}
-                  className={`mr-2 ${refreshing ? 'animate-spin text-cyan-600' : 'text-cyan-600'}`}
+                  className={`mr-2 ${refreshing ? 'animate-spin text-slate-500' : 'text-slate-500'}`}
                 />
                 刷新数据
               </Button>
             </div>
           }
-          contentClassName="p-3.5 sm:p-4"
-          glowClassName="bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_55%),radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_46%)]"
+          contentClassName="p-4 sm:p-5"
           metrics={heroMetrics}
         >
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/78 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-600 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
               抄送工作台
             </span>
-            <span className="max-w-full truncate rounded-full bg-white/78 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+            <span className="max-w-full truncate rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
               最新提醒：{latestHint}
             </span>
           </div>
         </WorkspaceHeroMetricsSection>
 
-        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               eyebrow="抄送筛选"
@@ -552,12 +522,12 @@ export const CopyListPage: React.FC = () => {
               quickFilterAside={
                 <div className="flex flex-wrap items-center gap-2">
                   {unreadOnPage.length > 0 ? (
-                    <label className="inline-flex h-9 items-center gap-2 rounded-[18px] border border-white/85 bg-white/82 px-4 text-sm font-medium text-slate-600 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
+                    <label className="inline-flex h-9 items-center gap-2 rounded-[18px] border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
                       <input
                         type="checkbox"
                         checked={allUnreadSelected}
                         onChange={handleToggleSelectAll}
-                        className="h-4 w-4 rounded border-slate-300 text-pink-500 focus:ring-pink-400"
+                        className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400"
                       />
                       全选当前页未读
                     </label>
@@ -567,14 +537,14 @@ export const CopyListPage: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 rounded-[18px] border-white/85 bg-white/78 px-4 shadow-[0_10px_18px_rgba(15,23,42,0.04)] hover:bg-white"
+                      className="h-9 rounded-[18px] px-4"
                       onClick={handleClearFilters}
                     >
                       <X size={15} className="mr-2 text-slate-400" />
                       清空筛选
                     </Button>
                   ) : (
-                    <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                       当前未应用额外筛选
                     </span>
                   )}
@@ -599,7 +569,7 @@ export const CopyListPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleSearch}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-cyan-600 transition hover:text-cyan-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 transition hover:text-slate-700"
                       >
                         搜索
                       </button>
@@ -653,7 +623,7 @@ export const CopyListPage: React.FC = () => {
                     >
                       <RefreshCw
                         size={15}
-                          className={`mr-2 ${refreshing ? 'animate-spin text-cyan-600' : 'text-cyan-600'}`}
+                        className={`mr-2 ${refreshing ? 'animate-spin text-slate-500' : 'text-slate-500'}`}
                       />
                       刷新
                     </Button>
@@ -699,7 +669,7 @@ export const CopyListPage: React.FC = () => {
                         key={record.id}
                         className={cn(
                           'card card-hover cursor-pointer rounded-2xl px-4 py-4',
-                          record.isRead === 0 ? 'border-pink-200 bg-pink-50/60' : '',
+                          record.isRead === 0 ? 'border-cyan-200 bg-cyan-50/60' : '',
                         )}
                         onClick={() => handleViewDetail(record)}
                       >
@@ -710,7 +680,7 @@ export const CopyListPage: React.FC = () => {
                                 type="checkbox"
                                 checked={selectedIds.has(record.id)}
                                 onChange={() => handleToggleSelect(record.id)}
-                                className="h-4 w-4 rounded border-slate-300 text-pink-500 focus:ring-pink-400"
+                                className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400"
                               />
                             ) : (
                               <div className="w-4" />
@@ -719,7 +689,7 @@ export const CopyListPage: React.FC = () => {
 
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
                             {record.isRead === 0 ? (
-                              <Mail size={18} className="text-pink-500" />
+                              <Mail size={18} className="text-cyan-600" />
                             ) : (
                               <MailOpen size={18} className="text-slate-400" />
                             )}
@@ -760,7 +730,7 @@ export const CopyListPage: React.FC = () => {
                             {record.isRead === 0 ? (
                               <Button
                                 variant="outline"
-                                className="h-10 rounded-[18px] border-pink-200 px-4 text-pink-600 hover:bg-pink-50"
+                                className="h-10 rounded-[18px] border-cyan-200 px-4 text-cyan-700 hover:bg-cyan-50"
                                 onClick={() => void handleMarkRead(record)}
                               >
                                 标记已读
@@ -806,7 +776,7 @@ export const CopyListPage: React.FC = () => {
           {selectedRecord.formData ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
               <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <FileText size={16} className="text-pink-500" />
+                <FileText size={16} className="text-cyan-600" />
                 表单数据快照
               </h4>
               <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -821,7 +791,7 @@ export const CopyListPage: React.FC = () => {
                       {Object.entries(data).map(([key, value]) => (
                         <div
                           key={key}
-                          className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm"
+                          className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm"
                         >
                           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                             {key}
@@ -848,7 +818,7 @@ export const CopyListPage: React.FC = () => {
           </div>
 
           <div className="flex justify-end">
-            <Button variant="outline" className="rounded-[18px]" onClick={handleCloseDetail}>
+            <Button variant="outline" className="rounded-xl" onClick={handleCloseDetail}>
               关闭
             </Button>
           </div>
