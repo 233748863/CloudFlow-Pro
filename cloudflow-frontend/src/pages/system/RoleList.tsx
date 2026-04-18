@@ -28,15 +28,14 @@ import {
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import {
   WorkspaceBackdrop,
-  WorkspaceTableStateRow,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
   WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
+  WorkspaceHeroMetricsSection,
+  WorkspacePageContent,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 import { toast } from 'sonner';
 import {
   addRole,
@@ -263,7 +262,7 @@ export const RoleList = () => {
             <button
               type="button"
               onClick={() => toggleExpand(node.menuId)}
-              className="rounded-full p-1 text-slate-400 transition hover:bg-white hover:text-pink-600"
+              className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             >
               {expandedKeys.includes(node.menuId) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </button>
@@ -275,7 +274,7 @@ export const RoleList = () => {
             type="checkbox"
             checked={formData.menuIds.includes(node.menuId)}
             onChange={() => toggleMenuCheck(node.menuId)}
-            className="accent-pink-500"
+            className="accent-slate-700"
           />
           <span className="text-sm text-slate-700">{node.menuName}</span>
         </div>
@@ -294,7 +293,7 @@ export const RoleList = () => {
             <button
               type="button"
               onClick={() => toggleDeptExpand(node.menuId)}
-              className="rounded-full p-1 text-slate-400 transition hover:bg-white hover:text-pink-600"
+              className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             >
               {expandedDeptKeys.includes(node.menuId) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </button>
@@ -306,7 +305,7 @@ export const RoleList = () => {
             type="checkbox"
             checked={selectedIds.includes(node.menuId)}
             onChange={() => toggleDeptCheck(node.menuId)}
-            className="accent-pink-500"
+            className="accent-slate-700"
           />
           <span className="text-sm text-slate-700">{node.menuName}</span>
         </div>
@@ -366,61 +365,61 @@ export const RoleList = () => {
     { label: '自定义范围', value: `${customScopeCount} 个` },
     { label: '租户覆盖', value: `${tenantCoverage} 个` },
   ];
+  const heroMetrics = [
+    {
+      label: '角色总数',
+      value: `${filteredRoles.length}`,
+      hint: '当前视图下可见角色数量',
+      icon: <Shield size={17} />,
+    },
+    {
+      label: '正常角色',
+      value: `${activeCount}`,
+      hint: '状态为正常，可用于授权',
+      icon: <CheckCircle2 size={17} />,
+    },
+    {
+      label: '菜单资源',
+      value: `${flatMenus.length}`,
+      hint: '角色可分配的菜单与按钮总量',
+      icon: <FolderTree size={17} />,
+    },
+    {
+      label: '部门树',
+      value: `${deptTree.length}`,
+      hint: '自定义数据范围可引用的根部门数量',
+      icon: <Users size={17} />,
+    },
+  ];
 
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <Shield size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="角色管理"
           description="把系统管理页也统一到业务工作台结构，角色配置、数据范围和菜单授权不再是传统后台的零散表单。"
           actions={(
-            <Button onClick={() => handleOpenModal()}>
+            <Button size="lg" onClick={() => handleOpenModal()}>
               <Plus size={15} />
               新增角色
             </Button>
           )}
           contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="角色总数"
-              value={filteredRoles.length}
-              hint="当前视图下可见角色数量"
-              aside={<Shield size={18} className="text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="正常角色"
-              value={activeCount}
-              hint="状态为正常，可用于授权"
-              aside={<CheckCircle2 size={18} className="text-emerald-500" />}
-            />
-            <WorkspaceMetricCard
-              label="菜单资源"
-              value={flatMenus.length}
-              hint="角色可分配的菜单与按钮总量"
-              aside={<FolderTree size={18} className="text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="部门树"
-              value={deptTree.length}
-              hint="自定义数据范围可引用的根部门数量"
-              aside={<Users size={18} className="text-sky-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="角色清单"
@@ -429,10 +428,10 @@ export const RoleList = () => {
               overviewItems={overviewItems}
               headerBadges={(
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
                     菜单节点 {flatMenus.length} 个
                   </span>
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
                     租户 {tenants.length} 个
                   </span>
                 </div>
@@ -442,7 +441,7 @@ export const RoleList = () => {
                   清空筛选
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                   当前未应用搜索条件
                 </span>
               )}
@@ -477,18 +476,18 @@ export const RoleList = () => {
                       <TableActionHead className="w-52">操作</TableActionHead>
                     </tr>
                   </TableHeader>
-                  <tbody className="divide-y divide-white/60">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载角色数据..." />
                     ) : filteredRoles.length === 0 ? (
                       <WorkspaceTableStateRow colSpan={8} title="暂无角色数据" description="可以先新建角色，再配置菜单和数据范围。" />
                     ) : (
                       filteredRoles.map((role) => (
-                        <tr key={role.roleId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={role.roleId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3 text-sm text-slate-500">{role.roleId}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-50 text-pink-600 ring-1 ring-pink-100">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700">
                                 <Shield size={16} />
                               </div>
                               <span>{role.roleName}</span>
@@ -505,8 +504,8 @@ export const RoleList = () => {
                           <td className="px-4 py-3 text-sm text-slate-600">
                             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                               Number(role.dsType) === 1
-                                ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
-                                : 'bg-white/82 text-slate-600 ring-1 ring-slate-200/80'
+                                ? 'border border-amber-200 bg-amber-50 text-amber-700'
+                                : 'border border-slate-200 bg-white text-slate-600'
                             }`}>
                               {dsTypeMap[Number(role.dsType)] || '未设置'}
                             </span>
@@ -557,7 +556,7 @@ export const RoleList = () => {
             maxWidthClassName="max-w-5xl"
           >
             <form onSubmit={handleSubmit} className="space-y-4">
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础信息</div>
                   <div className="mt-1 text-sm text-slate-500">先确认角色名称、权限字符、排序与租户归属，再继续配置范围和菜单授权。</div>
@@ -613,7 +612,7 @@ export const RoleList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">状态与数据范围</div>
                   <div className="mt-1 text-sm text-slate-500">角色状态决定是否可被分配，自定义数据范围可进一步限定角色查看的数据集合。</div>
@@ -663,21 +662,21 @@ export const RoleList = () => {
                 </div>
 
                 {formData.dsType === 1 ? (
-                  <div className="mt-4 rounded-[24px] border border-white/80 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="mb-3 text-sm font-medium text-slate-700">自定义部门范围</div>
-                    <div className="max-h-64 overflow-y-auto rounded-[20px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(248,250,252,0.72))] p-3">
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
                       {renderDeptTreeNodes(deptTree)}
                     </div>
                   </div>
                 ) : null}
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">菜单权限</div>
                   <div className="mt-1 text-sm text-slate-500">目录与子节点做联动勾选，减少逐项点选带来的维护成本。</div>
                 </div>
-                <div className="max-h-[28rem] overflow-y-auto rounded-[24px] border border-white/80 bg-white/72 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                <div className="max-h-[28rem] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   {renderTreeNodes(menuTree)}
                 </div>
               </section>
@@ -691,7 +690,7 @@ export const RoleList = () => {
             </form>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
