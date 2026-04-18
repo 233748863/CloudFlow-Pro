@@ -12,14 +12,16 @@ import {
   Textarea,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
+  WorkspaceBackdrop,
   WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
+  WorkspaceHeroMetricsSection,
+  WorkspacePageContent,
   WorkspaceResultCard,
+  WorkspaceTableStateRow,
   WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+  workspaceGlassSurfaceClassName,
+} from '@/components/workspace';
 
 const formatDateCN = (date: Date) => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -137,61 +139,61 @@ export const PostList = () => {
     { label: '停用状态', value: `${disabledCount} 个` },
     { label: '最高排序', value: `${sortedMax}` },
   ];
+  const heroMetrics = [
+    {
+      label: '岗位总数',
+      value: `${posts.length}`,
+      hint: '当前查询结果中的岗位数量',
+      icon: <BriefcaseBusiness size={17} />,
+    },
+    {
+      label: '正常岗位',
+      value: `${activeCount}`,
+      hint: '可参与组织分配',
+      icon: <ShieldCheck size={17} />,
+    },
+    {
+      label: '停用岗位',
+      value: `${disabledCount}`,
+      hint: '已下线或暂不启用',
+      icon: <Trash2 size={17} />,
+    },
+    {
+      label: '排序上限',
+      value: `${sortedMax}`,
+      hint: '便于快速判断新增排序区间',
+      icon: <Edit size={17} />,
+    },
+  ];
 
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
 
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
+      <WorkspacePageContent>
+        <WorkspaceHeroMetricsSection
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                 <BriefcaseBusiness size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 ring-1 ring-slate-200/80">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
             </div>
           )}
           title="岗位管理"
           description="岗位页也切到统一工作台结构，保持系统管理页与业务申请页一致的节奏和信息层级。"
           actions={(
-            <Button onClick={() => handleOpenModal()}>
+            <Button size="lg" onClick={() => handleOpenModal()}>
               <Plus size={15} />
               新增岗位
             </Button>
           )}
           contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="岗位总数"
-              value={posts.length}
-              hint="当前查询结果中的岗位数量"
-              aside={<BriefcaseBusiness size={18} className="text-pink-500" />}
-            />
-            <WorkspaceMetricCard
-              label="正常岗位"
-              value={activeCount}
-              hint="可参与组织分配"
-              aside={<ShieldCheck size={18} className="text-emerald-500" />}
-            />
-            <WorkspaceMetricCard
-              label="停用岗位"
-              value={disabledCount}
-              hint="已下线或暂不启用"
-              aside={<Trash2 size={18} className="text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="排序上限"
-              value={sortedMax}
-              hint="便于快速判断新增排序区间"
-              aside={<Edit size={18} className="text-sky-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
+          metrics={heroMetrics}
+        />
 
-        <Card className="rounded-[28px] border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(248,250,252,0.72))] p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
           <div className="flex flex-col gap-3">
             <WorkspaceWorkbenchCard
               title="岗位列表"
@@ -210,7 +212,7 @@ export const PostList = () => {
                   清空筛选
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
                   当前显示全部岗位
                 </span>
               )}
@@ -258,7 +260,7 @@ export const PostList = () => {
                       <WorkspaceTableStateRow colSpan={7} title="暂无岗位数据" description="可以先新建岗位，再分配到组织或人员信息中。" />
                     ) : (
                       posts.map((post) => (
-                        <tr key={post.postId} className="border-b border-white/60 transition-colors hover:bg-white/60">
+                        <tr key={post.postId} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-3 text-sm text-slate-500">{post.postId}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">{post.postCode}</td>
                           <td className="px-4 py-3 text-sm text-slate-700">{post.postName}</td>
@@ -310,7 +312,7 @@ export const PostList = () => {
             maxWidthClassName="max-w-3xl"
           >
             <form onSubmit={handleSubmit} className="space-y-4">
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础信息</div>
                   <div className="mt-1 text-sm text-slate-500">先定义岗位编码和名称，再设置排序与状态。</div>
@@ -346,7 +348,7 @@ export const PostList = () => {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">状态</label>
-                    <div className="flex gap-4 rounded-[22px] border border-white/75 bg-white/72 px-4 py-3 shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
+                    <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                       {[
                         ['0', '正常'],
                         ['1', '停用'],
@@ -356,7 +358,7 @@ export const PostList = () => {
                             type="radio"
                             checked={formData.status === value}
                             onChange={() => setFormData({ ...formData, status: value })}
-                            className="accent-pink-500"
+                            className="accent-slate-700"
                           />
                           <span>{label}</span>
                         </label>
@@ -366,7 +368,7 @@ export const PostList = () => {
                 </div>
               </section>
 
-              <section className="rounded-[26px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.74))] p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="mb-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">备注</div>
                   <div className="mt-1 text-sm text-slate-500">记录该岗位的适用范围、职责说明或其他维护信息。</div>
@@ -389,7 +391,7 @@ export const PostList = () => {
             </form>
           </WorkspaceDialogShell>
         ) : null}
-      </div>
+      </WorkspacePageContent>
     </div>
   );
 };
