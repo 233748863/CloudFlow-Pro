@@ -123,13 +123,13 @@ export const OvertimeApplicationPage: React.FC = () => {
   };
 
   const selfServiceLocked = eligibilityLoading || !canStartSelfService;
-  const glassModalShellClass = 'w-full rounded-2xl border border-slate-200 bg-white shadow-2xl';
-  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-6 py-4';
-  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-5';
+  const glassModalShellClass = 'w-full rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]';
+  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-5 py-4';
+  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
   const glassModalInputClass = 'h-11 rounded-xl';
   const glassModalTextareaClass = 'min-h-[112px] rounded-xl';
-  const glassModalFooterClass = 'sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4';
+  const glassModalFooterClass = 'sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4';
   const glassModalSelectContentClass = '';
   const glassDetailCardClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
 
@@ -701,7 +701,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-4 p-6">
+              <div className="space-y-4 p-5">
                 {/* 将表单拆成分段玻璃卡，减少字段连续堆叠造成的阅读压力。 */}
                 <section className={glassModalSectionClass}>
                   <div className="mb-4">
@@ -848,7 +848,7 @@ export const OvertimeApplicationPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex-1 space-y-6 overflow-y-auto p-6">
+              <div className="flex-1 space-y-5 overflow-y-auto p-5">
                 {detailLoading || !detailRecord ? (
                   <WorkspaceInlineState type="loading" title="正在加载加班详情..." className="py-12" />
                 ) : (

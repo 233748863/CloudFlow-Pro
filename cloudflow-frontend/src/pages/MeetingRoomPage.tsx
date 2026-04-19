@@ -269,7 +269,7 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
   const selectedUsers = getSelectedUserNames(deptTree);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {selectedUsers.length > 0 && (
         <div className="border-b border-slate-100 bg-slate-50 p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">已选成员</div>
@@ -567,8 +567,8 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="border-b border-slate-100 px-6 py-4">
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
+        <div className="border-b border-slate-100 px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
@@ -586,7 +586,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
           </div>
         </div>
 
-        <div className="border-b border-slate-100 px-6 py-4">
+        <div className="border-b border-slate-100 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <WorkspaceControlGroup>
               <WorkspaceIconButton icon={<ChevronLeft size={18} />} label="上一周" onClick={goToPrevWeek} />
@@ -714,8 +714,8 @@ const RoomFormModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="border-b border-slate-100 px-6 py-4">
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in fade-in zoom-in duration-200">
+        <div className="border-b border-slate-100 px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
@@ -731,7 +731,7 @@ const RoomFormModal: React.FC<{
             <WorkspaceIconButton icon={<X size={18} />} label="关闭周排期" shape="circle" onClick={onClose} />
           </div>
         </div>
-        <div className="space-y-4 bg-white p-6">
+        <div className="space-y-4 bg-white p-5">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">会议室名称 <span className="text-red-500">*</span></label>
             <Input className="h-12 rounded-xl" type="text" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
@@ -764,7 +764,7 @@ const RoomFormModal: React.FC<{
             </Select>
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4">
           <Button variant="outline" size="lg" onClick={onClose}>
             取消
           </Button>
@@ -784,7 +784,7 @@ const DeleteConfirmModal: React.FC<{
   if (!visible) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in fade-in zoom-in duration-200">
         <div className="px-6 py-5">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-600">
@@ -795,7 +795,7 @@ const DeleteConfirmModal: React.FC<{
             <p className="mt-2 text-sm leading-6 text-slate-600">确定要删除会议室 <span className="font-semibold text-red-600">「{roomName}」</span> 吗？此操作不可撤销。</p>
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4">
           <Button variant="outline" size="lg" onClick={onClose}>
             取消
           </Button>
@@ -1557,8 +1557,8 @@ export const MeetingRoomPage = () => {
       {/* 预订弹窗 */}
       {selectedRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="border-b border-slate-100 px-6 py-4">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in fade-in zoom-in duration-200">
+            <div className="border-b border-slate-100 px-5 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
@@ -1574,7 +1574,7 @@ export const MeetingRoomPage = () => {
                 <WorkspaceIconButton icon={<X size={18} />} label="关闭会议室预订" shape="circle" onClick={() => setSelectedRoom(null)} />
               </div>
             </div>
-            <div className="flex-1 space-y-5 overflow-y-auto bg-white p-6">
+            <div className="flex-1 space-y-5 overflow-y-auto bg-white p-5">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">会议主题 <span className="text-red-500">*</span></label>
                 <Input
@@ -1628,7 +1628,7 @@ export const MeetingRoomPage = () => {
                 <OrgTreePicker deptTree={deptTree} selectedIds={selectedAttendees} onChange={setSelectedAttendees} />
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
+            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4">
               <Button variant="outline" size="lg" onClick={() => setSelectedRoom(null)}>
                 取消
               </Button>

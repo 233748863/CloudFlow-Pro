@@ -334,13 +334,13 @@ export const BusinessTripPage: React.FC = () => {
     },
   ];
 
-  const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl';
-  const glassModalHeaderClass = 'border-b border-slate-100 px-6 py-4';
+  const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]';
+  const glassModalHeaderClass = 'border-b border-slate-100 bg-white px-5 py-4';
   const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
   const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
   const glassModalInputClass = 'h-11 rounded-xl';
   const glassModalTextareaClass = 'min-h-28 rounded-xl';
-  const glassModalFooterClass = 'flex justify-end gap-3 border-t border-slate-100 px-6 py-4';
+  const glassModalFooterClass = 'flex justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4';
   const glassDetailCardClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
 
   return (
@@ -563,7 +563,7 @@ export const BusinessTripPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-4 p-6">
+              <div className="space-y-4 p-5">
                 {/* 将长表单拆成多块玻璃分组，降低一次性阅读整屏字段的压力。 */}
                 <section className={glassModalSectionClass}>
                   <div className="mb-4">
@@ -701,7 +701,7 @@ export const BusinessTripPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex-1 space-y-6 overflow-y-auto p-6">
+              <div className="flex-1 space-y-5 overflow-y-auto p-5">
                 {detailLoading ? (
                   <WorkspaceInlineState type="loading" title="正在加载出差详情..." className="py-12" />
                 ) : (
