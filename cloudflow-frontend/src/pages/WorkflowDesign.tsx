@@ -258,9 +258,9 @@ export const WorkflowDesign = () => {
   const skipNextUrlSyncRef = useRef(false);
 
   const renderStatusShell = (panel: React.ReactNode) => (
-    <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70">
       <WorkspaceBackdrop />
-      <div className="relative z-10 flex h-full items-center justify-center p-6">
+      <div className="relative z-10 flex h-full items-center justify-center p-5">
         <div className="w-full max-w-2xl">{panel}</div>
       </div>
     </div>
@@ -541,7 +541,7 @@ export const WorkflowDesign = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="h-[calc(100vh-140px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70">
       <WorkflowBuilder
         workflow={workflow}
         onChange={handleWorkflowChange}

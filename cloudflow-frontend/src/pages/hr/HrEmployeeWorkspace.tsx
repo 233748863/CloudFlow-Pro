@@ -523,8 +523,8 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
   if (!selectedEmployeeId) {
     return (
-      <Card className="rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+      <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
           {loading ? '正在准备员工工作区...' : '先从上方选择一位员工，再维护合同、证件和紧急联系人。'}
         </div>
       </Card>
@@ -588,7 +588,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       </div>
 
       <Tabs value={tab} onValueChange={value => setTab(value as WorkspaceTab)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-slate-100/80 p-1">
+        <TabsList className="grid w-full grid-cols-3 rounded-xl bg-slate-100 p-1">
           <TabsTrigger value="contracts">合同档案</TabsTrigger>
           <TabsTrigger value="documents">证件档案</TabsTrigger>
           <TabsTrigger value="contacts">紧急联系人</TabsTrigger>
@@ -691,7 +691,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                       <TableCell>{toDateInputValue(item.signDate) || '-'}</TableCell>
                       <TableCell>{`${toDateInputValue(item.startDate) || '-'} 至 ${toDateInputValue(item.endDate) || '-'}`}</TableCell>
                       <TableCell>
-                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        <span className="inline-flex rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-xs font-medium text-slate-700">
                           {item.statusName || contractStatusLabel[item.status || ''] || textValue(item.status)}
                         </span>
                       </TableCell>
@@ -803,7 +803,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                       <TableCell>{toDateInputValue(item.expiryDate) || '-'}</TableCell>
                       <TableCell>
                         {item.fileUrl ? (
-                          <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-teal-600 hover:text-teal-700">
+                          <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-cyan-600 hover:text-cyan-700">
                             查看附件
                           </a>
                         ) : '-'}

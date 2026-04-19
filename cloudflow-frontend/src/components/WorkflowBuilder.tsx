@@ -894,7 +894,7 @@ const PropertyPanel = ({
       : "EXCLUSIVE";
 
   return (
-    <div className="fixed right-0 top-0 z-50 flex h-full w-96 flex-col border-l border-slate-200 bg-white shadow-2xl animate-in slide-in-from-right duration-300 ease-out">
+    <div className="fixed right-0 top-0 z-50 flex h-full w-96 flex-col border-l border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in slide-in-from-right duration-300 ease-out">
       <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
         <div className="flex items-center gap-3">
           <div
@@ -2392,7 +2392,7 @@ const FlowNode = ({
               </button>
               {showQuickAdd && (
                 <div
-                  className="absolute bottom-10 left-1/2 z-[100] min-w-[200px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200"
+                  className="absolute bottom-10 left-1/2 z-[100] min-w-[200px] -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 animate-in fade-in slide-in-from-bottom-2 duration-200"
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();
@@ -2570,7 +2570,7 @@ const FlowNode = ({
               </button>
               {showQuickAdd && (
                 <div
-                  className="absolute top-10 left-1/2 z-[100] min-w-[200px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200"
+                  className="absolute top-10 left-1/2 z-[100] min-w-[200px] -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 animate-in fade-in slide-in-from-top-2 duration-200"
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();

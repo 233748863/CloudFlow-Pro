@@ -80,9 +80,9 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       type="button"
       onClick={onClick}
       className={cn(
-        `group relative flex w-full items-start gap-4 overflow-hidden rounded-3xl border px-5 py-5 text-left transition-colors ${
+        `group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border px-4 py-4 text-left transition-colors ${
           unread
-            ? 'border-cyan-200 bg-white shadow-sm hover:bg-cyan-50'
+            ? 'border-cyan-200 bg-white shadow-sm hover:border-cyan-300 hover:bg-cyan-50/70'
             : 'border-slate-200 bg-white shadow-sm hover:bg-slate-50'
         }`,
         className,
@@ -92,7 +92,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
 
       <div
         className={cn(
-          'mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border',
+          'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border',
           unread
             ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
             : 'border-slate-200 bg-slate-50 text-slate-400',
@@ -104,7 +104,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           {announcement.isTop === 1 ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
               <Pin size={10} />
               置顶
             </span>
@@ -113,7 +113,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
             {priorityMeta.label}
           </span>
           {unread ? (
-            <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
+            <span className="rounded-lg border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
               未读
             </span>
           ) : null}

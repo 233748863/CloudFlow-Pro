@@ -45,10 +45,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const styles = variantStyles[variant];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/32 p-4 animate-in fade-in duration-200">
-      <div className="w-[420px] max-w-[90vw] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px] animate-in fade-in duration-200">
+      <div className="w-[420px] max-w-[90vw] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 animate-in zoom-in-95 duration-200">
         {/* 头部 */}
-        <div className="flex items-start gap-3 border-b border-slate-100 bg-white p-5">
+        <div className="flex items-start gap-3 border-b border-slate-100 bg-white px-5 py-4">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${styles.iconBg}`}>
             <AlertTriangle size={20} className={styles.icon} />
           </div>
@@ -57,24 +57,24 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           </div>
           <button 
             onClick={onCancel}
-            className="shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+            className="shrink-0 rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* 内容 */}
-        <div className="p-5">
+        <div className="px-5 py-5">
           <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
             {message}
           </p>
         </div>
 
         {/* 按钮 */}
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 p-5">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
           <button
             onClick={onCancel}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
             {cancelText}
           </button>
@@ -83,7 +83,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               onConfirm();
               onCancel();
             }}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${styles.confirmBtn}`}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${styles.confirmBtn}`}
           >
             {confirmText}
           </button>

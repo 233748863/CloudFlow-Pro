@@ -31,7 +31,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   const table = (
     <div className="overflow-x-auto">
       <table className="min-w-[1100px] w-full">
-        <TableHeader className="sticky top-0 z-10">
+        <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
           <tr>
             <TableHead className="w-[34%] px-4 py-3 text-left">标题</TableHead>
             <TableHead className="px-4 py-3 text-left">类型</TableHead>
@@ -48,7 +48,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
             const priorityMeta = getAnnouncementPriorityMeta(item.priority);
 
             return (
-              <tr key={item.announcementId} className="hover:bg-slate-50">
+              <tr key={item.announcementId} className="hover:bg-cyan-50/40">
                 <td className="w-[34%] px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
@@ -149,7 +149,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70">
       {table}
     </div>
   );

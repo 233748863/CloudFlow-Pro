@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, Plus, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/ui';
-import { WorkspaceDialogShell, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/ui';
+import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
 import { WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import { HrEmployee, HrEmployeePayload, PostOption, PositionOption, listEmployees, getEmployeeDetail, createEmployee, updateEmployee, getDeptTreeOptions, getPostOptions, getPositionOptions } from '@/services/api/hr';
 import { flattenDeptTree, normalizeRows, toDateInputValue } from './hrShared';
@@ -209,22 +209,22 @@ export const HrEmployeePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              <Users size={14} />
-              Employee Center
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">员工档案管理</h1>
-            <p className="mt-2 text-sm text-slate-500">把员工主数据做成真正可维护的桌面端工作台。</p>
+      <WorkspaceHeroCard
+        badge={(
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+            <Users size={14} />
+            Employee Center
           </div>
-          <Button size="lg" className="rounded-2xl" onClick={handleCreate}>
+        )}
+        title="员工档案管理"
+        description="把员工主数据做成真正可维护的桌面端工作台。"
+        actions={(
+          <Button size="lg" className="rounded-lg px-4" onClick={handleCreate}>
             <Plus size={18} className="mr-2" />
             新建员工
           </Button>
-        </div>
-      </Card>
+        )}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {employeeMetrics.map(metric => (
@@ -265,7 +265,7 @@ export const HrEmployeePage: React.FC = () => {
         title="员工档案列表"
         description="点击任意一行即可切到下方员工工作区，继续维护合同、证件和紧急联系人。"
         headerAside={(
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
+          <span className="rounded-full border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-[11px] font-medium text-slate-500">
             共 {filteredEmployees.length} 条
           </span>
         )}
@@ -289,7 +289,7 @@ export const HrEmployeePage: React.FC = () => {
             {filteredEmployees.map(item => (
               <TableRow
                 key={item.id}
-                className={`cursor-pointer ${selectedEmployeeId === item.id ? 'bg-teal-50/70' : ''}`}
+                className={`cursor-pointer ${selectedEmployeeId === item.id ? 'bg-cyan-50/70' : ''}`}
                 onClick={() => setSelectedEmployeeId(item.id)}
               >
                 <TableCell className="font-semibold text-slate-900">{item.employeeNo}</TableCell>

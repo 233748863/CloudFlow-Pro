@@ -75,18 +75,18 @@ export const AnnouncementBell: React.FC = () => {
   const modal = isModalOpen
     ? createPortal(
         <div
-          className="cf-announcement-modal-overlay fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-900/32 p-4 pt-[8vh]"
+          className="cf-announcement-modal-overlay fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 pt-[8vh] backdrop-blur-[2px]"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="cf-announcement-modal-panel w-full max-w-[620px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+            className="cf-announcement-modal-panel w-full max-w-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="border-b border-slate-100 bg-white px-6 py-5">
+            <div className="border-b border-slate-100 bg-white px-5 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700">
                       <Bell size={16} />
                     </div>
                     <h2 className="text-lg font-semibold text-slate-900">公告</h2>
@@ -103,7 +103,7 @@ export const AnnouncementBell: React.FC = () => {
                   {unreadCount > 0 ? (
                     <Button
                       size="sm"
-                      className="h-9 rounded-xl px-4"
+                      className="h-8 rounded-lg px-3.5"
                       disabled={loading}
                       onClick={() => void handleMarkAllAsRead()}
                     >
@@ -113,7 +113,7 @@ export const AnnouncementBell: React.FC = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-9 w-9 rounded-xl"
+                    className="h-8 w-8 rounded-lg"
                     onClick={() => setIsModalOpen(false)}
                     aria-label="关闭公告弹层"
                   >
@@ -168,7 +168,7 @@ export const AnnouncementBell: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-xl border transition-colors ${
+        className={`relative flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
           unreadCount > 0
             ? 'border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'

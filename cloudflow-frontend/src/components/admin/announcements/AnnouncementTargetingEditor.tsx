@@ -104,7 +104,7 @@ const DeptTreePicker: React.FC<{
     return (
       <div key={node.deptId}>
         <div
-          className="group flex cursor-pointer items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-slate-50"
+          className="group flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-cyan-50/60"
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           <button
@@ -124,7 +124,7 @@ const DeptTreePicker: React.FC<{
             onClick={() => toggleDept(node.deptId)}
             className={cn(
               'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-              isSelected ? 'border-teal-500 bg-teal-500' : 'border-slate-300 hover:border-teal-300',
+              isSelected ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 hover:border-cyan-300',
             )}
           >
             {isSelected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
@@ -144,17 +144,17 @@ const DeptTreePicker: React.FC<{
   };
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70">
       {selectedDepts.length > 0 ? (
-        <div className="border-b border-slate-100 bg-teal-50/45 p-3">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-600">
+        <div className="border-b border-slate-100 bg-cyan-50/80 p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600">
             已选部门
           </div>
           <div className="flex flex-wrap gap-1">
             {selectedDepts.map((dept) => (
               <span
                 key={dept.deptId}
-                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-teal-700 ring-1 ring-teal-100"
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-cyan-700 ring-1 ring-cyan-100"
               >
                 {dept.deptName}
                 <button
@@ -163,7 +163,7 @@ const DeptTreePicker: React.FC<{
                     event.stopPropagation();
                     toggleDept(dept.deptId);
                   }}
-                  className="text-teal-300 hover:text-teal-600"
+                  className="text-cyan-300 hover:text-cyan-600"
                 >
                   <X size={10} />
                 </button>
@@ -173,12 +173,12 @@ const DeptTreePicker: React.FC<{
         </div>
       ) : null}
 
-      <div className="border-b border-slate-100 bg-slate-50/60 p-3">
+      <div className="border-b border-slate-100 bg-slate-50/80 p-3">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
             type="text"
-            className="h-11 rounded-2xl pl-9 text-sm"
+            className="h-10 rounded-xl pl-9 text-sm"
             placeholder="搜索部门..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -194,8 +194,8 @@ const DeptTreePicker: React.FC<{
         )}
       </div>
 
-      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500">
-        已选择 <span className="font-medium text-teal-600">{selectedDepts.length}</span> 个部门
+      <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-2 text-xs text-slate-500">
+        已选择 <span className="font-medium text-cyan-600">{selectedDepts.length}</span> 个部门
       </div>
     </div>
   );
@@ -238,10 +238,10 @@ const RoleListPicker: React.FC<{
   });
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70">
       {selectedRoles.length > 0 ? (
-        <div className="border-b border-slate-100 bg-teal-50/45 p-3">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-600">
+        <div className="border-b border-slate-100 bg-cyan-50/80 p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600">
             已选角色
           </div>
           <div className="flex flex-wrap gap-1">
@@ -251,7 +251,7 @@ const RoleListPicker: React.FC<{
               return (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-teal-700 ring-1 ring-teal-100"
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-cyan-700 ring-1 ring-cyan-100"
                 >
                   {role.roleName || role.name}
                   <button
@@ -260,7 +260,7 @@ const RoleListPicker: React.FC<{
                       event.stopPropagation();
                       toggleRole(id);
                     }}
-                    className="text-teal-300 hover:text-teal-600"
+                    className="text-cyan-300 hover:text-cyan-600"
                   >
                     <X size={10} />
                   </button>
@@ -271,12 +271,12 @@ const RoleListPicker: React.FC<{
         </div>
       ) : null}
 
-      <div className="border-b border-slate-100 bg-slate-50/60 p-3">
+      <div className="border-b border-slate-100 bg-slate-50/80 p-3">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
             type="text"
-            className="h-11 rounded-2xl pl-9 text-sm"
+            className="h-10 rounded-xl pl-9 text-sm"
             placeholder="搜索角色..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -297,7 +297,7 @@ const RoleListPicker: React.FC<{
             return (
               <div
                 key={id}
-                className="group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50"
+                className="group flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-cyan-50/60"
                 onClick={() => toggleRole(id)}
               >
                 <button
@@ -305,8 +305,8 @@ const RoleListPicker: React.FC<{
                   className={cn(
                     'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
                     isSelected
-                      ? 'border-teal-500 bg-teal-500'
-                      : 'border-slate-300 group-hover:border-teal-300',
+                      ? 'border-cyan-500 bg-cyan-500'
+                      : 'border-slate-300 group-hover:border-cyan-300',
                   )}
                 >
                   {isSelected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
@@ -321,8 +321,8 @@ const RoleListPicker: React.FC<{
         )}
       </div>
 
-      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500">
-        已选择 <span className="font-medium text-teal-600">{selectedRoles.length}</span> 个角色
+      <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-2 text-xs text-slate-500">
+        已选择 <span className="font-medium text-cyan-600">{selectedRoles.length}</span> 个角色
       </div>
     </div>
   );
@@ -357,7 +357,7 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
   ];
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-medium text-slate-900">发布范围</div>
@@ -382,14 +382,14 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
                 }
               }}
               className={cn(
-                'rounded-2xl border px-4 py-4 text-left transition-all',
+                'rounded-xl border px-4 py-4 text-left transition-all',
                 active
-                  ? 'border-teal-500 bg-white shadow-sm ring-2 ring-teal-500/10'
+                  ? 'border-cyan-500 bg-cyan-50/60 shadow-sm ring-1 ring-cyan-200'
                   : 'border-slate-200 bg-white hover:border-slate-300',
               )}
             >
               <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                <span className={cn('inline-flex h-8 w-8 items-center justify-center rounded-xl', active ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-500')}>
+                <span className={cn('inline-flex h-8 w-8 items-center justify-center rounded-xl', active ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-500')}>
                   {card.icon}
                 </span>
                 {card.title}
