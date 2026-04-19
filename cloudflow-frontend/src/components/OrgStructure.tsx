@@ -29,7 +29,7 @@ const TreeSelect: React.FC<{ value: number | undefined; onChange: (v: number) =>
         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>
       {open && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]">
           {showRoot && <button className={`w-full text-left px-3 py-2 text-sm hover:bg-cyan-50 ${value === 0 ? 'bg-cyan-50 text-cyan-700 font-medium' : 'text-slate-700'}`} onClick={() => { onChange(0); setOpen(false); }}>顶级部门</button>}
           {flat.map(({ dept, level }) => (
             <button key={dept.deptId} className={`w-full text-left px-3 py-2 text-sm hover:bg-cyan-50 ${value === dept.deptId ? 'bg-cyan-50 text-cyan-700 font-medium' : 'text-slate-700'}`} style={{ paddingLeft: `${level * 16 + 12}px` }} onClick={() => { onChange(dept.deptId); setOpen(false); }}>{dept.deptName}</button>
@@ -46,7 +46,7 @@ const DeptFormModal: React.FC<{ visible: boolean; onClose: () => void; onSubmit:
   if (!visible) return null;
   return (
     <div className="fixed inset-0 bg-slate-900/32 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]" onClick={e => e.stopPropagation()}>
         <div className="p-5 border-b border-slate-100 flex justify-between items-center">
           <h3 className="text-lg font-bold text-slate-800">{editing ? '编辑部门' : '新增部门'}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
@@ -116,7 +116,7 @@ const UserDetailModal: React.FC<{ visible: boolean; onClose: () => void; user: U
   ];
   return (
     <div className="fixed inset-0 bg-slate-900/32 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]" onClick={e => e.stopPropagation()}>
         <div className="p-5 border-b border-slate-100 flex justify-between items-center">
           <h3 className="text-lg font-bold text-slate-800">用户详情</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
@@ -160,7 +160,7 @@ const ChangeDeptModal: React.FC<{ visible: boolean; onClose: () => void; onSubmi
   if (!visible || !user) return null;
   return (
     <div className="fixed inset-0 bg-slate-900/32 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]" onClick={e => e.stopPropagation()}>
         <div className="p-5 border-b border-slate-100 flex justify-between items-center">
           <h3 className="text-lg font-bold text-slate-800">调整部门</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
@@ -193,7 +193,7 @@ const ConfirmModal: React.FC<{ visible: boolean; onClose: () => void; onConfirm:
   if (!visible) return null;
   return (
     <div className="fixed inset-0 bg-slate-900/32 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center"><AlertTriangle size={20} className="text-red-600" /></div>
           <h3 className="text-lg font-bold text-slate-800">{title}</h3>
@@ -302,7 +302,7 @@ export const OrgStructure = () => {
   const filteredUsers = users.filter(u => !userSearch || u.nickName?.includes(userSearch) || u.userName?.includes(userSearch) || u.email?.includes(userSearch));
 
   return (
-    <div className="flex h-full gap-6">
+    <div className="flex h-full gap-4">
       <div className="w-80 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col shadow-sm flex-shrink-0">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
           <h3 className="font-bold text-slate-800 flex items-center gap-2"><Users size={18} className="text-cyan-700" /> 组织架构</h3>

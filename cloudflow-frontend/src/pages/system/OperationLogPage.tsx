@@ -328,7 +328,7 @@ export const OperationLogPage: React.FC = () => {
               label="当前页日志"
               value={records.length}
               hint="当前分页下实际加载数量"
-              aside={<Search size={18} className="text-pink-500" />}
+              aside={<Search size={18} className="text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="总耗时"
@@ -350,7 +350,7 @@ export const OperationLogPage: React.FC = () => {
               overviewItems={overviewItems}
               headerBadges={(
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                  <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 border border-slate-200 shadow-sm">
                     支持批量删除与详情查看
                   </span>
                 </div>
@@ -368,7 +368,7 @@ export const OperationLogPage: React.FC = () => {
                   重置条件
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                   当前显示默认视图
                 </span>
               )}

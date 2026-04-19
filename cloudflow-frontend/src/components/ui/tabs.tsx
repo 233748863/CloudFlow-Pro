@@ -53,7 +53,7 @@ export const Tabs = ({
  */
 export const TabsList = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   return (
-    <div className={`inline-flex h-10 items-center justify-center rounded-lg bg-slate-100/80 p-1 text-slate-500 shadow-inner ${className}`}>
+    <div className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-slate-500 shadow-sm ${className}`}>
       {children}
     </div>
   );
@@ -77,10 +77,10 @@ export const TabsTrigger = ({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-white transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium ring-offset-white transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
         isActive 
-          ? 'bg-white text-pink-600 shadow-sm ring-1 ring-slate-200/50' 
-          : 'hover:bg-slate-200/50 hover:text-slate-900'
+          ? 'border border-slate-200 bg-white text-cyan-700 shadow-sm' 
+          : 'text-slate-500 hover:bg-white hover:text-slate-900'
       } ${className}`}
       onClick={() => onValueChange(value)}
     >
@@ -108,7 +108,7 @@ export const TabsContent = ({
   }
 
   return (
-    <div className={`mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 ${className}`}>
+    <div className={`mt-3 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/30 focus-visible:ring-offset-2 ${className}`}>
       {children}
     </div>
   );

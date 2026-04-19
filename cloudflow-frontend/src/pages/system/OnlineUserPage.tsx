@@ -171,7 +171,7 @@ export const OnlineUserPage: React.FC = () => {
               label="在线总会话"
               value={total}
               hint="当前筛选条件下的总在线会话数"
-              aside={<Laptop size={18} className="text-pink-500" />}
+              aside={<Laptop size={18} className="text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="可操作会话"
@@ -207,7 +207,7 @@ export const OnlineUserPage: React.FC = () => {
                   重置条件
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                   当前显示默认视图
                 </span>
               )}

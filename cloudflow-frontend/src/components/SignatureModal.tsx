@@ -110,7 +110,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4 animate-fade-in">
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <div className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
         {/* 标题栏 */}
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -132,7 +132,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         </div>
 
         {/* 内容区域 */}
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
           {/* 提示信息 */}
           <div className={`text-sm p-3 rounded-lg border ${
             mode === 'add' 

@@ -241,7 +241,7 @@ const ConsumablePage: React.FC = () => {
               label="耗材总量"
               value={total}
               hint="接口返回的耗材总记录数"
-              aside={<Package className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<Package className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="当前页"
@@ -279,7 +279,7 @@ const ConsumablePage: React.FC = () => {
                 清空筛选
               </Button>
             ) : (
-              <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                 当前显示全部耗材
               </span>
             )

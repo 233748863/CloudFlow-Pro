@@ -220,7 +220,7 @@ export const ConfigList = () => {
               label="参数总数"
               value={total}
               hint="按分页接口返回的总记录数"
-              aside={<Settings2 size={18} className="text-pink-500" />}
+              aside={<Settings2 size={18} className="text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="当前页结果"
@@ -263,7 +263,7 @@ export const ConfigList = () => {
                   清空筛选
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                   当前显示分页默认视图
                 </span>
               )}
@@ -334,7 +334,7 @@ export const ConfigList = () => {
                             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                               config.configType === 'Y'
                                 ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
-                                : 'bg-white/82 text-slate-600 ring-1 ring-slate-200/80'
+                                : 'bg-white text-slate-600 ring-1 ring-slate-200/80'
                             }`}>
                               {config.configType === 'Y' ? '内置' : '自定义'}
                             </span>

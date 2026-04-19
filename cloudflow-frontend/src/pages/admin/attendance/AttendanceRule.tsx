@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { useMount } from '@/hooks/useMount';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DatePicker, Input, Label, Switch, Textarea } from '@/components/ui';
@@ -154,7 +154,7 @@ const AttendanceRulePage: React.FC = () => {
     <div className="p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* 页面标题 */}
-        <div className="rounded-2xl border border-pink-100/70 bg-gradient-to-r from-pink-50 via-white to-amber-50 p-6">
+        <div className="rounded-2xl border border-cyan-100 bg-gradient-to-r from-cyan-50 via-white to-amber-50 p-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">考勤规则配置</h1>
@@ -167,7 +167,7 @@ const AttendanceRulePage: React.FC = () => {
               <span className={`px-3 py-1 rounded-full border ${rule?.enabled === 1 ? 'bg-green-50 text-green-600 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                 {enabledLabel}
               </span>
-              <span className={`px-3 py-1 rounded-full border ${editing ? 'bg-pink-50 text-pink-600 border-pink-200' : 'bg-white text-gray-500 border-gray-200'}`}>
+              <span className={`px-3 py-1 rounded-full border ${editing ? 'bg-cyan-50 text-cyan-700 border-cyan-200' : 'bg-white text-gray-500 border-gray-200'}`}>
                 {modeLabel}
               </span>
             </div>

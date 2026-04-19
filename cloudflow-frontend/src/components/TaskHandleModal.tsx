@@ -285,8 +285,8 @@ export const TaskHandleModal = ({
 
       {/* 主任务处理模态框 */}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4 animate-fade-in">
-        <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
           <div className="flex items-center gap-4">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
                 <Briefcase size={18} className="text-cyan-700"/>
@@ -325,7 +325,7 @@ export const TaskHandleModal = ({
           }}><X size={20} className="text-slate-400"/></button>
         </div>
         
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
            {activeTab === 'trace' ? (
                <ProcessTrace instanceId={task.processInstanceId} />
            ) : (
@@ -497,7 +497,7 @@ export const TaskHandleModal = ({
 
                     {/* 流程进度信息 */}
                     {task.totalSteps && task.totalSteps > 0 && (
-                        <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/50">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                             {/* 步骤进度条 */}
                             <div className="flex items-center justify-between text-xs mb-1.5">
                                 <span className="text-slate-500 font-medium">流程进度</span>
@@ -592,7 +592,7 @@ export const TaskHandleModal = ({
                             />
                         </div>
                     ) : task.formData && Object.keys(task.formData).length > 0 && (
-                        <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/30">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                             <h4 className="text-xs font-bold text-slate-500 mb-3">业务数据</h4>
                             <div className="grid grid-cols-2 gap-3">
                                 {Object.entries(task.formData)

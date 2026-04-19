@@ -82,7 +82,7 @@ export const DeployManagement: React.FC = () => {
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600 border border-slate-200 shadow-sm">
               <Settings className="h-3.5 w-3.5" />
               Deploy Workspace
             </span>
@@ -95,7 +95,7 @@ export const DeployManagement: React.FC = () => {
               label="管理模块"
               value={4}
               hint="窗口、审批、回滚、统计四个核心能力"
-              aside={<Settings className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<Settings className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="当前焦点"

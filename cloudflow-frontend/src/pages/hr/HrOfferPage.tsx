@@ -532,7 +532,7 @@ export const HrOfferPage: React.FC = () => {
             aside={(
               <div className={`rounded-2xl p-3 ${
                 metric.tone === 'pink'
-                  ? 'bg-pink-50 text-pink-500'
+                  ? 'bg-cyan-50 text-cyan-600'
                   : metric.tone === 'amber'
                     ? 'bg-amber-50 text-amber-500'
                     : metric.tone === 'emerald'

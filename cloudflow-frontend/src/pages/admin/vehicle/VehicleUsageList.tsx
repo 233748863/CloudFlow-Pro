@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Car, Clock, CheckCircle, XCircle, Eye, DollarSign,
   RotateCcw, Loader2,
@@ -106,7 +106,7 @@ const USAGE_STATUS: Record<string, { label: string; color: string; bg: string; i
 /** 费用类型配置 */
 const EXPENSE_TYPES: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   '1': { label: '油费', icon: <Fuel size={14} />, color: 'text-orange-600' },
-  '2': { label: '过路费', icon: <ArrowLeftRight size={14} />, color: 'text-pink-500' },
+  '2': { label: '过路费', icon: <ArrowLeftRight size={14} />, color: 'text-cyan-600' },
   '3': { label: '停车费', icon: <ParkingCircle size={14} />, color: 'text-violet-600' },
   '4': { label: '维修保养', icon: <Wrench size={14} />, color: 'text-amber-600' },
   '5': { label: '保险', icon: <Shield size={14} />, color: 'text-emerald-600' },

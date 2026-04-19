@@ -72,7 +72,7 @@ const createDataForm = (): DictDataFormState => ({
 
 const listClassColors: Record<string, string> = {
   default: "bg-slate-100 text-slate-700",
-  primary: "bg-pink-100 text-pink-700",
+  primary: "bg-cyan-50 text-cyan-700",
   success: "bg-green-100 text-green-700",
   warning: "bg-amber-100 text-amber-700",
   danger: "bg-red-100 text-red-700",
@@ -354,7 +354,7 @@ export const DictPage: React.FC = () => {
               label="字典类型"
               value={dictTypes.length}
               hint={`正常状态 ${activeTypeCount} 个`}
-              aside={<BookOpen className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<BookOpen className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="当前数据项"
@@ -394,7 +394,7 @@ export const DictPage: React.FC = () => {
                 清空筛选
               </Button>
             ) : (
-              <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                 当前显示全部字典类型
               </span>
             )

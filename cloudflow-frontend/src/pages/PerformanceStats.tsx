@@ -175,7 +175,7 @@ const PerformanceStats: React.FC = () => {
               label="总流程数"
               value={summary.totalCount}
               hint={`已完成 ${summary.completedCount} 个`}
-              aside={<BarChart3 size={18} className="text-pink-500" />}
+              aside={<BarChart3 size={18} className="text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="平均时长"
@@ -211,7 +211,7 @@ const PerformanceStats: React.FC = () => {
                   清空流程
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                   当前统计全部流程
                 </span>
               )}
@@ -274,7 +274,7 @@ const PerformanceStats: React.FC = () => {
                         <tr key={`${stat.processDefKey}-${stat.statDate}-${index}`} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm text-slate-900">{stat.statDate}</td>
                           <td className="px-4 py-3 text-sm text-slate-900">{stat.processName}</td>
-                          <td className="px-4 py-3 text-right text-sm font-medium text-pink-500">{stat.totalCount}</td>
+                          <td className="px-4 py-3 text-right text-sm font-medium text-cyan-600">{stat.totalCount}</td>
                           <td className="px-4 py-3 text-right text-sm text-emerald-600">{stat.completedCount}</td>
                           <td className="px-4 py-3 text-right text-sm text-slate-900">{formatDuration(stat.avgDurationMs)}</td>
                           <td className="px-4 py-3 text-right text-sm text-slate-600">{formatDuration(stat.maxDurationMs)}</td>

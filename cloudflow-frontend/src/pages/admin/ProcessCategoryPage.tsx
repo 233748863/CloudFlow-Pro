@@ -197,7 +197,7 @@ const ProcessCategoryPage: React.FC = () => {
           contentClassName="p-4 sm:p-5"
         >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard label="分类总数" value={flatList.length} hint="当前所有分类节点数" aside={<FolderTree className="h-[18px] w-[18px] text-pink-500" />} />
+            <WorkspaceMetricCard label="分类总数" value={flatList.length} hint="当前所有分类节点数" aside={<FolderTree className="h-[18px] w-[18px] text-cyan-600" />} />
             <WorkspaceMetricCard label="正常分类" value={activeCount} hint="状态为正常的分类节点" aside={<Layers className="h-[18px] w-[18px] text-emerald-500" />} />
             <WorkspaceMetricCard label="顶级分类" value={treeData.length} hint="树结构中的一级分类数量" aside={<FolderKanban className="h-[18px] w-[18px] text-amber-500" />} />
             <WorkspaceMetricCard label="当前选中" value={selectedNode?.categoryName || '未选择'} hint="右侧详情面板展示的分类" aside={<Briefcase className="h-[18px] w-[18px] text-sky-500" />} />

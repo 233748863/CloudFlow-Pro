@@ -442,21 +442,21 @@ export const VersionRollbackManagement: React.FC = () => {
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
                           <div className="text-xs text-slate-400">回滚时间</div>
                           <div className="mt-1 font-medium">{record.rollbackTime}</div>
                         </div>
-                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
                           <div className="text-xs text-slate-400">操作人</div>
                           <div className="mt-1 font-medium">{record.rollbackBy}</div>
                         </div>
-                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
                           <div className="text-xs text-slate-400">原始部署 ID</div>
                           <div className="mt-1 font-medium">{record.originalDeployId}</div>
                         </div>
                       </div>
 
-                      <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 ring-1 ring-white/80">
+                      <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
                         <div className="text-xs text-slate-400">回滚原因</div>
                         <div className="mt-1">{record.rollbackReason}</div>
                       </div>

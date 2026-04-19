@@ -82,7 +82,7 @@ const onboardingStatusClass = (status?: string) => {
 const taskStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
   if (/(COMPLETE|DONE|FINISH)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
-  if (/(PENDING|TODO|PROCESS)/i.test(status)) return 'bg-blue-50 text-blue-700';
+  if (/(PENDING|TODO|PROCESS)/i.test(status)) return 'bg-cyan-50 text-cyan-700';
   return 'bg-slate-100 text-slate-700';
 };
 

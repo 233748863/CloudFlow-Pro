@@ -91,9 +91,9 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
     <div className={`relative ${className}`}>
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`min-h-[38px] px-3 py-2 border rounded-lg bg-white cursor-pointer transition-colors ${
-          disabled ? 'bg-slate-50 cursor-not-allowed' : 'hover:border-pink-300'
-        } ${isOpen ? 'border-pink-400 ring-2 ring-pink-50' : 'border-slate-300'}`}
+        className={`min-h-[44px] rounded-xl border bg-white px-3.5 py-2.5 transition-all ${
+          disabled ? 'cursor-not-allowed bg-slate-50' : 'cursor-pointer hover:border-slate-300'
+        } ${isOpen ? 'border-cyan-500 ring-2 ring-cyan-500/15' : 'border-slate-200'}`}
       >
         {selectedRoles.length === 0 ? (
           <span className="text-slate-400 text-sm">{placeholder}</span>
@@ -102,12 +102,12 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
             {selectedRoles.map((role) => (
               <span
                 key={getRoleKey(role)}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-md"
+                className="inline-flex items-center gap-1 rounded-lg border border-cyan-100 bg-cyan-50 px-2 py-1 text-xs font-medium text-cyan-700"
               >
                 <Shield size={10} />
                 {role.name}
                 {!disabled && (
-                  <button onClick={(e) => handleRemove(role, e)} className="hover:bg-emerald-200 rounded-full p-0.5">
+                  <button onClick={(e) => handleRemove(role, e)} className="rounded-full p-0.5 transition hover:bg-cyan-100">
                     <X size={12} />
                   </button>
                 )}
@@ -118,7 +118,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-hidden">
+        <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]">
           <div className="p-2 border-b border-slate-200">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -127,7 +127,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索角色..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-pink-400"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-700 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -147,11 +147,11 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                     key={key}
                     onClick={() => handleToggle(role)}
                     className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-emerald-50' : 'hover:bg-slate-50'
+                      isSelected ? 'bg-cyan-50' : 'hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-50 text-cyan-600">
                         <Shield size={16} />
                       </div>
                       <div>
@@ -159,7 +159,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                         <div className="text-xs text-slate-500">{key}</div>
                       </div>
                     </div>
-                    {isSelected && <Check className="text-emerald-600" size={16} />}
+                    {isSelected && <Check className="text-cyan-600" size={16} />}
                   </div>
                 );
               })

@@ -104,7 +104,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
     const inputClassName = `w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none transition-colors ${
       hasError
         ? 'border-red-300 bg-red-50 focus:border-red-500'
-        : 'border-slate-300 bg-white focus:rder-pink-400'
+        : 'border-slate-200 bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15'
     } ${readOnly ? 'bg-slate-50 text-slate-600' : ''}`;
 
     return (
@@ -210,7 +210,7 @@ export const MobileFormRenderer: React.FC<MobileFormRendererProps> = ({
           <div className="sticky bottom-0 px-4 py-3 bg-white border-t border-slate-200 safe-area-bottom">
             <button
               type="submit"
-              className="w-full py-3 bg-pink-500 text-white text-base font-medium rounded-lg hover:bg-pink-600 active:bg-pink-700 transition-colors"
+              className="w-full rounded-xl bg-cyan-600 py-3 text-base font-medium text-white transition-colors hover:bg-cyan-700 active:bg-cyan-800"
             >
               提交
             </button>

@@ -87,11 +87,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       {/* 选择框 */}
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`min-h-[38px] px-3 py-2 border rounded-lg bg-white cursor-pointer transition-colors ${
+        className={`min-h-[44px] rounded-xl border bg-white px-3.5 py-2.5 transition-all ${
           disabled
-            ? 'bg-slate-50 cursor-not-allowed'
-            : 'hover:border-pink-300 focus-within:border-pink-400 focus-within:ring-2 focus-within:ring-pink-50'
-        } ${isOpen ? 'border-pink-400 ring-2 ring-pink-50' : 'border-slate-300'}`}
+            ? 'cursor-not-allowed bg-slate-50'
+            : 'cursor-pointer hover:border-slate-300'
+        } ${isOpen ? 'border-cyan-500 ring-2 ring-cyan-500/15' : 'border-slate-200'}`}
       >
         {selectedUsers.length === 0 ? (
           <span className="text-slate-400 text-sm">{placeholder}</span>
@@ -100,13 +100,13 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
             {selectedUsers.map((user) => (
               <span
                 key={user.id}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-50 text-pink-600 text-xs rounded-md"
+                className="inline-flex items-center gap-1 rounded-lg border border-cyan-100 bg-cyan-50 px-2 py-1 text-xs font-medium text-cyan-700"
               >
                 {user.name}
                 {!disabled && (
                   <button
                     onClick={(e) => handleRemove(user.id, e)}
-                    className="hover:bg-pink-100 rounded-full p-0.5"
+                    className="rounded-full p-0.5 transition hover:bg-cyan-100"
                   >
                     <X size={12} />
                   </button>
@@ -119,7 +119,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
       {/* 下拉列表 */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-hidden">
+        <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]">
           {/* 搜索框 */}
           <div className="p-2 border-b border-slate-200">
             <div className="relative">
@@ -129,7 +129,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索用户..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-pink-400"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-700 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -149,11 +149,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                     key={user.id}
                     onClick={() => handleToggle(user.id)}
                     className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-pink-50' : 'hover:bg-slate-50'
+                      isSelected ? 'bg-cyan-50' : 'hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center text-sm font-medium">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-50 text-sm font-medium text-cyan-600">
                         {user.name[0]}
                       </div>
                       <div>
@@ -163,7 +163,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                         )}
                       </div>
                     </div>
-                    {isSelected && <Check className="text-pink-500" size={16} />}
+                    {isSelected && <Check className="text-cyan-600" size={16} />}
                   </div>
                 );
               })

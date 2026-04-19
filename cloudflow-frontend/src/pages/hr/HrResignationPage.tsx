@@ -56,7 +56,7 @@ const resignationStatusClass = (status?: string) => {
 const handoverStatusClass = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-700';
   if (/(COMPLETE|DONE|FINISH)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
-  return 'bg-blue-50 text-blue-700';
+  return 'bg-cyan-50 text-cyan-700';
 };
 
 const isHandoverCompleted = (status?: string) => /(COMPLETE|DONE|FINISH)/i.test(status || '');

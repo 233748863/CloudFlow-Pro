@@ -24,17 +24,17 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         disabled={disabled}
         onClick={handleClick}
         className={`
-          relative inline-flex h-6 w-11 items-center rounded-full
+          relative inline-flex h-6 w-11 items-center rounded-full border border-transparent
           transition-colors focus:outline-none focus-visible:ring-2
-          focus:ng-offset-2 focus-visible:ring-pink-400
-          ${checked ? 'bg-pink-500' : 'bg-gray-200'}
+          focus-visible:ring-cyan-500/30 focus-visible:ring-offset-2
+          ${checked ? 'bg-cyan-600' : 'bg-slate-200'}
           ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
           ${className}
         `}
       >
         <span
           className={`
-            inline-block h-4 w-4 transform rounded-full bg-white
+            inline-block h-4 w-4 transform rounded-full bg-white shadow-sm
             transition-transform
             ${checked ? 'translate-x-6' : 'translate-x-1'}
           `}

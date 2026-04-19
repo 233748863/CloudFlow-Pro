@@ -150,7 +150,7 @@ export const FormRenderer = ({
 
   if (!formDef?.fields || formDef.fields.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
         <div className="border-b border-slate-100 bg-white px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <h3 className="flex items-center gap-2 font-bold text-slate-800">
@@ -167,7 +167,7 @@ export const FormRenderer = ({
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-5">
           <WorkspaceInlineState
             type="info"
             icon={<AlertTriangle size={18} className="text-amber-500" />}
@@ -186,7 +186,7 @@ export const FormRenderer = ({
   }
 
   return (
-    <div className="mx-auto max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-fade-in-up">
+    <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-fade-in-up">
       <div className="border-b border-slate-100 bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           <h3 className="flex items-center gap-2 font-bold text-slate-800">
@@ -203,7 +203,7 @@ export const FormRenderer = ({
         </div>
       </div>
 
-      <div className="max-h-[60vh] space-y-6 overflow-y-auto p-8">
+      <div className="max-h-[60vh] space-y-5 overflow-y-auto p-6">
         {formDef.fields.map((field) => (
           <div key={field.id} id={`field-${field.id}`} className="space-y-2">
             <label className="block text-sm font-semibold text-slate-700">

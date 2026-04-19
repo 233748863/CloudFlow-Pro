@@ -267,7 +267,7 @@ export const AttendanceSupplementPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const config: Record<string, { bg: string; text: string }> = {
       MISSING: { bg: 'bg-slate-100', text: 'text-slate-600' },
-      APPROVING: { bg: 'bg-pink-50', text: 'text-pink-500' },
+      APPROVING: { bg: 'bg-cyan-50', text: 'text-cyan-600' },
       SUPPLEMENT: { bg: 'bg-emerald-100', text: 'text-emerald-600' },
       REJECTED: { bg: 'bg-red-100', text: 'text-red-600' },
     };

@@ -3175,11 +3175,11 @@ const GlobalPropertyPanel = ({
   if (!open) return null;
 
   return (
-    <div className="fixed right-0 top-0 z-50 flex h-full w-96 flex-col border-l border-slate-200 bg-white shadow-2xl animate-in slide-in-from-right duration-300 ease-out">
-      <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div className="fixed right-0 top-0 z-50 flex h-full w-96 flex-col border-l border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in slide-in-from-right duration-300 ease-out">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-100 shadow-sm">
-            <Settings size={20} className="text-purple-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 shadow-sm">
+            <Settings size={20} className="text-cyan-600" />
           </div>
           <div>
             <h3 className="font-bold text-slate-800 text-base">全局属性</h3>
@@ -3207,7 +3207,7 @@ const GlobalPropertyPanel = ({
                 流程描述
               </span>
               <LazyTextarea
-                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm min-h-[80px] focus:ring-2 focus:ring-purple-400 outline-none"
+                className="w-full rounded-xl border border-slate-200 p-2.5 text-sm min-h-[80px] outline-none focus:ring-2 focus:ring-cyan-500/20"
                 placeholder="请输入流程描述"
                 value={formData.description || ""}
                 onChange={(val: string) => handleChange("description", val)}
@@ -3387,18 +3387,18 @@ const WorkflowToolbar = ({
           variant="outline"
           size="sm"
           onClick={onOpenSettings}
-          className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-blue-500 hover:border-blue-200 gap-2 shrink-0"
+          className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-600 hover:border-cyan-200 gap-2 shrink-0"
         >
-          <FileText size={14} className="text-blue-500" />
+          <FileText size={14} className="text-cyan-600" />
           流程设置
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={onOpenGlobalConfig}
-          className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-purple-500 hover:border-purple-200 gap-2 shrink-0"
+          className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-700 hover:border-cyan-200 gap-2 shrink-0"
         >
-          <Settings size={14} className="text-purple-500" />
+          <Settings size={14} className="text-cyan-600" />
           全局属性
         </Button>
         {/* 版本历史按钮 - 仅在流程已保存时显示 */}
@@ -3409,10 +3409,10 @@ const WorkflowToolbar = ({
               variant="outline"
               size="sm"
               onClick={onViewVersionHistory}
-              className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-indigo-500 hover:border-indigo-200 gap-2 shrink-0"
+              className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-700 hover:border-cyan-200 gap-2 shrink-0"
               title="查看版本历史"
             >
-              <Clock size={14} className="text-indigo-500" />
+              <Clock size={14} className="text-cyan-600" />
               版本历史
             </Button>
           )}
@@ -3422,10 +3422,10 @@ const WorkflowToolbar = ({
             variant="outline"
             size="sm"
             onClick={onExport}
-            className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-green-500 hover:border-green-200 gap-2 shrink-0"
+            className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-700 hover:border-cyan-200 gap-2 shrink-0"
             title="导出流程"
           >
-            <FileDown size={14} className="text-green-500" />
+            <FileDown size={14} className="text-cyan-600" />
             导出
           </Button>
         )}

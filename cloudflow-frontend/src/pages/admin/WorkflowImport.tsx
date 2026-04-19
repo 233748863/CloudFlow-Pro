@@ -558,9 +558,9 @@ export const WorkflowImport: React.FC = () => {
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-700">
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-700">
                 <div className="flex items-start gap-3">
-                  <div className="rounded-xl border border-sky-200 bg-white p-2 text-sky-600">
+                    <div className="rounded-xl border border-cyan-200 bg-white p-2 text-cyan-600">
                     <Info size={16} />
                   </div>
                   <div className="min-w-0">
@@ -646,7 +646,7 @@ export const WorkflowImport: React.FC = () => {
                       </span>
                     )}
                     {stats.success > 0 && (
-                      <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-medium text-sky-600">
+                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[11px] font-medium text-cyan-600">
                         {stats.success} 个成功
                       </span>
                     )}
@@ -767,9 +767,9 @@ export const WorkflowImport: React.FC = () => {
                   <div className="text-2xl font-bold text-orange-600">{importSummary.failed}</div>
                   <div className="mt-1 text-xs text-orange-600">失败</div>
                 </div>
-                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-center shadow-sm">
-                  <div className="text-2xl font-bold text-sky-600">{importSummary.skipped}</div>
-                  <div className="mt-1 text-xs text-sky-600">跳过</div>
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-center shadow-sm">
+                  <div className="text-2xl font-bold text-cyan-600">{importSummary.skipped}</div>
+                  <div className="mt-1 text-xs text-cyan-600">跳过</div>
                 </div>
               </div>
             </div>
@@ -803,7 +803,7 @@ const FileItem: React.FC<FileItemProps> = ({
   const statusBadgeClass = (() => {
     if (status === 'valid') return 'bg-green-100 text-green-600';
     if (status === 'invalid') return 'bg-red-100 text-red-600';
-    if (status === 'success') return 'bg-blue-100 text-blue-600';
+    if (status === 'success') return 'bg-cyan-50 text-cyan-600';
     if (status === 'partial') return 'bg-amber-100 text-amber-700';
     if (status === 'failed') return 'bg-orange-100 text-orange-600';
     if (status === 'skipped') return 'bg-yellow-100 text-yellow-600';
@@ -811,11 +811,11 @@ const FileItem: React.FC<FileItemProps> = ({
   })();
 
   const StatusIcon = () => {
-    if (status === 'validating') return <Loader2 size={16} className="animate-spin text-blue-500" />;
+    if (status === 'validating') return <Loader2 size={16} className="animate-spin text-cyan-600" />;
     if (status === 'valid') return <CheckCircle2 size={16} className="text-green-500" />;
     if (status === 'invalid') return <AlertCircle size={16} className="text-red-500" />;
     if (status === 'importing') return <Loader2 size={16} className="animate-spin text-slate-500" />;
-    if (status === 'success') return <FileCheck size={16} className="text-blue-500" />;
+    if (status === 'success') return <FileCheck size={16} className="text-cyan-600" />;
     if (status === 'partial') return <AlertTriangle size={16} className="text-amber-500" />;
     if (status === 'failed') return <FileX size={16} className="text-orange-500" />;
     if (status === 'skipped') return <FileWarning size={16} className="text-yellow-500" />;

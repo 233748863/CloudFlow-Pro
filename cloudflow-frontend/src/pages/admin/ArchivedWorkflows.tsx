@@ -358,7 +358,7 @@ export const ArchivedWorkflows: React.FC = () => {
               label="归档总量"
               value={total}
               hint="接口返回的归档流程总记录数"
-              aside={<FileText className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<FileText className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="当前页"
@@ -398,7 +398,7 @@ export const ArchivedWorkflows: React.FC = () => {
                 清空筛选
               </Button>
             ) : (
-              <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+              <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                 当前显示全部归档流程
               </span>
             )
@@ -505,8 +505,8 @@ export const ArchivedWorkflows: React.FC = () => {
         >
           <div className="space-y-4 px-4 py-4">
             {selectedIds.length > 0 ? (
-              <div className="flex flex-col gap-3 rounded-[24px] border border-blue-200 bg-blue-50/90 p-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex items-center gap-2 text-blue-700">
+              <div className="flex flex-col gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex items-center gap-2 text-cyan-700">
                   <CheckCircle2 size={18} />
                   <span className="font-medium">
                     已选中 {selectedIds.length} 个流程

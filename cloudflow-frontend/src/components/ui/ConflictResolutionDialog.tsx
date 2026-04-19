@@ -69,26 +69,26 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32">
+        <div className="mx-4 w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
           {/* 对话框头部 */}
-          <div className="px-6 py-4 border-b">
+          <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-lg font-semibold text-gray-900">资源冲突</h2>
           </div>
 
           {/* 对话框内容 */}
-          <div className="px-6 py-4 space-y-4">
+          <div className="space-y-4 px-5 py-4">
             {/* 冲突消息 */}
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-slate-600">
               <p>{message}</p>
-              <p className="mt-2 font-medium text-gray-900">
+              <p className="mt-2 font-medium text-slate-900">
                 资源名称：{resourceName}
               </p>
             </div>
 
             {/* 解决策略选择 */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-slate-700">
                 请选择解决方式：
               </Label>
 
@@ -101,16 +101,16 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
                     value={strategy}
                     checked={selectedStrategy === strategy}
                     onChange={(e) => setSelectedStrategy(e.target.value as ConflictStrategy)}
-                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 h-4 w-4 text-cyan-600 focus:ring-cyan-500/20"
                   />
                   <label
                     htmlFor={`strategy-${strategy}`}
                     className="ml-3 flex-1 cursor-pointer"
                   >
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-slate-900">
                       {strategyLabels[strategy]}
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <div className="mt-0.5 text-xs text-slate-500">
                       {strategyDescriptions[strategy]}
                     </div>
                   </label>
@@ -121,7 +121,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
             {/* 重命名输入框 */}
             {selectedStrategy === 'rename' && (
               <div className="space-y-2">
-                <Label htmlFor="newName" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="newName" className="text-sm font-medium text-slate-700">
                   新名称：
                 </Label>
                 <Input
@@ -137,7 +137,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
 
             {/* 覆盖警告 */}
             {selectedStrategy === 'overwrite' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
                 <div className="flex">
                   <svg
                     className="h-5 w-5 text-yellow-400"
@@ -161,7 +161,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
           </div>
 
           {/* 对话框底部 */}
-          <div className="px-6 py-4 border-t flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3 border-t border-slate-100 px-5 py-4">
             <Button
               variant="outline"
               onClick={onClose}

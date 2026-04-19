@@ -695,7 +695,7 @@ export const ProcessManagement = () => {
         <WorkspaceHeroCard
           badge={(
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-50 px-2.5 py-1 text-pink-600 ring-1 ring-pink-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700 ring-1 ring-cyan-100">
                 <FolderOpen size={14} />
                 {todayLabel}
               </span>
@@ -714,7 +714,7 @@ export const ProcessManagement = () => {
                 <FolderOpen size={16} />
                 模板中心
               </Button>
-              <Button onClick={() => navigate('/workflow/import')} className="bg-blue-500 hover:bg-blue-600 text-white gap-2">
+              <Button onClick={() => navigate('/workflow/import')} className="bg-cyan-600 hover:bg-cyan-700 text-white gap-2">
                 <Upload size={16} />
                 导入流程
               </Button>
@@ -727,7 +727,7 @@ export const ProcessManagement = () => {
           contentClassName="p-4 sm:p-5"
         >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard label="流程总量" value={workflows.length} hint="当前系统中的全部流程定义数" aside={<Plus size={18} className="text-pink-500" />} />
+            <WorkspaceMetricCard label="流程总量" value={workflows.length} hint="当前系统中的全部流程定义数" aside={<Plus size={18} className="text-cyan-600" />} />
             <WorkspaceMetricCard label="筛选结果" value={filteredWorkflows.length} hint={`已发布 ${publishedCount} 个`} aside={<RefreshCw size={18} className="text-sky-500" />} />
             <WorkspaceMetricCard label="分类数" value={categoryCount} hint={`可用标签 ${allTags.length} 个`} aside={<FolderOpen size={18} className="text-amber-500" />} />
             <WorkspaceMetricCard label="批量选择" value={selectedIds.length} hint="用于批量修改、导出与归档" aside={<Tag size={18} className="text-emerald-500" />} />
@@ -786,7 +786,7 @@ export const ProcessManagement = () => {
                               }
                               setSelectedTags((prev) => [...prev, tag]);
                             }}
-                            className={isSelected ? 'h-8 bg-blue-500 text-xs text-white hover:bg-blue-600 [background-image:none]' : 'h-8 border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-600'}
+                            className={isSelected ? 'h-8 bg-cyan-600 text-xs text-white hover:bg-cyan-700 [background-image:none]' : 'h-8 border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 hover:text-cyan-600'}
                           >
                             {tag}
                             {isSelected ? <X size={12} /> : null}
@@ -804,10 +804,10 @@ export const ProcessManagement = () => {
           <div className="space-y-4 px-4 py-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <Button type="button" variant="ghost" onClick={handleSelectAll} className="justify-start px-0 text-slate-600 hover:bg-transparent hover:text-pink-500">{allVisibleSelected ? <CheckSquare size={18} className="text-pink-500" /> : <Square size={18} />}全选当前结果 ({selectedVisibleCount}/{filteredWorkflows.length})</Button>
+                <Button type="button" variant="ghost" onClick={handleSelectAll} className="justify-start px-0 text-slate-600 hover:bg-transparent hover:text-cyan-600">{allVisibleSelected ? <CheckSquare size={18} className="text-cyan-600" /> : <Square size={18} />}全选当前结果 ({selectedVisibleCount}/{filteredWorkflows.length})</Button>
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" onClick={() => openBatchEdit('category')} disabled={selectedIds.length === 0 || !isAdmin} title={!isAdmin ? '仅管理员可批量修改分类' : '批量修改已选流程分类'} className="bg-pink-500 text-white hover:bg-pink-600 [background-image:none]"><FolderOpen size={16} />批量改分类</Button>
-                  <Button type="button" onClick={() => openBatchEdit('tags')} disabled={selectedIds.length === 0 || !isAdmin} title={!isAdmin ? '仅管理员可批量添加标签' : '为已选流程追加标签'} className="bg-blue-500 text-white hover:bg-blue-600 [background-image:none]"><Tag size={16} />批量加标签</Button>
+                  <Button type="button" onClick={() => openBatchEdit('category')} disabled={selectedIds.length === 0 || !isAdmin} title={!isAdmin ? '仅管理员可批量修改分类' : '批量修改已选流程分类'} className="bg-cyan-500 text-white hover:bg-cyan-700 [background-image:none]"><FolderOpen size={16} />批量改分类</Button>
+                  <Button type="button" onClick={() => openBatchEdit('tags')} disabled={selectedIds.length === 0 || !isAdmin} title={!isAdmin ? '仅管理员可批量添加标签' : '为已选流程追加标签'} className="bg-cyan-600 text-white hover:bg-cyan-700 [background-image:none]"><Tag size={16} />批量加标签</Button>
                   <Button type="button" onClick={openBatchExportDialog} disabled={selectedIds.length === 0 || !canExportBatch} title={!canExportBatch ? '仅管理员可批量导出' : '批量导出已选流程'} className="bg-emerald-500 text-white hover:bg-emerald-600 [background-image:none]"><Download size={16} />批量导出</Button>
                   <Button type="button" onClick={openBatchArchiveDialog} disabled={selectedIds.length === 0 || !canBatchArchive} title={!canBatchArchive ? '仅管理员可批量归档' : '批量归档已选流程'} className="bg-orange-500 text-white hover:bg-orange-600 [background-image:none]"><Archive size={16} />批量归档</Button>
                 </div>
@@ -823,11 +823,11 @@ export const ProcessManagement = () => {
                 <tbody className="divide-y divide-slate-100">
                   {loading ? <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载流程数据..." /> : filteredWorkflows.length === 0 ? <WorkspaceTableStateRow colSpan={7} title="暂无流程数据" description="可以先创建流程，或调整筛选条件查看其它流程定义。" /> : filteredWorkflows.map((workflow) => (
                     <tr key={workflow.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
-                      <td className="px-4 py-3"><Button type="button" variant="ghost" size="icon" onClick={() => handleSelectOne(workflow.id)} className="text-slate-400 hover:bg-transparent hover:text-pink-500">{selectedIds.includes(workflow.id) ? <CheckSquare size={18} className="text-pink-500" /> : <Square size={18} />}</Button></td>
+                      <td className="px-4 py-3"><Button type="button" variant="ghost" size="icon" onClick={() => handleSelectOne(workflow.id)} className="text-slate-400 hover:bg-transparent hover:text-cyan-600">{selectedIds.includes(workflow.id) ? <CheckSquare size={18} className="text-cyan-600" /> : <Square size={18} />}</Button></td>
                       <td className="px-4 py-4"><div className="space-y-1"><div className="text-sm font-medium text-slate-900">{workflow.name}</div><div className="flex flex-wrap items-center gap-2 text-xs text-slate-400"><span>{workflow.status === 'PUBLISHED' ? '已发布' : workflow.status === 'ARCHIVED' ? '已归档' : '草稿'}</span><span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">ID {workflow.id}</span></div>{workflow.description ? <div className="line-clamp-1 text-xs text-slate-500">{workflow.description}</div> : null}</div></td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600">{workflow.key}</td>
-                      <td className="px-4 py-4">{workflow.category ? <span className="inline-flex w-fit items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-600 ring-1 ring-pink-100"><FolderOpen size={10} />{getWorkflowCategoryLabel(workflow.category) || workflow.category}</span> : <span className="text-xs text-slate-400">未分类</span>}</td>
-                      <td className="px-4 py-4">{workflow.tags.length > 0 ? <div className="flex flex-wrap gap-1.5">{workflow.tags.slice(0, 3).map((tag) => <span key={tag} className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600 ring-1 ring-blue-100">{tag}</span>)}{workflow.tags.length > 3 ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500">+{workflow.tags.length - 3}</span> : null}</div> : <span className="text-xs text-slate-400">无标签</span>}</td>
+                      <td className="px-4 py-4">{workflow.category ? <span className="inline-flex w-fit items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 ring-1 ring-cyan-100"><FolderOpen size={10} />{getWorkflowCategoryLabel(workflow.category) || workflow.category}</span> : <span className="text-xs text-slate-400">未分类</span>}</td>
+                      <td className="px-4 py-4">{workflow.tags.length > 0 ? <div className="flex flex-wrap gap-1.5">{workflow.tags.slice(0, 3).map((tag) => <span key={tag} className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-600 ring-1 ring-cyan-100">{tag}</span>)}{workflow.tags.length > 3 ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500">+{workflow.tags.length - 3}</span> : null}</div> : <span className="text-xs text-slate-400">无标签</span>}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600">v{workflow.version}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-right"><TableRowActions align="end" wrap={false} className="whitespace-nowrap" actions={[{ label: '编辑', icon: <Edit size={16} />, onClick: () => navigate(`/workflow/design?id=${workflow.id}`), disabled: !isAdmin, title: isAdmin ? '编辑流程' : '仅管理员可编辑流程', tone: 'info' }, { label: '版本', icon: <RefreshCw size={16} />, onClick: () => navigate(`/workflow/versions/${workflow.id}`), title: '查看版本历史', tone: 'neutral' }, { label: '导出', icon: <FileDown size={16} />, onClick: () => openExportDialog(workflow.id), disabled: !canExportSingleWorkflow(workflow), title: canExportSingleWorkflow(workflow) ? '导出流程' : '仅流程创建者或管理员可导出', tone: 'success' }]} /></td>
                     </tr>
@@ -840,7 +840,7 @@ export const ProcessManagement = () => {
         {showBatchEditModal ? (
           <WorkspaceDialogShell title={batchEditType === 'category' ? '批量修改分类' : '批量添加标签'} description="批量动作只调整选中流程的元数据，不改动节点和连线结构。" onClose={() => setShowBatchEditModal(false)} maxWidthClassName="max-w-2xl">
             <div className="space-y-4">
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-600">已选择 <span className="font-semibold text-pink-600">{selectedIds.length}</span> 个流程</div>
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-600">已选择 <span className="font-semibold text-cyan-700">{selectedIds.length}</span> 个流程</div>
               {batchEditType === 'category' ? (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-slate-700">目标分类 <span className="text-red-500">*</span></label>
@@ -852,10 +852,10 @@ export const ProcessManagement = () => {
                     <label className="block text-sm font-medium text-slate-700">追加标签</label>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <Input value={batchTagInput} onChange={(event) => setBatchTagInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && batchTagInput.trim()) { event.preventDefault(); addBatchTag(batchTagInput.trim()); setBatchTagInput(''); } }} placeholder="输入标签后按回车" />
-                      <Button type="button" onClick={() => { if (batchTagInput.trim()) { addBatchTag(batchTagInput.trim()); setBatchTagInput(''); } }} className="bg-blue-500 text-white hover:bg-blue-600 [background-image:none]">添加</Button>
+                      <Button type="button" onClick={() => { if (batchTagInput.trim()) { addBatchTag(batchTagInput.trim()); setBatchTagInput(''); } }} className="bg-cyan-600 text-white hover:bg-cyan-700 [background-image:none]">添加</Button>
                     </div>
                   </div>
-                  {batchTags.length > 0 ? <div className="space-y-2"><div className="text-sm font-medium text-slate-700">已添加标签</div><div className="flex flex-wrap gap-2">{batchTags.map((tag) => <span key={tag} className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 ring-1 ring-blue-100">{tag}<button type="button" onClick={() => removeBatchTag(tag)} className="text-blue-500 transition hover:text-blue-700"><X size={12} /></button></span>)}</div></div> : null}
+                  {batchTags.length > 0 ? <div className="space-y-2"><div className="text-sm font-medium text-slate-700">已添加标签</div><div className="flex flex-wrap gap-2">{batchTags.map((tag) => <span key={tag} className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-medium text-cyan-600 ring-1 ring-cyan-100">{tag}<button type="button" onClick={() => removeBatchTag(tag)} className="text-cyan-600 transition hover:text-cyan-700"><X size={12} /></button></span>)}</div></div> : null}
                   <div className="space-y-2"><div className="text-sm font-medium text-slate-700">常用标签</div><div className="flex flex-wrap gap-2">{COMMON_TAGS.map((tag) => <Button key={tag} type="button" variant="secondary" size="sm" onClick={() => addBatchTag(tag)} disabled={batchTags.includes(tag)}>{tag}</Button>)}</div></div>
                 </div>
               )}
@@ -866,13 +866,13 @@ export const ProcessManagement = () => {
         {showExportModal ? (
           <WorkspaceDialogShell title={exportType === 'single' ? '导出流程' : '批量导出流程'} description="导出文件会保留流程定义、节点和配置，可用于备份或迁移。" onClose={() => { if (!exporting) { setShowExportModal(false); } }} maxWidthClassName="max-w-2xl">
             <div className="space-y-4">
-              {exportType === 'batch' ? <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-slate-600">本次将批量导出 <span className="font-semibold text-blue-600">{selectedIds.length}</span> 个流程。</div> : <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-slate-600">{currentExportWorkflow ? <div className="space-y-1"><div className="font-medium text-emerald-700">流程信息</div><div>名称：{currentExportWorkflow.name}</div><div>版本：v{currentExportWorkflow.version}</div><div>分类：{currentExportWorkflow.category ? (getWorkflowCategoryLabel(currentExportWorkflow.category) || currentExportWorkflow.category) : '未分类'}</div></div> : '未找到要导出的流程信息。'}</div>}
+              {exportType === 'batch' ? <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-slate-600">本次将批量导出 <span className="font-semibold text-cyan-600">{selectedIds.length}</span> 个流程。</div> : <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-slate-600">{currentExportWorkflow ? <div className="space-y-1"><div className="font-medium text-emerald-700">流程信息</div><div>名称：{currentExportWorkflow.name}</div><div>版本：v{currentExportWorkflow.version}</div><div>分类：{currentExportWorkflow.category ? (getWorkflowCategoryLabel(currentExportWorkflow.category) || currentExportWorkflow.category) : '未分类'}</div></div> : '未找到要导出的流程信息。'}</div>}
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="text-sm font-medium text-slate-700">导出选项</div>
                 <label className="mt-3 flex items-start gap-3"><input type="checkbox" checked={includeSensitive} onChange={(event) => setIncludeSensitive(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" /><div className="min-w-0"><div className="text-sm font-medium text-slate-700">包含敏感配置信息</div><div className="mt-1 text-xs leading-6 text-slate-500">包括 API 密钥、连接配置等敏感字段。不勾选时会做脱敏处理，适合日常备份和跨环境流转。</div></div></label>
                 {includeSensitive ? <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700">导出文件将包含敏感配置，请仅在受控环境中使用并妥善保管。</div> : null}
               </div>
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-6 text-blue-700"><div className="font-medium text-blue-800">导出说明</div><ul className="mt-2 list-disc space-y-1 pl-4"><li>导出文件为 JSON 格式，可用于备份、迁移或离线审阅。</li><li>文件名会自动带上流程名称、版本和导出日期。</li><li>批量导出会把已选流程打包成同一份文件。</li></ul></div>
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-xs leading-6 text-cyan-700"><div className="font-medium text-cyan-700">导出说明</div><ul className="mt-2 list-disc space-y-1 pl-4"><li>导出文件为 JSON 格式，可用于备份、迁移或离线审阅。</li><li>文件名会自动带上流程名称、版本和导出日期。</li><li>批量导出会把已选流程打包成同一份文件。</li></ul></div>
               <div className="flex justify-end gap-2 pt-2"><Button variant="outline" type="button" onClick={() => setShowExportModal(false)} disabled={exporting}>取消</Button><Button type="button" onClick={handleExport} disabled={exporting}><Download size={16} />{exporting ? '导出中...' : '确认导出'}</Button></div>
             </div>
           </WorkspaceDialogShell>
@@ -883,7 +883,7 @@ export const ProcessManagement = () => {
               <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-slate-600">已选择 <span className="font-semibold text-orange-600">{selectedIds.length}</span> 个流程准备归档。</div>
               {showSafetyWarning && safetyWarnings.length > 0 ? <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700"><div className="font-medium text-amber-800">安全警告</div><ul className="mt-2 list-disc space-y-1 pl-4">{safetyWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul><div className="mt-2 border-t border-amber-200 pt-2">请确认这些流程仍可归档。归档后可在归档管理中恢复，但默认不会继续出现在流程列表中。</div></div> : null}
               <div className="space-y-2"><label className="block text-sm font-medium text-slate-700">归档原因 <span className="text-red-500">*</span></label><Textarea rows={4} value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="请输入归档原因，例如：流程已停用、已由新版流程替代" /><div className="text-xs text-slate-500">归档原因会记录到审计日志，便于后续追溯。</div></div>
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-6 text-blue-700"><div className="font-medium text-blue-800">归档说明</div><ul className="mt-2 list-disc space-y-1 pl-4"><li>归档后的流程会从当前列表中隐藏。</li><li>流程历史数据仍会保留，可在归档管理中恢复。</li><li>归档操作会写入审计日志，并通知对应创建者。</li></ul></div>
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-xs leading-6 text-cyan-700"><div className="font-medium text-cyan-700">归档说明</div><ul className="mt-2 list-disc space-y-1 pl-4"><li>归档后的流程会从当前列表中隐藏。</li><li>流程历史数据仍会保留，可在归档管理中恢复。</li><li>归档操作会写入审计日志，并通知对应创建者。</li></ul></div>
               <div className="flex justify-end gap-2 pt-2"><Button variant="outline" type="button" onClick={closeArchiveModal} disabled={archiving}>取消</Button><Button type="button" onClick={handleBatchArchive} disabled={archiving || !archiveReason.trim()} className="bg-orange-500 text-white hover:bg-orange-600 [background-image:none]"><Archive size={16} />{archiving ? '归档中...' : '确认归档'}</Button></div>
             </div>
           </WorkspaceDialogShell>

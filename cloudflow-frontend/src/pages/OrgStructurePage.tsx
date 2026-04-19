@@ -16,7 +16,7 @@ export const OrgStructurePage = () => {
       <div className="relative z-10 space-y-3">
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600 border border-slate-200 shadow-sm">
               <Building2 className="h-3.5 w-3.5" />
               Org Workspace
             </span>
@@ -29,7 +29,7 @@ export const OrgStructurePage = () => {
               label="组织视图"
               value="部门 + 用户"
               hint="同时覆盖部门树和成员列表"
-              aside={<Users className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<Users className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="结构管理"

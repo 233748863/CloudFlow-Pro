@@ -52,7 +52,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
     switch (status) {
       case TaskStatus.PENDING:
         return (
-          <span className="flex items-center gap-1 bg-pink-50 text-pink-600 px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset ring-pink-500/20">
+          <span className="flex items-center gap-1 bg-cyan-50 text-cyan-700 px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset ring-cyan-600/20">
             <Clock size={12} />
             待处理
           </span>
@@ -87,7 +87,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
         );
        case TaskStatus.MODIFIED:
         return (
-          <span className="flex items-center gap-1 bg-pink-50 text-pink-600 px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset ring-pink-500/20">
+          <span className="flex items-center gap-1 bg-cyan-50 text-cyan-700 px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset ring-cyan-600/20">
             <Edit3 size={12} />
             已修改
           </span>
@@ -133,14 +133,14 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
           className={`bg-white border rounded-xl p-5 hover:shadow-lg transition-all duration-300 cursor-pointer group relative overflow-hidden ${
             isOverdue(task) 
               ? 'border-red-300 hover:border-red-400 ring-1 ring-red-100' 
-              : 'border-slate-200 hover:border-pink-400/30'
+              : 'border-slate-200 hover:border-cyan-200'
           }`}
         >
           <div className="absolute top-0 right-0 w-16 h-16 bg-slate-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
           
           <div className="flex justify-between items-start mb-3 relative z-10">
             <div>
-                <h3 className="text-base font-bold text-slate-800 group-hover:text-pink-500 transition-colors line-clamp-1" title={task.workflowName}>
+                <h3 className="text-base font-bold text-slate-800 group-hover:text-cyan-700 transition-colors line-clamp-1" title={task.workflowName}>
                     {task.workflowName}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
@@ -178,13 +178,13 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
               {/* 步骤进度条 */}
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="text-slate-500">流程进度</span>
-                <span className="text-pink-500 font-semibold">
+                <span className="text-cyan-700 font-semibold">
                   {task.currentStepIndex || '-'} / {task.totalSteps}
                 </span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-1.5 mb-2">
                 <div
-                  className="bg-pink-400 h-1.5 rounded-full transition-all duration-500"
+                  className="bg-cyan-500 h-1.5 rounded-full transition-all duration-500"
                   style={{ width: `${task.currentStepIndex ? (task.currentStepIndex / task.totalSteps) * 100 : 0}%` }}
                 />
               </div>
@@ -201,13 +201,13 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                             {/* 网关图标 */}
                             <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${
                               step.status === 'completed' ? 'bg-emerald-100 text-emerald-600'
-                                : step.status === 'active' ? 'bg-pink-50 text-pink-500'
+                                : step.status === 'active' ? 'bg-cyan-50 text-cyan-700'
                                 : 'bg-slate-100 text-slate-400'
                             }`}>
                               {step.nodeType === 'PARALLEL' ? <GitBranch size={10} /> : <GitMerge size={10} />}
                             </div>
                             <span className={`text-[8px] mt-0.5 text-center leading-tight ${
-                              step.status === 'active' ? 'text-pink-500 font-semibold' : step.status === 'completed' ? 'text-emerald-600' : 'text-slate-400'
+                              step.status === 'active' ? 'text-cyan-700 font-semibold' : step.status === 'completed' ? 'text-emerald-600' : 'text-slate-400'
                             }`}>{step.nodeTitle}</span>
                             {/* 分支内容 */}
                             {step.branches && step.branches.length > 0 && (
@@ -218,17 +218,17 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                                       const bCompleted = bStep.status === 'completed';
                                       const bActive = bStep.status === 'active';
                                       const bDotClass = bCompleted ? 'bg-emerald-500 ring-emerald-100'
-                                        : bActive ? 'bg-pink-400 ring-pink-50 animate-pulse' : 'bg-slate-300 ring-slate-100';
+                                        : bActive ? 'bg-cyan-500 ring-cyan-50 animate-pulse' : 'bg-slate-300 ring-slate-100';
                                       const bLineClass = bCompleted ? 'bg-emerald-400' : 'bg-slate-200';
                                       return (
                                         <div key={bStep.nodeKey + '-' + bsIdx} className="flex items-start flex-shrink-0">
                                           <div className="flex flex-col items-center min-w-[48px] max-w-[64px]">
                                             <div className={`w-2.5 h-2.5 rounded-full ring-1 ${bDotClass} flex-shrink-0`} />
                                             <span className={`text-[8px] mt-0.5 text-center leading-tight line-clamp-1 ${
-                                              bActive ? 'text-pink-500 font-semibold' : bCompleted ? 'text-emerald-600' : 'text-slate-400'
+                                              bActive ? 'text-cyan-700 font-semibold' : bCompleted ? 'text-emerald-600' : 'text-slate-400'
                                             }`} title={bStep.nodeTitle}>{bStep.nodeTitle}</span>
                                             <span className={`text-[7px] text-center truncate max-w-full ${
-                                              bActive ? 'text-pink-400' : bCompleted ? 'text-emerald-500' : 'text-slate-400'
+                                              bActive ? 'text-cyan-500' : bCompleted ? 'text-emerald-500' : 'text-slate-400'
                                             }`}>{bCompleted && bStep.operatorName ? bStep.operatorName : bStep.approverDescription}</span>
                                             {/* 会签标识 */}
                                             {bStep.signType && (
@@ -262,7 +262,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                     const dotClass = isCompleted
                       ? 'bg-emerald-500 ring-emerald-100'
                       : isActive
-                        ? 'bg-pink-400 ring-pink-50 animate-pulse'
+                        ? 'bg-cyan-500 ring-cyan-50 animate-pulse'
                         : 'bg-slate-300 ring-slate-100';
                     const lineClass = isCompleted ? 'bg-emerald-400' : 'bg-slate-200';
 
@@ -274,13 +274,13 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                           <div className={`w-3 h-3 rounded-full ring-2 ${dotClass} flex-shrink-0`} />
                           {/* 节点标题 */}
                           <span className={`text-[9px] mt-1 text-center leading-tight line-clamp-2 ${
-                            isActive ? 'text-pink-500 font-semibold' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
+                            isActive ? 'text-cyan-700 font-semibold' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
                           }`} title={step.nodeTitle}>
                             {step.nodeTitle}
                           </span>
                           {/* 审批人信息 */}
                           <span className={`text-[8px] mt-0.5 text-center leading-tight truncate max-w-full ${
-                            isActive ? 'text-pink-400' : isCompleted ? 'text-emerald-500' : 'text-slate-400'
+                            isActive ? 'text-cyan-500' : isCompleted ? 'text-emerald-500' : 'text-slate-400'
                           }`} title={
                             isCompleted && step.operatorName
                               ? `实际处理: ${step.operatorName}`
@@ -328,7 +328,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
                     </span>
                   )}
                   <ChevronRight size={10} className="text-slate-300 flex-shrink-0" />
-                  <span className="text-pink-500 font-medium truncate max-w-[30%]" title={task.nodeName || task.currentNodeName}>
+                  <span className="text-cyan-700 font-medium truncate max-w-[30%]" title={task.nodeName || task.currentNodeName}>
                     {task.nodeName || task.currentNodeName || '当前'}
                   </span>
                   {task.nextNodeName && (

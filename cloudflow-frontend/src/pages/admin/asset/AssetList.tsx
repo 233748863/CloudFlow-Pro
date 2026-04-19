@@ -75,8 +75,8 @@ const STATUS_MAP: Record<
   },
   "2": {
     label: "在用",
-    color: "text-pink-600",
-    bgColor: "bg-pink-50 border-pink-100",
+    color: "text-cyan-700",
+    bgColor: "bg-cyan-50 border-cyan-100",
   },
   "3": {
     label: "维修",
@@ -383,11 +383,11 @@ const AssetList: React.FC = () => {
               {stats.statusCount?.idle || 0}
             </p>
           </div>
-          <div className="rounded-lg border bg-pink-50 p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-sm text-pink-600">
+          <div className="rounded-lg border bg-cyan-50 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-sm text-cyan-700">
               <UserCheck className="w-4 h-4" /> 在用
             </div>
-            <p className="text-2xl font-bold mt-1 text-pink-600">
+            <p className="text-2xl font-bold mt-1 text-cyan-700">
               {stats.statusCount?.inUse || 0}
             </p>
           </div>
@@ -431,7 +431,7 @@ const AssetList: React.FC = () => {
               <input
                 type="text"
                 placeholder="搜索名称..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500/20 outline-none"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
               />
@@ -444,7 +444,7 @@ const AssetList: React.FC = () => {
             <input
               type="text"
               placeholder="搜索编码..."
-              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500/20 outline-none"
               value={searchCode}
               onChange={(e) => setSearchCode(e.target.value)}
             />
@@ -454,7 +454,7 @@ const AssetList: React.FC = () => {
               分类
             </label>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-full h-[42px] border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400">
+              <SelectTrigger className="w-full h-[42px] border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500/20">
                 <SelectValue placeholder="全部分类" />
               </SelectTrigger>
               <SelectContent>
@@ -472,7 +472,7 @@ const AssetList: React.FC = () => {
               状态
             </label>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full h-[42px] border-slate-200 rounded-lg focus:ring-2 focus:ring-pink-400">
+              <SelectTrigger className="w-full h-[42px] border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500/20">
                 <SelectValue placeholder="全部" />
               </SelectTrigger>
               <SelectContent>
@@ -798,7 +798,7 @@ const AssetList: React.FC = () => {
                     : "请输入报废原因..."
                 }
                 rows={3}
-                className="flex min-h-[60px] w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-pink-400"
+                className="flex min-h-[60px] w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/20"
               />
             </div>
             <div className="flex gap-2 justify-end">

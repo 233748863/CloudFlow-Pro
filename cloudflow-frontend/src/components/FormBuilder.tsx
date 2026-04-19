@@ -23,6 +23,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Input } from './ui/input';
 import { DatePicker } from './ui/date-picker';
+import { Switch } from './ui/switch';
+import { Textarea } from './ui/textarea';
 
 interface Props {
   onSave: (form: FormDefinition) => Promise<void> | void;
@@ -65,7 +67,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative bg-white border border-slate-200 hover:border-pink-300 rounded-xl p-6 shadow-sm hover:shadow-md transition-all"
+      className="group relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-cyan-200 hover:shadow-md"
     >
       <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={() => onRemove(field.id)} className="text-slate-400 hover:text-red-500">
@@ -77,7 +79,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
         <div
           {...attributes}
           {...listeners}
-          className="mt-2 text-slate-300 hover:text-pink-400 cursor-grab active:cursor-grabbing transition-colors"
+          className="mt-2 cursor-grab text-slate-300 transition-colors hover:text-cyan-500 active:cursor-grabbing"
         >
           <GripVertical size={20} />
         </div>
@@ -112,7 +114,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
               </Select>
             )}
             {field.type === 'TEXTAREA' && (
-              <textarea className="w-full border border-slate-300 rounded px-3 py-2 text-sm" rows={2} placeholder="多行文本预览"></textarea>
+              <Textarea className="min-h-[72px] text-sm" rows={2} placeholder="多行文本预览" />
             )}
           </div>
 
@@ -126,7 +128,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
                     const newOptions = [...(field.options || []), `选项${(field.options?.length || 0) + 1}`];
                     onUpdate(field.id, { options: newOptions });
                   }}
-                  className="text-pink-500 hover:text-pink-600 flex items-center gap-1"
+                  className="flex items-center gap-1 text-cyan-600 transition hover:text-cyan-700"
                 >
                   <Plus size={12} /> 添加选项
                 </button>
@@ -163,7 +165,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
 
           {/* Validation Editor */}
           {(field.type === 'TEXT' || field.type === 'NUMBER') && (
-            <div className="grid grid-cols-2 gap-2 pt-2 mt-2 border-t border-slate-100">
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2">
               <div>
                 <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
                   <Code size={12} /> 正则表达式
@@ -189,16 +191,14 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              checked={field.required}
-              onChange={(e) => onUpdate(field.id, { required: e.target.checked })}
-              id={`req-${field.id}`}
-            />
-            <label htmlFor={`req-${field.id}`} className="text-xs text-slate-500">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <label htmlFor={`req-${field.id}`} className="text-xs font-medium text-slate-600">
               必填项
             </label>
+            <Switch
+              checked={field.required}
+              onCheckedChange={(checked) => onUpdate(field.id, { required: checked })}
+            />
           </div>
         </div>
       </div>
@@ -248,11 +248,11 @@ const FormPreview: React.FC<{
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-pink-50 to-pink-50 flex justify-between items-center">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-cyan-50 px-6 py-4">
         <div>
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Eye size={18} className="text-pink-500" />
+            <Eye size={18} className="text-cyan-600" />
             预览: {formName}
           </h3>
           <p className="text-xs text-slate-500 mt-1">模拟用户填写体验，提交不会保存数据</p>
@@ -269,7 +269,7 @@ const FormPreview: React.FC<{
             </label>
             {field.type === 'TEXTAREA' ? (
               <textarea
-                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition-all ${
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:border-cyan-500 focus:ring-cyan-500/20 outline-none transition-all ${
                   errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
                 }`}
                 rows={3}
@@ -291,7 +291,7 @@ const FormPreview: React.FC<{
             ) : (
               <input
                 type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
-                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition-all ${
+                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:border-cyan-500 focus:ring-cyan-500/20 outline-none transition-all ${
                   errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
                 }`}
                 placeholder={`请输入${field.label}`}
@@ -313,7 +313,7 @@ const FormPreview: React.FC<{
         </button>
         <button
           onClick={handleSubmit}
-          className="px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 text-sm font-medium shadow-md shadow-pink-100 flex items-center gap-2"
+          className="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm font-medium shadow-md shadow-cyan-100 flex items-center gap-2"
         >
           <Save size={16} /> 模拟提交
         </button>
@@ -440,9 +440,9 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
             <button
               key={t.type}
               onClick={() => addField(t.type)}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-pink-50 border border-slate-200 hover:border-pink-100 rounded-lg transition-all text-sm text-slate-600 font-medium text-left"
+              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-200 rounded-lg transition-all text-sm text-slate-600 font-medium text-left"
             >
-              <t.icon size={16} className="text-pink-400" />
+              <t.icon size={16} className="text-cyan-500" />
               {t.label}
             </button>
           ))}
@@ -479,7 +479,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save size={16} /> {saving ? '保存中...' : '保存表单'}
             </button>
@@ -506,7 +506,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
                     <div className="mt-4 flex gap-2">
                       <button
                         onClick={() => setPreviewData(null)}
-                        className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600"
+                        className="px-4 py-2 bg-cyan-600 text-white rounded-lg text-sm hover:bg-cyan-700"
                       >
                         重新填写
                       </button>

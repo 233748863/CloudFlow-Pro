@@ -62,14 +62,14 @@ export const DialogContent = ({
       <div className="fixed inset-0 z-50 bg-slate-900/32 transition-opacity animate-in fade-in-0" onClick={() => onOpenChange(false)} />
       <div
         className={cn(
-          'fixed z-50 grid w-full max-h-[90vh] gap-4 overflow-y-auto border border-slate-200 bg-white p-6 shadow-2xl duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-3xl md:w-full',
+          'fixed z-50 grid w-full max-h-[90vh] gap-4 overflow-y-auto border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)] duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-2xl md:w-full',
           !disableDefaultMaxWidth && 'sm:max-w-lg',
           className
         )}
       >
         {children}
         <button
-          className="absolute right-5 top-5 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none"
+          className="absolute right-4 top-4 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:pointer-events-none"
           onClick={() => onOpenChange(false)}
         >
           <span className="sr-only">关闭</span>

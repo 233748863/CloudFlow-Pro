@@ -87,7 +87,7 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, type }) => {
         ? 'text-red-600'
         : timeoutAlert.timeoutLevel === 'WARNING'
           ? 'text-yellow-600'
-          : 'text-blue-600')
+          : 'text-cyan-600')
     : (anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' ? 'text-red-600' : 'text-yellow-600');
   
   const levelIcon = isTimeout

@@ -94,7 +94,7 @@ export const CodeGeneration = () => {
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-pink-500 ring-1 ring-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600 border border-slate-200 shadow-sm">
               <Braces className="h-3.5 w-3.5" />
               Code Workspace
             </span>
@@ -107,7 +107,7 @@ export const CodeGeneration = () => {
               label="已发布流程"
               value={workflows.length}
               hint="按流程 Key 保留最新已发布版本"
-              aside={<Workflow className="h-[18px] w-[18px] text-pink-500" />}
+              aside={<Workflow className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="当前选择"

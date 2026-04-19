@@ -26,7 +26,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     switch (variant) {
       case 'default':
         variantStyles =
-          'bg-[linear-gradient(135deg,#0891b2,#0284c7)] text-white shadow-[0_12px_24px_rgba(14,165,233,0.22)] hover:brightness-[1.03]';
+          'bg-cyan-600 text-white shadow-sm hover:bg-cyan-700';
         break;
       case 'outline':
         variantStyles =
@@ -46,7 +46,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         break;
       case 'destructive':
         variantStyles =
-          'bg-[linear-gradient(135deg,#ef4444,#dc2626)] text-white shadow-[0_12px_24px_rgba(239,68,68,0.22)] hover:brightness-[1.03]';
+          'bg-red-600 text-white shadow-sm hover:bg-red-700';
         break;
       case 'soft':
         variantStyles =

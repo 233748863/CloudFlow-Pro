@@ -35,7 +35,7 @@ const requestStatusTone: Record<string, string> = {
 
 const candidateStatusTone: Record<string, string> = {
   NEW: 'bg-slate-100 text-slate-700',
-  SCREENING: 'bg-blue-50 text-blue-700',
+  SCREENING: 'bg-cyan-50 text-cyan-700',
   INTERVIEW: 'bg-amber-50 text-amber-700',
   OFFER: 'bg-teal-50 text-teal-700',
   HIRED: 'bg-emerald-50 text-emerald-700',
@@ -43,7 +43,7 @@ const candidateStatusTone: Record<string, string> = {
 };
 
 const interviewStatusTone: Record<string, string> = {
-  SCHEDULED: 'bg-blue-50 text-blue-700',
+  SCHEDULED: 'bg-cyan-50 text-cyan-700',
   COMPLETED: 'bg-emerald-50 text-emerald-700',
   CANCELLED: 'bg-slate-100 text-slate-700',
 };

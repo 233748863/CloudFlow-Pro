@@ -256,7 +256,7 @@ const AlertList: React.FC = () => {
               label="严重超时"
               value={criticalTimeoutCount}
               hint="超时级别为 CRITICAL"
-              aside={<Bell size={18} className="text-pink-500" />}
+              aside={<Bell size={18} className="text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="高危异常"
@@ -281,7 +281,7 @@ const AlertList: React.FC = () => {
               activeQuickFilter={activeTab}
               onQuickFilterChange={(value) => setActiveTab(value as AlertType)}
               quickFilterAside={(
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-500 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 border border-slate-200 shadow-sm">
                   当前页签 {activeTab === 'timeout' ? '更适合处理流程超时' : '更适合排查流程异常'}
                 </span>
               )}

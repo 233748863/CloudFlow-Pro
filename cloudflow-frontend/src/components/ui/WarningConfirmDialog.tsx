@@ -90,17 +90,17 @@ export const WarningConfirmDialog: React.FC<WarningConfirmDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleCancel}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32">
+        <div className="mx-4 w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
           {/* 对话框头部 */}
-          <div className="px-6 py-4 border-b">
+          <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
           </div>
 
           {/* 对话框内容 */}
-          <div className="px-6 py-4 space-y-4">
+          <div className="space-y-4 px-5 py-4">
             {/* 警告消息 */}
-            <div className={`${colors.bg} ${colors.border} border rounded-md p-4`}>
+            <div className={`${colors.bg} ${colors.border} rounded-xl border p-4`}>
               <div className="flex">
                 <svg
                   className={`h-5 w-5 ${colors.icon} flex-shrink-0`}
@@ -114,9 +114,9 @@ export const WarningConfirmDialog: React.FC<WarningConfirmDialogProps> = ({
                   />
                 </svg>
                 <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-gray-900">{message}</p>
+                  <p className="text-sm font-medium text-slate-900">{message}</p>
                   {description && (
-                    <p className="mt-2 text-sm text-gray-600">{description}</p>
+                    <p className="mt-2 text-sm text-slate-600">{description}</p>
                   )}
                 </div>
               </div>
@@ -130,11 +130,11 @@ export const WarningConfirmDialog: React.FC<WarningConfirmDialogProps> = ({
                   id="double-confirm"
                   checked={isDoubleConfirmed}
                   onChange={(e) => setIsDoubleConfirmed(e.target.checked)}
-                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 rounded"
+                  className="mt-1 h-4 w-4 text-cyan-600 focus:ring-cyan-500/20 rounded"
                 />
                 <label
                   htmlFor="double-confirm"
-                  className="ml-3 text-sm text-gray-700 cursor-pointer"
+                  className="ml-3 cursor-pointer text-sm text-slate-700"
                 >
                   {doubleConfirmText}
                 </label>
@@ -143,7 +143,7 @@ export const WarningConfirmDialog: React.FC<WarningConfirmDialogProps> = ({
           </div>
 
           {/* 对话框底部 */}
-          <div className="px-6 py-4 border-t flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3 border-t border-slate-100 px-5 py-4">
             <Button variant="outline" onClick={handleCancel}>
               {cancelText}
             </Button>

@@ -709,7 +709,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
     return (
       <div className="space-y-6">
         <WorkspaceHeroCard
-          badge={<div className="inline-flex rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">Leave Quota</div>}
+          badge={<div className="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">Leave Quota</div>}
           title="假期额度管理"
           description="正在加载员工、假种和额度配置..."
         />
@@ -722,7 +722,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
     return (
       <div className="space-y-6">
         <WorkspaceHeroCard
-          badge={<div className="inline-flex rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">Leave Quota</div>}
+          badge={<div className="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">Leave Quota</div>}
           title="假期额度管理"
           description="当前租户还没有 HR 员工档案，暂时无法进入额度管理。"
         />
@@ -738,7 +738,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
     <div className="space-y-6">
       <WorkspaceHeroCard
         badge={(
-          <div className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">
+          <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
             <Wallet size={14} />
             Leave Quota
           </div>

@@ -141,7 +141,7 @@ const KeyTreeNode: React.FC<{
   return (
     <div>
       <div
-        className={`group flex cursor-pointer items-center gap-2 rounded-[16px] px-2 py-1.5 text-sm transition ${
+        className={`group flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm transition ${
           isSelected ? 'border border-cyan-200 bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-white hover:text-cyan-700'
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -156,7 +156,7 @@ const KeyTreeNode: React.FC<{
         {!isLeaf ? (
           expanded ? <ChevronDown size={14} className="shrink-0 text-slate-400" /> : <ChevronRight size={14} className="shrink-0 text-slate-400" />
         ) : (
-          <Key size={14} className="shrink-0 text-pink-400" />
+          <Key size={14} className="shrink-0 text-cyan-500" />
         )}
 
         {!isLeaf ? (
@@ -334,10 +334,10 @@ export const CacheMonitor = () => {
 
   const typeColor: Record<string, string> = {
     string: 'bg-emerald-100 text-emerald-700',
-    list: 'bg-blue-100 text-blue-700',
+    list: 'bg-cyan-50 text-cyan-700',
     set: 'bg-purple-100 text-purple-700',
     zset: 'bg-amber-100 text-amber-700',
-    hash: 'bg-pink-100 text-pink-700',
+    hash: 'bg-cyan-50 text-cyan-700',
   };
 
   return (
@@ -378,7 +378,7 @@ export const CacheMonitor = () => {
               label="Redis 版本"
               value={redisVersion}
               hint="当前缓存服务版本"
-              aside={<Server size={18} className="text-pink-500" />}
+              aside={<Server size={18} className="text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="已用内存"
@@ -419,7 +419,7 @@ export const CacheMonitor = () => {
                   清空搜索
                 </Button>
               ) : (
-                <span className="rounded-full bg-white/82 px-3 py-1.5 text-[11px] font-medium text-slate-400 ring-1 ring-white/80 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
                   当前展示 Redis 概览信息
                 </span>
               )}
@@ -488,7 +488,7 @@ export const CacheMonitor = () => {
                                   <span className="text-slate-500">{cmd.value.toLocaleString()}</span>
                                 </div>
                                 <div className="h-2 rounded-full bg-slate-100">
-                                  <div className="h-2 rounded-full bg-pink-400 transition-all" style={{ width: `${percent}%` }} />
+                                  <div className="h-2 rounded-full bg-cyan-500 transition-all" style={{ width: `${percent}%` }} />
                                 </div>
                               </div>
                             );
@@ -569,7 +569,7 @@ export const CacheMonitor = () => {
                       <>
                         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                           <div className="flex min-w-0 items-center gap-2">
-                            <Key size={16} className="shrink-0 text-pink-500" />
+                            <Key size={16} className="shrink-0 text-cyan-600" />
                             <span className="truncate font-mono text-sm text-slate-800" title={keyDetail.key}>{keyDetail.key}</span>
                           </div>
                           <div className="flex items-center gap-2">

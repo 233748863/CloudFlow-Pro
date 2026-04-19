@@ -247,7 +247,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
   const getChangeTypeLabel = (type: string) => {
     const labels: Record<string, { text: string; color: string }> = {
       major: { text: '重大变更', color: 'bg-red-100 text-red-700' },
-      minor: { text: '功能变更', color: 'bg-blue-100 text-blue-700' },
+      minor: { text: '功能变更', color: 'bg-cyan-50 text-cyan-700' },
       patch: { text: '小修复', color: 'bg-green-100 text-green-700' }
     };
     return labels[type] || labels.patch;
@@ -262,7 +262,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           <button
             onClick={handleCompare}
             disabled={comparing}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+            className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50"
           >
             {comparing ? '对比中...' : '对比版本'}
           </button>
@@ -293,7 +293,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               <div
                 key={version.id}
                 className={`border rounded-lg p-4 ${
-                  isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  isSelected ? 'border-cyan-500 bg-cyan-50' : 'border-gray-200'
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -345,7 +345,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                     {canRollbackCurrentWorkflow && (
                       <button
                         onClick={() => handleOpenRollback(version)}
-                        className="p-2 text-gray-400 hover:text-blue-600"
+                        className="p-2 text-gray-400 hover:text-cyan-600"
                         title="回滚到此版本"
                       >
                         <RotateCcw size={16} />
@@ -378,7 +378,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                   value={rollbackReason}
                   onChange={(e) => setRollbackReason(e.target.value)}
                   placeholder="请输入回滚原因"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   rows={3}
                 />
               </div>
@@ -392,7 +392,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               </button>
               <button
                 onClick={handleRollback}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700"
               >
                 确认回滚
               </button>
