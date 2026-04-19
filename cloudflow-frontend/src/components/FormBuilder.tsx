@@ -249,7 +249,7 @@ const FormPreview: React.FC<{
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 bg-cyan-50 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-cyan-50 px-5 py-4">
         <div>
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
             <Eye size={18} className="text-cyan-600" />
@@ -261,7 +261,7 @@ const FormPreview: React.FC<{
           <X size={20} />
         </button>
       </div>
-      <div className="p-8 space-y-6 max-h-[55vh] overflow-y-auto">
+      <div className="max-h-[55vh] space-y-6 overflow-y-auto px-5 py-5">
         {fields.map(field => (
           <div key={field.id} className="space-y-1">
             <label className="block text-sm font-bold text-slate-700">
@@ -307,7 +307,7 @@ const FormPreview: React.FC<{
           </div>
         ))}
       </div>
-      <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+      <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
         <button onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium">
           返回设计
         </button>
@@ -453,8 +453,8 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 p-4">
           <input 
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
@@ -486,7 +486,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+        <div className="flex-1 overflow-y-auto bg-slate-50/20 p-5">
           {previewing ? (
             /* 预览模式：模拟真实表单填写 */
             <div className="max-w-2xl mx-auto">

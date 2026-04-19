@@ -65,9 +65,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       const { showRetry = true, showHome = true, title = '页面出现了问题' } = this.props;
 
       return (
-        <div className="min-h-[400px] flex items-center justify-center p-8">
-          <div className="max-w-md w-full text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="flex min-h-[400px] items-center justify-center p-6">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
               <AlertTriangle className="text-red-500" size={32} />
             </div>
             <h2 className="text-xl font-bold text-slate-800 mb-2">{title}</h2>
@@ -81,11 +81,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600">
                   查看错误详情
                 </summary>
-                <pre className="mt-2 p-3 bg-slate-50 rounded-lg text-xs text-red-600 overflow-auto max-h-48 border border-slate-200">
+                <pre className="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-red-600">
                   {this.state.error.stack}
                 </pre>
                 {this.state.errorInfo?.componentStack && (
-                  <pre className="mt-2 p-3 bg-slate-50 rounded-lg text-xs text-slate-500 overflow-auto max-h-32 border border-slate-200">
+                  <pre className="mt-2 max-h-32 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
                     {this.state.errorInfo.componentStack}
                   </pre>
                 )}

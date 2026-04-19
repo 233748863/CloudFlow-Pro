@@ -623,7 +623,7 @@ export const HrResignationPage: React.FC = () => {
         >
 
           {!detail && (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
               先在中间列表选择一条离职申请，这里会展示完整详情与办理动作。
             </div>
           )}
@@ -665,7 +665,7 @@ export const HrResignationPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-3">
                   <h3 className="text-base font-semibold text-slate-900">离职面谈</h3>
                   <p className="mt-1 text-sm text-slate-500">这里直接调用后端 `interview` 接口保存面谈内容。</p>

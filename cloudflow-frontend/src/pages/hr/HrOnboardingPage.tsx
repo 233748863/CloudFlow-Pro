@@ -599,7 +599,7 @@ export const HrOnboardingPage: React.FC = () => {
         >
 
           {!currentApplication && (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
               从左侧列表选择一条申请后，这里会展示真实详情、任务办理动作和确认入职入口。
             </div>
           )}

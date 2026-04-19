@@ -513,7 +513,7 @@ export const HrHeadcountPage: React.FC = () => {
             bodyClassName="mt-0"
           >
             {!selectedHeadcount && (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                 从左侧选择一条编制记录查看详情和统计。
               </div>
             )}

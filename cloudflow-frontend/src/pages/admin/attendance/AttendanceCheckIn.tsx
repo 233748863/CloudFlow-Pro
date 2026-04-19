@@ -248,8 +248,8 @@ const AttendanceCheckIn: React.FC = () => {
 
       <WorkspacePageContent className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <Card className="overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm">
-            <div className="relative p-7 sm:p-8">
+          <Card className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm">
+            <div className="relative p-6 sm:p-7">
               <div className="relative">
                 <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
                   <span className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-teal-700">
@@ -324,7 +324,7 @@ const AttendanceCheckIn: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
             <SectionHeader eyebrow="今日焦点" title="今天先看这些" />
             <div className="mt-5 space-y-3">
               <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
@@ -376,7 +376,7 @@ const AttendanceCheckIn: React.FC = () => {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-5">
               <SectionHeader eyebrow="考勤工作区" title="打卡面板" />
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">

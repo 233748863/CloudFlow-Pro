@@ -460,14 +460,14 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
   return (
     <div className="space-y-4">
       {/* 审批记录时间线 - 默认展示 */}
-      <div className={isGlass ? 'rounded-3xl border border-slate-200 bg-white p-4 shadow-sm' : 'bg-white rounded-xl p-4'}>
+      <div className={isGlass ? 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm' : 'rounded-xl bg-white p-4'}>
         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">审批记录</h4>
         {renderTimeline()}
       </div>
 
       {/* 流程图 - 可折叠 */}
       {graphModel && rootNodeId && (
-        <div className={isGlass ? 'overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm' : 'border border-slate-100 rounded-xl overflow-hidden'}>
+        <div className={isGlass ? 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm' : 'overflow-hidden rounded-xl border border-slate-100'}>
           <button
             onClick={() => setDiagramExpanded(!diagramExpanded)}
             className={isGlass
@@ -482,8 +482,8 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
           </button>
           {diagramExpanded && (
             <div className={isGlass
-              ? 'max-h-[400px] overflow-auto bg-slate-50 p-6 flex justify-center'
-              : 'bg-slate-50 p-6 overflow-auto max-h-[400px] flex justify-center'}>
+              ? 'flex max-h-[400px] justify-center overflow-auto bg-slate-50/80 p-5'
+              : 'flex max-h-[400px] justify-center overflow-auto bg-slate-50 p-6'}>
               {renderNode(rootNodeId)}
             </div>
           )}

@@ -500,13 +500,13 @@ export const HrOfferPage: React.FC = () => {
         description="直接按真实后端状态机推进 Offer 的创建、审批、发送、接受和转入职，不绕工作流回调壳子。"
         actions={(
           <>
-            <Button className="rounded-2xl" onClick={() => setCreateDialogOpen(true)}>
+            <Button className="rounded-lg" onClick={() => setCreateDialogOpen(true)}>
               <FilePlus2 size={16} className="mr-2" />
               新建 Offer
             </Button>
             <Button
               variant="outline"
-              className="rounded-2xl"
+              className="rounded-lg"
               onClick={() => {
                 if (currentOffer) {
                   void loadOfferWorkspace(currentOffer.id);
@@ -530,7 +530,7 @@ export const HrOfferPage: React.FC = () => {
             value={loading ? '--' : metric.value}
             hint={metric.hint}
             aside={(
-              <div className={`rounded-2xl p-3 ${
+              <div className={`rounded-xl p-3 ${
                 metric.tone === 'pink'
                   ? 'bg-cyan-50 text-cyan-600'
                   : metric.tone === 'amber'
@@ -685,7 +685,7 @@ export const HrOfferPage: React.FC = () => {
             )}
 
             {!currentOffer && !detailLoading && (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                 从左侧选择一条 Offer，或者先创建一条新的 Offer 记录。
               </div>
             )}

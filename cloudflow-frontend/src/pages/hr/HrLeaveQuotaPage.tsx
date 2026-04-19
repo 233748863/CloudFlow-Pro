@@ -867,7 +867,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
       </div>
 
       {!visibleInitResult && hiddenInitResult ? (
-        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-5 py-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-sm font-medium text-slate-900">最近一次补齐结果已隐藏</div>
             <div className="mt-1 text-xs leading-6 text-slate-500">

@@ -431,11 +431,11 @@ export const HrTransferPage: React.FC = () => {
         description="左侧锁定员工，中间切换申请，右侧持续推进审批与生效，减少桌面端操作折返。"
         actions={(
           <>
-            <Button className="rounded-2xl" onClick={handleOpenCreate} disabled={!creatableEmployees.length}>
+            <Button className="rounded-lg" onClick={handleOpenCreate} disabled={!creatableEmployees.length}>
               <FilePlus2 size={16} className="mr-2" />
               新建调岗申请
             </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => void handleRefreshCurrentEmployee()}>
+            <Button variant="outline" className="rounded-lg" onClick={() => void handleRefreshCurrentEmployee()}>
               <RefreshCcw size={16} className="mr-2" />
               刷新当前数据
             </Button>
@@ -627,7 +627,7 @@ export const HrTransferPage: React.FC = () => {
         >
 
           {!detail && (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
               先在中间列表选择一条调岗申请，这里会展示完整详情与办理动作。
             </div>
           )}

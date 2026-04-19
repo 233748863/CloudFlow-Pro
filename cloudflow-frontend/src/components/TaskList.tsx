@@ -151,7 +151,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
             {getStatusBadge(task.status, task)}
           </div>
           
-          <div className="space-y-2 mb-4 relative z-10 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+          <div className="relative z-10 mb-4 space-y-2 rounded-lg border border-slate-100 bg-slate-50/80 p-3">
             <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500">当前处理:</span>
                 <span className="text-slate-700 font-bold">{task.assigneeName || task.assigneeId || '待认领'}</span>

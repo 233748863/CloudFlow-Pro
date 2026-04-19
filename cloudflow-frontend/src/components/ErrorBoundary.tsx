@@ -43,9 +43,9 @@ export class ErrorBoundary extends Component<Props, State> {
       }
       
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
-          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-slate-100">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50/80 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-[0_22px_44px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
               <AlertTriangle size={32} />
             </div>
             <h1 className="text-2xl font-bold text-slate-800 mb-2">出错了</h1>
@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
             
             {/* Dev Only Error Details */}
             {import.meta.env.DEV && this.state.error && (
-                <div className="text-left bg-slate-100 p-3 rounded text-xs font-mono text-red-600 mb-6 overflow-auto max-h-32">
+                <div className="mb-6 max-h-32 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-left font-mono text-xs text-red-600">
                     {this.state.error.toString()}
                 </div>
             )}

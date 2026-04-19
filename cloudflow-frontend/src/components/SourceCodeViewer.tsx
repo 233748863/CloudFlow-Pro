@@ -47,7 +47,7 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
         </div>
       </div>
 
-      <div className="flex-1 bg-[#1e1e1e] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-700">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-700 bg-[#1e1e1e] shadow-[0_18px_36px_rgba(15,23,42,0.16)] ring-1 ring-slate-700/60">
         <div className="flex bg-[#252526] border-b border-[#333]">
           <button 
             onClick={() => setActiveTab('java')}
