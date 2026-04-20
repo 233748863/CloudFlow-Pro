@@ -557,7 +557,7 @@ export const WorkflowDesign = () => {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-1 py-1">
         <div className="min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
             Workflow Studio
@@ -579,7 +579,7 @@ export const WorkflowDesign = () => {
         </div>
       </div>
 
-      <div className="min-h-[calc(100vh-250px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/92">
+      <div className="min-h-[calc(100vh-250px)] overflow-hidden rounded-xl border border-slate-200 bg-white/96 dark:border-slate-800 dark:bg-slate-950/94">
         <WorkflowBuilder
           workflow={workflow}
           onChange={handleWorkflowChange}
